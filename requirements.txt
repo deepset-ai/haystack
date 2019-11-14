@@ -1,0 +1,8 @@
+farm==0.3.1
+flask
+flask_cors
+flask_restplus
+flask_sqlalchemy
+pandas
+psycopg2-binary
+sklearn
