@@ -6,7 +6,7 @@ Haystack — Neural Question Answering At Scale
 Introduction
 ============
 
-The performance of modern Question Answering Models (BERT, ALBERT ...) has seen drastic improvements within the last year enabling many new opportunities for finding information more efficiently. However, those models are usually designed to find answers within rather small text passages. **Haystack let's you scale QA models** to large collections of documents!
+The performance of **modern Question Answering Models** (BERT, ALBERT ...) has seen drastic improvements within the last year enabling many new opportunities for finding information more efficiently. However, those models are usually designed to find answers within rather small text passages. **Haystack let's you scale QA models** to large collections of documents!
 
 Haystack is designed in a modular way and is tightly integrated with the `FARM <https://github.com/deepset-ai/FARM>`_ framework for training QA models.
 Swap your models easily from BERT to roBERTa and scale the database from dev (Sqlite) to production (PostgreSQL, elasticsearch ...).
