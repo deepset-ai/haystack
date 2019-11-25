@@ -29,7 +29,7 @@ There are three major components for the question answering pipeline:
 
 3. **Finder**: Glues together a Reader and a Retriever as a pipeline to provide an easy-to-use question answering interface.
 
-4. Coming Soon: **Labeling Tool**
+4. **Labeling Tool**: (Coming soon)
 
 
 Quickstart
