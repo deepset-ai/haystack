@@ -1,5 +1,5 @@
 *******************************************************
-Haystack — Natural Language Question Answering At Scale
+Haystack — Neural Question Answering At Scale
 *******************************************************
 
 
