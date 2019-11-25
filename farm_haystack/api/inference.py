@@ -8,7 +8,7 @@ from flask_restplus import Api, Resource
 
 from farm_haystack import Finder
 from farm_haystack.database import app
-from farm_haystack.reader.adaptive_model import FARMReader
+from farm_haystack.reader.farm import FARMReader
 from farm_haystack.retriever.tfidf import TfidfRetriever
 
 CORS(app)

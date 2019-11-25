@@ -1,9 +1,16 @@
 from farm_haystack.retriever.tfidf import TfidfRetriever
-from farm_haystack.reader.adaptive_model import FARMReader
+from farm_haystack.reader.farm import FARMReader
 from farm_haystack.database import db
 import logging
+import farm
+
+import pandas as pd
+pd.options.display.max_colwidth = 80
 
 logger = logging.getLogger(__name__)
+
+logging.getLogger('farm').setLevel(logging.WARNING)
+logging.getLogger('transformers').setLevel(logging.WARNING)
 
 
 class Finder:
@@ -82,8 +89,11 @@ class Finder:
         df_sliced = self.retriever.df.loc[retrieved_scores.keys()]
         if verbose:
             logger.info(
-                f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced}"
+                f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced.to_string(col_space=10, index=False)}"
             )
+            logger.info(
+                f"Applying the reader now to look for the answer in detail ..."
+                )
         inference_dicts = []
         for idx, row in df_sliced.iterrows():
             if candidate_doc_ids and row["document_id"] not in candidate_doc_ids:

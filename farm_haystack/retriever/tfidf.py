@@ -66,7 +66,7 @@ class TfidfRetriever(BaseRetriever):
                     Paragraph(document_id=doc.id, paragraph_id=p_id, text=(p,))
                 )
                 p_id += 1
-        logger.info(f"Found {len(paragraphs)} candidate passages from {len(documents)} docs in DB")
+        logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
         return paragraphs
 
     def retrieve(self, query, candidate_doc_ids=None, top_k=10):
