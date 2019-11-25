@@ -60,7 +60,7 @@ class Finder:
             retrieved_scores, question, candidate_doc_ids=candidate_doc_ids
         )
         results = self.reader.predict(inference_dicts, top_k=top_k_reader)
-        return results
+        return results["results"]
 
     def _convert_retrieved_text_to_reader_format(
         self, retrieved_scores, question, candidate_doc_ids=None, verbose=True

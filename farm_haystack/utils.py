@@ -18,7 +18,8 @@ def create_db():
     db.session.create_all()
 
 
-def print_answers(answers, details="all"):
+def print_answers(results, details="all"):
+    answers = results[0]["answers"]
     pp = pprint.PrettyPrinter(indent=4)
     if details != "all":
         if details == "minimal":
