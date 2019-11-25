@@ -52,6 +52,10 @@ SQL Backend
 -----------
 The database ORM layer is implemented using SQLAlchemy library. By default, it uses the file-based SQLite database. For large scale deployments, the configuration can be changed to use other compatible databases like PostgreSQL or MySQL.
 
+Elasticsearch Backend
+----------------------
+(Coming soon)
+
 REST API
 --------
 A Flask based HTTP REST API is included to use the QA Framework with UI or integrating with other systems. To serve the API, run :code:`FLASK_APP=farm_hackstack.api.inference flask run`. 
