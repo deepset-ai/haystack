@@ -27,7 +27,7 @@ def write_documents_to_db(document_dir, clean_func=None):
             db.session.add(doc)
             db.session.commit()
         n_docs += 1
-    logger.info(f"Wrote {n_docs} to DB")
+    logger.info(f"Wrote {n_docs} docs to DB")
 
 
 def fetch_archive_from_http(url, output_dir, proxies=None):
