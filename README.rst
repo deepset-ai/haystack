@@ -12,11 +12,11 @@ Haystack is designed in a modular way and is tightly integrated with the `FARM <
 Swap your models easily from BERT to roBERTa and scale the database from dev (Sqlite) to production (PostgreSQL, elasticsearch ...).
 
 Core Features
-==========
+=============
 - **Most powerful models**: Utilize all the latest transformer based models (BERT, ALBERT roBERTa ...)
-- **Modular & future-proof**: Avoid technical debt. With haystack you can easily switch to newer models once they get published. 
-- **Developer friendly**: Easy to debug, extend and modify
-- **Scalable**: Switch from dev to production within minutes.  
+- **Modular & future-proof**: Avoid technical debt. With haystack you can easily switch to newer models once they get published.
+- **Developer friendly**: Easy to debug, extend and modify.
+- **Scalable**: Switch from dev to production within minutes.
 
 Components
 ==========
@@ -37,8 +37,13 @@ Installation
 ------------
 There are two ways to install:
 
-* (recommended) from source, :code:`git clone <url>` and run :code:`pip install [--editable] .` from the root of the repositry. 
+* (recommended) from source, :code:`git clone <url>` and run :code:`pip install [--editable] .` from the root of the repositry.
 * from PyPI, do a :code:`pip install farm_haystack`
+
+Usage
+-----
+.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/code_snippet_usage.png
+
 
 Configuration
 -------------
