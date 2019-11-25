@@ -21,8 +21,6 @@ Core Features
 Components
 ==========
 
-There are three major components for the question answering pipeline:
-
 1. **Retriever**:  Fast, simple model that identify candidate passages from a large collection of documents. Algorithms include TF-IDF, which is similar to what's used in popular search systems like Elasticsearch. The Retriever helps to narrow down the scope for Reader to smaller units of text where a given question could be answered.
 
 2. **Reader**: Powerful neural model that read through texts in detail to find an answer. Use diverse models like BERT, Roberta or XLNet trained via the `FARM <https://github.com/deepset-ai/FARM>`_ Framework on SQuAD like tasks. The Reader takes multiple passages of text as input and returns top-n answers with corresponding confidence scores.
