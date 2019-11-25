@@ -14,7 +14,7 @@ Swap your models easily from BERT to roBERTa and scale the database from dev (Sq
 Core Features
 ==========
 - **Most powerful models**: Utilize all the latest transformer based models (BERT, ALBERT roBERTa ...)
-- **Modular**: Avoid technical debt. With haystack you can easily switch to newer models once they get published. 
+- **Modular & future-proof**: Avoid technical debt. With haystack you can easily switch to newer models once they get published. 
 - **Developer friendly**: Easy to debug, extend and modify
 - **Scalable**: Switch from dev to production within minutes.  
 
