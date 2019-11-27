@@ -1,7 +1,21 @@
 *******************************************************
 Haystack — Neural Question Answering At Scale
 *******************************************************
+.. image:: https://travis-ci.org/deepset-ai/haystack.svg?branch=master
+	:target: https://travis-ci.org/deepset-ai/haystack
+	:alt: Build
 
+.. image:: https://img.shields.io/github/release/deepset-ai/haystack
+	:target: https://github.com/deepset-ai/haystack/releases
+	:alt: Release
+
+.. image:: https://img.shields.io/github/license/deepset-ai/haystack
+	:target: https://github.com/deepset-ai/haystack/blob/master/LICENSE
+	:alt: License
+
+.. image:: https://img.shields.io/github/last-commit/deepset-ai/haystack
+	:target: https://github.com/deepset-ai/haystack/commits/master
+	:alt: Last Commit
 
 Introduction
 ============
@@ -29,6 +43,9 @@ Components
 
 4. **Labeling Tool**: (Coming soon)
 
+Resources
+=========
+- Tutorial 1  - Basic QA Pipeline: `Jupyter notebook  <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_  or `Colab <https://colab.research.google.com/drive/1Gj3JjPPcm8DMmctz66K68cOV53JZKqeX>`_
 
 Quickstart
 ==========
@@ -39,6 +56,7 @@ There are two ways to install:
 
 * (recommended) from source, :code:`git clone <url>` and run :code:`pip install [--editable] .` from the root of the repositry.
 * from PyPI, do a :code:`pip install farm-haystack`
+
 
 Usage
 -----
