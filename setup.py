@@ -13,7 +13,7 @@ parsed_requirements = [
 
 
 setup(
-    name="haystack",
+    name="farm-haystack",
     version="0.1.0",
     author="Malte Pietsch, Timo Moeller, Branden Chan, Tanay Soni",
     author_email="malte.pietsch@deepset.ai",
