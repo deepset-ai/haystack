@@ -3,8 +3,8 @@ from collections import defaultdict
 import logging
 import pprint
 
-from farm_haystack.database.orm import Document
-from farm_haystack.database.orm import db
+from haystack.database.orm import Document
+from haystack.database.orm import db
 
 logger = logging.getLogger(__name__)
 

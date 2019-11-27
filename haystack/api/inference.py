@@ -6,10 +6,10 @@ from flask import request, make_response
 from flask_cors import CORS
 from flask_restplus import Api, Resource
 
-from farm_haystack import Finder
-from farm_haystack.database import app
-from farm_haystack.reader.farm import FARMReader
-from farm_haystack.retriever.tfidf import TfidfRetriever
+from haystack import Finder
+from haystack.database import app
+from haystack.reader.farm import FARMReader
+from haystack.retriever.tfidf import TfidfRetriever
 
 CORS(app)
 api = Api(
