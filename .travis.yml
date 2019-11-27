@@ -1,0 +1,9 @@
+language: python
+sudo: false
+cache: pip
+python:
+  - "3.7"
+install:
+  - "pip install -e ."
+script:
+  - "cd test && pytest"
