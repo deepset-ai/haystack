@@ -1,6 +1,6 @@
-from farm_haystack.retriever.tfidf import TfidfRetriever
-from farm_haystack.reader.farm import FARMReader
-from farm_haystack.database import db
+from haystack.retriever.tfidf import TfidfRetriever
+from haystack.reader.farm import FARMReader
+from haystack.database import db
 import logging
 import farm
 

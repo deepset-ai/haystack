@@ -8,10 +8,10 @@ RUN pip install -r requirements.txt
 RUN pip install -e .
 
 # copy code
-COPY farm_haystack /home/user/farm_haystack
+COPY haystack /home/user/haystack
 
 # copy saved FARM models
 COPY saved_models /home/user/saved_models
 
 # cmd for running the API
-CMD FLASK_APP=farm_haystack.api.inference flask run --host 0.0.0.0
+CMD FLASK_APP=haystack.api.inference flask run --host 0.0.0.0

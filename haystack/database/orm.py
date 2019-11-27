@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship
 
-from farm_haystack.database import db
+from haystack.database import db
 
 
 class ORMBase(db.Model):

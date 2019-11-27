@@ -1,4 +1,4 @@
-from farm_haystack.database.orm import Document, db
+from haystack.database.orm import Document, db
 from pathlib import Path
 import logging
 from farm.data_handler.utils import http_get

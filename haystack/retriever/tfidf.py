@@ -4,8 +4,8 @@ import logging
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from farm_haystack.database import db
-from farm_haystack.database.orm import Document
+from haystack.database import db
+from haystack.database.orm import Document
 
 logger = logging.getLogger(__name__)
 

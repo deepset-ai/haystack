@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # haystack files
-farm_haystack/database/qa.db
+haystack/database/qa.db
