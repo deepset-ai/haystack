@@ -1,4 +1,4 @@
-farm==0.3.1
+farm==0.3.2
 flask
 flask_cors
 flask_restplus
