@@ -35,9 +35,9 @@ Core Features
 Components
 ==========
 
-1. **Retriever**:  Fast, simple model that identify candidate passages from a large collection of documents. Algorithms include TF-IDF, which is similar to what's used in popular search systems like Elasticsearch. The Retriever helps to narrow down the scope for Reader to smaller units of text where a given question could be answered.
+1. **Retriever**:  Fast, simple model that identifies candidate passages from a large collection of documents. Algorithms include TF-IDF, which is similar to what's used in popular search systems like Elasticsearch. The Retriever helps to narrow down the scope for Reader to smaller units of text where a given question could be answered.
 
-2. **Reader**: Powerful neural model that read through texts in detail to find an answer. Use diverse models like BERT, Roberta or XLNet trained via the `FARM <https://github.com/deepset-ai/FARM>`_ Framework on SQuAD like tasks. The Reader takes multiple passages of text as input and returns top-n answers with corresponding confidence scores.
+2. **Reader**: Powerful neural model that reads through texts in detail to find an answer. Use diverse models like BERT, Roberta or XLNet trained via the `FARM <https://github.com/deepset-ai/FARM>`_ Framework on SQuAD like tasks. The Reader takes multiple passages of text as input and returns top-n answers with corresponding confidence scores.
 
 3. **Finder**: Glues together a Reader and a Retriever as a pipeline to provide an easy-to-use question answering interface.
 
@@ -65,7 +65,7 @@ Usage
 
 Configuration
 -------------
-The configuration can be supplied in a :code:`qa_config.py` placed in the PYTHONPATH. Alternatively, the :code:`DATABASE_URL` can also be set an an environment variable.
+The configuration can be supplied in a :code:`qa_config.py` placed in the PYTHONPATH. Alternatively, the :code:`DATABASE_URL` can also be set as an environment variable.
 
 
 Deployment
