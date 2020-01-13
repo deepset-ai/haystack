@@ -34,7 +34,7 @@ class TfidfRetriever(BaseRetriever):
     Split documents into smaller units (eg, paragraphs or pages) to reduce the 
     computations when text is passed on to a Reader for QA.
 
-    It uses sklearn TfidfVectorizer to compute a tf-idf matrix.
+    It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
 
     def __init__(self):
@@ -69,15 +69,37 @@ class TfidfRetriever(BaseRetriever):
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
         return paragraphs
 
-    def retrieve(self, query, candidate_doc_ids=None, top_k=10):
+    def _calc_scores(self, query):
         question_vector = self.vectorizer.transform([query])
 
         scores = self.tfidf_matrix.dot(question_vector.T).toarray()
         idx_scores = [(idx, score) for idx, score in enumerate(scores)]
-        top_k_scores = OrderedDict(
-            sorted(idx_scores, key=(lambda tup: tup[1]), reverse=True)[:top_k]
+        indices_and_scores = OrderedDict(
+            sorted(idx_scores, key=(lambda tup: tup[1]), reverse=True)
         )
-        return top_k_scores
+        return indices_and_scores
+
+    def retrieve(self, query, candidate_doc_ids=None, top_k=10, verbose=True):
+        # get scores
+        indices_and_scores = self._calc_scores(query)
+
+        # rank & filter paragraphs
+        df_sliced = self.df.loc[indices_and_scores.keys()]
+        if candidate_doc_ids:
+            df_sliced = df_sliced[df_sliced.document_id.isin(candidate_doc_ids)]
+        df_sliced = df_sliced[:top_k]
+
+        if verbose:
+            logger.info(
+                f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced.to_string(col_space=10, index=False)}"
+            )
+
+        # get actual content for the top candidates
+        paragraphs = list(df_sliced.text.values)
+        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"]}
+                     for idx, row in df_sliced.iterrows()]
+
+        return paragraphs, meta_data
 
     def fit(self):
         self.df = pd.DataFrame.from_dict(self.paragraphs)

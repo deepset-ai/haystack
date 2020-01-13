@@ -19,7 +19,7 @@ def create_db():
 
 
 def print_answers(results, details="all"):
-    answers = results[0]["answers"]
+    answers = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
     if details != "all":
         if details == "minimal":
