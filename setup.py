@@ -4,13 +4,14 @@ from setuptools import find_packages, setup
 
 with open("requirements.txt") as f:
     parsed_requirements = f.read().splitlines()
-# remove blank lines and comments
+# remove blank lines, comments and links to specific git commits
 parsed_requirements = [
     x.strip()
     for x in parsed_requirements
-    if ((x.strip()[0] != "#") and (len(x.strip()) > 3))
+    if ((x.strip()[0] != "#") and (len(x.strip()) > 3) and "-e git://" not in x)
 ]
-
+# temporary workaround to install FARM from specific commit
+parsed_requirements.append('farm @ git+https://github.com/deepset-ai/FARM.git@1d30237b037050ef0ac5516f427443cdd18a4d43#egg=farm@v2.3.0#egg=farm')
 
 setup(
     name="farm-haystack",
