@@ -9,15 +9,28 @@ import zipfile
 logger = logging.getLogger(__name__)
 
 
-def write_documents_to_db(document_dir, clean_func=None):
+def write_documents_to_db(document_dir, clean_func=None, only_empty_db=False):
     """
     Write all text files(.txt) in the sub-directories of the given path to the connected database.
 
     :param document_dir: path for the documents to be written to the database
-    :return:
+    :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
+    :param only_empty_db: If true, docs will only be written if db is completely empty.
+                              Useful to avoid indexing the same initial docs again and again.
+    :return: None
     """
     file_paths = Path(document_dir).glob("**/*.txt")
     n_docs = 0
+
+    # check if db has already docs
+    if only_empty_db:
+        n_docs = db.session.query(Document).count()
+        if n_docs > 0:
+            logger.info(f"Skip writing documents since DB already contains {n_docs} docs ...  "
+                        "(Disable `only_empty_db`, if you want to add docs anyway.)")
+            return None
+
+    # read and add docs
     for path in file_paths:
         with open(path) as doc:
             text = doc.read()
