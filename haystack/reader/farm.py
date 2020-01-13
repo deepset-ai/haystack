@@ -18,6 +18,7 @@ class FARMReader:
         no_answer_shift=-100,
         batch_size=16,
         use_gpu=True,
+        n_best_per_passage=2
     ):
         """
         Load a saved FARM model in Inference mode.
@@ -27,24 +28,44 @@ class FARMReader:
         self.model = Inferencer.load(model_dir, batch_size=batch_size, gpu=use_gpu)
         self.model.model.prediction_heads[0].context_size = context_size
         self.model.model.prediction_heads[0].no_answer_shift = no_answer_shift
+        self.model.model.prediction_heads[0].n_best = n_best_per_passage
+
 
     def predict(self, question, paragrahps, meta_data_paragraphs=None, top_k=None, max_processes=1):
         """
-        Run inference on the loaded model for the given input dicts.
+        Use loaded QA model to find answers for a question in the supplied paragraphs.
 
-        TODO
-        :param input_dicts: list of input dicts
+        Returns dictionaries containing answers sorted by (desc.) probability
+        Example:
+        {'question': 'Who is the father of Arya Stark?',
+        'answers': [
+                     {'answer': 'Eddard,',
+                     'context': " She travels with her father, Eddard, to King's Landing when he is ",
+                     'offset_answer_start': 147,
+                     'offset_answer_end': 154,
+                     'probability': 0.9787139466668613,
+                     'score': None,
+                     'document_id': None
+                     },
+                    ...
+                   ]
+        }
+
+        :param question: question string
+        :param paragraphs: list of strings in which to search for the answer
+        :param meta_data_paragraphs: list of dicts containing meta data for the paragraphs.
+                                     len(paragraphs) == len(meta_data_paragraphs)
         :param top_k: the maximum number of answers to return
         :param max_processes: max number of parallel processes
-        :return:
+        :return: dict containing question and answers
         """
-
-        # convert input to FARM format
-        input_dicts = []
 
         if meta_data_paragraphs is None:
             meta_data_paragraphs = len(paragrahps) * [None]
+        assert len(paragrahps) == len(meta_data_paragraphs)
 
+        # convert input to FARM format
+        input_dicts = []
         for paragraph, meta_data in zip(paragrahps, meta_data_paragraphs):
             cur = {"text": paragraph,
                    "questions": [question],
@@ -52,8 +73,7 @@ class FARMReader:
             }
             input_dicts.append(cur)
 
-        # get answers from QA model: top 5 per input paragraph
-        # TODO rename arg rest_api_schema?
+        # get answers from QA model (Top 5 per input paragraph)
         predictions = self.model.inference_from_dicts(
             dicts=input_dicts, rest_api_schema=True, max_processes=max_processes
         )
