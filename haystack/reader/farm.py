@@ -28,55 +28,57 @@ class FARMReader:
         self.model.model.prediction_heads[0].context_size = context_size
         self.model.model.prediction_heads[0].no_answer_shift = no_answer_shift
 
-    def predict(self, input_dicts, top_k=None):
+    def predict(self, question, paragrahps, meta_data_paragraphs=None, top_k=None, max_processes=1):
         """
         Run inference on the loaded model for the given input dicts.
 
+        TODO
         :param input_dicts: list of input dicts
         :param top_k: the maximum number of answers to return
+        :param max_processes: max number of parallel processes
         :return:
         """
-        results = self.model.inference_from_dicts(
-            dicts=input_dicts, rest_api_schema=True, use_multiprocessing=False
+
+        # convert input to FARM format
+        input_dicts = []
+
+        if meta_data_paragraphs is None:
+            meta_data_paragraphs = len(paragrahps) * [None]
+
+        for paragraph, meta_data in zip(paragrahps, meta_data_paragraphs):
+            cur = {"text": paragraph,
+                   "questions": [question],
+                   "document_id": meta_data["document_id"]
+            }
+            input_dicts.append(cur)
+
+        # get answers from QA model: top 5 per input paragraph
+        # TODO rename arg rest_api_schema?
+        predictions = self.model.inference_from_dicts(
+            dicts=input_dicts, rest_api_schema=True, max_processes=max_processes
         )
 
-        # The FARM Inferencer as of now do not support multi document QA.
-        # The QA inference is done for each text independently and the
-        # results are sorted descending by their `score`.
+        # assemble answers from all the different paragraphs & format them
+        answers = []
+        for pred in predictions:
+            for a in pred["predictions"][0]["answers"]:
+                if a["answer"]: #skip "no answer"
+                    cur = {"answer": a["answer"],
+                           "score": a["score"],
+                           "probability": expit(np.asarray([a["score"]]) / 8), #just a pseudo prob for now
+                           "context": a["context"],
+                           "offset_start": a["offset_answer_start"] - a["offset_context_start"],
+                           "offset_end": a["offset_answer_start"] - a["offset_context_start"],
+                           "document_id": a["document_id"]}
+                    answers.append(cur)
 
-        all_predictions = []
-        for res in results:
-            all_predictions.extend(res["predictions"])
-
-        all_answers = []
-        for pred in all_predictions:
-            answers = pred["answers"]
-            for a in answers:
-                # Two sets of offset fields are returned by FARM -- context level and document level.
-                # For the API, only context level offsets are relevant.
-                a["offset_start"] = a["offset_answer_start"] - a["offset_context_start"]
-                a["offset_end"] = a["offset_context_end"] - a["offset_answer_end"]
-            all_answers.extend(answers)
-
-        # remove all null answers (where an answers in not found in the text)
-        all_answers = [ans for ans in all_answers if ans["answer"]]
-
-        scores = np.asarray([ans["score"] for ans in all_answers])
-        probabilities = expit(scores / 8)
-        for ans, prob in zip(all_answers, probabilities):
-            ans["probability"] = prob
-
-        # sort answers by their `probability`
-        sorted_answers = sorted(
-            all_answers, key=lambda k: k["probability"], reverse=True
+        # sort answers by their `probability` and select top-k
+        answers = sorted(
+            answers, key=lambda k: k["probability"], reverse=True
         )
+        answers = answers[:top_k]
 
-        # all predictions here are for the same questions, so the the metadata from
-        # the first prediction in the list is taken.
-        if all_predictions:
-            resp = all_predictions[0]  # get the first prediction dict
-            resp["answers"] = sorted_answers[:top_k]
-        else:
-            resp = []
+        result = {"question": question,
+                   "answers": answers}
 
-        return {"results": [resp]}
+        return result

@@ -38,6 +38,7 @@ class Finder:
         :return:
         """
 
+        # 1) Optional: reduce the search space via document tags
         if filters:
             query = """
                 SELECT id FROM document WHERE id in (
@@ -61,49 +62,15 @@ class Finder:
         else:
             candidate_doc_ids = None
 
-        retrieved_scores = self.retriever.retrieve(question, top_k=top_k_retriever)
+        # 2) Apply retriever to get fast candidate paragraphs
+        paragraphs, meta_data = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
 
-        inference_dicts = self._convert_retrieved_text_to_reader_format(
-            retrieved_scores, question, candidate_doc_ids=candidate_doc_ids
-        )
-        results = self.reader.predict(inference_dicts, top_k=top_k_reader)
-        return results["results"]
+        # 3) Apply reader to get granular answer(s)
+        logger.info(f"Applying the reader now to look for the answer in detail ...")
+        results = self.reader.predict(question=question,
+                                      paragrahps=paragraphs,
+                                      meta_data_paragraphs=meta_data,
+                                      top_k=top_k_reader)
 
-    def _convert_retrieved_text_to_reader_format(
-        self, retrieved_scores, question, candidate_doc_ids=None, verbose=True
-    ):
-        """
-        The reader expect the input as:
-        {
-            "text": "FARM is a home for all species of pretrained language models (e.g. BERT) that can be adapted to 
-            different domain languages or down-stream tasks. With FARM you can easily create SOTA NLP models for tasks 
-            like document classification, NER or question answering.",
-            "document_id": 127,
-            "questions" : ["What can you do with FARM?"]
-        }
+        return results
 
-        :param retrieved_scores: tfidf scores as returned by the retriever
-        :param question: question string
-        :param verbose: enable verbose logging
-        """
-        df_sliced = self.retriever.df.loc[retrieved_scores.keys()]
-        if verbose:
-            logger.info(
-                f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced.to_string(col_space=10, index=False)}"
-            )
-            logger.info(
-                f"Applying the reader now to look for the answer in detail ..."
-                )
-        inference_dicts = []
-        for idx, row in df_sliced.iterrows():
-            if candidate_doc_ids and row["document_id"] not in candidate_doc_ids:
-                continue
-            inference_dicts.append(
-                {
-                    "text": row["text"],
-                    "document_id": row["document_id"],
-                    "questions": [question],
-                }
-            )
-
-        return inference_dicts
