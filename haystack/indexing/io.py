@@ -21,11 +21,16 @@ def write_documents_to_db(document_dir, clean_func=None, only_empty_db=False):
     """
     file_paths = Path(document_dir).glob("**/*.txt")
     n_docs = 0
+
+    # check if db has already docs
     if only_empty_db:
         n_docs = db.session.query(Document).count()
         if n_docs > 0:
             logger.info(f"Skip writing documents since DB already contains {n_docs} docs ...  "
                         "(Disable `only_empty_db`, if you want to add docs anyway.)")
+            return None
+
+    # read and add docs
     for path in file_paths:
         with open(path) as doc:
             text = doc.read()
