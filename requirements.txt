@@ -1,9 +1,8 @@
 # FARM (incl. transformers 2.3.0 with pipelines)
 #farm -e git+https://github.com/deepset-ai/FARM.git@1d30237b037050ef0ac5516f427443cdd18a4d43
 -e git://github.com/deepset-ai/FARM.git@1d30237b037050ef0ac5516f427443cdd18a4d43#egg=farm
-flask
-flask_cors
-flask_restplus
+fastapi
+uvicorn
 flask_sqlalchemy
 pandas
 psycopg2-binary
