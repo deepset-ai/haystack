@@ -1,5 +1,5 @@
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 import logging
 
@@ -76,7 +76,7 @@ class Response(BaseModel):
 def ask(finder_id: int, request: Request):
     finder = FINDERS.get(finder_id, None)
     if not finder:
-        return "Model not found", 404
+        raise HTTPException(status_code=404, detail=f"Couldn't get Finder with ID {finder_id}. Available IDs: {list(FINDERS.keys())}")
 
     results = finder.get_answers(
         question=request.question, top_k_retriever=request.top_k_retriever,
