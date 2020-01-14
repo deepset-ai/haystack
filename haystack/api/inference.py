@@ -1,23 +1,28 @@
-import json
 from pathlib import Path
+from fastapi import FastAPI
 
-import numpy as np
-from flask import request, make_response
-from flask_cors import CORS
-from flask_restplus import Api, Resource
+import logging
 
 from haystack import Finder
 from haystack.database import app
 from haystack.reader.farm import FARMReader
 from haystack.retriever.tfidf import TfidfRetriever
 
-CORS(app)
-api = Api(
-    app, debug=True, validate=True, version="1.0", title="FARM Question Answering API"
-)
+from pydantic import BaseModel
+from typing import List, Dict
+import uvicorn
 
-MODELS_DIRS = ["saved_models"]
+logger = logging.getLogger(__name__)
 
+#TODO Enable CORS
+
+MODELS_DIRS = ["saved_models", "models", "model"]
+USE_GPU = False
+BATCH_SIZE = 16
+
+app = FastAPI(title="Haystack API", version="0.1")
+
+# Load all models in memory
 model_paths = []
 for model_dir in MODELS_DIRS:
     path = Path(model_dir)
@@ -25,49 +30,53 @@ for model_dir in MODELS_DIRS:
         models = [f for f in path.iterdir() if f.is_dir()]
         model_paths.extend(models)
 
+if len(model_paths) == 0:
+    logger.error(f"Could not find any model to load. Checked folders: {MODELS_DIRS}")
+
 retriever = TfidfRetriever()
 FINDERS = {}
-for idx, model_dir in enumerate(model_paths):
-    reader = FARMReader(model_dir=str(model_dir), batch_size=16)
-    FINDERS[idx + 1] = Finder(reader, retriever)
+for idx, model_dir in enumerate(model_paths, start=1):
+    reader = FARMReader(model_dir=str(model_dir), batch_size=BATCH_SIZE, use_gpu=USE_GPU)
+    FINDERS[idx] = Finder(reader, retriever)
+    logger.info(f"Initialized Finder (ID={idx}) with model '{model_dir}'")
 
 
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, np.float32):
-            return str(obj)
-        return json.JSONEncoder.default(self, obj)
+# Basic data models for request & response
+class Request(BaseModel):
+    question: str
+    filters: Dict[str, str] = None
+    top_k_reader: int = 5
+    top_k_retriever: int = 10
 
 
-@api.representation("application/json")
-def resp_json(data, code, headers=None):
-    resp = make_response(json.dumps(data, cls=NumpyEncoder), code)
-    resp.headers.extend(headers or {})
-    return resp
+class Answer(BaseModel):
+    answer: str
+    score: float = None
+    probability: float = None
+    context: str
+    offset_start: int
+    offset_end: int
+    document_id: str = None
 
 
-@api.route("/finders/<int:finder_id>/ask")
-class InferenceEndpoint(Resource):
-    def post(self, finder_id):
-        finder = FINDERS.get(finder_id, None)
-        if not finder:
-            return "Model not found", 404
+class Response(BaseModel):
+    question: str
+    answers: List[Answer]
 
-        request_body = request.get_json()
-        questions = request_body.get("questions", None)
-        if not questions:
-            return "The request is missing 'questions' field", 400
 
-        filters = request_body.get("filters", None)
+# Endpoints
+@app.post("/finders/<int:finder_id>/ask", response_model=Response, response_model_exclude_unset=True)
+def ask(finder_id: int, request: Request):
+    finder = FINDERS.get(finder_id, None)
+    if not finder:
+        return "Model not found", 404
 
-        results = finder.get_answers(
-            question=request_body["questions"][0], top_k_reader=3, filters=filters
-        )
+    results = finder.get_answers(
+        question=request.question, top_k_retriever=request.top_k_retriever, top_k_reader=request.top_k_reader, filters=request.filters
+    )
 
-        return results
+    return results
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0")
+    uvicorn.run(app, host="0.0.0.0", port=8000)

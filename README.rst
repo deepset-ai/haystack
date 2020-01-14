@@ -81,6 +81,5 @@ Elasticsearch Backend
 
 REST API
 --------
-A Flask based HTTP REST API is included to use the QA Framework with UI or integrating with other systems. To serve the API, run :code:`FLASK_APP=farm_hackstack.api.inference flask run`. 
-
-
+A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is included to answer questions at inference time. To serve the API, run :code:`uvicorn haystack.api.inference:app`.
+You will find the Swagger API documentation at http://127.0.0.1:8000/docs
