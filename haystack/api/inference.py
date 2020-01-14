@@ -22,7 +22,9 @@ BATCH_SIZE = 16
 
 app = FastAPI(title="Haystack API", version="0.1")
 
+#############################################
 # Load all models in memory
+#############################################
 model_paths = []
 for model_dir in MODELS_DIRS:
     path = Path(model_dir)
@@ -40,8 +42,12 @@ for idx, model_dir in enumerate(model_paths, start=1):
     FINDERS[idx] = Finder(reader, retriever)
     logger.info(f"Initialized Finder (ID={idx}) with model '{model_dir}'")
 
+logger.info("Open http://127.0.0.1:8000/docs to see Swagger API Documentation.")
+logger.info(""" Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/finders/1/ask' --data '{"question": "Who is the father of Arya Starck?"}'""")
 
-# Basic data models for request & response
+#############################################
+# Basic data schema for request & response
+#############################################
 class Request(BaseModel):
     question: str
     filters: Dict[str, str] = None
@@ -63,16 +69,18 @@ class Response(BaseModel):
     question: str
     answers: List[Answer]
 
-
+#############################################
 # Endpoints
-@app.post("/finders/<int:finder_id>/ask", response_model=Response, response_model_exclude_unset=True)
+#############################################
+@app.post("/finders/{finder_id}/ask", response_model=Response, response_model_exclude_unset=True)
 def ask(finder_id: int, request: Request):
     finder = FINDERS.get(finder_id, None)
     if not finder:
         return "Model not found", 404
 
     results = finder.get_answers(
-        question=request.question, top_k_retriever=request.top_k_retriever, top_k_reader=request.top_k_reader, filters=request.filters
+        question=request.question, top_k_retriever=request.top_k_retriever,
+        top_k_reader=request.top_k_reader, filters=request.filters
     )
 
     return results
