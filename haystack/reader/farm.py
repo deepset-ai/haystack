@@ -85,10 +85,10 @@ class FARMReader:
                 if a["answer"]: #skip "no answer"
                     cur = {"answer": a["answer"],
                            "score": a["score"],
-                           "probability": expit(np.asarray([a["score"]]) / 8), #just a pseudo prob for now
+                           "probability": float(expit(np.asarray([a["score"]]) / 8)), #just a pseudo prob for now
                            "context": a["context"],
                            "offset_start": a["offset_answer_start"] - a["offset_context_start"],
-                           "offset_end": a["offset_answer_start"] - a["offset_context_start"],
+                           "offset_end": a["offset_answer_end"] - a["offset_context_start"],
                            "document_id": a["document_id"]}
                     answers.append(cur)
 
