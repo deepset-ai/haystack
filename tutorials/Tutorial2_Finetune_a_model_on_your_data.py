@@ -6,39 +6,29 @@ from haystack.indexing.io import write_documents_to_db, fetch_archive_from_http
 from haystack.indexing.cleaning import clean_wiki_text
 from haystack.utils import print_answers
 
+# Let's take a reader as a base model
+fetch_archive_from_http(url="https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-models/0.3.0/bert-english-qa-large.tar.gz", output_dir="model")
+reader = FARMReader(model_name_or_path="model/bert-english-qa-large", use_gpu=False)
 
-## Indexing & cleaning documents
-# Init a database (default: sqllite)
+# and fine-tune it on your own custom dataset (should be in squad like format)
+reader.train(data_dir="../data/squad_small", train_filename="train.json", use_gpu=False, n_epochs=1)
+
+# Okay, we have a fine-tuned model now. Let's test it on some docs:
+
+## Let's get some docs for testing (see Tutorial 1 for more explanations)
 from haystack.database import db
 db.create_all()
 
-# Let's first get some documents that we want to query
-# Here: 517 Wikipedia articles for Game of Thrones
+# Download docs
 doc_dir = "data/article_txt_got"
 s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
 fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
-# Now, let's write the docs to our DB.
-# You can supply a cleaning function that is applied to each doc (e.g. to remove footers)
-# It must take a str as input, and return a str.
+# Write docs to our DB.
 write_documents_to_db(document_dir=doc_dir, clean_func=clean_wiki_text, only_empty_db=True)
 
-
-## Initalize Reader, Retriever & Finder
-
-# A retriever identifies the k most promising chunks of text that might contain the answer for our question
-# Retrievers use some simple but fast algorithm, here: TF-IDF
+# Initialize Finder Pipeline
 retriever = TfidfRetriever()
-
-# A reader scans the text chunks in detail and extracts the k best answers
-# Reader use more powerful but slower deep learning models, here: a BERT QA model trained via FARM on Squad 2.0
-fetch_archive_from_http(url="https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-models/0.3.0/bert-english-qa-large.tar.gz", output_dir="model")
-reader = FARMReader(model_name_or_path="model/bert-english-qa-large", use_gpu=False)
-
-# OR: use alternatively a reader from huggingface's Transformers package
-# reader = TransformersReader(use_gpu=-1)
-
-# The Finder sticks together retriever and retriever in a pipeline to answer our actual questions
 finder = Finder(reader, retriever)
 
 ## Voilá! Ask a question!
