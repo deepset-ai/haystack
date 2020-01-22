@@ -1,8 +1,6 @@
 from haystack.retriever.tfidf import TfidfRetriever
 from haystack.reader.farm import FARMReader
-from haystack.database import db
 import logging
-import farm
 
 import pandas as pd
 pd.options.display.max_colwidth = 80
@@ -40,25 +38,7 @@ class Finder:
 
         # 1) Optional: reduce the search space via document tags
         if filters:
-            query = """
-                SELECT id FROM document WHERE id in (
-                    SELECT dt.document_id
-                    FROM document_tag dt JOIN
-                        tag t
-                        ON t.id = dt.tag_id
-                    GROUP BY dt.document_id
-            """
-            tag_filters = []
-            if filters:
-                for tag, value in filters.items():
-                    if value:
-                        tag_filters.append(
-                            f"SUM(CASE WHEN t.value='{value}' THEN 1 ELSE 0 END) > 0"
-                        )
-
-            final_query = f"{query} HAVING {' AND '.join(tag_filters)});"
-            query_results = db.session.execute(final_query)
-            candidate_doc_ids = [row[0] for row in query_results]
+            candidate_doc_ids = self.retriever.datastore.get_document_ids_by_tags(filters)
         else:
             candidate_doc_ids = None
 
