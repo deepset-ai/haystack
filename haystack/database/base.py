@@ -18,4 +18,8 @@ class BaseDocumentStore:
     def get_document_ids_by_tag(self, tag):
         pass
 
+    @abstractmethod
+    def get_document_count(self):
+        pass
+
 

@@ -19,11 +19,10 @@ def write_documents_to_db(datastore, document_dir, clean_func=None, only_empty_d
     :return: None
     """
     file_paths = Path(document_dir).glob("**/*.txt")
-    n_docs = 0
 
     # check if db has already docs
     if only_empty_db:
-        n_docs = len(datastore.get_all_documents())
+        n_docs = datastore.get_document_count()
         if n_docs > 0:
             logger.info(f"Skip writing documents since DB already contains {n_docs} docs ...  "
                         "(Disable `only_empty_db`, if you want to add docs anyway.)")

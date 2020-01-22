@@ -98,3 +98,7 @@ class SQLDocumentStore(BaseDocumentStore):
             row = Document(name=doc["name"], text=doc["text"])
             self.session.add(row)
         self.session.commit()
+
+    def get_document_count(self):
+        return self.session.query(Document).count()
+
