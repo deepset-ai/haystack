@@ -1,7 +1,8 @@
-from abc import ABC, abstractmethod
-from collections import OrderedDict, namedtuple
 import logging
+from collections import OrderedDict, namedtuple
+
 import pandas as pd
+from haystack.retriever.base import BaseRetriever
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
@@ -9,20 +10,6 @@ logger = logging.getLogger(__name__)
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
 Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text"])
-
-
-class BaseRetriever(ABC):
-    @abstractmethod
-    def _get_all_paragraphs(self):
-        pass
-
-    @abstractmethod
-    def retrieve(self, query, candidate_doc_ids=None, top_k=1):
-        pass
-
-    @abstractmethod
-    def fit(self):
-        pass
 
 
 class TfidfRetriever(BaseRetriever):
@@ -57,7 +44,6 @@ class TfidfRetriever(BaseRetriever):
         paragraphs = []
         p_id = 0
         for doc in documents:
-            _pgs = [d for d in doc["text"].splitlines() if d.strip()]
             for p in doc["text"].split("\n\n"):
                 if not p.strip():  # skip empty paragraphs
                     continue

@@ -50,7 +50,12 @@ class ElasticsearchDataStore(BaseDocumentStore):
 
     def write_documents(self, documents):
         for doc in documents:
-            d = Document(name=doc["name"], text=doc["text"], tags=doc.get("tags", None))
+            d = Document(
+                name=doc["name"],
+                text=doc["text"],
+                document_id=doc.get("document_id", None),
+                tags=doc.get("tags", None),
+            )
             d.save()
 
     def get_document_count(self):
@@ -69,3 +74,12 @@ class ElasticsearchDataStore(BaseDocumentStore):
                 }
             )
         return documents
+
+    def query(self, query, top_k=1):
+        search = Search(using=self.client, index=self.index).query("match", text=query)[:top_k].execute()
+        paragraphs = []
+        meta_data = []
+        for hit in search:
+            paragraphs.append(hit["text"])
+            meta_data.append({"paragraph_id": hit.meta["id"], "document_id": hit["document_id"]})
+        return paragraphs, meta_data

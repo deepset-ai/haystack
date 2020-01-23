@@ -21,7 +21,8 @@ class Finder:
 
     def __init__(self, reader, retriever):
         self.retriever = retriever
-        self.retriever.fit()
+        if isinstance(retriever, TfidfRetriever):
+            self.retriever.fit()
 
         self.reader = reader
 
