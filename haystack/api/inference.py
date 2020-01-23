@@ -38,7 +38,7 @@ if len(model_paths) == 0:
 retriever = TfidfRetriever()
 FINDERS = {}
 for idx, model_dir in enumerate(model_paths, start=1):
-    reader = FARMReader(model_dir=str(model_dir), batch_size=BATCH_SIZE, use_gpu=USE_GPU)
+    reader = FARMReader(model_name_or_path=str(model_dir), batch_size=BATCH_SIZE, use_gpu=USE_GPU)
     FINDERS[idx] = Finder(reader, retriever)
     logger.info(f"Initialized Finder (ID={idx}) with model '{model_dir}'")
 
