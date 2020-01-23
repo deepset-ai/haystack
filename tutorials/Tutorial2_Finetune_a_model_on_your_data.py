@@ -6,15 +6,17 @@ from haystack.indexing.io import write_documents_to_db, fetch_archive_from_http
 from haystack.indexing.cleaning import clean_wiki_text
 from haystack.utils import print_answers
 
+#### TRAINING #############
 # Let's take a reader as a base model
-fetch_archive_from_http(url="https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-models/0.3.0/bert-english-qa-large.tar.gz", output_dir="model")
-reader = FARMReader(model_name_or_path="model/bert-english-qa-large", use_gpu=False)
+reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False)
 
-# and fine-tune it on your own custom dataset (should be in squad like format)
+# and fine-tune it on your own custom dataset (should be in SQuAD like format)
 reader.train(data_dir="../data/squad_small", train_filename="train.json", use_gpu=False, n_epochs=1)
 
-# Okay, we have a fine-tuned model now. Let's test it on some docs:
 
+#### Use it (same as in Tutorial 1) #############
+
+# Okay, we have a fine-tuned model now. Let's test it on some docs:
 ## Let's get some docs for testing (see Tutorial 1 for more explanations)
 from haystack.database import db
 db.create_all()

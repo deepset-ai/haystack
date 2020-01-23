@@ -3,8 +3,12 @@ from transformers import pipeline
 
 class TransformersReader:
     """
-    A reader using the QA Pipeline class from huggingface's Transformers.
-    Easily load any of the pretrained community QA models from here: https://huggingface.co/models
+    Transformer based model for extractive Question Answering using the huggingface's transformers framework
+    (https://github.com/huggingface/transformers).
+    While the underlying model can vary (BERT, Roberta, DistilBERT ...) the interface remains the same.
+
+    With the reader, you can:
+     - directly get predictions via predict()
     """
 
     def __init__(

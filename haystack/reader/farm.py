@@ -1,90 +1,97 @@
-from farm.infer import Inferencer
 import numpy as np
 from scipy.special import expit
-
+from pathlib import Path
 import logging
-import os
-import pprint
 
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import SquadProcessor
-from farm.data_handler.utils import write_squad_predictions
 from farm.infer import Inferencer
-from farm.modeling.adaptive_model import AdaptiveModel
-from farm.modeling.language_model import LanguageModel
 from farm.modeling.optimization import initialize_optimizer
-from farm.modeling.prediction_head import QuestionAnsweringHead
-from farm.modeling.tokenization import Tokenizer
 from farm.train import Trainer
-from farm.utils import set_all_seeds, MLFlowLogger, initialize_device_settings
+from farm.utils import set_all_seeds, initialize_device_settings
 
 logger = logging.getLogger(__name__)
 
 
 class FARMReader:
     """
-    Implementation of FARM Inferencer for Question Answering.
+    Transformer based model for extractive Question Answering using the FARM framework (https://github.com/deepset-ai/FARM).
+    While the underlying model can vary (BERT, Roberta, DistilBERT ...) the interface remains the same.
 
-    The class loads a saved FARM adaptive model from a given directory and runs
-    inference using `inference_from_dicts()` method.
+    With a FARMReader, you can:
+     - directly get predictions via predict()
+     - fine-tune the model on QA data via train()
     """
 
     def __init__(
         self,
         model_name_or_path,
-        context_size=30,
-        no_answer_shift=-100,
+        context_window_size=30,
+        no_ans_threshold=-100,
         batch_size=16,
         use_gpu=True,
-        n_candidates_per_passage=2
-    ):
+        n_candidates_per_passage=2):
         """
-        Load a saved FARM model in Inference mode.
-
         :param model_name_or_path: directory of a saved model or the name of a public model:
                                    - 'bert-base-cased'
-                                   - 'bert-base-cased-squad2'
-                                   - 'distilbert'
+                                   - 'deepset/bert-base-cased-squad2'
+                                   - 'deepset/bert-base-cased-squad2'
+                                   - 'distilbert-base-uncased-distilled-squad'
                                    ....
-                                   See XX for full list of available models.
-
+                                   See https://huggingface.co/models for full list of available models.
+        :param context_window_size: The size, in characters, of the window around the answer span that is used when displaying the context around the answer.
+        :param no_ans_threshold: How much greater the no_answer logit needs to be over the pos_answer in order to be chosen.
+                                 The higher the value, the more `uncertain` answers are accepted
+        :param batch_size: Number of samples the model receives in one batch for inference
+        :param use_gpu: Whether to use GPU (if available)
+        :param n_candidates_per_passage: How many candidate answers are extracted per text sequence that the model can process at once (depends on `max_seq_len`).
+                                         Note: This is not the number of "final answers" you will receive
+                                         (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
         """
-        #TODO enable loading of remote models
-        #TODO conversion to QA model if model = base LM (e.g. bert-base-cased)
 
-        #TODO potentially move the loading into a load() class method?
 
-        self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu)
-        self.inferencer.model.prediction_heads[0].context_size = context_size
-        self.inferencer.model.prediction_heads[0].no_answer_shift = no_answer_shift
+        self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu, task_type="question_answering")
+        self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
+        self.inferencer.model.prediction_heads[0].no_ans_threshold = no_ans_threshold
         self.inferencer.model.prediction_heads[0].n_best = n_candidates_per_passage
 
     def train(self, data_dir, train_filename, dev_filename=None, test_file_name=None,
               use_gpu=True, batch_size=10, n_epochs=2, learning_rate=1e-5,
-              max_seq_len=256, warmup_proportion=0.2, dev_split=0.1):
+              max_seq_len=256, warmup_proportion=0.2, dev_split=0.1, evaluate_every=300, save_dir=None):
         """
-        Fine-tune the loaded model using a
-        :param data_dir:
-        :param train_filename:
-        :param dev_filename:
-        :param test_file_name:
-        :param use_gpu:
-        :param batch_size:
-        :param n_epochs:
-        :param learning_rate:
-        :param max_seq_len:
-        :param warmup_proportion:
-        :param dev_split:
-        :return:
+        Fine-tune a model on a QA dataset. Options:
+        - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
+        - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
+
+        :param data_dir: Path to directory containing your training data in SQuAD style
+        :param train_filename: filename of training data
+        :param dev_filename: filename of dev / eval data
+        :param test_file_name: filename of test data
+        :param dev_split: Instead of specifying a dev_filename you can also specify a ratio (e.g. 0.1) here
+                          that get's split off from training data for eval.
+        :param use_gpu: Whether to use GPU (if available)
+        :param batch_size: Number of samples the model receives in one batch for training
+        :param n_epochs: number of iterations on the whole training data set
+        :param learning_rate: learning rate of the optimizer
+        :param max_seq_len: maximum text length (in tokens). Everything longer gets cut down.
+        :param warmup_proportion: Proportion of training steps until maximum learning rate is reached.
+                                  Until that point LR is increasing linearly. After that it's decreasing again linearly.
+                                  Options for different schedules are available in FARM.
+        :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
+        :param save_dir: Path to store the final model
+        :return: None
         """
+
 
         if dev_filename:
             dev_split = None
 
         set_all_seeds(seed=42)
         device, n_gpu = initialize_device_settings(use_cuda=use_gpu)
-        evaluate_every = 100
-        save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
+
+        if not save_dir:
+            save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
+        save_dir = Path(save_dir)
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
         label_list = ["start_token", "end_token"]
@@ -98,7 +105,7 @@ class FARMReader:
             dev_filename=dev_filename,
             dev_split=dev_split,
             test_filename=test_file_name,
-            data_dir=data_dir,
+            data_dir=Path(data_dir),
         )
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
@@ -116,6 +123,7 @@ class FARMReader:
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         trainer = Trainer(
+            model=model,
             optimizer=optimizer,
             data_silo=data_silo,
             epochs=n_epochs,
@@ -125,7 +133,7 @@ class FARMReader:
             device=device,
         )
         # 5. Let it grow!
-        self.inferencer.model = trainer.train(model)
+        self.inferencer.model = trainer.train()
         self.save(save_dir)
 
     def save(self, directory):
