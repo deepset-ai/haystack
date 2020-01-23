@@ -8,4 +8,4 @@ def test_db_write_read():
     documents = sql_datastore.get_all_documents()
     assert len(documents) == 2
     doc = sql_datastore.get_document_by_id("1")
-    assert doc["text"] == 'A Doc specifically talking about haystack.\nHaystack can be used to scale QA models to large document collections.'
+    assert doc.keys() == {"id", "name", "text", "tags"}
