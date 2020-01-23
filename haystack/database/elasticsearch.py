@@ -50,7 +50,7 @@ class ElasticsearchDataStore(BaseDocumentStore):
 
     def write_documents(self, documents):
         for doc in documents:
-            d = Document(name=doc["name"], text=doc["text"], tags=doc["tags"])
+            d = Document(name=doc["name"], text=doc["text"], tags=doc.get("tags", None))
             d.save()
 
     def get_document_count(self):
