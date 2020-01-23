@@ -3,19 +3,9 @@ from collections import defaultdict
 import logging
 import pprint
 
-from haystack.database.orm import Document
-from haystack.database.orm import db
+from haystack.database.sql import Document
 
 logger = logging.getLogger(__name__)
-
-
-def create_db():
-    """
-    Create all tables as defined by the ORM in the connected SQL database.
-
-    :return:
-    """
-    db.session.create_all()
 
 
 def print_answers(results, details="all"):

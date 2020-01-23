@@ -4,8 +4,6 @@ import logging
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from haystack.database import db
-from haystack.database.orm import Document
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +35,7 @@ class TfidfRetriever(BaseRetriever):
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
 
-    def __init__(self):
+    def __init__(self, datastore):
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
             stop_words=None,
@@ -45,6 +43,7 @@ class TfidfRetriever(BaseRetriever):
             ngram_range=(1, 1),
         )
 
+        self.datastore = datastore
         self.paragraphs = self._get_all_paragraphs()
         self.df = None
         self.fit()
@@ -53,17 +52,17 @@ class TfidfRetriever(BaseRetriever):
         """
         Split the list of documents in paragraphs
         """
-        documents = db.session.query(Document).all()
+        documents = self.datastore.get_all_documents()
 
         paragraphs = []
         p_id = 0
         for doc in documents:
-            _pgs = [d for d in doc.text.splitlines() if d.strip()]
-            for p in doc.text.split("\n\n"):
+            _pgs = [d for d in doc["text"].splitlines() if d.strip()]
+            for p in doc["text"].split("\n\n"):
                 if not p.strip():  # skip empty paragraphs
                     continue
                 paragraphs.append(
-                    Paragraph(document_id=doc.id, paragraph_id=p_id, text=(p,))
+                    Paragraph(document_id=doc["id"], paragraph_id=p_id, text=(p,))
                 )
                 p_id += 1
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
