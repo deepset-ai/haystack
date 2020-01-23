@@ -4,9 +4,9 @@ from fastapi import FastAPI, HTTPException
 import logging
 
 from haystack import Finder
-from haystack.database import app
 from haystack.reader.farm import FARMReader
 from haystack.retriever.tfidf import TfidfRetriever
+from haystack.database.sql import SQLDocumentStore
 
 from pydantic import BaseModel
 from typing import List, Dict
@@ -19,25 +19,19 @@ logger = logging.getLogger(__name__)
 MODELS_DIRS = ["saved_models", "models", "model"]
 USE_GPU = False
 BATCH_SIZE = 16
+DATABASE_URL = "sqlite:///qa.db"
+MODEL_PATHS = ['deepset/bert-base-cased-squad2']
 
 app = FastAPI(title="Haystack API", version="0.1")
 
-#############################################
-# Load all models in memory
-#############################################
-model_paths = []
-for model_dir in MODELS_DIRS:
-    path = Path(model_dir)
-    if path.is_dir():
-        models = [f for f in path.iterdir() if f.is_dir()]
-        model_paths.extend(models)
+if len(MODEL_PATHS) == 0:
+    logger.error(f"No model to load. Please specify one via MODEL_PATHS (e.g. ['deepset/bert-base-cased-squad2']")
 
-if len(model_paths) == 0:
-    logger.error(f"Could not find any model to load. Checked folders: {MODELS_DIRS}")
+datastore = SQLDocumentStore(url=DATABASE_URL)
+retriever = TfidfRetriever(datastore=datastore)
 
-retriever = TfidfRetriever()
 FINDERS = {}
-for idx, model_dir in enumerate(model_paths, start=1):
+for idx, model_dir in enumerate(MODEL_PATHS, start=1):
     reader = FARMReader(model_name_or_path=str(model_dir), batch_size=BATCH_SIZE, use_gpu=USE_GPU)
     FINDERS[idx] = Finder(reader, retriever)
     logger.info(f"Initialized Finder (ID={idx}) with model '{model_dir}'")
