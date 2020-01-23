@@ -29,9 +29,10 @@ write_documents_to_db(datastore=datastore, document_dir=doc_dir, clean_func=clea
 retriever = TfidfRetriever(datastore=datastore)
 
 # A reader scans the text chunks in detail and extracts the k best answers
-# Reader use more powerful but slower deep learning models, here: a BERT QA model trained via FARM on Squad 2.0
-fetch_archive_from_http(url="https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-models/0.3.0/bert-english-qa-large.tar.gz", output_dir="model")
-reader = FARMReader(model_name_or_path="model/bert-english-qa-large", use_gpu=False)
+# Reader use more powerful but slower deep learning models
+# You can select a local model or  any of the QA models published on huggingface's model hub (https://huggingface.co/models)
+# here: a medium sized BERT QA model trained via FARM on Squad 2.0
+reader = FARMReader(model_dir="deepset/bert-base-cased-squad2", use_gpu=False)
 
 # OR: use alternatively a reader from huggingface's Transformers package
 # reader = TransformersReader(use_gpu=-1)
