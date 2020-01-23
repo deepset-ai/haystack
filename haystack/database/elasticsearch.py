@@ -75,7 +75,7 @@ class ElasticsearchDataStore(BaseDocumentStore):
             )
         return documents
 
-    def query(self, query, top_k=1):
+    def query(self, query, top_k=10):
         search = Search(using=self.client, index=self.index).query("match", text=query)[:top_k].execute()
         paragraphs = []
         meta_data = []
