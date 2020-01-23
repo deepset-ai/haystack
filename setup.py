@@ -11,7 +11,7 @@ parsed_requirements = [
     if ((x.strip()[0] != "#") and (len(x.strip()) > 3) and "-e git://" not in x)
 ]
 # temporary workaround to install FARM from specific commit
-parsed_requirements.append('farm @ git+https://github.com/deepset-ai/FARM.git@1d30237b037050ef0ac5516f427443cdd18a4d43#egg=farm@v2.3.0#egg=farm')
+parsed_requirements.append('farm @ git+https://github.com/deepset-ai/FARM.git@e6224bd87ee50f3ff8bb23415e7f3a1b4793a257#egg=farm@v2.3.0#egg=farm')
 
 setup(
     name="farm-haystack",
