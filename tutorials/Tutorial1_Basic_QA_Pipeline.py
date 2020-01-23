@@ -3,6 +3,7 @@ from haystack.database.sql import SQLDocumentStore
 from haystack.indexing.cleaning import clean_wiki_text
 from haystack.indexing.io import write_documents_to_db, fetch_archive_from_http
 from haystack.reader.farm import FARMReader
+from haystack.reader.transformers import TransformersReader
 from haystack.retriever.tfidf import TfidfRetriever
 from haystack.utils import print_answers
 
@@ -15,11 +16,15 @@ doc_dir = "data/article_txt_got"
 s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
 fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
-# Now, let's write the docs to our DB.
-# You can supply a cleaning function that is applied to each doc (e.g. to remove footers)
-# It must take a str as input, and return a str.
+
+# The documents can be stored in different types of "DocumentStores".
+# For dev we suggest a light-weight SQL DB
+# For production we suggest elasticsearch
 datastore = SQLDocumentStore(url="sqlite:///qa.db")
 
+# Now, let's write the docs to our DB.
+# You can optionally supply a cleaning function that is applied to each doc (e.g. to remove footers)
+# It must take a str as input, and return a str.
 write_documents_to_db(datastore=datastore, document_dir=doc_dir, clean_func=clean_wiki_text, only_empty_db=True)
 
 ## Initalize Reader, Retriever & Finder
@@ -32,10 +37,10 @@ retriever = TfidfRetriever(datastore=datastore)
 # Reader use more powerful but slower deep learning models
 # You can select a local model or  any of the QA models published on huggingface's model hub (https://huggingface.co/models)
 # here: a medium sized BERT QA model trained via FARM on Squad 2.0
-reader = FARMReader(model_dir="deepset/bert-base-cased-squad2", use_gpu=False)
+reader = FARMReader(model_name_or_path="deepset/bert-base-cased-squad2", use_gpu=False)
 
-# OR: use alternatively a reader from huggingface's Transformers package
-# reader = TransformersReader(use_gpu=-1)
+# OR: use alternatively a reader from huggingface's transformers package (https://github.com/huggingface/transformers)
+# reader = TransformersReader(model="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
 
 # The Finder sticks together retriever and retriever in a pipeline to answer our actual questions
 finder = Finder(reader, retriever)
