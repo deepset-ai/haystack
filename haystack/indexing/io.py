@@ -8,7 +8,7 @@ import zipfile
 logger = logging.getLogger(__name__)
 
 
-def write_documents_to_db(datastore, document_dir, clean_func=None, only_empty_db=False, split_paragrahs=False):
+def write_documents_to_db(document_store, document_dir, clean_func=None, only_empty_db=False, split_paragrahs=False):
     """
     Write all text files(.txt) in the sub-directories of the given path to the connected database.
 
@@ -22,7 +22,7 @@ def write_documents_to_db(datastore, document_dir, clean_func=None, only_empty_d
 
     # check if db has already docs
     if only_empty_db:
-        n_docs = datastore.get_document_count()
+        n_docs = document_store.get_document_count()
         if n_docs > 0:
             logger.info(f"Skip writing documents since DB already contains {n_docs} docs ...  "
                         "(Disable `only_empty_db`, if you want to add docs anyway.)")
@@ -56,7 +56,7 @@ def write_documents_to_db(datastore, document_dir, clean_func=None, only_empty_d
                         "text": text,
                     }
                 )
-    datastore.write_documents(docs_to_index)
+    document_store.write_documents(docs_to_index)
     logger.info(f"Wrote {len(docs_to_index)} docs to DB")
 
 

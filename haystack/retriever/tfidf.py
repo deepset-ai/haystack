@@ -22,7 +22,7 @@ class TfidfRetriever(BaseRetriever):
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
 
-    def __init__(self, datastore):
+    def __init__(self, document_store):
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
             stop_words=None,
@@ -30,7 +30,7 @@ class TfidfRetriever(BaseRetriever):
             ngram_range=(1, 1),
         )
 
-        self.datastore = datastore
+        self.document_store = document_store
         self.paragraphs = self._get_all_paragraphs()
         self.df = None
         self.fit()
@@ -39,7 +39,7 @@ class TfidfRetriever(BaseRetriever):
         """
         Split the list of documents in paragraphs
         """
-        documents = self.datastore.get_all_documents()
+        documents = self.document_store.get_all_documents()
 
         paragraphs = []
         p_id = 0

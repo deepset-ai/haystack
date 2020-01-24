@@ -12,7 +12,7 @@ class Document(ESDoc):
         name = "document"
 
 
-class ElasticsearchDataStore(BaseDocumentStore):
+class ElasticsearchDocumentStore(BaseDocumentStore):
     def __init__(self, host="localhost", username="", password="", index="document"):
         self.client = Elasticsearch(hosts=[{"host": host}], http_auth=(username, password))
         self.connections = connections.create_connection(hosts=[{"host": host}], http_auth=(username, password))
