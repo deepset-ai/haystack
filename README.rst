@@ -69,13 +69,13 @@ Usage
 Deployment
 ==========
 
-Haystack has an extensible document store layer. It currently has implementations of Elasticsearch and SQL by the Classes :code:`haystack.database.elasticsearch.ElasticsearchDocumentStore`  and :code:`haystack.database.sql.SQLDocumentStore` respectively.
+Haystack has an extensible document store layer. There are currently implementations of Elasticsearch and SQL by the Classes :code:`haystack.database.elasticsearch.ElasticsearchDocumentStore`  and :code:`haystack.database.sql.SQLDocumentStore` respectively.
 
 
 Elasticsearch Backend
 ---------------------
 Elasticsearch is the recommended backend for deploying on a large scale. The documents can optionally be chunked into smaller units (e.g., paragraphs) before indexing to make Reader(model inference) efficient.
-Retrievers can access the Elasticsearch index to find relevant paragraphs where an answer could be. The default retriever uses Elasticsearch's native scoring for retrieval and can be extended for custom implementations.
+Retrievers can access an Elasticsearch index to find the relevant paragraphs(or documents) for a query. The default retriever uses Elasticsearch's native scoring for retrieval and can be extended with custom implementations.
 
 Elasticsearch can be installed using Docker. Get the Image by running :code:`docker pull elasticsearch:7.5.1`. To start the server locally, 
 run :code:`docker run -d -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.5.1`.
