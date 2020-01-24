@@ -69,23 +69,22 @@ Usage
 Deployment
 ==========
 
-Haystack has an extensible document store layer. There are currently implementations of Elasticsearch and SQL by the Classes :code:`haystack.database.elasticsearch.ElasticsearchDocumentStore`  and :code:`haystack.database.sql.SQLDocumentStore` respectively.
-
+Haystack has an extensible document store layer.
+There are currently implementations of Elasticsearch and SQL (see :code:`haystack.database.elasticsearch.ElasticsearchDocumentStore`  and :code:`haystack.database.sql.SQLDocumentStore`).
 
 Elasticsearch Backend
 ---------------------
-Elasticsearch is the recommended backend for deploying on a large scale. The documents can optionally be chunked into smaller units (e.g., paragraphs) before indexing to make Reader(model inference) efficient.
-Retrievers can access an Elasticsearch index to find the relevant paragraphs(or documents) for a query. The default retriever uses Elasticsearch's native scoring for retrieval and can be extended with custom implementations.
+Elasticsearch is recommended for deploying on a large scale. The documents can optionally be chunked into smaller units (e.g., paragraphs) before indexing to make the results returned by the Retriever more granular and accurate.
+Retrievers can access an Elasticsearch index to find the relevant paragraphs(or documents) for a query. The default `ElasticsearchRetriever` uses Elasticsearch's native scoring (BM25), but can be extended easily with custom implementations.
 
-Elasticsearch can be installed using Docker. Get the Image by running :code:`docker pull elasticsearch:7.5.1`. To start the server locally, 
-run :code:`docker run -d -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.5.1`.
+You can get started by running a single Elasticsearch node using docker::
 
+     docker run -d -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.5.1
 
 SQL Backend
 -----------
-The SQL backend layer is implemented using SQLAlchemy library. By default, a local file-based SQLite database is initialized. For large scale deployments, the configuration
-can be changed to use other compatible databases like PostgreSQL or MySQL.
-
+The SQL backend layer is mainly meant to simplify the first development steps. By default, a local file-based SQLite database is initialized.
+However, if you prefer a PostgreSQL or MySQL backend for production, you can easily configure this since our implementation is based on SQLAlchemy.
 
 REST API
 --------
