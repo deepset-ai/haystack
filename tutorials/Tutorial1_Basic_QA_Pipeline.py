@@ -20,18 +20,18 @@ fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 # The documents can be stored in different types of "DocumentStores".
 # For dev we suggest a light-weight SQL DB
 # For production we suggest elasticsearch
-datastore = SQLDocumentStore(url="sqlite:///qa.db")
+document_store = SQLDocumentStore(url="sqlite:///qa.db")
 
 # Now, let's write the docs to our DB.
 # You can optionally supply a cleaning function that is applied to each doc (e.g. to remove footers)
 # It must take a str as input, and return a str.
-write_documents_to_db(datastore=datastore, document_dir=doc_dir, clean_func=clean_wiki_text, only_empty_db=True)
+write_documents_to_db(document_store=document_store, document_dir=doc_dir, clean_func=clean_wiki_text, only_empty_db=True)
 
 ## Initalize Reader, Retriever & Finder
 
 # A retriever identifies the k most promising chunks of text that might contain the answer for our question
 # Retrievers use some simple but fast algorithm, here: TF-IDF
-retriever = TfidfRetriever(datastore=datastore)
+retriever = TfidfRetriever(document_store=document_store)
 
 # A reader scans the text chunks in detail and extracts the k best answers
 # Reader use more powerful but slower deep learning models

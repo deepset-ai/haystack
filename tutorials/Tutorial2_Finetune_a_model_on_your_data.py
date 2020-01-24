@@ -27,14 +27,14 @@ fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
 
 # Init Document store & write docs to it
-datastore = SQLDocumentStore(url="sqlite:///qa.db")
-write_documents_to_db(datastore=datastore, document_dir=doc_dir, clean_func=clean_wiki_text, only_empty_db=True)
+document_store = SQLDocumentStore(url="sqlite:///qa.db")
+write_documents_to_db(document_store=document_store, document_dir=doc_dir, clean_func=clean_wiki_text, only_empty_db=True)
 
 ## Initalize Reader, Retriever & Finder
 
 # A retriever identifies the k most promising chunks of text that might contain the answer for our question
 # Retrievers use some simple but fast algorithm, here: TF-IDF
-retriever = TfidfRetriever(datastore=datastore)
+retriever = TfidfRetriever(document_store=document_store)
 
 # The Finder sticks together retriever and retriever in a pipeline to answer our actual questions
 finder = Finder(reader, retriever)

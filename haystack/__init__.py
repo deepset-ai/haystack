@@ -1,8 +1,7 @@
-from haystack.retriever.tfidf import TfidfRetriever
-from haystack.reader.farm import FARMReader
 import logging
 
 import pandas as pd
+
 pd.options.display.max_colwidth = 80
 
 logger = logging.getLogger(__name__)
@@ -21,8 +20,6 @@ class Finder:
 
     def __init__(self, reader, retriever):
         self.retriever = retriever
-        self.retriever.fit()
-
         self.reader = reader
 
     def get_answers(self, question, top_k_reader=1, top_k_retriever=10, filters=None):
@@ -39,7 +36,7 @@ class Finder:
 
         # 1) Optional: reduce the search space via document tags
         if filters:
-            candidate_doc_ids = self.retriever.datastore.get_document_ids_by_tags(filters)
+            candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)
         else:
             candidate_doc_ids = None
 

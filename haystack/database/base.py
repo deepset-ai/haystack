@@ -3,7 +3,7 @@ from abc import abstractmethod
 
 class BaseDocumentStore:
     """
-    Base class for implementing DataStores.
+    Base class for implementing Document Stores.
     """
 
     @abstractmethod

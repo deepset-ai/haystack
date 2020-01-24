@@ -8,7 +8,7 @@ import zipfile
 logger = logging.getLogger(__name__)
 
 
-def write_documents_to_db(datastore, document_dir, clean_func=None, only_empty_db=False):
+def write_documents_to_db(document_store, document_dir, clean_func=None, only_empty_db=False, split_paragrahs=False):
     """
     Write all text files(.txt) in the sub-directories of the given path to the connected database.
 
@@ -22,28 +22,42 @@ def write_documents_to_db(datastore, document_dir, clean_func=None, only_empty_d
 
     # check if db has already docs
     if only_empty_db:
-        n_docs = datastore.get_document_count()
+        n_docs = document_store.get_document_count()
         if n_docs > 0:
             logger.info(f"Skip writing documents since DB already contains {n_docs} docs ...  "
                         "(Disable `only_empty_db`, if you want to add docs anyway.)")
             return None
 
     # read and add docs
-    documents_to_write = []
+    docs_to_index = []
+    doc_id = 1
     for path in file_paths:
         with open(path) as doc:
             text = doc.read()
             if clean_func:
                 text = clean_func(text)
 
-            documents_to_write.append(
-                {
-                    "name": path.name,
-                    "text": text,
-                }
-            )
-    datastore.write_documents(documents_to_write)
-    logger.info(f"Wrote {len(documents_to_write)} docs to DB")
+            if split_paragrahs:
+                for para in text.split("\n\n"):
+                    if not para.strip():  # skip empty paragraphs
+                        continue
+                    docs_to_index.append(
+                        {
+                            "name": path.name,
+                            "text": para,
+                            "document_id": doc_id
+                        }
+                    )
+                    doc_id += 1
+            else:
+                docs_to_index.append(
+                    {
+                        "name": path.name,
+                        "text": text,
+                    }
+                )
+    document_store.write_documents(docs_to_index)
+    logger.info(f"Wrote {len(docs_to_index)} docs to DB")
 
 
 def fetch_archive_from_http(url, output_dir, proxies=None):
