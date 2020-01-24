@@ -83,9 +83,8 @@ class SQLDocumentStore(BaseDocumentStore):
                       GROUP BY dt.document_id
               """
         tag_filters = []
-        for tag, value in tags.items():
-            if value:
-                tag_filters.append(f"SUM(CASE WHEN t.value='{value}' THEN 1 ELSE 0 END) > 0")
+        for tag in tags:
+            tag_filters.append(f"SUM(CASE WHEN t.value='{tag}' THEN 1 ELSE 0 END) > 0")
 
         final_query = f"{query} HAVING {' AND '.join(tag_filters)});"
         query_results = self.session.execute(final_query)
