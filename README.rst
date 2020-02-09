@@ -43,7 +43,8 @@ Components
 
 3. **Finder**: Glues together a Reader and a Retriever as a pipeline to provide an easy-to-use question answering interface.
 
-4. **Labeling Tool**: (Coming soon)
+4. **Labeling Tool**: `Hosted version <https://annotate.deepset.ai/login>`_  (Beta), Docker images (coming soon)
+
 
 Resources
 =========
@@ -90,3 +91,13 @@ REST API
 --------
 A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is included to answer questions at inference time. To serve the API, run :code:`uvicorn haystack.api.inference:app`.
 You will find the Swagger API documentation at http://127.0.0.1:8000/docs
+
+Labeling Tool
+=============
+- Use the `hosted version <https://annotate.deepset.ai/login>`_  (Beta) or deploy it yourself via Docker images (coming soon)
+- Create labels with different annotation techniques: Create questions (+ answers) while reading passages (~ SQuAD style) or have a set of predefined questions and look for answers in the document (~ Natural Questions style).
+- Structure your work via organizations, projects, users 
+- Upload your documents or import labels from an existing SQuAD
+- Coming soon: more file formats for document upload, metrics for label quality ...
+.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/annotation_tool.png
+
