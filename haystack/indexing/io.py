@@ -8,7 +8,7 @@ import zipfile
 logger = logging.getLogger(__name__)
 
 
-def write_documents_to_db(document_store, document_dir, clean_func=None, only_empty_db=False, split_paragrahs=False):
+def write_documents_to_db(document_store, document_dir, clean_func=None, only_empty_db=False, split_paragraphs=False):
     """
     Write all text files(.txt) in the sub-directories of the given path to the connected database.
 
@@ -37,7 +37,7 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
             if clean_func:
                 text = clean_func(text)
 
-            if split_paragrahs:
+            if split_paragraphs:
                 for para in text.split("\n\n"):
                     if not para.strip():  # skip empty paragraphs
                         continue
@@ -54,6 +54,7 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
                     {
                         "name": path.name,
                         "text": text,
+                        "document_id": doc_id
                     }
                 )
     document_store.write_documents(docs_to_index)
