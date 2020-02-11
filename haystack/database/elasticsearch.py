@@ -63,7 +63,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return s.count()
 
     def get_all_documents(self):
-        search = Search(using=self.client, index=self.index)
+        search = Search(using=self.client, index=self.index).scan()
         documents = []
         for hit in search:
             documents.append(
