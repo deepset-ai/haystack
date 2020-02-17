@@ -53,6 +53,7 @@ class FARMReader:
         self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu, task_type="question_answering")
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_threshold = no_ans_threshold
+        self.no_ans_threshold = no_ans_threshold
         self.inferencer.model.prediction_heads[0].n_best = n_candidates_per_passage
 
     def train(self, data_dir, train_filename, dev_filename=None, test_file_name=None,
@@ -183,16 +184,20 @@ class FARMReader:
             }
             input_dicts.append(cur)
 
-        # get answers from QA model (Top 5 per input paragraph)
+        # get answers from QA model (Default: top 5 per input paragraph)
         predictions = self.inferencer.inference_from_dicts(
             dicts=input_dicts, rest_api_schema=True, max_processes=max_processes
         )
 
         # assemble answers from all the different paragraphs & format them
+        # for the "no answer" option, we choose the no_answer score from the paragraph with the best "real answer"
+        # the score of this "no answer" is then "boosted" with the no_ans_gap
         answers = []
+        best_score_answer = 0
         for pred in predictions:
             for a in pred["predictions"][0]["answers"]:
-                if a["answer"]: #skip "no answer"
+                # skip "no answers" here
+                if a["answer"]:
                     cur = {"answer": a["answer"],
                            "score": a["score"],
                            "probability": float(expit(np.asarray([a["score"]]) / 8)), #just a pseudo prob for now
@@ -201,13 +206,27 @@ class FARMReader:
                            "offset_end": a["offset_answer_end"] - a["offset_context_start"],
                            "document_id": a["document_id"]}
                     answers.append(cur)
+                    # if cur answer is the best, we store the gap to "no answer" in this paragraph
+                    if a["score"] > best_score_answer:
+                        best_score_answer = a["score"]
+                        no_ans_gap = pred["predictions"][0]["no_ans_gap"]
+                        no_ans_score = (best_score_answer+no_ans_gap)-self.no_ans_threshold
+
+        # add no answer option from the paragraph with the best answer
+        cur = {"answer": "",
+               "score": no_ans_score,
+               "probability": float(expit(np.asarray(no_ans_score) / 8)),  # just a pseudo prob for now
+               "context": "",
+               "offset_start": -1,
+               "offset_end": -1,
+               "document_id": None}
+        answers.append(cur)
 
         # sort answers by their `probability` and select top-k
         answers = sorted(
             answers, key=lambda k: k["probability"], reverse=True
         )
         answers = answers[:top_k]
-
         result = {"question": question,
                    "answers": answers}
 
