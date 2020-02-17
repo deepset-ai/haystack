@@ -217,8 +217,8 @@ class FARMReader:
                "score": no_ans_score,
                "probability": float(expit(np.asarray(no_ans_score) / 8)),  # just a pseudo prob for now
                "context": "",
-               "offset_start": -1,
-               "offset_end": -1,
+               "offset_start": 0,
+               "offset_end": 0,
                "document_id": None}
         answers.append(cur)
 
