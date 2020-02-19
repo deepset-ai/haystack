@@ -37,7 +37,7 @@ retriever = TfidfRetriever(document_store=document_store)
 # Reader use more powerful but slower deep learning models
 # You can select a local model or  any of the QA models published on huggingface's model hub (https://huggingface.co/models)
 # here: a medium sized BERT QA model trained via FARM on Squad 2.0
-reader = FARMReader(model_name_or_path="deepset/bert-base-cased-squad2", use_gpu=False)
+reader = FARMReader(model_name_or_path="deepset/bert-base-cased-squad2", use_gpu=False, no_ans_boost=0)
 
 # OR: use alternatively a reader from huggingface's transformers package (https://github.com/huggingface/transformers)
 # reader = TransformersReader(model="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
@@ -48,7 +48,7 @@ finder = Finder(reader, retriever)
 ## Voilá! Ask a question!
 # You can configure how many candidates the reader and retriever shall return
 # The higher top_k_retriever, the better (but also the slower) your answers.
-prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
+prediction = finder.get_answers(question="Who is the daughter of Arya Stark?", top_k_retriever=10, top_k_reader=5)
 
 #prediction = finder.get_answers(question="Who created the Dothraki vocabulary?", top_k_reader=5)
 #prediction = finder.get_answers(question="Who is the sister of Sansa?", top_k_reader=5)
