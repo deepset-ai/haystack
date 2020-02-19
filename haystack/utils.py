@@ -22,8 +22,10 @@ def print_answers(results, details="all"):
             for key in keys_to_drop:
                 if key in a:
                     del a[key]
-    # print them
-    pp.pprint(answers)
+
+        pp.pprint(answers)
+    else:
+        pp.pprint(results)
 
 
 def convert_labels_to_squad(labels_file):
