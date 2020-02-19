@@ -234,7 +234,7 @@ class FARMReader:
             # magically this is the same equation as used for the case above : )
             no_ans_score = best_score_answer + min(no_ans_gaps_adjusted)
 
-        cur = {"answer": "",
+        cur = {"answer": "[computer says no answer is likely]",
                "score": no_ans_score,
                "probability": float(expit(np.asarray(no_ans_score) / 8)),  # just a pseudo prob for now
                "context": "",
@@ -249,7 +249,7 @@ class FARMReader:
         )
         answers = answers[:top_k]
         result = {"question": question,
-                   "answers": answers,
-                   "min_ans_gap": min(no_ans_gaps_adjusted)}
+                  "adjust_no_ans_boost": -min(no_ans_gaps_adjusted),
+                  "answers": answers}
 
         return result
