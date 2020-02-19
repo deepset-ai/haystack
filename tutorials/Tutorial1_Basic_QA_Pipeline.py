@@ -49,8 +49,9 @@ finder = Finder(reader, retriever)
 ## Voilá! Ask a question!
 # You can configure how many candidates the reader and retriever shall return
 # The higher top_k_retriever, the better (but also the slower) your answers.
-prediction = finder.get_answers(question="Who is the daughter of Arya Stark?", top_k_retriever=10, top_k_reader=5)
+prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
 
+#prediction = finder.get_answers(question="Who is the daughter of Arya Stark?", top_k_reader=5) # impossible question test
 #prediction = finder.get_answers(question="Who created the Dothraki vocabulary?", top_k_reader=5)
 #prediction = finder.get_answers(question="Who is the sister of Sansa?", top_k_reader=5)
 
