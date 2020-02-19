@@ -27,7 +27,7 @@ class FARMReader:
         self,
         model_name_or_path,
         context_window_size=30,
-        no_ans_threshold=-100,
+        no_ans_boost=-100,
         batch_size=16,
         use_gpu=True,
         n_candidates_per_passage=2):
@@ -40,20 +40,24 @@ class FARMReader:
                                    ....
                                    See https://huggingface.co/models for full list of available models.
         :param context_window_size: The size, in characters, of the window around the answer span that is used when displaying the context around the answer.
-        :param no_ans_threshold: How much greater the no_answer logit needs to be over the pos_answer in order to be chosen.
-                                 The higher the value, the more `uncertain` answers are accepted
+        :param no_ans_boost: How much the no_answer logit is boosted/increased.
+                             The higher the value, the more likely a "no answer possible" is returned by the model
         :param batch_size: Number of samples the model receives in one batch for inference
         :param use_gpu: Whether to use GPU (if available)
         :param n_candidates_per_passage: How many candidate answers are extracted per text sequence that the model can process at once (depends on `max_seq_len`).
                                          Note: This is not the number of "final answers" you will receive
                                          (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+                                         # TODO adjust farm. n_cand = 2 returns no answer + highest positive answer
+                                         # should return no answer + 2 best positive answers
+                                         # drawback: answers from a single paragraph might be very similar in text and score
+                                         # we need to have more varied answers (by excluding overlapping answers?)
         """
 
 
         self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu, task_type="question_answering")
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
-        self.inferencer.model.prediction_heads[0].no_ans_threshold = no_ans_threshold
-        self.no_ans_threshold = no_ans_threshold
+        self.inferencer.model.prediction_heads[0].no_ans_threshold = no_ans_boost # TODO adjust naming and concept in FARM
+        self.no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = n_candidates_per_passage
 
     def train(self, data_dir, train_filename, dev_filename=None, test_file_name=None,
@@ -189,10 +193,11 @@ class FARMReader:
             dicts=input_dicts, rest_api_schema=True, max_processes=max_processes
         )
 
-        # assemble answers from all the different paragraphs & format them
-        # for the "no answer" option, we choose the no_answer score from the paragraph with the best "real answer"
-        # the score of this "no answer" is then "boosted" with the no_ans_gap
+        # assemble answers from all the different paragraphs & format them.
+        # For the "no answer" option, we collect all no_ans_gaps and decide how likely
+        # a no answer is based on all no_ans_gaps values across all documents
         answers = []
+        no_ans_gaps = []
         best_score_answer = 0
         for pred in predictions:
             for a in pred["predictions"][0]["answers"]:
@@ -206,13 +211,29 @@ class FARMReader:
                            "offset_end": a["offset_answer_end"] - a["offset_context_start"],
                            "document_id": a["document_id"]}
                     answers.append(cur)
-                    # if cur answer is the best, we store the gap to "no answer" in this paragraph
+                    no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
                     if a["score"] > best_score_answer:
                         best_score_answer = a["score"]
-                        no_ans_gap = pred["predictions"][0]["no_ans_gap"]
-                        no_ans_score = (best_score_answer+no_ans_gap)-self.no_ans_threshold
 
-        # add no answer option from the paragraph with the best answer
+        # adjust no_ans_gaps
+        no_ans_gaps = np.array(no_ans_gaps)
+        no_ans_gaps_adjusted = no_ans_gaps + self.no_ans_boost
+
+        # We want to heuristically rank how likely or unlikely the "no answer" option is.
+
+        # case: all documents return no answer, then all no_ans_gaps are positive
+        if np.sum(no_ans_gaps_adjusted < 0) == 0:
+            # to rank we add the smallest no_ans_gap (a document where an answer would be nearly as likely as the no anser)
+            # to the highest answer score we found
+            no_ans_score = best_score_answer + min(no_ans_gaps_adjusted)
+        # case: documents where answers are preferred over no answer, the no_ans_gap is negative
+        else:
+            # the lowest (highest negative) no_ans_gap would be needed as positive no_ans_boost for the
+            # model to return "no answer" on all documents
+            # we subtract this value from the best answer score to rank our "no answer" option
+            # magically this is the same equation as used for the case above : )
+            no_ans_score = best_score_answer + min(no_ans_gaps_adjusted)
+
         cur = {"answer": "",
                "score": no_ans_score,
                "probability": float(expit(np.asarray(no_ans_score) / 8)),  # just a pseudo prob for now
@@ -228,6 +249,7 @@ class FARMReader:
         )
         answers = answers[:top_k]
         result = {"question": question,
-                   "answers": answers}
+                   "answers": answers,
+                   "min_ans_gap": min(no_ans_gaps_adjusted)}
 
         return result
