@@ -37,6 +37,7 @@ retriever = TfidfRetriever(document_store=document_store)
 # Reader use more powerful but slower deep learning models
 # You can select a local model or  any of the QA models published on huggingface's model hub (https://huggingface.co/models)
 # here: a medium sized BERT QA model trained via FARM on Squad 2.0
+# You can adjust the model to return "no answer possible" with the no_ans_boost. Higher values mean the model prefers "no answer possible"
 reader = FARMReader(model_name_or_path="deepset/bert-base-cased-squad2", use_gpu=False, no_ans_boost=0)
 
 # OR: use alternatively a reader from huggingface's transformers package (https://github.com/huggingface/transformers)
