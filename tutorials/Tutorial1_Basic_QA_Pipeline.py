@@ -51,7 +51,10 @@ finder = Finder(reader, retriever)
 # The higher top_k_retriever, the better (but also the slower) your answers.
 prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
 
-#prediction = finder.get_answers(question="Who is the daughter of Arya Stark?", top_k_reader=5) # impossible question test
+# to test impossible questions we need a large QA model, e.g. deepset/bert-large-uncased-whole-word-masking-squad2
+#prediction = finder.get_answers(question="Who is the first daughter of Arya Stark?", top_k_retriever=10, top_k_reader=5)
+
+
 #prediction = finder.get_answers(question="Who created the Dothraki vocabulary?", top_k_reader=5)
 #prediction = finder.get_answers(question="Who is the sister of Sansa?", top_k_reader=5)
 
