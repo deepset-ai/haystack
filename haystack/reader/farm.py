@@ -222,7 +222,7 @@ class FARMReader:
 
                     if a["score"] > best_score_answer:
                         best_score_answer = a["score"]
-
+            # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance.
             answers += answers_per_paragraph[:self.n_candidates_per_paragraph]
 
         # Calculate the score for predicting "no answer", relative to our best positive answer score
