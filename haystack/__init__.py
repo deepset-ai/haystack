@@ -46,7 +46,7 @@ class Finder:
         # 3) Apply reader to get granular answer(s)
         logger.info(f"Applying the reader now to look for the answer in detail ...")
         results = self.reader.predict(question=question,
-                                      paragrahps=paragraphs,
+                                      paragraphs=paragraphs,
                                       meta_data_paragraphs=meta_data,
                                       top_k=top_k_reader)
 
