@@ -145,7 +145,7 @@ class FARMReader:
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict(self, question, paragrahps, meta_data_paragraphs=None, top_k=None, max_processes=1):
+    def predict(self, question, paragraphs, meta_data_paragraphs=None, top_k=None, max_processes=1):
         """
         Use loaded QA model to find answers for a question in the supplied paragraphs.
 
@@ -175,12 +175,12 @@ class FARMReader:
         """
 
         if meta_data_paragraphs is None:
-            meta_data_paragraphs = len(paragrahps) * [None]
-        assert len(paragrahps) == len(meta_data_paragraphs)
+            meta_data_paragraphs = len(paragraphs) * [None]
+        assert len(paragraphs) == len(meta_data_paragraphs)
 
         # convert input to FARM format
         input_dicts = []
-        for paragraph, meta_data in zip(paragrahps, meta_data_paragraphs):
+        for paragraph, meta_data in zip(paragraphs, meta_data_paragraphs):
             cur = {"text": paragraph,
                    "questions": [question],
                    "document_id": meta_data["document_id"]
@@ -202,6 +202,8 @@ class FARMReader:
             positive_found = False
             for a in pred["predictions"][0]["answers"]:
                 # skip "no answers" here
+                # For now we only take one prediction from each passage
+                # TODO use more predictions per passage when setting n_candidates_per_passage  + make FARM predictions more varied
                 if(not positive_found and a["answer"]):
                     cur = {"answer": a["answer"],
                            "score": a["score"],
