@@ -1,5 +1,5 @@
-# FARM (incl. transformers 2.3.0 with pipelines)
-farm==0.4.1
+# FARM pre-0.4.2
+-e git://github.com/deepset-ai/FARM.git@dd75709225c5f0aa1250ab424d4fb766e21de952#egg=farm
 fastapi
 uvicorn
 flask_sqlalchemy
