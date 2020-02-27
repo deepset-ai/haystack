@@ -7,4 +7,3 @@ pandas
 psycopg2-binary
 sklearn
 elasticsearch
-elasticsearch_dsl
