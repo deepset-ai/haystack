@@ -16,18 +16,22 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         name_field="name",
         doc_id_field="document_id",
         tag_fields=None,
+        custom_mapping=None,
     ):
         self.client = Elasticsearch(hosts=[{"host": host}], http_auth=(username, password))
-        mapping = {
-            "mappings": {
-                "properties": {
-                    name_field: {"type": "text"},
-                    text_field: {"type": "text"},
-                    doc_id_field: {"type": "text"},
+        # if no custom_mapping is supplied, use the default mapping
+        if not custom_mapping:
+            custom_mapping = {
+                "mappings": {
+                    "properties": {
+                        name_field: {"type": "text"},
+                        text_field: {"type": "text"},
+                        doc_id_field: {"type": "text"},
+                    }
                 }
             }
-        }
-        self.client.indices.create(index=index, ignore=400, body=mapping)
+        # create an index if not exists
+        self.client.indices.create(index=index, ignore=400, body=custom_mapping)
         self.index = index
 
         # configure mappings to ES fields that will be used for querying / displaying results
