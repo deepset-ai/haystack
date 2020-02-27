@@ -120,5 +120,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         meta_data = []
         for hit in result:
             paragraphs.append(hit["_source"][self.text_field])
-            meta_data.append({"paragraph_id": hit["_id"], "document_id": hit["_source"][self.doc_id_field]})
+            meta_data.append(
+                {
+                    "paragraph_id": hit["_id"],
+                    "document_id": hit["_source"][self.doc_id_field],
+                    "document_name": hit["_source"][self.name_field],
+                }
+            )
         return paragraphs, meta_data

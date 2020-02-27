@@ -43,7 +43,7 @@ class TransformersReader:
         #TODO param to modify bias for no_answer
 
 
-    def predict(self, question, paragrahps, meta_data_paragraphs=None, top_k=None):
+    def predict(self, question, paragraphs, meta_data_paragraphs=None, top_k=None):
         """
         Use loaded QA model to find answers for a question in the supplied paragraphs.
 
@@ -76,7 +76,7 @@ class TransformersReader:
 
         # get top-answers for each candidate passage
         answers = []
-        for p in paragrahps:
+        for p in paragraphs:
             query = {"context": p, "question": question}
             predictions = self.model(query, topk=self.n_best_per_passage)
             # assemble and format all answers
