@@ -6,4 +6,5 @@ class ElasticsearchRetriever(BaseRetriever):
         self.document_store = document_store
 
     def retrieve(self, query, candidate_doc_ids=None, top_k=10):
-        return self.document_store.query(query, top_k)
+
+        return self.document_store.query(query, top_k, candidate_doc_ids)
