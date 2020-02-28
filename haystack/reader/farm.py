@@ -190,8 +190,7 @@ class FARMReader:
         for paragraph, meta_data in zip(paragraphs, meta_data_paragraphs):
             cur = {"text": paragraph,
                    "questions": [question],
-                   "document_id": meta_data["document_id"],
-                   "document_name": meta_data["document_name"],
+                   "document_id": meta_data["document_id"]
             }
             input_dicts.append(cur)
 
