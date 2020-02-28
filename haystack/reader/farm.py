@@ -30,7 +30,8 @@ class FARMReader:
         batch_size=50,
         use_gpu=True,
         no_ans_boost=None,
-        n_candidates_per_paragraph=1):
+        top_k_per_candidate=3,
+        top_k_per_sample=1):
         """
         :param model_name_or_path: directory of a saved model or the name of a public model:
                                    - 'bert-base-cased'
@@ -47,10 +48,17 @@ class FARMReader:
                              Possible values: None (default) = disable returning "no answer" predictions
                                               Negative = lower chance of "no answer" being predicted
                                               Positive = increase chance of "no answer"
-        :param n_candidates_per_paragraph: How many candidate answers are extracted per text sequence that the model can process at once (depends on `max_seq_len`).
-                                           Note: - This is not the number of "final answers" you will receive
+        :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+                                                   Note: - This is not the number of "final answers" you will receive
                                                    (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
                                                  - FARM includes no_answer in the sorted list of predictions
+        :param top_k_per_sample: How many answers to extract from each small text passage that the model can
+                                  process at once (one "candidate doc" is usually split into many smaller "passages").
+                                  You usually want a very small value here, as it slows down inference and you
+                                  don't gain much of quality by having multiple answers from one passage.
+                                               Note: - This is not the number of "final answers" you will receive
+                                               (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+                                             - FARM includes no_answer in the sorted list of predictions
 
 
         """
@@ -60,11 +68,15 @@ class FARMReader:
             self.return_no_answers = False
         else:
             self.return_no_answers = True
-        self.n_candidates_per_paragraph = n_candidates_per_paragraph
+        self.n_candidates_per_paragraph = top_k_per_candidate
         self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu, task_type="question_answering")
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
-        self.inferencer.model.prediction_heads[0].n_best = n_candidates_per_paragraph + 1 # including possible no_answer
+        self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
+        try:
+            self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample + 1 # including possible no_answer
+        except:
+            logger.warning("Could not set `top_k_per_sample` in FARM. Please update FARM version.")
 
     def train(self, data_dir, train_filename, dev_filename=None, test_file_name=None,
               use_gpu=True, batch_size=10, n_epochs=2, learning_rate=1e-5,
