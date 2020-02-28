@@ -68,7 +68,7 @@ class FARMReader:
             self.return_no_answers = False
         else:
             self.return_no_answers = True
-        self.n_candidates_per_paragraph = top_k_per_candidate
+        self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu, task_type="question_answering")
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
@@ -235,7 +235,7 @@ class FARMReader:
                     if a["score"] > best_score_answer:
                         best_score_answer = a["score"]
             # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance.
-            answers += answers_per_paragraph[:self.n_candidates_per_paragraph]
+            answers += answers_per_paragraph[:self.top_k_per_candidate]
 
         # Calculate the score for predicting "no answer", relative to our best positive answer score
         no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps,best_score_answer)
