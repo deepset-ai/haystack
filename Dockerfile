@@ -11,7 +11,12 @@ RUN pip install -e .
 COPY haystack /home/user/haystack
 
 # copy saved FARM models
-COPY saved_models /home/user/saved_models
+COPY models /home/user/models
+
+# copy sqlite db if needed for testing
+#COPY qa.db /home/user/
+
+EXPOSE 8000
 
 # cmd for running the API
-CMD FLASK_APP=haystack.api.inference flask run --host 0.0.0.0
+CMD ["uvicorn", "haystack.api.inference:app", "--host", "0.0.0.0", "--port", "8000"]
