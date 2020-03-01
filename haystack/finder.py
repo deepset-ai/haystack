@@ -42,9 +42,9 @@ class Finder:
 
         # Add corresponding document_name if an answer contains the document_id (only supported in FARMReader)
         for ans in results["answers"]:
-            document_name = next(
-                (meta["document_name"] for meta in meta_data if meta["document_id"] == ans["document_id"]), None
-            )
-            ans["document_name"] = document_name
+            ans["document_name"] = None
+            for meta in meta_data:
+                if meta["document_id"] == ans["document_id"]:
+                    ans["document_name"] = meta.get("document_name", None)
 
         return results
