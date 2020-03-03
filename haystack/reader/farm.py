@@ -26,7 +26,7 @@ class FARMReader:
     def __init__(
         self,
         model_name_or_path,
-        context_window_size=30,
+        context_window_size=150,
         batch_size=50,
         use_gpu=True,
         no_ans_boost=None,

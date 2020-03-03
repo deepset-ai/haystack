@@ -17,8 +17,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         doc_id_field="document_id",
         tag_fields=None,
         custom_mapping=None,
+        scheme="http",
+        ca_certs=False,
+        verify_certs=True
     ):
-        self.client = Elasticsearch(hosts=[{"host": host}], http_auth=(username, password))
+        self.client = Elasticsearch(hosts=[{"host": host}], http_auth=(username, password),
+                                    scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
+
         # if no custom_mapping is supplied, use the default mapping
         if not custom_mapping:
             custom_mapping = {
