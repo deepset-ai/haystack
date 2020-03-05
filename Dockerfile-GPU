@@ -1,6 +1,23 @@
-FROM python:3.7.4-stretch
+FROM  nvidia/cuda:10.1-runtime
 
 WORKDIR /home/user
+
+RUN apt-get update \
+  && apt-get install -y python3-pip python3-dev \
+  && cd /usr/local/bin \
+  && ln -s /usr/bin/python3 python \
+  && pip3 install --upgrade pip
+
+# Install some basic utilities
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    sudo \
+    git \
+    bzip2 \
+    libx11-6 \
+ && rm -rf /var/lib/apt/lists/*
+
 
 # install as a package
 COPY setup.py requirements.txt README.rst /home/user/
@@ -18,7 +35,6 @@ COPY models /home/user/models
 
 EXPOSE 8000
 
-
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
@@ -29,6 +45,7 @@ ENV DB_PW=""
 ENV DB_INDEX="document"
 # either local path in container or remote name if you want to pull it at container start
 ENV MODEL_PATH=deepset/bert-base-cased-squad2
+
 
 # cmd for running the API
 CMD ["uvicorn", "haystack.api.infineon_inference:app", "--host", "0.0.0.0", "--port", "8000"]
