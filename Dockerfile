@@ -31,4 +31,4 @@ ENV DB_INDEX="document"
 ENV MODEL_PATH=deepset/bert-base-cased-squad2
 
 # cmd for running the API
-CMD ["uvicorn", "haystack.api.infineon_inference:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "haystack.api.inference:app", "--host", "0.0.0.0", "--port", "8000"]
