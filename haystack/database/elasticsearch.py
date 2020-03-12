@@ -3,6 +3,8 @@ from elasticsearch.helpers import scan
 
 from haystack.database.base import BaseDocumentStore
 
+import logging
+logger = logging.getLogger(__name__)
 
 class ElasticsearchDocumentStore(BaseDocumentStore):
     def __init__(
@@ -77,6 +79,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_document_ids_by_tags(self, tags):
         term_queries = [{"terms": {key: value}} for key, value in tags.items()]
         query = {"query": {"bool": {"must": term_queries}}}
+        logger.debug(f"Tag filter query: {query}")
         result = self.client.search(index=self.index, body=query, size=10000)["hits"]["hits"]
         doc_ids = []
         for hit in result:
@@ -120,6 +123,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         }
         if candidate_doc_ids:
             body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
+        logger.debug(f"Retriever query: {body}")
         result = self.client.search(index=self.index, body=body)["hits"]["hits"]
         paragraphs = []
         meta_data = []
