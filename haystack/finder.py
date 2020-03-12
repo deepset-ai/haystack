@@ -26,7 +26,15 @@ class Finder:
 
         # 1) Optional: reduce the search space via document tags
         if filters:
+            logging.info(f"Apply filters: {filters}")
             candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)
+            logger.info(f"Got candidate IDs due to filters:  {candidate_doc_ids}")
+
+            if len(candidate_doc_ids) == 0:
+                # We didn't find any doc matching the filters
+                results = {"question": question, "answers": []}
+                return results
+
         else:
             candidate_doc_ids = None
 
