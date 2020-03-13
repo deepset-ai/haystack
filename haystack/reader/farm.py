@@ -31,7 +31,12 @@ class FARMReader:
         use_gpu=True,
         no_ans_boost=None,
         top_k_per_candidate=3,
-        top_k_per_sample=1):
+        top_k_per_sample=1,
+        max_processes=1,
+        max_seq_len=256,
+        doc_stride=128
+    ):
+
         """
         :param model_name_or_path: directory of a saved model or the name of a public model:
                                    - 'bert-base-cased'
@@ -59,7 +64,9 @@ class FARMReader:
                                                Note: - This is not the number of "final answers" you will receive
                                                (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
                                              - FARM includes no_answer in the sorted list of predictions
-
+        :param max_processes: max number of parallel processes for preprocessing
+        :param max_seq_len: max sequence length of one input text for the model
+        :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 
         """
 
@@ -69,14 +76,17 @@ class FARMReader:
         else:
             self.return_no_answers = True
         self.top_k_per_candidate = top_k_per_candidate
-        self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu, task_type="question_answering")
+        self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
+                                          task_type="question_answering", max_seq_len=max_seq_len,
+                                          doc_stride=doc_stride)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
         try:
-            self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample + 1 # including possible no_answer
+            self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
         except:
             logger.warning("Could not set `top_k_per_sample` in FARM. Please update FARM version.")
+        self.max_processes = max_processes
 
     def train(self, data_dir, train_filename, dev_filename=None, test_file_name=None,
               use_gpu=True, batch_size=10, n_epochs=2, learning_rate=1e-5,
@@ -164,7 +174,7 @@ class FARMReader:
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict(self, question, paragraphs, meta_data_paragraphs=None, top_k=None, max_processes=1):
+    def predict(self, question, paragraphs, meta_data_paragraphs=None, top_k=None):
         """
         Use loaded QA model to find answers for a question in the supplied paragraphs.
 
@@ -189,7 +199,6 @@ class FARMReader:
         :param meta_data_paragraphs: list of dicts containing meta data for the paragraphs.
                                      len(paragraphs) == len(meta_data_paragraphs)
         :param top_k: the maximum number of answers to return
-        :param max_processes: max number of parallel processes
         :return: dict containing question and answers
         """
 
@@ -208,9 +217,8 @@ class FARMReader:
 
         # get answers from QA model
         predictions = self.inferencer.inference_from_dicts(
-            dicts=input_dicts, rest_api_schema=True, max_processes=max_processes
+            dicts=input_dicts, rest_api_schema=True, max_processes=self.max_processes, min_chunksize=1
         )
-
         # assemble answers from all the different paragraphs & format them.
         # For the "no answer" option, we collect all no_ans_gaps and decide how likely
         # a no answer is based on all no_ans_gaps values across all documents
