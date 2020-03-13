@@ -18,14 +18,13 @@ RUN apt-get update && apt-get install -y \
     libx11-6 \
  && rm -rf /var/lib/apt/lists/*
 
+# copy code
+COPY haystack /home/user/haystack
 
 # install as a package
 COPY setup.py requirements.txt README.rst /home/user/
 RUN pip install -r requirements.txt
 RUN pip install -e .
-
-# copy code
-COPY haystack /home/user/haystack
 
 # copy saved FARM models
 COPY models /home/user/models
@@ -38,14 +37,6 @@ EXPOSE 8000
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-# Default config via environment variables (you can still change this at runtime)
-ENV DB_HOST=127.0.0.1
-ENV DB_USER=""
-ENV DB_PW=""
-ENV DB_INDEX="document"
-# either local path in container or remote name if you want to pull it at container start
-ENV MODEL_PATH=deepset/bert-base-cased-squad2
-
 
 # cmd for running the API
-CMD ["uvicorn", "haystack.api.inference:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "haystack.api.inference:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--limit-concurrency", "3"]
