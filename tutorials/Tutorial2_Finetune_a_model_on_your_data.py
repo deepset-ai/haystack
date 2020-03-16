@@ -36,10 +36,10 @@ write_documents_to_db(document_store=document_store, document_dir=doc_dir, clean
 # Retrievers use some simple but fast algorithm, here: TF-IDF
 retriever = TfidfRetriever(document_store=document_store)
 
-# The Finder sticks together retriever and retriever in a pipeline to answer our actual questions
+# The Finder sticks together reader and retriever in a pipeline to answer our actual questions
 finder = Finder(reader, retriever)
 
-## Voilá! Ask a question!
+## Voilà! Ask a question!
 # You can configure how many candidates the reader and retriever shall return
 # The higher top_k_retriever, the better (but also the slower) your answers.
 prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)

@@ -51,6 +51,8 @@ Components
 Resources
 =========
 - Tutorial 1  - Basic QA Pipeline: `Jupyter notebook  <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_  or `Colab <https://colab.research.google.com/drive/1Gj3JjPPcm8DMmctz66K68cOV53JZKqeX>`_
+- Tutorial 2  - Fine-tuning a model on own data: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>` or Colab <https://colab.research.google.com/drive/1nnkxLB7Sq7TJmIvTvxiYuWmNleWNLIdR>`
+- Tutorial 3  - Using Elasticsearch as Backend: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Elasticsearch_backend.ipynb>` or Colab <https://colab.research.google.com/drive/1NbtUskkt4NaUgj4KM9QTHTSR3GCQVyn7>
 
 Quickstart
 ==========
