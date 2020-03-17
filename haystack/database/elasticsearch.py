@@ -117,7 +117,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             "size": top_k,
             "query": {
                 "bool": {
-                    "must": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
+                    "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
                 }
             },
         }
