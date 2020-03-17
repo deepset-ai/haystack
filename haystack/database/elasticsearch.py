@@ -6,6 +6,7 @@ from haystack.database.base import BaseDocumentStore
 import logging
 logger = logging.getLogger(__name__)
 
+
 class ElasticsearchDocumentStore(BaseDocumentStore):
     def __init__(
         self,
@@ -18,6 +19,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         name_field="name",
         doc_id_field="document_id",
         tag_fields=None,
+        embedding_field=None,
         custom_mapping=None,
         scheme="http",
         ca_certs=False,
@@ -44,11 +46,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # configure mappings to ES fields that will be used for querying / displaying results
         if type(search_fields) == str:
             search_fields = [search_fields]
+
+        #TODO we should implement a more flexible interal mapping here that simplifies the usage of additional,
+        # custom fields (e.g. meta data you want to return)
         self.search_fields = search_fields
         self.text_field = text_field
         self.name_field = name_field
         self.tag_fields = tag_fields
         self.doc_id_field = doc_id_field
+        self.embedding_field = embedding_field
 
     def get_document_by_id(self, id):
         query = {"filter": {"term": {"_id": id}}}
@@ -137,3 +143,34 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 }
             )
         return paragraphs, meta_data
+
+    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None):
+        if not self.embedding_field:
+            raise RuntimeError("Please specify the `embedding_field` in ElasticsearchDocumentStore()")
+        else:
+            #TODO adjust to vector query here
+            body = {
+                "size": top_k,
+                "query": {
+                    "bool": {
+                        "should": [
+                            {"multi_match": {"query": query_emb, "type": "most_fields", "fields": self.embedding_field}}]
+                    }
+                },
+            }
+            if candidate_doc_ids:
+                body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
+            logger.debug(f"Retriever query: {body}")
+            result = self.client.search(index=self.index, body=body)["hits"]["hits"]
+            paragraphs = []
+            meta_data = []
+            for hit in result:
+                paragraphs.append(hit["_source"][self.text_field])
+                meta_data.append(
+                    {
+                        "paragraph_id": hit["_id"],
+                        "document_id": hit["_source"][self.doc_id_field],
+                        "document_name": hit["_source"][self.name_field],
+                    }
+                )
+            return paragraphs, meta_data
