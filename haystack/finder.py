@@ -42,13 +42,18 @@ class Finder:
         # 2) Apply retriever to get fast candidate paragraphs
         paragraphs, meta_data = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
 
+        if len(paragraphs) == 0:
+            logger.info("Retriever did not return any documents. Skipping reader ...")
+            results = {"question": question, "answers": []}
+            return results
+
         # 3) Apply reader to get granular answer(s)
-        logger.info(f"Applying the reader now to look for the answer in detail ...")
+        len_chars = sum([len (p) for p in paragraphs])
+        logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
         results = self.reader.predict(question=question,
                                       paragraphs=paragraphs,
                                       meta_data_paragraphs=meta_data,
                                       top_k=top_k_reader)
-
         # Add corresponding document_name if an answer contains the document_id (only supported in FARMReader)
         for ans in results["answers"]:
             ans["document_name"] = None
