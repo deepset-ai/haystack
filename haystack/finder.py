@@ -89,18 +89,14 @@ class Finder:
         else:
             candidate_doc_ids = None
 
-        # 2) Apply retriever to get fast candidate paragraphs
+        # 2) Apply retriever to match similar questions via cosine similarity of embeddings
         paragraphs, meta_data = self.retriever.retrieve(question, top_k=top_k_retriever,
                                                         candidate_doc_ids=candidate_doc_ids)
 
         # 3) Format response
-        #TODO adjust values for score etc.;
         for answer, meta in zip(paragraphs, meta_data):
-            cur_answer = {"question": meta["question"],
-                         "answer": answer, "context": answer,
-                        "score":0, "probability": 0, "offset_start": 0,
-                        "offset_end": len(answer)}
-            cur_answer["meta"] = meta
+            cur_answer = {"question": meta["question"], "answer": answer, "context": answer, "score": meta["score"],
+                          "probability": (meta["score"]+1)/2, "offset_start": 0, "offset_end": len(answer), "meta": meta}
             results["answers"].append(cur_answer)
 
         return results
