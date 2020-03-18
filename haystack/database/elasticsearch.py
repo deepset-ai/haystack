@@ -100,7 +100,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def write_documents(self, documents):
         for d in documents:
-            self.client.index(index=self.index, body=d)
+            try:
+                self.client.index(index=self.index, body=d)
+            except Exception as e:
+                logger.error(f"Failed to index doc ({e}): {d}")
 
     def get_document_count(self):
         result = self.client.count()
