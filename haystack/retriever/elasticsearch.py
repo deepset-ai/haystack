@@ -28,4 +28,6 @@ class ElasticsearchEmbeddingRetriever(BaseRetriever):
         return paragraphs, meta_data
 
     def create_embedding(self, text):
-        return self.embedding_model.extract_vectors(text, extraction_strategy="reduce_mean", extraction_layer=-1)
+        res = self.embedding_model.extract_vectors(dicts=[{"text": text}], extraction_strategy="reduce_mean", extraction_layer=-1)
+        emb = list(res[0]["vec"])
+        return emb

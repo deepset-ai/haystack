@@ -20,7 +20,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         doc_id_field="document_id",
         tag_fields=None,
         embedding_field=None,
+        embedding_dim=None,
         custom_mapping=None,
+        excluded_meta_data=None,
         scheme="http",
         ca_certs=False,
         verify_certs=True
@@ -39,6 +41,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     }
                 }
             }
+            if embedding_field:
+                custom_mapping["mappings"]["properties"][embedding_field] = {"type": "dense_vector",
+                                                                             "dims": embedding_dim}
         # create an index if not exists
         self.client.indices.create(index=index, ignore=400, body=custom_mapping)
         self.index = index
@@ -55,6 +60,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.tag_fields = tag_fields
         self.doc_id_field = doc_id_field
         self.embedding_field = embedding_field
+        self.excluded_meta_data = excluded_meta_data
 
     def get_document_by_id(self, id):
         query = {"filter": {"term": {"_id": id}}}
@@ -127,6 +133,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 }
             },
         }
+
         if candidate_doc_ids:
             body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
         logger.debug(f"Retriever query: {body}")
@@ -146,31 +153,47 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None):
         if not self.embedding_field:
-            raise RuntimeError("Please specify the `embedding_field` in ElasticsearchDocumentStore()")
+            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
-            #TODO adjust to vector query here
-            body = {
+            # +1 in cosine similarity to avoid negative numbers
+            body= {
                 "size": top_k,
                 "query": {
-                    "bool": {
-                        "should": [
-                            {"multi_match": {"query": query_emb, "type": "most_fields", "fields": self.embedding_field}}]
+                    "script_score": {
+                        "query": {"match_all": {}},
+                        "script": {
+                            "source": "cosineSimilarity(params.query_vector,doc['question_emb']) + 1.0",
+                            "params": {
+                                "query_vector": query_emb
+                            }
+                        }
                     }
-                },
+                }
             }
+
             if candidate_doc_ids:
                 body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
+
+            if self.excluded_meta_data:
+                body["_source"] = {"excludes": self.excluded_meta_data}
+
             logger.debug(f"Retriever query: {body}")
             result = self.client.search(index=self.index, body=body)["hits"]["hits"]
             paragraphs = []
             meta_data = []
             for hit in result:
-                paragraphs.append(hit["_source"][self.text_field])
-                meta_data.append(
-                    {
+                # add the text paragraph
+                paragraphs.append(hit["_source"].pop(self.text_field))
+
+                # add & rename some standard fields
+                cur_meta = {
                         "paragraph_id": hit["_id"],
-                        "document_id": hit["_source"][self.doc_id_field],
-                        "document_name": hit["_source"][self.name_field],
+                        "document_id": hit["_source"].pop(self.doc_id_field),
+                        "document_name": hit["_source"].pop(self.name_field),
+                        "score": hit["_score"] -1 # -1 because we added +1 in the ES query
                     }
-                )
+                # add all the rest with original name
+                cur_meta.update(hit["_source"])
+                meta_data.append(cur_meta)
+
             return paragraphs, meta_data

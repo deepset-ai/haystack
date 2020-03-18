@@ -69,6 +69,8 @@ class Finder:
         :return:
         """
 
+        results = {"question": question, "answers": []}
+
         # 1) Optional: reduce the search space via document tags
         if filters:
             logging.info(f"Apply filters: {filters}")
@@ -77,7 +79,6 @@ class Finder:
 
             if len(candidate_doc_ids) == 0:
                 # We didn't find any doc matching the filters
-                results = {"question": question, "answers": []}
                 return results
 
         else:
@@ -88,12 +89,13 @@ class Finder:
                                                         candidate_doc_ids=candidate_doc_ids)
 
         # 3) Format response
-        #TODO
-        results = {}
+        #TODO adjust values for score etc.;
+        for answer, meta in zip(paragraphs, meta_data):
+            cur_answer = {"question": meta["question"],
+                         "answer": answer, "context": answer,
+                        "score":0, "probability": 0, "offset_start": 0,
+                        "offset_end": len(answer)}
+            cur_answer["meta"] = meta
+            results["answers"].append(cur_answer)
 
-        # Add corresponding document_name if an answer contains the document_id (only supported in FARMReader)
-        for ans in results["answers"]:
-            ans["document_name"] = None
-            for meta in meta_data:
-                if meta["document_id"] == ans["document_id"]:
-                    ans["document_name"] = meta.get("document_name", None)
+        return results
