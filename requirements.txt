@@ -7,4 +7,4 @@ pandas
 psycopg2-binary
 sklearn
 elasticsearch
-sentence-transformers
+# optional: sentence-transformers

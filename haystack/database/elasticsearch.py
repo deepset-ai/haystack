@@ -139,19 +139,28 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         if candidate_doc_ids:
             body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
+
+        if self.excluded_meta_data:
+            body["_source"] = {"excludes": self.excluded_meta_data}
+
         logger.debug(f"Retriever query: {body}")
         result = self.client.search(index=self.index, body=body)["hits"]["hits"]
         paragraphs = []
         meta_data = []
         for hit in result:
-            paragraphs.append(hit["_source"][self.text_field])
-            meta_data.append(
-                {
-                    "paragraph_id": hit["_id"],
-                    "document_id": hit["_source"][self.doc_id_field],
-                    "document_name": hit["_source"][self.name_field],
-                }
-            )
+            # add the text paragraph
+            paragraphs.append(hit["_source"].pop(self.text_field))
+
+            # add & rename some standard fields
+            cur_meta = {
+                "paragraph_id": hit["_id"],
+                "document_id": hit["_source"].pop(self.doc_id_field),
+                "document_name": hit["_source"].pop(self.name_field),
+                "score": hit["_score"]
+            }
+            # add all the rest with original name
+            cur_meta.update(hit["_source"])
+            meta_data.append(cur_meta)
         return paragraphs, meta_data
 
     def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None):
