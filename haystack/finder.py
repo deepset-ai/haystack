@@ -95,8 +95,14 @@ class Finder:
 
         # 3) Format response
         for answer, meta in zip(paragraphs, meta_data):
-            cur_answer = {"question": meta["question"], "answer": answer, "context": answer, "score": meta["score"],
-                          "probability": (meta["score"]+1)/2, "offset_start": 0, "offset_end": len(answer), "meta": meta}
+            #TODO proper calibratation of pseudo probabilities
+            if self.retriever.embedding_model:
+                cur_answer = {"question": meta["question"], "answer": answer, "context": answer, "score": meta["score"],
+                              "probability": meta["score"] / 10, "offset_start": 0, "offset_end": len(answer),
+                              "meta": meta}
+            else:
+                cur_answer = {"question": meta["question"], "answer": answer, "context": answer, "score": meta["score"],
+                              "probability": (meta["score"]+1)/2, "offset_start": 0, "offset_end": len(answer), "meta": meta}
             results["answers"].append(cur_answer)
 
         return results
