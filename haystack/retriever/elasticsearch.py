@@ -1,6 +1,5 @@
 from haystack.retriever.base import BaseRetriever
 from farm.infer import Inferencer
-from sentence_transformers import SentenceTransformer
 
 
 import logging
@@ -27,6 +26,7 @@ class ElasticsearchRetriever(BaseRetriever):
                                                    gpu=gpu, batch_size=4, max_seq_len=512)
 
             elif model_format == "sentence_transformers":
+                from sentence_transformers import SentenceTransformer
                 # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
                 # e.g. 'roberta-base-nli-stsb-mean-tokens'
                 self.embedding_model = SentenceTransformer(embedding_model)
