@@ -61,7 +61,7 @@ logger.info(f"Try to connect to: DB_HOST={DB_HOST}, DB_USER={len(DB_USER)*'*'}, 
 # Init global components: DocumentStore, Retriever, Reader, Finder
 document_store = ElasticsearchDocumentStore(host=DB_HOST, username=DB_USER, password=DB_PW, index=DB_INDEX,
                                             scheme=ES_CONN_SCHEME, ca_certs=False, verify_certs=False,
-                                            text_field=TEXT_FIELD_NAME, search_fields=TEXT_FIELD_NAME,
+                                            text_field=TEXT_FIELD_NAME, search_fields=SEARCH_FIELD_NAME,
                                             embedding_dim=EMBEDDING_DIM, embedding_field=EMBEDDING_FIELD_NAME,
                                             excluded_meta_data=EXCLUDE_META_DATA_FIELDS)
 
