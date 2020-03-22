@@ -1,4 +1,8 @@
 import logging
+from scipy.special import expit
+import numpy as np
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -101,8 +105,9 @@ class Finder:
                               "probability": (meta["score"]+1)/2, "offset_start": 0, "offset_end": len(answer),
                               "meta": meta}
             else:
+                pseudo_prob = float(expit(np.asarray(meta["score"]) / 8))
                 cur_answer = {"question": meta["question"], "answer": answer, "context": answer, "score": meta["score"],
-                              "probability": meta["score"]/ 10, "offset_start": 0, "offset_end": len(answer), "meta": meta}
+                              "probability": pseudo_prob, "offset_start": 0, "offset_end": len(answer), "meta": meta}
             results["answers"].append(cur_answer)
 
         return results

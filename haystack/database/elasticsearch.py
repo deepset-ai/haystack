@@ -184,7 +184,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             }
 
             if candidate_doc_ids:
-                body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
+                body["query"]["script_score"]["query"] = {
+                    "bool": {
+                        "should": [{"match_all": {}}],
+                        "filter": [{"terms": {"_id": candidate_doc_ids}}]
+                }}
 
             if self.excluded_meta_data:
                 body["_source"] = {"excludes": self.excluded_meta_data}
