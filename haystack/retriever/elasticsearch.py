@@ -7,7 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store, embedding_model=None, gpu=True, model_format="farm"):
+    def __init__(self, document_store, embedding_model=None, gpu=True, model_format="farm",
+                 pooling_strategy="reduce_mean", emb_extraction_layer=-1):
         """
         TODO
         :param document_store:
@@ -18,6 +19,9 @@ class ElasticsearchRetriever(BaseRetriever):
         self.document_store = document_store
         self.model_format = model_format
         self.embedding_model = None
+        self.pooling_strategy = pooling_strategy
+        self.emb_extraction_layer = emb_extraction_layer
+
         # only needed if you want to retrieve via cosinge similarity of embeddings
         if embedding_model:
             logger.info(f"Init retriever using embeddings of model {embedding_model}")
@@ -44,11 +48,11 @@ class ElasticsearchRetriever(BaseRetriever):
         logger.info(f"Got {len(paragraphs)} candidates from retriever: {meta_data}")
         return paragraphs, meta_data
 
-    def create_embedding(self, text,extraction_strategy="reduce_mean", extraction_layer=-1):
+    def create_embedding(self, text):
         if self.model_format == "farm":
             res = self.embedding_model.extract_vectors(dicts=[{"text": text}],
-                                                       extraction_strategy=extraction_strategy,
-                                                       extraction_layer=extraction_layer)
+                                                       extraction_strategy=self.pooling_strategy,
+                                                       extraction_layer=self.emb_extraction_layer)
             emb = list(res[0]["vec"])
         elif self.model_format == "sentence_transformers":
             # text is single string, sentence-transformers needs a list of strings
