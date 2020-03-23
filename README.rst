@@ -17,6 +17,10 @@ Haystack — Neural Question Answering At Scale
 	:target: https://github.com/deepset-ai/haystack/commits/master
 	:alt: Last Commit
 
+
+**Call for participation:** Do you want to help fighting COVID-19 using haystack? Support us in the `COVID-QA Project <https://github.com/deepset-ai/COVID-QA>`_
+
+
 Introduction
 ============
 
@@ -28,6 +32,8 @@ Haystack is designed in a modular way and lets you use any models trained with  
 Switching between different backends allows fast prototyping (SQLite) and scalable deployment for production (elasticsearch).
 
 
+
+
 Core Features
 =============
 - **Powerful models**: Utilize all latest transformer based models (BERT, ALBERT roBERTa ...)
@@ -35,6 +41,7 @@ Core Features
 - **Developer friendly**: Easy to debug, extend and modify.
 - **Scalable**: Production-ready deployments via Elasticsearch backend.
 - **Customizable**: Fine-tune models to your own domain.
+
 
 Components
 ==========
