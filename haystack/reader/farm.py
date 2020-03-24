@@ -124,7 +124,7 @@ class FARMReader:
         set_all_seeds(seed=42)
 
         # For these variables, by default, we use the value set when initializing the FARMReader.
-        # This can also be manually set when train() is called if you want a different value at train vs inference
+        # These can also be manually set when train() is called if you want a different value at train vs inference
         if use_gpu is None:
             use_gpu = self.use_gpu
         if max_seq_len is None:
