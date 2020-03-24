@@ -13,7 +13,7 @@ reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad"
 
 # and fine-tune it on your own custom dataset (should be in SQuAD like format)
 train_data = "PATH/TO_YOUR/TRAIN_DATA"
-reader.train(data_dir=train_data, train_filename="train.json", use_gpu=False, n_epochs=1)
+reader.train(data_dir=train_data, train_filename="train.json", n_epochs=1)
 
 
 #### Use it (same as in Tutorial 1) #############
