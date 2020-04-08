@@ -9,7 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 logger = logging.getLogger(__name__)
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
-Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text"])
+Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text","document_name"])
 
 
 class TfidfRetriever(BaseRetriever):
@@ -48,7 +48,7 @@ class TfidfRetriever(BaseRetriever):
                 if not p.strip():  # skip empty paragraphs
                     continue
                 paragraphs.append(
-                    Paragraph(document_id=doc["id"], paragraph_id=p_id, text=(p,))
+                    Paragraph(document_id=doc["id"],document_name=doc["name"],paragraph_id=p_id, text=(p,))
                 )
                 p_id += 1
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
@@ -81,7 +81,7 @@ class TfidfRetriever(BaseRetriever):
 
         # get actual content for the top candidates
         paragraphs = list(df_sliced.text.values)
-        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"]}
+        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"],"document_name":row["document_name"]}
                      for idx, row in df_sliced.iterrows()]
 
         return paragraphs, meta_data
