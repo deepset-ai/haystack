@@ -5,7 +5,6 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from haystack.api import application
 from haystack.api.config import (
     DB_HOST,
     DB_USER,
@@ -19,6 +18,7 @@ from haystack.api.config import (
     EXCLUDE_META_DATA_FIELDS,
 )
 from haystack.api.config import DB_INDEX_FEEDBACK
+from haystack.api.elasticsearch_client import elasticsearch_client
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from elasticsearch.helpers import scan
 
@@ -57,7 +57,7 @@ def feedback(model_id: int, request: Feedback):
             content="Invalid 'feedback'. It must be one of relevant, fake, outdated or irrelevant",
         )
     feedback_payload["model_id"] = model_id
-    application.elasticsearch_client.index(index=DB_INDEX_FEEDBACK, body=feedback_payload)
+    elasticsearch_client.index(index=DB_INDEX_FEEDBACK, body=feedback_payload)
 
 
 @router.get("/models/{model_id}/export-faq-feedback")
@@ -68,7 +68,7 @@ def export_faq_feedback(model_id: int):
     relevant_feedback_query = {
         "query": {"bool": {"must": [{"term": {"feedback": "relevant"}}, {"term": {"model_id": model_id}}]}}
     }
-    result = scan(application.elasticsearch_client, index=DB_INDEX_FEEDBACK, query=relevant_feedback_query)
+    result = scan(elasticsearch_client, index=DB_INDEX_FEEDBACK, query=relevant_feedback_query)
 
     per_document_feedback = defaultdict(list)
     for feedback in result:
