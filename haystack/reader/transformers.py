@@ -76,22 +76,22 @@ class TransformersReader:
 
         # get top-answers for each candidate passage
         answers = []
-        for p in paragraphs:
-            query = {"context": p, "question": question}
+        for para, meta in zip(paragraphs, meta_data_paragraphs):
+            query = {"context": para, "question": question}
             predictions = self.model(query, topk=self.n_best_per_passage)
             # assemble and format all answers
             for pred in predictions:
                 if pred["answer"]:
                     context_start = max(0, pred["start"] - self.context_size)
-                    context_end = min(len(p), pred["end"] + self.context_size)
+                    context_end = min(len(para), pred["end"] + self.context_size)
                     answers.append({
                         "answer": pred["answer"],
-                        "context": p[context_start:context_end],
+                        "context": para[context_start:context_end],
                         "offset_answer_start": pred["start"],
                         "offset_answer_end": pred["end"],
-                        "probability": pred["score"],
+                        "probability": pred["score"],  
                         "score": None,
-                        "document_id": None
+                        "document_id": meta["document_id"]
                     })
 
         # sort answers by their `probability` and select top-k
