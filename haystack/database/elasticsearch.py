@@ -63,13 +63,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.excluded_meta_data = excluded_meta_data
 
     def get_document_by_id(self, id):
-        query = {"filter": {"term": {"_id": id}}}
+        query = {"query": {"bool": {"filter": {"term": {self.doc_id_field: id}}}}}
         result = self.client.search(index=self.index, body=query)["hits"]["hits"]
         if result:
             document = {
-                "id": result[self.doc_id_field],
-                "name": result[self.name_field],
-                "text": result[self.text_field],
+                "id": result[0]["_source"][self.doc_id_field],
+                "name": result[0]["_source"][self.name_field],
+                "text": result[0]["_source"][self.text_field],
             }
         else:
             document = None
