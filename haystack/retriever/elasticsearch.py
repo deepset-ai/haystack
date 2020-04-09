@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 class ElasticsearchRetriever(BaseRetriever):
     def __init__(self, document_store, embedding_model=None, gpu=True, model_format="farm",
-                 pooling_strategy="reduce_mean", emb_extraction_layer=-1):
+                 pooling_strategy="reduce_mean", emb_extraction_layer=-1, direct_filters=None,
+                 custom_query=None):
         """
         TODO
         :param document_store:
@@ -21,6 +22,8 @@ class ElasticsearchRetriever(BaseRetriever):
         self.embedding_model = None
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
+        self.direct_filters = direct_filters
+        self.custom_query = custom_query
 
         # only needed if you want to retrieve via cosinge similarity of embeddings
         if embedding_model:
@@ -44,7 +47,8 @@ class ElasticsearchRetriever(BaseRetriever):
             paragraphs, meta_data = self.document_store.query_by_embedding(query_emb, top_k, candidate_doc_ids)
         else:
             # regular ES query (e.g. BM25)
-            paragraphs, meta_data = self.document_store.query(query, top_k, candidate_doc_ids)
+            paragraphs, meta_data = self.document_store.query(query, top_k, candidate_doc_ids,
+                                                              self.direct_filters, self.custom_query)
         logger.info(f"Got {len(paragraphs)} candidates from retriever: {meta_data}")
         return paragraphs, meta_data
 
