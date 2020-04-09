@@ -25,7 +25,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         excluded_meta_data=None,
         scheme="http",
         ca_certs=False,
-        verify_certs=True
+        verify_certs=True,
+        create_index=True
     ):
         self.client = Elasticsearch(hosts=[{"host": host}], http_auth=(username, password),
                                     scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
@@ -45,7 +46,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 custom_mapping["mappings"]["properties"][embedding_field] = {"type": "dense_vector",
                                                                              "dims": embedding_dim}
         # create an index if not exists
-        self.client.indices.create(index=index, ignore=400, body=custom_mapping)
+        if create_index:
+            self.client.indices.create(index=index, ignore=400, body=custom_mapping)
         self.index = index
 
         # configure mappings to ES fields that will be used for querying / displaying results
@@ -123,19 +125,35 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             )
         return documents
 
-    def query(self, query, top_k=10, candidate_doc_ids=None):
+    def query(self, query, top_k=10, candidate_doc_ids=None, direct_filters=None, custom_query=None):
         # TODO:
         # for now: we keep the current structure of candidate_doc_ids for compatibility with SQL documentstores
         # midterm: get rid of it and do filtering with tags directly in this query
 
-        body = {
-            "size": top_k,
-            "query": {
-                "bool": {
-                    "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
+        # if a custom search query is provided then use it
+        if custom_query:
+            body = {
+                "size": top_k,
+                "query": {
+                    "bool": custom_query
                 }
-            },
-        }
+            }
+        # else use standard search query for provided search fields
+        else:
+            body = {
+                "size": top_k,
+                "query": {
+                    "bool": {
+                        "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
+                    }
+                },
+            }
+
+        # use other filters directly with query, if provided
+        if direct_filters:
+            # filter types are must, should, etc.
+            for filter_type, filter_dict in direct_filters.items():
+                body["query"]["bool"][filter_type] = filter_dict
 
         if candidate_doc_ids:
             body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
