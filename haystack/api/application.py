@@ -25,7 +25,7 @@ def get_application() -> FastAPI:
     application.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
     )
-    apm_config = {"SERVICE_NAME": "covid-backend", "SERVER_URL": APM_SERVER, "CAPTURE_BODY": "all"}
+    apm_config = {"SERVICE_NAME": "haystack-backend", "SERVER_URL": APM_SERVER, "CAPTURE_BODY": "all"}
     elasticapm = make_apm_client(apm_config)
     application.add_middleware(ElasticAPM, client=elasticapm)
 
@@ -41,7 +41,7 @@ app = get_application()
 logger.info("Open http://127.0.0.1:8000/docs to see Swagger API Documentation.")
 logger.info(
     """
-Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/models/1/faq-qa' --data '{"questions": ["What are symptoms?"]}'
+Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/models/1/doc-qa' --data '{"questions": ["What is the capital of Germany?"]}'
 """
 )
 
