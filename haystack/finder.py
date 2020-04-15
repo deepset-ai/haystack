@@ -17,7 +17,7 @@ class Finder:
         self.retriever = retriever
         self.reader = reader
 
-    def get_answers(self, question, top_k_reader=1, top_k_retriever=10, filters=None):
+    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: dict = None):
         """
         Get top k answers for a given question.
 
@@ -25,7 +25,7 @@ class Finder:
         :param top_k_reader: number of answers returned by the reader
         :param top_k_retriever: number of text units to be retrieved
         :param filters: limit scope to documents having the given tags and their corresponding values.
-            The format for the dict is {"tag-1": ["value-1","value-2"], "tag-2": ["value-3]" ...}
+            The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
         :return:
         """
 
@@ -43,31 +43,30 @@ class Finder:
         else:
             candidate_doc_ids = None
 
-        # 2) Apply retriever to get fast candidate paragraphs
-        paragraphs, meta_data = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
+        # 2) Apply retriever to get fast candidate documents
+        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
 
-        if len(paragraphs) == 0:
+        if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
             results = {"question": question, "answers": []}
             return results
 
         # 3) Apply reader to get granular answer(s)
-        len_chars = sum([len (p) for p in paragraphs])
+        len_chars = sum([len(d.text) for d in documents])
         logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
         results = self.reader.predict(question=question,
-                                      paragraphs=paragraphs,
-                                      meta_data_paragraphs=meta_data,
+                                      documents=documents,
                                       top_k=top_k_reader)
         # Add corresponding document_name if an answer contains the document_id (only supported in FARMReader)
         for ans in results["answers"]:
             ans["document_name"] = None
-            for meta in meta_data:
-                if meta["document_id"] == ans["document_id"]:
-                    ans["document_name"] = meta.get("document_name", None)
+            for doc in documents:
+                if doc.id == ans["document_id"]:
+                    ans["document_name"] = doc.name
 
         return results
 
-    def get_answers_via_similar_questions(self, question, top_k_retriever=10, filters=None):
+    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10, filters: dict = None):
         """
         Get top k answers for a given question using only a retriever.
 
@@ -94,20 +93,19 @@ class Finder:
             candidate_doc_ids = None
 
         # 2) Apply retriever to match similar questions via cosine similarity of embeddings
-        paragraphs, meta_data = self.retriever.retrieve(question, top_k=top_k_retriever,
-                                                        candidate_doc_ids=candidate_doc_ids)
+        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
 
         # 3) Format response
-        for answer, meta in zip(paragraphs, meta_data):
+        for doc in documents:
             #TODO proper calibratation of pseudo probabilities
+            cur_answer = {"question": doc.question, "answer": doc.text, "context": doc.text,
+                          "score": doc.query_score, "offset_start": 0, "offset_end": len(doc.text),
+                          }
             if self.retriever.embedding_model:
-                cur_answer = {"question": meta["question"], "answer": answer, "context": answer, "score": meta["score"],
-                              "probability": (meta["score"]+1)/2, "offset_start": 0, "offset_end": len(answer),
-                              "meta": meta}
+                probability = (doc.query_score + 1) / 2
             else:
-                pseudo_prob = float(expit(np.asarray(meta["score"]) / 8))
-                cur_answer = {"question": meta["question"], "answer": answer, "context": answer, "score": meta["score"],
-                              "probability": pseudo_prob, "offset_start": 0, "offset_end": len(answer), "meta": meta}
+                probability = float(expit(np.asarray(doc.query_score / 8)))
+            cur_answer["probability"] = probability
             results["answers"].append(cur_answer)
 
         return results

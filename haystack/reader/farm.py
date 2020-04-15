@@ -1,14 +1,16 @@
-import numpy as np
-from scipy.special import expit
-from pathlib import Path
 import logging
+from pathlib import Path
 
+import numpy as np
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import SquadProcessor
 from farm.infer import Inferencer
 from farm.modeling.optimization import initialize_optimizer
 from farm.train import Trainer
 from farm.utils import set_all_seeds, initialize_device_settings
+from scipy.special import expit
+
+from haystack.database.base import Document
 
 logger = logging.getLogger(__name__)
 
@@ -184,9 +186,9 @@ class FARMReader:
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict(self, question, paragraphs, meta_data_paragraphs=None, top_k=None):
+    def predict(self, question: str, documents: [Document], top_k: int = None):
         """
-        Use loaded QA model to find answers for a question in the supplied paragraphs.
+        Use loaded QA model to find answers for a question in the supplied documents.
 
         Returns dictionaries containing answers sorted by (desc.) probability
         Example:
@@ -205,23 +207,18 @@ class FARMReader:
         }
 
         :param question: question string
-        :param paragraphs: list of strings in which to search for the answer
-        :param meta_data_paragraphs: list of dicts containing meta data for the paragraphs.
-                                     len(paragraphs) == len(meta_data_paragraphs)
+        :param documents: list of strings in which to search for the answer
         :param top_k: the maximum number of answers to return
         :return: dict containing question and answers
         """
 
-        if meta_data_paragraphs is None:
-            meta_data_paragraphs = len(paragraphs) * [None]
-        assert len(paragraphs) == len(meta_data_paragraphs)
-
         # convert input to FARM format
         input_dicts = []
-        for paragraph, meta_data in zip(paragraphs, meta_data_paragraphs):
-            cur = {"text": paragraph,
-                   "questions": [question],
-                   "document_id": meta_data["document_id"]
+        for doc in documents:
+            cur = {
+                "text": doc.text,
+                "questions": [question],
+                "document_id": doc.id
             }
             input_dicts.append(cur)
 
@@ -229,14 +226,14 @@ class FARMReader:
         predictions = self.inferencer.inference_from_dicts(
             dicts=input_dicts, rest_api_schema=True, max_processes=self.max_processes, min_chunksize=1
         )
-        # assemble answers from all the different paragraphs & format them.
+        # assemble answers from all the different documents & format them.
         # For the "no answer" option, we collect all no_ans_gaps and decide how likely
         # a no answer is based on all no_ans_gaps values across all documents
         answers = []
         no_ans_gaps = []
         best_score_answer = 0
         for pred in predictions:
-            answers_per_paragraph = []
+            answers_per_document = []
             no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
             for a in pred["predictions"][0]["answers"]:
                 # skip "no answers" here
@@ -248,12 +245,12 @@ class FARMReader:
                            "offset_start": a["offset_answer_start"] - a["offset_context_start"],
                            "offset_end": a["offset_answer_end"] - a["offset_context_start"],
                            "document_id": a["document_id"]}
-                    answers_per_paragraph.append(cur)
+                    answers_per_document.append(cur)
 
                     if a["score"] > best_score_answer:
                         best_score_answer = a["score"]
             # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance.
-            answers += answers_per_paragraph[:self.top_k_per_candidate]
+            answers += answers_per_document[:self.top_k_per_candidate]
 
         # Calculate the score for predicting "no answer", relative to our best positive answer score
         no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps,best_score_answer)
@@ -295,3 +292,15 @@ class FARMReader:
                "offset_end": 0,
                "document_id": None}
         return no_ans_prediction, max_no_ans_gap
+
+    def predict_on_texts(self, question: str, texts: [str], top_k=None):
+        documents = []
+        for i, text in enumerate(texts):
+            documents.append(
+                Document(
+                    id=i,
+                    text=text
+                )
+            )
+        predictions = self.predict(question, documents, top_k)
+        return predictions
