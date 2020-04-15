@@ -44,10 +44,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 }
             }
             if embedding_field:
-                custom_mapping["mappings"]["properties"][embedding_field] = {
-                    "type": "dense_vector",
-                    "dims": embedding_dim,
-                }
+                custom_mapping["mappings"]["properties"][embedding_field] = {"type": "dense_vector",
+                                                                             "dims": embedding_dim}
         # create an index if not exists
         if create_index:
             self.client.indices.create(index=index, ignore=400, body=custom_mapping)
@@ -74,7 +72,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         document = self._convert_es_hit_to_document(result[0]) if result else None
         return document
 
-    def get_document_ids_by_tags(self, tags:dict) -> [str]:
+    def get_document_ids_by_tags(self, tags: dict) -> [str]:
         term_queries = [{"terms": {key: value}} for key, value in tags.items()]
         query = {"query": {"bool": {"must": term_queries}}}
         logger.debug(f"Tag filter query: {query}")
@@ -102,19 +100,42 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def query(self, query: str, top_k: int = 10, candidate_doc_ids: [str] = None) -> [Document]:
+    def query(
+        self,
+        query: str,
+        top_k: int = 10,
+        candidate_doc_ids: [str] = None,
+        direct_filters: dict = None,
+        custom_query: str = None,
+    ) -> [Document]:
         # TODO:
         # for now: we keep the current structure of candidate_doc_ids for compatibility with SQL documentstores
         # midterm: get rid of it and do filtering with tags directly in this query
 
-        body = {
-            "size": top_k,
-            "query": {
-                "bool": {
-                    "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
+        # if a custom search query is provided then use it
+        if custom_query:
+            body = {
+                "size": top_k,
+                "query": {
+                    "bool": custom_query
                 }
-            },
-        }
+            }
+        # else use standard search query for provided search fields
+        else:
+            body = {
+                "size": top_k,
+                "query": {
+                    "bool": {
+                        "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
+                    }
+                },
+            }
+
+        # use other filters directly with query, if provided
+        if direct_filters:
+            # filter types are must, should, etc.
+            for filter_type, filter_dict in direct_filters.items():
+                body["query"]["bool"][filter_type] = filter_dict
 
         if candidate_doc_ids:
             body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
@@ -133,23 +154,27 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
             # +1 in cosine similarity to avoid negative numbers
-            body = {
+            body= {
                 "size": top_k,
                 "query": {
                     "script_score": {
                         "query": {"match_all": {}},
                         "script": {
                             "source": "cosineSimilarity(params.query_vector,doc['question_emb']) + 1.0",
-                            "params": {"query_vector": query_emb},
-                        },
+                            "params": {
+                                "query_vector": query_emb
+                            }
+                        }
                     }
-                },
+                }
             }
 
             if candidate_doc_ids:
                 body["query"]["script_score"]["query"] = {
-                    "bool": {"should": [{"match_all": {}}], "filter": [{"terms": {"_id": candidate_doc_ids}}]}
-                }
+                    "bool": {
+                        "should": [{"match_all": {}}],
+                        "filter": [{"terms": {"_id": candidate_doc_ids}}]
+                }}
 
             if self.excluded_meta_data:
                 body["_source"] = {"excludes": self.excluded_meta_data}
