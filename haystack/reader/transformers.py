@@ -46,7 +46,7 @@ class TransformersReader:
 
     def predict(self, question: str, documents: [Document], top_k: int = None):
         """
-        Use loaded QA model to find answers for a question in the supplied paragraphs.
+        Use loaded QA model to find answers for a question in the supplied list of Document.
 
         Returns dictionaries containing answers sorted by (desc.) probability
         Example:
@@ -65,7 +65,7 @@ class TransformersReader:
         }
 
         :param question: question string
-        :param documents: list of strings in which to search for the answer
+        :param documents: list of Document in which to search for the answer
         :param top_k: the maximum number of answers to return
         :return: dict containing question and answers
 
