@@ -1,9 +1,10 @@
+import logging
+
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import scan
 
-from haystack.database.base import BaseDocumentStore
+from haystack.database.base import BaseDocumentStore, Document
 
-import logging
 logger = logging.getLogger(__name__)
 
 
@@ -17,7 +18,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         search_fields="text",
         text_field="text",
         name_field="name",
-        doc_id_field="document_id",
+        external_source_id_field="external_source_id",
         tag_fields=None,
         embedding_field=None,
         embedding_dim=None,
@@ -38,7 +39,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "properties": {
                         name_field: {"type": "text"},
                         text_field: {"type": "text"},
-                        doc_id_field: {"type": "text"},
+                        external_source_id_field: {"type": "text"},
                     }
                 }
             }
@@ -60,37 +61,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.text_field = text_field
         self.name_field = name_field
         self.tag_fields = tag_fields
-        self.doc_id_field = doc_id_field
+        self.external_source_id_field = external_source_id_field
         self.embedding_field = embedding_field
         self.excluded_meta_data = excluded_meta_data
 
-    def get_document_by_id(self, id):
-        query = {"query": {"bool": {"filter": {"term": {self.doc_id_field: id}}}}}
+    def get_document_by_id(self, id: str) -> Document:
+        query = {"query": {"ids": {"values": [id]}}}
         result = self.client.search(index=self.index, body=query)["hits"]["hits"]
-        if result:
-            document = {
-                "id": result[0]["_source"][self.doc_id_field],
-                "name": result[0]["_source"][self.name_field],
-                "text": result[0]["_source"][self.text_field],
-            }
-        else:
-            document = None
+
+        document = self._convert_es_hit_to_document(result[0]) if result else None
         return document
 
-    def get_document_by_name(self, name):
-        query = {"filter": {"term": {self.name_field: name}}}
-        result = self.client.search(index=self.index, body=query)["hits"]["hits"]
-        if result:
-            document = {
-                "id": result[self.doc_id_field],
-                "name": result[self.name_field],
-                "text": result[self.text_field],
-            }
-        else:
-            document = None
-        return document
-
-    def get_document_ids_by_tags(self, tags):
+    def get_document_ids_by_tags(self, tags: dict) -> [str]:
         term_queries = [{"terms": {key: value}} for key, value in tags.items()]
         query = {"query": {"bool": {"must": term_queries}}}
         logger.debug(f"Tag filter query: {query}")
@@ -114,18 +96,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def get_all_documents(self):
         result = scan(self.client, query={"query": {"match_all": {}}}, index=self.index)
-        documents = []
-        for hit in result:
-            documents.append(
-                {
-                    "id": hit["_source"][self.doc_id_field],
-                    "name": hit["_source"][self.name_field],
-                    "text": hit["_source"][self.text_field],
-                }
-            )
+        documents = [self._convert_es_hit_to_document(hit) for hit in result]
+
         return documents
 
-    def query(self, query, top_k=10, candidate_doc_ids=None, direct_filters=None, custom_query=None):
+    def query(
+        self,
+        query: str,
+        top_k: int = 10,
+        candidate_doc_ids: [str] = None,
+        direct_filters: dict = None,
+        custom_query: str = None,
+    ) -> [Document]:
         # TODO:
         # for now: we keep the current structure of candidate_doc_ids for compatibility with SQL documentstores
         # midterm: get rid of it and do filtering with tags directly in this query
@@ -163,25 +145,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         logger.debug(f"Retriever query: {body}")
         result = self.client.search(index=self.index, body=body)["hits"]["hits"]
-        paragraphs = []
-        meta_data = []
-        for hit in result:
-            # add the text paragraph
-            paragraphs.append(hit["_source"].pop(self.text_field))
 
-            # add & rename some standard fields
-            cur_meta = {
-                "paragraph_id": hit["_id"],
-                "document_id": hit["_source"].pop(self.doc_id_field),
-                "document_name": hit["_source"].pop(self.name_field),
-                "score": hit["_score"]
-            }
-            # add all the rest with original name
-            cur_meta.update(hit["_source"])
-            meta_data.append(cur_meta)
-        return paragraphs, meta_data
+        documents = [self._convert_es_hit_to_document(hit) for hit in result]
+        return documents
 
-    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None):
+    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None) -> [Document]:
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
@@ -213,21 +181,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             logger.debug(f"Retriever query: {body}")
             result = self.client.search(index=self.index, body=body)["hits"]["hits"]
-            paragraphs = []
-            meta_data = []
-            for hit in result:
-                # add the text paragraph
-                paragraphs.append(hit["_source"].pop(self.text_field))
 
-                # add & rename some standard fields
-                cur_meta = {
-                        "paragraph_id": hit["_id"],
-                        "document_id": hit["_source"].pop(self.doc_id_field),
-                        "document_name": hit["_source"].pop(self.name_field),
-                        "score": hit["_score"] -1 # -1 because we added +1 in the ES query
-                    }
-                # add all the rest with original name
-                cur_meta.update(hit["_source"])
-                meta_data.append(cur_meta)
+            documents = [self._convert_es_hit_to_document(hit, score_adjustment=-1) for hit in result]
+            return documents
 
-            return paragraphs, meta_data
+    def _convert_es_hit_to_document(self, hit, score_adjustment=0) -> [Document]:
+        document = Document(
+            id=hit["_id"],
+            text=hit["_source"][self.text_field],
+            external_source_id=hit["_source"].get(self.external_source_id_field),
+            name=hit["_source"].get(self.name_field),
+            query_score=hit["_score"] + score_adjustment,
+        )
+        return document

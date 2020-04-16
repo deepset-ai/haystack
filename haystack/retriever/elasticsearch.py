@@ -1,8 +1,10 @@
-from haystack.retriever.base import BaseRetriever
+import logging
+
 from farm.infer import Inferencer
 
+from haystack.database.base import Document
+from haystack.retriever.base import BaseRetriever
 
-import logging
 logger = logging.getLogger(__name__)
 
 
@@ -40,17 +42,16 @@ class ElasticsearchRetriever(BaseRetriever):
             else:
                 raise NotImplementedError
 
-    def retrieve(self, query, candidate_doc_ids=None, top_k=10):
+    def retrieve(self, query: str, candidate_doc_ids: [str] = None, top_k: int = 10) -> [Document]:
         if self.embedding_model:
             # cos. similarity of embeddings
             query_emb = self.create_embedding(query)
-            paragraphs, meta_data = self.document_store.query_by_embedding(query_emb, top_k, candidate_doc_ids)
+            documents = self.document_store.query_by_embedding(query_emb, top_k, candidate_doc_ids)
         else:
             # regular ES query (e.g. BM25)
-            paragraphs, meta_data = self.document_store.query(query, top_k, candidate_doc_ids,
-                                                              self.direct_filters, self.custom_query)
-        logger.info(f"Got {len(paragraphs)} candidates from retriever: {meta_data}")
-        return paragraphs, meta_data
+            documents = self.document_store.query(query, top_k, candidate_doc_ids)
+        logger.info(f"Got {len(documents)} candidates from retriever")
+        return documents
 
     def create_embedding(self, text):
         if self.model_format == "farm":

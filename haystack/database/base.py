@@ -1,4 +1,7 @@
 from abc import abstractmethod
+from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class BaseDocumentStore:
@@ -23,3 +26,14 @@ class BaseDocumentStore:
         pass
 
 
+class Document(BaseModel):
+    id: str = Field(..., description="_id field from Elasticsearch")
+    text: str = Field(..., description="Text of the document")
+    external_source_id: Optional[str] = Field(
+        None,
+        description="id for the source file the document was created from. In the case when a large file is divided "
+        "across multiple Elasticsearch documents, this id can be used to reference original source file.",
+    )
+    name: Optional[str] = Field(None, description="Title of the document")
+    question: Optional[str] = Field(None, description="Question text for FAQs.")
+    query_score: Optional[int] = Field(None, description="Elasticsearch query score for a retrieved document")

@@ -44,8 +44,7 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
                     docs_to_index.append(
                         {
                             "name": path.name,
-                            "text": para,
-                            "document_id": doc_id
+                            "text": para
                         }
                     )
                     doc_id += 1
@@ -53,8 +52,7 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
                 docs_to_index.append(
                     {
                         "name": path.name,
-                        "text": text,
-                        "document_id": doc_id
+                        "text": text
                     }
                 )
     document_store.write_documents(docs_to_index)

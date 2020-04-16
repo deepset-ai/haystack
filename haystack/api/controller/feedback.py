@@ -91,7 +91,7 @@ def export_doc_qa_feedback():
     export_data = []
     for document_id, feedback in per_document_feedback.items():
         document = document_store.get_document_by_id(document_id)
-        context = document["text"]
+        context = document.text
         export_data.append({"paragraphs": [{"qas": feedback}], "context": context})
 
     export = {"data": export_data}
@@ -120,7 +120,7 @@ def export_faq_feedback():
     for document_id, feedback in per_document_feedback.items():
         document = document_store.get_document_by_id(document_id)
         export_data.append(
-            {"target_question": document["question"], "target_answer": document["text"], "queries": feedback}
+            {"target_question": document.question, "target_answer": document.text, "queries": feedback}
         )
 
     export = {"data": export_data}
