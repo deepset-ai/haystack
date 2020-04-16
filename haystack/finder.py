@@ -57,7 +57,7 @@ class Finder:
         results = self.reader.predict(question=question,
                                       documents=documents,
                                       top_k=top_k_reader)
-        # Add corresponding document_name if an answer contains the document_id (only supported in FARMReader)
+        # Add corresponding document_name if an answer contains the document_id
         for ans in results["answers"]:
             ans["document_name"] = None
             for doc in documents:
