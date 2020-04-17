@@ -75,8 +75,8 @@ class Answer(BaseModel):
     context: Optional[str]
     offset_start: int
     offset_end: int
-    offset_doc_start: Optional[int]
-    offset_doc_end: Optional[int]
+    offset_start_in_doc: Optional[int]
+    offset_end_in_doc: Optional[int]
     document_id: Optional[str] = None
     meta: Optional[Dict[str, Optional[str]]]
 

@@ -45,13 +45,13 @@ class Feedback(BaseModel):
     label: str = Field(..., description="The Label for the feedback, eg, relevant or irrelevant.")
     document_id: str = Field(..., description="The document in the query result for which feedback is given.")
     answer: Optional[str] = Field(None, description="The answer string. Only required for doc-qa feedback.")
-    answer_doc_start: Optional[int] = Field(None, description="The answer start offset in the original doc. Only required for doc-qa feedback.")
+    offset_start_in_doc: Optional[int] = Field(None, description="The answer start offset in the original doc. Only required for doc-qa feedback.")
     model_id: Optional[int] = Field(None, description="The model used for the query.")
 
 
 @router.post("/doc-qa-feedback")
 def feedback(feedback: Feedback):
-    if feedback.answer and feedback.answer_doc_start:
+    if feedback.answer and feedback.offset_start_in_doc:
         elasticsearch_client.index(index=DB_INDEX_FEEDBACK, body=feedback.dict())
     else:
         return JSONResponse(
@@ -83,7 +83,7 @@ def export_doc_qa_feedback():
                 "question": feedback["_source"]["question"],
                 "id": feedback["_id"],
                 "answers": [
-                    {"text": feedback["_source"]["answer"], "answer_start": feedback["_source"]["answer_doc_start"]}
+                    {"text": feedback["_source"]["answer"], "answer_start": feedback["_source"]["offset_start_in_doc"]}
                 ],
             }
         )
