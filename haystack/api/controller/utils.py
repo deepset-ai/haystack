@@ -12,7 +12,7 @@ class RequestLimiter:
     def run(self):
         acquired = self.semaphore.acquire(blocking=False)
         if not acquired:
-            raise HTTPException(status_code=429, detail="The server is busy processing requests.")
+            raise HTTPException(status_code=503, detail="The server is busy processing requests.")
         try:
             yield acquired
         finally:
