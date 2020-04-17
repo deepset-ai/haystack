@@ -68,7 +68,7 @@ Installation
 ------------
 There are two ways to install:
 
-* (recommended) from source, :code:`git clone <url>` and run :code:`pip install [--editable] .` from the root of the repositry.
+* (recommended) from source, :code:`git clone <url>` and run :code:`pip install [--editable] .` from the root of the repository.
 * from PyPI, do a :code:`pip install farm-haystack`
 
 
