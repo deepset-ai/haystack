@@ -34,7 +34,7 @@ class FARMReader:
         no_ans_boost=None,
         top_k_per_candidate=3,
         top_k_per_sample=1,
-        max_processes=1,
+        num_processes=None,
         max_seq_len=256,
         doc_stride=128
     ):
@@ -66,7 +66,10 @@ class FARMReader:
                                                Note: - This is not the number of "final answers" you will receive
                                                (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
                                              - FARM includes no_answer in the sorted list of predictions
-        :param max_processes: max number of parallel processes for preprocessing
+        :param num_processes: the number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
+                              multiprocessing. Set to None to let Inferencer determine optimum number. If you
+                              want to debug the Language Model, you might need to disable multiprocessing!
+        :type num_processes: int
         :param max_seq_len: max sequence length of one input text for the model
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 
@@ -88,7 +91,7 @@ class FARMReader:
             self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
         except:
             logger.warning("Could not set `top_k_per_sample` in FARM. Please update FARM version.")
-        self.max_processes = max_processes
+        self.num_processes = num_processes
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
 
@@ -224,7 +227,7 @@ class FARMReader:
 
         # get answers from QA model
         predictions = self.inferencer.inference_from_dicts(
-            dicts=input_dicts, rest_api_schema=True, max_processes=self.max_processes, min_chunksize=1
+            dicts=input_dicts, rest_api_schema=True, num_processes=self.num_processes, multiprocessing_chunksize=1
         )
         # assemble answers from all the different documents & format them.
         # For the "no answer" option, we collect all no_ans_gaps and decide how likely
