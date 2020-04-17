@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, Dict
 
 from pydantic import BaseModel, Field
 
@@ -34,6 +34,7 @@ class Document(BaseModel):
         description="id for the source file the document was created from. In the case when a large file is divided "
         "across multiple Elasticsearch documents, this id can be used to reference original source file.",
     )
-    name: Optional[str] = Field(None, description="Title of the document")
+    # name: Optional[str] = Field(None, description="Title of the document")
     question: Optional[str] = Field(None, description="Question text for FAQs.")
     query_score: Optional[int] = Field(None, description="Elasticsearch query score for a retrieved document")
+    meta: Optional[Dict[str, Optional[str]]] = Field(None, description="")

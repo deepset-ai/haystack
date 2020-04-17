@@ -57,12 +57,12 @@ class Finder:
         results = self.reader.predict(question=question,
                                       documents=documents,
                                       top_k=top_k_reader)
-        # Add corresponding document_name if an answer contains the document_id
+        # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
-            ans["document_name"] = None
+            ans["meta"] = {}
             for doc in documents:
                 if doc.id == ans["document_id"]:
-                    ans["document_name"] = doc.name
+                    ans["meta"] = doc.meta
 
         return results
 

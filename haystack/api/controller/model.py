@@ -75,10 +75,10 @@ class Answer(BaseModel):
     context: Optional[str]
     offset_start: int
     offset_end: int
+    offset_start_in_doc: Optional[int]
+    offset_end_in_doc: Optional[int]
+    document_id: Optional[str] = None
     meta: Optional[Dict[str, Optional[str]]]
-    # document_id: Optional[str] = None
-    # document_name: Optional[str]
-    # TODO move these two into "meta" also for the regular extractive QA
 
 
 class AnswersToIndividualQuestion(BaseModel):
