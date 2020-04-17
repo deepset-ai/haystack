@@ -1,5 +1,4 @@
 import logging
-import time
 from datetime import datetime
 from typing import List, Dict, Optional
 
@@ -11,7 +10,8 @@ from haystack import Finder
 from haystack.api.config import DB_HOST, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
     EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
-    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER
+    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER
+from haystack.api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.retriever.elasticsearch import ElasticsearchRetriever
@@ -93,39 +93,39 @@ class Answers(BaseModel):
 #############################################
 # Endpoints
 #############################################
+doc_qa_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
+
 @router.post("/models/{model_id}/doc-qa", response_model=Answers, response_model_exclude_unset=True)
 def doc_qa(model_id: int, request: Question):
-    t1 = time.time()
-    finder = FINDERS.get(model_id, None)
-    if not finder:
-        raise HTTPException(
-            status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
-        )
+    with doc_qa_limiter.run():
+        finder = FINDERS.get(model_id, None)
+        if not finder:
+            raise HTTPException(
+                status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+            )
 
-    results = []
-    for question in request.questions:
-        if request.filters:
-            # put filter values into a list and remove filters with null value
-            request.filters = {key: [value] for key, value in request.filters.items() if value is not None}
-            logger.info(f" [{datetime.now()}] Request: {request}")
+        results = []
+        for question in request.questions:
+            if request.filters:
+                # put filter values into a list and remove filters with null value
+                request.filters = {key: [value] for key, value in request.filters.items() if value is not None}
+                logger.info(f" [{datetime.now()}] Request: {request}")
 
-        result = finder.get_answers(
-            question=question,
-            top_k_retriever=request.top_k_retriever,
-            top_k_reader=request.top_k_reader,
-            filters=request.filters,
-        )
-        results.append(result)
+            result = finder.get_answers(
+                question=question,
+                top_k_retriever=request.top_k_retriever,
+                top_k_reader=request.top_k_reader,
+                filters=request.filters,
+            )
+            results.append(result)
 
-        resp_time = round(time.time() - t1, 2)
-        logger.info({"time": resp_time, "request": request.json(), "results": results})
+            logger.info({"request": request.json(), "results": results})
 
         return {"results": results}
 
 
 @router.post("/models/{model_id}/faq-qa", response_model=Answers, response_model_exclude_unset=True)
 def faq_qa(model_id: int, request: Question):
-    t1 = time.time()
     finder = FINDERS.get(model_id, None)
     if not finder:
         raise HTTPException(
@@ -144,7 +144,6 @@ def faq_qa(model_id: int, request: Question):
         )
         results.append(result)
 
-        resp_time = round(time.time() - t1, 2)
-        logger.info({"time": resp_time, "request": request.json(), "results": results})
+        logger.info({"request": request.json(), "results": results})
 
         return {"results": results}
