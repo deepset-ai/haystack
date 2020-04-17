@@ -5,6 +5,7 @@ import os
 USE_GPU = os.getenv("USE_GPU", "True").lower() == "true"
 MAX_PROCESSES = int(os.getenv("MAX_PROCESSES", 4))
 BATCHSIZE = int(os.getenv("BATCHSIZE", 50))
+CONCURRENT_REQUEST_PER_WORKER = int(os.getenv("CONCURRENT_REQUEST_PER_WORKER", 4))
 
 # DB
 DB_HOST = os.getenv("DB_HOST", "localhost")
