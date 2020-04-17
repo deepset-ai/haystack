@@ -36,4 +36,5 @@ if EXCLUDE_META_DATA_FIELDS:
 EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", None)
 
 # Monitoring
-APM_SERVER = "http://localhost:8200"
+APM_SERVER = os.getenv("APM_SERVER", None)
+APM_SERVICE_NAME = os.getenv("APM_SERVICE_NAME", "haystack-backend")

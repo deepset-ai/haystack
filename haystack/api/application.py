@@ -6,7 +6,7 @@ from elasticsearch import Elasticsearch
 from fastapi import FastAPI, HTTPException
 from starlette.middleware.cors import CORSMiddleware
 
-from haystack.api.config import DB_HOST, DB_USER, DB_PW, APM_SERVER
+from haystack.api.config import DB_HOST, DB_USER, DB_PW, APM_SERVER, APM_SERVICE_NAME
 from haystack.api.controller.errors.http_error import http_error_handler
 from haystack.api.controller.router import router as api_router
 
@@ -25,9 +25,11 @@ def get_application() -> FastAPI:
     application.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
     )
-    apm_config = {"SERVICE_NAME": "haystack-backend", "SERVER_URL": APM_SERVER, "CAPTURE_BODY": "all"}
-    elasticapm = make_apm_client(apm_config)
-    application.add_middleware(ElasticAPM, client=elasticapm)
+
+    if APM_SERVER:
+        apm_config = {"SERVICE_NAME": APM_SERVICE_NAME, "SERVER_URL": APM_SERVER, "CAPTURE_BODY": "all"}
+        elasticapm = make_apm_client(apm_config)
+        application.add_middleware(ElasticAPM, client=elasticapm)
 
     application.add_exception_handler(HTTPException, http_error_handler)
 
