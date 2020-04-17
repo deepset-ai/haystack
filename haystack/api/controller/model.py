@@ -46,7 +46,7 @@ if READER_MODEL_PATH:
         context_window_size=CONTEXT_WINDOW_SIZE,
         top_k_per_candidate=TOP_K_PER_CANDIDATE,
         no_ans_boost=NO_ANS_BOOST,
-        max_processes=MAX_PROCESSES,
+        num_processes=MAX_PROCESSES,
         max_seq_len=MAX_SEQ_LEN,
         doc_stride=DOC_STRIDE,
     )
