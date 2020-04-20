@@ -83,7 +83,7 @@ class FARMReader:
         self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
                                           task_type="question_answering", max_seq_len=max_seq_len,
-                                          doc_stride=doc_stride)
+                                          doc_stride=doc_stride, num_processes=num_processes)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
@@ -91,7 +91,6 @@ class FARMReader:
             self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
         except:
             logger.warning("Could not set `top_k_per_sample` in FARM. Please update FARM version.")
-        self.num_processes = num_processes
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
 
@@ -227,7 +226,7 @@ class FARMReader:
 
         # get answers from QA model
         predictions = self.inferencer.inference_from_dicts(
-            dicts=input_dicts, rest_api_schema=True, num_processes=self.num_processes, multiprocessing_chunksize=1
+            dicts=input_dicts, rest_api_schema=True, multiprocessing_chunksize=1
         )
         # assemble answers from all the different documents & format them.
         # For the "no answer" option, we collect all no_ans_gaps and decide how likely
