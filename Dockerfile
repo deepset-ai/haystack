@@ -4,6 +4,7 @@ WORKDIR /home/user
 
 # install as a package
 COPY setup.py requirements.txt README.rst /home/user/
+RUN pip install -r requirements.txt
 RUN pip install -e .
 
 # copy code
