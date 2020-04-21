@@ -4,7 +4,6 @@ WORKDIR /home/user
 
 # install as a package
 COPY setup.py requirements.txt README.rst /home/user/
-RUN pip install -r requirements.txt
 RUN pip install -e .
 
 # copy code
@@ -19,4 +18,4 @@ COPY models /home/user/models
 EXPOSE 8000
 
 # cmd for running the API
-CMD ["uvicorn", "haystack.api.inference:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["gunicorn", "haystack.api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "2"]

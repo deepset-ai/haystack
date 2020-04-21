@@ -2,7 +2,7 @@
 -e git://github.com/deepset-ai/FARM.git@ecee40e34781394a805c7dde14e6cc2570372798#egg=farm
 fastapi
 uvicorn
-flask_sqlalchemy
+gunicorn
 pandas
 psycopg2-binary
 sklearn
