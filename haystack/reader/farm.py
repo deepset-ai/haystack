@@ -246,8 +246,8 @@ class FARMReader:
                            "context": a["context"],
                            "offset_start": a["offset_answer_start"] - a["offset_context_start"],
                            "offset_end": a["offset_answer_end"] - a["offset_context_start"],
-                           "offset_doc_start": a["offset_answer_start"],
-                           "offset_doc_end": a["offset_answer_end"],
+                           "offset_start_in_doc": a["offset_answer_start"],
+                           "offset_end_in_doc": a["offset_answer_end"],
                            "document_id": a["document_id"]}
                     answers_per_document.append(cur)
 
