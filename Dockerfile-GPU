@@ -2,29 +2,19 @@ FROM  nvidia/cuda:10.1-runtime
 
 WORKDIR /home/user
 
-RUN apt-get update \
-  && apt-get install -y python3-pip python3-dev \
-  && cd /usr/local/bin \
-  && ln -s /usr/bin/python3 python \
-  && pip3 install --upgrade pip
+RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-distutils python3-pip curl git
 
-# Install some basic utilities
-RUN apt-get update && apt-get install -y \
-    curl \
-    ca-certificates \
-    sudo \
-    git \
-    bzip2 \
-    libx11-6 \
- && rm -rf /var/lib/apt/lists/*
+# Set default Python version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
+RUN update-alternatives --set python3 /usr/bin/python3.7
 
 # copy code
 COPY haystack /home/user/haystack
 
 # install as a package
 COPY setup.py requirements.txt README.rst /home/user/
-RUN pip install -r requirements.txt
-RUN pip install -e .
+RUN pip3 install -r requirements.txt
+RUN pip3 install -e .
 
 # copy saved FARM models
 COPY models /home/user/models
