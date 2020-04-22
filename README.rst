@@ -100,7 +100,7 @@ However, if you prefer a PostgreSQL or MySQL backend for production, you can eas
 
 REST API
 --------
-A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is included to answer questions at inference time. To serve the API, run :code:`uvicorn haystack.api.inference:app`.
+A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is included to answer questions at inference time, collect & export user feedback on answers and allow basic monitoring of requests via Kibana. To serve the API, run :code:`gunicorn haystack.api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker`.
 You will find the Swagger API documentation at http://127.0.0.1:8000/docs
 
 Labeling Tool
