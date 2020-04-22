@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Optional
 
+import elasticapm
 from fastapi import APIRouter
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -119,7 +120,8 @@ def doc_qa(model_id: int, request: Question):
             )
             results.append(result)
 
-            logger.info({"request": request.json(), "results": results})
+        elasticapm.set_custom_context({"results": results})
+        logger.info({"request": request.json(), "results": results})
 
         return {"results": results}
 
@@ -144,6 +146,7 @@ def faq_qa(model_id: int, request: Question):
         )
         results.append(result)
 
-        logger.info({"request": request.json(), "results": results})
+    elasticapm.set_custom_context({"results": results})
+    logger.info({"request": request.json(), "results": results})
 
-        return {"results": results}
+    return {"results": results}
