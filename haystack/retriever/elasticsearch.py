@@ -9,13 +9,50 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: Type[BaseDocumentStore], direct_filters=None, custom_query=None):
+    def __init__(self, document_store: Type[BaseDocumentStore], direct_filters: dict = None, custom_query: str = None):
+        """
+        :param document_store: an instance of a DocumentStore to retrieve documents from.
+        :param direct_filters: a set of additional filters to append over the query filters.
+        :param custom_query: custom query template to override the default query. The question string and filters from
+                             user input are parameterized and substituted during runtime. Example:
+                             {
+                                "size": 10,
+                                "query": {
+                                    "bool": {
+                                        "should": [
+                                            {
+                                                "multi_match": {
+                                                    "query": "${question}",
+                                                    "type": "most_fields",
+                                                    "fields": [
+                                                        "text",
+                                                        "title"
+                                                    ]
+                                                }
+                                            }
+                                        ],
+                                        "filter": [
+                                            {
+                                                "terms": {
+                                                    "year": ${years}
+                                                }
+                                            },
+                                            {
+                                                "terms": {
+                                                    "quarter": ${quarters}
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                             }
+        """
         self.document_store = document_store
         self.direct_filters = direct_filters
         self.custom_query = custom_query
 
-    def retrieve(self, query: str, candidate_doc_ids: [str] = None, top_k: int = 10) -> [Document]:
-        documents = self.document_store.query(query, top_k, candidate_doc_ids, self.direct_filters, self.custom_query)
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10) -> [Document]:
+        documents = self.document_store.query(query, filters, top_k, self.custom_query)
         logger.info(f"Got {len(documents)} candidates from retriever")
 
         return documents

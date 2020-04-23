@@ -1,4 +1,6 @@
+import json
 import logging
+from string import Template
 
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
@@ -103,24 +105,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: str,
+        filters: dict,
         top_k: int = 10,
-        candidate_doc_ids: [str] = None,
-        direct_filters: dict = None,
         custom_query: str = None,
     ) -> [Document]:
-        # TODO:
-        # for now: we keep the current structure of candidate_doc_ids for compatibility with SQL documentstores
-        # midterm: get rid of it and do filtering with tags directly in this query
 
-        # if a custom search query is provided then use it
-        if custom_query:
-            body = {
-                "size": top_k,
-                "query": {
-                    "bool": custom_query
-                }
-            }
-        # else use standard search query for provided search fields
+        if custom_query:  # if a custom search query is provided then use it
+            template = Template(custom_query)
+            substitutions = {"question": query}
+            for key, values in filters.items():
+                values_str = [f'"{v}"' for v in values]
+                substitutions[key] = f"[{','.join(values_str)}]"
+            custom_query_json = template.substitute(**substitutions)
+            body = json.loads(custom_query_json)
         else:
             body = {
                 "size": top_k,
@@ -131,14 +128,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 },
             }
 
-        # use other filters directly with query, if provided
-        if direct_filters:
-            # filter types are must, should, etc.
-            for filter_type, filter_dict in direct_filters.items():
-                body["query"]["bool"][filter_type] = filter_dict
-
-        if candidate_doc_ids:
-            body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
+            filter_clause = []
+            for key, values in filters.items():
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+            if filter_clause:
+                body["query"]["bool"]["filter"] = filter_clause
 
         if self.excluded_meta_data:
             body["_source"] = {"excludes": self.excluded_meta_data}

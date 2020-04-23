@@ -29,22 +29,7 @@ class Finder:
         :return:
         """
 
-        # 1) Optional: reduce the search space via document tags
-        if filters:
-            logging.info(f"Apply filters: {filters}")
-            candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)
-            logger.info(f"Got candidate IDs due to filters:  {candidate_doc_ids}")
-
-            if len(candidate_doc_ids) == 0:
-                # We didn't find any doc matching the filters
-                results = {"question": question, "answers": []}
-                return results
-
-        else:
-            candidate_doc_ids = None
-
-        # 2) Apply retriever to get fast candidate documents
-        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
+        documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
