@@ -1,7 +1,7 @@
 import logging
 
 from elasticsearch import Elasticsearch
-from elasticsearch.helpers import scan
+from elasticsearch.helpers import bulk, scan
 
 from haystack.database.base import BaseDocumentStore, Document
 
@@ -83,11 +83,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return doc_ids
 
     def write_documents(self, documents):
-        for d in documents:
-            try:
-                self.client.index(index=self.index, body=d)
-            except Exception as e:
-                logger.error(f"Failed to index doc ({e}): {d}")
+        for doc in documents:
+            doc["_op_type"] = "create"
+            doc["_index"] = self.index
+
+        bulk(self.client, documents)
 
     def get_document_count(self):
         result = self.client.count()
