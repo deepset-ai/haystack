@@ -116,8 +116,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             substitutions = {"question": query}  # replace all "$question" placeholder(s) with query
             # replace all filter values placeholders with a list of strings(in JSON format) for each filter
             for key, values in filters.items():
-                values_str = [f'"{v}"' for v in values]
-                substitutions[key] = f"[{','.join(values_str)}]"
+                values_str = json.dumps(values)
+                substitutions[key] = values_str
             custom_query_json = template.substitute(**substitutions)
             body = json.loads(custom_query_json)
         else:
