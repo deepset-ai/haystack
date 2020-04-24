@@ -2,6 +2,7 @@ import logging
 from collections import OrderedDict, namedtuple
 
 import pandas as pd
+from haystack.database.base import Document
 from haystack.retriever.base import BaseRetriever
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -9,7 +10,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 logger = logging.getLogger(__name__)
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
-Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text","document_name"])
+Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text"])
 
 
 class TfidfRetriever(BaseRetriever):
@@ -44,11 +45,11 @@ class TfidfRetriever(BaseRetriever):
         paragraphs = []
         p_id = 0
         for doc in documents:
-            for p in doc["text"].split("\n\n"):
+            for p in doc.text.split("\n\n"):
                 if not p.strip():  # skip empty paragraphs
                     continue
                 paragraphs.append(
-                    Paragraph(document_id=doc["id"],document_name=doc["name"],paragraph_id=p_id, text=(p,))
+                    Paragraph(document_id=doc.id, paragraph_id=p_id, text=(p,))
                 )
                 p_id += 1
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
@@ -64,14 +65,12 @@ class TfidfRetriever(BaseRetriever):
         )
         return indices_and_scores
 
-    def retrieve(self, query, candidate_doc_ids=None, top_k=10, verbose=True):
+    def retrieve(self, query, filters=None, top_k=10, verbose=True):
         # get scores
         indices_and_scores = self._calc_scores(query)
 
-        # rank & filter paragraphs
+        # rank paragraphs
         df_sliced = self.df.loc[indices_and_scores.keys()]
-        if candidate_doc_ids:
-            df_sliced = df_sliced[df_sliced.document_id.isin(candidate_doc_ids)]
         df_sliced = df_sliced[:top_k]
 
         if verbose:
@@ -81,10 +80,18 @@ class TfidfRetriever(BaseRetriever):
 
         # get actual content for the top candidates
         paragraphs = list(df_sliced.text.values)
-        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"],"document_name":row["document_name"]}
+        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"]}
                      for idx, row in df_sliced.iterrows()]
 
-        return paragraphs, meta_data
+        documents = []
+        for para, meta in zip(paragraphs, meta_data):
+            documents.append(
+                Document(
+                    id=meta["paragraph_id"],
+                    text=para
+                ))
+
+        return documents
 
     def fit(self):
         self.df = pd.DataFrame.from_dict(self.paragraphs)
