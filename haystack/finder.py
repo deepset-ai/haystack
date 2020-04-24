@@ -29,6 +29,7 @@ class Finder:
         :return:
         """
 
+        # 1) Apply retriever(with optional filters) to get fast candidate documents
         documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
 
         if len(documents) == 0:
@@ -36,12 +37,13 @@ class Finder:
             results = {"question": question, "answers": []}
             return results
 
-        # 3) Apply reader to get granular answer(s)
+        # 2) Apply reader to get granular answer(s)
         len_chars = sum([len(d.text) for d in documents])
         logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
         results = self.reader.predict(question=question,
                                       documents=documents,
                                       top_k=top_k_reader)
+
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
             ans["meta"] = {}
