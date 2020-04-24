@@ -9,12 +9,16 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: Type[BaseDocumentStore], direct_filters: dict = None, custom_query: str = None):
+    def __init__(self, document_store: Type[BaseDocumentStore], custom_query: str = None):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
-        :param direct_filters: a set of additional filters to append over the query filters.
-        :param custom_query: custom query template to override the default query. The question string and filters from
-                             user input are parameterized and substituted during runtime. Example:
+        :param custom_query: query string as per Elasticsearch DSL with a mandatory question placeholder($question).
+
+                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+                             that get substituted during runtime. The placeholder($filter_name_1, $filter_name_2..)
+                             names must match with the filters dict supplied in self.retrieve().
+
+                             An example custom_query:
                              {
                                 "size": 10,
                                 "query": {
@@ -22,7 +26,7 @@ class ElasticsearchRetriever(BaseRetriever):
                                         "should": [
                                             {
                                                 "multi_match": {
-                                                    "query": "${question}",
+                                                    "query": "${question}",  // mandatory $question placeholder
                                                     "type": "most_fields",
                                                     "fields": [
                                                         "text",
@@ -34,21 +38,26 @@ class ElasticsearchRetriever(BaseRetriever):
                                         "filter": [
                                             {
                                                 "terms": {
-                                                    "year": ${years}
+                                                    "year": ${years}  // optional custom filter
                                                 }
                                             },
                                             {
                                                 "terms": {
-                                                    "quarter": ${quarters}
+                                                    "quarter": ${quarters} // optional custom filter
                                                 }
                                             }
                                         ]
                                     }
                                 }
                              }
+
+                             For this custom_query, a sample retrieve() could be:
+                             self.retrieve(query="Why did the revenue increase?",
+                                           filters={"year": ["2019"], "quarter": ["Q1", "Q2"]})
         """
         self.document_store = document_store
-        self.direct_filters = direct_filters
+        if custom_query:
+            assert "$question" in custom_query, "The custom_query must contain a $question placeholder."
         self.custom_query = custom_query
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10) -> [Document]:
