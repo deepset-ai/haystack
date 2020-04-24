@@ -110,9 +110,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         custom_query: str = None,
     ) -> [Document]:
 
-        if custom_query:  # if a custom search query is provided then use it
+        if custom_query:  # substitute placeholder for question and filters for the custom_query template string
             template = Template(custom_query)
-            substitutions = {"question": query}
+
+            substitutions = {"question": query}  # replace all "$question" placeholder(s) with query
+            # replace all filter values placeholders with a list of strings(in JSON format) for each filter
             for key, values in filters.items():
                 values_str = [f'"{v}"' for v in values]
                 substitutions[key] = f"[{','.join(values_str)}]"
