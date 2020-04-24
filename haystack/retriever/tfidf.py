@@ -66,6 +66,9 @@ class TfidfRetriever(BaseRetriever):
         return indices_and_scores
 
     def retrieve(self, query, filters=None, top_k=10, verbose=True):
+        if filters:
+            raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
+
         # get scores
         indices_and_scores = self._calc_scores(query)
 
