@@ -76,8 +76,6 @@ class EmbeddingRetriever(BaseRetriever):
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
-        direct_filters=None,
-        custom_query=None,
     ):
         """
         TODO
@@ -91,8 +89,6 @@ class EmbeddingRetriever(BaseRetriever):
         self.embedding_model = embedding_model
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
-        self.direct_filters = direct_filters
-        self.custom_query = custom_query
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
         if model_format == "farm" or model_format == "transformers":
