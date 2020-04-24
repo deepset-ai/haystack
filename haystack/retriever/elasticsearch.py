@@ -15,7 +15,7 @@ class ElasticsearchRetriever(BaseRetriever):
         :param custom_query: query string as per Elasticsearch DSL with a mandatory question placeholder($question).
 
                              Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                             that get substituted during runtime. The placeholder($filter_name_1, $filter_name_2..)
+                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
                              names must match with the filters dict supplied in self.retrieve().
 
                              An example custom_query:
@@ -56,8 +56,6 @@ class ElasticsearchRetriever(BaseRetriever):
                                            filters={"year": ["2019"], "quarter": ["Q1", "Q2"]})
         """
         self.document_store = document_store
-        if custom_query:
-            assert "$question" in custom_query, "The custom_query must contain a $question placeholder."
         self.custom_query = custom_query
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10) -> [Document]:
