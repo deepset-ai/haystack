@@ -8,4 +8,5 @@ psycopg2-binary
 sklearn
 elasticsearch
 elastic-apm
+tox
 # optional: sentence-transformers

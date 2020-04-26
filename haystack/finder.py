@@ -2,6 +2,7 @@ import logging
 from scipy.special import expit
 import numpy as np
 
+from haystack.database.base import Document
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,10 @@ class Finder:
             logger.info("Retriever did not return any documents. Skipping reader ...")
             results = {"question": question, "answers": []}
             return results
+
+        import collections
+        if isinstance(documents[0], collections.Iterable):
+            documents = [Document(id=idx, text=doc) for idx, doc in enumerate(documents[0])]
 
         # 3) Apply reader to get granular answer(s)
         len_chars = sum([len(d.text) for d in documents])
