@@ -30,38 +30,20 @@ class Finder:
         :return:
         """
 
-        # 1) Optional: reduce the search space via document tags
-        if filters:
-            logging.info(f"Apply filters: {filters}")
-            candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)
-            logger.info(f"Got candidate IDs due to filters:  {candidate_doc_ids}")
-
-            if len(candidate_doc_ids) == 0:
-                # We didn't find any doc matching the filters
-                results = {"question": question, "answers": []}
-                return results
-
-        else:
-            candidate_doc_ids = None
-
-        # 2) Apply retriever to get fast candidate documents
-        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
+        # 1) Apply retriever(with optional filters) to get fast candidate documents
+        documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
             results = {"question": question, "answers": []}
             return results
 
-        # import collections
-        # if isinstance(documents[0], collections.Iterable):
-        #     documents = [Document(id=idx, text=doc) for idx, doc in enumerate(documents[0])]
-
-        # 3) Apply reader to get granular answer(s)
         len_chars = sum([len(d.text) for d in documents])
         logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
         results = self.reader.predict(question=question,
                                       documents=documents,
                                       top_k=top_k_reader)
+
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
             ans["meta"] = {}

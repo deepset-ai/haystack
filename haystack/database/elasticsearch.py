@@ -1,7 +1,9 @@
+import json
 import logging
+from string import Template
 
 from elasticsearch import Elasticsearch
-from elasticsearch.helpers import scan
+from elasticsearch.helpers import bulk, scan
 
 from haystack.database.base import BaseDocumentStore, Document
 
@@ -83,11 +85,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return doc_ids
 
     def write_documents(self, documents):
-        for d in documents:
-            try:
-                self.client.index(index=self.index, body=d)
-            except Exception as e:
-                logger.error(f"Failed to index doc ({e}): {d}")
+        for doc in documents:
+            doc["_op_type"] = "create"
+            doc["_index"] = self.index
+
+        bulk(self.client, documents)
 
     def get_document_count(self):
         result = self.client.count()
@@ -103,24 +105,21 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: str,
+        filters: dict,
         top_k: int = 10,
-        candidate_doc_ids: [str] = None,
-        direct_filters: dict = None,
         custom_query: str = None,
     ) -> [Document]:
-        # TODO:
-        # for now: we keep the current structure of candidate_doc_ids for compatibility with SQL documentstores
-        # midterm: get rid of it and do filtering with tags directly in this query
 
-        # if a custom search query is provided then use it
-        if custom_query:
-            body = {
-                "size": top_k,
-                "query": {
-                    "bool": custom_query
-                }
-            }
-        # else use standard search query for provided search fields
+        if custom_query:  # substitute placeholder for question and filters for the custom_query template string
+            template = Template(custom_query)
+
+            substitutions = {"question": query}  # replace all "${question}" placeholder(s) with query
+            # replace all filter values placeholders with a list of strings(in JSON format) for each filter
+            for key, values in filters.items():
+                values_str = json.dumps(values)
+                substitutions[key] = values_str
+            custom_query_json = template.substitute(**substitutions)
+            body = json.loads(custom_query_json)
         else:
             body = {
                 "size": top_k,
@@ -131,14 +130,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 },
             }
 
-        # use other filters directly with query, if provided
-        if direct_filters:
-            # filter types are must, should, etc.
-            for filter_type, filter_dict in direct_filters.items():
-                body["query"]["bool"][filter_type] = filter_dict
-
-        if candidate_doc_ids:
-            body["query"]["bool"]["filter"] = [{"terms": {"_id": candidate_doc_ids}}]
+            filter_clause = []
+            for key, values in filters.items():
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+            if filter_clause:
+                body["query"]["bool"]["filter"] = filter_clause
 
         if self.excluded_meta_data:
             body["_source"] = {"excludes": self.excluded_meta_data}
@@ -185,7 +185,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             documents = [self._convert_es_hit_to_document(hit, score_adjustment=-1) for hit in result]
             return documents
 
-    def _convert_es_hit_to_document(self, hit, score_adjustment=0) -> [Document]:
+    def _convert_es_hit_to_document(self, hit, score_adjustment=0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.external_source_id_field)}
         meta_data["name"] = meta_data.pop(self.name_field)
@@ -195,6 +195,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             text=hit["_source"][self.text_field],
             external_source_id=hit["_source"].get(self.external_source_id_field),
             meta=meta_data,
-            query_score=hit["_score"] + score_adjustment,
+            query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
         )
         return document

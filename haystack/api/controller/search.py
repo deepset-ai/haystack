@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Optional
 
+import elasticapm
 from fastapi import APIRouter
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -14,7 +15,7 @@ from haystack.api.config import DB_HOST, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEM
 from haystack.api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
-from haystack.retriever.elasticsearch import ElasticsearchRetriever
+from haystack.retriever.elasticsearch import ElasticsearchRetriever, EmbeddingRetriever
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -35,10 +36,13 @@ document_store = ElasticsearchDocumentStore(
     excluded_meta_data=EXCLUDE_META_DATA_FIELDS,
 )
 
-retriever = ElasticsearchRetriever(document_store=document_store, embedding_model=EMBEDDING_MODEL_PATH, gpu=USE_GPU)
 
-if READER_MODEL_PATH:
-    # needed for extractive QA
+if EMBEDDING_MODEL_PATH:
+    retriever = EmbeddingRetriever(document_store=document_store, embedding_model=EMBEDDING_MODEL_PATH, gpu=USE_GPU)
+else:
+    retriever = ElasticsearchRetriever(document_store=document_store)
+
+if READER_MODEL_PATH:  # for extractive doc-qa
     reader = FARMReader(
         model_name_or_path=str(READER_MODEL_PATH),
         batch_size=BATCHSIZE,
@@ -51,8 +55,7 @@ if READER_MODEL_PATH:
         doc_stride=DOC_STRIDE,
     )
 else:
-    # don't need one for pure FAQ matching
-    reader = None
+    reader = None  # don't need one for pure FAQ matching
 
 FINDERS = {1: Finder(reader=reader, retriever=retriever)}
 
@@ -119,7 +122,8 @@ def doc_qa(model_id: int, request: Question):
             )
             results.append(result)
 
-            logger.info({"request": request.json(), "results": results})
+        elasticapm.set_custom_context({"results": results})
+        logger.info({"request": request.json(), "results": results})
 
         return {"results": results}
 
@@ -144,6 +148,7 @@ def faq_qa(model_id: int, request: Question):
         )
         results.append(result)
 
-        logger.info({"request": request.json(), "results": results})
+    elasticapm.set_custom_context({"results": results})
+    logger.info({"request": request.json(), "results": results})
 
-        return {"results": results}
+    return {"results": results}
