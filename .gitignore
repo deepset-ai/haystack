@@ -1,6 +1,7 @@
 # Local run files
 qa.db
 **/qa.db
+**/*qa*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

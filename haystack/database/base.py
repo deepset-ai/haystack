@@ -18,7 +18,7 @@ class BaseDocumentStore:
         pass
 
     @abstractmethod
-    def get_document_ids_by_tag(self, tag):
+    def get_document_ids_by_tags(self, tag):
         pass
 
     @abstractmethod
@@ -38,3 +38,9 @@ class Document(BaseModel):
     question: Optional[str] = Field(None, description="Question text for FAQs.")
     query_score: Optional[int] = Field(None, description="Elasticsearch query score for a retrieved document")
     meta: Optional[Dict[str, Optional[str]]] = Field(None, description="")
+
+    def __getitem__(self, item):
+        if item == 'text':
+            return self.text
+        if item == 'id':
+            return self.id
