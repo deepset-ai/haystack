@@ -1,8 +1,7 @@
 import logging
-from scipy.special import expit
-import numpy as np
 
-from haystack.database.base import Document
+import numpy as np
+from scipy.special import expit
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +37,7 @@ class Finder:
             results = {"question": question, "answers": []}
             return results
 
+        # 2) Apply reader to get granular answer(s)
         len_chars = sum([len(d.text) for d in documents])
         logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
         results = self.reader.predict(question=question,
