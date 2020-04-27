@@ -195,6 +195,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             text=hit["_source"][self.text_field],
             external_source_id=hit["_source"].get(self.external_source_id_field),
             meta=meta_data,
-            query_score=hit["_score"] + score_adjustment,
+            query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
         )
         return document
