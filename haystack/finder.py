@@ -52,9 +52,9 @@ class Finder:
             results = {"question": question, "answers": []}
             return results
 
-        import collections
-        if isinstance(documents[0], collections.Iterable):
-            documents = [Document(id=idx, text=doc) for idx, doc in enumerate(documents[0])]
+        # import collections
+        # if isinstance(documents[0], collections.Iterable):
+        #     documents = [Document(id=idx, text=doc) for idx, doc in enumerate(documents[0])]
 
         # 3) Apply reader to get granular answer(s)
         len_chars = sum([len(d.text) for d in documents])
