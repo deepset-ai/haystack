@@ -9,13 +9,40 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: Type[BaseDocumentStore], direct_filters=None, custom_query=None):
+    def __init__(self, document_store: Type[BaseDocumentStore], custom_query: str = None):
+        """
+        :param document_store: an instance of a DocumentStore to retrieve documents from.
+        :param custom_query: query string as per Elasticsearch DSL with a mandatory question placeholder($question).
+
+                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
+                             names must match with the filters dict supplied in self.retrieve().
+
+                             An example custom_query:
+                            {
+                                "size": 10,
+                                "query": {
+                                    "bool": {
+                                        "should": [{"multi_match": {
+                                            "query": "${question}",                 // mandatory $question placeholder
+                                            "type": "most_fields",
+                                            "fields": ["text", "title"]}}],
+                                        "filter": [                                 // optional custom filters
+                                            {"terms": {"year": "${years}"}},
+                                            {"terms": {"quarter": "${quarters}"}}],
+                                    }
+                                },
+                            }
+
+                             For this custom_query, a sample retrieve() could be:
+                             self.retrieve(query="Why did the revenue increase?",
+                                           filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+        """
         self.document_store = document_store
-        self.direct_filters = direct_filters
         self.custom_query = custom_query
 
-    def retrieve(self, query: str, candidate_doc_ids: [str] = None, top_k: int = 10) -> [Document]:
-        documents = self.document_store.query(query, top_k, candidate_doc_ids, self.direct_filters, self.custom_query)
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10) -> [Document]:
+        documents = self.document_store.query(query, filters, top_k, self.custom_query)
         logger.info(f"Got {len(documents)} candidates from retriever")
 
         return documents
@@ -30,8 +57,6 @@ class EmbeddingRetriever(BaseRetriever):
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
-        direct_filters=None,
-        custom_query=None,
     ):
         """
         TODO
@@ -45,8 +70,6 @@ class EmbeddingRetriever(BaseRetriever):
         self.embedding_model = embedding_model
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
-        self.direct_filters = direct_filters
-        self.custom_query = custom_query
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
         if model_format == "farm" or model_format == "transformers":

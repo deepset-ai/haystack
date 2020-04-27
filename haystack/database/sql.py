@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, F
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
-from haystack.database.base import BaseDocumentStore
+from haystack.database.base import BaseDocumentStore, Document as DocumentSchema
 
 Base = declarative_base()
 
@@ -49,19 +49,16 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def get_document_by_id(self, id):
         document_row = self.session.query(Document).get(id)
-        document = {
-            "id": document_row.id,
-            "name": document_row.name,
-            "text": document_row.text,
-            "tags": document_row.tags,
-        }
+        document = self._convert_sql_row_to_document(document_row)
+
         return document
 
     def get_all_documents(self):
         document_rows = self.session.query(Document).all()
         documents = []
         for row in document_rows:
-            documents.append({"id": row.id, "name": row.name, "text": row.text, "tags": row.tags})
+            documents.append(self._convert_sql_row_to_document(row))
+
         return documents
 
     def get_document_ids_by_tags(self, tags):
@@ -101,3 +98,10 @@ class SQLDocumentStore(BaseDocumentStore):
     def get_document_count(self):
         return self.session.query(Document).count()
 
+    def _convert_sql_row_to_document(self, row) -> Document:
+        document = DocumentSchema(
+            id=row.id,
+            text=row.text,
+            meta=row.tags
+        )
+        return document
