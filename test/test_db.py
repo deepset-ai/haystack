@@ -8,4 +8,5 @@ def test_db_write_read():
     documents = sql_document_store.get_all_documents()
     assert len(documents) == 2
     doc = sql_document_store.get_document_by_id("1")
-    assert doc.keys() == {"id", "name", "text", "tags"}
+    assert doc.id
+    assert doc.text
