@@ -19,5 +19,4 @@ def test_finder_get_answers_with_in_memory_store():
     finder = Finder(reader, retriever)
     prediction = finder.get_answers(question="testing finder", top_k_retriever=10,
                                     top_k_reader=5)
-    print(prediction)
     assert prediction is not None
