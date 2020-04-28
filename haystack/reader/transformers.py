@@ -87,7 +87,7 @@ class TransformersReader:
                         "offset_answer_end": pred["end"],
                         "probability": pred["score"],
                         "score": None,
-                        "document_id": doc.id
+                        "document_id": doc.id,
                     })
 
         # sort answers by their `probability` and select top-k
