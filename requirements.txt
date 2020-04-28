@@ -9,4 +9,5 @@ sklearn
 elasticsearch
 elastic-apm
 tox
+coverage
 # optional: sentence-transformers
