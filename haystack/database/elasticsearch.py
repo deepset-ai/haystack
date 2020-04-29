@@ -105,7 +105,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: str,
-        filters: dict,
+        filters: dict = None,
         top_k: int = 10,
         custom_query: str = None,
     ) -> [Document]:
@@ -115,9 +115,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             substitutions = {"question": query}  # replace all "${question}" placeholder(s) with query
             # replace all filter values placeholders with a list of strings(in JSON format) for each filter
-            for key, values in filters.items():
-                values_str = json.dumps(values)
-                substitutions[key] = values_str
+            if filters:
+                for key, values in filters.items():
+                    values_str = json.dumps(values)
+                    substitutions[key] = values_str
             custom_query_json = template.substitute(**substitutions)
             body = json.loads(custom_query_json)
         else:
@@ -130,14 +131,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 },
             }
 
-            filter_clause = []
-            for key, values in filters.items():
-                filter_clause.append(
-                    {
-                        "terms": {key: values}
-                    }
-                )
-            if filter_clause:
+            if filters:
+                filter_clause = []
+                for key, values in filters.items():
+                    filter_clause.append(
+                        {
+                            "terms": {key: values}
+                        }
+                    )
                 body["query"]["bool"]["filter"] = filter_clause
 
         if self.excluded_meta_data:
