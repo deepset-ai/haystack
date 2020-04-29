@@ -36,7 +36,7 @@ Switching between different backends allows fast prototyping (SQLite) and scalab
 
 Core Features
 =============
-- **Powerful models**: Utilize all latest transformer based models (BERT, ALBERT roBERTa ...)
+- **Powerful models**: Utilize all latest transformer based models (BERT, ALBERT, RoBERTa ...)
 - **Modular & future-proof**: Easily switch to newer models once they get published.
 - **Developer friendly**: Easy to debug, extend and modify.
 - **Scalable**: Production-ready deployments via Elasticsearch backend.
@@ -57,9 +57,9 @@ Components
 
 Resources
 =========
-- Tutorial 1  - Basic QA Pipeline: `Jupyter notebook  <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_  or `Colab <https://colab.research.google.com/drive/1Gj3JjPPcm8DMmctz66K68cOV53JZKqeX>`_
-- Tutorial 2  - Fine-tuning a model on own data: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`_ or `Colab <https://colab.research.google.com/drive/1nnkxLB7Sq7TJmIvTvxiYuWmNleWNLIdR>`_
-- Tutorial 3  - Using Elasticsearch as Backend: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Elasticsearch_backend.ipynb>`_ or `Colab <https://colab.research.google.com/drive/1NbtUskkt4NaUgj4KM9QTHTSR3GCQVyn7>`_
+- Tutorial 1  - Basic QA Pipeline: `Jupyter notebook  <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_  or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_
+- Tutorial 2  - Fine-tuning a model on own data: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`_
+- Tutorial 3  - Basic QA Pipeline without Elasticsearch: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Elasticsearch_backend.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/update-tutorials/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`_
 
 Quickstart
 ==========
@@ -91,7 +91,7 @@ Retrievers can access an Elasticsearch index to find the relevant paragraphs(or 
 
 You can get started by running a single Elasticsearch node using docker::
 
-     docker run -d -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.5.1
+     docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.1
 
 SQL Backend
 -----------
