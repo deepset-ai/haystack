@@ -17,7 +17,7 @@ class TransformersReader:
         self,
         model="distilbert-base-uncased-distilled-squad",
         tokenizer="distilbert-base-uncased",
-        context_size=30,
+        context_window_size=30,
         #no_answer_shift=-100,
         #batch_size=16,
         use_gpu=0,
@@ -34,13 +34,13 @@ class TransformersReader:
 
         :param model: name of the model
         :param tokenizer: name of the tokenizer (usually the same as model)
-        :param context_size: num of chars (before and after the answer) to return as "context" for each answer.
+        :param context_window_size: num of chars (before and after the answer) to return as "context" for each answer.
                             The context usually helps users to understand if the answer really makes sense.
         :param use_gpu: < 1  -> use cpu
                         >= 0 -> ordinal of the gpu to use
         """
         self.model = pipeline("question-answering", model=model, tokenizer=tokenizer, device=use_gpu)
-        self.context_size = context_size
+        self.context_window_size = context_window_size
         self.n_best_per_passage = n_best_per_passage
         #TODO param to modify bias for no_answer
 
@@ -78,8 +78,8 @@ class TransformersReader:
             # assemble and format all answers
             for pred in predictions:
                 if pred["answer"]:
-                    context_start = max(0, pred["start"] - self.context_size)
-                    context_end = min(len(doc.text), pred["end"] + self.context_size)
+                    context_start = max(0, pred["start"] - self.context_window_size)
+                    context_end = min(len(doc.text), pred["end"] + self.context_window_size)
                     answers.append({
                         "answer": pred["answer"],
                         "context": doc.text[context_start:context_end],
