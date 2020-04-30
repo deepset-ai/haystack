@@ -18,29 +18,23 @@ Haystack — Neural Question Answering At Scale
 	:alt: Last Commit
 
 
-**Call for participation:** Do you want to help fighting COVID-19 using haystack? Support us in the `COVID-QA Project <https://github.com/deepset-ai/COVID-QA>`_
-
-
 Introduction
 ============
 
 The performance of **modern Question Answering Models** (BERT, ALBERT ...) has seen drastic improvements within the last year enabling many new opportunities for accessing information more efficiently. However, those models are designed to find answers within rather small text passages. **Haystack lets you scale QA models** to large collections of documents!
-While QA is the focussed use case for haystack, we will soon support additional options to boost search (re-ranking, most-similar search, tagging ...). 
+While QA is the focussed use case for haystack, we will soon support additional options to boost search (re-ranking, most-similar search ...).
 
 Haystack is designed in a modular way and lets you use any models trained with  `FARM <https://github.com/deepset-ai/FARM>`_ or `Transformers <https://github.com/huggingface/transformers>`_.
-
-Switching between different backends allows fast prototyping (SQLite) and scalable deployment for production (elasticsearch).
-
 
 
 
 Core Features
 =============
-- **Powerful models**: Utilize all latest transformer based models (BERT, ALBERT, RoBERTa ...)
+- **Powerful ML models**: Utilize all latest transformer based models (BERT, ALBERT, RoBERTa ...)
 - **Modular & future-proof**: Easily switch to newer models once they get published.
 - **Developer friendly**: Easy to debug, extend and modify.
 - **Scalable**: Production-ready deployments via Elasticsearch backend & REST API
-- **Customizable**: Fine-tune models to your own domain
+- **Customizable**: Fine-tune models to your own domain & improve them continuously via user feedback
 
 
 Components
@@ -122,7 +116,7 @@ See Tutorial 1 on how to go on with indexing your docs.
 
 SQL / InMemory (Alternative)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- :code:`haystack.database.sql.SQLDocumentStore`, :code:`haystack.database.memory.InMemoryDocumentStore`
+:code:`haystack.database.sql.SQLDocumentStore` & :code:`haystack.database.memory.InMemoryDocumentStore`
 
 These DocumentStores are mainly intended to simplify the first development steps or test a prototype on an existing SQL Database containing your texts. The SQLDocumentStore initializes by default a local file-based SQLite database.
 However, you can easily configure it for PostgreSQL or MySQL since our implementation is based on SQLAlchemy.
@@ -190,7 +184,7 @@ This Reader comes with:
 
 TransformersReader
 ^^^^^^^^^^^^^^^^^^
-Implementing various QA models via the `pipeline` class of `Transformers <https://github.com/huggingface/transformers>`_ Framework.
+Implementing various QA models via the :code:`pipeline` class of `Transformers <https://github.com/huggingface/transformers>`_ Framework.
 
 Example::
 
@@ -205,14 +199,16 @@ Example::
 5. REST API
 ---------------------
 A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is provided to:
-`extractive QA <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/search.py>`_
 
 *  search answers in texts (`extractive QA  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/search.py>`_)
 *  search answers by comparing user question to existing questions (`FAQ-style QA  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/search.py>`_)
-*  collect & export user feedback on answers to gain domain-specific training data (`feedback  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/feedback.py>`_))
+*  collect & export user feedback on answers to gain domain-specific training data (`feedback  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/feedback.py>`_)
 *  allow basic monitoring of requests (currently via APM in Kibana)
 
-To serve the API, run :code:`gunicorn haystack.api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker`.
+To serve the API, run::
+
+    gunicorn haystack.api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker`
+
 You will find the Swagger API documentation at http://127.0.0.1:80/docs
 
 
