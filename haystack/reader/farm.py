@@ -7,6 +7,7 @@ from farm.data_handler.processor import SquadProcessor
 from farm.infer import Inferencer
 from farm.modeling.optimization import initialize_optimizer
 from farm.train import Trainer
+from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
 from scipy.special import expit
 
@@ -271,6 +272,40 @@ class FARMReader:
                   "answers": answers}
 
         return result
+
+    def eval(self, data_dir, test_filename, device, return_preds_and_labels=False):
+        """
+        Performs evaluation on the current Reader instance.
+
+        :param data_dir: The directory in which the test set can be found
+        :type data_dir: Path or str
+        :param test_filename: The name of the file containing the test data.
+        :type test_filename: str
+        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :type device: str
+        :param return_preds_and_labels: Whether to add preds and labels in the returned dicts of the
+        :type return_preds_and_labels: bool
+
+        """
+        eval_processor = SquadProcessor(
+            tokenizer=self.inferencer.processor.tokenizer,
+            max_seq_len=self.inferencer.processor.max_seq_len,
+            label_list=self.inferencer.processor.tasks["question_answering"]["label_list"],
+            metric=self.inferencer.processor.tasks["question_answering"]["metric"],
+            train_filename=None,
+            dev_filename=None,
+            dev_split=0,
+            test_filename=test_filename,
+            data_dir=Path(data_dir),
+        )
+
+        data_silo = DataSilo(processor=eval_processor, batch_size=self.inferencer.batch_size, distributed=False)
+        data_loader = data_silo.get_data_loader("test")
+
+        evaluator = Evaluator(data_loader=data_loader, tasks=eval_processor.tasks, device=device)
+
+        eval_results = evaluator.eval(self.inferencer.model, return_preds_and_labels)
+        return eval_results
 
     @staticmethod
     def _calc_no_answer(no_ans_gaps,best_score_answer):
