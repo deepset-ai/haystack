@@ -8,4 +8,4 @@
 docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.1
 # wait for Elasticsearch server to start
 sleep 30
-docker run --net=host --gpus all -e READER_MODEL_PATH=deepset/roberta-base-squad2 -d deepset/haystack-api-gpu:0.2.0
+docker run --net=host --gpus all -e READER_MODEL_PATH=deepset/roberta-base-squad2 -d deepset/haystack-gpu:0.2.0

@@ -1,7 +1,7 @@
 version: '3'
 services:
   haystack-api:
-    image: "deepset/haystack-api-cpu:0.2.0"
+    image: "deepset/haystack-cpu:0.2.0"
     ports:
       - 8000:8000
     environment:
