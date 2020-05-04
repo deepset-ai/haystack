@@ -199,3 +199,37 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
         )
         return document
+
+    def add_eval_data(self, filename, index="eval_document", embedding_retriever=None):
+        eval_docs_to_index = []
+        questions_to_index = []
+
+        with open(filename, "r") as file:
+            data = json.load(file)
+            for document in data["data"]:
+                for paragraph in document["paragraphs"]:
+                    id = hash(paragraph["context"])
+                    doc_to_index = {
+                        "text" : paragraph["context"],
+                        "doc_id" : id,
+                        "_op_type" : "create",
+                        "_index" : index
+                    }
+                    if "title" in document:
+                        doc_to_index["name"] = document["title"]
+                    eval_docs_to_index.append(doc_to_index)
+
+                    for qa in paragraph["qas"]:
+                        question_to_index = {
+                            "question" : qa["question"],
+                            "answers" : qa["answers"],
+                            "doc_id" : id,
+                            "origin" : "gold_label",
+                            "index_name" : index,
+                            "_op_type" : "create",
+                            "_index" : "feedback"
+                        }
+                        questions_to_index.append(question_to_index)
+
+        bulk(self.client, eval_docs_to_index)
+        bulk(self.client, questions_to_index)
