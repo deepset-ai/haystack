@@ -279,7 +279,7 @@ class FARMReader:
 
         :param data_dir: The directory in which the test set can be found
         :type data_dir: Path or str
-        :param test_filename: The name of the file containing the test data.
+        :param test_filename: The name of the file containing the test data in SQuAD format.
         :type test_filename: str
         :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
         :type device: str
