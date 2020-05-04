@@ -17,5 +17,5 @@ def elasticsearch_fixture(elasticsearch_dir):
     ftpstream = urllib.request.urlopen(thetarfile)
     thetarfile = tarfile.open(fileobj=ftpstream, mode="r|gz")
     thetarfile.extractall(path=elasticsearch_dir)
-    es_server = Popen(["elasticsearch-7.6.1/bin/elasticsearch"], stdout=PIPE, stderr=STDOUT)
+    es_server = Popen([elasticsearch_dir / "elasticsearch-7.6.1/bin/elasticsearch"], stdout=PIPE, stderr=STDOUT)
     time.sleep(20)
