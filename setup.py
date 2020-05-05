@@ -15,7 +15,7 @@ parsed_requirements.append('farm @ git+https://github.com/deepset-ai/FARM.git@ec
 
 setup(
     name="farm-haystack",
-    version="0.1.3",
+    version="0.2.0",
     author="Malte Pietsch, Timo Moeller, Branden Chan, Tanay Soni",
     author_email="malte.pietsch@deepset.ai",
     description="Neural Question Answering at Scale. Use modern transformer based models like BERT to find answers in large document collections",
