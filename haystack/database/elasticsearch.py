@@ -108,7 +108,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: dict = None,
         top_k: int = 10,
         custom_query: str = None,
+        index: str = None,
     ) -> [Document]:
+
+        if index is None:
+            index = self.index
 
         if custom_query:  # substitute placeholder for question and filters for the custom_query template string
             template = Template(custom_query)
@@ -145,7 +149,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             body["_source"] = {"excludes": self.excluded_meta_data}
 
         logger.debug(f"Retriever query: {body}")
-        result = self.client.search(index=self.index, body=body)["hits"]["hits"]
+        result = self.client.search(index=index, body=body)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
         return documents
@@ -211,7 +215,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     id = hash(paragraph["context"])
                     doc_to_index = {
                         "text" : paragraph["context"],
-                        "doc_id" : id,
+                        "doc_id" : str(id),
                         "_op_type" : "create",
                         "_index" : index
                     }
@@ -223,7 +227,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         question_to_index = {
                             "question" : qa["question"],
                             "answers" : qa["answers"],
-                            "doc_id" : id,
+                            "doc_id" : str(id),
                             "origin" : "gold_label",
                             "index_name" : index,
                             "_op_type" : "create",
@@ -233,3 +237,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         bulk(self.client, eval_docs_to_index)
         bulk(self.client, questions_to_index)
+
+    def get_all_docs_in_index(self, index, filters=None):
+        body = {
+            "query": {
+                "bool": {
+                    "must": {
+                        "match_all" : {}
+                    }
+                }
+            }
+        }
+
+        if filters:
+           body["query"]["bool"]["filter"] = {"term": filters}
+        result = scan(self.client, query=body, index=index)
+
+        return result

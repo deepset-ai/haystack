@@ -41,11 +41,35 @@ class ElasticsearchRetriever(BaseRetriever):
         self.document_store = document_store
         self.custom_query = custom_query
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10) -> [Document]:
-        documents = self.document_store.query(query, filters, top_k, self.custom_query)
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> [Document]:
+        if index is None:
+            index = self.document_store.index
+
+        documents = self.document_store.query(query, filters, top_k, self.custom_query, index)
         logger.info(f"Got {len(documents)} candidates from retriever")
 
         return documents
+
+    def eval(self, label_index="feedback", doc_index="eval_document", label_origin="gold_label", top_k=10):
+        # extract all questions for evaluation
+        filter = {"origin": label_origin}
+        questions = self.document_store.get_all_docs_in_index(index=label_index, filters=filter)
+
+        # calculate recall
+        correct_retrievals = 0
+        for idx, question in enumerate(questions):
+            question_string = question["_source"]["question"]
+            retrieved_docs = self.retrieve(question_string, top_k=top_k, index=doc_index)
+            doc_ids = [doc.meta["doc_id"] for doc in retrieved_docs]
+            if question["_source"]["doc_id"] in doc_ids:
+                correct_retrievals += 1
+
+        number_of_questions = idx + 1
+        recall = correct_retrievals / number_of_questions
+        logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
+                     f" the top-{top_k} candidate passages selected by the retriever."))
+
+        return recall
 
 
 class EmbeddingRetriever(BaseRetriever):
