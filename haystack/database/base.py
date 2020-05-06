@@ -36,7 +36,7 @@ class Document(BaseModel):
     )
     # name: Optional[str] = Field(None, description="Title of the document")
     question: Optional[str] = Field(None, description="Question text for FAQs.")
-    query_score: Optional[int] = Field(None, description="Elasticsearch query score for a retrieved document")
+    query_score: Optional[float] = Field(None, description="Elasticsearch query score for a retrieved document")
     meta: Optional[Dict[str, Optional[str]]] = Field(None, description="")
 
     def __getitem__(self, item):
