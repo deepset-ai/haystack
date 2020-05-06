@@ -32,7 +32,16 @@ from haystack.reader.farm import FARMReader
 # We recommend using a base model that was trained on SQuAD or a similar QA dataset before to benefit from Transfer
 # Learning effects.
 
+#**Recommendation: Run training on a GPU. To do so change the `use_gpu` arguments below to `True`
+
 reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False)
 train_data = "data/squad20"
 # train_data = "PATH/TO_YOUR/TRAIN_DATA" 
-reader.train(data_dir=train_data, train_filename="dev-v2.0.json", use_gpu=False, n_epochs=1)
+reader.train(data_dir=train_data, train_filename="dev-v2.0.json", use_gpu=False, n_epochs=1, save_dir="my_model")
+
+# Saving the model happens automatically at the end of training into the `save_dir` you specified
+# However, you could also save a reader manually again via:
+reader.save(directory="my_model")
+
+# If you want to load it at a later point, just do:
+new_reader = FARMReader(model_name_or_path="my_model")
