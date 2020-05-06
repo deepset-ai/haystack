@@ -177,8 +177,9 @@ Example::
     reader.predict(question="Who is the father of Arya Starck?", documents=documents, top_k=3)
 
 This Reader comes with:
+
 * quite many configuration options
-* using multiple processes for preprocessing
+* multiple processes for preprocessing
 * option to train
 * option to evaluate
 
