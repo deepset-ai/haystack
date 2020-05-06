@@ -55,21 +55,27 @@ class ElasticsearchRetriever(BaseRetriever):
         filter = {"origin": label_origin}
         questions = self.document_store.get_all_docs_in_index(index=label_index, filters=filter)
 
-        # calculate recall
+        # calculate recall and mean-average-precision
         correct_retrievals = 0
-        for idx, question in enumerate(questions):
+        summed_avg_precision = 0
+        for q_idx, question in enumerate(questions):
             question_string = question["_source"]["question"]
             retrieved_docs = self.retrieve(question_string, top_k=top_k, index=doc_index)
-            doc_ids = [doc.meta["doc_id"] for doc in retrieved_docs]
-            if question["_source"]["doc_id"] in doc_ids:
-                correct_retrievals += 1
+            # check if correct doc in retrieved docs
+            for doc_idx, doc in enumerate(retrieved_docs):
+                if doc.meta["doc_id"] == question["_source"]["doc_id"]:
+                    correct_retrievals += 1
+                    summed_avg_precision += 1 / (doc_idx + 1)
+                    break
 
-        number_of_questions = idx + 1
+        number_of_questions = q_idx + 1
         recall = correct_retrievals / number_of_questions
+        mean_avg_precision = summed_avg_precision / number_of_questions
+
         logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
                      f" the top-{top_k} candidate passages selected by the retriever."))
 
-        return recall
+        return {"recall": recall, "mean avg precision": mean_avg_precision}
 
 
 class EmbeddingRetriever(BaseRetriever):
