@@ -30,7 +30,6 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
 
     # read and add docs
     docs_to_index = []
-    doc_id = 1
     for path in file_paths:
         with open(path) as doc:
             text = doc.read()
@@ -47,7 +46,6 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
                             "text": para
                         }
                     )
-                    doc_id += 1
             else:
                 docs_to_index.append(
                     {
