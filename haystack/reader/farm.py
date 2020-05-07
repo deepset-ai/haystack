@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import SquadProcessor
+from farm.data_handler.dataloader import NamedDataLoader
 from farm.infer import Inferencer
 from farm.modeling.optimization import initialize_optimizer
 from farm.train import Trainer
@@ -273,7 +274,7 @@ class FARMReader:
 
         return result
 
-    def eval(self, data_dir, test_filename, device, return_preds_and_labels=False):
+    def eval_on_file(self, data_dir, test_filename, device):
         """
         Performs evaluation on the current Reader instance.
         :param data_dir: The directory in which the test set can be found
@@ -302,8 +303,64 @@ class FARMReader:
 
         evaluator = Evaluator(data_loader=data_loader, tasks=eval_processor.tasks, device=device)
 
-        eval_results = evaluator.eval(self.inferencer.model, return_preds_and_labels)
-        return eval_results
+        eval_results = evaluator.eval(self.inferencer.model)
+        results = {
+            "EM": eval_results[0]["EM"],
+            "f1": eval_results[0]["f1"],
+            "top_n_recall": eval_results[0]["top_n_recall"]
+        }
+        return results
+
+    def eval(self, document_store, device, label_index="feedback", doc_index="eval_document", label_origin="gold_label"):
+
+        # extract all questions for evaluation
+        filter = {"origin": label_origin}
+        questions = document_store.get_all_docs_in_index(index=label_index, filters=filter)
+
+        # mapping from doc_id to questions
+        doc_questions_dict = {}
+        id = 0
+        for question in questions:
+            doc_id = question["_source"]["doc_id"]
+            if doc_id not in doc_questions_dict:
+                doc_questions_dict[doc_id] = [{
+                    "id": id,
+                    "question" : question["_source"]["question"],
+                    "answers" : question["_source"]["answers"],
+                    "is_impossible" : False if question["_source"]["answers"] else True
+                }]
+            else:
+                doc_questions_dict[doc_id].append({
+                    "id": id,
+                    "question" : question["_source"]["question"],
+                    "answers" : question["_source"]["answers"],
+                    "is_impossible" : False if question["_source"]["answers"] else True
+                })
+            id += 1
+
+        # extract eval documents and convert data back to SQuAD-like format
+        documents = document_store.get_all_docs_in_index(index=doc_index)
+        dicts = []
+        for document in documents:
+            doc_id = document["_source"]["doc_id"]
+            text = document["_source"]["text"]
+            questions = doc_questions_dict[doc_id]
+            dicts.append({"qas" : questions, "context" : text})
+
+        # Create DataLoader that can be passed to the Evaluator
+        indices = range(len(dicts))
+        dataset, tensor_names = self.inferencer.processor.dataset_from_dicts(dicts, indices=indices)
+        data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
+
+        evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
+
+        eval_results = evaluator.eval(self.inferencer.model)
+        results = {
+            "EM": eval_results[0]["EM"],
+            "f1": eval_results[0]["f1"],
+            "top_n_recall": eval_results[0]["top_n_recall"]
+        }
+        return results
 
     @staticmethod
     def _calc_no_answer(no_ans_gaps,best_score_answer):
