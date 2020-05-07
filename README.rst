@@ -58,7 +58,7 @@ Resources
 - Tutorial 1  - Basic QA Pipeline: `Jupyter notebook  <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`__  or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`__
 - Tutorial 2  - Fine-tuning a model on own data: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`__
 - Tutorial 3  - Basic QA Pipeline without Elasticsearch: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`__
-- Tutorial 4  - FAQ-style QA: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb.ipynb>`__
+- Tutorial 4  - FAQ-style QA: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb>`__
 
 Quick Start
 ===========
