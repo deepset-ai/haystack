@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional, Dict
+from typing import Any, Optional, Dict
 
 from pydantic import BaseModel, Field
 
@@ -37,7 +37,7 @@ class Document(BaseModel):
     # name: Optional[str] = Field(None, description="Title of the document")
     question: Optional[str] = Field(None, description="Question text for FAQs.")
     query_score: Optional[float] = Field(None, description="Elasticsearch query score for a retrieved document")
-    meta: Optional[Dict[str, Optional[str]]] = Field(None, description="")
+    meta: Optional[Dict[str, Any]] = Field(None, description="")
 
     def __getitem__(self, item):
         if item == 'text':
