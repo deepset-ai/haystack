@@ -96,3 +96,74 @@ class Finder:
             results["answers"].append(cur_answer)
 
         return results
+
+    def eval(self, label_index="feedback", doc_index="eval_document", label_origin="gold_label",
+             top_k_retriever=10, top_k_reader=10, chunk_size=10):
+        # extract all questions for evaluation
+        filter = {"origin": label_origin}
+        questions = self.retriever.document_store.get_all_docs_in_index(index=label_index, filters=filter)
+
+        correct_retrievals = 0
+        correct_readings = 0
+        summed_avg_precision_retriever = 0
+        summed_avg_precision_reader = 0
+
+        # retrieve documents
+        questions_with_docs = []
+        for q_idx, question in enumerate(questions):
+            question_string = question["_source"]["question"]
+            retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k_retriever, index=doc_index)
+            for doc_idx, doc in enumerate(retrieved_docs):
+                # check if correct doc among retrieved docs
+                if doc.meta["doc_id"] == question["_source"]["doc_id"]:
+                    correct_retrievals += 1
+                    summed_avg_precision_retriever += 1 / (doc_idx + 1)
+                    questions_with_docs.append({
+                        "question": question,
+                        "docs": retrieved_docs,
+                        "correct_es_doc_id": doc.id})
+                    break
+        number_of_questions = q_idx + 1
+
+        # extract answers
+        previous_top_k_per_candidate = self.reader.top_k_per_candidate
+        self.reader.top_k_per_candidate = 1
+        for question in questions_with_docs:
+            question_string = question["question"]["_source"]["question"]
+            docs = question["docs"]
+            predicted_answers = self.reader.predict(question_string, docs, top_k_reader)
+            for answer_idx, answer in enumerate(predicted_answers["answers"]):
+                found_answer = False
+                # check if correct document
+                if answer["document_id"] == question["correct_es_doc_id"]:
+                    summed_avg_precision_reader += 1 / (answer_idx + 1)
+                    gold_spans = [(gold_answer["answer_start"], gold_answer["answer_start"] + len(gold_answer["text"]) + 1)
+                                  for gold_answer in question["question"]["_source"]["answers"]]
+                    predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
+                    # check if overlap between gold answer and predicted answer
+                    for gold_span in gold_spans:
+                        if (gold_span[0] <= predicted_span[1]) and (predicted_span[0] <= gold_span[1]):
+                            correct_readings += 1
+                            found_answer = True
+                            break
+                if found_answer:
+                    break
+
+        retriever_recall = correct_retrievals / number_of_questions
+        retriever_map = summed_avg_precision_retriever / number_of_questions
+        reader_recall = correct_readings / correct_retrievals
+        reader_map = summed_avg_precision_reader / correct_retrievals
+
+        logger.info((f"{correct_readings} out of {number_of_questions} questions were correctly answered "
+                     f"({(correct_readings/number_of_questions):.2%})."))
+        logger.info(f"{number_of_questions-correct_retrievals} questions could not be answered due to the retriever.")
+        logger.info(f"{correct_retrievals-correct_readings} questions could not be answered due to the reader.")
+
+        results = {
+            "retriever_recall": retriever_recall,
+            "retriever_map": retriever_map,
+            "reader_recall": reader_recall,
+            "reader_map": reader_map
+        }
+
+        return results

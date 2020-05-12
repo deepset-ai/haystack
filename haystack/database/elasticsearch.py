@@ -204,7 +204,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         )
         return document
 
-    def add_eval_data(self, filename, index="eval_document", embedding_retriever=None):
+    def add_eval_data(self, filename, doc_index="eval_document", label_index="feedback", embedding_retriever=None):
         eval_docs_to_index = []
         questions_to_index = []
 
@@ -212,28 +212,39 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             data = json.load(file)
             for document in data["data"]:
                 for paragraph in document["paragraphs"]:
+                    doc_to_index= {}
                     id = hash(paragraph["context"])
-                    doc_to_index = {
-                        "text" : paragraph["context"],
-                        "doc_id" : str(id),
-                        "_op_type" : "create",
-                        "_index" : index
-                    }
-                    if "title" in document:
-                        doc_to_index["name"] = document["title"]
-                    eval_docs_to_index.append(doc_to_index)
+                    for fieldname, value in paragraph.items():
+                        # write docs to doc_index
+                        if fieldname == "context":
+                            doc_to_index[self.text_field] = value
+                            doc_to_index["doc_id"] = str(id)
+                            doc_to_index["_op_type"] = "create"
+                            doc_to_index["_index"] = doc_index
+                        # write questions to label_index
+                        elif fieldname == "qas":
+                            for qa in value:
+                                question_to_index = {
+                                    "question": qa["question"],
+                                    "answers": qa["answers"],
+                                    "doc_id": str(id),
+                                    "origin": "gold_label",
+                                    "index_name": doc_index,
+                                    "_op_type": "create",
+                                    "_index": label_index
+                                }
+                                questions_to_index.append(question_to_index)
+                        # additional fields for docs
+                        else:
+                            doc_to_index[fieldname] = value
 
-                    for qa in paragraph["qas"]:
-                        question_to_index = {
-                            "question" : qa["question"],
-                            "answers" : qa["answers"],
-                            "doc_id" : str(id),
-                            "origin" : "gold_label",
-                            "index_name" : index,
-                            "_op_type" : "create",
-                            "_index" : "feedback"
-                        }
-                        questions_to_index.append(question_to_index)
+                    for key, value in document.items():
+                        if key == "title":
+                            doc_to_index[self.name_field] = value
+                        elif key != "paragraphs":
+                            doc_to_index[key] = value
+
+                    eval_docs_to_index.append(doc_to_index)
 
         bulk(self.client, eval_docs_to_index)
         bulk(self.client, questions_to_index)
