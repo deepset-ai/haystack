@@ -98,7 +98,7 @@ class Finder:
         return results
 
     def eval(self, label_index="feedback", doc_index="eval_document", label_origin="gold_label",
-             top_k_retriever=10, top_k_reader=10, chunk_size=10):
+             top_k_retriever=10, top_k_reader=10):
         # extract all questions for evaluation
         filter = {"origin": label_origin}
         questions = self.retriever.document_store.get_all_docs_in_index(index=label_index, filters=filter)
@@ -125,34 +125,51 @@ class Finder:
                     break
         number_of_questions = q_idx + 1
 
-        # extract answers
         previous_top_k_per_candidate = self.reader.top_k_per_candidate
+        previous_return_no_answers = self.reader.return_no_answers
         self.reader.top_k_per_candidate = 1
+        self.reader.return_no_answers = True
+        # extract answers
         for question in questions_with_docs:
             question_string = question["question"]["_source"]["question"]
             docs = question["docs"]
             predicted_answers = self.reader.predict(question_string, docs, top_k_reader)
-            for answer_idx, answer in enumerate(predicted_answers["answers"]):
-                found_answer = False
-                # check if correct document
-                if answer["document_id"] == question["correct_es_doc_id"]:
-                    summed_avg_precision_reader += 1 / (answer_idx + 1)
-                    gold_spans = [(gold_answer["answer_start"], gold_answer["answer_start"] + len(gold_answer["text"]) + 1)
-                                  for gold_answer in question["question"]["_source"]["answers"]]
-                    predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
-                    # check if overlap between gold answer and predicted answer
-                    for gold_span in gold_spans:
-                        if (gold_span[0] <= predicted_span[1]) and (predicted_span[0] <= gold_span[1]):
-                            correct_readings += 1
-                            found_answer = True
-                            break
-                if found_answer:
-                    break
+            # check if question is answerable
+            if question["question"]["_source"]["answers"]:
+                for answer_idx, answer in enumerate(predicted_answers["answers"]):
+                    found_answer = False
+                    # check if correct document
+                    if answer["document_id"] == question["correct_es_doc_id"]:
+                        summed_avg_precision_reader += 1 / (answer_idx + 1)
+                        gold_spans = [(gold_answer["answer_start"], gold_answer["answer_start"] + len(gold_answer["text"]) + 1)
+                                      for gold_answer in question["question"]["_source"]["answers"]]
+                        predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
+                        # check if overlap between gold answer and predicted answer
+                        for gold_span in gold_spans:
+                            if (gold_span[0] <= predicted_span[1]) and (predicted_span[0] <= gold_span[1]):
+                                correct_readings += 1
+                                found_answer = True
+                                break
+                    if found_answer:
+                        break
+            # question not answerable
+            else:
+                # As question is not answerable, it is not clear how to compute average precision for this question.
+                # For now, we decided to calculate average precision based on the rank of 'no answer'.
+                for answer_idx, answer in enumerate(predicted_answers["answers"]):
+                    # check if 'no answer'
+                    if answer["answer"] is None:
+                        correct_readings += 1
+                        summed_avg_precision_reader += 1 / (answer_idx + 1)
+                        break
 
         retriever_recall = correct_retrievals / number_of_questions
         retriever_map = summed_avg_precision_retriever / number_of_questions
         reader_recall = correct_readings / correct_retrievals
         reader_map = summed_avg_precision_reader / correct_retrievals
+
+        self.reader.top_k_per_candidate = previous_top_k_per_candidate
+        self.reader.return_no_answers = previous_return_no_answers
 
         logger.info((f"{correct_readings} out of {number_of_questions} questions were correctly answered "
                      f"({(correct_readings/number_of_questions):.2%})."))
