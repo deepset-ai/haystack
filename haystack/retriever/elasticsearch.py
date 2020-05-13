@@ -50,7 +50,23 @@ class ElasticsearchRetriever(BaseRetriever):
 
         return documents
 
-    def eval(self, label_index="feedback", doc_index="eval_document", label_origin="gold_label", top_k=10):
+    def eval(self, label_index: str = "feedback", doc_index: str = "eval_document", label_origin: str = "gold_label",
+             top_k: int = 10) -> dict:
+        """
+        Performs evaluation on the Retriever.
+        Retriever is evaluated based on whether it finds the correct document given the question string and at which
+        position in the ranking of documents the correct document is.
+
+        Returns a dict containing the following metrics:
+            - "recall": Proportion of questions for which correct document is among retrieved documents
+            - "mean avg precision": Mean of average precision for each question. Rewards retrievers that give relevant
+              documents a higher rank.
+
+        :param label_index: Elasticsearch index where labeled questions are stored
+        :param doc_index: Elasticsearch index where documents that are used for evaluation are stored
+        :param top_k: How many documents to return per question
+        """
+
         # extract all questions for evaluation
         filter = {"origin": label_origin}
         questions = self.document_store.get_all_docs_in_index(index=label_index, filters=filter)

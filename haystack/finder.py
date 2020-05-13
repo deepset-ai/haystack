@@ -97,8 +97,28 @@ class Finder:
 
         return results
 
-    def eval(self, label_index="feedback", doc_index="eval_document", label_origin="gold_label",
-             top_k_retriever=10, top_k_reader=10):
+    def eval(self, label_index: str = "feedback", doc_index: str = "eval_document", label_origin: str = "gold_label",
+             top_k_retriever: int = 10, top_k_reader: int = 10):
+        """
+        Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
+        of the Retriever.
+
+        Returns a dict containing the following metrics:
+            - "retriever_recall": Proportion of questions for which correct document is among retrieved documents
+            - "retriever_map": Mean of average precision for each question. Rewards retrievers that give relevant
+              documents a higher rank.
+            - "reader_recall": Proportion of predicted answers that overlap with correct answer
+            - "reader_map": Reader re-ranks documents retrieved by Retriever. Mean average precision of the re-ranking.
+
+        :param label_index: Elasticsearch index where labeled questions are stored
+        :type label_index: str
+        :param doc_index: Elasticsearch index where documents that are used for evaluation are stored
+        :type doc_index: str
+        :param top_k_retriever: How many documents per question to return and pass to reader
+        :type top_k_retriever: int
+        :param top_k_reader: How many answers to return per question
+        :type top_k_reader: int
+        """
         # extract all questions for evaluation
         filter = {"origin": label_origin}
         questions = self.retriever.document_store.get_all_docs_in_index(index=label_index, filters=filter)

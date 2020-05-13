@@ -204,7 +204,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         )
         return document
 
-    def add_eval_data(self, filename, doc_index="eval_document", label_index="feedback", embedding_retriever=None):
+    def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "feedback"):
+        """
+        Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
+
+        :param filename: Name of the file containing evaluation data
+        :type filename: str
+        :param doc_index: Elasticsearch index where evaluation documents should be stored
+        :type doc_index: str
+        :param label_index: Elasticsearch index where labeled questions should be stored
+        :type label_index: str
+        """
+
         eval_docs_to_index = []
         questions_to_index = []
 

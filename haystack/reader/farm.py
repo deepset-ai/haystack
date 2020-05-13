@@ -13,6 +13,7 @@ from farm.utils import set_all_seeds, initialize_device_settings
 from scipy.special import expit
 
 from haystack.database.base import Document
+from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
 logger = logging.getLogger(__name__)
 
@@ -274,17 +275,21 @@ class FARMReader:
 
         return result
 
-    def eval_on_file(self, data_dir, test_filename, device):
+    def eval_on_file(self, data_dir: str, test_filename: str, device: str):
         """
-        Performs evaluation on the current Reader instance.
+        Performs evaluation on a SQuAD-formatted file.
+
+        Returns a dict containing the following metrics:
+            - "EM": exact match score
+            - "f1": F1-Score
+            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+
         :param data_dir: The directory in which the test set can be found
         :type data_dir: Path or str
         :param test_filename: The name of the file containing the test data in SQuAD format.
         :type test_filename: str
         :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
         :type device: str
-        :param return_preds_and_labels: Whether to add preds and labels in the returned dicts of the
-        :type return_preds_and_labels: bool
         """
         eval_processor = SquadProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
@@ -311,7 +316,25 @@ class FARMReader:
         }
         return results
 
-    def eval(self, document_store, device, label_index="feedback", doc_index="eval_document", label_origin="gold_label"):
+    def eval(self, document_store: ElasticsearchDocumentStore, device: str, label_index: str = "feedback",
+             doc_index: str = "eval_document", label_origin: str = "gold_label"):
+        """
+        Performs evaluation on evaluation documents in Elasticsearch DocumentStore.
+
+        Returns a dict containing the following metrics:
+            - "EM": exact match score
+            - "f1": F1-Score
+            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+
+        :param document_store: The ElasticsearchDocumentStore containing the evaluation documents
+        :type document_store: ElasticsearchDocumentStore
+        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :type device: str
+        :param label_index: Elasticsearch index where labeled questions are stored
+        :type label_index: str
+        :param doc_index: Elasticsearch index where documents that are used for evaluation are stored
+        :type doc_index: str
+        """
 
         # extract all questions for evaluation
         filter = {"origin": label_origin}
