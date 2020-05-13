@@ -1,5 +1,3 @@
-import pytest
-
 from haystack.reader.farm import FARMReader
 
 
