@@ -12,7 +12,7 @@ def test_finder_get_answers_with_in_memory_store():
 
     from haystack.database.memory import InMemoryDocumentStore
     document_store = InMemoryDocumentStore()
-    document_store.write_documents(test_docs, tags=[{'has_url': ["true"] for _ in range(0, len(test_docs))}])
+    document_store.write_documents(test_docs)
 
     retriever = TfidfRetriever(document_store=document_store)
     reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
@@ -32,24 +32,55 @@ def test_memory_store_get_by_tags():
 
     from haystack.database.memory import InMemoryDocumentStore
     document_store = InMemoryDocumentStore()
-    document_store.write_documents(test_docs, tags=[None, {'has_url': 'false'}, {'has_url': 'true'}])
+    document_store.write_documents(test_docs)
 
     docs = document_store.get_document_ids_by_tags({'has_url': 'false'})
 
-    assert docs == [{'name': 'testing the finder 2', 'text': 'testing the finder with pyhton unit test 2', 'meta': {'url': None}}]
+    assert docs == []
 
 
-def test_memory_store_get_by_tag_lists():
+def test_memory_store_get_by_tag_lists_union():
     test_docs = [
-        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1", 'meta': {'url': 'url'}},
-        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2", 'meta': {'url': None}},
-        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3", 'meta': {'url': 'url'}}
+        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1", 'meta': {'url': 'url'}, 'tags': [{'tag2': ["1"]}]},
+        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2", 'meta': {'url': None}, 'tags': [{'tag1': ['1']}]},
+        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3", 'meta': {'url': 'url'}, 'tags': [{'tag2': ["1", "2"]}]}
     ]
 
     from haystack.database.memory import InMemoryDocumentStore
     document_store = InMemoryDocumentStore()
-    document_store.write_documents(test_docs, tags=[{'tag2': ["1"]}, {'tag1': ['1']}, {'tag2': ["1", "2"]}])
+    document_store.write_documents(test_docs)
 
     docs = document_store.get_document_ids_by_tags({'tag2': ["1"]})
 
-    assert docs == [{'name': 'testing the finder 1', 'text': 'testing the finder with pyhton unit test 1', 'meta': {'url': 'url'}}]
+    assert docs == [
+        {'name': 'testing the finder 1', 'text': 'testing the finder with pyhton unit test 1', 'meta': {'url': 'url'}, 'tags': [{'tag2': ['1']}]},
+        {'name': 'testing the finder 3', 'text': 'testing the finder with pyhton unit test 3', 'meta': {'url': 'url'}, 'tags': [{'tag2': ['1', '2']}]}
+    ]
+
+
+def test_memory_store_get_by_tag_lists_non_existent_tag():
+    test_docs = [
+        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1", 'meta': {'url': 'url'}, 'tags': [{'tag1': ["1"]}]},
+    ]
+    from haystack.database.memory import InMemoryDocumentStore
+    document_store = InMemoryDocumentStore()
+    document_store.write_documents(test_docs)
+    docs = document_store.get_document_ids_by_tags({'tag1': ["3"]})
+    assert docs == []
+
+
+def test_memory_store_get_by_tag_lists_disjoint():
+    test_docs = [
+        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1", 'meta': {'url': 'url'}, 'tags': [{'tag1': ["1"]}]},
+        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2", 'meta': {'url': None}, 'tags': [{'tag2': ['1']}]},
+        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3", 'meta': {'url': 'url'}, 'tags': [{'tag3': ["1", "2"]}]},
+        {"name": "testing the finder 4", "text": "testing the finder with pyhton unit test 3", 'meta': {'url': 'url'}, 'tags': [{'tag3': ["1", "3"]}]}
+    ]
+
+    from haystack.database.memory import InMemoryDocumentStore
+    document_store = InMemoryDocumentStore()
+    document_store.write_documents(test_docs)
+
+    docs = document_store.get_document_ids_by_tags({'tag3': ["3"]})
+
+    assert docs == [{'name': 'testing the finder 4', 'text': 'testing the finder with pyhton unit test 3', 'meta': {'url': 'url'}, 'tags': [{'tag3': ['1', '3']}]}]

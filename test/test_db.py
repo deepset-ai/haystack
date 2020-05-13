@@ -20,6 +20,7 @@ def test_elasticsearch_write_read(elasticsearch_fixture):
     write_documents_to_db(document_store=document_store, document_dir="samples/docs")
     sleep(2)  # wait for documents to be available for query
     documents = document_store.get_all_documents()
+    print(documents)
     assert len(documents) == 2
     assert documents[0].id
     assert documents[0].text

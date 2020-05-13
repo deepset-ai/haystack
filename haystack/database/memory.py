@@ -10,18 +10,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.docs = {}
         self.doc_tags = {}
 
-    def write_documents(self, documents, tags=None):
+    def write_documents(self, documents):
         import hashlib
 
         if documents is None:
             return
 
-        if tags is not None and len(tags) == len(documents):
-            documents = zip(documents, tags)
-        else:
-            documents = zip(documents, [None] * len(documents))
-
-        for document, tag in documents:
+        for document in documents:
             name = document.get("name", None)
             text = document.get("text", None)
 
@@ -34,11 +29,24 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
             self.docs[hash] = document
 
-            if isinstance(tag, dict):
-                tag_key = tag.keys()
-                tag_values = tag.values()
-                for tag_value in tag_values:
-                    self.doc_tags[str((tag_key, tag_value))] = hash
+            tags = document.get('tags', [])
+
+            self._map_tags_to_ids(hash, tags)
+
+    def _map_tags_to_ids(self, hash, tags):
+        if isinstance(tags, list):
+            for tag in tags:
+                if isinstance(tag, dict):
+                    tag_keys = tag.keys()
+                    for tag_key in tag_keys:
+                        tag_values = tag.get(tag_key, [])
+                        if tag_values:
+                            for tag_value in tag_values:
+                                comp_key = str((tag_key, tag_value))
+                                if comp_key in self.doc_tags:
+                                    self.doc_tags[comp_key].append(hash)
+                                else:
+                                    self.doc_tags[comp_key] = [hash]
 
     def get_document_by_id(self, id):
         return self.docs[id]
@@ -50,14 +58,21 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if not isinstance(tags, list):
             tags = [tags]
+        result = self._find_ids_by_tags(tags)
+        return result
+
+    def _find_ids_by_tags(self, tags):
         result = []
         for tag in tags:
-            tag_key = tag.keys()
-            tag_values = tag.values()
-            for tag_value in tag_values:
-                doc = self.docs.get(self.doc_tags.get(str((tag_key, tag_value)), None), None)
-                if doc:
-                    result.append(doc)
+            tag_keys = tag.keys()
+            for tag_key in tag_keys:
+                tag_values = tag.get(tag_key, None)
+                if tag_values:
+                    for tag_value in tag_values:
+                        comp_key = str((tag_key, tag_value))
+                        doc_ids = self.doc_tags.get(comp_key, [])
+                        for doc_id in doc_ids:
+                            result.append(self.docs.get(doc_id))
         return result
 
     def get_document_count(self):
