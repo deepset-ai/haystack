@@ -9,4 +9,5 @@ elasticsearch
 elastic-apm
 tox
 coverage
+tika
 # optional: sentence-transformers

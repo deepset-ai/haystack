@@ -5,6 +5,8 @@ import tempfile
 import tarfile
 import zipfile
 
+from haystack.indexing.pdf import convert_to_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,7 +20,11 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
                               Useful to avoid indexing the same initial docs again and again.
     :return: None
     """
-    file_paths = Path(document_dir).glob("**/*.txt")
+
+    file_paths = []
+    for ext in ("**/*.txt", "**/*.pdf"):
+        paths = [p for p in Path(document_dir).glob(ext)]
+        file_paths.extend(paths)
 
     # check if db has already docs
     if only_empty_db:
@@ -31,28 +37,34 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
     # read and add docs
     docs_to_index = []
     for path in file_paths:
-        with open(path) as doc:
-            text = doc.read()
-            if clean_func:
-                text = clean_func(text)
+        if path.suffix == ".txt":
+            with open(path) as doc:
+                text = doc.read()
+        elif path.suffix == ".pdf":
+            text = convert_to_text(path)
+        else:
+            raise Exception(f"Indexing of {path.suffix} files is not currently supported.")
 
-            if split_paragraphs:
-                for para in text.split("\n\n"):
-                    if not para.strip():  # skip empty paragraphs
-                        continue
-                    docs_to_index.append(
-                        {
-                            "name": path.name,
-                            "text": para
-                        }
-                    )
-            else:
+        if clean_func:
+            text = clean_func(text)
+
+        if split_paragraphs:
+            for para in text.split("\n\n"):
+                if not para.strip():  # skip empty paragraphs
+                    continue
                 docs_to_index.append(
                     {
                         "name": path.name,
-                        "text": text
+                        "text": para
                     }
                 )
+        else:
+            docs_to_index.append(
+                {
+                    "name": path.name,
+                    "text": text
+                }
+            )
     document_store.write_documents(docs_to_index)
     logger.info(f"Wrote {len(docs_to_index)} docs to DB")
 
