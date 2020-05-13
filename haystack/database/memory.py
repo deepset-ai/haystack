@@ -35,7 +35,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.docs[hash] = document
 
             if isinstance(tag, dict):
-                print(tag)
                 tag_key = tag.keys()
                 tag_values = tag.values()
                 for tag_value in tag_values:

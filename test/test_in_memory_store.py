@@ -52,6 +52,4 @@ def test_memory_store_get_by_tag_lists():
 
     docs = document_store.get_document_ids_by_tags({'tag2': ["1"]})
 
-    print(docs)
-
     assert docs == [{'name': 'testing the finder 1', 'text': 'testing the finder with pyhton unit test 1', 'meta': {'url': 'url'}}]
