@@ -44,3 +44,5 @@ class Document(BaseModel):
             return self.text
         if item == 'id':
             return self.id
+        if item == 'meta':
+            return self.meta
