@@ -128,7 +128,7 @@ Limitations: Retrieval (e.g. via TfidfRetriever) happens in-memory here and will
 ElasticsearchRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
 Scoring text similarity via sparse Bag-of-words representations are strong and well-established baselines in Information Retrieval.
-The default `ElasticsearchRetriever` uses Elasticsearch's native scoring (BM25), but can be extended easily with custom queries or filtering.
+The default :code:`ElasticsearchRetriever` uses Elasticsearch's native scoring (BM25), but can be extended easily with custom queries or filtering.
 
 Example::
 
@@ -209,7 +209,7 @@ A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is provide
 
 To serve the API, run::
 
-    gunicorn haystack.api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker`
+    gunicorn haystack.api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker
 
 You will find the Swagger API documentation at http://127.0.0.1:80/docs
 
@@ -227,4 +227,4 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 
 7. Development
 -------------------
-* Unit tests are executed by running ```tox```
+* Unit tests can be executed by running :code:`tox`.
