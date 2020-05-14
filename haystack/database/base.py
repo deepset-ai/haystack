@@ -39,13 +39,3 @@ class Document(BaseModel):
     query_score: Optional[float] = Field(None, description="Elasticsearch query score for a retrieved document")
     meta: Optional[Dict[str, Any]] = Field(None, description="")
     tags: Optional[Dict[str, Any]] = Field(None, description="Tags that allow filtering of the data")
-
-    def __getitem__(self, item):
-        if item == 'text':
-            return self.text
-        if item == 'id':
-            return self.id
-        if item == 'meta':
-            return self.meta
-        if item == 'tags':
-            return self.tags
