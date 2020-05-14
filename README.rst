@@ -223,3 +223,8 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 * Coming soon: more file formats for document upload, metrics for label quality ...
 
 .. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/annotation_tool.png
+
+
+7. Development
+-------------------
+* Unit tests are executed by running ```tox```
