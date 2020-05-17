@@ -10,7 +10,7 @@ def test_root_404():
     assert response.status_code == 404
 
 
-def test_example_model():
+def test_example_model(elasticsearch_fixture):
     import pytest
     with pytest.raises(AttributeError) as _:
         client.post("/models/1/doc-qa", json={"questions": ["Who is the father of George Orwell?"]})
