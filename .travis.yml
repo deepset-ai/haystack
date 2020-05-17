@@ -6,4 +6,4 @@ python:
 install:
   - "pip install -e ."
 script:
-  - "cd test && pytest"
+  - "tox"
