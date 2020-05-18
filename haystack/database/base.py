@@ -25,6 +25,10 @@ class BaseDocumentStore:
     def get_document_count(self):
         pass
 
+    @abstractmethod
+    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None):
+        pass
+
 
 class Document(BaseModel):
     id: str = Field(..., description="_id field from Elasticsearch")
