@@ -322,8 +322,8 @@ class FARMReader:
         Performs evaluation on evaluation documents in Elasticsearch DocumentStore.
 
         Returns a dict containing the following metrics:
-            - "EM": exact match score
-            - "f1": F1-Score
+            - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
+            - "f1": Average overlap between predicted answers and their corresponding correct answers
             - "top_n_recall": Proportion of predicted answers that overlap with correct answer
 
         :param document_store: The ElasticsearchDocumentStore containing the evaluation documents

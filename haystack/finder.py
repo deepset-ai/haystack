@@ -2,6 +2,8 @@ import logging
 
 import numpy as np
 from scipy.special import expit
+import time
+from statistics import mean
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +111,14 @@ class Finder:
               documents a higher rank.
             - "reader_recall": Proportion of predicted answers that overlap with correct answer
             - "reader_map": Reader re-ranks documents retrieved by Retriever. Mean average precision of the re-ranking.
+            - "reader_em": Proportion of exact matches of predicted answers with their corresponding correct answers
+            - "reader_f1": Average overlap between predicted answers and their corresponding correct answers
+            - "total_retrieve_time": Time retriever needed to retrieve documents for all questions
+            - "avg_retrieve_time": Average time needed to retrieve documents for one question
+            - "total_reader_time": Time reader needed to extract answer out of retrieved documents for all questions
+                                   where the correct document is among the retrieved ones
+            - "avg_reader_time": Average time needed to extract answer out of retrieved documents for one question
+            - "total_finder_time": Total time for whole pipeline
 
         :param label_index: Elasticsearch index where labeled questions are stored
         :type label_index: str
@@ -119,6 +129,7 @@ class Finder:
         :param top_k_reader: How many answers to return per question
         :type top_k_reader: int
         """
+        finder_start_time = time.time()
         # extract all questions for evaluation
         filter = {"origin": label_origin}
         questions = self.retriever.document_store.get_all_docs_in_index(index=label_index, filters=filter)
@@ -129,12 +140,17 @@ class Finder:
         summed_avg_precision_reader = 0
         exact_matches = 0
         summed_f1 = 0
+        retrieve_times = []
+        read_times = []
 
         # retrieve documents
         questions_with_docs = []
+        retriever_start_time = time.time()
         for q_idx, question in enumerate(questions):
             question_string = question["_source"]["question"]
+            single_retrieve_start = time.time()
             retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k_retriever, index=doc_index)
+            retrieve_times.append(time.time() - single_retrieve_start)
             for doc_idx, doc in enumerate(retrieved_docs):
                 # check if correct doc among retrieved docs
                 if doc.meta["doc_id"] == question["_source"]["doc_id"]:
@@ -145,6 +161,7 @@ class Finder:
                         "docs": retrieved_docs,
                         "correct_es_doc_id": doc.id})
                     break
+        retriever_total_time = time.time() - retriever_start_time
         number_of_questions = q_idx + 1
 
         previous_top_k_per_candidate = self.reader.top_k_per_candidate
@@ -152,10 +169,13 @@ class Finder:
         self.reader.top_k_per_candidate = 1
         self.reader.return_no_answers = True
         # extract answers
-        for question in questions_with_docs:
+        reader_start_time = time.time()
+        for q_idx, question in enumerate(questions_with_docs):
             question_string = question["question"]["_source"]["question"]
             docs = question["docs"]
+            single_reader_start = time.time()
             predicted_answers = self.reader.predict(question_string, docs, top_k_reader)
+            read_times.append(time.time() - single_reader_start)
             # check if question is answerable
             if question["question"]["_source"]["answers"]:
                 for answer_idx, answer in enumerate(predicted_answers["answers"]):
@@ -206,6 +226,8 @@ class Finder:
                         exact_matches += 1
                         summed_f1 += 1
                         break
+        reader_total_time = time.time() - reader_start_time
+        finder_total_time = time.time() - finder_start_time
 
         retriever_recall = correct_retrievals / number_of_questions
         retriever_map = summed_avg_precision_retriever / number_of_questions
@@ -228,7 +250,12 @@ class Finder:
             "reader_recall": reader_recall,
             "reader_map": reader_map,
             "reader_em": reader_em,
-            "reader_f1" : reader_f1
+            "reader_f1" : reader_f1,
+            "total_retrieve_time": retriever_total_time,
+            "avg_retrieve_time": mean(retrieve_times),
+            "total_reader_time": reader_total_time,
+            "avg_reader_time": mean(read_times),
+            "total_finder_time": finder_total_time
         }
 
         return results
