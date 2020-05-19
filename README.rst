@@ -55,10 +55,13 @@ Components
 
 Resources
 =========
+
 - Tutorial 1  - Basic QA Pipeline: `Jupyter notebook  <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_  or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_
 - Tutorial 2  - Fine-tuning a model on own data: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`_
 - Tutorial 3  - Basic QA Pipeline without Elasticsearch: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/update-tutorials/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`_
+- Tutorial 4  - FAQ-style QA: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb>`__
 - Tutorial 5  - Evaluation of the whole QA-Pipeline: `Jupyter noteboook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb>`_
+
 
 Quick Start
 ===========
@@ -128,7 +131,7 @@ Limitations: Retrieval (e.g. via TfidfRetriever) happens in-memory here and will
 ElasticsearchRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
 Scoring text similarity via sparse Bag-of-words representations are strong and well-established baselines in Information Retrieval.
-The default `ElasticsearchRetriever` uses Elasticsearch's native scoring (BM25), but can be extended easily with custom queries or filtering.
+The default :code:`ElasticsearchRetriever` uses Elasticsearch's native scoring (BM25), but can be extended easily with custom queries or filtering.
 
 Example::
 
@@ -178,8 +181,9 @@ Example::
     reader.predict(question="Who is the father of Arya Starck?", documents=documents, top_k=3)
 
 This Reader comes with:
+
 * quite many configuration options
-* using multiple processes for preprocessing
+* multiple processes for preprocessing
 * option to train
 * option to evaluate
 
@@ -208,7 +212,7 @@ A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is provide
 
 To serve the API, run::
 
-    gunicorn haystack.api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker`
+    gunicorn haystack.api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker
 
 You will find the Swagger API documentation at http://127.0.0.1:80/docs
 
@@ -220,4 +224,10 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 * Structure your work via organizations, projects, users 
 * Upload your documents or import labels from an existing SQuAD-style dataset
 * Coming soon: more file formats for document upload, metrics for label quality ...
+
 .. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/annotation_tool.png
+
+
+7. Development
+-------------------
+* Unit tests can be executed by running :code:`tox`.

@@ -10,12 +10,10 @@ parsed_requirements = [
     for x in parsed_requirements
     if ((x.strip()[0] != "#") and (len(x.strip()) > 3) and "-e git://" not in x)
 ]
-# temporary workaround to install FARM from specific commit
-parsed_requirements.append('farm @ git+https://github.com/deepset-ai/FARM.git@ecee40e34781394a805c7dde14e6cc2570372798#egg=farm@v2.4.2#egg=farm')
 
 setup(
     name="farm-haystack",
-    version="0.1.3",
+    version="0.2.1",
     author="Malte Pietsch, Timo Moeller, Branden Chan, Tanay Soni",
     author_email="malte.pietsch@deepset.ai",
     description="Neural Question Answering at Scale. Use modern transformer based models like BERT to find answers in large document collections",
@@ -24,7 +22,7 @@ setup(
     keywords="QA Question-Answering Reader Retriever BERT roberta albert squad mrc transfer-learning language-model transformer",
     license="Apache",
     url="https://github.com/deepset-ai/haystack",
-    download_url="https://github.com/deepset-ai/haystack/archive/0.1.3.tar.gz",
+    download_url="https://github.com/deepset-ai/haystack/archive/0.2.1.tar.gz",
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     install_requires=parsed_requirements,
     python_requires=">=3.6.0",

@@ -1,0 +1,19 @@
+version: '3'
+services:
+  haystack-api:
+    image: "deepset/haystack-cpu:0.2.0"
+    ports:
+      - 8000:8000
+    environment:
+      # see haystack/api/config.py for additional variables to configure.
+      # load reader model from transformers' model hub.
+      - READER_MODEL_PATH=deepset/roberta-base-squad2
+      - DB_HOST=elasticsearch
+    restart: always
+
+  elasticsearch:
+    # This demo image contains Game of Thrones Wikipedia articles indexed.
+    # For starting a new Elasticsearch instance, replace image with "elasticsearch:7.6.1".
+    image: "deepset/elasticsearch-game-of-thrones"
+    environment:
+      - discovery.type=single-node

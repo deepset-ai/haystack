@@ -72,8 +72,6 @@ class TfidfRetriever(BaseRetriever):
         # get scores
         indices_and_scores = self._calc_scores(query)
 
-        print(indices_and_scores)
-
         # rank paragraphs
         df_sliced = self.df.loc[indices_and_scores.keys()]
         df_sliced = df_sliced[:top_k]

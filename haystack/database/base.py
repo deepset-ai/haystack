@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional, Dict
+from typing import Any, Optional, Dict
 
 from pydantic import BaseModel, Field
 
@@ -25,6 +25,10 @@ class BaseDocumentStore:
     def get_document_count(self):
         pass
 
+    @abstractmethod
+    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None):
+        pass
+
 
 class Document(BaseModel):
     id: str = Field(..., description="_id field from Elasticsearch")
@@ -36,11 +40,6 @@ class Document(BaseModel):
     )
     # name: Optional[str] = Field(None, description="Title of the document")
     question: Optional[str] = Field(None, description="Question text for FAQs.")
-    query_score: Optional[int] = Field(None, description="Elasticsearch query score for a retrieved document")
-    meta: Optional[Dict[str, Optional[str]]] = Field(None, description="")
-
-    def __getitem__(self, item):
-        if item == 'text':
-            return self.text
-        if item == 'id':
-            return self.id
+    query_score: Optional[float] = Field(None, description="Elasticsearch query score for a retrieved document")
+    meta: Optional[Dict[str, Any]] = Field(None, description="")
+    tags: Optional[Dict[str, Any]] = Field(None, description="Tags that allow filtering of the data")

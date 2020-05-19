@@ -120,7 +120,8 @@ class EmbeddingRetriever(BaseRetriever):
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
         if model_format == "farm" or model_format == "transformers":
             self.embedding_model = Inferencer.load(
-                embedding_model, task_type="embeddings", gpu=gpu, batch_size=4, max_seq_len=512
+                embedding_model, task_type="embeddings", extraction_strategy=self.pooling_strategy,
+                extraction_layer=self.emb_extraction_layer, gpu=gpu, batch_size=4, max_seq_len=512, num_processes=0
             )
 
         elif model_format == "sentence_transformers":
@@ -133,21 +134,28 @@ class EmbeddingRetriever(BaseRetriever):
             raise NotImplementedError
 
     def retrieve(self, query: str, candidate_doc_ids: [str] = None, top_k: int = 10) -> [Document]:
-        query_emb = self.create_embedding(query)
-        documents = self.document_store.query_by_embedding(query_emb, top_k, candidate_doc_ids)
+        query_emb = self.create_embedding(texts=[query])
+        documents = self.document_store.query_by_embedding(query_emb[0], top_k, candidate_doc_ids)
 
         return documents
 
-    def create_embedding(self, text):
+    def create_embedding(self, texts: [str]):
+        """
+        Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
+        :param texts: texts to embed
+        :return: list of embeddings (one per input text). Each embedding is a list of floats.
+        """
+
+        # for backward compatibility: cast pure str input
+        if type(texts) == str:
+            texts = [texts]
+        assert type(texts) == list, "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
+
         if self.model_format == "farm":
-            res = self.embedding_model.extract_vectors(
-                dicts=[{"text": text}],
-                extraction_strategy=self.pooling_strategy,
-                extraction_layer=self.emb_extraction_layer,
-            )
-            emb = list(res[0]["vec"])
+            res = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
+            emb = [list(r["vec"]) for r in res] #cast from numpy
         elif self.model_format == "sentence_transformers":
             # text is single string, sentence-transformers needs a list of strings
-            res = self.embedding_model.encode([text])  # get back list of numpy embedding vectors
-            emb = res[0].tolist()
+            res = self.embedding_model.encode(texts)  # get back list of numpy embedding vectors
+            emb = [list(r) for r in res] #cast from numpy
         return emb
