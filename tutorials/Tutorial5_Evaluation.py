@@ -1,4 +1,5 @@
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.indexing.io import fetch_archive_from_http
 from haystack.retriever.elasticsearch import ElasticsearchRetriever
 from haystack.reader.farm import FARMReader
 from haystack.finder import Finder
@@ -24,10 +25,15 @@ if LAUNCH_ELASTICSEARCH:
                         "then set LAUNCH_ELASTICSEARCH in the script to False.")
     time.sleep(30)
 
+# Download evaluation data, which is a subset of Natural Questions development set containing 50 documents
+doc_dir = "../data/nq"
+s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset.json.zip"
+fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
+
 # Connect to Elasticsearch
 document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document", create_index=False)
 # Add evaluation data to Elasticsearch database
-#document_store.add_eval_data("../data/natural_questions/dev_subset.json")
+document_store.add_eval_data("../data/nq/nq_dev_subset.json")
 
 # Initialize Retriever
 retriever = ElasticsearchRetriever(document_store=document_store)
