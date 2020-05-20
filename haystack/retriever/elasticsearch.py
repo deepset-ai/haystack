@@ -62,8 +62,8 @@ class ElasticsearchRetriever(BaseRetriever):
             - "mean avg precision": Mean of average precision for each question. Rewards retrievers that give relevant
               documents a higher rank.
 
-        :param label_index: Elasticsearch index where labeled questions are stored
-        :param doc_index: Elasticsearch index where documents that are used for evaluation are stored
+        :param label_index: Index/Table in DocumentStore where labeled questions are stored
+        :param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
         :param top_k: How many documents to return per question
         """
 
@@ -91,7 +91,7 @@ class ElasticsearchRetriever(BaseRetriever):
         logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
                      f" the top-{top_k} candidate passages selected by the retriever."))
 
-        return {"recall": recall, "mean avg precision": mean_avg_precision}
+        return {"recall": recall, "map": mean_avg_precision}
 
 
 class EmbeddingRetriever(BaseRetriever):

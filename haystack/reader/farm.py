@@ -338,7 +338,7 @@ class FARMReader:
 
         # extract all questions for evaluation
         filter = {"origin": label_origin}
-        questions = document_store.get_all_docs_in_index(index=label_index, filters=filter)
+        questions = document_store.get_all_documents_in_index(index=label_index, filters=filter)
 
         # mapping from doc_id to questions
         doc_questions_dict = {}
@@ -362,7 +362,7 @@ class FARMReader:
             id += 1
 
         # extract eval documents and convert data back to SQuAD-like format
-        documents = document_store.get_all_docs_in_index(index=doc_index)
+        documents = document_store.get_all_documents_in_index(index=doc_index)
         dicts = []
         for document in documents:
             doc_id = document["_source"]["doc_id"]

@@ -109,10 +109,27 @@ class Finder:
             - "retriever_recall": Proportion of questions for which correct document is among retrieved documents
             - "retriever_map": Mean of average precision for each question. Rewards retrievers that give relevant
               documents a higher rank.
-            - "reader_recall": Proportion of predicted answers that overlap with correct answer
-            - "reader_map": Reader re-ranks documents retrieved by Retriever. Mean average precision of the re-ranking.
-            - "reader_em": Proportion of exact matches of predicted answers with their corresponding correct answers
-            - "reader_f1": Average overlap between predicted answers and their corresponding correct answers
+            - "reader_top1_accuracy": Proportion of highest ranked predicted answers that overlap with corresponding correct answer
+            - "reader_top1_accuracy_has_answer": Proportion of highest ranked predicted answers that overlap
+                                                 with corresponding correct answer for answerable questions
+            - "reader_top_k_accuracy": Proportion of predicted answers that overlap with corresponding correct answer
+            - "reader_topk_accuracy_has_answer": Proportion of predicted answers that overlap with corresponding correct answer
+                                                 for answerable questions
+            - "reader_top1_em": Proportion of exact matches of highest ranked predicted answers with their corresponding
+                                correct answers
+            - "reader_top1_em_has_answer": Proportion of exact matches of highest ranked predicted answers with their corresponding
+                                           correct answers for answerable questions
+            - "reader_topk_em": Proportion of exact matches of predicted answers with their corresponding correct answers
+            - "reader_topk_em_has_answer": Proportion of exact matches of predicted answers with their corresponding
+                                           correct answers for answerable questions
+            - "reader_top1_f1": Average overlap between highest ranked predicted answers and their corresponding correct answers
+            - "reader_top1_f1_has_answer": Average overlap between highest ranked predicted answers and their corresponding
+                                           correct answers for answerable questions
+            - "reader_topk_f1": Average overlap between predicted answers and their corresponding correct answers
+            - "reader_topk_f1_has_answer": Average overlap between predicted answers and their corresponding correct answers
+                                           for answerable questions
+            - "reader_top1_no_answer_accuracy": Proportion of correct predicting unanswerable question at highest ranked prediction
+            - "reader_topk_no_answer_accuracy": Proportion of correct predicting unanswerable question among all predictions
             - "total_retrieve_time": Time retriever needed to retrieve documents for all questions
             - "avg_retrieve_time": Average time needed to retrieve documents for one question
             - "total_reader_time": Time reader needed to extract answer out of retrieved documents for all questions
@@ -132,15 +149,26 @@ class Finder:
         finder_start_time = time.time()
         # extract all questions for evaluation
         filter = {"origin": label_origin}
-        questions = self.retriever.document_store.get_all_docs_in_index(index=label_index, filters=filter)
+        questions = self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter)
 
         correct_retrievals = 0
-        correct_readings = 0
         summed_avg_precision_retriever = 0
-        summed_avg_precision_reader = 0
-        exact_matches = 0
-        summed_f1 = 0
         retrieve_times = []
+
+        correct_readings_top1 = 0
+        correct_readings_topk = 0
+        correct_readings_top1_has_answer = 0
+        correct_readings_topk_has_answer = 0
+        exact_matches_top1 = 0
+        exact_matches_topk = 0
+        exact_matches_top1_has_answer = 0
+        exact_matches_topk_has_answer = 0
+        summed_f1_top1 = 0
+        summed_f1_topk = 0
+        summed_f1_top1_has_answer = 0
+        summed_f1_topk_has_answer = 0
+        correct_no_answers_top1 = 0
+        correct_no_answers_topk =  0
         read_times = []
 
         # retrieve documents
@@ -164,13 +192,14 @@ class Finder:
         retriever_total_time = time.time() - retriever_start_time
         number_of_questions = q_idx + 1
 
-        previous_top_k_per_candidate = self.reader.top_k_per_candidate
+        number_of_no_answer = 0
         previous_return_no_answers = self.reader.return_no_answers
-        self.reader.top_k_per_candidate = 1
         self.reader.return_no_answers = True
         # extract answers
         reader_start_time = time.time()
         for q_idx, question in enumerate(questions_with_docs):
+            if (q_idx + 1) % 100 == 0:
+                print(f"Processed {q_idx+1} questions.")
             question_string = question["question"]["_source"]["question"]
             docs = question["docs"]
             single_reader_start = time.time()
@@ -184,21 +213,33 @@ class Finder:
                     best_f1 = 0
                     # check if correct document
                     if answer["document_id"] == question["correct_es_doc_id"]:
-                        summed_avg_precision_reader += 1 / (answer_idx + 1)
                         gold_spans = [(gold_answer["answer_start"], gold_answer["answer_start"] + len(gold_answer["text"]) + 1)
                                       for gold_answer in question["question"]["_source"]["answers"]]
                         predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
 
                         for gold_span in gold_spans:
                             # check if overlap between gold answer and predicted answer
+                            # top-1 answer
                             if not found_answer:
                                 if (gold_span[0] <= predicted_span[1]) and (predicted_span[0] <= gold_span[1]):
-                                    correct_readings += 1
+                                    # top-1 answer
+                                    if answer_idx == 0:
+                                        correct_readings_top1 += 1
+                                        correct_readings_top1_has_answer += 1
+                                    # top-k answers
+                                    correct_readings_topk += 1
+                                    correct_readings_topk_has_answer += 1
                                     found_answer = True
                             # check for exact match
                             if not found_em:
                                 if (gold_span[0] == predicted_span[0]) and (gold_span[1] == predicted_span[1]):
-                                    exact_matches += 1
+                                    # top-1-answer
+                                    if answer_idx == 0:
+                                        exact_matches_top1 += 1
+                                        exact_matches_top1_has_answer += 1
+                                    # top-k answers
+                                    exact_matches_topk += 1
+                                    exact_matches_topk_has_answer += 1
                                     found_em = True
                             # calculate f1
                             pred_indices = list(range(predicted_span[0], predicted_span[1] + 1))
@@ -208,49 +249,83 @@ class Finder:
                                 precision = n_overlap / len(pred_indices)
                                 recall = n_overlap / len(gold_indices)
                                 current_f1 = (2 * precision * recall) / (precision + recall)
+                                # top-1 answer
+                                if answer_idx == 0:
+                                    summed_f1_top1 += current_f1
+                                    summed_f1_top1_has_answer += current_f1
                                 if current_f1 > best_f1:
                                     best_f1 = current_f1
-                        summed_f1 += best_f1
+                        # top-k answers: use best f1-score
+                        summed_f1_topk += best_f1
+                        summed_f1_topk_has_answer += best_f1
 
                     if found_answer and found_em:
                         break
             # question not answerable
             else:
+                number_of_no_answer += 1
                 # As question is not answerable, it is not clear how to compute average precision for this question.
                 # For now, we decided to calculate average precision based on the rank of 'no answer'.
                 for answer_idx, answer in enumerate(predicted_answers["answers"]):
                     # check if 'no answer'
                     if answer["answer"] is None:
-                        correct_readings += 1
-                        summed_avg_precision_reader += 1 / (answer_idx + 1)
-                        exact_matches += 1
-                        summed_f1 += 1
+                        if answer_idx == 0:
+                            correct_no_answers_top1 += 1
+                            correct_readings_top1 += 1
+                            exact_matches_top1 += 1
+                            summed_f1_top1 += 1
+                        correct_no_answers_topk += 1
+                        correct_readings_topk += 1
+                        exact_matches_topk += 1
+                        summed_f1_topk += 1
                         break
+        number_of_has_answer = correct_retrievals - number_of_no_answer
+
         reader_total_time = time.time() - reader_start_time
         finder_total_time = time.time() - finder_start_time
 
         retriever_recall = correct_retrievals / number_of_questions
         retriever_map = summed_avg_precision_retriever / number_of_questions
-        reader_recall = correct_readings / correct_retrievals
-        reader_map = summed_avg_precision_reader / correct_retrievals
-        reader_em = exact_matches / correct_retrievals
-        reader_f1 = summed_f1 / correct_retrievals
 
-        self.reader.top_k_per_candidate = previous_top_k_per_candidate
+        reader_top1_accuracy = correct_readings_top1 / correct_retrievals
+        reader_top1_accuracy_has_answer = correct_readings_top1_has_answer / number_of_has_answer
+        reader_top_k_accuracy = correct_readings_topk / correct_retrievals
+        reader_topk_accuracy_has_answer = correct_readings_topk_has_answer / number_of_has_answer
+        reader_top1_em = exact_matches_top1 / correct_retrievals
+        reader_top1_em_has_answer = exact_matches_top1_has_answer / number_of_has_answer
+        reader_topk_em = exact_matches_topk / correct_retrievals
+        reader_topk_em_has_answer = exact_matches_topk_has_answer / number_of_has_answer
+        reader_top1_f1 = summed_f1_top1 / correct_retrievals
+        reader_top1_f1_has_answer = summed_f1_top1_has_answer / number_of_has_answer
+        reader_topk_f1 = summed_f1_topk / correct_retrievals
+        reader_topk_f1_has_answer = summed_f1_topk_has_answer / number_of_has_answer
+        reader_top1_no_answer_accuracy = correct_no_answers_top1 / number_of_no_answer
+        reader_topk_no_answer_accuracy = correct_no_answers_topk / number_of_no_answer
+
         self.reader.return_no_answers = previous_return_no_answers
 
-        logger.info((f"{correct_readings} out of {number_of_questions} questions were correctly answered "
-                     f"({(correct_readings/number_of_questions):.2%})."))
+        logger.info((f"{correct_readings_topk} out of {number_of_questions} questions were correctly answered "
+                     f"({(correct_readings_topk/number_of_questions):.2%})."))
         logger.info(f"{number_of_questions-correct_retrievals} questions could not be answered due to the retriever.")
-        logger.info(f"{correct_retrievals-correct_readings} questions could not be answered due to the reader.")
+        logger.info(f"{correct_retrievals-correct_readings_topk} questions could not be answered due to the reader.")
 
         results = {
             "retriever_recall": retriever_recall,
             "retriever_map": retriever_map,
-            "reader_recall": reader_recall,
-            "reader_map": reader_map,
-            "reader_em": reader_em,
-            "reader_f1" : reader_f1,
+            "reader_top1_accuracy": reader_top1_accuracy,
+            "reader_top1_accuracy_has_answer": reader_top1_accuracy_has_answer,
+            "reader_top_k_accuracy": reader_top_k_accuracy,
+            "reader_topk_accuracy_has_answer": reader_topk_accuracy_has_answer,
+            "reader_top1_em": reader_top1_em,
+            "reader_top1_em_has_answer": reader_top1_em_has_answer,
+            "reader_topk_em": reader_topk_em,
+            "reader_topk_em_has_answer": reader_topk_em_has_answer,
+            "reader_top1_f1": reader_top1_f1,
+            "reader_top1_f1_has_answer": reader_top1_f1_has_answer,
+            "reader_topk_f1": reader_topk_f1,
+            "reader_topk_f1_has_answer": reader_topk_f1_has_answer,
+            "reader_top1_no_answer_accuracy": reader_top1_no_answer_accuracy,
+            "reader_topk_no_answer_accuracy": reader_topk_no_answer_accuracy,
             "total_retrieve_time": retriever_total_time,
             "avg_retrieve_time": mean(retrieve_times),
             "total_reader_time": reader_total_time,

@@ -260,7 +260,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         bulk(self.client, eval_docs_to_index)
         bulk(self.client, questions_to_index)
 
-    def get_all_docs_in_index(self, index, filters=None):
+    def get_all_documents_in_index(self, index, filters=None):
         body = {
             "query": {
                 "bool": {
