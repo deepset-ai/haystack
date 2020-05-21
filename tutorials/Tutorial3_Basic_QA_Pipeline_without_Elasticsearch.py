@@ -40,9 +40,8 @@ fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 # Now, let's write the docs to our DB.
 # You can optionally supply a cleaning function that is applied to each doc (e.g. to remove footers)
 # It must take a str as input, and return a str.
-write_documents_to_db(
-    document_store=document_store, document_dir=doc_dir, clean_func=clean_wiki_text, only_empty_db=True
-)
+write_documents_to_db(document_store=document_store, document_dir=doc_dir, clean_func=clean_wiki_text, only_empty_db=True, split_paragraphs=True)
+
 
 
 # ## Initalize Retriever, Reader,  & Finder
