@@ -89,7 +89,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             doc["_op_type"] = "create"
             doc["_index"] = self.index
 
-        bulk(self.client, documents)
+        bulk(self.client, documents, request_timeout=30)
 
     def get_document_count(self):
         result = self.client.count()
