@@ -51,6 +51,33 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def get_document_by_id(self, id):
         return self.docs[id]
 
+    def _convert_memory_hit_to_document(self, hit, doc_id=None) -> Document:
+        document = Document(
+            id=doc_id,
+            text=hit[0].get('text', None),
+            meta=hit[0].get('meta', {}),
+            query_score=hit[1],
+        )
+        return document
+
+    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None) -> [Document]:
+        from haystack.api import config
+        from numpy import dot
+        from numpy.linalg import norm
+
+        embedding_field_name = config.EMBEDDING_FIELD_NAME
+        if embedding_field_name is None:
+            return []
+
+        if query_emb is None:
+            return []
+
+        candidate_docs = [self._convert_memory_hit_to_document(
+            (doc, dot(query_emb, doc[embedding_field_name]) / (norm(query_emb) * norm(doc[embedding_field_name]))), doc_id=idx) for idx, doc in self.docs.items()
+        ]
+
+        return sorted(candidate_docs, key=lambda x: x.query_score, reverse=True)[0:top_k]
+
     def get_document_ids_by_tags(self, tags):
         """
         The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
