@@ -38,7 +38,3 @@ def test_finder_get_answers_single_result():
     prediction = finder.get_answers(question="testing finder", top_k_retriever=1,
                                     top_k_reader=1)
     assert prediction is not None
-
-
-if __name__ == '__main__':
-    test_finder_get_answers()
