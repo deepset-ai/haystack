@@ -6,9 +6,9 @@ from haystack.retriever.tfidf import TfidfRetriever
 
 def test_finder_get_answers():
     test_docs = [
-        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1"},
-        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2"},
-        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3"}
+        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1", "meta": {"test": "test"}},
+        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2", "meta": {"test": "test"}},
+        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3", "meta": {"test": "test"}}
     ]
 
     document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
@@ -38,3 +38,7 @@ def test_finder_get_answers_single_result():
     prediction = finder.get_answers(question="testing finder", top_k_retriever=1,
                                     top_k_reader=1)
     assert prediction is not None
+
+
+if __name__ == '__main__':
+    test_finder_get_answers()
