@@ -1,4 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey
+import json
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, PickleType
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -20,6 +21,7 @@ class Document(ORMBase):
 
     name = Column(String)
     text = Column(String)
+    meta_data = Column(PickleType)
 
     tags = relationship("Tag", secondary="document_tag", backref="Document")
 
@@ -91,7 +93,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def write_documents(self, documents):
         for doc in documents:
-            row = Document(name=doc["name"], text=doc["text"])
+            row = Document(name=doc["name"], text=doc["text"], meta_data=doc.get("meta", {}))
             self.session.add(row)
         self.session.commit()
 
@@ -102,6 +104,7 @@ class SQLDocumentStore(BaseDocumentStore):
         document = DocumentSchema(
             id=row.id,
             text=row.text,
-            meta=row.tags
+            meta=row.meta_data,
+            tags=row.tags
         )
         return document
