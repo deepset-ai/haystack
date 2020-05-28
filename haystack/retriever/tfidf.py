@@ -10,7 +10,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 logger = logging.getLogger(__name__)
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
-Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text"])
+Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text", "meta"])
 
 
 class TfidfRetriever(BaseRetriever):
@@ -45,11 +45,11 @@ class TfidfRetriever(BaseRetriever):
         paragraphs = []
         p_id = 0
         for doc in documents:
-            for p in doc.text.split("\n\n"):
+            for p in doc.text.split("\n\n"):  # TODO: this assumes paragraphs are separated by "\n\n". Can be switched to paragraph tokenizer.
                 if not p.strip():  # skip empty paragraphs
                     continue
                 paragraphs.append(
-                    Paragraph(document_id=doc.id, paragraph_id=p_id, text=(p,))
+                    Paragraph(document_id=doc.id, paragraph_id=p_id, text=(p,), meta=doc.meta)
                 )
                 p_id += 1
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
@@ -83,7 +83,7 @@ class TfidfRetriever(BaseRetriever):
 
         # get actual content for the top candidates
         paragraphs = list(df_sliced.text.values)
-        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"]}
+        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"],  "meta": row.get("meta", {})}
                      for idx, row in df_sliced.iterrows()]
 
         documents = []
@@ -91,7 +91,8 @@ class TfidfRetriever(BaseRetriever):
             documents.append(
                 Document(
                     id=meta["paragraph_id"],
-                    text=para
+                    text=para,
+                    meta=meta.get("meta", {})
                 ))
 
         return documents
