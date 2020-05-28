@@ -4,44 +4,40 @@ from farm.data_handler.utils import http_get
 import tempfile
 import tarfile
 import zipfile
-
-from haystack.indexing.pdf import convert_to_text
+from typing import Callable
+from haystack.indexing.file_converters.pdftotext import PDFToText
+from haystack.database.base import Document
 
 logger = logging.getLogger(__name__)
 
 
-def write_documents_to_db(document_store, document_dir, clean_func=None, only_empty_db=False, split_paragraphs=False):
+def convert_files_to_documents(dir_path: str, clean_func: Callable = None, split_paragraphs: bool = False) -> [Document]:
     """
-    Write all text files(.txt) in the sub-directories of the given path to the connected database.
+    Convert all files(.txt, .pdf) in the sub-directories of the given path to Document objects.
 
-    :param document_dir: path for the documents to be written to the database
+    :param dir_path: path for the documents to be written to the database
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
-    :param only_empty_db: If true, docs will only be written if db is completely empty.
-                              Useful to avoid indexing the same initial docs again and again.
+    :param split_paragraphs: split text in paragraphs.
+
     :return: None
     """
 
     file_paths = []
     for ext in ("**/*.txt", "**/*.pdf"):
-        paths = [p for p in Path(document_dir).glob(ext)]
+        paths = [p for p in Path(dir_path).glob(ext)]
         file_paths.extend(paths)
+        if ".pdf" in [p.suffix for p in paths]:
+            pdf_converter = PDFToText()
+        else:
+            pdf_converter = None
 
-    # check if db has already docs
-    if only_empty_db:
-        n_docs = document_store.get_document_count()
-        if n_docs > 0:
-            logger.info(f"Skip writing documents since DB already contains {n_docs} docs ...  "
-                        "(Disable `only_empty_db`, if you want to add docs anyway.)")
-            return None
-
-    # read and add docs
-    docs_to_index = []
+    documents = []
     for path in file_paths:
         if path.suffix == ".txt":
             with open(path) as doc:
                 text = doc.read()
         elif path.suffix == ".pdf":
-            text = convert_to_text(path)
+            text = pdf_converter.extract_text(path)
         else:
             raise Exception(f"Indexing of {path.suffix} files is not currently supported.")
 
@@ -52,21 +48,11 @@ def write_documents_to_db(document_store, document_dir, clean_func=None, only_em
             for para in text.split("\n\n"):
                 if not para.strip():  # skip empty paragraphs
                     continue
-                docs_to_index.append(
-                    {
-                        "name": path.name,
-                        "text": para
-                    }
-                )
+                documents.append(Document(text=para))
         else:
-            docs_to_index.append(
-                {
-                    "name": path.name,
-                    "text": text
-                }
-            )
-    document_store.write_documents(docs_to_index)
-    logger.info(f"Wrote {len(docs_to_index)} docs to DB")
+            documents.append(Document(text=text))
+
+    return documents
 
 
 def fetch_archive_from_http(url, output_dir, proxies=None):
@@ -109,3 +95,4 @@ def fetch_archive_from_http(url, output_dir, proxies=None):
                 archive.extractall(output_dir)
             # temp_file gets deleted here
         return True
+
