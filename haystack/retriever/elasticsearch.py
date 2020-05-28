@@ -84,7 +84,7 @@ class EmbeddingRetriever(BaseRetriever):
             # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
             # e.g. 'roberta-base-nli-stsb-mean-tokens'
             if gpu:
-                device = "gpu"
+                device = "cuda"
             else:
                 device = "cpu"
             self.embedding_model = SentenceTransformer(embedding_model, device=device)
