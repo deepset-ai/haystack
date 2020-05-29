@@ -108,7 +108,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: dict = None,
         top_k: int = 10,
         custom_query: str = None,
+        index: str = None,
     ) -> [Document]:
+
+        if index is None:
+            index = self.index
 
         if custom_query:  # substitute placeholder for question and filters for the custom_query template string
             template = Template(custom_query)
@@ -145,7 +149,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             body["_source"] = {"excludes": self.excluded_meta_data}
 
         logger.debug(f"Retriever query: {body}")
-        result = self.client.search(index=self.index, body=body)["hits"]["hits"]
+        result = self.client.search(index=index, body=body)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
         return documents
@@ -199,3 +203,76 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
         )
         return document
+
+    def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "feedback"):
+        """
+        Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
+
+        :param filename: Name of the file containing evaluation data
+        :type filename: str
+        :param doc_index: Elasticsearch index where evaluation documents should be stored
+        :type doc_index: str
+        :param label_index: Elasticsearch index where labeled questions should be stored
+        :type label_index: str
+        """
+
+        eval_docs_to_index = []
+        questions_to_index = []
+
+        with open(filename, "r") as file:
+            data = json.load(file)
+            for document in data["data"]:
+                for paragraph in document["paragraphs"]:
+                    doc_to_index= {}
+                    id = hash(paragraph["context"])
+                    for fieldname, value in paragraph.items():
+                        # write docs to doc_index
+                        if fieldname == "context":
+                            doc_to_index[self.text_field] = value
+                            doc_to_index["doc_id"] = str(id)
+                            doc_to_index["_op_type"] = "create"
+                            doc_to_index["_index"] = doc_index
+                        # write questions to label_index
+                        elif fieldname == "qas":
+                            for qa in value:
+                                question_to_index = {
+                                    "question": qa["question"],
+                                    "answers": qa["answers"],
+                                    "doc_id": str(id),
+                                    "origin": "gold_label",
+                                    "index_name": doc_index,
+                                    "_op_type": "create",
+                                    "_index": label_index
+                                }
+                                questions_to_index.append(question_to_index)
+                        # additional fields for docs
+                        else:
+                            doc_to_index[fieldname] = value
+
+                    for key, value in document.items():
+                        if key == "title":
+                            doc_to_index[self.name_field] = value
+                        elif key != "paragraphs":
+                            doc_to_index[key] = value
+
+                    eval_docs_to_index.append(doc_to_index)
+
+        bulk(self.client, eval_docs_to_index)
+        bulk(self.client, questions_to_index)
+
+    def get_all_documents_in_index(self, index, filters=None):
+        body = {
+            "query": {
+                "bool": {
+                    "must": {
+                        "match_all" : {}
+                    }
+                }
+            }
+        }
+
+        if filters:
+           body["query"]["bool"]["filter"] = {"term": filters}
+        result = scan(self.client, query=body, index=index)
+
+        return result
