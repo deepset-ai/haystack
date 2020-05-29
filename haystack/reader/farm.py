@@ -4,13 +4,16 @@ from pathlib import Path
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import SquadProcessor
+from farm.data_handler.dataloader import NamedDataLoader
 from farm.infer import Inferencer
 from farm.modeling.optimization import initialize_optimizer
 from farm.train import Trainer
+from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
 from scipy.special import expit
 
 from haystack.database.base import Document
+from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +274,116 @@ class FARMReader:
                   "answers": answers}
 
         return result
+
+    def eval_on_file(self, data_dir: str, test_filename: str, device: str):
+        """
+        Performs evaluation on a SQuAD-formatted file.
+
+        Returns a dict containing the following metrics:
+            - "EM": exact match score
+            - "f1": F1-Score
+            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+
+        :param data_dir: The directory in which the test set can be found
+        :type data_dir: Path or str
+        :param test_filename: The name of the file containing the test data in SQuAD format.
+        :type test_filename: str
+        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :type device: str
+        """
+        eval_processor = SquadProcessor(
+            tokenizer=self.inferencer.processor.tokenizer,
+            max_seq_len=self.inferencer.processor.max_seq_len,
+            label_list=self.inferencer.processor.tasks["question_answering"]["label_list"],
+            metric=self.inferencer.processor.tasks["question_answering"]["metric"],
+            train_filename=None,
+            dev_filename=None,
+            dev_split=0,
+            test_filename=test_filename,
+            data_dir=Path(data_dir),
+        )
+
+        data_silo = DataSilo(processor=eval_processor, batch_size=self.inferencer.batch_size, distributed=False)
+        data_loader = data_silo.get_data_loader("test")
+
+        evaluator = Evaluator(data_loader=data_loader, tasks=eval_processor.tasks, device=device)
+
+        eval_results = evaluator.eval(self.inferencer.model)
+        results = {
+            "EM": eval_results[0]["EM"],
+            "f1": eval_results[0]["f1"],
+            "top_n_recall": eval_results[0]["top_n_recall"]
+        }
+        return results
+
+    def eval(self, document_store: ElasticsearchDocumentStore, device: str, label_index: str = "feedback",
+             doc_index: str = "eval_document", label_origin: str = "gold_label"):
+        """
+        Performs evaluation on evaluation documents in Elasticsearch DocumentStore.
+
+        Returns a dict containing the following metrics:
+            - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
+            - "f1": Average overlap between predicted answers and their corresponding correct answers
+            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+
+        :param document_store: The ElasticsearchDocumentStore containing the evaluation documents
+        :type document_store: ElasticsearchDocumentStore
+        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :type device: str
+        :param label_index: Elasticsearch index where labeled questions are stored
+        :type label_index: str
+        :param doc_index: Elasticsearch index where documents that are used for evaluation are stored
+        :type doc_index: str
+        """
+
+        # extract all questions for evaluation
+        filter = {"origin": label_origin}
+        questions = document_store.get_all_documents_in_index(index=label_index, filters=filter)
+
+        # mapping from doc_id to questions
+        doc_questions_dict = {}
+        id = 0
+        for question in questions:
+            doc_id = question["_source"]["doc_id"]
+            if doc_id not in doc_questions_dict:
+                doc_questions_dict[doc_id] = [{
+                    "id": id,
+                    "question" : question["_source"]["question"],
+                    "answers" : question["_source"]["answers"],
+                    "is_impossible" : False if question["_source"]["answers"] else True
+                }]
+            else:
+                doc_questions_dict[doc_id].append({
+                    "id": id,
+                    "question" : question["_source"]["question"],
+                    "answers" : question["_source"]["answers"],
+                    "is_impossible" : False if question["_source"]["answers"] else True
+                })
+            id += 1
+
+        # extract eval documents and convert data back to SQuAD-like format
+        documents = document_store.get_all_documents_in_index(index=doc_index)
+        dicts = []
+        for document in documents:
+            doc_id = document["_source"]["doc_id"]
+            text = document["_source"]["text"]
+            questions = doc_questions_dict[doc_id]
+            dicts.append({"qas" : questions, "context" : text})
+
+        # Create DataLoader that can be passed to the Evaluator
+        indices = range(len(dicts))
+        dataset, tensor_names = self.inferencer.processor.dataset_from_dicts(dicts, indices=indices)
+        data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
+
+        evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
+
+        eval_results = evaluator.eval(self.inferencer.model)
+        results = {
+            "EM": eval_results[0]["EM"],
+            "f1": eval_results[0]["f1"],
+            "top_n_recall": eval_results[0]["top_n_recall"]
+        }
+        return results
 
     @staticmethod
     def _calc_no_answer(no_ans_gaps,best_score_answer):
