@@ -6,9 +6,9 @@ from haystack.retriever.tfidf import TfidfRetriever
 
 def test_finder_get_answers():
     test_docs = [
-        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1"},
-        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2"},
-        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3"}
+        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1", "meta": {"test": "test"}},
+        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2", "meta": {"test": "test"}},
+        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3", "meta": {"test": "test"}}
     ]
 
     document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
