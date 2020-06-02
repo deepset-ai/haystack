@@ -5,6 +5,5 @@ python:
   - "3.7"
 install:
   - "pip install -e ."
-  - "apt-get -y install xpdf"
 script:
   - "cd test && pytest"
