@@ -5,6 +5,7 @@ from functools import partial, reduce
 from itertools import chain
 from pathlib import Path
 
+import fitz
 import langdetect
 
 from haystack.indexing.file_converters.base import BaseConverter
@@ -12,46 +13,86 @@ from haystack.indexing.file_converters.base import BaseConverter
 logger = logging.getLogger(__name__)
 
 
-class PDFToText(BaseConverter):
-    def __init__(self, *args, **kwargs):
+class PDFToTextConverter(BaseConverter):
+    def __init__(
+        self,
+        remove_numeric_tables: bool = False,
+        remove_whitespace: bool = None,
+        remove_empty_lines: bool = None,
+        valid_languages: [str] = None,
+    ):
+        """
+        :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
+                                      The tabular structures in documents might be noise for the reader model if it
+                                      does not have table parsing capability for finding answers. However, tables
+                                      may also have long strings that could possible candidate for searching answers.
+                                      The rows containing strings are thus retained in this option.
+        :param remove_whitespace: strip whitespaces before or after each line in the text.
+        :param remove_empty_lines: remove more than two empty lines in the text.
+        :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
+                                (https://en.wikipedia.org/wiki/ISO_639-1) format.
+                                This option can be used to add test for encoding errors. If the extracted text is
+                                not one of the valid languages, then it might likely be encoding error resulting
+                                in garbled text.
+        """
         verify_installation = subprocess.run(["pdftotext -v"], shell=True)
         if verify_installation.returncode == 127:
-            raise Exception("pdftotext is not installed.")
+            raise Exception(
+                """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
+                 Installation Instructions:
+                 * Ubuntu/Debian: 'sudo apt-get update && sudo apt-get install -y xpdf'
+                 * CentOS: sudo yum install poppler-utils
+                 * MacOS: brew install xpdf"""
+            )
 
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            remove_numeric_tables=remove_numeric_tables,
+            remove_whitespace=remove_whitespace,
+            remove_empty_lines=remove_empty_lines,
+            valid_languages=valid_languages,
+        )
 
-    def extract_text(self, file_path: Path) -> str:
+    def extract_pages(self, file_path: Path) -> [str]:
+
+        page_count = fitz.open(file_path).pageCount
 
         pages = []
-        page_number = 1
-        while True:  # loop until EOF
-            page = self._extract_page(file_path, page_number, layout=True)
-            if page == "":
-                break
-
+        for page_number in range(1, page_count + 1):
+            page = self._extract_page(file_path, page_number, layout=False)
             lines = page.splitlines()
+            cleaned_lines = []
+            for line in lines:
+                words = line.split()
+                digits = [word for word in words if any(i.isdigit() for i in word)]
 
-            if self.remove_tables:
-                lines = self._remove_tables(lines)
+                # remove lines having > 40% of words as digits AND not ending with a period(.)
+                if self.remove_numeric_tables:
+                    if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
+                        logger.debug(f"Removing line '{line}' from {file_path}")
+                        continue
 
-            multi_column = self._detect_multi_column(lines) if lines else False
-            if multi_column:
-                page = self._extract_page(file_path, page_number, layout=False)
-                lines = page.splitlines()
+                if self.remove_whitespace:
+                    line = line.strip()
 
-            page = "\n".join(lines)
+                cleaned_lines.append(line)
+
+            page = "\n".join(cleaned_lines)
+
+            if self.remove_empty_lines:
+                page = re.sub(r"\n\n+", "\n\n", page)
+
             pages.append(page)
             page_number += 1
 
-        document_text = "\n\n\n\n".join(pages)
+        if self.valid_languages:
+            document_text = "".join(pages)
+            if not self._validate_language(document_text):
+                logger.warning(
+                    f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
+                    f"been decoded in the correct text format."
+                )
 
-        if not self._validate_language(document_text):
-            logger.warning(
-                f"The language for {file_path} is not one of {self.validate_languages}. The file may not have been "
-                "decoded in the correct text format."
-            )
-
-        return document_text
+        return pages
 
     def _extract_page(self, file_path, page_number, layout=True):
         if layout:
@@ -62,39 +103,13 @@ class PDFToText(BaseConverter):
         page = output_page.stdout.decode(errors="ignore")
         return page
 
-    def _remove_tables(self, lines):
-        cleaned_lines = []
-        for line in lines:
-            if line.strip() != "":
-                if (
-                        len(re.findall("\s\s\s\s+", line.strip())) > 0
-                        or line.strip().replace(".", "").replace(",", "").isdigit()
-                ):
-                    continue
-
-            cleaned_lines.append(line)
-        return cleaned_lines
-
     def _validate_language(self, text):
         try:
             lang = langdetect.detect(text)
         except langdetect.lang_detect_exception.LangDetectException:
             lang = None
 
-        if lang in self.validate_languages:
-            return True
-        else:
-            return False
-
-    def _detect_multi_column(self, lines):
-        lines_with_possible_column_split = 0
-        for line in lines:
-            space_regex = re.finditer("\s\s\s+", line)
-            space_position = [match.span() for match in space_regex if match.span()[0]]
-            if len(space_position) == 1:
-                lines_with_possible_column_split += 1
-
-        if lines_with_possible_column_split / len(lines) > 0.5:
+        if lang in self.valid_languages:
             return True
         else:
             return False

@@ -5,7 +5,7 @@ import tempfile
 import tarfile
 import zipfile
 from typing import Callable
-from haystack.indexing.file_converters.pdftotext import PDFToText
+from haystack.indexing.file_converters.pdftotext import PDFToTextConverter
 from haystack.database.base import Document
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def convert_files_to_documents(dir_path: str, clean_func: Callable = None, split
         paths = [p for p in Path(dir_path).glob(ext)]
         file_paths.extend(paths)
         if ".pdf" in [p.suffix for p in paths]:
-            pdf_converter = PDFToText()
+            pdf_converter = PDFToTextConverter()
         else:
             pdf_converter = None
 
@@ -37,7 +37,8 @@ def convert_files_to_documents(dir_path: str, clean_func: Callable = None, split
             with open(path) as doc:
                 text = doc.read()
         elif path.suffix == ".pdf":
-            text = pdf_converter.extract_text(path)
+            pages = pdf_converter.extract_pages(path)
+            text = "\n".join(pages)
         else:
             raise Exception(f"Indexing of {path.suffix} files is not currently supported.")
 
