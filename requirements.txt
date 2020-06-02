@@ -9,5 +9,6 @@ elasticsearch
 elastic-apm
 tox
 coverage
+langdetect # for PDF conversions
 PyMuPDF # for PDF conversions
 # optional: sentence-transformers
