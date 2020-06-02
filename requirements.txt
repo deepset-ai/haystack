@@ -9,4 +9,5 @@ elasticsearch
 elastic-apm
 tox
 coverage
+PyMuPDF # for PDF conversions
 # optional: sentence-transformers
