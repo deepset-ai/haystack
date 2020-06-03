@@ -4,7 +4,6 @@ cache: pip
 python:
   - "3.7"
 install:
-  - "sudo apt-get -y install xpdf"
   - "pip install -e ."
 script:
   - "cd test && pytest"
