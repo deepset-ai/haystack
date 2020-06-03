@@ -49,9 +49,9 @@ def convert_files_to_documents(dir_path: str, clean_func: Callable = None, split
             for para in text.split("\n\n"):
                 if not para.strip():  # skip empty paragraphs
                     continue
-                documents.append(Document(text=para))
+                documents.append({"name": path.name, "text": para})
         else:
-            documents.append(Document(text=text))
+            documents.append({"name": path.name, "text": text})
 
     return documents
 
