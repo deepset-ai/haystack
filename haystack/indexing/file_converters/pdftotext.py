@@ -39,10 +39,7 @@ class PDFToTextConverter(BaseConverter):
         if verify_installation.returncode == 127:
             raise Exception(
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
-                 Installation Instructions:
-                 * Ubuntu/Debian: 'sudo apt-get update && sudo apt-get install -y xpdf'
-                 * CentOS: sudo yum install poppler-utils
-                 * MacOS: brew install xpdf"""
+                   You can download for your OS from here: https://www.xpdfreader.com/download.html"""
             )
 
         super().__init__(
