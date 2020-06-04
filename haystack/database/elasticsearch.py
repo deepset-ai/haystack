@@ -1,7 +1,7 @@
 import json
 import logging
 from string import Template
-
+from typing import Union
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 
@@ -13,25 +13,52 @@ logger = logging.getLogger(__name__)
 class ElasticsearchDocumentStore(BaseDocumentStore):
     def __init__(
         self,
-        host="localhost",
-        username="",
-        password="",
-        index="document",
-        search_fields="text",
-        text_field="text",
-        name_field="name",
-        external_source_id_field="external_source_id",
-        tag_fields=None,
-        embedding_field=None,
-        embedding_dim=None,
-        custom_mapping=None,
-        excluded_meta_data=None,
-        scheme="http",
-        ca_certs=False,
-        verify_certs=True,
-        create_index=True
+        host: str = "localhost",
+        port: int = 9200,
+        username: str = "",
+        password: str = "",
+        index: str = "document",
+        search_fields: Union[str,list] = "text",
+        text_field: str = "text",
+        name_field: str = "name",
+        external_source_id_field: str = "external_source_id",
+        embedding_field: str = None,
+        embedding_dim: str = None,
+        custom_mapping: dict = None,
+        excluded_meta_data: list = None,
+        scheme: str = "http",
+        ca_certs: bool = False,
+        verify_certs: bool = True,
+        create_index: bool = True
     ):
-        self.client = Elasticsearch(hosts=[{"host": host}], http_auth=(username, password),
+        """
+        A DocumentStore using Elasticsearch to store and query the documents for our search.
+
+            * Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
+            * You can either use an existing Elasticsearch index or create a new one via haystack
+            * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
+
+        :param host: url of elasticsearch
+        :param port: port of elasticsearch
+        :param username: username
+        :param password: password
+        :param index: Name of index in elasticsearch to use. If not existing yet, we will create one.
+        :param search_fields: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+        :param text_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+                           If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+        :param name_field: Name of field that contains the title of the the doc
+        :param external_source_id_field: If you have an external id (= non-elasticsearch) that identifies your documents, you can specify it here.
+        :param embedding_field: Name of field containing an embedding vector (Only needed when using the EmbeddingRetriever on top)
+        :param embedding_dim: Dimensionality of embedding vector (Only needed when using the EmbeddingRetriever on top)
+        :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+        :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+                                   Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+        :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
+        :param ca_certs: Root certificates for SSL
+        :param verify_certs: Whether to be strict about ca certificates
+        :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+        """
+        self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
                                     scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
 
         # if no custom_mapping is supplied, use the default mapping
@@ -62,7 +89,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.search_fields = search_fields
         self.text_field = text_field
         self.name_field = name_field
-        self.tag_fields = tag_fields
         self.external_source_id_field = external_source_id_field
         self.embedding_field = embedding_field
         self.excluded_meta_data = excluded_meta_data
@@ -89,7 +115,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             doc["_op_type"] = "create"
             doc["_index"] = self.index
 
-        bulk(self.client, documents, request_timeout=30)
+        bulk(self.client, documents, request_timeout=300)
 
     def get_document_count(self):
         result = self.client.count()
