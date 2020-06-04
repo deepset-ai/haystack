@@ -22,14 +22,11 @@ def convert_files_to_documents(dir_path: str, clean_func: Callable = None, split
     :return: None
     """
 
-    file_paths = []
-    for ext in ("**/*.txt", "**/*.pdf"):
-        paths = [p for p in Path(dir_path).glob(ext)]
-        file_paths.extend(paths)
-        if ".pdf" in [p.suffix for p in paths]:
-            pdf_converter = PDFToTextConverter()
-        else:
-            pdf_converter = None
+    file_paths = [p for p in Path(dir_path).glob("**/*")]
+    if ".pdf" in [p.suffix.lower() for p in file_paths]:
+        pdf_converter = PDFToTextConverter()
+    else:
+        pdf_converter = None
 
     documents = []
     for path in file_paths:
