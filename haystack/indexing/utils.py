@@ -33,10 +33,10 @@ def convert_files_to_documents(dir_path: str, clean_func: Callable = None, split
 
     documents = []
     for path in file_paths:
-        if path.suffix == ".txt":
+        if path.suffix.lower() == ".txt":
             with open(path) as doc:
                 text = doc.read()
-        elif path.suffix == ".pdf":
+        elif path.suffix.lower() == ".pdf":
             pages = pdf_converter.extract_pages(path)
             text = "\n".join(pages)
         else:
