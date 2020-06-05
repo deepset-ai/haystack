@@ -6,7 +6,7 @@ from elasticsearch import Elasticsearch
 from fastapi import FastAPI, HTTPException
 from starlette.middleware.cors import CORSMiddleware
 
-from haystack.api.config import DB_HOST, DB_USER, DB_PW, APM_SERVER, APM_SERVICE_NAME
+from haystack.api.config import DB_HOST, DB_USER, DB_PW, APM_SERVER, APM_SERVICE_NAME, ES_CONN_SCHEME
 from haystack.api.controller.errors.http_error import http_error_handler
 from haystack.api.controller.router import router as api_router
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
 
 elasticsearch_client = Elasticsearch(
-    hosts=[{"host": DB_HOST}], http_auth=(DB_USER, DB_PW), scheme="http", ca_certs=False, verify_certs=False
+    hosts=[{"host": DB_HOST}], http_auth=(DB_USER, DB_PW), scheme=ES_CONN_SCHEME, ca_certs=False, verify_certs=False
 )
 
 
