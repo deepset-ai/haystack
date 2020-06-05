@@ -19,6 +19,7 @@ class PDFToTextConverter(BaseConverter):
         remove_numeric_tables: bool = False,
         remove_whitespace: bool = None,
         remove_empty_lines: bool = None,
+        remove_header_footer: bool = None,
         valid_languages: [str] = None,
     ):
         """
@@ -46,6 +47,7 @@ class PDFToTextConverter(BaseConverter):
             remove_numeric_tables=remove_numeric_tables,
             remove_whitespace=remove_whitespace,
             remove_empty_lines=remove_empty_lines,
+            remove_header_footer=remove_header_footer,
             valid_languages=valid_languages,
         )
 
@@ -89,6 +91,10 @@ class PDFToTextConverter(BaseConverter):
                     f"been decoded in the correct text format."
                 )
 
+        if self.remove_header_footer:
+            string_to_remove = self.find_header_footer(pages)
+            pages = [page.replace(string_to_remove, "") for page in pages]
+
         return pages
 
     def _extract_page(self, file_path, page_number, layout=True):
@@ -127,9 +133,9 @@ class PDFToTextConverter(BaseConverter):
         ngrams = map(partial(self._ngram, seq), lengths)
         return set(chain.from_iterable(ngrams))
 
-    def find_footer(self, sequences, chars=500, max_ngram=200, min_ngram=4):
+    def find_header_footer(self, sequences, chars=500, max_ngram=200, min_ngram=4):
         """
-        Find a footer by searching for the longest common ngram across different pages/sections in the pdf.
+        Find a header or footer by searching for the longest common ngram across different pages/sections in the pdf.
         The search considers only the last "chars" characters of the files.
         :param sequences: list[str], list of strings from documents
         :param chars: int, number of chars at the end of the string in which the footer shall be searched

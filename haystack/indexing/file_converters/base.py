@@ -10,7 +10,7 @@ class BaseConverter:
     def __init__(
         self,
         remove_numeric_tables: bool = None,
-        remove_headers: bool = None,
+        remove_header_footer: bool = None,
         remove_whitespace: bool = None,
         remove_empty_lines: bool = None,
         valid_languages: [str] = None,
@@ -30,7 +30,7 @@ class BaseConverter:
                                 in garbled text.
         """
         self.remove_numeric_tables = remove_numeric_tables
-        self.remove_headers = remove_headers
+        self.remove_header_footer = remove_header_footer
         self.remove_whitespace = remove_whitespace
         self.remove_empty_lines = remove_empty_lines
         self.valid_languages = valid_languages
