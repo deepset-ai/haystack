@@ -100,7 +100,7 @@ class Finder:
         return results
 
     def eval(self, label_index: str = "feedback", doc_index: str = "eval_document", label_origin: str = "gold_label",
-             top_k_retriever: int = 10, top_k_reader: int = 10):
+             top_k_retriever: int = 10, top_k_reader: int = 10, batch_size: int = 50):
         """
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
         of the Retriever.
@@ -203,7 +203,7 @@ class Finder:
             question_string = question["question"]["_source"]["question"]
             docs = question["docs"]
             single_reader_start = time.time()
-            predicted_answers = self.reader.predict(question_string, docs, top_k_reader)
+            predicted_answers = self.reader.predict(question_string, docs, top_k_reader, batch_size=batch_size)
             read_times.append(time.time() - single_reader_start)
             # check if question is answerable
             if question["question"]["_source"]["answers"]:
@@ -334,3 +334,193 @@ class Finder:
         }
 
         return results
+
+    def eval_batch(self, label_index: str = "feedback", doc_index: str = "eval_document",
+                   label_origin: str = "gold_label", top_k_retriever: int = 10, top_k_reader: int = 10,
+                   batch_size: int = 50):
+
+        finder_start_time = time.time()
+        # extract_all_questions for evaluation
+        filter = {"origin": label_origin}
+        questions = self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter)
+
+        correct_retrievals = 0
+        summed_avg_precision_retriever = 0
+        retrieve_times = []
+
+        correct_readings_top1 = 0
+        correct_readings_topk = 0
+        correct_readings_top1_has_answer = 0
+        correct_readings_topk_has_answer = 0
+        exact_matches_top1 = 0
+        exact_matches_topk = 0
+        exact_matches_top1_has_answer = 0
+        exact_matches_topk_has_answer = 0
+        summed_f1_top1 = 0
+        summed_f1_topk = 0
+        summed_f1_top1_has_answer = 0
+        summed_f1_topk_has_answer = 0
+        correct_no_answers_top1 = 0
+        correct_no_answers_topk = 0
+
+        # retrieve documents
+        questions_with_docs = []
+        retriever_start_time = time.time()
+        for q_idx, question in enumerate(questions):
+            question_string = question["_source"]["question"]
+            single_retrieve_start = time.time()
+            retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k_retriever, index=doc_index)
+            retrieve_times.append(time.time()- single_retrieve_start)
+            for doc_idx, doc in enumerate(retrieved_docs):
+                # check if correct doc among retrieved docs
+                if doc.meta["doc_id"] == question["_source"]["doc_id"]:
+                    correct_retrievals += 1
+                    summed_avg_precision_retriever += 1 / (doc_idx + 1)
+                    questions_with_docs.append({
+                        "question": question,
+                        "docs": retrieved_docs,
+                        "correct_es_doc_id": doc.id
+                    })
+                    break
+        retriever_total_time = time.time() - retriever_start_time
+        number_of_questions = q_idx + 1
+
+        # extract answers
+        number_of_no_answer = 0
+        previous_return_no_answers = self.reader.return_no_answers
+        self.reader.return_no_answers = True
+        reader_start_time = time.time()
+        predictions = self.reader.predict_batch(questions_with_docs, top_k_per_question=top_k_reader, batch_size=batch_size)
+        reader_total_time = time.time() - reader_start_time
+
+        for pred in predictions:
+            # check if question is answerable
+            if pred["correct_answers"]:
+                for answer_idx, answer in enumerate(pred["answers"]):
+                    found_answer = False
+                    found_em = False
+                    best_f1 = 0
+                    # check if correct document
+                    if answer["document_id"] == pred["correct_doc_id"]:
+                        gold_spans = [(gold_answer["answer_start"], gold_answer["answer_start"] + len(gold_answer["text"]) + 1)
+                                      for gold_answer in pred["correct_answers"]]
+                        predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
+
+                        for gold_span in gold_spans:
+                            # check if overlap between gold answer and predicted answer
+                            # top-1 answer
+                            if not found_answer:
+                                if (gold_span[0] <= predicted_span[1]) and (predicted_span[0] <= gold_span[1]):
+                                    # top-1 answer
+                                    if answer_idx == 0:
+                                        correct_readings_top1 += 1
+                                        correct_readings_top1_has_answer += 1
+                                    # top-k answers
+                                    correct_readings_topk += 1
+                                    correct_readings_topk_has_answer += 1
+                                    found_answer = True
+                            # check for exact match
+                            if not found_em:
+                                if (gold_span[0] == predicted_span[0]) and (gold_span[1] == predicted_span[1]):
+                                    # top-1 answer
+                                    if answer_idx == 0:
+                                        exact_matches_top1 += 1
+                                        exact_matches_top1_has_answer += 1
+                                    # top-k answers
+                                    exact_matches_topk += 1
+                                    exact_matches_topk_has_answer += 1
+                                    found_em = True
+                                # calculate f1
+                                pred_indices = list(range(predicted_span[0], predicted_span[1] + 1))
+                                gold_indices = list(range(gold_span[0], gold_span[1] + 1))
+                                n_overlap = len([x for x in pred_indices if x in gold_indices])
+                                if pred_indices and gold_indices and n_overlap:
+                                    precision = n_overlap / len(pred_indices)
+                                    recall = n_overlap / len(gold_indices)
+                                    current_f1 = (2 * precision * recall) / (precision + recall)
+                                    # top-1 answer
+                                    if answer_idx == 0:
+                                        summed_f1_top1 += current_f1
+                                        summed_f1_top1_has_answer += current_f1
+                                    if current_f1 > best_f1:
+                                        best_f1 = current_f1
+                        # top-k answers: use best f1-score
+                        summed_f1_topk += best_f1
+                        summed_f1_topk_has_answer *= best_f1
+
+                    if found_answer and found_em:
+                        break
+
+            # question not answerable
+            else:
+                number_of_no_answer += 1
+                for answer_idx, answer in enumerate(pred["answers"]):
+                    # check if 'no answer'
+                    if answer["answer"] is None:
+                        if answer_idx == 0:
+                            correct_no_answers_top1 += 1
+                            correct_readings_top1 += 1
+                            exact_matches_top1 += 1
+                            summed_f1_top1 += 1
+                        correct_no_answers_topk += 1
+                        correct_readings_topk += 1
+                        exact_matches_topk += 1
+                        summed_f1_topk += 1
+                        break
+
+        number_of_has_answer = correct_retrievals - number_of_no_answer
+
+        finder_total_time = time.time() - finder_start_time
+
+        retriever_recall = correct_retrievals / number_of_questions
+        retriever_map = summed_avg_precision_retriever / number_of_questions
+
+        reader_top1_accuracy = correct_readings_top1 / correct_retrievals
+        reader_top1_accuracy_has_answer = correct_readings_top1_has_answer / number_of_has_answer
+        reader_top_k_accuracy = correct_readings_topk / correct_retrievals
+        reader_topk_accuracy_has_answer = correct_readings_topk_has_answer / number_of_has_answer
+        reader_top1_em = exact_matches_top1 / correct_retrievals
+        reader_top1_em_has_answer = exact_matches_top1_has_answer / number_of_has_answer
+        reader_topk_em = exact_matches_topk / correct_retrievals
+        reader_topk_em_has_answer = exact_matches_topk_has_answer / number_of_has_answer
+        reader_top1_f1 = summed_f1_top1 / correct_retrievals
+        reader_top1_f1_has_answer = summed_f1_top1_has_answer / number_of_has_answer
+        reader_topk_f1 = summed_f1_topk / correct_retrievals
+        reader_topk_f1_has_answer = summed_f1_topk_has_answer / number_of_has_answer
+        reader_top1_no_answer_accuracy = correct_no_answers_top1 / number_of_no_answer
+        reader_topk_no_answer_accuracy = correct_no_answers_topk / number_of_no_answer
+
+        self.reader.return_no_answers = previous_return_no_answers
+
+        logger.info((f"{correct_readings_topk} out of {number_of_questions} questions were correctly answered "
+                     f"({(correct_readings_topk / number_of_questions):.2%})."))
+        logger.info(f"{number_of_questions - correct_retrievals} questions could not be answered due to the retriever.")
+        logger.info(f"{correct_retrievals - correct_readings_topk} questions could not be answered due to the reader.")
+
+        results = {
+            "retriever_recall": retriever_recall,
+            "retriever_map": retriever_map,
+            "reader_top1_accuracy": reader_top1_accuracy,
+            "reader_top1_accuracy_has_answer": reader_top1_accuracy_has_answer,
+            "reader_top_k_accuracy": reader_top_k_accuracy,
+            "reader_topk_accuracy_has_answer": reader_topk_accuracy_has_answer,
+            "reader_top1_em": reader_top1_em,
+            "reader_top1_em_has_answer": reader_top1_em_has_answer,
+            "reader_topk_em": reader_topk_em,
+            "reader_topk_em_has_answer": reader_topk_em_has_answer,
+            "reader_top1_f1": reader_top1_f1,
+            "reader_top1_f1_has_answer": reader_top1_f1_has_answer,
+            "reader_topk_f1": reader_topk_f1,
+            "reader_topk_f1_has_answer": reader_topk_f1_has_answer,
+            "reader_top1_no_answer_accuracy": reader_top1_no_answer_accuracy,
+            "reader_topk_no_answer_accuracy": reader_topk_no_answer_accuracy,
+            "total_retrieve_time": retriever_total_time,
+            "avg_retrieve_time": mean(retrieve_times),
+            "total_reader_time": reader_total_time,
+            "total_finder_time": finder_total_time
+        }
+
+        return results
+
+
+

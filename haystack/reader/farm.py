@@ -191,7 +191,100 @@ class FARMReader:
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict(self, question: str, documents: [Document], top_k: int = None):
+    def predict_batch(self, question_doc_list: [dict], top_k_per_question: int = None, batch_size: int = None):
+        # convert input to FARM format
+        input_dicts = []
+        number_of_docs = []
+        correct_doc_ids = []
+        correct_answers = []
+        for question_with_docs in question_doc_list:
+            documents = question_with_docs["docs"]
+            question = question_with_docs["question"]["_source"]["question"]
+            if "answers" in question_with_docs["question"]["_source"]:
+                correct_answers.append(question_with_docs["question"]["_source"]["answers"])
+            else:
+                correct_answers.append([])
+            if "correct_es_doc_id" in question_with_docs:
+                correct_doc_ids.append(question_with_docs["correct_es_doc_id"])
+            else:
+                correct_doc_ids.append(None)
+            number_of_docs.append(len(documents))
+            for doc in documents:
+                cur = {
+                    "text": doc.text,
+                    "questions": [question],
+                    "document_id": doc.id
+                }
+                input_dicts.append(cur)
+
+        self.inferencer.batch_size = batch_size
+        # make predictions on all document-question pairs
+        predictions = self.inferencer.inference_from_dicts(
+            dicts=input_dicts, rest_api_schema=True, multiprocessing_chunksize=1
+        )
+
+        # group predictions together
+        grouped_predictions = []
+        left_idx = 0
+        right_idx = 0
+        for number in number_of_docs:
+            right_idx = left_idx + number
+            grouped_predictions.append(predictions[left_idx:right_idx])
+            left_idx = right_idx
+
+        result = []
+        for idx, group in enumerate(grouped_predictions):
+            answers = []
+            no_ans_gaps = []
+            best_score_answer = 0
+            for pred in group:
+                answers_per_document = []
+                no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
+                for a in pred["predictions"][0]["answers"]:
+                    if a["answer"]:
+                        cur = {
+                            "answer": a["answer"],
+                            "score": a["score"],
+                            "probability": self._get_pseudo_prob(a["score"]),
+                            "context": a["context"],
+                            "offset_start": a["offset_answer_start"] - a["offset_context_start"],
+                            "offset_end": a["offset_answer_end"] - a["offset_context_start"],
+                            "offset_start_in_doc": a["offset_answer_start"],
+                            "offset_end_in_doc": a["offset_answer_end"],
+                            "document_id": a["document_id"]
+                        }
+                        answers_per_document.append(cur)
+
+                        if a["score"] > best_score_answer:
+                            best_score_answer = a["score"]
+
+                # Only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance
+                answers += answers_per_document[:self.top_k_per_candidate]
+
+            # Calculate the score for predicting "no answer", relative to our best positive answer score
+            no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_score_answer)
+            if self.return_no_answers:
+                answers.append(no_ans_prediction)
+
+            # sort answers by their "probability" and select top-k
+            answers = sorted(
+                answers, key=lambda k: k["probability"], reverse=True
+            )
+            answers = answers[:top_k_per_question]
+            correct_doc_id = correct_doc_ids[idx]
+            cur_correct_answers = correct_answers[idx]
+            result.append({
+                "question": question,
+                "no_ans_gap": max_no_ans_gap,
+                "answers": answers,
+                "correct_doc_id": correct_doc_id,
+                "correct_answers": cur_correct_answers
+            })
+
+        return result
+
+
+    def predict(self, question: str, documents: [Document], top_k: int = None, batch_size: int = 50):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
 
@@ -227,6 +320,7 @@ class FARMReader:
             }
             input_dicts.append(cur)
 
+        self.inferencer.batch_size = batch_size
         # get answers from QA model
         predictions = self.inferencer.inference_from_dicts(
             dicts=input_dicts, rest_api_schema=True, multiprocessing_chunksize=1
@@ -421,3 +515,6 @@ class FARMReader:
             )
         predictions = self.predict(question, documents, top_k)
         return predictions
+
+    def _get_pseudo_prob(self, score):
+        return float(expit(np.asarray(score) / 8))
