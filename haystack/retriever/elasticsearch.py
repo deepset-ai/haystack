@@ -69,7 +69,7 @@ class ElasticsearchRetriever(BaseRetriever):
 
         # extract all questions for evaluation
         filter = {"origin": label_origin}
-        questions = self.document_store.get_all_docs_in_index(index=label_index, filters=filter)
+        questions = self.document_store.get_all_documents_in_index(index=label_index, filters=filter)
 
         # calculate recall and mean-average-precision
         correct_retrievals = 0
