@@ -6,14 +6,14 @@ import tarfile
 import zipfile
 from typing import Callable
 from haystack.indexing.file_converters.pdftotext import PDFToTextConverter
-from haystack.database.base import Document
 
 logger = logging.getLogger(__name__)
 
 
-def convert_files_to_documents(dir_path: str, clean_func: Callable = None, split_paragraphs: bool = False) -> [Document]:
+def convert_files_to_dicts(dir_path: str, clean_func: Callable = None, split_paragraphs: bool = False) -> [dict]:
     """
-    Convert all files(.txt, .pdf) in the sub-directories of the given path to Document objects.
+    Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
+    Document Store.
 
     :param dir_path: path for the documents to be written to the database
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
