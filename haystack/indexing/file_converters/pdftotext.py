@@ -30,6 +30,10 @@ class PDFToTextConverter(BaseConverter):
                                       The rows containing strings are thus retained in this option.
         :param remove_whitespace: strip whitespaces before or after each line in the text.
         :param remove_empty_lines: remove more than two empty lines in the text.
+        :param remove_header_footer: use heuristic to remove footers and headers across different pages by searching
+                                     for the longest common string. This heuristic uses exact matches and therefore
+                                     works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
+                                     or similar.
         :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
                                 (https://en.wikipedia.org/wiki/ISO_639-1) format.
                                 This option can be used to add test for encoding errors. If the extracted text is
@@ -40,7 +44,16 @@ class PDFToTextConverter(BaseConverter):
         if verify_installation.returncode == 127:
             raise Exception(
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
-                   You can download for your OS from here: https://www.xpdfreader.com/download.html"""
+                
+                   Installation on Linux:
+                   wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.02.tar.gz &&
+                   tar -xvf xpdf-tools-linux-4.02.tar.gz && sudo cp xpdf-tools-linux-4.02/bin64/pdftotext /usr/local/bin
+                   
+                   Installation on MacOS:
+                   brew install xpdf
+                   
+                   You can find more details here: https://www.xpdfreader.com
+                """
             )
 
         super().__init__(
@@ -57,6 +70,16 @@ class PDFToTextConverter(BaseConverter):
 
         pages = []
         for page_number in range(1, page_count + 1):
+            # pdftotext tool provides an option to retain the original physical layout of a PDF page. This behaviour
+            # can be toggled by using the layout param.
+            #  layout=True
+            #      + table structures get retained better
+            #      - multi-column pages(eg, research papers) gets extracted with text from multiple columns on same line
+            #  layout=False
+            #      + keeps strings in content stream order, hence multi column layout works well
+            #      - cells of tables gets split across line
+            #
+            #  Here, as a "safe" default, layout is turned off.
             page = self._extract_page(file_path, page_number, layout=False)
             lines = page.splitlines()
             cleaned_lines = []
@@ -92,15 +115,22 @@ class PDFToTextConverter(BaseConverter):
                 )
 
         if self.remove_header_footer:
-            pages, header, footer = self.find_and_remove_header_footer(pages,
-                                                                       n_chars=300,
-                                                                       n_first_pages_to_ignore=1,
-                                                                       n_last_pages_to_ignore=1)
+            pages, header, footer = self.find_and_remove_header_footer(
+                pages, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
+            )
             logger.info(f"Removed header '{header}' and footer {footer} in {file_path}")
 
         return pages
 
-    def _extract_page(self, file_path, page_number, layout=True):
+    def _extract_page(self, file_path: Path, page_number: int, layout: bool):
+        """
+        Extract a page from the pdf file at file_path.
+
+        :param file_path: path of the pdf file
+        :param page_number: page number to extract(starting from 1)
+        :param layout: whether to retain the original physical layout for a page. If disabled, PDF pages are read in
+                       the content stream order.
+        """
         if layout:
             command = ["pdftotext", "-layout", "-f", str(page_number), "-l", str(page_number), file_path, "-"]
         else:
@@ -109,7 +139,10 @@ class PDFToTextConverter(BaseConverter):
         page = output_page.stdout.decode(errors="ignore")
         return page
 
-    def _validate_language(self, text):
+    def _validate_language(self, text: str):
+        """
+        Validate if the language of the text is one of valid languages.
+        """
         try:
             lang = langdetect.detect(text)
         except langdetect.lang_detect_exception.LangDetectException:
@@ -120,7 +153,7 @@ class PDFToTextConverter(BaseConverter):
         else:
             return False
 
-    def _ngram(self, seq, n):
+    def _ngram(self, seq: str, n: int):
         """
         Return ngram (of tokens - currently splitted by whitespace)
         :param seq: str, string from which the ngram shall be created
@@ -134,20 +167,19 @@ class PDFToTextConverter(BaseConverter):
         seq = seq.replace("\t", " \t")
 
         seq = seq.split(" ")
-        ngrams = (" ".join(seq[i : i + n])
-                      .replace(" \n", "\n")
-                      .replace(" \t", "\t")
-                  for i in range(0, len(seq) - n + 1))
+        ngrams = (
+            " ".join(seq[i : i + n]).replace(" \n", "\n").replace(" \t", "\t") for i in range(0, len(seq) - n + 1)
+        )
 
         return ngrams
 
-    def _allngram(self, seq, min_ngram, max_ngram):
+    def _allngram(self, seq: str, min_ngram: int, max_ngram: int):
         lengths = range(min_ngram, max_ngram) if max_ngram else range(min_ngram, len(seq))
         ngrams = map(partial(self._ngram, seq), lengths)
         res = set(chain.from_iterable(ngrams))
         return res
 
-    def find_longest_common_ngram(self, sequences, max_ngram=30, min_ngram=3):
+    def find_longest_common_ngram(self, sequences: [str], max_ngram: int = 30, min_ngram: int = 3):
         """
         Find the longest common ngram across different text sequences (e.g. start of pages).
         Considering all ngrams between the specified range. Helpful for finding footers, headers etc.
@@ -168,7 +200,9 @@ class PDFToTextConverter(BaseConverter):
             longest = ""
         return longest if longest.strip() else None
 
-    def find_and_remove_header_footer(self, pages, n_chars, n_first_pages_to_ignore, n_last_pages_to_ignore):
+    def find_and_remove_header_footer(
+        self, pages: [str], n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
+    ):
         """
         Heuristic to find footers and headers across different pages by searching for the longest common string.
         For headers we only search in the first n_chars characters (for footer: last n_chars).

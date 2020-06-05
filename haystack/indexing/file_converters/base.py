@@ -21,6 +21,10 @@ class BaseConverter:
                                       does not have table parsing capability for finding answers. However, tables
                                       may also have long strings that could possible candidate for searching answers.
                                       The rows containing strings are thus retained in this option.
+        :param remove_header_footer: use heuristic to remove footers and headers across different pages by searching
+                                     for the longest common string. This heuristic uses exact matches and therefore
+                                     works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
+                                     or similar.
         :param remove_whitespace: strip whitespaces before or after each line in the text.
         :param remove_empty_lines: remove more than two empty lines in the text.
         :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
