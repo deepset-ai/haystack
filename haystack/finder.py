@@ -18,6 +18,8 @@ class Finder:
     def __init__(self, reader, retriever):
         self.retriever = retriever
         self.reader = reader
+        if self.reader is None and self.retriever is None:
+            raise AttributeError("Finder: self.reader and self.retriever can not be both None")
 
     def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: dict = None):
         """
@@ -31,6 +33,9 @@ class Finder:
         :return:
         """
 
+        if self.retriever is None or self.reader is None:
+            raise AttributeError("Finder.get_answers_via_similar_questions requires self.retriever AND self.reader")
+
         # 1) Apply retriever(with optional filters) to get fast candidate documents
         documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
 
@@ -42,6 +47,7 @@ class Finder:
         # 2) Apply reader to get granular answer(s)
         len_chars = sum([len(d.text) for d in documents])
         logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
+
         results = self.reader.predict(question=question,
                                       documents=documents,
                                       top_k=top_k_reader)
@@ -65,6 +71,9 @@ class Finder:
             The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
         :return:
         """
+
+        if self.retriever is None:
+            raise AttributeError("Finder.get_answers_via_similar_questions requires self.retriever")
 
         results = {"question": question, "answers": []}
 
