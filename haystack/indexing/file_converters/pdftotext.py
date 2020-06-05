@@ -93,7 +93,8 @@ class PDFToTextConverter(BaseConverter):
 
         if self.remove_header_footer:
             string_to_remove = self.find_header_footer(pages)
-            pages = [page.replace(string_to_remove, "") for page in pages]
+            if string_to_remove:
+                pages = [page.replace(string_to_remove, "") for page in pages]
 
         return pages
 
