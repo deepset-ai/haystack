@@ -37,7 +37,7 @@ def test_language_validation(xpdf_fixture, caplog):
     assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
-def test_header_footer_removal(xpdf_fixture, caplog):
+def test_header_footer_removal(xpdf_fixture):
     converter = PDFToTextConverter(remove_header_footer=True)
     converter_no_removal = PDFToTextConverter(remove_header_footer=False)
 
@@ -50,4 +50,3 @@ def test_header_footer_removal(xpdf_fixture, caplog):
     for page in pages:
         assert "header" not in page
         assert "footer" not in page
-    print(caplog.text)
