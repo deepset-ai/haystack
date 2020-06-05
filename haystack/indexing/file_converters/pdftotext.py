@@ -92,8 +92,11 @@ class PDFToTextConverter(BaseConverter):
                 )
 
         if self.remove_header_footer:
-            string_to_remove = self.find_header_footer(pages)
-            pages = [page.replace(string_to_remove, "") for page in pages]
+            pages, header, footer = self.find_and_remove_header_footer(pages,
+                                                                       n_chars=300,
+                                                                       n_first_pages_to_ignore=1,
+                                                                       n_last_pages_to_ignore=1)
+            logger.info(f"Removed header '{header}' and footer {footer} in {file_path}")
 
         return pages
 
@@ -124,30 +127,70 @@ class PDFToTextConverter(BaseConverter):
         :param n: int, n of ngram
         :return: str, ngram as string
         """
+
+        # In order to maintain the original whitespace, but still consider \n and \t for n-gram tokenization,
+        # we add a space here and remove it after creation of the ngrams again (see below)
+        seq = seq.replace("\n", " \n")
+        seq = seq.replace("\t", " \t")
+
         seq = seq.split(" ")
-        ngrams = (" ".join(seq[i : i + n]) for i in range(0, len(seq) - n + 1))
+        ngrams = (" ".join(seq[i : i + n])
+                      .replace(" \n", "\n")
+                      .replace(" \t", "\t")
+                  for i in range(0, len(seq) - n + 1))
+
         return ngrams
 
     def _allngram(self, seq, min_ngram, max_ngram):
         lengths = range(min_ngram, max_ngram) if max_ngram else range(min_ngram, len(seq))
         ngrams = map(partial(self._ngram, seq), lengths)
-        return set(chain.from_iterable(ngrams))
+        res = set(chain.from_iterable(ngrams))
+        return res
 
-    def find_header_footer(self, sequences, chars=500, max_ngram=200, min_ngram=4):
+    def find_longest_common_ngram(self, sequences, max_ngram=30, min_ngram=3):
         """
-        Find a header or footer by searching for the longest common ngram across different pages/sections in the pdf.
-        The search considers only the last "chars" characters of the files.
-        :param sequences: list[str], list of strings from documents
-        :param chars: int, number of chars at the end of the string in which the footer shall be searched
+        Find the longest common ngram across different text sequences (e.g. start of pages).
+        Considering all ngrams between the specified range. Helpful for finding footers, headers etc.
+
+        :param sequences: list[str], list of strings that shall be searched for common n_grams
         :param max_ngram: int, maximum length of ngram to consider
         :param min_ngram: minimum length of ngram to consider
-        :return: str, common footer of all sections
+        :return: str, common string of all sections
         """
+
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)
+
         try:
             longest = max(intersection, key=len)
         except ValueError:
             # no common sequence found
             longest = ""
         return longest if longest.strip() else None
+
+    def find_and_remove_header_footer(self, pages, n_chars, n_first_pages_to_ignore, n_last_pages_to_ignore):
+        """
+        Heuristic to find footers and headers across different pages by searching for the longest common string.
+        For headers we only search in the first n_chars characters (for footer: last n_chars).
+        Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
+         but won't detect "Page 3 of 4" or similar.
+
+        :param pages: list of strings, one string per page
+        :param n_chars: number of first/last characters where the header/footer shall be searched in
+        :param n_first_pages_to_ignore: number of first pages to ignore (e.g. TOCs often don't contain footer/header)
+        :param n_last_pages_to_ignore: number of last pages to ignore
+        :return: (cleaned pages, found_header_str, found_footer_str)
+        """
+
+        # header
+        start_of_pages = [p[:n_chars] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
+        found_header = self.find_longest_common_ngram(start_of_pages)
+        if found_header:
+            pages = [page.replace(found_header, "") for page in pages]
+
+        # footer
+        end_of_pages = [p[-n_chars:] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
+        found_footer = self.find_longest_common_ngram(end_of_pages)
+        if found_footer:
+            pages = [page.replace(found_footer, "") for page in pages]
+        return pages, found_header, found_footer
