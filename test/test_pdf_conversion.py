@@ -35,3 +35,16 @@ def test_language_validation(xpdf_fixture, caplog):
     converter = PDFToTextConverter(valid_languages=["de"])
     pages = converter.extract_pages(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
     assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
+
+
+def test_header_footer_removal(xpdf_fixture):
+    converter = PDFToTextConverter(remove_header_footer=True)
+
+    pages = converter.extract_pages(file_path=Path("samples/pdf/sample_pdf_1.pdf"))  # file contains no header/footer
+    assert converter.find_header_footer(pages) is None
+
+    pages = converter.extract_pages(file_path=Path("samples/pdf/sample_pdf_2.pdf"))  # file contains no header and footer
+    assert converter.find_header_footer(pages) is not None
+    for page in pages:
+        assert "header" not in page
+        assert "footer" not in page
