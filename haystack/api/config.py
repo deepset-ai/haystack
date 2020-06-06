@@ -1,6 +1,9 @@
 import ast
 import os
 
+# FastAPI
+PROJECT_NAME = os.getenv("PROJECT_NAME", "FastAPI")
+
 # Resources / Computation
 USE_GPU = os.getenv("USE_GPU", "True").lower() == "true"
 MAX_PROCESSES = int(os.getenv("MAX_PROCESSES", 4))

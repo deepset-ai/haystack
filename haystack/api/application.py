@@ -20,7 +20,7 @@ elasticsearch_client = Elasticsearch(
 
 
 def get_application() -> FastAPI:
-    application = FastAPI(title="Haystack API", debug=True, version="0.1")
+    application = FastAPI(title="NLP-QA", debug=True, version="0.1")
 
     application.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
