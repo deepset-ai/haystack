@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from haystack.api.config import (
     DB_HOST,
+    DB_PORT,
     DB_USER,
     DB_PW,
     DB_INDEX,
@@ -26,6 +27,7 @@ router = APIRouter()
 
 document_store = ElasticsearchDocumentStore(
     host=DB_HOST,
+    port=DB_PORT,
     username=DB_USER,
     password=DB_PW,
     index=DB_INDEX,
