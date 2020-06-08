@@ -229,7 +229,7 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 
 
 7. Indexing PDF files
-______________________
+---------------------
 
 Haystack has a customizable PDF text extraction pipeline with cleaning functions for header, footers, and tables. It supports complex document layouts with multi-column text.
 
