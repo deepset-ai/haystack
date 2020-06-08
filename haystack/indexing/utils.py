@@ -1,16 +1,19 @@
-from pathlib import Path
 import logging
-from farm.data_handler.utils import http_get
-import tempfile
 import tarfile
+import tempfile
 import zipfile
+from pathlib import Path
 from typing import Callable
+from typing import List
+
+from farm.data_handler.utils import http_get
+
 from haystack.indexing.file_converters.pdftotext import PDFToTextConverter
 
 logger = logging.getLogger(__name__)
 
 
-def convert_files_to_dicts(dir_path: str, clean_func: Callable = None, split_paragraphs: bool = False) -> [dict]:
+def convert_files_to_dicts(dir_path: str, clean_func: Callable = None, split_paragraphs: bool = False) -> List[dict]:
     """
     Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
@@ -53,7 +56,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Callable = None, split_par
     return documents
 
 
-def fetch_archive_from_http(url, output_dir, proxies=None):
+def fetch_archive_from_http(url: str, output_dir: str, proxies: dict = None):
     """
     Fetch an archive (zip or tar.gz) from a url via http and extract content to an output directory.
 

@@ -1,7 +1,7 @@
 import re
 
 
-def clean_wiki_text(text):
+def clean_wiki_text(text: str) -> str:
     # get rid of multiple new lines
     while "\n\n" in text:
         text = text.replace("\n\n", "\n")

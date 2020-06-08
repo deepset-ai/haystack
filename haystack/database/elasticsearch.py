@@ -1,7 +1,7 @@
 import json
 import logging
 from string import Template
-from typing import Union
+from typing import List, Union
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 
@@ -100,7 +100,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         document = self._convert_es_hit_to_document(result[0]) if result else None
         return document
 
-    def get_document_ids_by_tags(self, tags: dict) -> [str]:
+    def get_document_ids_by_tags(self, tags: dict) -> List[str]:
         term_queries = [{"terms": {key: value}} for key, value in tags.items()]
         query = {"query": {"bool": {"must": term_queries}}}
         logger.debug(f"Tag filter query: {query}")
@@ -110,19 +110,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             doc_ids.append(hit["_id"])
         return doc_ids
 
-    def write_documents(self, documents):
+    def write_documents(self, documents: List[dict]):
         for doc in documents:
             doc["_op_type"] = "create"
             doc["_index"] = self.index
 
         bulk(self.client, documents, request_timeout=300)
 
-    def get_document_count(self):
+    def get_document_count(self) -> int:
         result = self.client.count()
         count = result["count"]
         return count
 
-    def get_all_documents(self):
+    def get_all_documents(self) -> List[Document]:
         result = scan(self.client, query={"query": {"match_all": {}}}, index=self.index)
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
 
@@ -135,7 +135,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: str = None,
         index: str = None,
-    ) -> [Document]:
+    ) -> List[Document]:
 
         if index is None:
             index = self.index
@@ -180,7 +180,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
         return documents
 
-    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None) -> [Document]:
+    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: List[str] = None) -> List[Document]:
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
@@ -216,7 +216,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             documents = [self._convert_es_hit_to_document(hit, score_adjustment=-1) for hit in result]
             return documents
 
-    def _convert_es_hit_to_document(self, hit, score_adjustment=0) -> Document:
+    def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.external_source_id_field)}
         meta_data["name"] = meta_data.pop(self.name_field, None)

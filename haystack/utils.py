@@ -8,7 +8,7 @@ from haystack.database.sql import Document
 logger = logging.getLogger(__name__)
 
 
-def print_answers(results, details="all"):
+def print_answers(results: dict, details: str = "all"):
     answers = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
     if details != "all":
@@ -28,7 +28,7 @@ def print_answers(results, details="all"):
         pp.pprint(results)
 
 
-def convert_labels_to_squad(labels_file):
+def convert_labels_to_squad(labels_file: str):
     """
     Convert the export from the labeling UI to SQuAD format for training.
 

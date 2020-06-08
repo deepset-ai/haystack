@@ -4,6 +4,7 @@ import subprocess
 from functools import partial, reduce
 from itertools import chain
 from pathlib import Path
+from typing import List
 
 import fitz
 import langdetect
@@ -20,7 +21,7 @@ class PDFToTextConverter(BaseConverter):
         remove_whitespace: bool = None,
         remove_empty_lines: bool = None,
         remove_header_footer: bool = None,
-        valid_languages: [str] = None,
+        valid_languages: List[str] = None,
     ):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
@@ -64,7 +65,7 @@ class PDFToTextConverter(BaseConverter):
             valid_languages=valid_languages,
         )
 
-    def extract_pages(self, file_path: Path) -> [str]:
+    def extract_pages(self, file_path: Path) -> List[str]:
 
         page_count = fitz.open(file_path).pageCount
 
@@ -179,7 +180,7 @@ class PDFToTextConverter(BaseConverter):
         res = set(chain.from_iterable(ngrams))
         return res
 
-    def find_longest_common_ngram(self, sequences: [str], max_ngram: int = 30, min_ngram: int = 3):
+    def find_longest_common_ngram(self, sequences: List[str], max_ngram: int = 30, min_ngram: int = 3) -> str:
         """
         Find the longest common ngram across different text sequences (e.g. start of pages).
         Considering all ngrams between the specified range. Helpful for finding footers, headers etc.
@@ -201,8 +202,8 @@ class PDFToTextConverter(BaseConverter):
         return longest if longest.strip() else None
 
     def find_and_remove_header_footer(
-        self, pages: [str], n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
-    ):
+        self, pages: List[str], n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
+    ) -> str:
         """
         Heuristic to find footers and headers across different pages by searching for the longest common string.
         For headers we only search in the first n_chars characters (for footer: last n_chars).

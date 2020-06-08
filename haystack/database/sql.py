@@ -1,4 +1,5 @@
-import json
+from typing import List
+
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, PickleType
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -49,13 +50,13 @@ class SQLDocumentStore(BaseDocumentStore):
         Session = sessionmaker(bind=engine)
         self.session = Session()
 
-    def get_document_by_id(self, id):
+    def get_document_by_id(self, id) -> Document:
         document_row = self.session.query(Document).get(id)
         document = self._convert_sql_row_to_document(document_row)
 
         return document
 
-    def get_all_documents(self):
+    def get_all_documents(self) -> List[Document]:
         document_rows = self.session.query(Document).all()
         documents = []
         for row in document_rows:
@@ -63,7 +64,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def get_document_ids_by_tags(self, tags):
+    def get_document_ids_by_tags(self, tags) -> List[str]:
         """
         Get list of document ids that have tags from the given list of tags.
 
@@ -91,13 +92,13 @@ class SQLDocumentStore(BaseDocumentStore):
         doc_ids = [row[0] for row in query_results]
         return doc_ids
 
-    def write_documents(self, documents):
+    def write_documents(self, documents: List[dict]):
         for doc in documents:
             row = Document(name=doc["name"], text=doc["text"], meta_data=doc.get("meta", {}))
             self.session.add(row)
         self.session.commit()
 
-    def get_document_count(self):
+    def get_document_count(self) -> int:
         return self.session.query(Document).count()
 
     def _convert_sql_row_to_document(self, row) -> Document:

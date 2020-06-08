@@ -1,9 +1,13 @@
 import logging
+import time
+from statistics import mean
+from typing import Type
 
 import numpy as np
 from scipy.special import expit
-import time
-from statistics import mean
+
+from haystack.reader.base import BaseReader
+from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +19,7 @@ class Finder:
     It provides an interface to predict top n answers for a given question.
     """
 
-    def __init__(self, reader, retriever):
+    def __init__(self, reader: Type[BaseReader], retriever: Type[BaseRetriever]):
         self.retriever = retriever
         self.reader = reader
         if self.reader is None and self.retriever is None:
@@ -108,8 +112,14 @@ class Finder:
 
         return results
 
-    def eval(self, label_index: str = "feedback", doc_index: str = "eval_document", label_origin: str = "gold_label",
-             top_k_retriever: int = 10, top_k_reader: int = 10):
+    def eval(
+        self,
+        label_index: str = "feedback",
+        doc_index: str = "eval_document",
+        label_origin: str = "gold_label",
+        top_k_retriever: int = 10,
+        top_k_reader: int = 10,
+    ):
         """
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
         of the Retriever.

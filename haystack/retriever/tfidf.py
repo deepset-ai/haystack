@@ -1,11 +1,12 @@
 import logging
 from collections import OrderedDict, namedtuple
+from typing import List
 
 import pandas as pd
-from haystack.database.base import Document
-from haystack.retriever.base import BaseRetriever
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+from haystack.database.base import Document
+from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class TfidfRetriever(BaseRetriever):
         self.df = None
         self.fit()
 
-    def _get_all_paragraphs(self):
+    def _get_all_paragraphs(self) -> List[Paragraph]:
         """
         Split the list of documents in paragraphs
         """
@@ -55,7 +56,7 @@ class TfidfRetriever(BaseRetriever):
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
         return paragraphs
 
-    def _calc_scores(self, query):
+    def _calc_scores(self, query: str) -> dict:
         question_vector = self.vectorizer.transform([query])
 
         scores = self.tfidf_matrix.dot(question_vector.T).toarray()
@@ -65,7 +66,7 @@ class TfidfRetriever(BaseRetriever):
         )
         return indices_and_scores
 
-    def retrieve(self, query, filters=None, top_k=10, verbose=True):
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, verbose: bool = True) -> [Document]:
         if filters:
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
 

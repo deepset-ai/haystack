@@ -1,5 +1,6 @@
 import logging
-from typing import Type
+from typing import List, Type
+
 from farm.infer import Inferencer
 
 from haystack.database.base import Document, BaseDocumentStore
@@ -41,7 +42,7 @@ class ElasticsearchRetriever(BaseRetriever):
         self.document_store = document_store
         self.custom_query = custom_query
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> [Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
             index = self.document_store.index
 
@@ -50,8 +51,13 @@ class ElasticsearchRetriever(BaseRetriever):
 
         return documents
 
-    def eval(self, label_index: str = "feedback", doc_index: str = "eval_document", label_origin: str = "gold_label",
-             top_k: int = 10) -> dict:
+    def eval(
+        self,
+        label_index: str = "feedback",
+        doc_index: str = "eval_document",
+        label_origin: str = "gold_label",
+        top_k: int = 10,
+    ) -> dict:
         """
         Performs evaluation on the Retriever.
         Retriever is evaluated based on whether it finds the correct document given the question string and at which
@@ -137,13 +143,13 @@ class EmbeddingRetriever(BaseRetriever):
         else:
             raise NotImplementedError
 
-    def retrieve(self, query: str, candidate_doc_ids: [str] = None, top_k: int = 10) -> [Document]:
+    def retrieve(self, query: str, candidate_doc_ids: List[str] = None, top_k: int = 10) -> List[Document]:
         query_emb = self.create_embedding(texts=[query])
         documents = self.document_store.query_by_embedding(query_emb[0], top_k, candidate_doc_ids)
 
         return documents
 
-    def create_embedding(self, texts: [str]):
+    def create_embedding(self, texts: List[str]) -> List[float]:
         """
         Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
         :param texts: texts to embed
