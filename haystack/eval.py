@@ -10,7 +10,7 @@ def calculate_average_precision(questions_with_docs: [dict]):
             if doc.meta["doc_id"] == question["question"]["_source"]["doc_id"]:
                 summed_avg_precision_retriever += 1 / (doc_idx + 1)
                 questions_with_correct_doc.append({
-                    "question": question,
+                    "question": question["question"],
                     "docs": question["docs"],
                     "correct_es_doc_id": doc.id
                 })
@@ -116,7 +116,7 @@ def eval_counts_reader_batch(pred: dict, metric_counts: Counter):
     return metric_counts
 
 
-def _count_overlap(self, gold_span: (int, int), predicted_span: (int, int), metric_counts: Counter, answer_idx: int):
+def _count_overlap(gold_span: (int, int), predicted_span: (int, int), metric_counts: Counter, answer_idx: int):
     # Checks if overlap between prediction and real answer.
 
     found_answer = False
@@ -134,7 +134,7 @@ def _count_overlap(self, gold_span: (int, int), predicted_span: (int, int), metr
     return metric_counts, found_answer
 
 
-def _count_exact_match(self, gold_span: (int, int), predicted_span: (int, int), metric_counts: Counter,
+def _count_exact_match(gold_span: (int, int), predicted_span: (int, int), metric_counts: Counter,
                        answer_idx: int):
     # Check if exact match between prediction and real answer.
 
@@ -153,7 +153,7 @@ def _count_exact_match(self, gold_span: (int, int), predicted_span: (int, int), 
     return metric_counts, found_em
 
 
-def _calculate_f1(self, gold_span: (int, int), predicted_span: (int, int)):
+def _calculate_f1(gold_span: (int, int), predicted_span: (int, int)):
     # Calculates F1-Score for prediction based on real answer.
 
     pred_indices = list(range(predicted_span[0], predicted_span[1] + 1))
@@ -169,7 +169,7 @@ def _calculate_f1(self, gold_span: (int, int), predicted_span: (int, int)):
         return 0
 
 
-def _count_no_answer(self, answers, metric_counts):
+def _count_no_answer(answers, metric_counts):
     # Checks if one of the answers is 'no answer'.
 
     for answer_idx, answer in enumerate(answers):

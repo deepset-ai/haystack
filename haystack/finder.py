@@ -4,7 +4,7 @@ from collections import Counter
 import numpy as np
 from scipy.special import expit
 import time
-from statistics import mean
+from haystack.eval import calculate_average_precision, eval_counts_reader_batch, eval_counts_reader
 
 logger = logging.getLogger(__name__)
 
@@ -156,24 +156,24 @@ class Finder:
 
         # retrieve documents
         retriever_start_time = time.time()
-        questions_with_docs, summed_avg_precision_retriever = self._retrieve_docs(
-            questions, top_k=top_k_retriever, doc_index=doc_index
-        )
+        questions_with_docs = self._retrieve_docs(questions, top_k=top_k_retriever, doc_index=doc_index)
         retriever_total_time = time.time() - retriever_start_time
-        correct_retrievals = len(questions_with_docs)
+
+        questions_with_correct_doc, summed_avg_precision_retriever = calculate_average_precision(questions_with_docs)
+        correct_retrievals = len(questions_with_correct_doc)
 
         # extract answers and count metrics
         previous_return_no_answers = self.reader.return_no_answers
         self.reader.return_no_answers = True
         reader_start_time = time.time()
 
-        for q_idx, question in enumerate(questions_with_docs):
+        for q_idx, question in enumerate(questions_with_correct_doc):
             if (q_idx + 1) % 100 == 0:
                 logger.info(f"Processed {q_idx + 1} questions in Reader.")
             question_string = question["question"]["_source"]["question"]
             docs = question["docs"]
             predicted_answers = self.reader.predict(question_string, docs, top_k_reader)
-            metric_counts = self._eval_counts_reader(question, predicted_answers, metric_counts)
+            metric_counts = eval_counts_reader(question, predicted_answers, metric_counts)
 
         reader_total_time = time.time() - reader_start_time
         number_of_has_answer = correct_retrievals - metric_counts["number_of_no_answer"]
@@ -291,21 +291,21 @@ class Finder:
 
         # retrieve documents
         retriever_start_time = time.time()
-        questions_with_docs, summed_avg_precision_retriever = self._retrieve_docs(
-            questions, top_k=top_k_retriever, doc_index=doc_index
-        )
+        questions_with_docs = self._retrieve_docs(questions, top_k=top_k_retriever, doc_index=doc_index)
         retriever_total_time = time.time() - retriever_start_time
-        correct_retrievals = len(questions_with_docs)
+
+        questions_with_correct_doc, summed_avg_precision_retriever = calculate_average_precision(questions_with_docs)
+        correct_retrievals = len(questions_with_correct_doc)
 
         # extract answers
         previous_return_no_answers = self.reader.return_no_answers
         self.reader.return_no_answers = True
         reader_start_time = time.time()
-        predictions = self.reader.predict_batch(questions_with_docs, top_k_per_question=top_k_reader, batch_size=batch_size)
+        predictions = self.reader.predict_batch(questions_with_correct_doc, top_k_per_question=top_k_reader, batch_size=batch_size)
         reader_total_time = time.time() - reader_start_time
 
         for pred in predictions:
-            metric_counts = self._eval_counts_reader_batch(pred, metric_counts)
+            metric_counts = eval_counts_reader_batch(pred, metric_counts)
 
         number_of_has_answer = correct_retrievals - metric_counts["number_of_no_answer"]
 
@@ -366,20 +366,13 @@ class Finder:
         # Retrieves documents for a list of questions.
 
         questions_with_docs = []
-        summed_avg_precision_retriever = 0
 
         for question in questions:
             question_string = question["_source"]["question"]
             retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k, index=doc_index)
-            for doc_idx, doc in enumerate(retrieved_docs):
-                # check if correct doc among retrieved docs
-                if doc.meta["doc_id"] == question["_source"]["doc_id"]:
-                    summed_avg_precision_retriever += 1 / (doc_idx + 1)
-                    questions_with_docs.append({
-                        "question": question,
-                        "docs": retrieved_docs,
-                        "correct_es_doc_id": doc.id
-                    })
-                    break
+            questions_with_docs.append({
+                "question": question,
+                "docs": retrieved_docs,
+            })
 
-        return questions_with_docs, summed_avg_precision_retriever
+        return questions_with_docs
