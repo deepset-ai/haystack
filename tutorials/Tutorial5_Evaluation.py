@@ -50,7 +50,7 @@ retriever_eval_results = retriever.eval()
 ## among the correct documents
 print("Retriever Recall:", retriever_eval_results["recall"])
 ## Retriever Mean Avg Precision rewards retrievers that give relevant documents a higher rank
-print("Retriever Mean Avg Precision:", retriever_eval_results["mean avg precision"])
+print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
 
 # Evaluate Reader on its own
 reader_eval_results = reader.eval(document_store=document_store, device=device)
