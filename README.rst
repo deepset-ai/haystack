@@ -135,6 +135,7 @@ The default :code:`ElasticsearchRetriever` uses Elasticsearch's native scoring (
 
 Example::
 
+.. code-block:: python
     retriever = ElasticsearchRetriever(document_store=document_store, custom_query=None)
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
     # returns: [Document, Document]
@@ -146,6 +147,7 @@ This retriever allows you to transform your query into an embedding using a mode
 
 Example::
 
+.. code-block:: python
     retriever = EmbeddingRetriever(document_store=document_store,
                                    embedding_model="deepset/sentence-bert",
                                    model_format="farm")
@@ -168,6 +170,7 @@ FARMReader
 Implementing various QA models via the `FARM <https://github.com/deepset-ai/FARM>`_ Framework.
 Example::
 
+.. code-block:: python
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2",
                     use_gpu=False, no_ans_boost=-10, context_window_size=500,
                     top_k_per_candidate=3, top_k_per_sample=1,
@@ -193,6 +196,7 @@ Implementing various QA models via the :code:`pipeline` class of `Transformers <
 
 Example::
 
+.. code-block:: python
     reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
                                 tokenizer="distilbert-base-uncased",
                                 context_window_size=500,
