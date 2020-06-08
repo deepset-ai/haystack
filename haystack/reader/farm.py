@@ -283,7 +283,6 @@ class FARMReader:
 
         return result
 
-
     def predict(self, question: str, documents: [Document], top_k: int = None, batch_size: int = 50):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
