@@ -1,5 +1,5 @@
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
-from haystack.indexing.io import fetch_archive_from_http
+from haystack.indexing.utils import fetch_archive_from_http
 from haystack.retriever.elasticsearch import ElasticsearchRetriever
 from haystack.reader.farm import FARMReader
 from haystack.finder import Finder

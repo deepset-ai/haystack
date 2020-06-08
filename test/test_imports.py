@@ -2,7 +2,7 @@ def test_module_imports():
     from haystack import Finder
     from haystack.database.sql import SQLDocumentStore
     from haystack.indexing.cleaning import clean_wiki_text
-    from haystack.indexing.io import write_documents_to_db, fetch_archive_from_http
+    from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
     from haystack.reader.farm import FARMReader
     from haystack.reader.transformers import TransformersReader
     from haystack.retriever.tfidf import TfidfRetriever
@@ -11,7 +11,7 @@ def test_module_imports():
     assert Finder is not None
     assert SQLDocumentStore is not None
     assert clean_wiki_text is not None
-    assert write_documents_to_db is not None
+    assert convert_files_to_dicts is not None
     assert fetch_archive_from_http is not None
     assert FARMReader is not None
     assert TransformersReader is not None
