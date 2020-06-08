@@ -1,5 +1,5 @@
 language: python
-sudo: false
+sudo: true
 cache: pip
 python:
   - "3.7"
