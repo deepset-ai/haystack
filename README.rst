@@ -135,6 +135,8 @@ The default :code:`ElasticsearchRetriever` uses Elasticsearch's native scoring (
 
 Example::
 
+.. code-block:: python
+
     retriever = ElasticsearchRetriever(document_store=document_store, custom_query=None)
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
     # returns: [Document, Document]
@@ -145,6 +147,8 @@ Using dense embeddings (i.e. vector representations) of texts is a powerful alte
 This retriever allows you to transform your query into an embedding using a model (e.g. Sentence-BERT) and find similar texts by using cosine similarity.
 
 Example::
+
+.. code-block:: python
 
     retriever = EmbeddingRetriever(document_store=document_store,
                                    embedding_model="deepset/sentence-bert",
@@ -167,6 +171,8 @@ FARMReader
 ^^^^^^^^^^
 Implementing various QA models via the `FARM <https://github.com/deepset-ai/FARM>`_ Framework.
 Example::
+
+.. code-block:: python
 
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2",
                     use_gpu=False, no_ans_boost=-10, context_window_size=500,
@@ -192,6 +198,8 @@ TransformersReader
 Implementing various QA models via the :code:`pipeline` class of `Transformers <https://github.com/huggingface/transformers>`_ Framework.
 
 Example::
+
+.. code-block:: python
 
     reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
                                 tokenizer="distilbert-base-uncased",
