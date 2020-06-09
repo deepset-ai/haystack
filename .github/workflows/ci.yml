@@ -39,5 +39,9 @@ jobs:
         pip install -e .
     
     - name: Test with pytest
-      run: |
-        cd test && pytest
+      run: cd test && pytest
+
+    - name: Test with mypy
+        run: |
+          pip install mypy
+          mypy haystack --ignore-missing-imports
