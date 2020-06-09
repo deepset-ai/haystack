@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 from haystack import Finder
-from haystack.api.config import DB_HOST, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
+from haystack.api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
     EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
     DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER
@@ -23,6 +23,7 @@ router = APIRouter()
 # Init global components: DocumentStore, Retriever, Reader, Finder
 document_store = ElasticsearchDocumentStore(
     host=DB_HOST,
+    port=DB_PORT,
     username=DB_USER,
     password=DB_PW,
     index=DB_INDEX,
