@@ -2,7 +2,7 @@ import json
 from collections import defaultdict
 import logging
 import pprint
-
+from typing import Dict, Any
 from haystack.database.sql import Document
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def convert_labels_to_squad(labels_file: str):
     for label in labels:
         labels_grouped_by_documents[label["document_id"]].append(label)
 
-    labels_in_squad_format = {"data": []}
+    labels_in_squad_format = {"data": []}  # type: Dict[str, Any]
     for document_id, labels in labels_grouped_by_documents.items():
         qas = []
         for label in labels:

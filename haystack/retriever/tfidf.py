@@ -5,7 +5,7 @@ from typing import List
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from haystack.database.base import Document
+from haystack.database.base import BaseDocumentStore, Document
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ class TfidfRetriever(BaseRetriever):
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
 
-    def __init__(self, document_store):
+    def __init__(self, document_store: BaseDocumentStore):
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
             stop_words=None,
@@ -66,21 +66,22 @@ class TfidfRetriever(BaseRetriever):
         )
         return indices_and_scores
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, verbose: bool = True) -> [Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if filters:
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
+        if index:
+            raise NotImplementedError("Switching index is not supported in TfidfRetriever.")
 
         # get scores
         indices_and_scores = self._calc_scores(query)
 
         # rank paragraphs
-        df_sliced = self.df.loc[indices_and_scores.keys()]
+        df_sliced = self.df.loc[indices_and_scores.keys()]  # type: ignore
         df_sliced = df_sliced[:top_k]
 
-        if verbose:
-            logger.info(
-                f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced.to_string(col_space=10, index=False)}"
-            )
+        logger.debug(
+            f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced.to_string(col_space=10, index=False)}"
+        )
 
         # get actual content for the top candidates
         paragraphs = list(df_sliced.text.values)

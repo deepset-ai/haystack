@@ -1,33 +1,7 @@
 from abc import abstractmethod
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, List
 
 from pydantic import BaseModel, Field
-
-
-class BaseDocumentStore:
-    """
-    Base class for implementing Document Stores.
-    """
-
-    @abstractmethod
-    def write_documents(self, documents):
-        pass
-
-    @abstractmethod
-    def get_document_by_id(self, id):
-        pass
-
-    @abstractmethod
-    def get_document_ids_by_tags(self, tag):
-        pass
-
-    @abstractmethod
-    def get_document_count(self):
-        pass
-
-    @abstractmethod
-    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None):
-        pass
 
 
 class Document(BaseModel):
@@ -41,5 +15,35 @@ class Document(BaseModel):
     # name: Optional[str] = Field(None, description="Title of the document")
     question: Optional[str] = Field(None, description="Question text for FAQs.")
     query_score: Optional[float] = Field(None, description="Elasticsearch query score for a retrieved document")
-    meta: Optional[Dict[str, Any]] = Field(None, description="")
+    meta: Dict[str, Any] = Field({}, description="")
     tags: Optional[Dict[str, Any]] = Field(None, description="Tags that allow filtering of the data")
+
+
+class BaseDocumentStore:
+    """
+    Base class for implementing Document Stores.
+    """
+
+    @abstractmethod
+    def write_documents(self, documents: List[dict]):
+        pass
+
+    @abstractmethod
+    def get_all_documents(self) -> List[Document]:
+        pass
+
+    @abstractmethod
+    def get_document_by_id(self, id: str) -> Optional[Document]:
+        pass
+
+    @abstractmethod
+    def get_document_ids_by_tags(self, tag) -> List[str]:
+        pass
+
+    @abstractmethod
+    def get_document_count(self) -> int:
+        pass
+
+    @abstractmethod
+    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: Optional[List[str]] = None) -> List[Document]:
+        pass

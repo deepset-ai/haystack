@@ -1,7 +1,7 @@
 import logging
 import time
 from statistics import mean
-from typing import Type
+from typing import Optional, Dict, Any
 
 import numpy as np
 from scipy.special import expit
@@ -19,13 +19,13 @@ class Finder:
     It provides an interface to predict top n answers for a given question.
     """
 
-    def __init__(self, reader: Type[BaseReader], retriever: Type[BaseRetriever]):
+    def __init__(self, reader: Optional[BaseReader], retriever: Optional[BaseRetriever]):
         self.retriever = retriever
         self.reader = reader
         if self.reader is None and self.retriever is None:
             raise AttributeError("Finder: self.reader and self.retriever can not be both None")
 
-    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: dict = None):
+    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: Optional[dict] = None):
         """
         Get top k answers for a given question.
 
@@ -45,8 +45,8 @@ class Finder:
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
-            results = {"question": question, "answers": []}
-            return results
+            empty_result = {"question": question, "answers": []}
+            return empty_result
 
         # 2) Apply reader to get granular answer(s)
         len_chars = sum([len(d.text) for d in documents])
@@ -54,7 +54,7 @@ class Finder:
 
         results = self.reader.predict(question=question,
                                       documents=documents,
-                                      top_k=top_k_reader)
+                                      top_k=top_k_reader)  # type: Dict[str, Any]
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
@@ -65,7 +65,7 @@ class Finder:
 
         return results
 
-    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10, filters: dict = None):
+    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10, filters: Optional[dict] = None):
         """
         Get top k answers for a given question using only a retriever.
 
@@ -79,12 +79,12 @@ class Finder:
         if self.retriever is None:
             raise AttributeError("Finder.get_answers_via_similar_questions requires self.retriever")
 
-        results = {"question": question, "answers": []}
+        results = {"question": question, "answers": []}  # type: Dict[str, Any]
 
         # 1) Optional: reduce the search space via document tags
         if filters:
             logging.info(f"Apply filters: {filters}")
-            candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)
+            candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)  # type: ignore
             logger.info(f"Got candidate IDs due to filters:  {candidate_doc_ids}")
 
             if len(candidate_doc_ids) == 0:
@@ -92,21 +92,22 @@ class Finder:
                 return results
 
         else:
-            candidate_doc_ids = None
+            candidate_doc_ids = None  # type: ignore
 
         # 2) Apply retriever to match similar questions via cosine similarity of embeddings
-        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
+        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)  # type: ignore
 
         # 3) Format response
         for doc in documents:
             #TODO proper calibratation of pseudo probabilities
-            cur_answer = {"question": doc.meta["question"], "answer": doc.text, "context": doc.text,
+            cur_answer = {"question": doc.meta["question"], "answer": doc.text, "context": doc.text,  # type: ignore
                           "score": doc.query_score, "offset_start": 0, "offset_end": len(doc.text), "meta": doc.meta
                           }
-            if self.retriever.embedding_model:
-                probability = (doc.query_score + 1) / 2
+            if self.retriever.embedding_model:  # type: ignore
+                probability = (doc.query_score + 1) / 2  # type: ignore
             else:
-                probability = float(expit(np.asarray(doc.query_score / 8)))
+                probability = float(expit(np.asarray(doc.query_score / 8)))  # type: ignore
+
             cur_answer["probability"] = probability
             results["answers"].append(cur_answer)
 
@@ -165,10 +166,14 @@ class Finder:
         :param top_k_reader: How many answers to return per question
         :type top_k_reader: int
         """
+
+        if not self.reader or not self.retriever:
+            raise Exception("Finder needs to have a reader and retriever for the evaluation.")
+
         finder_start_time = time.time()
         # extract all questions for evaluation
         filter = {"origin": label_origin}
-        questions = self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter)
+        questions = self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter)  # type: ignore
 
         correct_retrievals = 0
         summed_avg_precision_retriever = 0
@@ -202,7 +207,7 @@ class Finder:
                 # check if correct doc among retrieved docs
                 if doc.meta["doc_id"] == question["_source"]["doc_id"]:
                     correct_retrievals += 1
-                    summed_avg_precision_retriever += 1 / (doc_idx + 1)
+                    summed_avg_precision_retriever += 1 / (doc_idx + 1)  # type: ignore
                     questions_with_docs.append({
                         "question": question,
                         "docs": retrieved_docs,
@@ -212,8 +217,8 @@ class Finder:
         number_of_questions = q_idx + 1
 
         number_of_no_answer = 0
-        previous_return_no_answers = self.reader.return_no_answers
-        self.reader.return_no_answers = True
+        previous_return_no_answers = self.reader.return_no_answers  # type: ignore
+        self.reader.return_no_answers = True  # type: ignore
         # extract answers
         reader_start_time = time.time()
         for q_idx, question in enumerate(questions_with_docs):
@@ -270,10 +275,10 @@ class Finder:
                                 current_f1 = (2 * precision * recall) / (precision + recall)
                                 # top-1 answer
                                 if answer_idx == 0:
-                                    summed_f1_top1 += current_f1
-                                    summed_f1_top1_has_answer += current_f1
+                                    summed_f1_top1 += current_f1  # type: ignore
+                                    summed_f1_top1_has_answer += current_f1  # type: ignore
                                 if current_f1 > best_f1:
-                                    best_f1 = current_f1
+                                    best_f1 = current_f1  # type: ignore
                         # top-k answers: use best f1-score
                         summed_f1_topk += best_f1
                         summed_f1_topk_has_answer += best_f1
@@ -321,7 +326,7 @@ class Finder:
         reader_top1_no_answer_accuracy = correct_no_answers_top1 / number_of_no_answer
         reader_topk_no_answer_accuracy = correct_no_answers_topk / number_of_no_answer
 
-        self.reader.return_no_answers = previous_return_no_answers
+        self.reader.return_no_answers = previous_return_no_answers  # type: ignore
 
         logger.info((f"{correct_readings_topk} out of {number_of_questions} questions were correctly answered "
                      f"({(correct_readings_topk/number_of_questions):.2%})."))

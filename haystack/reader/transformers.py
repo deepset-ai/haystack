@@ -1,11 +1,12 @@
-from typing import List
+from typing import List, Optional
 
 from transformers import pipeline
 
 from haystack.database.base import Document
+from haystack.reader.base import BaseReader
 
 
-class TransformersReader:
+class TransformersReader(BaseReader):
     """
     Transformer based model for extractive Question Answering using the huggingface's transformers framework
     (https://github.com/huggingface/transformers).
@@ -44,7 +45,7 @@ class TransformersReader:
         self.n_best_per_passage = n_best_per_passage
         #TODO param to modify bias for no_answer
 
-    def predict(self, question: str, documents: List[Document], top_k: int = None):
+    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
 

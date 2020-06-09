@@ -1,16 +1,17 @@
 import logging
-from typing import List, Type
+from typing import List, Union
 
 from farm.infer import Inferencer
 
-from haystack.database.base import Document, BaseDocumentStore
+from haystack.database.base import Document
+from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: Type[BaseDocumentStore], custom_query: str = None):
+    def __init__(self, document_store: ElasticsearchDocumentStore, custom_query: str = None):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory question placeholder($question).
@@ -39,7 +40,7 @@ class ElasticsearchRetriever(BaseRetriever):
                              self.retrieve(query="Why did the revenue increase?",
                                            filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
         """
-        self.document_store = document_store
+        self.document_store = document_store  # type: ignore
         self.custom_query = custom_query
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
@@ -87,7 +88,7 @@ class ElasticsearchRetriever(BaseRetriever):
             for doc_idx, doc in enumerate(retrieved_docs):
                 if doc.meta["doc_id"] == question["_source"]["doc_id"]:
                     correct_retrievals += 1
-                    summed_avg_precision += 1 / (doc_idx + 1)
+                    summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
                     break
 
         number_of_questions = q_idx + 1
@@ -103,7 +104,7 @@ class ElasticsearchRetriever(BaseRetriever):
 class EmbeddingRetriever(BaseRetriever):
     def __init__(
         self,
-        document_store: Type[BaseDocumentStore],
+        document_store: ElasticsearchDocumentStore,
         embedding_model: str,
         gpu: bool = True,
         model_format: str = "farm",
@@ -143,13 +144,13 @@ class EmbeddingRetriever(BaseRetriever):
         else:
             raise NotImplementedError
 
-    def retrieve(self, query: str, candidate_doc_ids: List[str] = None, top_k: int = 10) -> List[Document]:
+    def retrieve(self, query: str, candidate_doc_ids: List[str] = None, top_k: int = 10) -> List[Document]:  # type: ignore
         query_emb = self.create_embedding(texts=[query])
         documents = self.document_store.query_by_embedding(query_emb[0], top_k, candidate_doc_ids)
 
         return documents
 
-    def create_embedding(self, texts: List[str]) -> List[float]:
+    def create_embedding(self, texts: Union[List[str], str]) -> List[List[float]]:
         """
         Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
         :param texts: texts to embed
@@ -158,14 +159,15 @@ class EmbeddingRetriever(BaseRetriever):
 
         # for backward compatibility: cast pure str input
         if type(texts) == str:
-            texts = [texts]
+            texts = [texts]  # type: ignore
         assert type(texts) == list, "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
 
         if self.model_format == "farm":
-            res = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
+            res = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])  # type: ignore
             emb = [list(r["vec"]) for r in res] #cast from numpy
         elif self.model_format == "sentence_transformers":
             # text is single string, sentence-transformers needs a list of strings
-            res = self.embedding_model.encode(texts)  # get back list of numpy embedding vectors
+            # get back list of numpy embedding vectors
+            res = self.embedding_model.encode(texts)  # type: ignore
             emb = [list(r.astype('float64')) for r in res] #cast from numpy
         return emb

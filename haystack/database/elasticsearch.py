@@ -1,7 +1,7 @@
 import json
 import logging
 from string import Template
-from typing import List, Union
+from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 
@@ -18,14 +18,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         username: str = "",
         password: str = "",
         index: str = "document",
-        search_fields: Union[str,list] = "text",
+        search_fields: Union[str, list] = "text",
         text_field: str = "text",
         name_field: str = "name",
         external_source_id_field: str = "external_source_id",
-        embedding_field: str = None,
-        embedding_dim: str = None,
-        custom_mapping: dict = None,
-        excluded_meta_data: list = None,
+        embedding_field: Optional[str] = None,
+        embedding_dim: Optional[str] = None,
+        custom_mapping: Optional[dict] = None,
+        excluded_meta_data: Optional[list] = None,
         scheme: str = "http",
         ca_certs: bool = False,
         verify_certs: bool = True,
@@ -93,7 +93,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.embedding_field = embedding_field
         self.excluded_meta_data = excluded_meta_data
 
-    def get_document_by_id(self, id: str) -> Document:
+    def get_document_by_id(self, id: str) -> Optional[Document]:
         query = {"query": {"ids": {"values": [id]}}}
         result = self.client.search(index=self.index, body=query)["hits"]["hits"]
 
@@ -131,10 +131,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[dict] = None,
         top_k: int = 10,
-        custom_query: str = None,
-        index: str = None,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
     ) -> List[Document]:
 
         if index is None:
@@ -180,7 +180,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
         return documents
 
-    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: List[str] = None) -> List[Document]:
+    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: Optional[List[str]] = None) -> List[Document]:
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
@@ -198,7 +198,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         }
                     }
                 }
-            }
+            }  # type: Dict[str,Any]
 
             if candidate_doc_ids:
                 body["query"]["script_score"]["query"] = {
@@ -286,7 +286,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         bulk(self.client, eval_docs_to_index)
         bulk(self.client, questions_to_index)
 
-    def get_all_documents_in_index(self, index, filters=None):
+    def get_all_documents_in_index(self, index: str, filters: Optional[dict] = None):
         body = {
             "query": {
                 "bool": {
@@ -295,7 +295,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     }
                 }
             }
-        }
+        }  # type: Dict[str, Any]
 
         if filters:
            body["query"]["bool"]["filter"] = {"term": filters}

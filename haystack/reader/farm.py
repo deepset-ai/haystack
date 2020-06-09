@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
@@ -15,11 +15,11 @@ from scipy.special import expit
 
 from haystack.database.base import Document
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
-
+from haystack.reader.base import BaseReader
 logger = logging.getLogger(__name__)
 
 
-class FARMReader:
+class FARMReader(BaseReader):
     """
     Transformer based model for extractive Question Answering using the FARM framework (https://github.com/deepset-ai/FARM).
     While the underlying model can vary (BERT, Roberta, DistilBERT ...) the interface remains the same.
@@ -35,10 +35,10 @@ class FARMReader:
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
-        no_ans_boost: int = None,
+        no_ans_boost: Optional[int] = None,
         top_k_per_candidate: int = 3,
         top_k_per_sample: int = 1,
-        num_processes: int = None,
+        num_processes: Optional[int] = None,
         max_seq_len: int = 256,
         doc_stride: int = 128,
     ):
@@ -102,17 +102,17 @@ class FARMReader:
         self,
         data_dir: str,
         train_filename: str,
-        dev_filename: str = None,
-        test_file_name: str = None,
-        use_gpu: bool = None,
+        dev_filename: Optional[str] = None,
+        test_file_name: Optional[str] = None,
+        use_gpu: Optional[bool] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
-        max_seq_len: int = None,
+        max_seq_len: Optional[int] = None,
         warmup_proportion: float = 0.2,
-        dev_split: float = 0.1,
+        dev_split: Optional[float] = 0.1,
         evaluate_every: int = 300,
-        save_dir: str = None,
+        save_dir: Optional[str] = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -155,7 +155,6 @@ class FARMReader:
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
-        save_dir = Path(save_dir)
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
         label_list = ["start_token", "end_token"]
@@ -198,14 +197,14 @@ class FARMReader:
         )
         # 5. Let it grow!
         self.inferencer.model = trainer.train()
-        self.save(save_dir)
+        self.save(Path(save_dir))
 
-    def save(self, directory: str):
+    def save(self, directory: Path):
         logger.info(f"Saving reader model to {directory}")
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict(self, question: str, documents: List[Document], top_k: int = None):
+    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
 
@@ -259,7 +258,8 @@ class FARMReader:
                 if a["answer"]:
                     cur = {"answer": a["answer"],
                            "score": a["score"],
-                           "probability": float(expit(np.asarray([a["score"]]) / 8)), #just a pseudo prob for now
+                           # just a pseudo prob for now
+                           "probability": float(expit(np.asarray([a["score"]]) / 8)),  # type: ignore
                            "context": a["context"],
                            "offset_start": a["offset_answer_start"] - a["offset_context_start"],
                            "offset_end": a["offset_answer_end"] - a["offset_context_start"],
@@ -416,7 +416,8 @@ class FARMReader:
         # No_ans_gap coming from FARM mean how much no_ans_boost should change to switch predictions
         no_ans_gaps = np.array(no_ans_gaps)
         max_no_ans_gap = np.max(no_ans_gaps)
-        if (np.sum(no_ans_gaps < 0) == len(no_ans_gaps)):  # all passages "no answer" as top score
+        # all passages "no answer" as top score
+        if (np.sum(no_ans_gaps < 0) == len(no_ans_gaps)):  # type: ignore
             no_ans_score = best_score_answer - max_no_ans_gap  # max_no_ans_gap is negative, so it increases best pos score
         else:  # case: at least one passage predicts an answer (positive no_ans_gap)
             no_ans_score = best_score_answer - max_no_ans_gap
@@ -430,7 +431,7 @@ class FARMReader:
                "document_id": None}
         return no_ans_prediction, max_no_ans_gap
 
-    def predict_on_texts(self, question: str, texts: List[str], top_k: int = None):
+    def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         documents = []
         for i, text in enumerate(texts):
             documents.append(

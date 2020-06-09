@@ -7,9 +7,9 @@ def clean_wiki_text(text: str) -> str:
         text = text.replace("\n\n", "\n")
 
     # remove extremely short lines
-    text = text.split("\n")
+    lines = text.split("\n")
     cleaned = []
-    for l in text:
+    for l in lines:
         if len(l) > 30:
             cleaned.append(l)
         elif l[:2] == "==" and l[-2:] == "==":

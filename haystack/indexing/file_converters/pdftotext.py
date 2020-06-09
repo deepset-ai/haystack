@@ -4,7 +4,7 @@ import subprocess
 from functools import partial, reduce
 from itertools import chain
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Tuple, Generator, Set
 
 import fitz
 import langdetect
@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 class PDFToTextConverter(BaseConverter):
     def __init__(
         self,
-        remove_numeric_tables: bool = False,
-        remove_whitespace: bool = None,
-        remove_empty_lines: bool = None,
-        remove_header_footer: bool = None,
-        valid_languages: List[str] = None,
+        remove_numeric_tables: Optional[bool] = False,
+        remove_whitespace: Optional[bool] = None,
+        remove_empty_lines: Optional[bool] = None,
+        remove_header_footer: Optional[bool] = None,
+        valid_languages: Optional[List[str]] = None,
     ):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
@@ -107,13 +107,12 @@ class PDFToTextConverter(BaseConverter):
             pages.append(page)
             page_number += 1
 
-        if self.valid_languages:
-            document_text = "".join(pages)
-            if not self._validate_language(document_text):
-                logger.warning(
-                    f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
-                    f"been decoded in the correct text format."
-                )
+        document_text = "".join(pages)
+        if not self._validate_language(document_text):
+            logger.warning(
+                f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
+                f"been decoded in the correct text format."
+            )
 
         if self.remove_header_footer:
             pages, header, footer = self.find_and_remove_header_footer(
@@ -123,7 +122,7 @@ class PDFToTextConverter(BaseConverter):
 
         return pages
 
-    def _extract_page(self, file_path: Path, page_number: int, layout: bool):
+    def _extract_page(self, file_path: Path, page_number: int, layout: bool) -> str:
         """
         Extract a page from the pdf file at file_path.
 
@@ -133,17 +132,20 @@ class PDFToTextConverter(BaseConverter):
                        the content stream order.
         """
         if layout:
-            command = ["pdftotext", "-layout", "-f", str(page_number), "-l", str(page_number), file_path, "-"]
+            command = ["pdftotext", "-layout", "-f", str(page_number), "-l", str(page_number), str(file_path), "-"]
         else:
-            command = ["pdftotext", "-f", str(page_number), "-l", str(page_number), file_path, "-"]
+            command = ["pdftotext", "-f", str(page_number), "-l", str(page_number), str(file_path), "-"]
         output_page = subprocess.run(command, capture_output=True, shell=False)
         page = output_page.stdout.decode(errors="ignore")
         return page
 
-    def _validate_language(self, text: str):
+    def _validate_language(self, text: str) -> bool:
         """
         Validate if the language of the text is one of valid languages.
         """
+        if not self.valid_languages:
+            return True
+
         try:
             lang = langdetect.detect(text)
         except langdetect.lang_detect_exception.LangDetectException:
@@ -154,7 +156,7 @@ class PDFToTextConverter(BaseConverter):
         else:
             return False
 
-    def _ngram(self, seq: str, n: int):
+    def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
         """
         Return ngram (of tokens - currently splitted by whitespace)
         :param seq: str, string from which the ngram shall be created
@@ -167,20 +169,20 @@ class PDFToTextConverter(BaseConverter):
         seq = seq.replace("\n", " \n")
         seq = seq.replace("\t", " \t")
 
-        seq = seq.split(" ")
+        words = seq.split(" ")
         ngrams = (
-            " ".join(seq[i : i + n]).replace(" \n", "\n").replace(" \t", "\t") for i in range(0, len(seq) - n + 1)
+            " ".join(words[i : i + n]).replace(" \n", "\n").replace(" \t", "\t") for i in range(0, len(words) - n + 1)
         )
 
         return ngrams
 
-    def _allngram(self, seq: str, min_ngram: int, max_ngram: int):
+    def _allngram(self, seq: str, min_ngram: int, max_ngram: int) -> Set[str]:
         lengths = range(min_ngram, max_ngram) if max_ngram else range(min_ngram, len(seq))
         ngrams = map(partial(self._ngram, seq), lengths)
         res = set(chain.from_iterable(ngrams))
         return res
 
-    def find_longest_common_ngram(self, sequences: List[str], max_ngram: int = 30, min_ngram: int = 3) -> str:
+    def find_longest_common_ngram(self, sequences: List[str], max_ngram: int = 30, min_ngram: int = 3) -> Optional[str]:
         """
         Find the longest common ngram across different text sequences (e.g. start of pages).
         Considering all ngrams between the specified range. Helpful for finding footers, headers etc.
@@ -203,7 +205,7 @@ class PDFToTextConverter(BaseConverter):
 
     def find_and_remove_header_footer(
         self, pages: List[str], n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
-    ) -> str:
+    ) -> Tuple[List[str], Optional[str], Optional[str]]:
         """
         Heuristic to find footers and headers across different pages by searching for the longest common string.
         For headers we only search in the first n_chars characters (for footer: last n_chars).

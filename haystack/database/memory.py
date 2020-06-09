@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List, Optional, Union, Tuple
 
 from haystack.database.base import BaseDocumentStore, Document
 
@@ -54,7 +54,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         document = self._convert_memory_hit_to_document(self.docs[id], doc_id=id)
         return document
 
-    def _convert_memory_hit_to_document(self, hit: dict, doc_id: str = None) -> Document:
+    def _convert_memory_hit_to_document(self, hit: Tuple[Any, Any], doc_id: Optional[str] = None) -> Document:
         document = Document(
             id=doc_id,
             text=hit[0].get('text', None),
@@ -63,7 +63,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         return document
 
-    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None) -> List[Document]:
+    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: Optional[List[str]] = None) -> List[Document]:
         from haystack.api import config
         from numpy import dot
         from numpy.linalg import norm
@@ -81,7 +81,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return sorted(candidate_docs, key=lambda x: x.query_score, reverse=True)[0:top_k]
 
-    def get_document_ids_by_tags(self, tags):
+    def get_document_ids_by_tags(self, tags: Union[List[Dict[str, Union[str, List[str]]]], Dict[str, Union[str, List[str]]]]) -> List[str]:
         """
         The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
         The format for the dict is {"tag-1": ["value-1","value-2"], "tag-2": ["value-3]" ...}
@@ -91,7 +91,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         result = self._find_ids_by_tags(tags)
         return result
 
-    def _find_ids_by_tags(self, tags):
+    def _find_ids_by_tags(self, tags: List[Dict[str, Union[str, List[str]]]]):
         result = []
         for tag in tags:
             tag_keys = tag.keys()
