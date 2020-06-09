@@ -1,5 +1,4 @@
-
-name: Haystack CI
+name: Build
 
 on:
   push:
