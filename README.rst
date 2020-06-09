@@ -1,8 +1,8 @@
 *******************************************************
 Haystack — Neural Question Answering At Scale
 *******************************************************
-.. image:: https://travis-ci.org/deepset-ai/haystack.svg?branch=master
-	:target: https://travis-ci.org/deepset-ai/haystack
+.. image:: https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master
+	:target: https://github.com/deepset-ai/haystack/actions
 	:alt: Build
 
 .. image:: https://img.shields.io/github/release/deepset-ai/haystack
