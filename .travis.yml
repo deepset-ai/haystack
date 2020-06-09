@@ -1,9 +1,0 @@
-language: python
-sudo: true
-cache: pip
-python:
-  - "3.7"
-install:
-  - "pip install -e ."
-script:
-  - "cd test && pytest"
