@@ -1,11 +1,12 @@
 import logging
 from collections import OrderedDict, namedtuple
+from typing import List
 
 import pandas as pd
-from haystack.database.base import Document
-from haystack.retriever.base import BaseRetriever
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+from haystack.database.base import BaseDocumentStore, Document
+from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class TfidfRetriever(BaseRetriever):
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
 
-    def __init__(self, document_store):
+    def __init__(self, document_store: BaseDocumentStore):
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
             stop_words=None,
@@ -36,7 +37,7 @@ class TfidfRetriever(BaseRetriever):
         self.df = None
         self.fit()
 
-    def _get_all_paragraphs(self):
+    def _get_all_paragraphs(self) -> List[Paragraph]:
         """
         Split the list of documents in paragraphs
         """
@@ -55,7 +56,7 @@ class TfidfRetriever(BaseRetriever):
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
         return paragraphs
 
-    def _calc_scores(self, query):
+    def _calc_scores(self, query: str) -> dict:
         question_vector = self.vectorizer.transform([query])
 
         scores = self.tfidf_matrix.dot(question_vector.T).toarray()
@@ -65,21 +66,22 @@ class TfidfRetriever(BaseRetriever):
         )
         return indices_and_scores
 
-    def retrieve(self, query, filters=None, top_k=10, verbose=True):
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if filters:
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
+        if index:
+            raise NotImplementedError("Switching index is not supported in TfidfRetriever.")
 
         # get scores
         indices_and_scores = self._calc_scores(query)
 
         # rank paragraphs
-        df_sliced = self.df.loc[indices_and_scores.keys()]
+        df_sliced = self.df.loc[indices_and_scores.keys()]  # type: ignore
         df_sliced = df_sliced[:top_k]
 
-        if verbose:
-            logger.info(
-                f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced.to_string(col_space=10, index=False)}"
-            )
+        logger.debug(
+            f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced.to_string(col_space=10, index=False)}"
+        )
 
         # get actual content for the top candidates
         paragraphs = list(df_sliced.text.values)

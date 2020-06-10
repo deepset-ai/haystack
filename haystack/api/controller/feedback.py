@@ -38,7 +38,7 @@ document_store = ElasticsearchDocumentStore(
     search_fields=SEARCH_FIELD_NAME,
     embedding_dim=EMBEDDING_DIM,
     embedding_field=EMBEDDING_FIELD_NAME,
-    excluded_meta_data=EXCLUDE_META_DATA_FIELDS,
+    excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
 )
 
 
@@ -52,7 +52,7 @@ class Feedback(BaseModel):
 
 
 @router.post("/doc-qa-feedback")
-def feedback(feedback: Feedback):
+def doc_qa_feedback(feedback: Feedback):
     if feedback.answer and feedback.offset_start_in_doc:
         elasticsearch_client.index(index=DB_INDEX_FEEDBACK, body=feedback.dict())
     else:
@@ -63,7 +63,7 @@ def feedback(feedback: Feedback):
 
 
 @router.post("/faq-qa-feedback")
-def feedback(feedback: Feedback):
+def faq_qa_feedback(feedback: Feedback):
     elasticsearch_client.index(index=DB_INDEX_FEEDBACK, body=feedback.dict())
 
 
