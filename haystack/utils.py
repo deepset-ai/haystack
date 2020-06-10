@@ -2,13 +2,13 @@ import json
 from collections import defaultdict
 import logging
 import pprint
-
+from typing import Dict, Any
 from haystack.database.sql import Document
 
 logger = logging.getLogger(__name__)
 
 
-def print_answers(results, details="all"):
+def print_answers(results: dict, details: str = "all"):
     answers = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
     if details != "all":
@@ -28,7 +28,7 @@ def print_answers(results, details="all"):
         pp.pprint(results)
 
 
-def convert_labels_to_squad(labels_file):
+def convert_labels_to_squad(labels_file: str):
     """
     Convert the export from the labeling UI to SQuAD format for training.
 
@@ -42,7 +42,7 @@ def convert_labels_to_squad(labels_file):
     for label in labels:
         labels_grouped_by_documents[label["document_id"]].append(label)
 
-    labels_in_squad_format = {"data": []}
+    labels_in_squad_format = {"data": []}  # type: Dict[str, Any]
     for document_id, labels in labels_grouped_by_documents.items():
         qas = []
         for label in labels:

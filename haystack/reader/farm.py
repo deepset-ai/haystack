@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import List, Optional, Union
 
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
@@ -14,11 +15,11 @@ from scipy.special import expit
 
 from haystack.database.base import Document
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
-
+from haystack.reader.base import BaseReader
 logger = logging.getLogger(__name__)
 
 
-class FARMReader:
+class FARMReader(BaseReader):
     """
     Transformer based model for extractive Question Answering using the FARM framework (https://github.com/deepset-ai/FARM).
     While the underlying model can vary (BERT, Roberta, DistilBERT ...) the interface remains the same.
@@ -30,16 +31,16 @@ class FARMReader:
 
     def __init__(
         self,
-        model_name_or_path,
-        context_window_size=150,
-        batch_size=50,
-        use_gpu=True,
-        no_ans_boost=None,
-        top_k_per_candidate=3,
-        top_k_per_sample=1,
-        num_processes=None,
-        max_seq_len=256,
-        doc_stride=128
+        model_name_or_path: Union[str, Path],
+        context_window_size: int = 150,
+        batch_size: int = 50,
+        use_gpu: bool = True,
+        no_ans_boost: Optional[int] = None,
+        top_k_per_candidate: int = 3,
+        top_k_per_sample: int = 1,
+        num_processes: Optional[int] = None,
+        max_seq_len: int = 256,
+        doc_stride: int = 128,
     ):
 
         """
@@ -97,9 +98,22 @@ class FARMReader:
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
 
-    def train(self, data_dir, train_filename, dev_filename=None, test_file_name=None,
-              use_gpu=None, batch_size=10, n_epochs=2, learning_rate=1e-5,
-              max_seq_len=None, warmup_proportion=0.2, dev_split=0.1, evaluate_every=300, save_dir=None):
+    def train(
+        self,
+        data_dir: str,
+        train_filename: str,
+        dev_filename: Optional[str] = None,
+        test_file_name: Optional[str] = None,
+        use_gpu: Optional[bool] = None,
+        batch_size: int = 10,
+        n_epochs: int = 2,
+        learning_rate: float = 1e-5,
+        max_seq_len: Optional[int] = None,
+        warmup_proportion: float = 0.2,
+        dev_split: Optional[float] = 0.1,
+        evaluate_every: int = 300,
+        save_dir: Optional[str] = None,
+    ):
         """
         Fine-tune a model on a QA dataset. Options:
         - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
@@ -141,7 +155,6 @@ class FARMReader:
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
-        save_dir = Path(save_dir)
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
         label_list = ["start_token", "end_token"]
@@ -184,14 +197,14 @@ class FARMReader:
         )
         # 5. Let it grow!
         self.inferencer.model = trainer.train()
-        self.save(save_dir)
+        self.save(Path(save_dir))
 
-    def save(self, directory):
+    def save(self, directory: Path):
         logger.info(f"Saving reader model to {directory}")
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict(self, question: str, documents: [Document], top_k: int = None):
+    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
 
@@ -245,7 +258,8 @@ class FARMReader:
                 if a["answer"]:
                     cur = {"answer": a["answer"],
                            "score": a["score"],
-                           "probability": float(expit(np.asarray([a["score"]]) / 8)), #just a pseudo prob for now
+                           # just a pseudo prob for now
+                           "probability": float(expit(np.asarray([a["score"]]) / 8)),  # type: ignore
                            "context": a["context"],
                            "offset_start": a["offset_answer_start"] - a["offset_context_start"],
                            "offset_end": a["offset_answer_end"] - a["offset_context_start"],
@@ -316,8 +330,14 @@ class FARMReader:
         }
         return results
 
-    def eval(self, document_store: ElasticsearchDocumentStore, device: str, label_index: str = "feedback",
-             doc_index: str = "eval_document", label_origin: str = "gold_label"):
+    def eval(
+        self,
+        document_store: ElasticsearchDocumentStore,
+        device: str,
+        label_index: str = "feedback",
+        doc_index: str = "eval_document",
+        label_origin: str = "gold_label",
+    ):
         """
         Performs evaluation on evaluation documents in Elasticsearch DocumentStore.
 
@@ -386,7 +406,7 @@ class FARMReader:
         return results
 
     @staticmethod
-    def _calc_no_answer(no_ans_gaps,best_score_answer):
+    def _calc_no_answer(no_ans_gaps: List[float], best_score_answer: float):
         # "no answer" scores and positive answers scores are difficult to compare, because
         # + a positive answer score is related to one specific document
         # - a "no answer" score is related to all input documents
@@ -396,7 +416,8 @@ class FARMReader:
         # No_ans_gap coming from FARM mean how much no_ans_boost should change to switch predictions
         no_ans_gaps = np.array(no_ans_gaps)
         max_no_ans_gap = np.max(no_ans_gaps)
-        if (np.sum(no_ans_gaps < 0) == len(no_ans_gaps)):  # all passages "no answer" as top score
+        # all passages "no answer" as top score
+        if (np.sum(no_ans_gaps < 0) == len(no_ans_gaps)):  # type: ignore
             no_ans_score = best_score_answer - max_no_ans_gap  # max_no_ans_gap is negative, so it increases best pos score
         else:  # case: at least one passage predicts an answer (positive no_ans_gap)
             no_ans_score = best_score_answer - max_no_ans_gap
@@ -410,7 +431,7 @@ class FARMReader:
                "document_id": None}
         return no_ans_prediction, max_no_ans_gap
 
-    def predict_on_texts(self, question: str, texts: [str], top_k=None):
+    def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         documents = []
         for i, text in enumerate(texts):
             documents.append(

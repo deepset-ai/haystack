@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from pathlib import Path
+from typing import List, Optional
 
 
 class BaseConverter:
@@ -9,11 +10,11 @@ class BaseConverter:
 
     def __init__(
         self,
-        remove_numeric_tables: bool = None,
-        remove_header_footer: bool = None,
-        remove_whitespace: bool = None,
-        remove_empty_lines: bool = None,
-        valid_languages: [str] = None,
+        remove_numeric_tables: Optional[bool] = None,
+        remove_header_footer: Optional[bool] = None,
+        remove_whitespace: Optional[bool] = None,
+        remove_empty_lines: Optional[bool] = None,
+        valid_languages: Optional[List[str]] = None,
     ):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
@@ -40,5 +41,5 @@ class BaseConverter:
         self.valid_languages = valid_languages
 
     @abstractmethod
-    def extract_pages(self, file_path: Path) -> [str]:
+    def extract_pages(self, file_path: Path) -> List[str]:
         pass
