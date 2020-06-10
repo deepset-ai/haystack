@@ -4,6 +4,10 @@ Haystack — Neural Question Answering At Scale
 .. image:: https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master
 	:target: https://github.com/deepset-ai/haystack/actions
 	:alt: Build
+	
+.. image:: https://camo.githubusercontent.com/34b3a249cd6502d0a521ab2f42c8830b7cfd03fa/687474703a2f2f7777772e6d7970792d6c616e672e6f72672f7374617469632f6d7970795f62616467652e737667
+	:target: http://mypy-lang.org/
+	:alt: Checked with mypy
 
 .. image:: https://img.shields.io/github/release/deepset-ai/haystack
 	:target: https://github.com/deepset-ai/haystack/releases
@@ -16,6 +20,8 @@ Haystack — Neural Question Answering At Scale
 .. image:: https://img.shields.io/github/last-commit/deepset-ai/haystack
 	:target: https://github.com/deepset-ai/haystack/commits/master
 	:alt: Last Commit
+	
+
 
 
 Introduction
