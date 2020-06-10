@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
@@ -31,7 +31,7 @@ class FARMReader(BaseReader):
 
     def __init__(
         self,
-        model_name_or_path: str,
+        model_name_or_path: Union[str, Path],
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
