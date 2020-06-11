@@ -11,7 +11,7 @@ from haystack import Finder
 from haystack.api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
     EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
-    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER
+    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME
 from haystack.api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
@@ -36,6 +36,7 @@ document_store = ElasticsearchDocumentStore(
     embedding_dim=EMBEDDING_DIM,
     embedding_field=EMBEDDING_FIELD_NAME,
     excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
+    faq_question_field=FAQ_QUESTION_FIELD_NAME,
 )
 
 

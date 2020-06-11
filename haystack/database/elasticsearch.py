@@ -26,6 +26,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         embedding_dim: Optional[str] = None,
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
+        faq_question_field: Optional[str] = None,
         scheme: str = "http",
         ca_certs: bool = False,
         verify_certs: bool = True,
@@ -92,6 +93,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.external_source_id_field = external_source_id_field
         self.embedding_field = embedding_field
         self.excluded_meta_data = excluded_meta_data
+        self.faq_question_field = faq_question_field
 
     def get_document_by_id(self, id: str) -> Optional[Document]:
         query = {"query": {"ids": {"values": [id]}}}
@@ -227,6 +229,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             external_source_id=hit["_source"].get(self.external_source_id_field),
             meta=meta_data,
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
+            question=hit["_source"].get(self.faq_question_field)
         )
         return document
 
