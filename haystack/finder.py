@@ -38,7 +38,7 @@ class Finder:
         """
 
         if self.retriever is None or self.reader is None:
-            raise AttributeError("Finder.get_answers_via_similar_questions requires self.retriever AND self.reader")
+            raise AttributeError("Finder.get_answers requires self.retriever AND self.reader")
 
         # 1) Apply retriever(with optional filters) to get fast candidate documents
         documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
