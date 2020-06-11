@@ -100,7 +100,7 @@ class Finder:
         # 3) Format response
         for doc in documents:
             #TODO proper calibratation of pseudo probabilities
-            cur_answer = {"question": doc.meta["question"], "answer": doc.text, "context": doc.text,  # type: ignore
+            cur_answer = {"question": doc.question, "answer": doc.text, "context": doc.text,  # type: ignore
                           "score": doc.query_score, "offset_start": 0, "offset_end": len(doc.text), "meta": doc.meta
                           }
             if self.retriever.embedding_model:  # type: ignore
