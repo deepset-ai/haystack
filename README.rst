@@ -157,7 +157,7 @@ Example
 .. code-block:: python
 
     retriever = EmbeddingRetriever(document_store=document_store,
-                                   embedding_model="deepset/sentence-bert",
+                                   embedding_model="deepset/sentence_bert",
                                    model_format="farm")
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
     # returns: [Document, Document]
