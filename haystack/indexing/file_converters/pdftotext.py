@@ -6,7 +6,6 @@ from itertools import chain
 from pathlib import Path
 from typing import List, Optional, Tuple, Generator, Set
 
-import fitz
 import langdetect
 
 from haystack.indexing.file_converters.base import BaseConverter
@@ -67,10 +66,10 @@ class PDFToTextConverter(BaseConverter):
 
     def extract_pages(self, file_path: Path) -> List[str]:
 
-        page_count = fitz.open(file_path).pageCount
+        pages = self._read_pdf(file_path, layout=False)
 
-        pages = []
-        for page_number in range(1, page_count + 1):
+        cleaned_pages = []
+        for page in pages:
             # pdftotext tool provides an option to retain the original physical layout of a PDF page. This behaviour
             # can be toggled by using the layout param.
             #  layout=True
@@ -81,7 +80,6 @@ class PDFToTextConverter(BaseConverter):
             #      - cells of tables gets split across line
             #
             #  Here, as a "safe" default, layout is turned off.
-            page = self._extract_page(file_path, page_number, layout=False)
             lines = page.splitlines()
             cleaned_lines = []
             for line in lines:
@@ -104,40 +102,41 @@ class PDFToTextConverter(BaseConverter):
             if self.remove_empty_lines:
                 page = re.sub(r"\n\n+", "\n\n", page)
 
-            pages.append(page)
-            page_number += 1
+            cleaned_pages.append(page)
 
-        document_text = "".join(pages)
-        if not self._validate_language(document_text):
-            logger.warning(
-                f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
-                f"been decoded in the correct text format."
-            )
+        if self.valid_languages:
+            document_text = "".join(cleaned_pages)
+            if not self._validate_language(document_text):
+                logger.warning(
+                    f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
+                    f"been decoded in the correct text format."
+                )
 
         if self.remove_header_footer:
-            pages, header, footer = self.find_and_remove_header_footer(
+            cleaned_pages, header, footer = self.find_and_remove_header_footer(
                 pages, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
             )
             logger.info(f"Removed header '{header}' and footer {footer} in {file_path}")
 
-        return pages
+        return cleaned_pages
 
-    def _extract_page(self, file_path: Path, page_number: int, layout: bool) -> str:
+    def _read_pdf(self, file_path: Path, layout: bool) -> str:
         """
         Extract a page from the pdf file at file_path.
 
         :param file_path: path of the pdf file
-        :param page_number: page number to extract(starting from 1)
         :param layout: whether to retain the original physical layout for a page. If disabled, PDF pages are read in
                        the content stream order.
         """
         if layout:
-            command = ["pdftotext", "-layout", "-f", str(page_number), "-l", str(page_number), str(file_path), "-"]
+            command = ["pdftotext", "-layout", file_path, "-"]
         else:
-            command = ["pdftotext", "-f", str(page_number), "-l", str(page_number), str(file_path), "-"]
-        output_page = subprocess.run(command, capture_output=True, shell=False)
-        page = output_page.stdout.decode(errors="ignore")
-        return page
+            command = ["pdftotext", file_path, "-"]
+        output = subprocess.run(command, capture_output=True, shell=False)
+        document = output.stdout.decode(errors="ignore")
+        pages = document.split("\f")
+        pages = pages[:-1]  # the last page in the split is always empty.
+        return pages
 
     def _validate_language(self, text: str) -> bool:
         """
