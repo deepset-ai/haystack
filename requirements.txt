@@ -9,5 +9,5 @@ elasticsearch
 elastic-apm
 tox
 coverage
-# langdetect # for PDF conversions
+langdetect # for PDF conversions
 # optional: sentence-transformers
