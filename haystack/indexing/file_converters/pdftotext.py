@@ -114,24 +114,24 @@ class PDFToTextConverter(BaseConverter):
 
         if self.remove_header_footer:
             cleaned_pages, header, footer = self.find_and_remove_header_footer(
-                pages, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
+                cleaned_pages, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
             )
             logger.info(f"Removed header '{header}' and footer {footer} in {file_path}")
 
         return cleaned_pages
 
-    def _read_pdf(self, file_path: Path, layout: bool) -> str:
+    def _read_pdf(self, file_path: Path, layout: bool) -> List[str]:
         """
-        Extract a page from the pdf file at file_path.
+        Extract pages from the pdf file at file_path.
 
         :param file_path: path of the pdf file
         :param layout: whether to retain the original physical layout for a page. If disabled, PDF pages are read in
                        the content stream order.
         """
         if layout:
-            command = ["pdftotext", "-layout", file_path, "-"]
+            command = ["pdftotext", "-layout", str(file_path), "-"]
         else:
-            command = ["pdftotext", file_path, "-"]
+            command = ["pdftotext", str(file_path), "-"]
         output = subprocess.run(command, capture_output=True, shell=False)
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")
