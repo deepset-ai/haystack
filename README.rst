@@ -228,6 +228,11 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 .. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/annotation_tool.png
 
 
-7. Development
+7. Indexing PDF files
+---------------------
+
+Haystack has a customizable PDF text extraction pipeline with cleaning functions for header, footers, and tables. It supports complex document layouts with multi-column text.
+
+8. Development
 -------------------
 * Unit tests can be executed by running :code:`tox`.

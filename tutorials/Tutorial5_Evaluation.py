@@ -1,5 +1,5 @@
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
-from haystack.indexing.io import fetch_archive_from_http
+from haystack.indexing.utils import fetch_archive_from_http
 from haystack.retriever.elasticsearch import ElasticsearchRetriever
 from haystack.reader.farm import FARMReader
 from haystack.finder import Finder
@@ -53,9 +53,7 @@ print("Retriever Recall:", retriever_eval_results["recall"])
 print("Retriever Mean Avg Precision:", retriever_eval_results["mean avg precision"])
 
 # Evaluate Reader on its own
-reader_start = time.time()
 reader_eval_results = reader.eval(document_store=document_store, device=device)
-reader_total = time.time() - reader_start
 # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
 #reader_eval_results = reader.eval_on_file("../data/natural_questions", "dev_subset.json", device=device)
 
@@ -69,12 +67,32 @@ print("Reader F1-Score:", reader_eval_results["f1"])
 
 # Evaluate combination of Reader and Retriever through Finder
 finder_eval_results = finder.eval()
-print("Retriever Recall in Finder:", finder_eval_results["retriever_recall"])
-print("Retriever Mean Avg Precision in Finder:", finder_eval_results["retriever_map"])
-# Reader is only evaluated with those questions, where the correct document is among the retrieved ones
-print("Reader Recall in Finder:", finder_eval_results["reader_recall"])
-print("Reader Mean Avg Precision in Finder:", finder_eval_results["reader_map"])
-print("Reader Exact Match in Finder:", finder_eval_results["reader_em"])
-print("Reader F1-Score in Finder:", finder_eval_results["reader_f1"])
 
-print(f"Finder time: {finder_eval_results['total_finder_time']}s")
+print("\n___Retriever Metrics in Finder___")
+print("Retriever Recall:", finder_eval_results["retriever_recall"])
+print("Retriever Mean Avg Precision:", finder_eval_results["retriever_map"])
+
+# Reader is only evaluated with those questions, where the correct document is among the retrieved ones
+print("\n___Reader Metrics in Finder___")
+print("Reader Top-1 accuracy:", finder_eval_results["reader_top1_accuracy"])
+print("Reader Top-1 accuracy (has answer):", finder_eval_results["reader_top1_accuracy_has_answer"])
+print("Reader Top-k accuracy:", finder_eval_results["reader_top_k_accuracy"])
+print("Reader Top-k accuracy (has answer):", finder_eval_results["reader_topk_accuracy_has_answer"])
+print("Reader Top-1 EM:", finder_eval_results["reader_top1_em"])
+print("Reader Top-1 EM (has answer):", finder_eval_results["reader_top1_em_has_answer"])
+print("Reader Top-k EM:", finder_eval_results["reader_topk_em"])
+print("Reader Top-k EM (has answer):", finder_eval_results["reader_topk_em_has_answer"])
+print("Reader Top-1 F1:", finder_eval_results["reader_top1_f1"])
+print("Reader Top-1 F1 (has answer):", finder_eval_results["reader_top1_f1_has_answer"])
+print("Reader Top-k F1:", finder_eval_results["reader_topk_f1"])
+print("Reader Top-k F1 (has answer):", finder_eval_results["reader_topk_f1_has_answer"])
+print("Reader Top-1 no-answer accuracy:", finder_eval_results["reader_top1_no_answer_accuracy"])
+print("Reader Top-k no-answer accuracy:", finder_eval_results["reader_topk_no_answer_accuracy"])
+
+# Time measurements
+print("\n___Time Measurements___")
+print("Total retrieve time:", finder_eval_results["total_retrieve_time"])
+print("Avg retrieve time per question:", finder_eval_results["avg_retrieve_time"])
+print("Total reader timer:", finder_eval_results["total_reader_time"])
+print("Avg read time per question:", finder_eval_results["avg_reader_time"])
+print("Total Finder time:", finder_eval_results["total_finder_time"])
