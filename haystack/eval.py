@@ -1,7 +1,8 @@
 from collections import Counter
+from typing import List, Tuple, Dict, Any
 
 
-def calculate_reader_metrics(metric_counts: Counter, number_of_questions: int, correct_retrievals: int):
+def calculate_reader_metrics(metric_counts: Counter, correct_retrievals: int):
     number_of_has_answer = correct_retrievals - metric_counts["number_of_no_answer"]
 
     metrics = {
@@ -24,9 +25,9 @@ def calculate_reader_metrics(metric_counts: Counter, number_of_questions: int, c
     return metrics
 
 
-def calculate_average_precision(questions_with_docs: [dict]):
+def calculate_average_precision(questions_with_docs: List[dict]):
     questions_with_correct_doc = []
-    summed_avg_precision_retriever = 0
+    summed_avg_precision_retriever = 0.0
 
     for question in questions_with_docs:
         for doc_idx, doc in enumerate(question["docs"]):
@@ -43,7 +44,7 @@ def calculate_average_precision(questions_with_docs: [dict]):
     return questions_with_correct_doc, summed_avg_precision_retriever
 
 
-def eval_counts_reader(question: dict, predicted_answers: dict, metric_counts: Counter):
+def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, Any], metric_counts: Counter):
     # Calculates evaluation metrics for one question and returns adds results to counter.
 
     # check if question is answerable
@@ -94,7 +95,7 @@ def eval_counts_reader(question: dict, predicted_answers: dict, metric_counts: C
     return metric_counts
 
 
-def eval_counts_reader_batch(pred: dict, metric_counts: Counter):
+def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Counter):
     # Calculates evaluation metrics for one question and returns adds results to counter.
 
     # check if question in answerable
@@ -140,7 +141,12 @@ def eval_counts_reader_batch(pred: dict, metric_counts: Counter):
     return metric_counts
 
 
-def _count_overlap(gold_span: (int, int), predicted_span: (int, int), metric_counts: Counter, answer_idx: int):
+def _count_overlap(
+    gold_span: Tuple[int, int],
+    predicted_span: Tuple[int, int],
+    metric_counts: Counter,
+    answer_idx: int
+    ):
     # Checks if overlap between prediction and real answer.
 
     found_answer = False
@@ -158,8 +164,12 @@ def _count_overlap(gold_span: (int, int), predicted_span: (int, int), metric_cou
     return metric_counts, found_answer
 
 
-def _count_exact_match(gold_span: (int, int), predicted_span: (int, int), metric_counts: Counter,
-                       answer_idx: int):
+def _count_exact_match(
+    gold_span: Tuple[int, int],
+    predicted_span: Tuple[int, int],
+    metric_counts: Counter,
+    answer_idx: int
+    ):
     # Check if exact match between prediction and real answer.
 
     found_em = False
@@ -177,7 +187,7 @@ def _count_exact_match(gold_span: (int, int), predicted_span: (int, int), metric
     return metric_counts, found_em
 
 
-def _calculate_f1(gold_span: (int, int), predicted_span: (int, int)):
+def _calculate_f1(gold_span: Tuple[int, int], predicted_span: Tuple[int, int]):
     # Calculates F1-Score for prediction based on real answer.
 
     pred_indices = list(range(predicted_span[0], predicted_span[1] + 1))
@@ -193,7 +203,7 @@ def _calculate_f1(gold_span: (int, int), predicted_span: (int, int)):
         return 0
 
 
-def _count_no_answer(answers, metric_counts):
+def _count_no_answer(answers: List[dict], metric_counts: Dict[str, int]):
     # Checks if one of the answers is 'no answer'.
 
     for answer_idx, answer in enumerate(answers):

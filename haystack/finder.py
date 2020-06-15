@@ -172,7 +172,7 @@ class Finder:
         if not self.reader or not self.retriever:
             raise Exception("Finder needs to have a reader and retriever for the evaluation.")
 
-        metric_counts = Counter()
+        metric_counts = Counter()  # type: Counter
         finder_start_time = time.time()
         # extract all questions for evaluation
         filter = {"origin": label_origin}
@@ -278,7 +278,7 @@ class Finder:
         :type batch_size: int
         """
 
-        metric_counts = Counter()
+        metric_counts = Counter()  # type: Counter
         finder_start_time = time.time()
         # extract_all_questions for evaluation
         filter = {"origin": label_origin}
