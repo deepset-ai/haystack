@@ -1,8 +1,7 @@
 import logging
 from collections import Counter
 import time
-from statistics import mean
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 import numpy as np
 from scipy.special import expit
@@ -203,7 +202,7 @@ class Finder:
         reader_total_time = time.time() - reader_start_time
         finder_total_time = time.time() - finder_start_time
 
-        results = calculate_reader_metrics(metric_counts, number_of_questions, correct_retrievals)
+        results = calculate_reader_metrics(metric_counts, correct_retrievals)
         results["retriever_recall"] = correct_retrievals / number_of_questions
         results["retriever_map"] = summed_avg_precision_retriever / number_of_questions
         results["total_retrieve_time"] = retriever_total_time
@@ -305,7 +304,7 @@ class Finder:
 
         finder_total_time = time.time() - finder_start_time
 
-        results = calculate_reader_metrics(metric_counts, number_of_questions, correct_retrievals)
+        results = calculate_reader_metrics(metric_counts, correct_retrievals)
         results["retriever_recall"] = correct_retrievals / number_of_questions
         results["retriever_map"] = summed_avg_precision_retriever / number_of_questions
         results["total_retrieve_time"] = retriever_total_time
@@ -324,7 +323,7 @@ class Finder:
 
         return results
 
-    def _retrieve_docs(self, questions: [], top_k: int, doc_index: str):
+    def _retrieve_docs(self, questions: List[dict], top_k: int, doc_index: str):
         # Retrieves documents for a list of questions.
 
         questions_with_docs = []

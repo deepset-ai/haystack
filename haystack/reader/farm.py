@@ -204,7 +204,7 @@ class FARMReader(BaseReader):
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict_batch(self, question_doc_list: [dict], top_k_per_question: int = None, batch_size: int = None):
+    def predict_batch(self, question_doc_list: List[dict], top_k_per_question: int = None, batch_size: int = None):
         # convert input to FARM format
         input_dicts = []
         number_of_docs = []
