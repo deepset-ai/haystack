@@ -1,5 +1,29 @@
 from collections import Counter
 
+
+def calculate_reader_metrics(metric_counts: Counter, number_of_questions: int, correct_retrievals: int):
+    number_of_has_answer = correct_retrievals - metric_counts["number_of_no_answer"]
+
+    metrics = {
+        "reader_top1_accuracy" : metric_counts["correct_readings_top1"] / correct_retrievals,
+        "reader_top1_accuracy_has_answer" : metric_counts["correct_readings_top1_has_answer"] / number_of_has_answer,
+        "reader_top_k_accuracy" : metric_counts["correct_readings_topk"] / correct_retrievals,
+        "reader_topk_accuracy_has_answer" : metric_counts["correct_readings_topk_has_answer"] / number_of_has_answer,
+        "reader_top1_em" : metric_counts["exact_matches_top1"] / correct_retrievals,
+        "reader_top1_em_has_answer" : metric_counts["exact_matches_top1_has_answer"] / number_of_has_answer,
+        "reader_topk_em" : metric_counts["exact_matches_topk"] / correct_retrievals,
+        "reader_topk_em_has_answer" : metric_counts["exact_matches_topk_has_answer"] / number_of_has_answer,
+        "reader_top1_f1" : metric_counts["summed_f1_top1"] / correct_retrievals,
+        "reader_top1_f1_has_answer" : metric_counts["summed_f1_top1_has_answer"] / number_of_has_answer,
+        "reader_topk_f1" : metric_counts["summed_f1_topk"] / correct_retrievals,
+        "reader_topk_f1_has_answer" : metric_counts["summed_f1_topk_has_answer"] / number_of_has_answer,
+        "reader_top1_no_answer_accuracy" : metric_counts["correct_no_answers_top1"] / metric_counts["number_of_no_answer"],
+        "reader_topk_no_answer_accuracy" : metric_counts["correct_no_answers_topk"] / metric_counts["number_of_no_answer"],
+    }
+
+    return metrics
+
+
 def calculate_average_precision(questions_with_docs: [dict]):
     questions_with_correct_doc = []
     summed_avg_precision_retriever = 0

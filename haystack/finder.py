@@ -4,7 +4,7 @@ from collections import Counter
 import numpy as np
 from scipy.special import expit
 import time
-from haystack.eval import calculate_average_precision, eval_counts_reader_batch, eval_counts_reader
+from haystack.eval import calculate_average_precision, eval_counts_reader_batch, eval_counts_reader, calculate_reader_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -176,27 +176,16 @@ class Finder:
             metric_counts = eval_counts_reader(question, predicted_answers, metric_counts)
 
         reader_total_time = time.time() - reader_start_time
-        number_of_has_answer = correct_retrievals - metric_counts["number_of_no_answer"]
-
         finder_total_time = time.time() - finder_start_time
 
-        retriever_recall = correct_retrievals / number_of_questions
-        retriever_map = summed_avg_precision_retriever / number_of_questions
-
-        reader_top1_accuracy = metric_counts["correct_readings_top1"] / correct_retrievals
-        reader_top1_accuracy_has_answer = metric_counts["correct_readings_top1_has_answer"] / number_of_has_answer
-        reader_top_k_accuracy = metric_counts["correct_readings_topk"] / correct_retrievals
-        reader_topk_accuracy_has_answer = metric_counts["correct_readings_topk_has_answer"] / number_of_has_answer
-        reader_top1_em = metric_counts["exact_matches_top1"] / correct_retrievals
-        reader_top1_em_has_answer = metric_counts["exact_matches_top1_has_answer"] / number_of_has_answer
-        reader_topk_em = metric_counts["exact_matches_topk"] / correct_retrievals
-        reader_topk_em_has_answer = metric_counts["exact_matches_topk_has_answer"] / number_of_has_answer
-        reader_top1_f1 = metric_counts["summed_f1_top1"] / correct_retrievals
-        reader_top1_f1_has_answer = metric_counts["summed_f1_top1_has_answer"] / number_of_has_answer
-        reader_topk_f1 = metric_counts["summed_f1_topk"] / correct_retrievals
-        reader_topk_f1_has_answer = metric_counts["summed_f1_topk_has_answer"] / number_of_has_answer
-        reader_top1_no_answer_accuracy = metric_counts["correct_no_answers_top1"] / metric_counts["number_of_no_answer"]
-        reader_topk_no_answer_accuracy = metric_counts["correct_no_answers_topk"] / metric_counts["number_of_no_answer"]
+        results = calculate_reader_metrics(metric_counts, number_of_questions, correct_retrievals)
+        results["retriever_recall"] = correct_retrievals / number_of_questions
+        results["retriever_map"] = summed_avg_precision_retriever / number_of_questions
+        results["total_retrieve_time"] = retriever_total_time
+        results["avg_retrieve_time"] =  retriever_total_time / number_of_questions
+        results["total_reader_time"] =  reader_total_time
+        results["avg_reader_time"] =  reader_total_time / correct_retrievals
+        results["total_finder_time"] =  finder_total_time
 
         self.reader.return_no_answers = previous_return_no_answers
 
@@ -204,30 +193,6 @@ class Finder:
                      f" answered ({(metric_counts['correct_readings_topk']/number_of_questions):.2%})."))
         logger.info(f"{number_of_questions-correct_retrievals} questions could not be answered due to the retriever.")
         logger.info(f"{correct_retrievals-metric_counts['correct_readings_topk']} questions could not be answered due to the reader.")
-
-        results = {
-            "retriever_recall": retriever_recall,
-            "retriever_map": retriever_map,
-            "reader_top1_accuracy": reader_top1_accuracy,
-            "reader_top1_accuracy_has_answer": reader_top1_accuracy_has_answer,
-            "reader_top_k_accuracy": reader_top_k_accuracy,
-            "reader_topk_accuracy_has_answer": reader_topk_accuracy_has_answer,
-            "reader_top1_em": reader_top1_em,
-            "reader_top1_em_has_answer": reader_top1_em_has_answer,
-            "reader_topk_em": reader_topk_em,
-            "reader_topk_em_has_answer": reader_topk_em_has_answer,
-            "reader_top1_f1": reader_top1_f1,
-            "reader_top1_f1_has_answer": reader_top1_f1_has_answer,
-            "reader_topk_f1": reader_topk_f1,
-            "reader_topk_f1_has_answer": reader_topk_f1_has_answer,
-            "reader_top1_no_answer_accuracy": reader_top1_no_answer_accuracy,
-            "reader_topk_no_answer_accuracy": reader_topk_no_answer_accuracy,
-            "total_retrieve_time": retriever_total_time,
-            "avg_retrieve_time": retriever_total_time / number_of_questions,
-            "total_reader_time": reader_total_time,
-            "avg_reader_time": reader_total_time / correct_retrievals,
-            "total_finder_time": finder_total_time
-        }
 
         return results
 
@@ -307,58 +272,25 @@ class Finder:
         for pred in predictions:
             metric_counts = eval_counts_reader_batch(pred, metric_counts)
 
-        number_of_has_answer = correct_retrievals - metric_counts["number_of_no_answer"]
-
+        reader_total_time = time.time() - reader_start_time
         finder_total_time = time.time() - finder_start_time
 
-        retriever_recall = correct_retrievals / number_of_questions
-        retriever_map = summed_avg_precision_retriever / number_of_questions
-
-        reader_top1_accuracy = metric_counts["correct_readings_top1"] / correct_retrievals
-        reader_top1_accuracy_has_answer = metric_counts["correct_readings_top1_has_answer"] / number_of_has_answer
-        reader_top_k_accuracy = metric_counts["correct_readings_topk"] / correct_retrievals
-        reader_topk_accuracy_has_answer = metric_counts["correct_readings_topk_has_answer"] / number_of_has_answer
-        reader_top1_em = metric_counts["exact_matches_top1"] / correct_retrievals
-        reader_top1_em_has_answer = metric_counts["exact_matches_top1_has_answer"] / number_of_has_answer
-        reader_topk_em = metric_counts["exact_matches_topk"] / correct_retrievals
-        reader_topk_em_has_answer = metric_counts["exact_matches_topk_has_answer"] / number_of_has_answer
-        reader_top1_f1 = metric_counts["summed_f1_top1"] / correct_retrievals
-        reader_top1_f1_has_answer = metric_counts["summed_f1_top1_has_answer"] / number_of_has_answer
-        reader_topk_f1 = metric_counts["summed_f1_topk"] / correct_retrievals
-        reader_topk_f1_has_answer = metric_counts["summed_f1_topk_has_answer"] / number_of_has_answer
-        reader_top1_no_answer_accuracy = metric_counts["correct_no_answers_top1"] / metric_counts["number_of_no_answer"]
-        reader_topk_no_answer_accuracy = metric_counts["correct_no_answers_topk"] / metric_counts["number_of_no_answer"]
+        results = calculate_reader_metrics(metric_counts, number_of_questions, correct_retrievals)
+        results["retriever_recall"] = correct_retrievals / number_of_questions
+        results["retriever_map"] = summed_avg_precision_retriever / number_of_questions
+        results["total_retrieve_time"] = retriever_total_time
+        results["avg_retrieve_time"] = retriever_total_time / number_of_questions
+        results["total_reader_time"] = reader_total_time
+        results["avg_reader_time"] = reader_total_time / correct_retrievals
+        results["total_finder_time"] = finder_total_time
 
         self.reader.return_no_answers = previous_return_no_answers
 
         logger.info((f"{metric_counts['correct_readings_topk']} out of {number_of_questions} questions were correctly"
                      f" answered ({(metric_counts['correct_readings_topk'] / number_of_questions):.2%})."))
         logger.info(f"{number_of_questions - correct_retrievals} questions could not be answered due to the retriever.")
-        logger.info(f"{correct_retrievals - metric_counts['correct_readings_topk']} questions could not be answered due to the reader.")
-
-        results = {
-            "retriever_recall": retriever_recall,
-            "retriever_map": retriever_map,
-            "reader_top1_accuracy": reader_top1_accuracy,
-            "reader_top1_accuracy_has_answer": reader_top1_accuracy_has_answer,
-            "reader_top_k_accuracy": reader_top_k_accuracy,
-            "reader_topk_accuracy_has_answer": reader_topk_accuracy_has_answer,
-            "reader_top1_em": reader_top1_em,
-            "reader_top1_em_has_answer": reader_top1_em_has_answer,
-            "reader_topk_em": reader_topk_em,
-            "reader_topk_em_has_answer": reader_topk_em_has_answer,
-            "reader_top1_f1": reader_top1_f1,
-            "reader_top1_f1_has_answer": reader_top1_f1_has_answer,
-            "reader_topk_f1": reader_topk_f1,
-            "reader_topk_f1_has_answer": reader_topk_f1_has_answer,
-            "reader_top1_no_answer_accuracy": reader_top1_no_answer_accuracy,
-            "reader_topk_no_answer_accuracy": reader_topk_no_answer_accuracy,
-            "total_retrieve_time": retriever_total_time,
-            "avg_retrieve_time": retriever_total_time / number_of_questions,
-            "total_reader_time": reader_total_time,
-            "avg_reader_time": reader_total_time / correct_retrievals,
-            "total_finder_time": finder_total_time
-        }
+        logger.info(
+            f"{correct_retrievals - metric_counts['correct_readings_topk']} questions could not be answered due to the reader.")
 
         return results
 
