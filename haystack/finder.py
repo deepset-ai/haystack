@@ -303,7 +303,6 @@ class Finder:
         for pred in predictions:
             metric_counts = eval_counts_reader_batch(pred, metric_counts)
 
-        reader_total_time = time.time() - reader_start_time
         finder_total_time = time.time() - finder_start_time
 
         results = calculate_reader_metrics(metric_counts, number_of_questions, correct_retrievals)
