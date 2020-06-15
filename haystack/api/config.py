@@ -1,6 +1,9 @@
 import ast
 import os
 
+# FastAPI
+PROJECT_NAME = os.getenv("PROJECT_NAME", "FastAPI")
+
 # Resources / Computation
 USE_GPU = os.getenv("USE_GPU", "True").lower() == "true"
 MAX_PROCESSES = int(os.getenv("MAX_PROCESSES", 4))
@@ -17,6 +20,7 @@ DB_INDEX_FEEDBACK = os.getenv("DB_INDEX_FEEDBACK", "feedback")
 ES_CONN_SCHEME = os.getenv("ES_CONN_SCHEME", "http")
 TEXT_FIELD_NAME = os.getenv("TEXT_FIELD_NAME", "text")
 SEARCH_FIELD_NAME = os.getenv("SEARCH_FIELD_NAME", "text")
+FAQ_QUESTION_FIELD_NAME = os.getenv("FAQ_QUESTION_FIELD_NAME", "question")
 EMBEDDING_FIELD_NAME = os.getenv("EMBEDDING_FIELD_NAME", None)
 EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", None)
 

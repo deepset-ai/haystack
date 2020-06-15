@@ -8,13 +8,14 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 from haystack import Finder
-from haystack.api.config import DB_HOST, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
+from haystack.api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
     EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
-    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER
+    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME
 from haystack.api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
+from haystack.retriever.base import BaseRetriever
 from haystack.retriever.elasticsearch import ElasticsearchRetriever, EmbeddingRetriever
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ router = APIRouter()
 # Init global components: DocumentStore, Retriever, Reader, Finder
 document_store = ElasticsearchDocumentStore(
     host=DB_HOST,
+    port=DB_PORT,
     username=DB_USER,
     password=DB_PW,
     index=DB_INDEX,
@@ -33,12 +35,13 @@ document_store = ElasticsearchDocumentStore(
     search_fields=SEARCH_FIELD_NAME,
     embedding_dim=EMBEDDING_DIM,
     embedding_field=EMBEDDING_FIELD_NAME,
-    excluded_meta_data=EXCLUDE_META_DATA_FIELDS,
+    excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
+    faq_question_field=FAQ_QUESTION_FIELD_NAME,
 )
 
 
 if EMBEDDING_MODEL_PATH:
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model=EMBEDDING_MODEL_PATH, gpu=USE_GPU)
+    retriever = EmbeddingRetriever(document_store=document_store, embedding_model=EMBEDDING_MODEL_PATH, gpu=USE_GPU)  # type: BaseRetriever
 else:
     retriever = ElasticsearchRetriever(document_store=document_store)
 
@@ -53,7 +56,7 @@ if READER_MODEL_PATH:  # for extractive doc-qa
         num_processes=MAX_PROCESSES,
         max_seq_len=MAX_SEQ_LEN,
         doc_stride=DOC_STRIDE,
-    )
+    )  # type: Optional[FARMReader]
 else:
     reader = None  # don't need one for pure FAQ matching
 
@@ -65,7 +68,7 @@ FINDERS = {1: Finder(reader=reader, retriever=retriever)}
 #############################################
 class Question(BaseModel):
     questions: List[str]
-    filters: Dict[str, Optional[str]] = None
+    filters: Optional[Dict[str, Optional[str]]] = None
     top_k_reader: int = DEFAULT_TOP_K_READER
     top_k_retriever: int = DEFAULT_TOP_K_RETRIEVER
 
@@ -73,8 +76,8 @@ class Question(BaseModel):
 class Answer(BaseModel):
     answer: Optional[str]
     question: Optional[str]
-    score: float = None
-    probability: float = None
+    score: Optional[float] = None
+    probability: Optional[float] = None
     context: Optional[str]
     offset_start: int
     offset_end: int
@@ -111,14 +114,16 @@ def doc_qa(model_id: int, request: Question):
         for question in request.questions:
             if request.filters:
                 # put filter values into a list and remove filters with null value
-                request.filters = {key: [value] for key, value in request.filters.items() if value is not None}
+                filters = {key: [value] for key, value in request.filters.items() if value is not None}
                 logger.info(f" [{datetime.now()}] Request: {request}")
+            else:
+                filters = {}
 
             result = finder.get_answers(
                 question=question,
                 top_k_retriever=request.top_k_retriever,
                 top_k_reader=request.top_k_reader,
-                filters=request.filters,
+                filters=filters,
             )
             results.append(result)
 
@@ -140,11 +145,13 @@ def faq_qa(model_id: int, request: Question):
     for question in request.questions:
         if request.filters:
             # put filter values into a list and remove filters with null value
-            request.filters = {key: [value] for key, value in request.filters.items() if value is not None}
+            filters = {key: [value] for key, value in request.filters.items() if value is not None}
             logger.info(f" [{datetime.now()}] Request: {request}")
+        else:
+            filters = {}
 
         result = finder.get_answers_via_similar_questions(
-            question=question, top_k_retriever=request.top_k_retriever, filters=request.filters,
+            question=question, top_k_retriever=request.top_k_retriever, filters=filters,
         )
         results.append(result)
 

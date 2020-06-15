@@ -1,7 +1,7 @@
 import json
 import logging
 from string import Template
-from typing import Union
+from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 
@@ -18,14 +18,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         username: str = "",
         password: str = "",
         index: str = "document",
-        search_fields: Union[str,list] = "text",
+        search_fields: Union[str, list] = "text",
         text_field: str = "text",
         name_field: str = "name",
         external_source_id_field: str = "external_source_id",
-        embedding_field: str = None,
-        embedding_dim: str = None,
-        custom_mapping: dict = None,
-        excluded_meta_data: list = None,
+        embedding_field: Optional[str] = None,
+        embedding_dim: Optional[str] = None,
+        custom_mapping: Optional[dict] = None,
+        excluded_meta_data: Optional[list] = None,
+        faq_question_field: Optional[str] = None,
         scheme: str = "http",
         ca_certs: bool = False,
         verify_certs: bool = True,
@@ -92,15 +93,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.external_source_id_field = external_source_id_field
         self.embedding_field = embedding_field
         self.excluded_meta_data = excluded_meta_data
+        self.faq_question_field = faq_question_field
 
-    def get_document_by_id(self, id: str) -> Document:
+    def get_document_by_id(self, id: str) -> Optional[Document]:
         query = {"query": {"ids": {"values": [id]}}}
         result = self.client.search(index=self.index, body=query)["hits"]["hits"]
 
         document = self._convert_es_hit_to_document(result[0]) if result else None
         return document
 
-    def get_document_ids_by_tags(self, tags: dict) -> [str]:
+    def get_document_ids_by_tags(self, tags: dict) -> List[str]:
         term_queries = [{"terms": {key: value}} for key, value in tags.items()]
         query = {"query": {"bool": {"must": term_queries}}}
         logger.debug(f"Tag filter query: {query}")
@@ -110,19 +112,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             doc_ids.append(hit["_id"])
         return doc_ids
 
-    def write_documents(self, documents):
+    def write_documents(self, documents: List[dict]):
         for doc in documents:
             doc["_op_type"] = "create"
             doc["_index"] = self.index
 
         bulk(self.client, documents, request_timeout=300)
 
-    def get_document_count(self):
+    def get_document_count(self) -> int:
         result = self.client.count()
         count = result["count"]
         return count
 
-    def get_all_documents(self):
+    def get_all_documents(self) -> List[Document]:
         result = scan(self.client, query={"query": {"match_all": {}}}, index=self.index)
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
 
@@ -131,11 +133,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[dict] = None,
         top_k: int = 10,
-        custom_query: str = None,
-        index: str = None,
-    ) -> [Document]:
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+    ) -> List[Document]:
 
         if index is None:
             index = self.index
@@ -180,7 +182,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
         return documents
 
-    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None) -> [Document]:
+    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: Optional[List[str]] = None) -> List[Document]:
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
@@ -198,7 +200,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         }
                     }
                 }
-            }
+            }  # type: Dict[str,Any]
 
             if candidate_doc_ids:
                 body["query"]["script_score"]["query"] = {
@@ -216,7 +218,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             documents = [self._convert_es_hit_to_document(hit, score_adjustment=-1) for hit in result]
             return documents
 
-    def _convert_es_hit_to_document(self, hit, score_adjustment=0) -> Document:
+    def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.external_source_id_field)}
         meta_data["name"] = meta_data.pop(self.name_field, None)
@@ -227,6 +229,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             external_source_id=hit["_source"].get(self.external_source_id_field),
             meta=meta_data,
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
+            question=hit["_source"].get(self.faq_question_field)
         )
         return document
 
@@ -286,7 +289,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         bulk(self.client, eval_docs_to_index)
         bulk(self.client, questions_to_index)
 
-    def get_all_documents_in_index(self, index, filters=None):
+    def get_all_documents_in_index(self, index: str, filters: Optional[dict] = None):
         body = {
             "query": {
                 "bool": {
@@ -295,7 +298,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     }
                 }
             }
-        }
+        }  # type: Dict[str, Any]
 
         if filters:
            body["query"]["bool"]["filter"] = {"term": filters}

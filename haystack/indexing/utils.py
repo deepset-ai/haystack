@@ -1,16 +1,18 @@
-from pathlib import Path
 import logging
-from farm.data_handler.utils import http_get
-import tempfile
 import tarfile
+import tempfile
 import zipfile
-from typing import Callable
+from pathlib import Path
+from typing import Callable, List, Optional
+
+from farm.data_handler.utils import http_get
+
 from haystack.indexing.file_converters.pdftotext import PDFToTextConverter
 
 logger = logging.getLogger(__name__)
 
 
-def convert_files_to_dicts(dir_path: str, clean_func: Callable = None, split_paragraphs: bool = False) -> [dict]:
+def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> List[dict]:
     """
     Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
@@ -24,7 +26,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Callable = None, split_par
 
     file_paths = [p for p in Path(dir_path).glob("**/*")]
     if ".pdf" in [p.suffix.lower() for p in file_paths]:
-        pdf_converter = PDFToTextConverter()
+        pdf_converter = PDFToTextConverter()  # type: Optional[PDFToTextConverter]
     else:
         pdf_converter = None
 
@@ -33,7 +35,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Callable = None, split_par
         if path.suffix.lower() == ".txt":
             with open(path) as doc:
                 text = doc.read()
-        elif path.suffix.lower() == ".pdf":
+        elif path.suffix.lower() == ".pdf" and pdf_converter:
             pages = pdf_converter.extract_pages(path)
             text = "\n".join(pages)
         else:
@@ -53,7 +55,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Callable = None, split_par
     return documents
 
 
-def fetch_archive_from_http(url, output_dir, proxies=None):
+def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None):
     """
     Fetch an archive (zip or tar.gz) from a url via http and extract content to an output directory.
 
@@ -86,11 +88,11 @@ def fetch_archive_from_http(url, output_dir, proxies=None):
             temp_file.seek(0)  # making tempfile accessible
             # extract
             if url[-4:] == ".zip":
-                archive = zipfile.ZipFile(temp_file.name)
-                archive.extractall(output_dir)
+                zip_archive = zipfile.ZipFile(temp_file.name)
+                zip_archive.extractall(output_dir)
             elif url[-7:] == ".tar.gz":
-                archive = tarfile.open(temp_file.name)
-                archive.extractall(output_dir)
+                tar_archive = tarfile.open(temp_file.name)
+                tar_archive.extractall(output_dir)
             # temp_file gets deleted here
         return True
 

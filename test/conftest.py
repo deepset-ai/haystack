@@ -1,10 +1,10 @@
 import tarfile
 import time
 import urllib.request
-
 from subprocess import Popen, PIPE, STDOUT, run
 
 import pytest
+from elasticsearch import Elasticsearch
 
 
 @pytest.fixture(scope='session')
@@ -14,12 +14,17 @@ def elasticsearch_dir(tmpdir_factory):
 
 @pytest.fixture(scope="session")
 def elasticsearch_fixture(elasticsearch_dir):
-    thetarfile = "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.1-linux-x86_64.tar.gz"
-    ftpstream = urllib.request.urlopen(thetarfile)
-    thetarfile = tarfile.open(fileobj=ftpstream, mode="r|gz")
-    thetarfile.extractall(path=elasticsearch_dir)
-    es_server = Popen([elasticsearch_dir / "elasticsearch-7.6.1/bin/elasticsearch"], stdout=PIPE, stderr=STDOUT)
-    time.sleep(30)
+    # test if a ES cluster is already running. If not, download and start an ES instance locally.
+    try:
+        client = Elasticsearch(hosts=[{"host": "localhost"}])
+        client.info()
+    except:
+        thetarfile = "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.1-linux-x86_64.tar.gz"
+        ftpstream = urllib.request.urlopen(thetarfile)
+        thetarfile = tarfile.open(fileobj=ftpstream, mode="r|gz")
+        thetarfile.extractall(path=elasticsearch_dir)
+        es_server = Popen([elasticsearch_dir / "elasticsearch-7.6.1/bin/elasticsearch"], stdout=PIPE, stderr=STDOUT)
+        time.sleep(40)
 
 
 @pytest.fixture(scope="session")

@@ -1,9 +1,13 @@
 *******************************************************
 Haystack — Neural Question Answering At Scale
 *******************************************************
-.. image:: https://travis-ci.org/deepset-ai/haystack.svg?branch=master
-	:target: https://travis-ci.org/deepset-ai/haystack
+.. image:: https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master
+	:target: https://github.com/deepset-ai/haystack/actions
 	:alt: Build
+	
+.. image:: https://camo.githubusercontent.com/34b3a249cd6502d0a521ab2f42c8830b7cfd03fa/687474703a2f2f7777772e6d7970792d6c616e672e6f72672f7374617469632f6d7970795f62616467652e737667
+	:target: http://mypy-lang.org/
+	:alt: Checked with mypy
 
 .. image:: https://img.shields.io/github/release/deepset-ai/haystack
 	:target: https://github.com/deepset-ai/haystack/releases
@@ -16,6 +20,8 @@ Haystack — Neural Question Answering At Scale
 .. image:: https://img.shields.io/github/last-commit/deepset-ai/haystack
 	:target: https://github.com/deepset-ai/haystack/commits/master
 	:alt: Last Commit
+	
+
 
 
 Introduction
@@ -133,7 +139,9 @@ ElasticsearchRetriever
 Scoring text similarity via sparse Bag-of-words representations are strong and well-established baselines in Information Retrieval.
 The default :code:`ElasticsearchRetriever` uses Elasticsearch's native scoring (BM25), but can be extended easily with custom queries or filtering.
 
-Example::
+Example
+
+.. code-block:: python
 
     retriever = ElasticsearchRetriever(document_store=document_store, custom_query=None)
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
@@ -144,10 +152,12 @@ EmbeddingRetriever
 Using dense embeddings (i.e. vector representations) of texts is a powerful alternative to score similarity of texts.
 This retriever allows you to transform your query into an embedding using a model (e.g. Sentence-BERT) and find similar texts by using cosine similarity.
 
-Example::
+Example
+
+.. code-block:: python
 
     retriever = EmbeddingRetriever(document_store=document_store,
-                                   embedding_model="deepset/sentence-bert",
+                                   embedding_model="deepset/sentence_bert",
                                    model_format="farm")
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
     # returns: [Document, Document]
@@ -166,7 +176,9 @@ Both readers can load either a local model or any public model from  `Hugging Fa
 FARMReader
 ^^^^^^^^^^
 Implementing various QA models via the `FARM <https://github.com/deepset-ai/FARM>`_ Framework.
-Example::
+Example
+
+.. code-block:: python
 
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2",
                     use_gpu=False, no_ans_boost=-10, context_window_size=500,
@@ -191,7 +203,9 @@ TransformersReader
 ^^^^^^^^^^^^^^^^^^
 Implementing various QA models via the :code:`pipeline` class of `Transformers <https://github.com/huggingface/transformers>`_ Framework.
 
-Example::
+Example
+
+.. code-block:: python
 
     reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
                                 tokenizer="distilbert-base-uncased",

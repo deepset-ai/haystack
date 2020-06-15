@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      
+    - name: Configure sysctl limits for Elasticsearch
+      run: |
+        sudo swapoff -a
+        sudo sysctl -w vm.swappiness=1
+        sudo sysctl -w fs.file-max=262144
+        sudo sysctl -w vm.max_map_count=262144
+      
+    - name: Run Elasticsearch
+      uses: elastic/elastic-github-actions/elasticsearch@25ad91e35aeee806711d335fc9dec7927ae49bc6
+      with:
+        stack-version: 7.6.0
+        
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+      
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Test with pytest
+      run: cd test && pytest
+
+    - name: Test with mypy
+      run: |
+        pip install mypy
+        mypy haystack --ignore-missing-imports

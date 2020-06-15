@@ -1,3 +1,5 @@
+from typing import Any, Dict, List, Optional, Union, Tuple
+
 from haystack.database.base import BaseDocumentStore, Document
 
 
@@ -10,7 +12,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.docs = {}
         self.doc_tags = {}
 
-    def write_documents(self, documents):
+    def write_documents(self, documents: List[dict]):
         import hashlib
 
         if documents is None:
@@ -33,7 +35,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
             self._map_tags_to_ids(hash, tags)
 
-    def _map_tags_to_ids(self, hash, tags):
+    def _map_tags_to_ids(self, hash: str, tags: List[str]):
         if isinstance(tags, list):
             for tag in tags:
                 if isinstance(tag, dict):
@@ -48,10 +50,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                 else:
                                     self.doc_tags[comp_key] = [hash]
 
-    def get_document_by_id(self, id):
-        return self.docs[id]
+    def get_document_by_id(self, id: str) -> Document:
+        document = self._convert_memory_hit_to_document(self.docs[id], doc_id=id)
+        return document
 
-    def _convert_memory_hit_to_document(self, hit, doc_id=None) -> Document:
+    def _convert_memory_hit_to_document(self, hit: Tuple[Any, Any], doc_id: Optional[str] = None) -> Document:
         document = Document(
             id=doc_id,
             text=hit[0].get('text', None),
@@ -60,7 +63,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         return document
 
-    def query_by_embedding(self, query_emb, top_k=10, candidate_doc_ids=None) -> [Document]:
+    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: Optional[List[str]] = None) -> List[Document]:
         from haystack.api import config
         from numpy import dot
         from numpy.linalg import norm
@@ -78,7 +81,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return sorted(candidate_docs, key=lambda x: x.query_score, reverse=True)[0:top_k]
 
-    def get_document_ids_by_tags(self, tags):
+    def get_document_ids_by_tags(self, tags: Union[List[Dict[str, Union[str, List[str]]]], Dict[str, Union[str, List[str]]]]) -> List[str]:
         """
         The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
         The format for the dict is {"tag-1": ["value-1","value-2"], "tag-2": ["value-3]" ...}
@@ -88,7 +91,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         result = self._find_ids_by_tags(tags)
         return result
 
-    def _find_ids_by_tags(self, tags):
+    def _find_ids_by_tags(self, tags: List[Dict[str, Union[str, List[str]]]]):
         result = []
         for tag in tags:
             tag_keys = tag.keys()
@@ -102,8 +105,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
                             result.append(self.docs.get(doc_id))
         return result
 
-    def get_document_count(self):
+    def get_document_count(self) -> int:
         return len(self.docs.items())
 
-    def get_all_documents(self):
+    def get_all_documents(self) -> List[Document]:
         return [Document(id=item[0], text=item[1]['text'], name=item[1]['name'], meta=item[1].get('meta', {})) for item in self.docs.items()]

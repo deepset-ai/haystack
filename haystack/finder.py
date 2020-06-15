@@ -1,9 +1,14 @@
 import logging
 from collections import Counter
+import time
+from statistics import mean
+from typing import Optional, Dict, Any
 
 import numpy as np
 from scipy.special import expit
-import time
+
+from haystack.reader.base import BaseReader
+from haystack.retriever.base import BaseRetriever
 from haystack.eval import calculate_average_precision, eval_counts_reader_batch, eval_counts_reader, calculate_reader_metrics
 
 logger = logging.getLogger(__name__)
@@ -16,13 +21,13 @@ class Finder:
     It provides an interface to predict top n answers for a given question.
     """
 
-    def __init__(self, reader, retriever):
+    def __init__(self, reader: Optional[BaseReader], retriever: Optional[BaseRetriever]):
         self.retriever = retriever
         self.reader = reader
         if self.reader is None and self.retriever is None:
             raise AttributeError("Finder: self.reader and self.retriever can not be both None")
 
-    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: dict = None):
+    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: Optional[dict] = None):
         """
         Get top k answers for a given question.
 
@@ -35,15 +40,15 @@ class Finder:
         """
 
         if self.retriever is None or self.reader is None:
-            raise AttributeError("Finder.get_answers_via_similar_questions requires self.retriever AND self.reader")
+            raise AttributeError("Finder.get_answers requires self.retriever AND self.reader")
 
         # 1) Apply retriever(with optional filters) to get fast candidate documents
         documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
-            results = {"question": question, "answers": []}
-            return results
+            empty_result = {"question": question, "answers": []}
+            return empty_result
 
         # 2) Apply reader to get granular answer(s)
         len_chars = sum([len(d.text) for d in documents])
@@ -51,7 +56,7 @@ class Finder:
 
         results = self.reader.predict(question=question,
                                       documents=documents,
-                                      top_k=top_k_reader)
+                                      top_k=top_k_reader)  # type: Dict[str, Any]
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
@@ -62,7 +67,7 @@ class Finder:
 
         return results
 
-    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10, filters: dict = None):
+    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10, filters: Optional[dict] = None):
         """
         Get top k answers for a given question using only a retriever.
 
@@ -76,12 +81,12 @@ class Finder:
         if self.retriever is None:
             raise AttributeError("Finder.get_answers_via_similar_questions requires self.retriever")
 
-        results = {"question": question, "answers": []}
+        results = {"question": question, "answers": []}  # type: Dict[str, Any]
 
         # 1) Optional: reduce the search space via document tags
         if filters:
             logging.info(f"Apply filters: {filters}")
-            candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)
+            candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)  # type: ignore
             logger.info(f"Got candidate IDs due to filters:  {candidate_doc_ids}")
 
             if len(candidate_doc_ids) == 0:
@@ -89,28 +94,35 @@ class Finder:
                 return results
 
         else:
-            candidate_doc_ids = None
+            candidate_doc_ids = None  # type: ignore
 
         # 2) Apply retriever to match similar questions via cosine similarity of embeddings
-        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)
+        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)  # type: ignore
 
         # 3) Format response
         for doc in documents:
             #TODO proper calibratation of pseudo probabilities
-            cur_answer = {"question": doc.meta["question"], "answer": doc.text, "context": doc.text,
+            cur_answer = {"question": doc.question, "answer": doc.text, "context": doc.text,  # type: ignore
                           "score": doc.query_score, "offset_start": 0, "offset_end": len(doc.text), "meta": doc.meta
                           }
-            if self.retriever.embedding_model:
-                probability = (doc.query_score + 1) / 2
+            if self.retriever.embedding_model:  # type: ignore
+                probability = (doc.query_score + 1) / 2  # type: ignore
             else:
-                probability = float(expit(np.asarray(doc.query_score / 8)))
+                probability = float(expit(np.asarray(doc.query_score / 8)))  # type: ignore
+
             cur_answer["probability"] = probability
             results["answers"].append(cur_answer)
 
         return results
 
-    def eval(self, label_index: str = "feedback", doc_index: str = "eval_document", label_origin: str = "gold_label",
-             top_k_retriever: int = 10, top_k_reader: int = 10):
+    def eval(
+        self,
+        label_index: str = "feedback",
+        doc_index: str = "eval_document",
+        label_origin: str = "gold_label",
+        top_k_retriever: int = 10,
+        top_k_reader: int = 10,
+    ):
         """
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
         of the Retriever.
@@ -156,6 +168,10 @@ class Finder:
         :param top_k_reader: How many answers to return per question
         :type top_k_reader: int
         """
+
+        if not self.reader or not self.retriever:
+            raise Exception("Finder needs to have a reader and retriever for the evaluation.")
+
         metric_counts = Counter()
         finder_start_time = time.time()
         # extract all questions for evaluation
@@ -205,9 +221,15 @@ class Finder:
 
         return results
 
-    def eval_batch(self, label_index: str = "feedback", doc_index: str = "eval_document",
-                   label_origin: str = "gold_label", top_k_retriever: int = 10, top_k_reader: int = 10,
-                   batch_size: int = 50):
+    def eval_batch(
+        self,
+        label_index: str = "feedback",
+        doc_index: str = "eval_document",
+        label_origin: str = "gold_label",
+        top_k_retriever: int = 10,
+        top_k_reader: int = 10,
+        batch_size: int = 50
+        ):
         """
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
         of the Retriever. Passes all retrieved question-document pairs to the Reader at once.
@@ -293,7 +315,7 @@ class Finder:
         results["avg_reader_time"] = reader_total_time / correct_retrievals
         results["total_finder_time"] = finder_total_time
 
-        self.reader.return_no_answers = previous_return_no_answers
+        self.reader.return_no_answers = previous_return_no_answers  # type: ignore
 
         logger.info((f"{metric_counts['correct_readings_topk']} out of {number_of_questions} questions were correctly"
                      f" answered ({(metric_counts['correct_readings_topk'] / number_of_questions):.2%})."))
