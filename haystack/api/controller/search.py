@@ -11,7 +11,8 @@ from haystack import Finder
 from haystack.api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
     EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
-    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME
+    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
+    EMBEDDING_MODEL_FORMAT
 from haystack.api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
@@ -41,7 +42,12 @@ document_store = ElasticsearchDocumentStore(
 
 
 if EMBEDDING_MODEL_PATH:
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model=EMBEDDING_MODEL_PATH, gpu=USE_GPU)  # type: BaseRetriever
+    retriever = EmbeddingRetriever(
+        document_store=document_store,
+        embedding_model=EMBEDDING_MODEL_PATH,
+        model_format=EMBEDDING_MODEL_FORMAT,  # type: ignore
+        gpu=USE_GPU
+    )  # type: BaseRetriever
 else:
     retriever = ElasticsearchRetriever(document_store=document_store)
 

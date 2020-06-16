@@ -2,6 +2,7 @@ import logging
 from typing import List, Union
 
 from farm.infer import Inferencer
+from typing_extensions import Literal
 
 from haystack.database.base import Document
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
@@ -107,8 +108,8 @@ class EmbeddingRetriever(BaseRetriever):
         document_store: ElasticsearchDocumentStore,
         embedding_model: str,
         gpu: bool = True,
-        model_format: str = "farm",
-        pooling_strategy: str = "reduce_mean",
+        model_format: Literal["farm", "transformers", "sentence_transformers"] = "farm",
+        pooling_strategy: Literal["cls_token", "reduce_mean", "reduce_max", "per_token", "s3e"] = "reduce_mean",
         emb_extraction_layer: int = -1,
     ):
         """
@@ -162,7 +163,7 @@ class EmbeddingRetriever(BaseRetriever):
             texts = [texts]  # type: ignore
         assert type(texts) == list, "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
 
-        if self.model_format == "farm":
+        if self.model_format == "farm" or self.model_format == "transformers":
             res = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])  # type: ignore
             emb = [list(r["vec"]) for r in res] #cast from numpy
         elif self.model_format == "sentence_transformers":
