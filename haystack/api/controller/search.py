@@ -6,7 +6,6 @@ import elasticapm
 from fastapi import APIRouter
 from fastapi import HTTPException
 from pydantic import BaseModel
-from typing_extensions import Literal
 
 from haystack import Finder
 from haystack.api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
@@ -46,7 +45,7 @@ if EMBEDDING_MODEL_PATH:
     retriever = EmbeddingRetriever(
         document_store=document_store,
         embedding_model=EMBEDDING_MODEL_PATH,
-        model_format=Literal[EMBEDDING_MODEL_FORMAT],
+        model_format=EMBEDDING_MODEL_FORMAT,  # type: ignore
         gpu=USE_GPU
     )  # type: BaseRetriever
 else:
