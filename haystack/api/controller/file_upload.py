@@ -41,14 +41,14 @@ pdf_converter = PDFToTextConverter(
     remove_whitespace=REMOVE_WHITESPACE,
     remove_empty_lines=REMOVE_EMPTY_LINES,
     remove_header_footer=REMOVE_HEADER_FOOTER,
-    valid_languages=VALID_LANGUAGES,
+    valid_languages=VALID_LANGUAGES,  # type: ignore
 )
 txt_converter = TextConverter(
     remove_numeric_tables=REMOVE_NUMERIC_TABLES,
     remove_whitespace=REMOVE_WHITESPACE,
     remove_empty_lines=REMOVE_EMPTY_LINES,
     remove_header_footer=REMOVE_HEADER_FOOTER,
-    valid_languages=VALID_LANGUAGES,
+    valid_languages=VALID_LANGUAGES,  # type: ignore
 )
 
 
