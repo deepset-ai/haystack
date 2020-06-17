@@ -2,7 +2,6 @@ import logging
 from typing import List, Union
 
 from farm.infer import Inferencer
-from typing_extensions import Literal
 
 from haystack.database.base import Document
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
@@ -108,8 +107,8 @@ class EmbeddingRetriever(BaseRetriever):
         document_store: ElasticsearchDocumentStore,
         embedding_model: str,
         gpu: bool = True,
-        model_format: Literal["farm", "transformers", "sentence_transformers"] = "farm",
-        pooling_strategy: Literal["cls_token", "reduce_mean", "reduce_max", "per_token", "s3e"] = "reduce_mean",
+        model_format: str = "farm",
+        pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
     ):
         """

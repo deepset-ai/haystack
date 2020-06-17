@@ -45,7 +45,7 @@ if EMBEDDING_MODEL_PATH:
     retriever = EmbeddingRetriever(
         document_store=document_store,
         embedding_model=EMBEDDING_MODEL_PATH,
-        model_format=EMBEDDING_MODEL_FORMAT,  # type: ignore
+        model_format=EMBEDDING_MODEL_FORMAT,
         gpu=USE_GPU
     )  # type: BaseRetriever
 else:
