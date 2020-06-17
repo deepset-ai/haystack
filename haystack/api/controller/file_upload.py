@@ -2,17 +2,18 @@ import logging
 import shutil
 import uuid
 from pathlib import Path
+from typing import Optional, List
 
 from fastapi import APIRouter
 from fastapi import HTTPException
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, Form
 
 from haystack.api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, \
     SEARCH_FIELD_NAME, FILE_UPLOAD_PATH, EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, VALID_LANGUAGES, \
     FAQ_QUESTION_FIELD_NAME, REMOVE_NUMERIC_TABLES, REMOVE_WHITESPACE, REMOVE_EMPTY_LINES, REMOVE_HEADER_FOOTER
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
-from haystack.indexing.file_converters.pdftotext import PDFToTextConverter
-from haystack.indexing.file_converters.text import TextConverter
+from haystack.indexing.file_converters.pdf import PDFToTextConverter
+from haystack.indexing.file_converters.txt import TextConverter
 
 
 logger = logging.getLogger(__name__)
@@ -36,32 +37,38 @@ document_store = ElasticsearchDocumentStore(
     faq_question_field=FAQ_QUESTION_FIELD_NAME,
 )
 
-pdf_converter = PDFToTextConverter(
-    remove_numeric_tables=REMOVE_NUMERIC_TABLES,
-    remove_whitespace=REMOVE_WHITESPACE,
-    remove_empty_lines=REMOVE_EMPTY_LINES,
-    remove_header_footer=REMOVE_HEADER_FOOTER,
-    valid_languages=VALID_LANGUAGES,  # type: ignore
-)
-txt_converter = TextConverter(
-    remove_numeric_tables=REMOVE_NUMERIC_TABLES,
-    remove_whitespace=REMOVE_WHITESPACE,
-    remove_empty_lines=REMOVE_EMPTY_LINES,
-    remove_header_footer=REMOVE_HEADER_FOOTER,
-    valid_languages=VALID_LANGUAGES,  # type: ignore
-)
-
 
 @router.post("/file-upload")
-def upload_file_to_document_store(file: UploadFile = File(...)) -> None:
+def upload_file_to_document_store(
+    file: UploadFile = File(...),
+    remove_numeric_tables: Optional[bool] = Form(REMOVE_NUMERIC_TABLES),
+    remove_whitespace: Optional[bool] = Form(REMOVE_WHITESPACE),
+    remove_empty_lines: Optional[bool] = Form(REMOVE_EMPTY_LINES),
+    remove_header_footer: Optional[bool] = Form(REMOVE_HEADER_FOOTER),
+    valid_languages: Optional[List[str]] = Form(VALID_LANGUAGES),
+) -> None:
     try:
         file_path = Path(FILE_UPLOAD_PATH) / f"{uuid.uuid4().hex}_{file.filename}"
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
         if file.filename.split(".")[-1].lower() == "pdf":
+            pdf_converter = PDFToTextConverter(
+                remove_numeric_tables=remove_numeric_tables,
+                remove_whitespace=remove_whitespace,
+                remove_empty_lines=remove_empty_lines,
+                remove_header_footer=remove_header_footer,
+                valid_languages=valid_languages,
+            )
             pages = pdf_converter.extract_pages(file_path)
         elif file.filename.split(".")[-1].lower() == "txt":
+            txt_converter = TextConverter(
+                remove_numeric_tables=remove_numeric_tables,
+                remove_whitespace=remove_whitespace,
+                remove_empty_lines=remove_empty_lines,
+                remove_header_footer=remove_header_footer,
+                valid_languages=valid_languages,
+            )
             pages = txt_converter.extract_pages(file_path)
         else:
             raise HTTPException(status_code=415, detail=f"Only .pdf and .txt file formats are supported.")
