@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from haystack.indexing.file_converters.pdftotext import PDFToTextConverter
+from haystack.indexing.file_converters.pdf import PDFToTextConverter
 
 logger = logging.getLogger(__name__)
 

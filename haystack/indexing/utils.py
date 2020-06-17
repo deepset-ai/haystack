@@ -7,7 +7,7 @@ from typing import Callable, List, Optional
 
 from farm.data_handler.utils import http_get
 
-from haystack.indexing.file_converters.pdftotext import PDFToTextConverter
+from haystack.indexing.file_converters.pdf import PDFToTextConverter
 
 logger = logging.getLogger(__name__)
 
