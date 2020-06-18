@@ -443,15 +443,22 @@ class FARMReader(BaseReader):
         predictions = self.predict(question, documents, top_k)
         return predictions
 
-    def convert_to_onnx(self, output_path: Path, opset_version: int = 11, optimize_for: Optional[str] = None):
+    @classmethod
+    def convert_to_onnx(cls, model_name_or_path, opset_version: int = 11, optimize_for: Optional[str] = None):
         """
-        Convert a PyTorch BERT model to ONNX format and write to the supplied output_path. The converted ONNX model
+        Convert a PyTorch BERT model to ONNX format and write to ./onnx-export dir. The converted ONNX model
         can be loaded with in the `FARMReader` using the export path as `model_name_or_path` param.
 
-        :param output_path: model dir to write the model and config files
+        Usage:
+            >>> from haystack.reader.farm import FARMReader
+            >>> FARMReader.convert_to_onnx(model_name_or_path="deepset/bert-base-cased-squad2", optimize_for="gpu_tensor_core")
+            >>> FARMReader(model_name_or_path=Path("onnx-export"))
+
+
         :param opset_version: ONNX opset version
         :param optimize_for: optimize the exported model for a target device. Available options
                              are "gpu_tensor_core" (GPUs with tensor core like V100 or T4),
                              "gpu_without_tensor_core" (most other GPUs), and "cpu".
         """
-        self.inferencer.model.convert_to_onnx(output_path=output_path, opset_version=opset_version, optimize_for=optimize_for)
+        inferencer = Inferencer.load(model_name_or_path, task_type="question_answering")
+        inferencer.model.convert_to_onnx(output_path=Path("onnx-export"), opset_version=opset_version, optimize_for=optimize_for)
