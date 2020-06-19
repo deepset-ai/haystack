@@ -9,8 +9,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
     """
 
     def __init__(self, embedding_field: Optional[str] = None):
-        self.docs = {}
-        self.doc_tags = {}
+        self.docs = {}  # type: Dict[str, Any]
+        self.doc_tags = {}  # type: Dict[str, Any]
         self.embedding_field = embedding_field
 
     def write_documents(self, documents: List[dict]):
