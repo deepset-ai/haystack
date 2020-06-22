@@ -44,6 +44,7 @@ class TransformersReader(BaseReader):
         self.context_window_size = context_window_size
         self.n_best_per_passage = n_best_per_passage
         #TODO param to modify bias for no_answer
+        self.return_no_answers = None
 
     def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
         """
@@ -102,3 +103,8 @@ class TransformersReader(BaseReader):
                    "answers": answers}
 
         return results
+
+    def predict_batch(self, question_doc_list: List[dict], top_k_per_question: Optional[int] = None,
+                      batch_size: Optional[int] = None):
+
+        raise NotImplementedError("Batch prediction not yet available in TransformersReader.")

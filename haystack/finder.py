@@ -7,6 +7,8 @@ import numpy as np
 from scipy.special import expit
 
 from haystack.reader.base import BaseReader
+from haystack.reader.farm import FARMReader
+from haystack.reader.transformers import TransformersReader
 from haystack.retriever.base import BaseRetriever
 from haystack.eval import calculate_average_precision, eval_counts_reader_batch, eval_counts_reader, calculate_reader_metrics
 
@@ -170,6 +172,10 @@ class Finder:
 
         if not self.reader or not self.retriever:
             raise Exception("Finder needs to have a reader and retriever for the evaluation.")
+        if isinstance(self.reader, FARMReader):
+            reader_type = "farm"
+        elif isinstance(self.reader, TransformersReader):
+            reader_type = "transformers"
 
         metric_counts = Counter()  # type: Counter
         finder_start_time = time.time()
@@ -197,7 +203,7 @@ class Finder:
             question_string = question["question"]["_source"]["question"]
             docs = question["docs"]
             predicted_answers = self.reader.predict(question_string, docs, top_k_reader)
-            metric_counts = eval_counts_reader(question, predicted_answers, metric_counts)
+            metric_counts = eval_counts_reader(question, predicted_answers, metric_counts, reader_type)
 
         reader_total_time = time.time() - reader_start_time
         finder_total_time = time.time() - finder_start_time
@@ -276,6 +282,9 @@ class Finder:
         :param batch_size: Number of samples per batch computed at once
         :type batch_size: int
         """
+
+        if not self.reader or not self.retriever:
+            raise Exception("Finder needs to have a reader and retriever for the evaluation.")
 
         metric_counts = Counter()  # type: Counter
         finder_start_time = time.time()

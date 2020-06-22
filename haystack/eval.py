@@ -44,9 +44,9 @@ def calculate_average_precision(questions_with_docs: List[dict]):
     return questions_with_correct_doc, summed_avg_precision_retriever
 
 
-def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, Any], metric_counts: Counter):
-    # Calculates evaluation metrics for one question and returns adds results to counter.
-
+def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, Any], metric_counts: Counter,
+                       reader_type: str):
+    # Calculates evaluation metrics for one question and adds results to counter.
     # check if question is answerable
     if question["question"]["_source"]["answers"]:
         for answer_idx, answer in enumerate(predicted_answers["answers"]):
@@ -59,7 +59,10 @@ def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, An
                     (gold_answer["answer_start"], gold_answer["answer_start"] + len(gold_answer["text"]) + 1)
                     for gold_answer in question["question"]["_source"]["answers"]
                 ]
-                predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
+                if reader_type == "farm":
+                    predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
+                elif reader_type == "transformers":
+                    predicted_span = (answer["offset_answer_start"], answer["offset_answer_end"])
 
                 for gold_span in gold_spans:
                     # check if overlap between gold answer and predicted answer
