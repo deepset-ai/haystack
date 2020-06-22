@@ -19,36 +19,46 @@ logger = logging.getLogger(__name__)
 
 class DensePassageRetriever(BaseRetriever):
     """
-        Retriever that uses a dual transformer encoder (one for query, one for passage). It's based on:
+        Retriever that uses a bi-encoder (one transformer for query, one transformer for passage).
+        See the original paper for more details:
         Karpukhin, Vladimir, et al. "Dense Passage Retrieval for Open-Domain Question Answering." arXiv preprint arXiv:2004.04906 (2020).
         (See https://arxiv.org/abs/2004.04906).
-
-        You can load the model checkpoints of the author's in the original format.
-        See their readme for download instructions: https://github.com/facebookresearch/DPR#resources--data-formats
-
     """
+
     def __init__(self,
                  document_store: Type[BaseDocumentStore],
                  embedding_model: str,
                  gpu: bool = True,
-                 batch_size=16,
-                 do_lower_case=False,
-                 encoder_model_type="hf_bert",
-                 fp16=False,
-                 fp16_opt_level='O1',
-                 fix_ctx_encoder=False,
+                 batch_size: int = 16,
+                 do_lower_case: bool = False,
+                 encoder_model_type: str = "hf_bert",
+                 use_amp: bool = False,
+                 amp_opt_level: str = 'O1'
                  ):
         """
+        Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
+        The checkpoint format matches the one of the original author's in the repository (https://github.com/facebookresearch/DPR)
+        See their readme for manual download instructions: https://github.com/facebookresearch/DPR#resources--data-formats
 
-        :param document_store:
-        :param embedding_model:
-        :param gpu:
-        :param batch_size:
-        :param do_lower_case:
-        :param encoder_model_type:
-        :param fp16:
-        :param fp16_opt_level:
-        :param fix_ctx_encoder:
+        :Example:
+
+            # remote model from FAIR
+            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="dpr-bert-base-nq", gpu=True)
+            # or from local path
+            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", gpu=True)
+
+        :param document_store: An instance of DocumentStore from which to retrieve documents.
+        :param embedding_model: Local path or remote name of model checkpoint. The format equals the 
+                                one used by original author's in https://github.com/facebookresearch/DPR. 
+                                Currently available remote names: "dpr-bert-base-nq" 
+        :param gpu: Whether to use gpu or not
+        :param batch_size: Number of questions or passages to encode at once
+        :param do_lower_case: Whether to lower case the text input in the tokenizer
+        :param encoder_model_type: 
+        :param use_amp: Whether to use Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
+        :param amp_opt_level: AMP optimization level. Common options:
+                              - 'O0'-> Regular FP32
+                              - 'O1' -> Mixed Precision (recommended, if optimzation wanted)
         """
 
         self.document_store = document_store
@@ -66,11 +76,10 @@ class DensePassageRetriever(BaseRetriever):
         else:
             self.device = torch.device("cpu")
 
-        self.fp16 = fp16
-        self.fp16_opt_level = fp16_opt_level
+        self.fp16 = use_amp
+        self.fp16_opt_level = amp_opt_level
         self.do_lower_case = do_lower_case
         self.encoder_model_type = encoder_model_type
-        self.fix_ctx_encoder = fix_ctx_encoder
 
         # Load checkpoint (incl. additional model params)
         saved_state = load_states_from_checkpoint(self.embedding_model)
@@ -176,6 +185,8 @@ class DensePassageRetriever(BaseRetriever):
                 setattr(self, param, value)
 
 
+
+
 class EmbeddingRetriever(BaseRetriever):
     def __init__(
         self,
@@ -187,11 +198,15 @@ class EmbeddingRetriever(BaseRetriever):
         emb_extraction_layer: int = -1,
     ):
         """
-        TODO
-        :param document_store:
-        :param embedding_model:
-        :param gpu:
-        :param model_format:
+        :param document_store: An instance of DocumentStore from which to retrieve documents.
+        :param embedding_model: Local path or name of model in Hugging Face's model hub. Example: 'deepset/sentence_bert'
+        :param gpu: Whether to use gpu or not
+        :param model_format: Name of framework that was used for saving the model. Options: 'farm', 'transformers', 'sentence_transformers'
+        :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
+                                 Options: 'cls_token' (sentence vector), 'reduce_mean' (sentence vector),
+                                 reduce_max (sentence vector), 'per_token' (individual token vectors)
+        :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
+                                     Default: -1 (very last layer).
         """
         self.document_store = document_store
         self.model_format = model_format
