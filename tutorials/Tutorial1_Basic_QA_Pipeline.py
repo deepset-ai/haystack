@@ -20,7 +20,7 @@ from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_h
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.utils import print_answers
-from haystack.retriever.elasticsearch import ElasticsearchRetriever
+from haystack.retriever.sparse import ElasticsearchRetriever
 
 
 LAUNCH_ELASTICSEARCH = True

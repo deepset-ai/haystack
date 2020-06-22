@@ -17,7 +17,8 @@ from haystack.api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.retriever.base import BaseRetriever
-from haystack.retriever.elasticsearch import ElasticsearchRetriever, EmbeddingRetriever
+from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.retriever.dense import EmbeddingRetriever
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

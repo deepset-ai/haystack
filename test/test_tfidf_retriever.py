@@ -2,7 +2,7 @@ from haystack.database.base import Document
 
 
 def test_tfidf_retriever():
-    from haystack.retriever.tfidf import TfidfRetriever
+    from haystack.retriever.sparse import TfidfRetriever
 
     test_docs = [
         {"name": "testing the finder 1", "text": "godzilla says hello"},

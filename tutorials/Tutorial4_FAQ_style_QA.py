@@ -1,7 +1,7 @@
 from haystack import Finder
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
-from haystack.retriever.elasticsearch import EmbeddingRetriever
+from haystack.retriever.dense import EmbeddingRetriever
 from haystack.utils import print_answers
 import pandas as pd
 import requests

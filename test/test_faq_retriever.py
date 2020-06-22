@@ -5,7 +5,7 @@ def test_faq_retriever_in_memory_store(monkeypatch):
     monkeypatch.setenv("EMBEDDING_FIELD_NAME", "embedding")
 
     from haystack.database.memory import InMemoryDocumentStore
-    from haystack.retriever.elasticsearch import EmbeddingRetriever
+    from haystack.retriever.dense import EmbeddingRetriever
 
     document_store = InMemoryDocumentStore()
 
