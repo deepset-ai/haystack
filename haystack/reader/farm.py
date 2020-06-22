@@ -233,7 +233,7 @@ class FARMReader(BaseReader):
         self.inferencer.batch_size = batch_size
         # make predictions on all document-question pairs
         predictions = self.inferencer.inference_from_dicts(
-            dicts=input_dicts, rest_api_schema=True, multiprocessing_chunksize=1
+            dicts=input_dicts, return_json=True, multiprocessing_chunksize=1
         )
 
         # group predictions together
@@ -493,7 +493,7 @@ class FARMReader(BaseReader):
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_recall": eval_results[0]["top_n_recall"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
         }
         return results
 

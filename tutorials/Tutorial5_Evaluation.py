@@ -2,6 +2,7 @@ from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.indexing.utils import fetch_archive_from_http
 from haystack.retriever.elasticsearch import ElasticsearchRetriever
 from haystack.reader.farm import FARMReader
+from haystack.reader.transformers import TransformersReader
 from haystack.finder import Finder
 from farm.utils import initialize_device_settings
 
@@ -58,7 +59,7 @@ reader_eval_results = reader.eval(document_store=document_store, device=device)
 #reader_eval_results = reader.eval_on_file("../data/natural_questions", "dev_subset.json", device=device)
 
 ## Reader Top-N-Recall is the proportion of predicted answers that overlap with their corresponding correct answer
-print("Reader Top-N-Recall:", reader_eval_results["top_n_recall"])
+print("Reader Top-N-Accuracy:", reader_eval_results["top_n_accuracy"])
 ## Reader Exact Match is the proportion of questions where the predicted answer is exactly the same as the correct answer
 print("Reader Exact Match:", reader_eval_results["EM"])
 ## Reader F1-Score is the average overlap between the predicted answers and the correct answers
