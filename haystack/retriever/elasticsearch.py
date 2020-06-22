@@ -45,9 +45,9 @@ class ElasticsearchRetriever(BaseRetriever):
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
-            index = self.document_store.index
+            index = self.document_store.index  # type: ignore
 
-        documents = self.document_store.query(query, filters, top_k, self.custom_query, index)
+        documents = self.document_store.query(query, filters, top_k, self.custom_query, index)  # type: ignore
         logger.info(f"Got {len(documents)} candidates from retriever")
 
         return documents
@@ -76,7 +76,7 @@ class ElasticsearchRetriever(BaseRetriever):
 
         # extract all questions for evaluation
         filter = {"origin": label_origin}
-        questions = self.document_store.get_all_documents_in_index(index=label_index, filters=filter)
+        questions = self.document_store.get_all_documents_in_index(index=label_index, filters=filter)  # type: ignore
 
         # calculate recall and mean-average-precision
         correct_retrievals = 0

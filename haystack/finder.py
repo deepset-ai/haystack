@@ -181,7 +181,7 @@ class Finder:
         finder_start_time = time.time()
         # extract all questions for evaluation
         filter = {"origin": label_origin}
-        questions = list(self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter))
+        questions = list(self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter))  # type: ignore
         number_of_questions = len(questions)
 
         # retrieve documents
@@ -290,7 +290,7 @@ class Finder:
         finder_start_time = time.time()
         # extract_all_questions for evaluation
         filter = {"origin": label_origin}
-        questions = list(self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter))
+        questions = list(self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter))  # type: ignore
         number_of_questions = len(questions)
 
         # retrieve documents
@@ -339,7 +339,7 @@ class Finder:
 
         for question in questions:
             question_string = question["_source"]["question"]
-            retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k, index=doc_index)
+            retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k, index=doc_index)  # type: ignore
             questions_with_docs.append({
                 "question": question,
                 "docs": retrieved_docs,

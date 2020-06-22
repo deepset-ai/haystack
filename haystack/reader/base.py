@@ -5,7 +5,7 @@ from haystack.database.base import Document
 
 
 class BaseReader(ABC):
-    return_no_answers: bool
+    return_no_answers: Optional[bool]
 
     @abstractmethod
     def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
