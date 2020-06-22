@@ -162,7 +162,7 @@ class EmbeddingRetriever(BaseRetriever):
             texts = [texts]  # type: ignore
         assert type(texts) == list, "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
 
-        if self.model_format == "farm":
+        if self.model_format == "farm" or self.model_format == "transformers":
             res = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])  # type: ignore
             emb = [list(r["vec"]) for r in res] #cast from numpy
         elif self.model_format == "sentence_transformers":

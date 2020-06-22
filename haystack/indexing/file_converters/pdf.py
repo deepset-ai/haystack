@@ -1,12 +1,8 @@
 import logging
 import re
 import subprocess
-from functools import partial, reduce
-from itertools import chain
 from pathlib import Path
-from typing import List, Optional, Tuple, Generator, Set
-
-import langdetect
+from typing import List, Optional
 
 from haystack.indexing.file_converters.base import BaseConverter
 
@@ -106,7 +102,7 @@ class PDFToTextConverter(BaseConverter):
 
         if self.valid_languages:
             document_text = "".join(cleaned_pages)
-            if not self._validate_language(document_text):
+            if not self.validate_language(document_text):
                 logger.warning(
                     f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
                     f"been decoded in the correct text format."
@@ -138,95 +134,3 @@ class PDFToTextConverter(BaseConverter):
         pages = pages[:-1]  # the last page in the split is always empty.
         return pages
 
-    def _validate_language(self, text: str) -> bool:
-        """
-        Validate if the language of the text is one of valid languages.
-        """
-        if not self.valid_languages:
-            return True
-
-        try:
-            lang = langdetect.detect(text)
-        except langdetect.lang_detect_exception.LangDetectException:
-            lang = None
-
-        if lang in self.valid_languages:
-            return True
-        else:
-            return False
-
-    def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
-        """
-        Return ngram (of tokens - currently splitted by whitespace)
-        :param seq: str, string from which the ngram shall be created
-        :param n: int, n of ngram
-        :return: str, ngram as string
-        """
-
-        # In order to maintain the original whitespace, but still consider \n and \t for n-gram tokenization,
-        # we add a space here and remove it after creation of the ngrams again (see below)
-        seq = seq.replace("\n", " \n")
-        seq = seq.replace("\t", " \t")
-
-        words = seq.split(" ")
-        ngrams = (
-            " ".join(words[i : i + n]).replace(" \n", "\n").replace(" \t", "\t") for i in range(0, len(words) - n + 1)
-        )
-
-        return ngrams
-
-    def _allngram(self, seq: str, min_ngram: int, max_ngram: int) -> Set[str]:
-        lengths = range(min_ngram, max_ngram) if max_ngram else range(min_ngram, len(seq))
-        ngrams = map(partial(self._ngram, seq), lengths)
-        res = set(chain.from_iterable(ngrams))
-        return res
-
-    def find_longest_common_ngram(self, sequences: List[str], max_ngram: int = 30, min_ngram: int = 3) -> Optional[str]:
-        """
-        Find the longest common ngram across different text sequences (e.g. start of pages).
-        Considering all ngrams between the specified range. Helpful for finding footers, headers etc.
-
-        :param sequences: list[str], list of strings that shall be searched for common n_grams
-        :param max_ngram: int, maximum length of ngram to consider
-        :param min_ngram: minimum length of ngram to consider
-        :return: str, common string of all sections
-        """
-
-        seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
-        intersection = reduce(set.intersection, seqs_ngrams)
-
-        try:
-            longest = max(intersection, key=len)
-        except ValueError:
-            # no common sequence found
-            longest = ""
-        return longest if longest.strip() else None
-
-    def find_and_remove_header_footer(
-        self, pages: List[str], n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
-    ) -> Tuple[List[str], Optional[str], Optional[str]]:
-        """
-        Heuristic to find footers and headers across different pages by searching for the longest common string.
-        For headers we only search in the first n_chars characters (for footer: last n_chars).
-        Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
-         but won't detect "Page 3 of 4" or similar.
-
-        :param pages: list of strings, one string per page
-        :param n_chars: number of first/last characters where the header/footer shall be searched in
-        :param n_first_pages_to_ignore: number of first pages to ignore (e.g. TOCs often don't contain footer/header)
-        :param n_last_pages_to_ignore: number of last pages to ignore
-        :return: (cleaned pages, found_header_str, found_footer_str)
-        """
-
-        # header
-        start_of_pages = [p[:n_chars] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
-        found_header = self.find_longest_common_ngram(start_of_pages)
-        if found_header:
-            pages = [page.replace(found_header, "") for page in pages]
-
-        # footer
-        end_of_pages = [p[-n_chars:] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
-        found_footer = self.find_longest_common_ngram(end_of_pages)
-        if found_footer:
-            pages = [page.replace(found_footer, "") for page in pages]
-        return pages, found_header, found_footer
