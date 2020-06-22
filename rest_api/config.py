@@ -39,6 +39,17 @@ EXCLUDE_META_DATA_FIELDS = os.getenv("EXCLUDE_META_DATA_FIELDS", None)
 if EXCLUDE_META_DATA_FIELDS:
     EXCLUDE_META_DATA_FIELDS = ast.literal_eval(EXCLUDE_META_DATA_FIELDS)
 EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", None)
+EMBEDDING_MODEL_FORMAT = os.getenv("EMBEDDING_MODEL_FORMAT", "farm")
+
+# File uploads
+FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", "file-uploads")
+REMOVE_NUMERIC_TABLES = os.getenv("REMOVE_NUMERIC_TABLES", "True").lower() == "true"
+REMOVE_WHITESPACE = os.getenv("REMOVE_WHITESPACE", "True").lower() == "true"
+REMOVE_EMPTY_LINES = os.getenv("REMOVE_EMPTY_LINES", "True").lower() == "true"
+REMOVE_HEADER_FOOTER = os.getenv("REMOVE_HEADER_FOOTER", "True").lower() == "true"
+VALID_LANGUAGES = os.getenv("VALID_LANGUAGES", None)
+if VALID_LANGUAGES:
+    VALID_LANGUAGES = ast.literal_eval(VALID_LANGUAGES)
 
 # Monitoring
 APM_SERVER = os.getenv("APM_SERVER", None)
