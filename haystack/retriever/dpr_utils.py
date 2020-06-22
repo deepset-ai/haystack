@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-# Building upon the code (https://github.com/facebookresearch/DPR) published by Facebook research together with this Publication:
+# Building upon the code (https://github.com/facebookresearch/DPR) published by Facebook research under Creative Commons License: https://github.com/facebookresearch/DPR/blob/master/LICENSE
+# It is based on the following research publication:
 # Karpukhin, Vladimir, et al. "Dense Passage Retrieval for Open-Domain Question Answering." arXiv preprint arXiv:2004.04906 (2020).
 # (https://arxiv.org/abs/2004.04906)
 
 import logging
-from typing import List, Tuple
+from typing import Tuple
+
+import gzip
+import os
+import pathlib
+import wget
 
 import torch
 from torch import nn
 from torch import Tensor as T
 from torch.serialization import default_restore_location
 import collections
+from farm.file_utils import http_get
 
 from transformers.tokenization_bert import BertTokenizer
 from transformers.modeling_bert import BertModel, BertConfig
@@ -21,13 +28,6 @@ logging.basicConfig(level=logging.INFO)
 CheckpointState = collections.namedtuple("CheckpointState",
                                          ['model_dict', 'optimizer_dict', 'scheduler_dict', 'offset', 'epoch',
                                           'encoder_params'])
-
-# UTILS
-def load_states_from_checkpoint(model_file: str) -> CheckpointState:
-    logger.info('Reading saved model from %s', model_file)
-    state_dict = torch.load(model_file, map_location=lambda s, l: default_restore_location(s, 'cpu'))
-    logger.info('model_state_dict keys %s', state_dict.keys())
-    return CheckpointState(**state_dict)
 
 
 # CLASSES
@@ -141,3 +141,243 @@ class BertTensorizer(Tensorizer):
 
     def set_pad_to_max(self, do_pad: bool):
         self.pad_to_max = do_pad
+
+
+# UTILS
+def load_states_from_checkpoint(model_file: str) -> CheckpointState:
+    logger.info('Reading saved model from %s', model_file)
+    state_dict = torch.load(model_file, map_location=lambda s, l: default_restore_location(s, 'cpu'))
+    logger.info('model_state_dict keys %s', state_dict.keys())
+    return CheckpointState(**state_dict)
+
+
+# DOWNLOADS
+NQ_LICENSE_FILES = [
+    'https://dl.fbaipublicfiles.com/dpr/nq_license/LICENSE',
+    'https://dl.fbaipublicfiles.com/dpr/nq_license/README',
+]
+
+
+RESOURCES_MAP = {
+    'checkpoint.retriever.single.nq.bert-base-encoder': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/checkpoint/retriever/single/nq/hf_bert_base.cp',
+        'original_ext': '.cp',
+        'compressed': False,
+        'desc': 'Biencoder weights trained on NQ data and HF bert-base-uncased model'
+    },
+
+    'checkpoint.retriever.multiset.bert-base-encoder': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/checkpoint/retriver/multiset/hf_bert_base.cp',
+        'original_ext': '.cp',
+        'compressed': False,
+        'desc': 'Biencoder weights trained on multi set data and HF bert-base-uncased model'
+    },
+    'data.wikipedia_split.psgs_w100': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/wikipedia_split/psgs_w100.tsv.gz',
+        'original_ext': '.tsv',
+        'compressed': True,
+        'desc': 'Entire wikipedia passages set obtain by splitting all pages into 100-word segments (no overlap)'
+    },
+    'data.retriever.nq-dev': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-nq-dev.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'NQ dev subset with passages pools for the Retriever train time validation',
+        'license_files': NQ_LICENSE_FILES,
+    },
+
+    'data.retriever.nq-train': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-nq-train.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'NQ train subset with passages pools for the Retriever training',
+        'license_files': NQ_LICENSE_FILES,
+    },
+
+    'data.retriever.trivia-dev': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-trivia-dev.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'TriviaQA dev subset with passages pools for the Retriever train time validation'
+    },
+
+    'data.retriever.trivia-train': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-trivia-train.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'TriviaQA train subset with passages pools for the Retriever training'
+    },
+
+    'data.retriever.qas.nq-dev': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/nq-dev.qa.csv',
+        'original_ext': '.csv',
+        'compressed': False,
+        'desc': 'NQ dev subset for Retriever validation and IR results generation',
+        'license_files': NQ_LICENSE_FILES,
+    },
+
+    'data.retriever.qas.nq-test': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/nq-test.qa.csv',
+        'original_ext': '.csv',
+        'compressed': False,
+        'desc': 'NQ test subset for Retriever validation and IR results generation',
+        'license_files': NQ_LICENSE_FILES,
+    },
+
+    'data.retriever.qas.nq-train': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/nq-train.qa.csv',
+        'original_ext': '.csv',
+        'compressed': False,
+        'desc': 'NQ train subset for Retriever validation and IR results generation',
+        'license_files': NQ_LICENSE_FILES,
+    },
+    'data.retriever.qas.trivia-dev': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/trivia-dev.qa.csv.gz',
+        'original_ext': '.csv',
+        'compressed': True,
+        'desc': 'Trivia dev subset for Retriever validation and IR results generation'
+    },
+
+    'data.retriever.qas.trivia-test': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/trivia-test.qa.csv.gz',
+        'original_ext': '.csv',
+        'compressed': True,
+        'desc': 'Trivia test subset for Retriever validation and IR results generation'
+    },
+
+    'data.retriever.qas.trivia-train': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/trivia-train.qa.csv.gz',
+        'original_ext': '.csv',
+        'compressed': True,
+        'desc': 'Trivia train subset for Retriever validation and IR results generation'
+    },
+
+    'data.gold_passages_info.nq_train': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/nq_gold_info/nq-train_gold_info.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'Original NQ (our train subset) gold positive passages and alternative question tokenization',
+        'license_files': NQ_LICENSE_FILES,
+    },
+
+    'data.gold_passages_info.nq_dev': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/nq_gold_info/nq-dev_gold_info.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'Original NQ (our dev subset) gold positive passages and alternative question tokenization',
+        'license_files': NQ_LICENSE_FILES,
+    },
+
+    'data.gold_passages_info.nq_test': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/nq_gold_info/nq-test_gold_info.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'Original NQ (our test, original dev subset) gold positive passages and alternative question '
+                'tokenization',
+        'license_files': NQ_LICENSE_FILES,
+    },
+    'data.retriever_results.nq.single.test': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever_results/single/nq-test.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'Retrieval results of NQ test dataset for the encoder trained on NQ',
+        'license_files': NQ_LICENSE_FILES,
+    },
+    'data.retriever_results.nq.single.dev': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever_results/single/nq-dev.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'Retrieval results of NQ dev dataset for the encoder trained on NQ',
+        'license_files': NQ_LICENSE_FILES,
+    },
+    'data.retriever_results.nq.single.train': {
+        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever_results/single/nq-train.json.gz',
+        'original_ext': '.json',
+        'compressed': True,
+        'desc': 'Retrieval results of NQ train dataset for the encoder trained on NQ',
+        'license_files': NQ_LICENSE_FILES,
+    }
+}
+
+
+def unpack(gzip_file: str, out_file: str):
+    print('Uncompressing ', gzip_file)
+    input = gzip.GzipFile(gzip_file, 'rb')
+    s = input.read()
+    input.close()
+    output = open(out_file, 'wb')
+    output.write(s)
+    output.close()
+    print('Saved to ', out_file)
+
+
+def download_resource(s3_url: str, original_ext: str, compressed: bool, resource_key: str, out_dir: str) -> str:
+    print('Loading from ', s3_url)
+
+    # create local dir
+    path_names = resource_key.split('.')
+
+    root_dir = out_dir if out_dir else './'
+    save_root = os.path.join(root_dir, *path_names[:-1])  # last segment is for file name
+
+    pathlib.Path(save_root).mkdir(parents=True, exist_ok=True)
+
+    local_file = os.path.join(save_root, path_names[-1] + ('.tmp' if compressed else original_ext))
+
+    if os.path.exists(local_file):
+        print('File already exist ', local_file)
+        return save_root
+
+    wget.download(s3_url, out=local_file)
+
+    print('Saved to ', local_file)
+
+    if compressed:
+        uncompressed_file = os.path.join(save_root, path_names[-1] + original_ext)
+        unpack(local_file, uncompressed_file)
+        os.remove(local_file)
+    return save_root
+
+
+def download_file(s3_url: str, out_dir: str, file_name: str):
+    print('Loading from ', s3_url)
+    local_file = os.path.join(out_dir, file_name)
+
+    if os.path.exists(local_file):
+        print('File already exist ', local_file)
+        return
+    with open(local_file, "w") as file:
+        http_get(s3_url, temp_file=file)
+    wget.download(s3_url, out=local_file)
+    print('Saved to ', local_file)
+
+
+def download_dpr(resource_key: str, out_dir: str = None):
+    if resource_key not in RESOURCES_MAP:
+        # match by prefix
+        resources = [k for k in RESOURCES_MAP.keys() if k.startswith(resource_key)]
+        if resources:
+            for key in resources:
+                download_dpr(key, out_dir)
+        else:
+            print('no resources found for specified key')
+        return
+    download_info = RESOURCES_MAP[resource_key]
+
+    s3_url = download_info['s3_url']
+
+    save_root_dir = None
+    if isinstance(s3_url, list):
+        for i, url in enumerate(s3_url):
+            save_root_dir = download_resource(url, download_info['original_ext'], download_info['compressed'],
+                                              '{}_{}'.format(resource_key, i), out_dir)
+    else:
+        save_root_dir = download_resource(s3_url, download_info['original_ext'], download_info['compressed'],
+                                          resource_key, out_dir)
+
+    license_files = download_info.get('license_files', None)
+    if not license_files:
+        return
+
+    download_file(license_files[0], save_root_dir, 'LICENSE')
+    download_file(license_files[1], save_root_dir, 'README')

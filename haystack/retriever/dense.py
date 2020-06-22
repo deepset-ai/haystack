@@ -2,7 +2,7 @@ import logging
 from typing import Type, List, Union, Tuple
 import torch
 import numpy as np
-
+from pathlib import Path
 
 from farm.infer import Inferencer
 
@@ -12,7 +12,7 @@ from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
 
 from haystack.retriever.dpr_utils import HFBertEncoder, BertTensorizer, BertTokenizer,\
-    Tensorizer, load_states_from_checkpoint
+    Tensorizer, load_states_from_checkpoint, download_dpr
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,13 @@ class DensePassageRetriever(BaseRetriever):
         self.document_store = document_store
         self.embedding_model = embedding_model
         self.batch_size = batch_size
+
+        #TODO Proper Download + Caching of model if not locally available
+        if embedding_model == "dpr-bert-base-nq":
+            if not Path("models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp").is_file():
+                download_dpr(resource_key="checkpoint.retriever.single.nq.bert-base-encoder", out_dir="models/dpr")
+            self.embedding_model = "models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp"
+
         if gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
@@ -165,9 +172,7 @@ class DensePassageRetriever(BaseRetriever):
             override_params = [(param, state[param]) for param in params_to_save if param in state]
             for param, value in override_params:
                 if hasattr(self, param):
-                    logger.warning('Overriding args parameter value from checkpoint state. Param = %s, value = %s',
-                                   param,
-                                   value)
+                    logger.warning(f'Overriding supplied parameter {param}={self.__getattribute__(param)} with {value} from model checkpoint.')
                 setattr(self, param, value)
 
 

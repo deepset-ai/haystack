@@ -1,13 +1,10 @@
-
-from haystack import Finder
-
+from haystack.retriever.dpr_utils import download_dpr
 
 def test_dpr_passage_encoder():
     from haystack.retriever.dense import DensePassageRetriever
 
     passage = ["Let's encode this one"]
-
-    retriever = DensePassageRetriever(document_store=None, embedding_model='../models/dpr-nq-bert/bert-base-encoder.cp', gpu=True)
+    retriever = DensePassageRetriever(document_store=None, embedding_model="dpr-bert-base-nq", gpu=True)
     emb = retriever.create_embedding_passage(passage)[0]
     assert(emb.shape[0] == 768)
     assert(emb[0]-0.52872 < 0.001)
@@ -26,7 +23,7 @@ def test_dpr_inmemory_retrieval():
         {'name': '2', 'text': """Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with"""},
     ]
 
-    retriever = DensePassageRetriever(document_store=document_store, embedding_model='../models/dpr-nq-bert/bert-base-encoder.cp', gpu=True)
+    retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq", gpu=True)
 
     embedded = []
     for doc in documents:
