@@ -1,13 +1,12 @@
 from haystack import Finder
 
 
-def test_faq_retriever_in_memory_store(monkeypatch):
-    monkeypatch.setenv("EMBEDDING_FIELD_NAME", "embedding")
+def test_faq_retriever_in_memory_store():
 
     from haystack.database.memory import InMemoryDocumentStore
     from haystack.retriever.dense import EmbeddingRetriever
 
-    document_store = InMemoryDocumentStore()
+    document_store = InMemoryDocumentStore(embedding_field="embedding")
 
     documents = [
         {'name': 'How to test this library?', 'text': 'By running tox in the command line!', 'meta': {'question': 'How to test this library?'}},

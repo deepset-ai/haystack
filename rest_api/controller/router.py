@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
-from haystack.api.controller import search, feedback, file_upload
+from rest_api.controller import file_upload
+from rest_api.controller import search, feedback
 
 router = APIRouter()
 

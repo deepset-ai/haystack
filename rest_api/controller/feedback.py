@@ -6,7 +6,7 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from haystack.api.config import (
+from rest_api.config import (
     DB_HOST,
     DB_PORT,
     DB_USER,
@@ -19,8 +19,8 @@ from haystack.api.config import (
     EMBEDDING_FIELD_NAME,
     EXCLUDE_META_DATA_FIELDS,
 )
-from haystack.api.config import DB_INDEX_FEEDBACK
-from haystack.api.elasticsearch_client import elasticsearch_client
+from rest_api.config import DB_INDEX_FEEDBACK
+from rest_api.elasticsearch_client import elasticsearch_client
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
 router = APIRouter()
