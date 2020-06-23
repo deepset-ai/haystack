@@ -220,7 +220,7 @@ class FARMReader(BaseReader):
         number_of_docs = []
         correct_doc_ids = []
         correct_answers = []
-        # build input dicts for inference_from_dicts 
+        # build input dicts for inference_from_dicts
         for question_with_docs in question_doc_list:
             documents = question_with_docs["docs"]
             question = question_with_docs["question"]["_source"]["question"]
@@ -310,7 +310,7 @@ class FARMReader(BaseReader):
 
         # get answers from QA model
         predictions = self.inferencer.inference_from_dicts(
-            dicts=input_dicts, return_json=True, multiprocessing_chunksize=1
+            dicts=input_dicts, return_json=False, multiprocessing_chunksize=1
         )
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
 
@@ -491,7 +491,7 @@ class FARMReader(BaseReader):
             no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
             for a in pred["predictions"][0]["answers"]:
                 # skip "no answers" here
-                if a ["answer"]:
+                if a["answer"] != "is_impossible":
                     cur = {
                         "answer": a["answer"],
                         "score": a["score"],
