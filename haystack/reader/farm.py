@@ -255,7 +255,9 @@ class FARMReader(BaseReader):
             no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
             for a in pred["predictions"][0]["answers"]:
                 # skip "no answers" here
-                if a["answer"]:
+                if self._check_no_answer(d=a):
+                    pass
+                else:
                     cur = {"answer": a["answer"],
                            "score": a["score"],
                            # just a pseudo prob for now
@@ -404,6 +406,19 @@ class FARMReader(BaseReader):
             "top_n_recall": eval_results[0]["top_n_recall"]
         }
         return results
+
+
+    @staticmethod
+    def _check_no_answer(d: dict):
+        # check for correct value in "answer"
+        if d["offset_answer_start"] == -1 and d["offset_answer_end"] == -1:
+            assert d["answer"] == "is_impossible"
+
+        # check weather the model thinks there is no answer
+        if d["answer"] == "is_impossible":
+            return True
+        else:
+            return False
 
     @staticmethod
     def _calc_no_answer(no_ans_gaps: List[float], best_score_answer: float):
