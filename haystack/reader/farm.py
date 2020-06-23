@@ -255,7 +255,9 @@ class FARMReader(BaseReader):
             no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
             for a in pred["predictions"][0]["answers"]:
                 # skip "no answers" here
-                if a["answer"]:
+                if a["answer"] == "is_impossible":
+                    pass
+                else:
                     cur = {"answer": a["answer"],
                            "score": a["score"],
                            # just a pseudo prob for now
