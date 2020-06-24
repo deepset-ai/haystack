@@ -411,8 +411,8 @@ class FARMReader(BaseReader):
     @staticmethod
     def _check_no_answer(d: dict):
         # check for correct value in "answer"
-        if d["offset_answer_start"] == -1 and d["offset_answer_end"] == -1:
-            assert d["answer"] == "is_impossible"
+        if d["offset_answer_start"] == 0 and d["offset_answer_end"] == 0:
+            assert d["answer"] == "is_impossible", f"Check for no answer is not working"
 
         # check weather the model thinks there is no answer
         if d["answer"] == "is_impossible":
