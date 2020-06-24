@@ -151,6 +151,27 @@ def load_states_from_checkpoint(model_file: str) -> CheckpointState:
     return CheckpointState(**state_dict)
 
 
+def move_to_device(sample, device):
+    if len(sample) == 0:
+        return {}
+
+    def _move_to_device(maybe_tensor, device):
+        if torch.is_tensor(maybe_tensor):
+            return maybe_tensor.to(device)
+        elif isinstance(maybe_tensor, dict):
+            return {
+                key: _move_to_device(value, device)
+                for key, value in maybe_tensor.items()
+            }
+        elif isinstance(maybe_tensor, list):
+            return [_move_to_device(x, device) for x in maybe_tensor]
+        elif isinstance(maybe_tensor, tuple):
+            return [_move_to_device(x, device) for x in maybe_tensor]
+        else:
+            return maybe_tensor
+
+    return _move_to_device(sample, device)
+
 # DOWNLOADS
 NQ_LICENSE_FILES = [
     'https://dl.fbaipublicfiles.com/dpr/nq_license/LICENSE',

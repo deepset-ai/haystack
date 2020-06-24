@@ -128,9 +128,9 @@ class DensePassageRetriever(BaseRetriever):
             batch_token_tensors = [tensorizer.text_to_tensor(ctx) for ctx in
                                    texts[batch_start:batch_start + batch_size]]
 
-            ctx_ids_batch = torch.stack(batch_token_tensors, dim=0).cuda()
-            ctx_seg_batch = torch.zeros_like(ctx_ids_batch).cuda()
-            ctx_attn_mask = tensorizer.get_attn_mask(ctx_ids_batch).cuda()
+            ctx_ids_batch = torch.stack(batch_token_tensors, dim=0).to(self.device)
+            ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
+            ctx_attn_mask = tensorizer.get_attn_mask(ctx_ids_batch).to(self.device)
             with torch.no_grad():
                 _, out, _ = model(ctx_ids_batch, ctx_seg_batch, ctx_attn_mask)
             out = out.cpu()
