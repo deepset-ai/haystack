@@ -80,10 +80,16 @@ class DensePassageRetriever(BaseRetriever):
         self.fp16_opt_level = amp_opt_level
         self.do_lower_case = do_lower_case
         self.encoder_model_type = encoder_model_type
+        # self.pretrained_model_cfg = ""
 
         # Load checkpoint (incl. additional model params)
         saved_state = load_states_from_checkpoint(self.embedding_model)
-        self._set_encoder_params_from_state(saved_state.encoder_params)
+        self.do_lower_case = saved_state.encoder_params["do_lower_case"]
+        self.pretrained_model_cfg = saved_state.encoder_params["pretrained_model_cfg"]
+        self.encoder_model_type = saved_state.encoder_params["encoder_model_type"]
+        self.pretrained_file = saved_state.encoder_params["pretrained_file"]
+        self.projection_dim = saved_state.encoder_params["projection_dim"]
+        self.sequence_length = saved_state.encoder_params["sequence_length"]
 
         # Init & Load Encoders
         self.query_encoder = HFBertEncoder.init_encoder(self.pretrained_model_cfg,
@@ -101,16 +107,16 @@ class DensePassageRetriever(BaseRetriever):
         self.tensorizer = BertTensorizer(tokenizer, self.sequence_length)
 
     def retrieve(self, query: str, candidate_doc_ids: List[str] = None, top_k: int = 10) -> List[Document]:  # type: ignore
-        query_emb = self.create_embedding_query(texts=[query])
-        documents = self.document_store.query_by_embedding(query_emb[0], top_k, candidate_doc_ids)
+        query_emb: List[float] = self.create_embedding_query(texts=[query])[0].tolist()
+        documents = self.document_store.query_by_embedding(query_emb=query_emb, top_k=top_k, candidate_doc_ids=candidate_doc_ids) # type: ignore
         return documents
 
-    def create_embedding_query(self, texts: List[str]) -> List[Tuple[object, np.array]]:
+    def create_embedding_query(self, texts: List[str]) -> List[np.array]:
         result = self._generate_batch_predictions(texts=texts, model=self.query_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
 
-    def create_embedding_passage(self, texts: List[str]) -> List[Tuple[object, np.array]]:
+    def create_embedding_passage(self, texts: List[str]) -> List[np.array]:
         result = self._generate_batch_predictions(texts=texts, model=self.passage_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
@@ -171,20 +177,6 @@ class DensePassageRetriever(BaseRetriever):
                      key.startswith(prefix)}
         model_to_load.load_state_dict(ctx_state)
         return encoder
-
-    def _set_encoder_params_from_state(self, state):
-        if state:
-            params_to_save = ['do_lower_case', 'pretrained_model_cfg', 'encoder_model_type',
-            'pretrained_file',
-            'projection_dim', 'sequence_length']
-
-            override_params = [(param, state[param]) for param in params_to_save if param in state]
-            for param, value in override_params:
-                if hasattr(self, param):
-                    logger.warning(f'Overriding supplied parameter {param}={self.__getattribute__(param)} with {value} from model checkpoint.')
-                setattr(self, param, value)
-
-
 
 
 class EmbeddingRetriever(BaseRetriever):

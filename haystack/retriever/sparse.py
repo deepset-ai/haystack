@@ -107,6 +107,7 @@ class ElasticsearchRetriever(BaseRetriever):
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
 Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text", "meta"])
 
+
 class TfidfRetriever(BaseRetriever):
     """
     Read all documents from a SQL backend.

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-# Building upon the code (https://github.com/facebookresearch/DPR) published by Facebook research under Creative Commons License: https://github.com/facebookresearch/DPR/blob/master/LICENSE
-# It is based on the following research publication:
+# Utilility functions and classes required for DensePassageRetriever
+#
+# Building upon the code (https://github.com/facebookresearch/DPR) published by Facebook research under Creative Commons License (https://github.com/facebookresearch/DPR/blob/master/LICENSE)
+# It is based on the following research work:
 # Karpukhin, Vladimir, et al. "Dense Passage Retrieval for Open-Domain Question Answering." arXiv preprint arXiv:2004.04906 (2020).
 # (https://arxiv.org/abs/2004.04906)
 
 import logging
-from typing import Tuple
+from typing import Tuple, Union, List
 
 import gzip
 import os
@@ -373,7 +375,7 @@ def download_file(s3_url: str, out_dir: str, file_name: str):
     print('Saved to ', local_file)
 
 
-def download_dpr(resource_key: str, out_dir: str = None):
+def download_dpr(resource_key: str, out_dir: str):
     if resource_key not in RESOURCES_MAP:
         # match by prefix
         resources = [k for k in RESOURCES_MAP.keys() if k.startswith(resource_key)]
@@ -385,20 +387,22 @@ def download_dpr(resource_key: str, out_dir: str = None):
         return
     download_info = RESOURCES_MAP[resource_key]
 
-    s3_url = download_info['s3_url']
+    s3_url: Union[str, List[str]] = download_info['s3_url'] # type: ignore
+    original_ext: str = download_info['original_ext'] # type: ignore
+    compressed: bool = download_info['compressed'] # type: ignore
 
     save_root_dir = None
     if isinstance(s3_url, list):
         for i, url in enumerate(s3_url):
-            save_root_dir = download_resource(url, download_info['original_ext'], download_info['compressed'],
+            save_root_dir = download_resource(url, original_ext, compressed,
                                               '{}_{}'.format(resource_key, i), out_dir)
     else:
-        save_root_dir = download_resource(s3_url, download_info['original_ext'], download_info['compressed'],
+        save_root_dir = download_resource(s3_url, original_ext, compressed,
                                           resource_key, out_dir)
 
     license_files = download_info.get('license_files', None)
     if not license_files:
         return
 
-    download_file(license_files[0], save_root_dir, 'LICENSE')
-    download_file(license_files[1], save_root_dir, 'README')
+    download_file(license_files[0], save_root_dir, 'LICENSE')  # type: ignore
+    download_file(license_files[1], save_root_dir, 'README') # type: ignore
