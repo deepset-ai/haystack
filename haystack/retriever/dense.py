@@ -80,7 +80,6 @@ class DensePassageRetriever(BaseRetriever):
         self.fp16_opt_level = amp_opt_level
         self.do_lower_case = do_lower_case
         self.encoder_model_type = encoder_model_type
-        # self.pretrained_model_cfg = ""
 
         # Load checkpoint (incl. additional model params)
         saved_state = load_states_from_checkpoint(self.embedding_model)
