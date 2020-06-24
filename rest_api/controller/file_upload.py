@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 import uuid
 from pathlib import Path
@@ -36,6 +37,8 @@ document_store = ElasticsearchDocumentStore(
     excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
     faq_question_field=FAQ_QUESTION_FIELD_NAME,
 )
+
+os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)  # create directory for uploading files
 
 
 @router.post("/file-upload")
