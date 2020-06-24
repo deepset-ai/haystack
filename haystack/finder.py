@@ -358,3 +358,39 @@ class Finder:
         }
 
         return results
+
+    @staticmethod
+    def print_eval_results(finder_eval_results: Dict):
+        print("\n___Retriever Metrics in Finder___")
+        print(f"Retriever Recall            : {finder_eval_results['retriever_recall']:.3f}")
+        print(f"Retriever Mean Avg Precision: {finder_eval_results['retriever_map']:.3f}")
+
+        # Reader is only evaluated with those questions, where the correct document is among the retrieved ones
+        print("\n___Reader Metrics in Finder___")
+        print("Top-k accuracy")
+        print(f"Reader Top-1 accuracy             : {finder_eval_results['reader_top1_accuracy']:.3f}")
+        print(f"Reader Top-1 accuracy (has answer): {finder_eval_results['reader_top1_accuracy_has_answer']:.3f}")
+        print(f"Reader Top-k accuracy             : {finder_eval_results['reader_top_k_accuracy']:.3f}")
+        print(f"Reader Top-k accuracy (has answer): {finder_eval_results['reader_topk_accuracy_has_answer']:.3f}")
+        print("Exact Match")
+        print(f"Reader Top-1 EM                   : {finder_eval_results['reader_top1_em']:.3f}")
+        print(f"Reader Top-1 EM (has answer)      : {finder_eval_results['reader_top1_em_has_answer']:.3f}")
+        print(f"Reader Top-k EM                   : {finder_eval_results['reader_topk_em']:.3f}")
+        print(f"Reader Top-k EM (has answer)      : {finder_eval_results['reader_topk_em_has_answer']:.3f}")
+        print("F1 score")
+        print(f"Reader Top-1 F1                   : {finder_eval_results['reader_top1_f1']:.3f}")
+        print(f"Reader Top-1 F1 (has answer)      : {finder_eval_results['reader_top1_f1_has_answer']:.3f}")
+        print(f"Reader Top-k F1                   : {finder_eval_results['reader_topk_f1']:.3f}")
+        print(f"Reader Top-k F1 (has answer)      : {finder_eval_results['reader_topk_f1_has_answer']:.3f}")
+        print("No Answer")
+        print(f"Reader Top-1 no-answer accuracy   : {finder_eval_results['reader_top1_no_answer_accuracy']:.3f}")
+        print(f"Reader Top-k no-answer accuracy   : {finder_eval_results['reader_topk_no_answer_accuracy']:.3f}")
+
+        # Time measurements
+        print("\n___Time Measurements___")
+        print(f"Total retrieve time           : {finder_eval_results['total_retrieve_time']:.3f}")
+        print(f"Avg retrieve time per question: {finder_eval_results['avg_retrieve_time']:.3f}")
+        print(f"Total reader timer            : {finder_eval_results['total_reader_time']:.3f}")
+        print(f"Avg read time per question    : {finder_eval_results['avg_reader_time']:.3f}")
+        print(f"Total Finder time             : {finder_eval_results['total_finder_time']:.3f}")
+
