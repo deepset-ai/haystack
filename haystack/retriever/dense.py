@@ -21,8 +21,8 @@ class DensePassageRetriever(BaseRetriever):
     """
         Retriever that uses a bi-encoder (one transformer for query, one transformer for passage).
         See the original paper for more details:
-        Karpukhin, Vladimir, et al. "Dense Passage Retrieval for Open-Domain Question Answering." arXiv preprint arXiv:2004.04906 (2020).
-        (See https://arxiv.org/abs/2004.04906).
+        Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Question Answering."
+        (https://arxiv.org/abs/2004.04906).
     """
 
     def __init__(self,
@@ -31,9 +31,7 @@ class DensePassageRetriever(BaseRetriever):
                  gpu: bool = True,
                  batch_size: int = 16,
                  do_lower_case: bool = False,
-                 encoder_model_type: str = "hf_bert",
-                 use_amp: bool = False,
-                 amp_opt_level: str = 'O1'
+                 use_amp: str = None,
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -56,9 +54,11 @@ class DensePassageRetriever(BaseRetriever):
         :param do_lower_case: Whether to lower case the text input in the tokenizer
         :param encoder_model_type: 
         :param use_amp: Whether to use Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
-        :param amp_opt_level: AMP optimization level. Common options:
-                              - 'O0'-> Regular FP32
-                              - 'O1' -> Mixed Precision (recommended, if optimzation wanted)
+        :param use_amp: Optional usage of Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
+                        Choose `None` or AMP optimization level:
+                              - None -> Not using amp at all
+                              - 'O0' -> Regular FP32
+                              - 'O1' -> Mixed Precision (recommended, if optimization wanted)
         """
 
         self.document_store = document_store
@@ -76,10 +76,8 @@ class DensePassageRetriever(BaseRetriever):
         else:
             self.device = torch.device("cpu")
 
-        self.fp16 = use_amp
-        self.fp16_opt_level = amp_opt_level
+        self.use_amp = use_amp
         self.do_lower_case = do_lower_case
-        self.encoder_model_type = encoder_model_type
 
         # Load checkpoint (incl. additional model params)
         saved_state = load_states_from_checkpoint(self.embedding_model)
@@ -154,7 +152,7 @@ class DensePassageRetriever(BaseRetriever):
 
     def _prepare_model(self, encoder, saved_state, prefix):
         encoder.to(self.device)
-        if self.fp16:
+        if self.use_amp:
             try:
                 import apex
                 from apex import amp
@@ -162,7 +160,7 @@ class DensePassageRetriever(BaseRetriever):
             except ImportError:
                 raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
 
-            encoder, _ = amp.initialize(encoder, None, opt_level=self.fp16_opt_level)
+            encoder, _ = amp.initialize(encoder, None, opt_level=self.use_amp)
 
         encoder.eval()
 
