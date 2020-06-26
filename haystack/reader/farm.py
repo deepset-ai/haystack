@@ -250,28 +250,29 @@ class FARMReader(BaseReader):
         answers = []
         no_ans_gaps = []
         best_score_answer = 0
-        for pred in predictions:
+        # TODO once FARM returns doc ids again we can revert to using them inside the preds and remove
+        for pred, inp in zip(predictions, input_dicts):
             answers_per_document = []
             no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
-            for a in pred["predictions"][0]["answers"]:
+            for ans in pred["predictions"][0]["answers"]:
                 # skip "no answers" here
-                if self._check_no_answer(d=a):
+                if self._check_no_answer(ans):
                     pass
                 else:
-                    cur = {"answer": a["answer"],
-                           "score": a["score"],
+                    cur = {"answer": ans["answer"],
+                           "score": ans["score"],
                            # just a pseudo prob for now
-                           "probability": float(expit(np.asarray([a["score"]]) / 8)),  # type: ignore
-                           "context": a["context"],
-                           "offset_start": a["offset_answer_start"] - a["offset_context_start"],
-                           "offset_end": a["offset_answer_end"] - a["offset_context_start"],
-                           "offset_start_in_doc": a["offset_answer_start"],
-                           "offset_end_in_doc": a["offset_answer_end"],
-                           "document_id": a["document_id"]}
+                           "probability": float(expit(np.asarray([ans["score"]]) / 8)),  # type: ignore
+                           "context": ans["context"],
+                           "offset_start": ans["offset_answer_start"] - ans["offset_context_start"],
+                           "offset_end": ans["offset_answer_end"] - ans["offset_context_start"],
+                           "offset_start_in_doc": ans["offset_answer_start"],
+                           "offset_end_in_doc": ans["offset_answer_end"],
+                           "document_id": inp["document_id"]} #TODO revert to ans["docid"] once it is populated
                     answers_per_document.append(cur)
 
-                    if a["score"] > best_score_answer:
-                        best_score_answer = a["score"]
+                    if ans["score"] > best_score_answer:
+                        best_score_answer = ans["score"]
             # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance.
             answers += answers_per_document[:self.top_k_per_candidate]
 
