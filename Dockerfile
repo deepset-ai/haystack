@@ -9,6 +9,7 @@ RUN pip install -e .
 
 # copy code
 COPY haystack /home/user/haystack
+COPY rest_api /home/user/rest_api
 
 # copy saved FARM models
 COPY models /home/user/models
@@ -19,4 +20,4 @@ COPY models /home/user/models
 EXPOSE 8000
 
 # cmd for running the API
-CMD ["gunicorn", "haystack.api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "2"]
+CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "2"]
