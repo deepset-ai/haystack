@@ -23,7 +23,7 @@ class BaseDocumentStore(ABC):
     """
     Base class for implementing Document Stores.
     """
-    index = None
+    index: Optional[str]
 
     @abstractmethod
     def write_documents(self, documents: List[dict]):
