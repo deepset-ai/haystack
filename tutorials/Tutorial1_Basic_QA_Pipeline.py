@@ -22,6 +22,7 @@ from haystack.reader.transformers import TransformersReader
 from haystack.utils import print_answers
 from haystack.retriever.sparse import ElasticsearchRetriever
 
+logger = logging.getLogger(__name__)
 
 LAUNCH_ELASTICSEARCH = True
 
@@ -75,7 +76,11 @@ dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, spl
 # It must take a str as input, and return a str.
 
 # Now, let's write the docs to our DB.
-document_store.write_documents(dicts)
+if LAUNCH_ELASTICSEARCH:
+    document_store.write_documents(dicts)
+else:
+    logger.warning("Since we already have a running ES instance we should not index the same documents again. \n"
+                   "If you still want to do this call: document_store.write_documents(dicts) manually ")
 
 
 # ## Initalize Retriever, Reader,  & Finder
@@ -137,7 +142,7 @@ finder = Finder(reader, retriever)
 # ## Voilà! Ask a question!
 # You can configure how many candidates the reader and retriever shall return
 # The higher top_k_retriever, the better (but also the slower) your answers.
-prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
+prediction = finder.get_answers(question="Who is the father of Sansa Stark?", top_k_retriever=10, top_k_reader=5)
 
 
 # prediction = finder.get_answers(question="Who created the Dothraki vocabulary?", top_k_reader=5)
