@@ -238,9 +238,12 @@ class EmbeddingRetriever(BaseRetriever):
         else:
             raise NotImplementedError
 
-    def retrieve(self, query: str, candidate_doc_ids: List[str] = None, top_k: int = 10) -> List[Document]:  # type: ignore
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        if index is None:
+            index = self.document_store.index
         query_emb = self.embed(texts=[query])
-        documents = self.document_store.query_by_embedding(query_emb[0], top_k, candidate_doc_ids)
+        documents = self.document_store.query_by_embedding(query_emb=query_emb[0], filters=filters,
+                                                           top_k=top_k, index=index)
         return documents
 
     def embed(self, texts: Union[List[str], str]) -> List[List[float]]:
