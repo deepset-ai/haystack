@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod, ABC
 from typing import Any, Optional, Dict, List
 
 from pydantic import BaseModel, Field
@@ -19,7 +19,7 @@ class Document(BaseModel):
     tags: Optional[Dict[str, Any]] = Field(None, description="Tags that allow filtering of the data")
 
 
-class BaseDocumentStore(ABCMeta):
+class BaseDocumentStore(ABC):
     """
     Base class for implementing Document Stores.
     """
