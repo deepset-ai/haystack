@@ -4,7 +4,7 @@ from haystack import Finder
 def test_faq_retriever_in_memory_store():
 
     from haystack.database.memory import InMemoryDocumentStore
-    from haystack.retriever.elasticsearch import EmbeddingRetriever
+    from haystack.retriever.dense import EmbeddingRetriever
 
     document_store = InMemoryDocumentStore(embedding_field="embedding")
 
@@ -26,7 +26,7 @@ def test_faq_retriever_in_memory_store():
 
     embedded = []
     for doc in documents:
-        doc['embedding'] = retriever.create_embedding([doc['meta']['question']])[0]
+        doc['embedding'] = retriever.embed([doc['meta']['question']])[0]
         embedded.append(doc)
 
     document_store.write_documents(embedded)

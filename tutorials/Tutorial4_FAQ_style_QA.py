@@ -1,7 +1,7 @@
 from haystack import Finder
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
-from haystack.retriever.elasticsearch import EmbeddingRetriever
+from haystack.retriever.dense import EmbeddingRetriever
 from haystack.utils import print_answers
 import pandas as pd
 import requests
@@ -67,7 +67,7 @@ print(df.head())
 
 # Get embeddings for our questions from the FAQs
 questions = list(df["question"].values)
-df["question_emb"] = retriever.create_embedding(texts=questions)
+df["question_emb"] = retriever.embed_queries(texts=questions)
 
 # Convert Dataframe to list of dicts and index them in our DocumentStore
 docs_to_index = df.to_dict(orient="records")

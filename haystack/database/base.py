@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Any, Optional, Dict, List
 
 from pydantic import BaseModel, Field
@@ -19,10 +19,11 @@ class Document(BaseModel):
     tags: Optional[Dict[str, Any]] = Field(None, description="Tags that allow filtering of the data")
 
 
-class BaseDocumentStore:
+class BaseDocumentStore(ABC):
     """
     Base class for implementing Document Stores.
     """
+    index: Optional[str]
 
     @abstractmethod
     def write_documents(self, documents: List[dict]):
@@ -45,5 +46,9 @@ class BaseDocumentStore:
         pass
 
     @abstractmethod
-    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: Optional[List[str]] = None) -> List[Document]:
+    def query_by_embedding(self,
+                           query_emb: List[float],
+                           filters: Optional[dict] = None,
+                           top_k: int = 10,
+                           index: Optional[str] = None) -> List[Document]:
         pass

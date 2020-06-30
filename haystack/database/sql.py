@@ -109,3 +109,13 @@ class SQLDocumentStore(BaseDocumentStore):
             tags=row.tags
         )
         return document
+
+    def query_by_embedding(self,
+                           query_emb: List[float],
+                           filters: Optional[dict] = None,
+                           top_k: int = 10,
+                           index: Optional[str] = None) -> List[DocumentSchema]:
+
+        raise NotImplementedError("SQLDocumentStore is currently not supporting embedding queries. "
+                                  "Change the query type (e.g. by choosing a different retriever) "
+                                  "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")

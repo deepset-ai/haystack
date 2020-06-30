@@ -1,6 +1,6 @@
 from haystack import Finder
 from haystack.reader.transformers import TransformersReader
-from haystack.retriever.tfidf import TfidfRetriever
+from haystack.retriever.sparse import TfidfRetriever
 
 
 def test_finder_get_answers_with_in_memory_store():
