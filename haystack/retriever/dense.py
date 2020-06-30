@@ -81,6 +81,7 @@ class DensePassageRetriever(BaseRetriever):
 
         # Load checkpoint (incl. additional model params)
         saved_state = load_states_from_checkpoint(self.embedding_model)
+        logger.info('Loaded encoder params:  %s', saved_state.encoder_params)
         self.do_lower_case = saved_state.encoder_params["do_lower_case"]
         self.pretrained_model_cfg = saved_state.encoder_params["pretrained_model_cfg"]
         self.encoder_model_type = saved_state.encoder_params["encoder_model_type"]
@@ -103,17 +104,31 @@ class DensePassageRetriever(BaseRetriever):
         tokenizer = BertTokenizer.from_pretrained(self.pretrained_model_cfg, do_lower_case=self.do_lower_case)
         self.tensorizer = BertTensorizer(tokenizer, self.sequence_length)
 
-    def retrieve(self, query: str, candidate_doc_ids: List[str] = None, top_k: int = 10) -> List[Document]:  # type: ignore
-        query_emb: List[float] = self.create_embedding_query(texts=[query])[0].tolist()
-        documents = self.document_store.query_by_embedding(query_emb=query_emb, top_k=top_k, candidate_doc_ids=candidate_doc_ids) # type: ignore
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        if index is None:
+            index = self.document_store.index
+        query_emb: List[float] = self.embed_queries(texts=[query])[0].tolist()
+        documents = self.document_store.query_by_embedding(query_emb=query_emb, top_k=top_k, filters=filters, index=index)
         return documents
 
-    def create_embedding_query(self, texts: List[str]) -> List[np.array]:
+    def embed_queries(self, texts: List[str]) -> List[np.array]:
+        """
+        Create embeddings for a list of queries using the query encoder
+
+        :param texts: queries to embed
+        :return: embeddings, one per input queries
+        """
         result = self._generate_batch_predictions(texts=texts, model=self.query_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
 
-    def create_embedding_passage(self, texts: List[str]) -> List[np.array]:
+    def embed_passages(self, texts: List[str]) -> List[np.array]:
+        """
+        Create embeddings for a list of passages using the passage encoder
+
+        :param texts: passage to embed
+        :return: embeddings, one per input passage
+        """
         result = self._generate_batch_predictions(texts=texts, model=self.passage_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
@@ -224,11 +239,11 @@ class EmbeddingRetriever(BaseRetriever):
             raise NotImplementedError
 
     def retrieve(self, query: str, candidate_doc_ids: List[str] = None, top_k: int = 10) -> List[Document]:  # type: ignore
-        query_emb = self.create_embedding(texts=[query])
+        query_emb = self.embed(texts=[query])
         documents = self.document_store.query_by_embedding(query_emb[0], top_k, candidate_doc_ids)
         return documents
 
-    def create_embedding(self, texts: Union[List[str], str]) -> List[List[float]]:
+    def embed(self, texts: Union[List[str], str]) -> List[List[float]]:
         """
         Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
         :param texts: texts to embed
@@ -249,3 +264,22 @@ class EmbeddingRetriever(BaseRetriever):
             res = self.embedding_model.encode(texts)  # type: ignore
             emb = [list(r.astype('float64')) for r in res] #cast from numpy
         return emb
+
+    def embed_queries(self, texts: List[str]) -> List[np.array]:
+        """
+        Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
+
+        :param texts: queries to embed
+        :return: embeddings, one per input queries
+        """
+        return self.embed(texts)
+
+    def embed_passages(self, texts: List[str]) -> List[np.array]:
+        """
+        Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
+
+        :param texts: passage to embed
+        :return: embeddings, one per input passage
+        """
+
+        return self.embed(texts)

@@ -23,7 +23,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         name_field: str = "name",
         external_source_id_field: str = "external_source_id",
         embedding_field: Optional[str] = None,
-        embedding_dim: Optional[str] = None,
+        embedding_dim: Optional[int] = None,
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
         faq_question_field: Optional[str] = None,
@@ -127,7 +127,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_all_documents(self) -> List[Document]:
         result = scan(self.client, query={"query": {"match_all": {}}}, index=self.index)
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
-
         return documents
 
     def query(
@@ -182,7 +181,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
         return documents
 
-    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: Optional[List[str]] = None) -> List[Document]:
+    def query_by_embedding(self,
+                           query_emb: List[float],
+                           filters: Optional[dict] = None,
+                           top_k: int = 10,
+                           index: Optional[str] = None) -> List[Document]:
+        if index is None:
+            index = self.index
+
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
@@ -202,18 +208,21 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 }
             }  # type: Dict[str,Any]
 
-            if candidate_doc_ids:
-                body["query"]["script_score"]["query"] = {
-                    "bool": {
-                        "should": [{"match_all": {}}],
-                        "filter": [{"terms": {"_id": candidate_doc_ids}}]
-                }}
+            if filters:
+                filter_clause = []
+                for key, values in filters.items():
+                    filter_clause.append(
+                        {
+                            "terms": {key: values}
+                        }
+                    )
+                body["query"]["bool"]["filter"] = filter_clause
 
             if self.excluded_meta_data:
                 body["_source"] = {"excludes": self.excluded_meta_data}
 
             logger.debug(f"Retriever query: {body}")
-            result = self.client.search(index=self.index, body=body)["hits"]["hits"]
+            result = self.client.search(index=index, body=body)["hits"]["hits"]
 
             documents = [self._convert_es_hit_to_document(hit, score_adjustment=-1) for hit in result]
             return documents
@@ -232,6 +241,33 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             question=hit["_source"].get(self.faq_question_field)
         )
         return document
+
+    def update_embeddings(self, retriever):
+        """
+        Updates the embeddings in the the document store using the encoding model specified in the retriever.
+        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+
+        :param retriever: Retriever
+        :return: None
+        """
+
+        docs = self.get_all_documents()
+        passages = [d.text for d in docs]
+        logger.info(f"Updating embeddings for {len(passages)} docs ...")
+        embeddings = retriever.embed_passages(passages)
+
+        assert len(docs) == len(embeddings)
+
+        doc_updates = []
+        for doc, emb in zip(docs, embeddings):
+            update = {"_op_type": "update",
+                      "_index": self.index,
+                      "_id": doc.id,
+                      "doc": {self.embedding_field: emb.tolist()},
+                      }
+            doc_updates.append(update)
+
+        bulk(self.client, doc_updates, request_timeout=300)
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "feedback"):
         """

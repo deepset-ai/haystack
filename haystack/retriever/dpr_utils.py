@@ -58,7 +58,7 @@ class HFBertEncoder(BertModel):
             hidden_states = None
             sequence_output, pooled_output = super().forward(input_ids=input_ids, token_type_ids=token_type_ids,
                                                              attention_mask=attention_mask)
-
+        # Using the CLS token, therefore only working for BERT-like model architectures having a CLS token at
         pooled_output = sequence_output[:, 0, :]
         if self.encode_proj:
             pooled_output = self.encode_proj(pooled_output)
@@ -147,9 +147,8 @@ class BertTensorizer(Tensorizer):
 
 # UTILS
 def load_states_from_checkpoint(model_file: str) -> CheckpointState:
-    logger.info('Reading saved model from %s', model_file)
+    logger.info('Loading saved model from %s', model_file)
     state_dict = torch.load(model_file, map_location=lambda s, l: default_restore_location(s, 'cpu'))
-    logger.info('model_state_dict keys %s', state_dict.keys())
     return CheckpointState(**state_dict)
 
 

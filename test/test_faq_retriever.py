@@ -26,7 +26,7 @@ def test_faq_retriever_in_memory_store():
 
     embedded = []
     for doc in documents:
-        doc['embedding'] = retriever.create_embedding([doc['meta']['question']])[0]
+        doc['embedding'] = retriever.embed([doc['meta']['question']])[0]
         embedded.append(doc)
 
     document_store.write_documents(embedded)
