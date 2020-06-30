@@ -16,6 +16,7 @@ COPY models /home/user/models
 
 # copy sqlite db if needed for testing
 #COPY qa.db /home/user/
+COPY data /home/user/data
 
 EXPOSE 8000
 

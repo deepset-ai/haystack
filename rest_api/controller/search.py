@@ -12,10 +12,11 @@ from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_
     EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
     DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
-    EMBEDDING_MODEL_FORMAT
+    EMBEDDING_MODEL_FORMAT, READER_USE_TRANSFORMERS, READER_TOKENIZER, GPU_NUMBER
 from rest_api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
+from haystack.reader.transformers import TransformersReader
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.elasticsearch import ElasticsearchRetriever, EmbeddingRetriever
 
@@ -52,17 +53,26 @@ else:
     retriever = ElasticsearchRetriever(document_store=document_store)
 
 if READER_MODEL_PATH:  # for extractive doc-qa
-    reader = FARMReader(
-        model_name_or_path=str(READER_MODEL_PATH),
-        batch_size=BATCHSIZE,
-        use_gpu=USE_GPU,
-        context_window_size=CONTEXT_WINDOW_SIZE,
-        top_k_per_candidate=TOP_K_PER_CANDIDATE,
-        no_ans_boost=NO_ANS_BOOST,
-        num_processes=MAX_PROCESSES,
-        max_seq_len=MAX_SEQ_LEN,
-        doc_stride=DOC_STRIDE,
-    )  # type: Optional[FARMReader]
+    if READER_USE_TRANSFORMERS:
+        use_gpu = -1 if not USE_GPU else GPU_NUMBER
+        reader = TransformersReader(
+            model=str(READER_MODEL_PATH),
+            use_gpu=use_gpu,
+            context_window_size=CONTEXT_WINDOW_SIZE,
+            tokenizer=str(READER_TOKENIZER)
+        )  # type: Optional[FARMReader]
+    else:
+        reader = FARMReader(
+            model_name_or_path=str(READER_MODEL_PATH),
+            batch_size=BATCHSIZE,
+            use_gpu=USE_GPU,
+            context_window_size=CONTEXT_WINDOW_SIZE,
+            top_k_per_candidate=TOP_K_PER_CANDIDATE,
+            no_ans_boost=NO_ANS_BOOST,
+            num_processes=MAX_PROCESSES,
+            max_seq_len=MAX_SEQ_LEN,
+            doc_stride=DOC_STRIDE,
+        )  # type: Optional[FARMReader]
 else:
     reader = None  # don't need one for pure FAQ matching
 

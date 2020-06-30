@@ -1,0 +1,28 @@
+version: '3'
+services:
+  haystack-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    environment:
+      # see rest_api/config.py for additional variables to configure.
+      - READER_MODEL_PATH=distilbert-base-uncased-distilled-squad
+      # - READER_MODEL_PATH=fmikaelian/camembert-base-fquad
+      # - READER_MODEL_PATH=deepset/roberta-base-squad2
+      # - READER_MODEL_PATH=/home/user/models/roberta-base-squad2
+      - READER_TOKENIZER=distilbert-base-uncased
+      - READER_USE_TRANSFORMERS=True
+      - DB_HOST=elasticsearch
+      - USE_GPU=False
+    restart: always
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: "elasticsearch:7.6.1"
+    ports:
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
