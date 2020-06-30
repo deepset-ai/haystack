@@ -26,7 +26,7 @@ class DensePassageRetriever(BaseRetriever):
     """
 
     def __init__(self,
-                 document_store: Type[BaseDocumentStore],
+                 document_store: BaseDocumentStore,
                  embedding_model: str,
                  gpu: bool = True,
                  batch_size: int = 16,
