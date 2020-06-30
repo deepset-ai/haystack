@@ -81,23 +81,11 @@ class Finder:
 
         results = {"question": question, "answers": []}  # type: Dict[str, Any]
 
-        # 1) Optional: reduce the search space via document tags
-        if filters:
-            logging.info(f"Apply filters: {filters}")
-            candidate_doc_ids = self.retriever.document_store.get_document_ids_by_tags(filters)  # type: ignore
-            logger.info(f"Got candidate IDs due to filters:  {candidate_doc_ids}")
 
-            if len(candidate_doc_ids) == 0:
-                # We didn't find any doc matching the filters
-                return results
+        # 1) Apply retriever to match similar questions via cosine similarity of embeddings
+        documents = self.retriever.retrieve(question, top_k=top_k_retriever, filters=filters)
 
-        else:
-            candidate_doc_ids = None  # type: ignore
-
-        # 2) Apply retriever to match similar questions via cosine similarity of embeddings
-        documents = self.retriever.retrieve(question, top_k=top_k_retriever, candidate_doc_ids=candidate_doc_ids)  # type: ignore
-
-        # 3) Format response
+        # 2) Format response
         for doc in documents:
             #TODO proper calibratation of pseudo probabilities
             cur_answer = {"question": doc.question, "answer": doc.text, "context": doc.text,  # type: ignore

@@ -5,7 +5,7 @@ def test_module_imports():
     from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
     from haystack.reader.farm import FARMReader
     from haystack.reader.transformers import TransformersReader
-    from haystack.retriever.tfidf import TfidfRetriever
+    from haystack.retriever.sparse import TfidfRetriever
     from haystack.utils import print_answers
 
     assert Finder is not None

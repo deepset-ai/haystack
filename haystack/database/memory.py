@@ -12,6 +12,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.docs = {}  # type: Dict[str, Any]
         self.doc_tags = {}  # type: Dict[str, Any]
         self.embedding_field = embedding_field
+        self.index = None
 
     def write_documents(self, documents: List[dict]):
         import hashlib
@@ -64,9 +65,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         return document
 
-    def query_by_embedding(self, query_emb: List[float], top_k: int = 10, candidate_doc_ids: Optional[List[str]] = None) -> List[Document]:
+    def query_by_embedding(self,
+                           query_emb: List[float],
+                           filters: Optional[dict] = None,
+                           top_k: int = 10,
+                           index: Optional[str] = None) -> List[Document]:
+
         from numpy import dot
         from numpy.linalg import norm
+
+        if filters:
+            raise NotImplementedError("Setting `filters` is currently not supported in "
+                                      "InMemoryDocumentStore.query_by_embedding(). Please remove filters or "
+                                      "use a different DocumentStore (e.g. ElasticsearchDocumentStore).")
 
         if self.embedding_field is None:
             return []
