@@ -245,8 +245,15 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 7. Indexing PDF files
 ---------------------
 
-Haystack has a customizable PDF text extraction pipeline with cleaning functions for header, footers, and tables. It supports complex document layouts with multi-column text.
+Haystack has basic converters to extract text from PDFs. While it's almost impossible to cover all types, layouts and special cases in PDFs, the implementation covers the most common formats and provides basic cleaning functions to remove header, footers, and tables. Multi-Column text layouts are also supported.
+The converters are easily extendable, so that you can customize them for your PDFs if needed. 
 
-8. Development
+Example::
+
+    from haystack.indexing.file_converters.pdf import PDFToTextConverter    
+    converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
+    pages = converter.extract_pages(file_path=file)
+
+8. Tests
 -------------------
 * Unit tests can be executed by running :code:`tox`.
