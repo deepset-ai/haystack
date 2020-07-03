@@ -251,6 +251,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :return: None
         """
 
+        if not self.embedding_field:
+            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         docs = self.get_all_documents()
         passages = [d.text for d in docs]
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
