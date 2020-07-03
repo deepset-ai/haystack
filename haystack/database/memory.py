@@ -91,6 +91,17 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return sorted(candidate_docs, key=lambda x: x.query_score, reverse=True)[0:top_k]
 
+    def update_embeddings(self, retriever):
+        """
+        Updates the embeddings in the the document store using the encoding model specified in the retriever.
+        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+
+        :param retriever: Retriever
+        :return: None
+        """
+        #TODO
+        raise NotImplementedError("update_embeddings() is not yet implemented for this DocumentStore")
+
     def get_document_ids_by_tags(self, tags: Union[List[Dict[str, Union[str, List[str]]]], Dict[str, Union[str, List[str]]]]) -> List[str]:
         """
         The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}

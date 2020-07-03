@@ -161,7 +161,7 @@ class DensePassageRetriever(BaseRetriever):
             ])
 
             if total % 10 == 0:
-                logger.info('Encoded passages %d', total)
+                logger.info(f'Embedded {total} / {n} texts')
 
         return results
 
