@@ -67,6 +67,7 @@ Resources
 - Tutorial 3  - Basic QA Pipeline without Elasticsearch: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/update-tutorials/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`_
 - Tutorial 4  - FAQ-style QA: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb>`__
 - Tutorial 5  - Evaluation of the whole QA-Pipeline: `Jupyter noteboook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb>`_
+- Tutorial 6  - Better Retrievers via "Dense Passage Retrieval": `Jupyter noteboook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb>`_
 
 
 Quick Start
