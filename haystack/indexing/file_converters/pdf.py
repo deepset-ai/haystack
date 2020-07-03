@@ -128,7 +128,7 @@ class PDFToTextConverter(BaseConverter):
             command = ["pdftotext", "-layout", str(file_path), "-"]
         else:
             command = ["pdftotext", str(file_path), "-"]
-        output = subprocess.run(command, capture_output=True, shell=False)
+        output = subprocess.run(command, shell=False)
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")
         pages = pages[:-1]  # the last page in the split is always empty.
