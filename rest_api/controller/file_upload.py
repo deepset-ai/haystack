@@ -49,7 +49,7 @@ def upload_file_to_document_store(
     remove_empty_lines: Optional[bool] = Form(REMOVE_EMPTY_LINES),
     remove_header_footer: Optional[bool] = Form(REMOVE_HEADER_FOOTER),
     valid_languages: Optional[List[str]] = Form(VALID_LANGUAGES),
-) -> None:
+):
     try:
         file_path = Path(FILE_UPLOAD_PATH) / f"{uuid.uuid4().hex}_{file.filename}"
         with file_path.open("wb") as buffer:
@@ -78,6 +78,6 @@ def upload_file_to_document_store(
 
         document = {TEXT_FIELD_NAME: "\n".join(pages), "name": file.filename}
         document_store.write_documents([document])
-
+        return "File upload was successful."
     finally:
         file.file.close()
