@@ -1,19 +1,36 @@
 version: '3'
 services:
   haystack-api:
-    image: "deepset/haystack-cpu:0.2.0"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: "deepset/haystack-cpu:latest"
     ports:
       - 8000:8000
+    volumes:
+      # Optional: mount your own models from disk into the container
+      - "./models:/home/user/models"
     environment:
-      # see haystack/api/config.py for additional variables to configure.
-      # load reader model from transformers' model hub.
-      - READER_MODEL_PATH=deepset/roberta-base-squad2
+      # See rest_api/config.py for more variables that you can configure here.
       - DB_HOST=elasticsearch
+      - USE_GPU=False
+      # Load a model from transformers' model hub or a local path into the FARMReader.
+      - READER_MODEL_PATH=deepset/roberta-base-squad2
+      # - READER_MODEL_PATH=home/user/models/roberta-base-squad2
+      # Alternative: If you want to use the TransformersReader (e.g. for loading a local model in transformers format):
+      # - READER_USE_TRANSFORMERS=True
+      # - READER_MODEL_PATH=/home/user/models/roberta-base-squad2
+      # - READER_TOKENIZER=/home/user/models/roberta-base-squad2
     restart: always
-
+    depends_on:
+      - elasticsearch
+    command: "/bin/bash -c 'sleep 15 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180'"
   elasticsearch:
-    # This demo image contains Game of Thrones Wikipedia articles indexed.
-    # For starting a new Elasticsearch instance, replace image with "elasticsearch:7.6.1".
-    image: "deepset/elasticsearch-game-of-thrones"
+    # This will start an empty elasticsearch instance (so you have to add your documents yourself)
+    image: "elasticsearch:7.6.1"
+    # If you want a demo image instead that is "ready-to-query" with some indexed Game of Thrones articles:
+    # image: "deepset/elasticsearch-game-of-thrones"
+    ports:
+      - 9200:9200
     environment:
       - discovery.type=single-node

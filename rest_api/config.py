@@ -6,6 +6,7 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "FastAPI")
 
 # Resources / Computation
 USE_GPU = os.getenv("USE_GPU", "True").lower() == "true"
+GPU_NUMBER = int(os.getenv("GPU_NUMBER", 1))
 MAX_PROCESSES = int(os.getenv("MAX_PROCESSES", 4))
 BATCHSIZE = int(os.getenv("BATCHSIZE", 50))
 CONCURRENT_REQUEST_PER_WORKER = int(os.getenv("CONCURRENT_REQUEST_PER_WORKER", 4))
@@ -26,6 +27,8 @@ EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", None)
 
 # Reader
 READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", None)
+READER_USE_TRANSFORMERS = os.getenv("READER_USE_TRANSFORMERS", "False").lower() == "true"
+READER_TOKENIZER = os.getenv("READER_TOKENIZER", None)
 CONTEXT_WINDOW_SIZE = int(os.getenv("CONTEXT_WINDOW_SIZE", 500))
 DEFAULT_TOP_K_READER = int(os.getenv("DEFAULT_TOP_K_READER", 5))
 TOP_K_PER_CANDIDATE = int(os.getenv("TOP_K_PER_CANDIDATE", 3))

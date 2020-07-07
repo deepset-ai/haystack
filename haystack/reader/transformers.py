@@ -37,7 +37,7 @@ class TransformersReader(BaseReader):
         :param tokenizer: name of the tokenizer (usually the same as model)
         :param context_window_size: num of chars (before and after the answer) to return as "context" for each answer.
                             The context usually helps users to understand if the answer really makes sense.
-        :param use_gpu: < 1  -> use cpu
+        :param use_gpu: < 0  -> use cpu
                         >= 0 -> ordinal of the gpu to use
         """
         self.model = pipeline("question-answering", model=model, tokenizer=tokenizer, device=use_gpu)
