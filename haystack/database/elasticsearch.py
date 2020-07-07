@@ -113,6 +113,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return doc_ids
 
     def write_documents(self, documents: List[dict]):
+        """
+        Indexes documents for later queries in Elasticsearch.
+
+        :param documents: List of dictionaries.
+                          Default format: {"name": "<some-document-name>, "text": "<the-actual-text>"}
+                          Optionally: You can add more key-value-pairs, that will be indexed as fields in
+                          Elasticsearch and can be accessed later for filtering or shown in the responses of the Finder
+                          Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
+                          should be changed to what you have set for self.text_field and self.name_field .
+        :return: None
+        """
         for doc in documents:
             doc["_op_type"] = "create"
             doc["_index"] = self.index

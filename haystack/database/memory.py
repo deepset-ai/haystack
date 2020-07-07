@@ -15,6 +15,15 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.index = None
 
     def write_documents(self, documents: List[dict]):
+        """
+        Indexes documents for later queries.
+
+        :param documents: List of dictionaries in the format {"name": "<some-document-name>, "text": "<the-actual-text>"}.
+                          Optionally, you can also supply "tags": ["one-tag", "another-one"]
+                          or additional meta data via "meta": {"author": "someone", "url":"some-url" ...}
+
+        :return: None
+        """
         import hashlib
 
         if documents is None:
