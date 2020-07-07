@@ -84,8 +84,8 @@ class TransformersReader(BaseReader):
                     answers.append({
                         "answer": pred["answer"],
                         "context": doc.text[context_start:context_end],
-                        "offset_answer_start": pred["start"],
-                        "offset_answer_end": pred["end"],
+                        "offset_start": pred["start"],
+                        "offset_end": pred["end"],
                         "probability": pred["score"],
                         "score": None,
                         "document_id": doc.id,
