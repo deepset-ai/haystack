@@ -27,7 +27,7 @@ EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", None)
 
 # Reader
 READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", None)
-READER_USE_TRANSFORMERS = os.getenv("READER_USE_TRANSFORMERS", "True").lower() == "true"
+READER_USE_TRANSFORMERS = os.getenv("READER_USE_TRANSFORMERS", "False").lower() == "true"
 READER_TOKENIZER = os.getenv("READER_TOKENIZER", None)
 CONTEXT_WINDOW_SIZE = int(os.getenv("CONTEXT_WINDOW_SIZE", 500))
 DEFAULT_TOP_K_READER = int(os.getenv("DEFAULT_TOP_K_READER", 5))

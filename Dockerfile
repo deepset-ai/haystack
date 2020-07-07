@@ -14,9 +14,11 @@ COPY rest_api /home/user/rest_api
 # copy saved FARM models
 COPY models /home/user/models
 
-# copy sqlite db if needed for testing
+# optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/
-COPY data /home/user/data
+
+# optional: copy data directory containing docs for indexing
+#COPY data /home/user/data
 
 EXPOSE 8000
 
