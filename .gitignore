@@ -145,6 +145,6 @@ src
 tutorials/cache
 tutorials/mlruns
 tutorials/model
-model
+models
 
 .DS_Store
