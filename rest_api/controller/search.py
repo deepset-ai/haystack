@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime
 from typing import List, Dict, Optional
 
@@ -111,6 +112,7 @@ doc_qa_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
 @router.post("/models/{model_id}/doc-qa", response_model=Answers, response_model_exclude_unset=True)
 def doc_qa(model_id: int, request: Question):
     with doc_qa_limiter.run():
+        start_time = time.time()
         finder = FINDERS.get(model_id, None)
         if not finder:
             raise HTTPException(
@@ -135,7 +137,8 @@ def doc_qa(model_id: int, request: Question):
             results.append(result)
 
         elasticapm.set_custom_context({"results": results})
-        logger.info({"request": request.json(), "results": results})
+        end_time = time.time()
+        logger.info({"request": request.json(), "results": results, "time": f"{(end_time - start_time):.2f}"})
 
         return {"results": results}
 
