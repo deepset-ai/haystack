@@ -93,6 +93,15 @@ class SQLDocumentStore(BaseDocumentStore):
         return doc_ids
 
     def write_documents(self, documents: List[dict]):
+        """
+        Indexes documents for later queries.
+
+        :param documents: List of dictionaries in the format {"name": "<some-document-name>, "text": "<the-actual-text>"}.
+                          Optionally, you can also supply meta data via "meta": {"author": "someone", "url":"some-url" ...}
+
+        :return: None
+        """
+
         for doc in documents:
             row = Document(name=doc["name"], text=doc["text"], meta_data=doc.get("meta", {}))
             self.session.add(row)
