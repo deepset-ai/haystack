@@ -27,6 +27,14 @@ class BaseDocumentStore(ABC):
 
     @abstractmethod
     def write_documents(self, documents: List[dict]):
+        """
+        Indexes documents for later queries.
+
+        :param documents: List of dictionaries in the format {"name": "<some-document-name>, "text": "<the-actual-text>"}.
+                          Optionally, further fields can be supplied depending on the child class.
+
+        :return: None
+        """
         pass
 
     @abstractmethod
