@@ -18,7 +18,7 @@ services:
       - READER_MODEL_PATH=deepset/roberta-base-squad2
       # - READER_MODEL_PATH=home/user/models/roberta-base-squad2
       # Alternative: If you want to use the TransformersReader (e.g. for loading a local model in transformers format):
-      # - READER_USE_TRANSFORMERS=True
+      # - READER_TYPE=TransformersReader
       # - READER_MODEL_PATH=/home/user/models/roberta-base-squad2
       # - READER_TOKENIZER=/home/user/models/roberta-base-squad2
     restart: always

@@ -104,6 +104,20 @@ class ElasticsearchRetriever(BaseRetriever):
         return {"recall": recall, "map": mean_avg_precision}
 
 
+class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
+    """
+    Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
+    Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
+    """
+
+    def __init__(self, document_store: ElasticsearchDocumentStore):
+        match_all_query = '{"query": {"match_all": {}}}'
+        super(ElasticsearchFilterOnlyRetriever, self).__init__(
+            document_store=document_store,
+            custom_query=match_all_query
+        )
+
+
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
 Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text", "meta"])
 

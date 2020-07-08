@@ -163,6 +163,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     substitutions[key] = values_str
             custom_query_json = template.substitute(**substitutions)
             body = json.loads(custom_query_json)
+            # add top_k
+            body["size"] = top_k
         else:
             body = {
                 "size": top_k,
