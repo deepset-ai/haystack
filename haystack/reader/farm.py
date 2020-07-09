@@ -413,10 +413,11 @@ class FARMReader(BaseReader):
     def _check_no_answer(d: dict):
         # check for correct value in "answer"
         if d["offset_answer_start"] == 0 and d["offset_answer_end"] == 0:
-            assert d["answer"] == "is_impossible", f"Check for no answer is not working"
+            if d["answer"] != "no_answer":
+                logger.error("Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'")
 
         # check weather the model thinks there is no answer
-        if d["answer"] == "is_impossible":
+        if d["answer"] == "no_answer":
             return True
         else:
             return False
