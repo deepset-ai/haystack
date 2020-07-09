@@ -2,12 +2,17 @@ import tarfile
 import time
 import urllib.request
 from subprocess import Popen, PIPE, STDOUT, run
+import os
 
 import pytest
 from elasticsearch import Elasticsearch
 
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
+
+from haystack.database.sql import SQLDocumentStore
+from haystack.database.memory import InMemoryDocumentStore
+from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
 @pytest.fixture(scope='session')
 def elasticsearch_dir(tmpdir_factory):
@@ -46,17 +51,46 @@ def xpdf_fixture():
 
 
 @pytest.fixture()
-def farm_reader():
-    return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False)
-
-@pytest.fixture()
-def transformers_reader():
-    return TransformersReader(model="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=False)
-
-@pytest.fixture()
 def test_docs_xs():
     return [
         {"name": "filename1", "text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1"}},
         {"name": "filename2", "text": "My name is Paul and I live in New York", "meta": {"meta_field": "test2"}},
         {"name": "filename3", "text": "My name is Christelle and I live in Paris", "meta": {"meta_field": "test3"}}
     ]
+
+
+@pytest.fixture()
+def farm_reader():
+    return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False)
+
+
+@pytest.fixture()
+def transformers_reader():
+    return TransformersReader(model="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
+
+
+@pytest.fixture(params=["farm", "transformers"])
+def reader(request):
+    if request.param == "farm":
+        return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False)
+    if request.param == "transformers":
+        return TransformersReader(model="distilbert-base-uncased-distilled-squad",
+                                  tokenizer="distilbert-base-uncased",
+                                  use_gpu=-1)
+
+
+@pytest.fixture(params=["sql", "memory", "elasticsearch"])
+def document_store_with_docs(request, test_docs_xs):
+    if request.param == "sql":
+        if os.path.exists("qa_test.db"):
+            os.remove("qa_test.db")
+        document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
+
+    if request.param == "memory":
+        document_store = InMemoryDocumentStore()
+
+    if request.param == "elasticsearch":
+        document_store = ElasticsearchDocumentStore()
+
+    document_store.write_documents(test_docs_xs)
+    return document_store

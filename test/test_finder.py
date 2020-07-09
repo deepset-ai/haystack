@@ -1,23 +1,12 @@
 from haystack import Finder
-from haystack.database.sql import SQLDocumentStore
-from haystack.reader.transformers import TransformersReader
 from haystack.retriever.sparse import TfidfRetriever
 import os
+import pytest
 
-def test_finder_get_answers():
-    test_docs = [
-        {"name": "filename1", "text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1"}},
-        {"name": "filename2", "text": "My name is Paul and I live in New York", "meta": {"meta_field": "test2"}},
-        {"name": "filename3", "text": "My name is Christelle and I live in Paris", "meta": {"meta_field": "test3"}}
-    ]
-    if os.path.exists("qa_test.db"):
-        os.remove("qa_test.db")
-
-    document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
-    document_store.write_documents(test_docs)
-    retriever = TfidfRetriever(document_store=document_store)
-    reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
-                                tokenizer="distilbert-base-uncased", use_gpu=-1)
+# @pytest.mark.parametrize("reader", [("farm")], indirect=True)
+# @pytest.mark.parametrize("document_store_with_docs", [("sql")], indirect=True)
+def test_finder_get_answers(reader, document_store_with_docs):
+    retriever = TfidfRetriever(document_store=document_store_with_docs)
     finder = Finder(reader, retriever)
     prediction = finder.get_answers(question="Who lives in Berlin?", top_k_retriever=10,
                                     top_k_reader=5)
@@ -35,21 +24,8 @@ def test_finder_get_answers():
     assert len(prediction["answers"]) == 5
 
 
-def test_finder_get_answers_single_result():
-    test_docs = [
-        {"name": "filename1", "text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1"}},
-        {"name": "filename2", "text": "My name is Paul and I live in New York", "meta": {"meta_field": "test2"}},
-        {"name": "filename3", "text": "My name is Christelle and I live in Paris", "meta": {"meta_field": "test3"}}
-    ]
-
-    if os.path.exists("qa_test.db"):
-        os.remove("qa_test.db")
-
-    document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
-    document_store.write_documents(test_docs)
-    retriever = TfidfRetriever(document_store=document_store)
-    reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
-                                tokenizer="distilbert-base-uncased", use_gpu=-1)
+def test_finder_get_answers_single_result(reader, document_store_with_docs):
+    retriever = TfidfRetriever(document_store=document_store_with_docs)
     finder = Finder(reader, retriever)
     prediction = finder.get_answers(question="testing finder", top_k_retriever=1,
                                     top_k_reader=1)
