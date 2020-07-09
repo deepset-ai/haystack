@@ -81,7 +81,10 @@ def document_store_with_docs(request, test_docs_xs):
         document_store = InMemoryDocumentStore()
 
     if request.param == "elasticsearch":
-        document_store = ElasticsearchDocumentStore()
+        # make sure we start from a fresh index
+        client = Elasticsearch()
+        client.indices.delete(index='test-index', ignore=[404])
+        document_store = ElasticsearchDocumentStore(index="haystack_test")
 
     document_store.write_documents(test_docs_xs)
     return document_store
