@@ -63,7 +63,7 @@ def test_docs_xs():
 def reader(request):
     if request.param == "farm":
         return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
-                          use_gpu=False, top_k_per_sample=5)
+                          use_gpu=False, top_k_per_sample=5, num_processes=0)
     if request.param == "transformers":
         return TransformersReader(model="distilbert-base-uncased-distilled-squad",
                                   tokenizer="distilbert-base-uncased",
