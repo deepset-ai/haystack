@@ -6,8 +6,8 @@ from subprocess import Popen, PIPE, STDOUT, run
 import pytest
 from elasticsearch import Elasticsearch
 
-from haystack.reader import FARMReader
-
+from haystack.reader.farm import FARMReader
+from haystack.reader.transformers import TransformersReader
 
 @pytest.fixture(scope='session')
 def elasticsearch_dir(tmpdir_factory):
@@ -47,4 +47,9 @@ def xpdf_fixture():
 
 @pytest.fixture()
 def farm_reader():
-    return FARMReader(model_name_or_path="deepset/bert-base-cased-squad2", use_gpu=False)
+    return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False)
+
+@pytest.fixture()
+def transformers_reader():
+    return TransformersReader(model="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=False)
+
