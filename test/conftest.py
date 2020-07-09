@@ -59,20 +59,11 @@ def test_docs_xs():
     ]
 
 
-@pytest.fixture()
-def farm_reader():
-    return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False)
-
-
-@pytest.fixture()
-def transformers_reader():
-    return TransformersReader(model="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
-
-
 @pytest.fixture(params=["farm", "transformers"])
 def reader(request):
     if request.param == "farm":
-        return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False)
+        return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
+                          use_gpu=False, top_k_per_sample=5)
     if request.param == "transformers":
         return TransformersReader(model="distilbert-base-uncased-distilled-squad",
                                   tokenizer="distilbert-base-uncased",
