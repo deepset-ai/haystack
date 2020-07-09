@@ -6,6 +6,8 @@ from subprocess import Popen, PIPE, STDOUT, run
 import pytest
 from elasticsearch import Elasticsearch
 
+from haystack.reader import FARMReader
+
 
 @pytest.fixture(scope='session')
 def elasticsearch_dir(tmpdir_factory):
@@ -41,3 +43,8 @@ def xpdf_fixture():
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                  You can download for your OS from here: https://www.xpdfreader.com/download.html."""
             )
+
+
+@pytest.fixture()
+def farm_reader():
+    return FARMReader(model_name_or_path="deepset/bert-base-cased-squad2", use_gpu=False)
