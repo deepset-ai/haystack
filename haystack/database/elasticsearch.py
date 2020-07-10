@@ -136,8 +136,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 del doc["meta"]
         bulk(self.client, documents, request_timeout=300)
 
-    def get_document_count(self) -> int:
-        result = self.client.count()
+    def get_document_count(self, index: Optional[str] = None,) -> int:
+        if index is None:
+            index = self.index
+        result = self.client.count(index=index)
         count = result["count"]
         return count
 
