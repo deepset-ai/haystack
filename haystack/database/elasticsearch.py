@@ -160,11 +160,28 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if index is None:
             index = self.index
 
-        if custom_query:  # substitute placeholder for question and filters for the custom_query template string
-            template = Template(custom_query)
+        # Naive retrieval without BM25, only filtering
+        if query is None:
+            body = {"query":
+                        {"bool": {"must":
+                                      {"match_all": {}}}}}
+            if filters:
+                filter_clause = []
+                for key, values in filters.items():
+                    filter_clause.append(
+                        {
+                            "terms": {key: values}
+                        }
+                    )
+                body["query"]["bool"]["filter"] = filter_clause
 
-            substitutions = {"question": query}  # replace all "${question}" placeholder(s) with query
-            # replace all filter values placeholders with a list of strings(in JSON format) for each filter
+        # Retrieval via custom query
+        elif custom_query:  # substitute placeholder for question and filters for the custom_query template string
+            template = Template(custom_query)
+            # replace all "${question}" placeholder(s) with query
+            substitutions = {"question": query}
+            # For each filter we got passed, we'll try to find & replace the corresponding placeholder in the template
+            # Example: filters={"years":[2018]} => replaces {$years} in custom_query with '[2018]'
             if filters:
                 for key, values in filters.items():
                     values_str = json.dumps(values)
@@ -173,6 +190,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             body = json.loads(custom_query_json)
             # add top_k
             body["size"] = top_k
+
+        # Default Retrieval via BM25 using the user query on `self.search_fields`
         else:
             body = {
                 "size": top_k,

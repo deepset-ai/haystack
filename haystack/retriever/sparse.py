@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: ElasticsearchDocumentStore, custom_query: str = None):
+    def __init__(self, document_store: ElasticsearchDocumentStore, custom_query: str = None, dummy=True):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory question placeholder($question).
@@ -34,7 +34,10 @@ class ElasticsearchRetriever(BaseRetriever):
                                             "fields": ["text", "title"]}}],
                                         "filter": [                                 // optional custom filters
                                             {"terms": {"year": "${years}"}},
-                                            {"terms": {"quarter": "${quarters}"}}],
+                                            {"terms": {"quarter": "${quarters}"}},
+                                            {"range": {"date": {"gte": "${date}"}}}
+                                            ],
+
                                     }
                                 },
                             }
@@ -110,13 +113,14 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
     """
 
-    def __init__(self, document_store: ElasticsearchDocumentStore):
-        match_all_query = '{"query": {"match_all": {}}}'
-        super(ElasticsearchFilterOnlyRetriever, self).__init__(
-            document_store=document_store,
-            custom_query=match_all_query
-        )
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        if index is None:
+            index = self.document_store.index
+        documents = self.document_store.query(query=None, filters=filters, top_k=top_k,
+                                              custom_query=self.custom_query, index=index)
+        logger.info(f"Got {len(documents)} candidates from retriever")
 
+        return documents
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
 Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text", "meta"])
