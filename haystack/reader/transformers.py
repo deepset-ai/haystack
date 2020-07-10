@@ -44,6 +44,7 @@ class TransformersReader(BaseReader):
         self.context_window_size = context_window_size
         self.n_best_per_passage = n_best_per_passage
         #TODO param to modify bias for no_answer
+        # TODO context_window_size behaviour different from behavior in FARMReader
 
     def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
         """

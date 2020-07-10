@@ -1,3 +1,4 @@
+
 import tarfile
 import time
 import urllib.request
@@ -10,6 +11,7 @@ from elasticsearch import Elasticsearch
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 
+from haystack.database.base import Document
 from haystack.database.sql import SQLDocumentStore
 from haystack.database.memory import InMemoryDocumentStore
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
@@ -64,11 +66,44 @@ def test_docs_xs():
 def reader(request):
     if request.param == "farm":
         return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
-                          use_gpu=False, top_k_per_sample=5, num_processes=0)
+                          use_gpu=False, top_k_per_sample=5)
     if request.param == "transformers":
         return TransformersReader(model="distilbert-base-uncased-distilled-squad",
                                   tokenizer="distilbert-base-uncased",
                                   use_gpu=-1)
+
+
+# TODO Fix bug in test_no_answer_output when using
+# @pytest.fixture(params=["farm", "transformers"])
+@pytest.fixture(params=["farm"])
+def no_answer_reader(request):
+    if request.param == "farm":
+        return FARMReader(model_name_or_path="deepset/roberta-base-squad2",
+                          use_gpu=False, top_k_per_sample=5, no_ans_boost=0)
+    if request.param == "transformers":
+        return TransformersReader(model="deepset/roberta-base-squad2",
+                                  tokenizer="deepset/roberta-base-squad2",
+                                  use_gpu=-1, n_best_per_passage=5)
+
+
+@pytest.fixture()
+def prediction(reader, test_docs_xs):
+    docs = []
+    for d in test_docs_xs:
+        doc = Document(id=d["name"], text=d["text"], meta=d["meta"])
+        docs.append(doc)
+    prediction = reader.predict(question="Who lives in Berlin?", documents=docs, top_k=5)
+    return prediction
+
+
+@pytest.fixture()
+def no_answer_prediction(no_answer_reader, test_docs_xs):
+    docs = []
+    for d in test_docs_xs:
+        doc = Document(id=d["name"], text=d["text"], meta=d["meta"])
+        docs.append(doc)
+    prediction = no_answer_reader.predict(question="What is the meaning of life?", documents=docs, top_k=5)
+    return prediction
 
 
 @pytest.fixture(params=["sql", "memory", "elasticsearch"])
