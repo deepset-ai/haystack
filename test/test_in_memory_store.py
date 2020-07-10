@@ -83,4 +83,4 @@ def test_memory_store_get_by_tag_lists_disjoint():
 
     docs = document_store.get_document_ids_by_tags({'tag3': ["3"]})
 
-    assert docs == [{'name': 'testing the finder 4', 'text': 'testing the finder with pyhton unit test 3', 'meta': {'url': 'url'}, 'tags': [{'tag3': ['1', '3']}]}]
+    assert docs == [{'text': 'testing the finder with pyhton unit test 3', 'meta': {'name': 'testing the finder 4', 'url': 'url'}, 'tags': [{'tag3': ['1', '3']}]}]
