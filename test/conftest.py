@@ -26,6 +26,7 @@ def elasticsearch_fixture(elasticsearch_dir):
         client = Elasticsearch(hosts=[{"host": "localhost"}])
         client.info()
     except:
+        print("Downloading and starting an Elasticsearch instance for the tests ...")
         thetarfile = "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.1-linux-x86_64.tar.gz"
         ftpstream = urllib.request.urlopen(thetarfile)
         thetarfile = tarfile.open(fileobj=ftpstream, mode="r|gz")
@@ -71,20 +72,24 @@ def reader(request):
 
 
 @pytest.fixture(params=["sql", "memory", "elasticsearch"])
-def document_store_with_docs(request, test_docs_xs):
+def document_store_with_docs(request, test_docs_xs, elasticsearch_fixture):
     if request.param == "sql":
         if os.path.exists("qa_test.db"):
             os.remove("qa_test.db")
         document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
+        document_store.write_documents(test_docs_xs)
 
     if request.param == "memory":
         document_store = InMemoryDocumentStore()
+        document_store.write_documents(test_docs_xs)
 
     if request.param == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
-        client.indices.delete(index='test-index', ignore=[404])
+        client.indices.delete(index='haystack_test', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="haystack_test")
+        assert document_store.get_document_count() == 0
+        document_store.write_documents(test_docs_xs)
+        time.sleep(2)
 
-    document_store.write_documents(test_docs_xs)
     return document_store
