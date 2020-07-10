@@ -12,7 +12,7 @@ def test_dummy_retriever():
 
     from haystack.database.elasticsearch import ElasticsearchDocumentStore
     document_store = ElasticsearchDocumentStore()
-    document_store.write_documents(test_docs)
+    document_store.write_documents(test_docs, wait_for=True)
 
     retriever = ElasticsearchFilterOnlyRetriever(document_store)
     result = retriever.retrieve(query="godzilla", filters={"name": ["test1"]}, top_k=1)

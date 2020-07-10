@@ -112,7 +112,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             doc_ids.append(hit["_id"])
         return doc_ids
 
-    def write_documents(self, documents: List[dict]):
+    def write_documents(self, documents: List[dict], wait_for=False):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -134,7 +134,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 for k, v in doc["meta"].items():
                     doc[k] = v
                 del doc["meta"]
-        bulk(self.client, documents, request_timeout=300)
+        bulk(self.client, documents, request_timeout=300, wait_for=wait_for)
 
     def get_document_count(self, index: Optional[str] = None,) -> int:
         if index is None:
