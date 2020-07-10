@@ -66,7 +66,7 @@ def test_docs_xs():
 def reader(request):
     if request.param == "farm":
         return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
-                          use_gpu=False, top_k_per_sample=5)
+                          use_gpu=False, top_k_per_sample=5, num_processes=0)
     if request.param == "transformers":
         return TransformersReader(model="distilbert-base-uncased-distilled-squad",
                                   tokenizer="distilbert-base-uncased",
@@ -79,7 +79,7 @@ def reader(request):
 def no_answer_reader(request):
     if request.param == "farm":
         return FARMReader(model_name_or_path="deepset/roberta-base-squad2",
-                          use_gpu=False, top_k_per_sample=5, no_ans_boost=0)
+                          use_gpu=False, top_k_per_sample=5, no_ans_boost=0, num_processes=0)
     if request.param == "transformers":
         return TransformersReader(model="deepset/roberta-base-squad2",
                                   tokenizer="deepset/roberta-base-squad2",
