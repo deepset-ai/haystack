@@ -56,7 +56,8 @@ def test_docs_xs():
     return [
         {"text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
         {"text": "My name is Paul and I live in New York", "meta": {"meta_field": "test2", "name": "filename2"}},
-        {"text": "My name is Christelle and I live in Paris", "meta": {"meta_field": "test3", "name": "filename3"}}
+        {"text": "My name is Christelle and I live in Paris", "meta_field": "test3", "meta": {"name": "filename3"}}
+        # last doc has meta_field at the top level for backward compatibility
     ]
 
 

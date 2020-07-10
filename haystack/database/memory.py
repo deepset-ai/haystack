@@ -31,6 +31,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         for document in documents:
             text = document["text"]
+            for k, v in document.items():  # put additional fields other than text in meta
+                if k is not "text":
+                    document["meta"][k] = v
 
             if not text:
                 raise Exception("A document cannot have empty text field.")

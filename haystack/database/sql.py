@@ -102,6 +102,9 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         for doc in documents:
+            for k, v in doc.items():  # put additional fields other than text in meta
+                if k is not "text":
+                    doc["meta"][k] = v
             row = Document(text=doc["text"], meta_data=doc.get("meta", {}))
             self.session.add(row)
         self.session.commit()
