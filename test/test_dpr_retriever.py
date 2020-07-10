@@ -1,20 +1,8 @@
-from haystack.retriever.dpr_utils import download_dpr
-
-def test_dpr_passage_encoder():
-    from haystack.retriever.dense import DensePassageRetriever
-
-    passage = ["Let's encode this one"]
-    retriever = DensePassageRetriever(document_store=None, embedding_model="dpr-bert-base-nq", gpu=False)
-    emb = retriever.embed_passages(passage)[0]
-    assert(emb.shape[0] == 768)
-    assert(emb[0]-0.52872 < 0.001)
+from haystack.database.memory import InMemoryDocumentStore
+from haystack.retriever.dense import DensePassageRetriever
 
 
 def test_dpr_inmemory_retrieval():
-
-    from haystack.database.memory import InMemoryDocumentStore
-    from haystack.retriever.dense import DensePassageRetriever
-
     document_store = InMemoryDocumentStore(embedding_field="embedding")
 
     documents = [
@@ -27,8 +15,13 @@ def test_dpr_inmemory_retrieval():
 
     embedded = []
     for doc in documents:
-        doc['embedding'] = retriever.embed_passages([doc['text']])[0]
+        embedding = retriever.embed_passages([doc['text']])[0]
+        doc['embedding'] = embedding
         embedded.append(doc)
+
+        assert (embedding.shape[0] == 768)
+        assert (embedding[0] - 0.52872 < 0.001)
+
     document_store.write_documents(embedded)
 
     res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?")
