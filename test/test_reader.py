@@ -12,7 +12,7 @@ def test_reader_basic(reader):
 def test_output(reader, test_docs_xs):
     docs = []
     for d in test_docs_xs:
-        doc = Document(id=d["name"], text=d["text"], meta=d["meta"])
+        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
         docs.append(doc)
     results = reader.predict(question="Who lives in Berlin?", documents=docs, top_k=5)
     assert results is not None

@@ -54,9 +54,9 @@ def xpdf_fixture():
 @pytest.fixture()
 def test_docs_xs():
     return [
-        {"name": "filename1", "text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1"}},
-        {"name": "filename2", "text": "My name is Paul and I live in New York", "meta": {"meta_field": "test2"}},
-        {"name": "filename3", "text": "My name is Christelle and I live in Paris", "meta": {"meta_field": "test3"}}
+        {"text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
+        {"text": "My name is Paul and I live in New York", "meta": {"meta_field": "test2", "name": "filename2"}},
+        {"text": "My name is Christelle and I live in Paris", "meta": {"meta_field": "test3", "name": "filename3"}}
     ]
 
 
