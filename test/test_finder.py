@@ -1,40 +1,48 @@
 from haystack import Finder
-from haystack.database.sql import SQLDocumentStore
-from haystack.reader.transformers import TransformersReader
 from haystack.retriever.sparse import TfidfRetriever
+import pytest
 
-
-def test_finder_get_answers():
-    test_docs = [
-        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1", "meta": {"test": "test"}},
-        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2", "meta": {"test": "test"}},
-        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3", "meta": {"test": "test"}}
-    ]
-
-    document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
-    document_store.write_documents(test_docs)
-    retriever = TfidfRetriever(document_store=document_store)
-    reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
-                                tokenizer="distilbert-base-uncased", use_gpu=-1)
+#@pytest.mark.parametrize("reader", [("farm")], indirect=True)
+#@pytest.mark.parametrize("document_store_with_docs", [("elasticsearch")], indirect=True)
+def test_finder_get_answers(reader, document_store_with_docs):
+    retriever = TfidfRetriever(document_store=document_store_with_docs)
     finder = Finder(reader, retriever)
-    prediction = finder.get_answers(question="testing finder", top_k_retriever=10,
-                                    top_k_reader=5)
+    prediction = finder.get_answers(question="Who lives in Berlin?", top_k_retriever=10,
+                                    top_k_reader=3)
     assert prediction is not None
+    assert prediction["question"] == "Who lives in Berlin?"
+    assert prediction["answers"][0]["answer"] == "Carla"
+    assert prediction["answers"][0]["probability"] <= 1
+    assert prediction["answers"][0]["probability"] >= 0
+    assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
+    assert prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
+    assert prediction["answers"][0]["document_id"] == "0"
+
+    assert len(prediction["answers"]) == 3
 
 
-def test_finder_get_answers_single_result():
-    test_docs = [
-        {"name": "testing the finder 1", "text": "testing the finder with pyhton unit test 1"},
-        {"name": "testing the finder 2", "text": "testing the finder with pyhton unit test 2"},
-        {"name": "testing the finder 3", "text": "testing the finder with pyhton unit test 3"}
-    ]
+def test_finder_offsets(reader, document_store_with_docs):
+    retriever = TfidfRetriever(document_store=document_store_with_docs)
+    finder = Finder(reader, retriever)
+    prediction = finder.get_answers(question="Who lives in Berlin?", top_k_retriever=10,
+                                    top_k_reader=5)
 
-    document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
-    document_store.write_documents(test_docs)
-    retriever = TfidfRetriever(document_store=document_store)
-    reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
-                                tokenizer="distilbert-base-uncased", use_gpu=-1)
+    assert prediction["answers"][0]["offset_start"] == 11
+    #TODO enable again when FARM is upgraded incl. the new offset calc
+#    assert prediction["answers"][0]["offset_end"] == 16
+    start = prediction["answers"][0]["offset_start"]
+    end = prediction["answers"][0]["offset_end"]
+    #assert prediction["answers"][0]["context"][start:end] == prediction["answers"][0]["answer"]
+
+
+def test_finder_get_answers_single_result(reader, document_store_with_docs):
+    retriever = TfidfRetriever(document_store=document_store_with_docs)
     finder = Finder(reader, retriever)
     prediction = finder.get_answers(question="testing finder", top_k_retriever=1,
                                     top_k_reader=1)
     assert prediction is not None
+    assert len(prediction["answers"]) == 1
+
+
+
+

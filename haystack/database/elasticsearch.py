@@ -118,8 +118,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         :param documents: List of dictionaries.
                           Default format: {"name": "<some-document-name>, "text": "<the-actual-text>"}
-                          Optionally: You can add more key-value-pairs, that will be indexed as fields in
-                          Elasticsearch and can be accessed later for filtering or shown in the responses of the Finder
+                          Optionally: Include meta data via {"name": "<some-document-name>,
+                          "text": "<the-actual-text>", "meta":{"author": "somebody", ...}}
+                          It can be used for filtering and is accessible in the responses of the Finder.
                           Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
                           should be changed to what you have set for self.text_field and self.name_field .
         :return: None
@@ -127,11 +128,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         for doc in documents:
             doc["_op_type"] = "create"
             doc["_index"] = self.index
-
+            # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
+            # we "unnest" all value within "meta"
+            if "meta" in doc.keys():
+                for k, v in doc["meta"].items():
+                    doc[k] = v
+                del doc["meta"]
         bulk(self.client, documents, request_timeout=300)
 
-    def get_document_count(self) -> int:
-        result = self.client.count()
+    def get_document_count(self, index: Optional[str] = None,) -> int:
+        if index is None:
+            index = self.index
+        result = self.client.count(index=index)
         count = result["count"]
         return count
 
