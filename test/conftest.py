@@ -87,6 +87,7 @@ def document_store_with_docs(request, test_docs_xs, elasticsearch_fixture):
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test', ignore=[404])
+        time.sleep(1)
         document_store = ElasticsearchDocumentStore(index="haystack_test")
         assert document_store.get_document_count() == 0
         document_store.write_documents(test_docs_xs)
