@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class PDFToTextConverter(BaseConverter):
+class docxToTextConverter(BaseConverter):
     def __init__(self):
         verify_installation = subprocess.run(["pdftotext -v"], shell=True)
         if verify_installation.returncode == 127:
