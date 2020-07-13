@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 class docxToTextConverter(BaseConverter):
     def __init__(self):
-        verify_installation = subprocess.run(["pdftotext -v"], shell=True)
+        verify_installation = subprocess.run(["docx-python -v"], shell=True)
         if verify_installation.returncode == 127:
             raise Exception(
                 """ python-docx is not installed.
