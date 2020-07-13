@@ -1,5 +1,6 @@
 from haystack.indexing.file_converters.base import BaseConverter
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
