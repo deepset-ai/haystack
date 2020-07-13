@@ -102,6 +102,8 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         for doc in documents:
+            if "meta" not in doc.keys():
+                doc["meta"] = {}
             for k, v in doc.items():  # put additional fields other than text in meta
                 if k not in ["text", "meta", "tags"]:
                     doc["meta"][k] = v

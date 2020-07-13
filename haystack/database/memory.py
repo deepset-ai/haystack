@@ -31,6 +31,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         for document in documents:
             text = document["text"]
+            if "meta" not in document.keys():
+                document["meta"] = {}
             for k, v in document.items():  # put additional fields other than text in meta
                 if k not in ["text", "meta", "tags"]:
                     document["meta"][k] = v
