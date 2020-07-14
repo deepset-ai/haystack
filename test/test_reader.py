@@ -63,7 +63,7 @@ def test_context_window_size(test_docs_xs):
     # TODO parametrize window_size and farm/transformers reader using pytest
     docs = []
     for d in test_docs_xs:
-        doc = Document(id=d["name"], text=d["text"], meta=d["meta"])
+        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
         docs.append(doc)
     for window_size in [10, 15, 20]:
         farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
