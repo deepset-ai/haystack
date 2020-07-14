@@ -475,5 +475,5 @@ class FARMReader(BaseReader):
                              are "gpu_tensor_core" (GPUs with tensor core like V100 or T4),
                              "gpu_without_tensor_core" (most other GPUs), and "cpu".
         """
-        inferencer = Inferencer.load(model_name_or_path, task_type="question_answering")
+        inferencer = QAInferencer.load(model_name_or_path, task_type="question_answering")
         inferencer.model.convert_to_onnx(output_path=Path("onnx-export"), opset_version=opset_version, optimize_for=optimize_for)
