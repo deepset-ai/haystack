@@ -91,7 +91,7 @@ def no_answer_reader(request):
 def prediction(reader, test_docs_xs):
     docs = []
     for d in test_docs_xs:
-        doc = Document(id=d["name"], text=d["text"], meta=d["meta"])
+        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
         docs.append(doc)
     prediction = reader.predict(question="Who lives in Berlin?", documents=docs, top_k=5)
     return prediction
@@ -101,7 +101,7 @@ def prediction(reader, test_docs_xs):
 def no_answer_prediction(no_answer_reader, test_docs_xs):
     docs = []
     for d in test_docs_xs:
-        doc = Document(id=d["name"], text=d["text"], meta=d["meta"])
+        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
         docs.append(doc)
     prediction = no_answer_reader.predict(question="What is the meaning of life?", documents=docs, top_k=5)
     return prediction

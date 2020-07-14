@@ -88,7 +88,7 @@ def test_top_k(test_docs_xs):
     # TODO transformers reader was crashing when tested on this
     docs = []
     for d in test_docs_xs:
-        doc = Document(id=d["name"], text=d["text"], meta=d["meta"])
+        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
         docs.append(doc)
     farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
                              use_gpu=False, top_k_per_sample=4, no_ans_boost=None, top_k_per_candidate=4)
