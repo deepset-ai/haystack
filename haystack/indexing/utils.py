@@ -48,9 +48,9 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
             for para in text.split("\n\n"):
                 if not para.strip():  # skip empty paragraphs
                     continue
-                documents.append({"name": path.name, "text": para})
+                documents.append({"text": para, "meta": {"name": path.name}})
         else:
-            documents.append({"name": path.name, "text": text})
+            documents.append({"text": text, "meta": {"name": path.name}})
 
     return documents
 
