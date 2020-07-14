@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from transformers import pipeline
+from haystack.reader.transformers_utils import pipeline
 
 from haystack.database.base import Document
 from haystack.reader.base import BaseReader
@@ -40,7 +40,7 @@ class TransformersReader(BaseReader):
         :param use_gpu: < 0  -> use cpu
                         >= 0 -> ordinal of the gpu to use
         """
-        self.model = pipeline("question-answering", model=model, tokenizer=tokenizer, device=use_gpu)
+        self.model = pipeline('question-answering', model=model, tokenizer=tokenizer, device=use_gpu)
         self.context_window_size = context_window_size
         self.n_best_per_passage = n_best_per_passage
         #TODO param to modify bias for no_answer
@@ -77,6 +77,9 @@ class TransformersReader(BaseReader):
         for doc in documents:
             query = {"context": doc.text, "question": question}
             predictions = self.model(query, topk=self.n_best_per_passage)
+            # for single preds (e.g. via top_k=1) transformers returns a dict instead of a list
+            if type(predictions) == dict:
+                predictions = [predictions]
             # assemble and format all answers
             for pred in predictions:
                 if pred["answer"]:
