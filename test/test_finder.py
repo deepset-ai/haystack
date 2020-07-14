@@ -33,7 +33,8 @@ def test_finder_offsets(reader, document_store_with_docs):
     end = prediction["answers"][0]["offset_end"]
     assert prediction["answers"][0]["context"][start:end] == prediction["answers"][0]["answer"]
 
-
+@pytest.mark.parametrize("reader", [("transformers")], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", [("sql")], indirect=True)
 def test_finder_get_answers_single_result(reader, document_store_with_docs):
     retriever = TfidfRetriever(document_store=document_store_with_docs)
     finder = Finder(reader, retriever)
