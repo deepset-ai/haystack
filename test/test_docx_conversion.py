@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from haystack.indexing.file_converters.pdf import DocxToTextConverter
+from haystack.indexing.file_converters.docx import DocxToTextConverter
 
 logger = logging.getLogger(__name__)
 
