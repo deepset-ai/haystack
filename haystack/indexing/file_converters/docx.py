@@ -17,12 +17,10 @@ class DocxToTextConverter(BaseConverter):
                    You can find more details here: https://python-docx.readthedocs.io/en/latest/
                 """
             )
-    def extract_pages(self, file_path: Path) -> str:
+    def extract_pages(self, file_path: Path) -> list[str]:
         import docx
         doc = docx.Document(file_path)  # Creating word reader object.
-        text = ""
         fullText = []
         for para in doc.paragraphs:
           fullText.append(para.text)
-        text = '\n'.join(fullText)
-        return text
+        return fullText
