@@ -16,4 +16,13 @@ def test_tfidf_retriever():
 
     retriever = TfidfRetriever(document_store)
     retriever.fit()
-    assert retriever.retrieve("godzilla", top_k=1) == [Document(id='0', text='godzilla says hello', external_source_id=None, question=None, query_score=None, meta={})]
+    assert retriever.retrieve("godzilla", top_k=1) == [
+        Document(
+            id='0',
+            text='godzilla says hello',
+            external_source_id=None,
+            question=None,
+            query_score=None,
+            meta={"name": "testing the finder 1"},
+        )
+    ]

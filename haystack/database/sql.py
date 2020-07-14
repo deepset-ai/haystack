@@ -20,7 +20,6 @@ class ORMBase(Base):
 class Document(ORMBase):
     __tablename__ = "document"
 
-    name = Column(String)
     text = Column(String)
     meta_data = Column(PickleType)
 
@@ -96,14 +95,19 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         Indexes documents for later queries.
 
-        :param documents: List of dictionaries in the format {"name": "<some-document-name>, "text": "<the-actual-text>"}.
+        :param documents: List of dictionaries in the format {"text": "<the-actual-text>"}.
                           Optionally, you can also supply meta data via "meta": {"author": "someone", "url":"some-url" ...}
 
         :return: None
         """
 
         for doc in documents:
-            row = Document(name=doc["name"], text=doc["text"], meta_data=doc.get("meta", {}))
+            if "meta" not in doc.keys():
+                doc["meta"] = {}
+            for k, v in doc.items():  # put additional fields other than text in meta
+                if k not in ["text", "meta", "tags"]:
+                    doc["meta"][k] = v
+            row = Document(text=doc["text"], meta_data=doc.get("meta", {}))
             self.session.add(row)
         self.session.commit()
 

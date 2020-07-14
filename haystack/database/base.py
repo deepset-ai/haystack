@@ -12,10 +12,9 @@ class Document(BaseModel):
         description="id for the source file the document was created from. In the case when a large file is divided "
         "across multiple Elasticsearch documents, this id can be used to reference original source file.",
     )
-    # name: Optional[str] = Field(None, description="Title of the document")
     question: Optional[str] = Field(None, description="Question text for FAQs.")
     query_score: Optional[float] = Field(None, description="Elasticsearch query score for a retrieved document")
-    meta: Dict[str, Any] = Field({}, description="")
+    meta: Dict[str, Any] = Field({}, description="Meta fields for a document like name, url, or author.")
     tags: Optional[Dict[str, Any]] = Field(None, description="Tags that allow filtering of the data")
 
 
@@ -30,8 +29,11 @@ class BaseDocumentStore(ABC):
         """
         Indexes documents for later queries.
 
-        :param documents: List of dictionaries in the format {"name": "<some-document-name>, "text": "<the-actual-text>"}.
-                          Optionally, further fields can be supplied depending on the child class.
+        :param documents: List of dictionaries.
+                          Default format: {"text": "<the-actual-text>"}
+                          Optionally: Include meta data via {"text": "<the-actual-text>",
+                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                          It can be used for filtering and is accessible in the responses of the Finder.
 
         :return: None
         """
