@@ -14,4 +14,5 @@ langdetect # for PDF conversions
 # optional: sentence-transformers
 #temporarily (used for DPR downloads)
 wget
+python-multipart
 python-docx
