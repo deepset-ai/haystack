@@ -49,8 +49,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
         :param external_source_id_field: If you have an external id (= non-elasticsearch) that identifies your documents, you can specify it here.
-        :param embedding_field: Name of field containing an embedding vector (Only needed when using the EmbeddingRetriever on top)
-        :param embedding_dim: Dimensionality of embedding vector (Only needed when using the EmbeddingRetriever on top)
+        :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
         :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
                                    Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
@@ -113,14 +113,33 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return doc_ids
 
     def write_documents(self, documents: List[dict]):
+        """
+        Indexes documents for later queries in Elasticsearch.
+
+        :param documents: List of dictionaries.
+                          Default format: {"text": "<the-actual-text>"}
+                          Optionally: Include meta data via {"text": "<the-actual-text>",
+                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                          It can be used for filtering and is accessible in the responses of the Finder.
+                          Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
+                          should be changed to what you have set for self.text_field and self.name_field .
+        :return: None
+        """
         for doc in documents:
             doc["_op_type"] = "create"
             doc["_index"] = self.index
-
+            # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
+            # we "unnest" all value within "meta"
+            if "meta" in doc.keys():
+                for k, v in doc["meta"].items():
+                    doc[k] = v
+                del doc["meta"]
         bulk(self.client, documents, request_timeout=300)
 
-    def get_document_count(self) -> int:
-        result = self.client.count()
+    def get_document_count(self, index: Optional[str] = None,) -> int:
+        if index is None:
+            index = self.index
+        result = self.client.count(index=index)
         count = result["count"]
         return count
 
@@ -251,6 +270,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :return: None
         """
 
+        if not self.embedding_field:
+            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         docs = self.get_all_documents()
         passages = [d.text for d in docs]
         logger.info(f"Updating embeddings for {len(passages)} docs ...")

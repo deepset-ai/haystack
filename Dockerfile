@@ -12,10 +12,13 @@ COPY haystack /home/user/haystack
 COPY rest_api /home/user/rest_api
 
 # copy saved FARM models
-COPY models /home/user/models
+COPY README.rst models* /home/user/models
 
-# copy sqlite db if needed for testing
+# optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/
+
+# optional: copy data directory containing docs for indexing
+#COPY data /home/user/data
 
 EXPOSE 8000
 

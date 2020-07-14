@@ -48,6 +48,11 @@ document_store.write_documents(dicts[:16])
 ### Retriever
 retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",
                                   do_lower_case=True, gpu=True)
+# Important:
+# Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all
+# previously indexed documents and update their embedding representation.
+# While this can be a time consuming operation (depending on corpus size), it only needs to be done once.
+# At query time, we only need to embed the query and compare it the existing doc embeddings which is very fast.
 document_store.update_embeddings(retriever)
 
 ### Reader
