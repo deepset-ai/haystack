@@ -4,7 +4,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-class docxToTextConverter(BaseConverter):
+class DocxToTextConverter(BaseConverter):
     def __init__(self):
         try:
             import docx
