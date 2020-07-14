@@ -220,9 +220,9 @@ Example
 ---------------------
 A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is provided to:
 
-*  search answers in texts (`extractive QA  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/search.py>`_)
-*  search answers by comparing user question to existing questions (`FAQ-style QA  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/search.py>`_)
-*  collect & export user feedback on answers to gain domain-specific training data (`feedback  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/feedback.py>`_)
+*  search answers in texts (`extractive QA  <https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/search.py>`_)
+*  search answers by comparing user question to existing questions (`FAQ-style QA  <https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/search.py>`_)
+*  collect & export user feedback on answers to gain domain-specific training data (`feedback  <https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/feedback.py>`_)
 *  allow basic monitoring of requests (currently via APM in Kibana)
 
 To serve the API, run::
