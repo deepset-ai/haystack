@@ -298,7 +298,7 @@ class FARMReader(BaseReader):
         Returns a dict containing the following metrics:
             - "EM": exact match score
             - "f1": F1-Score
-            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+            - "top_n_accuracy": Proportion of predicted answers that match with correct answer
 
         :param data_dir: The directory in which the test set can be found
         :type data_dir: Path or str
@@ -328,7 +328,7 @@ class FARMReader(BaseReader):
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_recall": eval_results[0]["top_n_recall"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
         }
         return results
 
@@ -346,7 +346,7 @@ class FARMReader(BaseReader):
         Returns a dict containing the following metrics:
             - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
             - "f1": Average overlap between predicted answers and their corresponding correct answers
-            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+            - "top_n_accuracy": Proportion of predicted answers that match with correct answer
 
         :param document_store: The ElasticsearchDocumentStore containing the evaluation documents
         :type document_store: ElasticsearchDocumentStore
@@ -403,7 +403,7 @@ class FARMReader(BaseReader):
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_recall": eval_results[0]["top_n_recall"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
         }
         return results
 
