@@ -10,16 +10,16 @@ from pydantic import BaseModel
 
 from haystack import Finder
 from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, \
-    EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
+    EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, RETRIEVER_TYPE, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
     DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
-    EMBEDDING_MODEL_FORMAT, READER_USE_TRANSFORMERS, READER_TOKENIZER, GPU_NUMBER
+    EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER
 from rest_api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.retriever.base import BaseRetriever
-from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever
 from haystack.retriever.dense import EmbeddingRetriever
 
 logger = logging.getLogger(__name__)
@@ -44,18 +44,27 @@ document_store = ElasticsearchDocumentStore(
 )
 
 
-if EMBEDDING_MODEL_PATH:
+if RETRIEVER_TYPE == "EmbeddingRetriever":
     retriever = EmbeddingRetriever(
         document_store=document_store,
         embedding_model=EMBEDDING_MODEL_PATH,
         model_format=EMBEDDING_MODEL_FORMAT,
         gpu=USE_GPU
     )  # type: BaseRetriever
-else:
+elif RETRIEVER_TYPE == "ElasticsearchRetriever":
     retriever = ElasticsearchRetriever(document_store=document_store)
+elif RETRIEVER_TYPE is None or RETRIEVER_TYPE == "ElasticsearchFilterOnlyRetriever":
+    retriever = ElasticsearchFilterOnlyRetriever(document_store=document_store)
+else:
+    raise ValueError(f"Could not load Retriever of type '{RETRIEVER_TYPE}'. "
+                     f"Please adjust RETRIEVER_TYPE to one of: "
+                     f"'EmbeddingRetriever', 'ElasticsearchRetriever', 'ElasticsearchFilterOnlyRetriever', None"
+                     f"OR modify rest_api/search.py to support your retriever"
+                     )
+
 
 if READER_MODEL_PATH:  # for extractive doc-qa
-    if READER_USE_TRANSFORMERS:
+    if READER_TYPE == "TransformersReader":
         use_gpu = -1 if not USE_GPU else GPU_NUMBER
         reader = TransformersReader(
             model=str(READER_MODEL_PATH),
@@ -63,7 +72,7 @@ if READER_MODEL_PATH:  # for extractive doc-qa
             context_window_size=CONTEXT_WINDOW_SIZE,
             tokenizer=str(READER_TOKENIZER)
         )  # type: Optional[FARMReader]
-    else:
+    elif READER_TYPE == "FARMReader":
         reader = FARMReader(
             model_name_or_path=str(READER_MODEL_PATH),
             batch_size=BATCHSIZE,
@@ -75,6 +84,11 @@ if READER_MODEL_PATH:  # for extractive doc-qa
             max_seq_len=MAX_SEQ_LEN,
             doc_stride=DOC_STRIDE,
         )  # type: Optional[FARMReader]
+    else:
+        raise ValueError(f"Could not load Reader of type '{READER_TYPE}'. "
+                         f"Please adjust READER_TYPE to one of: "
+                         f"'FARMReader', 'TransformersReader', None"
+                         )
 else:
     reader = None  # don't need one for pure FAQ matching
 

@@ -27,7 +27,7 @@ EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", None)
 
 # Reader
 READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", None)
-READER_USE_TRANSFORMERS = os.getenv("READER_USE_TRANSFORMERS", "False").lower() == "true"
+READER_TYPE = os.getenv("READER_TYPE", "FARMReader") # alternative: 'TransformersReader'
 READER_TOKENIZER = os.getenv("READER_TOKENIZER", None)
 CONTEXT_WINDOW_SIZE = int(os.getenv("CONTEXT_WINDOW_SIZE", 500))
 DEFAULT_TOP_K_READER = int(os.getenv("DEFAULT_TOP_K_READER", 5))
@@ -37,6 +37,7 @@ DOC_STRIDE = int(os.getenv("DOC_STRIDE", 128))
 MAX_SEQ_LEN = int(os.getenv("MAX_SEQ_LEN", 256))
 
 # Retriever
+RETRIEVER_TYPE = os.getenv("RETRIEVER_TYPE", "ElasticsearchRetriever") # alternatives: 'EmbeddingRetriever', 'ElasticsearchRetriever', 'ElasticsearchFilterOnlyRetriever', None
 DEFAULT_TOP_K_RETRIEVER = int(os.getenv("DEFAULT_TOP_K_RETRIEVER", 10))
 EXCLUDE_META_DATA_FIELDS = os.getenv("EXCLUDE_META_DATA_FIELDS", None)
 if EXCLUDE_META_DATA_FIELDS:
