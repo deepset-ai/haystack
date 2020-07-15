@@ -16,7 +16,6 @@ def test_finder_get_answers(reader, document_store_with_docs):
     assert prediction["answers"][0]["probability"] >= 0
     assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
     assert prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
-    assert prediction["answers"][0]["document_id"] == "0"
 
     assert len(prediction["answers"]) == 3
 

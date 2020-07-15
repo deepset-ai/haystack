@@ -186,7 +186,7 @@ class TfidfRetriever(BaseRetriever):
         for para, meta in zip(paragraphs, meta_data):
             documents.append(
                 Document(
-                    id=meta["paragraph_id"],
+                    id=meta["document_id"],
                     text=para,
                     meta=meta.get("meta", {})
                 ))
