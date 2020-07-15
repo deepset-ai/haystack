@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: ElasticsearchDocumentStore, custom_query: str = None, dummy=True):
+    def __init__(self, document_store: ElasticsearchDocumentStore, custom_query: str = None):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory question placeholder($question).
