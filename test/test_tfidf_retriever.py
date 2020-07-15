@@ -18,7 +18,7 @@ def test_tfidf_retriever():
     retriever.fit()
     assert retriever.retrieve("godzilla", top_k=1) == [
         Document(
-            id='0',
+            id='26f84672c6d7aaeb8e2cd53e9c62d62d',
             text='godzilla says hello',
             external_source_id=None,
             question=None,
