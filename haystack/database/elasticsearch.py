@@ -125,16 +125,22 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                           should be changed to what you have set for self.text_field and self.name_field .
         :return: None
         """
+
+        documents_to_index = []
         for doc in documents:
-            doc["_op_type"] = "create"
-            doc["_index"] = self.index
+            _doc = {
+                "_op_type": "create",
+                "_index": self.index,
+                **doc
+            }
+
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
             # we "unnest" all value within "meta"
-            if "meta" in doc.keys():
-                for k, v in doc["meta"].items():
-                    doc[k] = v
-                del doc["meta"]
-        bulk(self.client, documents, request_timeout=300)
+            if "meta" in _doc.keys():
+                for k, v in _doc["meta"].items():
+                    _doc[k] = v
+            documents_to_index.append(_doc)
+        bulk(self.client, documents_to_index, request_timeout=300)
 
     def get_document_count(self, index: Optional[str] = None,) -> int:
         if index is None:
