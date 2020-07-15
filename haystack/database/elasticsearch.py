@@ -151,7 +151,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: str,
-        filters: Optional[dict] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -205,6 +205,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if filters:
                 filter_clause = []
                 for key, values in filters.items():
+                    if type(values) != list:
+                        raise ValueError(f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                                         'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
                     filter_clause.append(
                         {
                             "terms": {key: values}
