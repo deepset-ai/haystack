@@ -132,7 +132,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "_op_type": "create",
                 "_index": self.index,
                 **doc
-            }
+            }  # type: Dict[str, Any]
 
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
             # we "unnest" all value within "meta"
