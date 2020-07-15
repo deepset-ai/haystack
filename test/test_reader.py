@@ -66,7 +66,7 @@ def test_context_window_size(test_docs_xs):
         doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
         docs.append(doc)
     for window_size in [10, 15, 20]:
-        farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
+        farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", num_processes=0,
                               use_gpu=False, top_k_per_sample=5, no_ans_boost=None, context_window_size=window_size)
         prediction = farm_reader.predict(question="Who lives in Berlin?", documents=docs, top_k=5)
         for answer in prediction["answers"]:
@@ -90,7 +90,7 @@ def test_top_k(test_docs_xs):
     for d in test_docs_xs:
         doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
         docs.append(doc)
-    farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
+    farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", num_processes=0,
                              use_gpu=False, top_k_per_sample=4, no_ans_boost=None, top_k_per_candidate=4)
     for top_k in [2, 5, 10]:
         prediction = farm_reader.predict(question="Who lives in Berlin?", documents=docs, top_k=top_k)
