@@ -16,14 +16,14 @@ def print_answers(results: dict, details: str = "all"):
             keys_to_keep = set(["answer", "context"])
         elif details == "medium":
             keys_to_keep = set(["answer", "context", "score"])
-        # filter the results
-        keys_to_drop = set(answers[0].keys()) - keys_to_keep
-        for a in answers:
-            for key in keys_to_drop:
-                if key in a:
-                    del a[key]
+        else:
+            keys_to_keep = answers.keys()
 
-        pp.pprint(answers)
+        # filter the results
+        filtered_answers = []
+        for ans in answers:
+            filtered_answers.append({k: ans[k] for k in keys_to_keep})
+        pp.pprint(filtered_answers)
     else:
         pp.pprint(results)
 
