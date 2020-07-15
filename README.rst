@@ -255,6 +255,18 @@ Example::
     converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
     pages = converter.extract_pages(file_path=file)
 
-8. Tests
+8. Indexing DOCX files
+---------------------
+
+Haystack has basic converters to extract text from .docx files. The implementation allows us to extract text from the document file, by extracting texts from each paragraph of the docx file. 
+The converters are easily extendable, so that you can customize them for your .docx files if needed. 
+
+Example::
+
+    from haystack.indexing.file_converters.docx import DocxToTextConverter    
+    converter = DocxToTextConverter()
+    paragraphs = converter.extract_pages(file_path=file) #Each Non-empty paragraph is an element (string) of the list paragraphs here
+
+9. Tests
 -------------------
 * Unit tests can be executed by running :code:`tox`.
