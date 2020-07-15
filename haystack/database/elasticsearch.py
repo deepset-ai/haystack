@@ -150,7 +150,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def query(
         self,
-        query: str,
+        query: Optional[str],
         filters: Optional[Dict[str, List[str]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
@@ -164,7 +164,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if query is None:
             body = {"query":
                         {"bool": {"must":
-                                      {"match_all": {}}}}}
+                                      {"match_all": {}}}}}  # type: Dict[str, Any]
             if filters:
                 filter_clause = []
                 for key, values in filters.items():
@@ -189,12 +189,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             custom_query_json = template.substitute(**substitutions)
             body = json.loads(custom_query_json)
             # add top_k
-            body["size"] = top_k
+            body["size"] = str(top_k)
 
         # Default Retrieval via BM25 using the user query on `self.search_fields`
         else:
             body = {
-                "size": top_k,
+                "size": str(top_k),
                 "query": {
                     "bool": {
                         "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
