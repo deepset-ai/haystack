@@ -74,7 +74,7 @@ if eval_retriever_only:
 if eval_reader_only:
     reader_eval_results = reader.eval(document_store=document_store, device=device)
     # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
-    #reader_eval_results = reader.eval_on_file("../data/natural_questions", "dev_subset.json", device=device)
+    #reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
 
     ## Reader Top-N-Accuracy is the proportion of predicted answers that match with their corresponding correct answer
     print("Reader Top-N-Accuracy:", reader_eval_results["top_n_accuracy"])
