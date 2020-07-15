@@ -225,7 +225,7 @@ A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is provide
 *  collect & export user feedback on answers to gain domain-specific training data (`feedback  <https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/feedback.py>`_)
 *  allow basic monitoring of requests (currently via APM in Kibana)
 
-To serve the API, run::
+To serve the API, adjust the values in :code:`rest_api/config.py` and run::
 
     gunicorn rest_api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker
 
@@ -243,30 +243,25 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 .. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/annotation_tool.png
 
 
-7. Indexing PDF files
+7. Indexing PDF / Docx files
 ---------------------
 
-Haystack has basic converters to extract text from PDFs. While it's almost impossible to cover all types, layouts and special cases in PDFs, the implementation covers the most common formats and provides basic cleaning functions to remove header, footers, and tables. Multi-Column text layouts are also supported.
-The converters are easily extendable, so that you can customize them for your PDFs if needed. 
+Haystack has basic converters to extract text from PDF and Docx files. While it's almost impossible to cover all types, layouts and special cases in PDFs, the implementation covers the most common formats and provides basic cleaning functions to remove header, footers, and tables. Multi-Column text layouts are also supported.
+The converters are easily extendable, so that you can customize them for your files if needed.
 
 Example::
 
+    #PDF
     from haystack.indexing.file_converters.pdf import PDFToTextConverter    
     converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
     pages = converter.extract_pages(file_path=file)
-
-8. Indexing DOCX files
----------------------
-
-Haystack has basic converters to extract text from .docx files. The implementation allows us to extract text from the document file, by extracting texts from each paragraph of the docx file. 
-The converters are easily extendable, so that you can customize them for your .docx files if needed. 
-
-Example::
-
-    from haystack.indexing.file_converters.docx import DocxToTextConverter    
+    # => list of str, one per page
+    #DOCX
+    from haystack.indexing.file_converters.docx import DocxToTextConverter
     converter = DocxToTextConverter()
     paragraphs = converter.extract_pages(file_path=file) #Each Non-empty paragraph is an element (string) of the list paragraphs here
+    #  => list of str, one per paragraph (as docx has no direct notion of pages)
 
-9. Tests
+8. Tests
 -------------------
 * Unit tests can be executed by running :code:`tox`.
