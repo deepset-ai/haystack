@@ -259,7 +259,7 @@ Example::
     #DOCX
     from haystack.indexing.file_converters.docx import DocxToTextConverter
     converter = DocxToTextConverter()
-    paragraphs = converter.extract_pages(file_path=file) #Each Non-empty paragraph is an element (string) of the list paragraphs here
+    paragraphs = converter.extract_pages(file_path=file)
     #  => list of str, one per paragraph (as docx has no direct notion of pages)
 
 8. Tests
