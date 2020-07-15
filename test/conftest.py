@@ -1,3 +1,4 @@
+
 import tarfile
 import time
 import urllib.request
@@ -10,6 +11,7 @@ from elasticsearch import Elasticsearch
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 
+from haystack.database.base import Document
 from haystack.database.sql import SQLDocumentStore
 from haystack.database.memory import InMemoryDocumentStore
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
@@ -54,9 +56,10 @@ def xpdf_fixture():
 @pytest.fixture()
 def test_docs_xs():
     return [
-        {"name": "filename1", "text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1"}},
-        {"name": "filename2", "text": "My name is Paul and I live in New York", "meta": {"meta_field": "test2"}},
-        {"name": "filename3", "text": "My name is Christelle and I live in Paris", "meta": {"meta_field": "test3"}}
+        {"text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
+        {"text": "My name is Paul and I live in New York", "meta": {"meta_field": "test2", "name": "filename2"}},
+        {"text": "My name is Christelle and I live in Paris", "meta_field": "test3", "meta": {"name": "filename3"}}
+        # last doc has meta_field at the top level for backward compatibility
     ]
 
 
@@ -69,6 +72,39 @@ def reader(request):
         return TransformersReader(model="distilbert-base-uncased-distilled-squad",
                                   tokenizer="distilbert-base-uncased",
                                   use_gpu=-1)
+
+
+# TODO Fix bug in test_no_answer_output when using
+# @pytest.fixture(params=["farm", "transformers"])
+@pytest.fixture(params=["farm"])
+def no_answer_reader(request):
+    if request.param == "farm":
+        return FARMReader(model_name_or_path="deepset/roberta-base-squad2",
+                          use_gpu=False, top_k_per_sample=5, no_ans_boost=0, num_processes=0)
+    if request.param == "transformers":
+        return TransformersReader(model="deepset/roberta-base-squad2",
+                                  tokenizer="deepset/roberta-base-squad2",
+                                  use_gpu=-1, n_best_per_passage=5)
+
+
+@pytest.fixture()
+def prediction(reader, test_docs_xs):
+    docs = []
+    for d in test_docs_xs:
+        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
+        docs.append(doc)
+    prediction = reader.predict(question="Who lives in Berlin?", documents=docs, top_k=5)
+    return prediction
+
+
+@pytest.fixture()
+def no_answer_prediction(no_answer_reader, test_docs_xs):
+    docs = []
+    for d in test_docs_xs:
+        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
+        docs.append(doc)
+    prediction = no_answer_reader.predict(question="What is the meaning of life?", documents=docs, top_k=5)
+    return prediction
 
 
 @pytest.fixture(params=["sql", "memory", "elasticsearch"])

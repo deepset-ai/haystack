@@ -6,8 +6,10 @@ import numpy as np
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import SquadProcessor
 from farm.data_handler.dataloader import NamedDataLoader
-from farm.infer import Inferencer
+from farm.data_handler.inputs import QAInput, Question
+from farm.infer import QAInferencer
 from farm.modeling.optimization import initialize_optimizer
+from farm.modeling.predictions import QAPred, QACandidate
 from farm.train import Trainer
 from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
@@ -85,7 +87,7 @@ class FARMReader(BaseReader):
         else:
             self.return_no_answers = True
         self.top_k_per_candidate = top_k_per_candidate
-        self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
+        self.inferencer = QAInferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
                                           task_type="question_answering", max_seq_len=max_seq_len,
                                           doc_stride=doc_stride, num_processes=num_processes)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
@@ -231,18 +233,16 @@ class FARMReader(BaseReader):
         """
 
         # convert input to FARM format
-        input_dicts = []
+        inputs = []
         for doc in documents:
-            cur = {
-                "text": doc.text,
-                "questions": [question],
-                "document_id": doc.id
-            }
-            input_dicts.append(cur)
+            cur = QAInput(doc_text=doc.text,
+                          questions=Question(text=question,
+                                             uid=doc.id))
+            inputs.append(cur)
 
         # get answers from QA model
-        predictions = self.inferencer.inference_from_dicts(
-            dicts=input_dicts, return_json=True, multiprocessing_chunksize=1
+        predictions = self.inferencer.inference_from_objects(
+            objects=inputs, return_json=False, multiprocessing_chunksize=1
         )
         # assemble answers from all the different documents & format them.
         # For the "no answer" option, we collect all no_ans_gaps and decide how likely
@@ -250,29 +250,28 @@ class FARMReader(BaseReader):
         answers = []
         no_ans_gaps = []
         best_score_answer = 0
-        # TODO once FARM returns doc ids again we can revert to using them inside the preds and remove
-        for pred, inp in zip(predictions, input_dicts):
+        for pred, inp in zip(predictions, inputs):
             answers_per_document = []
-            no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
-            for ans in pred["predictions"][0]["answers"]:
+            no_ans_gaps.append(pred.no_answer_gap)
+            for ans in pred.prediction:
                 # skip "no answers" here
                 if self._check_no_answer(ans):
                     pass
                 else:
-                    cur = {"answer": ans["answer"],
-                           "score": ans["score"],
+                    cur = {"answer": ans.answer,
+                           "score": ans.score,
                            # just a pseudo prob for now
-                           "probability": float(expit(np.asarray([ans["score"]]) / 8)),  # type: ignore
-                           "context": ans["context"],
-                           "offset_start": ans["offset_answer_start"] - ans["offset_context_start"],
-                           "offset_end": ans["offset_answer_end"] - ans["offset_context_start"],
-                           "offset_start_in_doc": ans["offset_answer_start"],
-                           "offset_end_in_doc": ans["offset_answer_end"],
-                           "document_id": inp["document_id"]} #TODO revert to ans["docid"] once it is populated
+                           "probability": float(expit(np.asarray([ans.score]) / 8)),  # type: ignore
+                           "context": ans.context_window,
+                           "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
+                           "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
+                           "offset_start_in_doc": ans.offset_answer_start,
+                           "offset_end_in_doc": ans.offset_answer_end,
+                           "document_id": pred.id}
                     answers_per_document.append(cur)
 
-                    if ans["score"] > best_score_answer:
-                        best_score_answer = ans["score"]
+                    if ans.score > best_score_answer:
+                        best_score_answer = ans.score
             # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance.
             answers += answers_per_document[:self.top_k_per_candidate]
 
@@ -299,7 +298,7 @@ class FARMReader(BaseReader):
         Returns a dict containing the following metrics:
             - "EM": exact match score
             - "f1": F1-Score
-            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+            - "top_n_accuracy": Proportion of predicted answers that match with correct answer
 
         :param data_dir: The directory in which the test set can be found
         :type data_dir: Path or str
@@ -329,7 +328,7 @@ class FARMReader(BaseReader):
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_recall": eval_results[0]["top_n_recall"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
         }
         return results
 
@@ -347,7 +346,7 @@ class FARMReader(BaseReader):
         Returns a dict containing the following metrics:
             - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
             - "f1": Average overlap between predicted answers and their corresponding correct answers
-            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+            - "top_n_accuracy": Proportion of predicted answers that match with correct answer
 
         :param document_store: The ElasticsearchDocumentStore containing the evaluation documents
         :type document_store: ElasticsearchDocumentStore
@@ -404,22 +403,22 @@ class FARMReader(BaseReader):
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_recall": eval_results[0]["top_n_recall"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
         }
         return results
 
 
     @staticmethod
-    def _check_no_answer(d: dict):
+    def _check_no_answer(c: QACandidate):
         # check for correct value in "answer"
-        if d["offset_answer_start"] == 0 and d["offset_answer_end"] == 0:
-            assert d["answer"] == "is_impossible", f"Check for no answer is not working"
-
-        # check weather the model thinks there is no answer
-        if d["answer"] == "is_impossible":
+        if c.offset_answer_start == 0 and c.offset_answer_end == 0:
+            if c.answer != "no_answer":
+                logger.error("Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'")
+        if c.answer == "no_answer":
             return True
         else:
             return False
+
 
     @staticmethod
     def _calc_no_answer(no_ans_gaps: List[float], best_score_answer: float):
@@ -476,5 +475,5 @@ class FARMReader(BaseReader):
                              are "gpu_tensor_core" (GPUs with tensor core like V100 or T4),
                              "gpu_without_tensor_core" (most other GPUs), and "cpu".
         """
-        inferencer = Inferencer.load(model_name_or_path, task_type="question_answering")
+        inferencer = QAInferencer.load(model_name_or_path, task_type="question_answering")
         inferencer.model.convert_to_onnx(output_path=Path("onnx-export"), opset_version=opset_version, optimize_for=optimize_for)

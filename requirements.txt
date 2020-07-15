@@ -1,4 +1,4 @@
-farm==0.4.5
+farm==0.4.6
 --find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn
@@ -15,3 +15,4 @@ langdetect # for PDF conversions
 #temporarily (used for DPR downloads)
 wget
 python-multipart
+python-docx
