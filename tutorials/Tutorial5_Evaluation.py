@@ -39,17 +39,17 @@ if LAUNCH_ELASTICSEARCH:
 
 # Download evaluation data, which is a subset of Natural Questions development set containing 50 documents
 doc_dir = "../data/nq"
-s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset.json.zip"
+s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v2.json.zip"
 fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
 # Connect to Elasticsearch
 document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document", create_index=False)
 # Add evaluation data to Elasticsearch database
 if LAUNCH_ELASTICSEARCH:
-    document_store.add_eval_data("../data/nq/nq_dev_subset.json")
+    document_store.add_eval_data("../data/nq/nq_dev_subset_v2.json")
 else:
     logger.warning("Since we already have a running ES instance we should not index the same documents again."
-                   "If you still want to do this call: 'document_store.add_eval_data('../data/nq/nq_dev_subset.json')' manually ")
+                   "If you still want to do this call: 'document_store.add_eval_data('../data/nq/nq_dev_subset_v2.json')' manually ")
 
 # Initialize Retriever
 retriever = ElasticsearchRetriever(document_store=document_store)
@@ -74,7 +74,7 @@ if eval_retriever_only:
 if eval_reader_only:
     reader_eval_results = reader.eval(document_store=document_store, device=device)
     # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
-    #reader_eval_results = reader.eval_on_file("../data/natural_questions", "dev_subset.json", device=device)
+    #reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
 
     ## Reader Top-N-Accuracy is the proportion of predicted answers that match with their corresponding correct answer
     print("Reader Top-N-Accuracy:", reader_eval_results["top_n_accuracy"])
