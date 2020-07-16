@@ -28,7 +28,7 @@ Introduction
 ============
 
 The performance of **modern Question Answering Models** (BERT, ALBERT ...) has seen drastic improvements within the last year enabling many new opportunities for accessing information more efficiently. However, those models are designed to find answers within rather small text passages. **Haystack lets you scale QA models** to large collections of documents!
-While QA is the focussed use case for haystack, we will soon support additional options to boost search (re-ranking, most-similar search ...).
+While QA is the focussed use case for Haystack, we will address further options around neural search in the future (re-ranking, most-similar search ...).
 
 Haystack is designed in a modular way and lets you use any models trained with  `FARM <https://github.com/deepset-ai/FARM>`_ or `Transformers <https://github.com/huggingface/transformers>`_.
 
