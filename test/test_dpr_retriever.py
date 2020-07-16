@@ -11,7 +11,7 @@ def test_dpr_inmemory_retrieval():
         {'name': '2', 'text': """Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with"""},
     ]
 
-    retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq", gpu=False)
+    retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq", use_gpu=False)
 
     embedded = []
     for doc in documents:
