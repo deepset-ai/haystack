@@ -26,7 +26,7 @@ EMBEDDING_FIELD_NAME = os.getenv("EMBEDDING_FIELD_NAME", None)
 EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", None)
 
 # Reader
-READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", None)
+READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", "deepset/roberta-base-squad2")
 READER_TYPE = os.getenv("READER_TYPE", "FARMReader") # alternative: 'TransformersReader'
 READER_TOKENIZER = os.getenv("READER_TOKENIZER", None)
 CONTEXT_WINDOW_SIZE = int(os.getenv("CONTEXT_WINDOW_SIZE", 500))
