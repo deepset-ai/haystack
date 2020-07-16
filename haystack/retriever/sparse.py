@@ -34,7 +34,10 @@ class ElasticsearchRetriever(BaseRetriever):
                                             "fields": ["text", "title"]}}],
                                         "filter": [                                 // optional custom filters
                                             {"terms": {"year": "${years}"}},
-                                            {"terms": {"quarter": "${quarters}"}}],
+                                            {"terms": {"quarter": "${quarters}"}},
+                                            {"range": {"date": {"gte": "${date}"}}}
+                                            ],
+
                                     }
                                 },
                             }
@@ -103,6 +106,21 @@ class ElasticsearchRetriever(BaseRetriever):
 
         return {"recall": recall, "map": mean_avg_precision}
 
+
+class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
+    """
+    Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
+    Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
+    """
+
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        if index is None:
+            index = self.document_store.index
+        documents = self.document_store.query(query=None, filters=filters, top_k=top_k,
+                                              custom_query=self.custom_query, index=index)
+        logger.info(f"Got {len(documents)} candidates from retriever")
+
+        return documents
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
 Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text", "meta"])
