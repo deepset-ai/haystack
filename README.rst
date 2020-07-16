@@ -148,10 +148,25 @@ Example
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
     # returns: [Document, Document]
 
-EmbeddingRetriever
+DensePassageRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
 Using dense embeddings (i.e. vector representations) of texts is a powerful alternative to score similarity of texts.
-This retriever allows you to transform your query into an embedding using a model (e.g. Sentence-BERT) and find similar texts by using cosine similarity.
+This retriever uses two BERT models - one to embed your query, one to embed your passage. It's based on the work of 
+`Karpukhin et al <https://arxiv.org/abs/2004.04906>`_ and is especially an powerful alternative if there's no direct overlap between tokens in your queries and your texts.
+
+Example
+
+.. code-block:: python
+
+    retriever = DensePassageRetriever(document_store=document_store, 
+                                      embedding_model="dpr-bert-base-nq",
+                                      do_lower_case=True, use_gpu=True)
+    retriever.retrieve(query="Why did the revenue increase?")
+    # returns: [Document, Document]
+
+EmbeddingRetriever
+^^^^^^^^^^^^^^^^^^^^^^
+This retriever uses a single model to embed your query and passage (e.g. Sentence-BERT) and find similar texts by using cosine similarity.
 
 Example
 
@@ -162,8 +177,6 @@ Example
                                    model_format="farm")
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
     # returns: [Document, Document]
-
-We are working on extending this category of retrievers a lot as there's a lot of exciting work in research indicating substantial performance improvements (e.g. `DPR <https://arxiv.org/abs/2004.04906>`_ , `REALM <https://arxiv.org/abs/2002.08909>`_  )
 
 TfidfRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
