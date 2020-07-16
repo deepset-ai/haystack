@@ -28,7 +28,7 @@ class DensePassageRetriever(BaseRetriever):
     def __init__(self,
                  document_store: BaseDocumentStore,
                  embedding_model: str,
-                 gpu: bool = True,
+                 use_gpu: bool = True,
                  batch_size: int = 16,
                  do_lower_case: bool = False,
                  use_amp: str = None,
@@ -41,15 +41,15 @@ class DensePassageRetriever(BaseRetriever):
         :Example:
 
             # remote model from FAIR
-            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="dpr-bert-base-nq", gpu=True)
+            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="dpr-bert-base-nq", use_gpu=True)
             # or from local path
-            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", gpu=True)
+            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", use_gpu=True)
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or remote name of model checkpoint. The format equals the 
                                 one used by original author's in https://github.com/facebookresearch/DPR. 
                                 Currently available remote names: "dpr-bert-base-nq" 
-        :param gpu: Whether to use gpu or not
+        :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
         :param do_lower_case: Whether to lower case the text input in the tokenizer
         :param encoder_model_type: 
@@ -71,7 +71,7 @@ class DensePassageRetriever(BaseRetriever):
                 download_dpr(resource_key="checkpoint.retriever.single.nq.bert-base-encoder", out_dir="models/dpr")
             self.embedding_model = "models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp"
 
-        if gpu and torch.cuda.is_available():
+        if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
@@ -196,7 +196,7 @@ class EmbeddingRetriever(BaseRetriever):
         self,
         document_store: ElasticsearchDocumentStore,
         embedding_model: str,
-        gpu: bool = True,
+        use_gpu: bool = True,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
@@ -204,7 +204,7 @@ class EmbeddingRetriever(BaseRetriever):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or name of model in Hugging Face's model hub. Example: 'deepset/sentence_bert'
-        :param gpu: Whether to use gpu or not
+        :param use_gpu: Whether to use gpu or not
         :param model_format: Name of framework that was used for saving the model. Options: 'farm', 'transformers', 'sentence_transformers'
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options: 'cls_token' (sentence vector), 'reduce_mean' (sentence vector),
@@ -222,7 +222,7 @@ class EmbeddingRetriever(BaseRetriever):
         if model_format == "farm" or model_format == "transformers":
             self.embedding_model = Inferencer.load(
                 embedding_model, task_type="embeddings", extraction_strategy=self.pooling_strategy,
-                extraction_layer=self.emb_extraction_layer, gpu=gpu, batch_size=4, max_seq_len=512, num_processes=0
+                extraction_layer=self.emb_extraction_layer, gpu=use_gpu, batch_size=4, max_seq_len=512, num_processes=0
             )
 
         elif model_format == "sentence_transformers":
@@ -230,7 +230,7 @@ class EmbeddingRetriever(BaseRetriever):
 
             # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
             # e.g. 'roberta-base-nli-stsb-mean-tokens'
-            if gpu:
+            if use_gpu:
                 device = "cuda"
             else:
                 device = "cpu"

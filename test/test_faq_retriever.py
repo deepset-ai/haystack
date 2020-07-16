@@ -22,7 +22,7 @@ def test_faq_retriever_in_memory_store():
         {'text': 'By running tox in the command line!', 'meta': {'name': 'blah blah blah', 'question': 'blah blah blah'}},
     ]
 
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", gpu=False)
+    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False)
 
     embedded = []
     for doc in documents:

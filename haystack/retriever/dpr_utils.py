@@ -109,11 +109,12 @@ class BertTensorizer(Tensorizer):
 
         # tokenizer automatic padding is explicitly disabled since its inconsistent behavior
         if title:
-            token_ids = self.tokenizer.encode(title, text_pair=text, add_special_tokens=add_special_tokens,
+            token_ids = self.tokenizer.encode(title, text_pair=text, truncation=True, add_special_tokens=add_special_tokens,
                                               max_length=self.max_length,
                                               pad_to_max_length=False)
         else:
-            token_ids = self.tokenizer.encode(text, add_special_tokens=add_special_tokens, max_length=self.max_length,
+            token_ids = self.tokenizer.encode(text, add_special_tokens=add_special_tokens, truncation=True,
+                                              max_length=self.max_length,
                                               pad_to_max_length=False)
 
         seq_len = self.max_length
