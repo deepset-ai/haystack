@@ -51,7 +51,7 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
 # Instead of retrieving via Elasticsearch's plain BM25, we want to use vector similarity of the questions (user question vs. FAQ ones).
 # We can use the `EmbeddingRetriever` for this purpose and specify a model that we use for the embeddings.
 #
-retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", gpu=False)
+retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False)
 
 # Download a csv containing some FAQ data
 # Here: Some question-answer pairs related to COVID-19

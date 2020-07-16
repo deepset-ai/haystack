@@ -49,7 +49,7 @@ if RETRIEVER_TYPE == "EmbeddingRetriever":
         document_store=document_store,
         embedding_model=EMBEDDING_MODEL_PATH,
         model_format=EMBEDDING_MODEL_FORMAT,
-        gpu=USE_GPU
+        use_gpu=USE_GPU
     )  # type: BaseRetriever
 elif RETRIEVER_TYPE == "ElasticsearchRetriever":
     retriever = ElasticsearchRetriever(document_store=document_store)
