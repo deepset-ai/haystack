@@ -71,9 +71,10 @@ def faq_qa_feedback(feedback: Feedback):
 def export_doc_qa_feedback():
     """
     SQuAD format JSON export for question/answer pairs that were marked as "relevant".
-
-    #TODO filter out faq-qa feedback.
     """
+    #TODO filter out faq-qa feedback.
+    #TODO Reduce length of context for large documents
+
     relevant_feedback_query = {"query": {"bool": {"must": [{"term": {"label": "relevant"}}]}}}
     result = scan(elasticsearch_client, index=DB_INDEX_FEEDBACK, query=relevant_feedback_query)
 
@@ -94,7 +95,7 @@ def export_doc_qa_feedback():
     for document_id, feedback in per_document_feedback.items():
         document = document_store.get_document_by_id(document_id)
         context = document.text
-        export_data.append({"paragraphs": [{"qas": feedback}], "context": context})
+        export_data.append({"paragraphs": [{"qas": feedback, "context": context}],})
 
     export = {"data": export_data}
 
