@@ -196,7 +196,7 @@ class EmbeddingRetriever(BaseRetriever):
         self,
         document_store: ElasticsearchDocumentStore,
         embedding_model: str,
-        gpu: bool = True,
+        use_gpu: bool = True,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
@@ -204,7 +204,7 @@ class EmbeddingRetriever(BaseRetriever):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or name of model in Hugging Face's model hub. Example: 'deepset/sentence_bert'
-        :param gpu: Whether to use gpu or not
+        :param use_gpu: Whether to use gpu or not
         :param model_format: Name of framework that was used for saving the model. Options: 'farm', 'transformers', 'sentence_transformers'
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options: 'cls_token' (sentence vector), 'reduce_mean' (sentence vector),
@@ -222,7 +222,7 @@ class EmbeddingRetriever(BaseRetriever):
         if model_format == "farm" or model_format == "transformers":
             self.embedding_model = Inferencer.load(
                 embedding_model, task_type="embeddings", extraction_strategy=self.pooling_strategy,
-                extraction_layer=self.emb_extraction_layer, gpu=gpu, batch_size=4, max_seq_len=512, num_processes=0
+                extraction_layer=self.emb_extraction_layer, gpu=use_gpu, batch_size=4, max_seq_len=512, num_processes=0
             )
 
         elif model_format == "sentence_transformers":
@@ -230,7 +230,7 @@ class EmbeddingRetriever(BaseRetriever):
 
             # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
             # e.g. 'roberta-base-nli-stsb-mean-tokens'
-            if gpu:
+            if use_gpu:
                 device = "cuda"
             else:
                 device = "cpu"
