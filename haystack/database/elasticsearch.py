@@ -139,6 +139,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if "meta" in _doc.keys():
                 for k, v in _doc["meta"].items():
                     _doc[k] = v
+                _doc.pop("meta")
             documents_to_index.append(_doc)
         bulk(self.client, documents_to_index, request_timeout=300)
 
