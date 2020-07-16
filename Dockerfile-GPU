@@ -17,7 +17,7 @@ RUN pip3 install -r requirements.txt
 RUN pip3 install -e .
 
 # copy saved FARM models
-COPY models /home/user/models
+COPY README.rst models* /home/user/models/
 
 # Optional: copy sqlite db if needed for testing
 #COPY qa.db /home/user/
@@ -32,4 +32,4 @@ ENV LANG=C.UTF-8
 
 
 # cmd for running the API
-CMD ["gunicorn", "haystack.api.application:app", "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "2"]
+CMD ["gunicorn", "haystack.api.application:app", "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "2", "--timeout", "180"]
