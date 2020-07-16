@@ -143,6 +143,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             documents_to_index.append(_doc)
         bulk(self.client, documents_to_index, request_timeout=300)
 
+    def update_document_meta(self, id: str, meta: Dict[str, str]):
+        body = {"doc": meta}
+        self.client.update(index=self.index, doc_type="_doc", id=id, body=body)
+
     def get_document_count(self, index: Optional[str] = None,) -> int:
         if index is None:
             index = self.index
