@@ -92,6 +92,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.name_field = name_field
         self.external_source_id_field = external_source_id_field
         self.embedding_field = embedding_field
+        self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
         self.faq_question_field = faq_question_field
 
@@ -154,8 +155,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         count = result["count"]
         return count
 
-    def get_all_documents(self) -> List[Document]:
-        result = scan(self.client, query={"query": {"match_all": {}}}, index=self.index)
+    def get_all_documents(self, index=None) -> List[Document]:
+        if index is None:
+            index = self.index
+        result = scan(self.client, query={"query": {"match_all": {}}}, index=index)
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
         return documents
 
@@ -296,7 +299,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         )
         return document
 
-    def update_embeddings(self, retriever):
+    def update_embeddings(self, retriever, index=None):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
@@ -304,20 +307,29 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param retriever: Retriever
         :return: None
         """
+        if index is None:
+            index = self.index
 
         if not self.embedding_field:
-            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
-        docs = self.get_all_documents()
+            raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
+
+
+
+        docs = self.get_all_documents(index)
         passages = [d.text for d in docs]
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
         embeddings = retriever.embed_passages(passages)
 
         assert len(docs) == len(embeddings)
 
+        if embeddings[0].shape[0] != self.embedding_dim:
+            raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                               f" doesn't match embedding dim. in documentstore ({self.embedding_dim})."
+                               "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
         doc_updates = []
         for doc, emb in zip(docs, embeddings):
             update = {"_op_type": "update",
-                      "_index": self.index,
+                      "_index": index,
                       "_id": doc.id,
                       "doc": {self.embedding_field: emb.tolist()},
                       }
@@ -339,6 +351,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         eval_docs_to_index = []
         questions_to_index = []
+
+        # Create index with eval docs if not existing
+        default_mapping = {
+            "mappings": {
+                "properties": {
+                    self.name_field: {"type": "text"},
+                    self.text_field: {"type": "text"},
+                    self.external_source_id_field: {"type": "text"},
+                    self.embedding_field: {"type": "dense_vector", "dims": self.embedding_dim}
+                }
+            }
+        }
+        self.client.indices.create(index=doc_index, ignore=400, body=default_mapping)
 
         with open(filename, "r") as file:
             data = json.load(file)
