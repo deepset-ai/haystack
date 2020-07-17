@@ -4,6 +4,7 @@ from string import Template
 from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
+import numpy as np
 
 from haystack.database.base import BaseDocumentStore, Document
 
@@ -236,7 +237,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return documents
 
     def query_by_embedding(self,
-                           query_emb: List[float],
+                           query_emb: np.array,
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None) -> List[Document]:
@@ -255,7 +256,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         "script": {
                             "source": f"cosineSimilarity(params.query_vector,doc['{self.embedding_field}']) + 1.0",
                             "params": {
-                                "query_vector": query_emb
+                                "query_vector": query_emb.tolist()
                             }
                         }
                     }
