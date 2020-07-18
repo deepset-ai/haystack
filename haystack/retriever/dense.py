@@ -107,8 +107,8 @@ class DensePassageRetriever(BaseRetriever):
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
             index = self.document_store.index
-        query_emb: List[float] = self.embed_queries(texts=[query])[0].tolist()
-        documents = self.document_store.query_by_embedding(query_emb=query_emb, top_k=top_k, filters=filters, index=index)
+        query_emb = self.embed_queries(texts=[query])
+        documents = self.document_store.query_by_embedding(query_emb=query_emb[0], top_k=top_k, filters=filters, index=index)
         return documents
 
     def embed_queries(self, texts: List[str]) -> List[np.array]:
