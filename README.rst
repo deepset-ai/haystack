@@ -56,7 +56,7 @@ Components
 
 5. **REST API**: Exposes a simple API for running QA search, collecting feedback and monitoring requests
 
-6. **Labeling Tool**: `Hosted version <https://annotate.deepset.ai/login>`_  (Beta), Docker images (coming soon)
+6. **Haystack Annotate**: Create custom QA labels, `Hosted version <https://annotate.deepset.ai/login>`_  (Beta), Docker images (coming soon)
 
 
 Resources
