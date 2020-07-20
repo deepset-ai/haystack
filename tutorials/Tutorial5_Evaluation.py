@@ -54,10 +54,15 @@ else:
     logger.warning("Since we already have a running ES instance we should not index the same documents again."
                    "If you still want to do this call: 'document_store.add_eval_data('../data/nq/nq_dev_subset_v2.json')' manually ")
 
+
 # Initialize Retriever
 retriever = ElasticsearchRetriever(document_store=document_store)
 
 # Alternative: Evaluate DensePassageRetriever
+# Note, that DPR works best when you index short passages < 512 tokens as only those tokens will be used for the embedding.
+# Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
+# DPR still outperforms Elastic's BM25 by a small margin here.
+
 # from haystack.retriever.dense import DensePassageRetriever
 # retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",batch_size=32)
 # document_store.update_embeddings(retriever, index="eval_document")
