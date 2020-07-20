@@ -280,7 +280,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 body["_source"] = {"excludes": self.excluded_meta_data}
 
             logger.debug(f"Retriever query: {body}")
-            result = self.client.search(index=index, body=body)["hits"]["hits"]
+            result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
 
             documents = [self._convert_es_hit_to_document(hit, score_adjustment=-1) for hit in result]
             return documents
@@ -300,6 +300,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         )
         return document
 
+    def describe_documents(self, index=None):
+        if index is None:
+            index = self.index
+        docs = self.get_all_documents(index)
+
+        l = [len(d.text) for d in docs]
+        stats = {"count": len(docs),
+                 "chars_mean": np.mean(l),
+                 "chars_max": max(l),
+                 "chars_min": min(l),
+                 "chars_median": np.median(l),
+                 }
+        return stats
+
     def update_embeddings(self, retriever, index=None):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -318,6 +332,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         docs = self.get_all_documents(index)
         passages = [d.text for d in docs]
+
+        #TODO Index embeddings every X batches to avoid OOM for huge document collections
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
         embeddings = retriever.embed_passages(passages)
 
