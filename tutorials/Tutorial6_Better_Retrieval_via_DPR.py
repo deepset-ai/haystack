@@ -44,13 +44,9 @@ dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, spl
 # Now, let's write the docs to our DB.
 document_store.write_documents(dicts[:16])
 
-
 ### Retriever
 retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",
                                   do_lower_case=True, use_gpu=True)
-
-from haystack.retriever.dense import EmbeddingRetriever
-retriever = EmbeddingRetriever(document_store, model_format='farm', embedding_model='bert-base-cased', use_gpu=False)
 
 # Important:
 # Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all

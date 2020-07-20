@@ -49,17 +49,19 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
 
 # Add evaluation data to Elasticsearch database
 if LAUNCH_ELASTICSEARCH:
-    document_store.add_eval_data(filename="../data/nq/nq_dev.json", doc_index="eval_document", label_index="feedback" )
+    document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index="eval_document", label_index="feedback" )
 else:
     logger.warning("Since we already have a running ES instance we should not index the same documents again."
                    "If you still want to do this call: 'document_store.add_eval_data('../data/nq/nq_dev_subset_v2.json')' manually ")
 
 # Initialize Retriever
-from haystack.retriever.dense import DensePassageRetriever
-retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",batch_size=32)
-#document_store.update_embeddings(retriever, index="eval_document")
-#
-# retriever = ElasticsearchRetriever(document_store=document_store)
+retriever = ElasticsearchRetriever(document_store=document_store)
+
+# Alternative: Evaluate DensePassageRetriever
+# from haystack.retriever.dense import DensePassageRetriever
+# retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",batch_size=32)
+# document_store.update_embeddings(retriever, index="eval_document")
+
 
 # Initialize Reader
 reader = FARMReader("deepset/roberta-base-squad2")
@@ -93,5 +95,5 @@ if eval_reader_only:
 
 # Evaluate combination of Reader and Retriever through Finder
 if eval_both:
-    finder_eval_results = finder.eval(top_k_retriever = 10, top_k_reader = 10)
+    finder_eval_results = finder.eval(top_k_retriever=1, top_k_reader=10)
     finder.print_eval_results(finder_eval_results)
