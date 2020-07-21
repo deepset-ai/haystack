@@ -129,3 +129,22 @@ def document_store_with_docs(request, test_docs_xs, elasticsearch_fixture):
         time.sleep(2)
 
     return document_store
+
+
+@pytest.fixture(params=["sql", "memory", "elasticsearch"])
+def document_store(request, test_docs_xs, elasticsearch_fixture):
+    if request.param == "sql":
+        if os.path.exists("qa_test.db"):
+            os.remove("qa_test.db")
+        document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
+
+    if request.param == "memory":
+        document_store = InMemoryDocumentStore()
+
+    if request.param == "elasticsearch":
+        # make sure we start from a fresh index
+        client = Elasticsearch()
+        client.indices.delete(index='haystack_test', ignore=[404])
+        document_store = ElasticsearchDocumentStore(index="haystack_test")
+
+    return document_store
