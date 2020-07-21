@@ -74,8 +74,24 @@ class SQLDocumentStore(BaseDocumentStore):
         document = document_row or self._convert_sql_row_to_document(document_row)
         return document
 
-    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str]) -> List[Document]:
+        results = self.session.query(DocumentORM).filter(DocumentORM.id.in_(ids)).all()
+        documents = [self._convert_sql_row_to_document(row) for row in results]
+
+        return documents
+
+    def get_all_documents(self, limit: Optional[int] = None, offset: Optional[int] = None,
+                          index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
         index = index or self.index
+        document_rows = self.session.query(DocumentORM).filter_by(index=index).all()
+        if offset:
+            document_rows = document_rows.offset(offset)
+        if limit:
+            document_rows = document_rows.limit(limit)
+
+        documents = []
+        for row in document_rows:
+            documents.append(self._convert_sql_row_to_document(row))
 
         if filters:
             for key, values in filters.items():
