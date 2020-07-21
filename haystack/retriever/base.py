@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Type
 import logging
 
 from haystack.database.base import Document
+from haystack.database.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
 
 
 class BaseRetriever(ABC):
+    document_store: Type[BaseDocumentStore]
 
     @abstractmethod
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
@@ -37,6 +39,8 @@ class BaseRetriever(ABC):
 
         # extract all questions for evaluation
         filter = {"origin": label_origin}
+
+        # TODO get Documents back here
         questions = self.document_store.get_all_documents_in_index(index=label_index, filters=filter)
 
         # calculate recall and mean-average-precision
