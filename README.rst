@@ -113,7 +113,7 @@ Elasticsearch (Recommended)
 
 You can get started by running a single Elasticsearch node using docker::
 
-     docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.1
+     docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2
 
 Or if docker is not possible for you::
 

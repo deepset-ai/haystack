@@ -6,7 +6,8 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
 
-from haystack.database.base import BaseDocumentStore, Document
+from haystack.database.base import BaseDocumentStore, Document, Label
+
 
 logger = logging.getLogger(__name__)
 
@@ -114,26 +115,33 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             doc_ids.append(hit["_id"])
         return doc_ids
 
-    def write_documents(self, documents: List[dict]):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
         Indexes documents for later queries in Elasticsearch.
 
-        :param documents: List of dictionaries.
+        :param documents: List of dictionaries. #TODO update
                           Default format: {"text": "<the-actual-text>"}
                           Optionally: Include meta data via {"text": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           It can be used for filtering and is accessible in the responses of the Finder.
                           Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
                           should be changed to what you have set for self.text_field and self.name_field .
+        :param index: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
         :return: None
         """
+        if index is None:
+            index = self.index
+
+        # Make sure we comply to Label class format
+        if type(documents[0]) == dict:
+            documents = [Document.from_dict(l) for l in documents]
 
         documents_to_index = []
         for doc in documents:
             _doc = {
                 "_op_type": "create",
-                "_index": self.index,
-                **doc
+                "_index": index,
+                **doc.to_dict()
             }  # type: Dict[str, Any]
 
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
@@ -143,7 +151,26 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     _doc[k] = v
                 _doc.pop("meta")
             documents_to_index.append(_doc)
-        bulk(self.client, documents_to_index, request_timeout=300)
+        bulk(self.client, documents_to_index, request_timeout=300, refresh="wait_for")
+
+    def write_labels(self, labels: Union[List[Label], List[dict]], index: str ="feedback"):
+        # TODO add option to pass label objects
+        # TODO do we need self.label_index?
+
+        # Make sure we comply to Label class format
+        if type(labels[0]) == dict:
+            labels = [Label.from_dict(l) for l in labels]
+
+        labels_to_index = []
+        for label in labels:
+            _label = {
+                "_op_type": "create",
+                "_index": index,
+                **label.to_dict()
+            }  # type: Dict[str, Any]
+
+            labels_to_index.append(_label)
+        bulk(self.client, labels_to_index, request_timeout=300, refresh="wait_for")
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
         body = {"doc": meta}
@@ -156,12 +183,62 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         count = result["count"]
         return count
 
-    def get_all_documents(self, index=None) -> List[Document]:
+    def get_all_documents(self, index=None, filters: Optional[dict] = None) -> List[Document]:
         if index is None:
             index = self.index
-        result = scan(self.client, query={"query": {"match_all": {}}}, index=index)
+
+        body = {
+            "query": {
+                "bool": {
+                    "must": {
+                        "match_all": {}
+                    }
+                }
+            }
+        }  # type: Dict[str, Any]
+
+        if filters:
+           body["query"]["bool"]["filter"] = {"term": filters}
+
+        result = scan(self.client, query=body, index=index)
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
+
         return documents
+
+    def get_all_labels(self, index: str = "feedback", filters: Optional[dict] = None) -> List[Label]:
+        body = {
+            "query": {
+                "bool": {
+                    "must": {
+                        "match_all": {}
+                    }
+                }
+            }
+        }  # type: Dict[str, Any]
+
+        if filters:
+           body["query"]["bool"]["filter"] = {"term": filters}
+
+        result = scan(self.client, query=body, index=index)
+        labels = [Label.from_dict(hit["_source"]) for hit in result]
+        return labels
+
+    def get_all_documents_in_index(self, index: str, filters: Optional[dict] = None):
+        body = {
+            "query": {
+                "bool": {
+                    "must": {
+                        "match_all" : {}
+                    }
+                }
+            }
+        }  # type: Dict[str, Any]
+
+        if filters:
+           body["query"]["bool"]["filter"] = {"term": filters}
+        result = scan(self.client, query=body, index=index)
+
+        return result
 
     def query(
         self,
@@ -292,7 +369,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         document = Document(
             id=hit["_id"],
-            text=hit["_source"][self.text_field],
+            text=hit["_source"].get(self.text_field),
             external_source_id=hit["_source"].get(self.external_source_id_field),
             meta=meta_data,
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
@@ -366,10 +443,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :type label_index: str
         """
 
-        eval_docs_to_index = []
-        questions_to_index = []
-
-        # Create index with eval docs if not existing
+        # Create index for eval docs if not existing
         default_mapping = {
             "mappings": {
                 "properties": {
@@ -382,60 +456,63 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         }
         self.client.indices.create(index=doc_index, ignore=400, body=default_mapping)
 
-        with open(filename, "r") as file:
-            data = json.load(file)
-            for document in data["data"]:
-                for paragraph in document["paragraphs"]:
-                    doc_to_index= {}
-                    id = hash(paragraph["context"])
-                    for fieldname, value in paragraph.items():
-                        # write docs to doc_index
-                        if fieldname == "context":
-                            doc_to_index[self.text_field] = value
-                            doc_to_index["doc_id"] = str(id)
-                            doc_to_index["_op_type"] = "create"
-                            doc_to_index["_index"] = doc_index
-                        # write questions to label_index
-                        elif fieldname == "qas":
-                            for qa in value:
-                                question_to_index = {
-                                    "question": qa["question"],
-                                    "answers": qa["answers"],
-                                    "doc_id": str(id),
-                                    "origin": "gold_label",
-                                    "index_name": doc_index,
-                                    "_op_type": "create",
-                                    "_index": label_index
-                                }
-                                questions_to_index.append(question_to_index)
-                        # additional fields for docs
-                        else:
-                            doc_to_index[fieldname] = value
+        docs, labels = eval_data_from_file(filename)
 
-                    for key, value in document.items():
-                        if key == "title":
-                            doc_to_index[self.name_field] = value
-                        elif key != "paragraphs":
-                            doc_to_index[key] = value
+        self.write_documents(docs, index=doc_index)
+        self.write_labels(labels, index=label_index)
 
-                    eval_docs_to_index.append(doc_to_index)
+    def delete_all_documents(self, index):
+        """
+        Delete all documents in a index.
 
-        bulk(self.client, eval_docs_to_index)
-        bulk(self.client, questions_to_index)
+        :param index: index name
+        :return: None
+        """
+        self.client.delete_by_query(index=index, body={"query": {"match_all": {}}}, ignore=[404])
 
-    def get_all_documents_in_index(self, index: str, filters: Optional[dict] = None):
-        body = {
-            "query": {
-                "bool": {
-                    "must": {
-                        "match_all" : {}
-                    }
-                }
-            }
-        }  # type: Dict[str, Any]
 
-        if filters:
-           body["query"]["bool"]["filter"] = {"term": filters}
-        result = scan(self.client, query=body, index=index)
+def eval_data_from_file(filename: str) -> (List[Document], List[Label]):
+    """
+    Read eval data (documents + labels) from a SQuAD-style file.
 
-        return result
+    :param filename: Path to file in SQuAD format
+    :return: (List of Documents, List of Labels)
+    """
+    docs = []
+    labels = []
+
+    with open(filename, "r") as file:
+        data = json.load(file)
+        for document in data["data"]:
+            # get all extra fields from document level (e.g. title)
+            meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
+            for paragraph in document["paragraphs"]:
+                id = str(hash(paragraph["context"]))
+                cur_meta = {"name": document["title"]}
+                # all other fields from paragraph level
+                meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
+                cur_meta.update(meta_paragraph)
+                # meta from parent document
+                cur_meta.update(meta_doc)
+                # Create Document
+                docs.append(Document(id=id, text=paragraph["context"], meta=cur_meta))
+
+                # Get Labels
+                for qa in paragraph["qas"]:
+                    for answer in qa["answers"]:
+                        label = Label(
+                            question=qa["question"],
+                            answer=answer["text"],
+                            positive=True,
+                            document_id=str(id),
+                            offset_start_in_doc=answer["answer_start"],
+                            no_answer=qa["is_impossible"],
+                            origin="gold_label",
+                            )
+                        labels.append(label)
+        return docs, labels
+
+
+
+
+
