@@ -1,4 +1,5 @@
 import math
+from uuid import UUID
 
 from haystack.database.base import Document
 from haystack.reader.base import BaseReader
@@ -21,7 +22,7 @@ def test_output(prediction):
     assert prediction["answers"][0]["probability"] <= 1
     assert prediction["answers"][0]["probability"] >= 0
     assert prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
-    assert prediction["answers"][0]["document_id"] == "filename1"
+    assert prediction["answers"][0]["document_id"] == UUID("39107db3-6983-4edf-9cde-52e5acf0981b")
     assert len(prediction["answers"]) == 5
 
 
@@ -63,7 +64,7 @@ def test_context_window_size(test_docs_xs):
     # TODO parametrize window_size and farm/transformers reader using pytest
     docs = []
     for d in test_docs_xs:
-        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
+        doc = Document(text=d["text"], meta=d["meta"])
         docs.append(doc)
     for window_size in [10, 15, 20]:
         farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", num_processes=0,
@@ -88,7 +89,7 @@ def test_top_k(test_docs_xs):
     # TODO transformers reader was crashing when tested on this
     docs = []
     for d in test_docs_xs:
-        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
+        doc = Document(text=d["text"], meta=d["meta"])
         docs.append(doc)
     farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", num_processes=0,
                              use_gpu=False, top_k_per_sample=4, no_ans_boost=None, top_k_per_candidate=4)

@@ -25,8 +25,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         search_fields: Union[str, list] = "text",
         text_field: str = "text",
         name_field: str = "name",
-        embedding_field: Optional[str] = None,
-        embedding_dim: Optional[int] = None,
+        embedding_field: str = "embedding",
+        embedding_dim: int = 768,
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
         faq_question_field: Optional[str] = None,
@@ -71,12 +71,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "properties": {
                         name_field: {"type": "text"},
                         text_field: {"type": "text"},
+                        embedding_field: {"type": "dense_vector",
+                                          "dims": embedding_dim}
                     }
                 }
             }
-            if embedding_field:
-                custom_mapping["mappings"]["properties"][embedding_field] = {"type": "dense_vector",
-                                                                             "dims": embedding_dim}
         # create an index if not exists
         if create_index:
             self.client.indices.create(index=index, ignore=400, body=custom_mapping)
@@ -119,7 +118,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Indexes documents for later queries in Elasticsearch.
 
-        :param documents: List of dictionaries. #TODO update
+        :param documents: List of dictionaries OR list of Documents. #TODO update
                           Default format: {"text": "<the-actual-text>"}
                           Optionally: Include meta data via {"text": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
@@ -138,6 +137,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         documents_to_index = []
         for doc in documents:
+
             _doc = {
                 "_op_type": "create",
                 "_index": index,
@@ -145,9 +145,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             }  # type: Dict[str, Any]
 
             # rename id for elastic
-            _doc["_id"] = _doc.pop("id")
-            # don't index query score
+            _doc["_id"] = str(_doc.pop("id"))
+
+            # don't index query score and empty fields
             _ = _doc.pop("query_score", None)
+            _doc = {k:v for k,v in _doc.items() if v is not None}
 
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
             # we "unnest" all value within "meta"
@@ -367,7 +369,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, "tags")}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field, "tags")}
         meta_data["name"] = meta_data.pop(self.name_field, None)
 
         document = Document(
@@ -376,7 +378,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             meta=meta_data,
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
             question=hit["_source"].get(self.faq_question_field),
-            tags=hit["_source"].get("tags")
+            tags=hit["_source"].get("tags"),
+            embedding=hit["_source"].get(self.embedding_field)
         )
         return document
 

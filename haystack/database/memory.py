@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional, Union, Tuple
+from uuid import UUID
 
 from haystack.database.base import BaseDocumentStore, Document
 
@@ -9,44 +10,38 @@ class InMemoryDocumentStore(BaseDocumentStore):
     """
 
     def __init__(self, embedding_field: Optional[str] = None):
-        self.docs = {}  # type: Dict[str, Any]
+        self.docs = {}  # type: Dict[UUID, Any]
         self.doc_tags = {}  # type: Dict[str, Any]
-        self.embedding_field = embedding_field
         self.index = None
 
-    def write_documents(self, documents: List[dict]):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index:Optional[str]=None):
         """
         Indexes documents for later queries.
+
 
         :param documents: List of dictionaries in the format {"text": "<the-actual-text>"}.
                           Optionally, you can also supply "tags": ["one-tag", "another-one"]
                           or additional meta data via "meta": {"name": "<some-document-name>, "author": "someone", "url":"some-url" ...}
+                          TODO update
 
         :return: None
         """
-        import hashlib
+
+        if index: raise NotImplementedError("Custom index not yet supported for this operation")
 
         if documents is None:
             return
 
         for document in documents:
-            text = document["text"]
-            if "meta" not in document.keys():
-                document["meta"] = {}
-            for k, v in document.items():  # put additional fields other than text in meta
-                if k not in ["text", "meta", "tags"]:
-                    document["meta"][k] = v
+            _doc = document.copy()
+            if type(document) == dict:
+                _doc = Document.from_dict(_doc)
 
-            if not text:
-                raise Exception("A document cannot have empty text field.")
+            self.docs[_doc.id] = _doc
 
-            hash = hashlib.md5(text.encode("utf-8")).hexdigest()
-
-            self.docs[hash] = document
-
+            #TODO fix tags after id refactoring
             tags = document.get("tags", [])
-
-            self._map_tags_to_ids(hash, tags)
+            self._map_tags_to_ids(_doc.id, tags)
 
     def _map_tags_to_ids(self, hash: str, tags: List[str]):
         if isinstance(tags, list):
@@ -63,9 +58,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                 else:
                                     self.doc_tags[comp_key] = [hash]
 
-    def get_document_by_id(self, id: str) -> Document:
-        document = self._convert_memory_hit_to_document(self.docs[id], doc_id=id)
-        return document
+    def get_document_by_id(self, id: Union[str, UUID], index: Optional[str]=None) -> Document:
+        if index: raise NotImplementedError("Custom index not yet supported for this operation")
+        return self.docs[id]
 
     def _convert_memory_hit_to_document(self, hit: Dict[str, Any], doc_id: Optional[str] = None) -> Document:
         document = Document(
@@ -90,22 +85,17 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                       "InMemoryDocumentStore.query_by_embedding(). Please remove filters or "
                                       "use a different DocumentStore (e.g. ElasticsearchDocumentStore).")
 
-        if self.embedding_field is None:
-            raise Exception(
-                "To use query_by_embedding() 'embedding field' must "
-                "be specified when initializing the document store."
-            )
+        if index: raise NotImplementedError("Custom index not yet supported for this operation")
 
         if query_emb is None:
             return []
 
         candidate_docs = []
-        for idx, hit in self.docs.items():
-            hit["query_score"] = dot(query_emb, hit[self.embedding_field]) / (
-                norm(query_emb) * norm(hit[self.embedding_field])
+        for idx, doc in self.docs.items():
+            doc.query_score = dot(query_emb, doc.embedding) / (
+                norm(query_emb) * norm(doc.embedding)
             )
-            _doc = self._convert_memory_hit_to_document(hit=hit, doc_id=idx)
-            candidate_docs.append(_doc)
+            candidate_docs.append(doc)
 
         return sorted(candidate_docs, key=lambda x: x.query_score, reverse=True)[0:top_k]
 
@@ -148,7 +138,4 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return len(self.docs.items())
 
     def get_all_documents(self) -> List[Document]:
-        return [
-            Document(id=item[0], text=item[1]["text"], meta=item[1].get("meta", {}))
-            for item in self.docs.items()
-        ]
+        return list(self.docs.values())

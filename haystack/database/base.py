@@ -2,13 +2,15 @@ from abc import abstractmethod, ABC
 from typing import Any, Optional, Dict, List, Union
 from uuid import UUID, uuid4
 
+
 class Document:
     def __init__(self, text: str,
                  id: Optional[Union[str, UUID]] = None,
                  query_score: Optional[float] = None,
                  question: Optional[str] = None,
                  meta: Dict[str, Any] = None,
-                 tags: Optional[Dict[str, Any]] = None):
+                 tags: Optional[Dict[str, Any]] = None,
+                 embedding: Optional[List[float]] = None):
         """
         Object used to represent documents / passages in a standardized way within Haystack.
         For example, this is what the retriever will return from the DocumentStore,
@@ -23,7 +25,9 @@ class Document:
         :param question: Question text for FAQs.
         :param meta: Meta fields for a document like name, url, or author.
         :param tags: Tags that allow filtering of the data
+        :param embedding: Vector encoding of the text
         """
+
         self.text = text
         # Create a unique ID (either new one, or one from user input)
         if id:
@@ -38,17 +42,25 @@ class Document:
         self.question = question
         self.meta = meta
         self.tags = tags # deprecate?
+        self.embedding = embedding
 
     def to_dict(self):
-        #TODO what about tags, query_score etc?
-        # d = {"text": self.text,
-        #      "id": self.id,
-        #      "meta": self.meta}
         return self.__dict__
 
     @classmethod
     def from_dict(cls, dict):
-        return cls(**dict)
+        _doc = dict.copy()
+        init_args = ["text", "id", "query_score", "question", "meta", "tags", "embedding"]
+        if "meta" not in _doc.keys():
+            _doc["meta"] = {}
+        # copy additional fields into "meta"
+        for k, v in _doc.items():
+            if k not in init_args:
+                _doc["meta"][k] = v
+        # remove additional fields from top level
+        _doc = {k: v for k, v in _doc.items() if k in init_args}
+
+        return cls(**_doc)
 
 
 class Label:
