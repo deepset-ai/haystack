@@ -18,8 +18,7 @@ def test_add_eval_data(document_store):
     docs = document_store.get_all_documents(index="test_eval_document")
     assert docs[0].text[:10] == "The Norman"
     assert docs[0].meta["name"] == "Normans"
-    assert len(docs[0].meta.keys()) == 2
-    # TODO fix & test IDs
+    assert len(docs[0].meta.keys()) == 1
 
     # test labels
     labels = document_store.get_all_labels(index="test_feedback")

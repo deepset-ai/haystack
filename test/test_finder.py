@@ -2,8 +2,7 @@ from haystack import Finder
 from haystack.retriever.sparse import TfidfRetriever
 import pytest
 
-#@pytest.mark.parametrize("reader", [("farm")], indirect=True)
-#@pytest.mark.parametrize("document_store_with_docs", [("elasticsearch")], indirect=True)
+
 def test_finder_get_answers(reader, document_store_with_docs):
     retriever = TfidfRetriever(document_store=document_store_with_docs)
     finder = Finder(reader, retriever)

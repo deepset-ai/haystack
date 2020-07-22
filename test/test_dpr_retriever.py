@@ -3,7 +3,7 @@ from haystack.retriever.dense import DensePassageRetriever
 
 
 def test_dpr_inmemory_retrieval():
-    document_store = InMemoryDocumentStore(embedding_field="embedding")
+    document_store = InMemoryDocumentStore()
 
     documents = [
         {'name': '0', 'text': """Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from"""},
