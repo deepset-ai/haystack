@@ -14,6 +14,16 @@ logger = logging.getLogger(__name__)
 
 
 class FAISSDocumentStore(SQLDocumentStore):
+    """
+    Document store for very large scale embedding based dense retrievers like the DPR.
+
+    It implements the FAISS library(https://github.com/facebookresearch/faiss)
+    to perform similarity search on vectors.
+
+    The document text and meta-data(for filtering) is stored using the SQLDocumentStore, while
+    the vector embeddings are indexed in a FAISS Index.
+
+    """
     def __init__(
         self,
         sql_url: str = "sqlite:///",
@@ -21,6 +31,20 @@ class FAISSDocumentStore(SQLDocumentStore):
         index_buffer_size: int = 10_000,
         vector_size: int = 768,
     ):
+        """
+        :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
+                        deployment, Postgres is recommended.
+        :param index_factory: FAISS provides a function to build composite index based on comma separated list of
+                              components. The FAISS documentation has guidelines for choosing
+                              an index: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index.
+                              More details on index_factory: https://github.com/facebookresearch/faiss/wiki/The-index-factory
+
+                              The default index here is fast with good accuracy at the cost of higher memory usage. It
+                              does not require any training.
+        :param index_buffer_size: When working with large dataset, the indexing process(FAISS + SQL) can be buffered in
+                                  smaller chunks to reduce memory footprint.
+        :param vector_size: the embedding vector size.
+        """
         self.index: IndexHNSWFlat = self._create_new_index(index_factory=index_factory, vector_size=vector_size)
         self.index_factory = index_factory
         self.vector_size = vector_size
@@ -56,6 +80,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param retriever: Retriever
         :return: None
         """
+        # Some FAISS indexes(like the default HNSWx) do not support removing vectors, so a new index is created.
         index = self._create_new_index(index_factory=self.index_factory, vector_size=self.vector_size)
 
         doc_count = self.get_document_count()
@@ -70,7 +95,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             index.add(np.asarray(embeddings, dtype=np.float32))
 
         self.index = index
-        print(type(self.index))
 
     def query_by_embedding(
         self, query_emb: List[float], filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
@@ -84,11 +108,17 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         document_ids = [str(v_id + 1) for v_id in vector_ids_for_query if v_id != -1]
         documents = self.get_documents_by_id(document_ids)
-        # TODO add deprecation warning and use only one under the hood.
+
         return documents
 
-    def save(self, file_path: Union[str, Path]):
+    def save_index(self, file_path: Union[str, Path]):
+        """
+        Save FAISS Index to the specified file.
+        """
         faiss.write_index(self.index, str(file_path))
 
-    def load(self, file_path: Union[str, Path]):
+    def load_index(self, file_path: Union[str, Path]):
+        """
+        Load a saved FAISS index from a file.
+        """
         self.index = faiss.read_index(str(file_path))
