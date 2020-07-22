@@ -18,7 +18,6 @@ def test_add_eval_data(document_store):
     docs = document_store.get_all_documents(index="test_eval_document")
     assert docs[0].text[:10] == "The Norman"
     assert docs[0].meta["name"] == "Normans"
-    #assert docs[0].meta["id"] == '6264723461210818873'
     assert len(docs[0].meta.keys()) == 2
     # TODO fix & test IDs
 
@@ -32,7 +31,7 @@ def test_add_eval_data(document_store):
     assert labels[0].offset_start_in_doc == 159
 
     # check combination
-    assert labels[0].document_id == docs[0].meta["id"]
+    assert labels[0].document_id == docs[0].id
     start = labels[0].offset_start_in_doc
     end = start+len(labels[0].answer)
     assert docs[0].text[start:end] == "France"

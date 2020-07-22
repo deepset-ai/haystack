@@ -20,7 +20,6 @@ def test_tfidf_retriever():
         Document(
             id='26f84672c6d7aaeb8e2cd53e9c62d62d',
             text='godzilla says hello',
-            external_source_id=None,
             question=None,
             query_score=None,
             meta={"name": "testing the finder 1"},

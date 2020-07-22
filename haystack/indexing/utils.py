@@ -31,7 +31,6 @@ def eval_data_from_file(filename: str) -> (List[Document], List[Label]):
             # get all extra fields from document level (e.g. title)
             meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
             for paragraph in document["paragraphs"]:
-                id = str(hash(paragraph["context"]))
                 cur_meta = {"name": document["title"]}
                 # all other fields from paragraph level
                 meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
@@ -39,7 +38,8 @@ def eval_data_from_file(filename: str) -> (List[Document], List[Label]):
                 # meta from parent document
                 cur_meta.update(meta_doc)
                 # Create Document
-                docs.append(Document(id=id, text=paragraph["context"], meta=cur_meta))
+                cur_doc = Document(text=paragraph["context"], meta=cur_meta)
+                docs.append(cur_doc)
 
                 # Get Labels
                 for qa in paragraph["qas"]:
@@ -48,12 +48,13 @@ def eval_data_from_file(filename: str) -> (List[Document], List[Label]):
                             question=qa["question"],
                             answer=answer["text"],
                             positive_sample=True,
-                            document_id=str(id),
+                            document_id=cur_doc.id,
                             offset_start_in_doc=answer["answer_start"],
                             no_answer=qa["is_impossible"],
                             origin="gold_label",
                             )
                         labels.append(label)
+
         return docs, labels
 
 
