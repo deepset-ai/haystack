@@ -131,11 +131,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
         if index is None:
             index = self.index
-        query = {"query": {"ids": {"values": [id]}}}
-        result = self.client.search(index=index, body=query)["hits"]["hits"]
+        documents = self.get_documents_by_id([id], index=index)
+        if documents:
+            return documents[0]
+        else:
+            return None
 
-        document = self._convert_es_hit_to_document(result[0]) if result else None
-        return document
+    def get_documents_by_id(self, ids: Union[List[str], List[UUID]], index=None) -> List[Document]:
+        if index is None:
+            index = self.index
+        query = {"query": {"ids": {"values": ids}}}
+        result = self.client.search(index=index, body=query)["hits"]["hits"]
+        documents = [self._convert_es_hit_to_document(hit) for hit in result]
+        return documents
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """

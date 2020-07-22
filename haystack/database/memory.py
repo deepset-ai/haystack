@@ -47,7 +47,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Document:
         index = index or self.index
-        return self.indexes[index][id]
+        documents = self.get_documents_by_id([id], index=index)
+        if documents:
+            return documents[0]
+        else:
+            return None
+
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+        index = index or self.index
+        documents = [self._convert_memory_hit_to_document(self.indexes[index][id], doc_id=id) for id in ids]
+        return documents
 
     def _convert_memory_hit_to_document(self, hit: Dict[str, Any], doc_id: Optional[str] = None) -> Document:
         document = Document(
