@@ -88,19 +88,18 @@ class TransformersReader(BaseReader):
                 predictions = [predictions]
             # assemble and format all answers
             for pred in predictions:
-                if pred["answer"]:
-                    context_start = max(0, pred["start"] - self.context_window_size)
-                    context_end = min(len(doc.text), pred["end"] + self.context_window_size)
-                    answers.append({
-                        "answer": pred["answer"],
-                        "context": doc.text[context_start:context_end],
-                        "offset_start": pred["start"],
-                        "offset_end": pred["end"],
-                        "probability": pred["score"],
-                        "score": None,
-                        "document_id": doc.id,
-                        "meta": doc.meta
-                    })
+                context_start = max(0, pred["start"] - self.context_window_size)
+                context_end = min(len(doc.text), pred["end"] + self.context_window_size)
+                answers.append({
+                    "answer": pred["answer"],
+                    "context": doc.text[context_start:context_end],
+                    "offset_start": pred["start"],
+                    "offset_end": pred["end"],
+                    "probability": pred["score"],
+                    "score": None,
+                    "document_id": doc.id,
+                    "meta": doc.meta
+                })
 
         # sort answers by their `probability` and select top-k
         answers = sorted(
