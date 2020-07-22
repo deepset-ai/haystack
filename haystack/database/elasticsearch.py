@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from string import Template
 from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
@@ -7,7 +8,7 @@ from elasticsearch.helpers import bulk, scan
 import numpy as np
 
 from haystack.database.base import BaseDocumentStore, Document, Label
-
+from haystack.indexing.utils import eval_data_from_file
 
 logger = logging.getLogger(__name__)
 
@@ -469,48 +470,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :return: None
         """
         self.client.delete_by_query(index=index, body={"query": {"match_all": {}}}, ignore=[404])
+        # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
+        time.sleep(1)
 
-
-def eval_data_from_file(filename: str) -> (List[Document], List[Label]):
-    """
-    Read eval data (documents + labels) from a SQuAD-style file.
-
-    :param filename: Path to file in SQuAD format
-    :return: (List of Documents, List of Labels)
-    """
-    docs = []
-    labels = []
-
-    with open(filename, "r") as file:
-        data = json.load(file)
-        for document in data["data"]:
-            # get all extra fields from document level (e.g. title)
-            meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
-            for paragraph in document["paragraphs"]:
-                id = str(hash(paragraph["context"]))
-                cur_meta = {"name": document["title"]}
-                # all other fields from paragraph level
-                meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
-                cur_meta.update(meta_paragraph)
-                # meta from parent document
-                cur_meta.update(meta_doc)
-                # Create Document
-                docs.append(Document(id=id, text=paragraph["context"], meta=cur_meta))
-
-                # Get Labels
-                for qa in paragraph["qas"]:
-                    for answer in qa["answers"]:
-                        label = Label(
-                            question=qa["question"],
-                            answer=answer["text"],
-                            positive=True,
-                            document_id=str(id),
-                            offset_start_in_doc=answer["answer_start"],
-                            no_answer=qa["is_impossible"],
-                            origin="gold_label",
-                            )
-                        labels.append(label)
-        return docs, labels
 
 
 

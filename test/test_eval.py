@@ -26,7 +26,7 @@ def test_add_eval_data(document_store):
     labels = document_store.get_all_labels(index="test_feedback")
     assert labels[0].answer == "France"
     assert labels[0].no_answer == False
-    assert labels[0].positive == True
+    assert labels[0].positive_sample == True
     assert labels[0].question == 'In what country is Normandy located?'
     assert labels[0].origin == "gold_label"
     assert labels[0].offset_start_in_doc == 159
@@ -53,7 +53,8 @@ def test_eval_reader(reader, document_store: Type[BaseDocumentStore]):
     document_store.add_eval_data(filename="samples/squad/tiny.json", doc_index="test_eval_document", label_index="test_feedback")
     assert document_store.get_document_count(index="test_eval_document") == 2
     # eval reader
-    reader_eval_results = reader.eval(document_store=document_store, device="cpu")
+    reader_eval_results = reader.eval(document_store=document_store, label_index="test_feedback",
+                                      doc_index="test_eval_document", device="cpu")
     assert reader_eval_results["f1"] > 0.65
     assert reader_eval_results["f1"] < 0.67
     assert reader_eval_results["EM"] == 0.5
@@ -64,7 +65,8 @@ def test_eval_reader(reader, document_store: Type[BaseDocumentStore]):
     document_store.delete_all_documents(index="test_feedback")
 
 @pytest.mark.parametrize("document_store", [("elasticsearch")], indirect=True)
-def test_eval_elastic_retriever(document_store: Type[BaseDocumentStore]):
+@pytest.mark.parametrize("open_domain", [True, False])
+def test_eval_elastic_retriever(document_store: Type[BaseDocumentStore], open_domain):
     retriever = ElasticsearchRetriever(document_store=document_store)
 
     # add eval data (SQUAD format)
@@ -74,7 +76,7 @@ def test_eval_elastic_retriever(document_store: Type[BaseDocumentStore]):
     assert document_store.get_document_count(index="test_eval_document") == 2
 
     # eval retriever
-    results = retriever.eval(top_k=1)
+    results = retriever.eval(top_k=1, label_index="test_feedback", doc_index="test_eval_document", open_domain=open_domain)
     assert results["recall"] == 1.0
     assert results["map"] == 1.0
 
