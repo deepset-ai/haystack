@@ -1,8 +1,6 @@
 from abc import abstractmethod, ABC
 from typing import Any, Optional, Dict, List
 
-from pydantic import BaseModel, Field
-
 
 class Document:
     def __init__(self, id: str, text: str, external_source_id: Optional[str] = None, query_score:Optional[float] = None,
@@ -43,7 +41,7 @@ class Document:
 class Label:
     def __init__(self, question: str,
                  answer: str,
-                 positive: bool,
+                 positive_sample: bool,
                  origin: str,
                  document_id: Optional[str] = None,
                  offset_start_in_doc: Optional[int] = None,
@@ -54,7 +52,7 @@ class Label:
 
         :param question:
         :param answer:
-        :param positive:
+        :param positive_sample:
         :param origin:
         :param document_id:
         :param offset_start_in_doc:
@@ -64,7 +62,7 @@ class Label:
         self.no_answer = no_answer
         self.origin = origin
         self.question = question
-        self.positive = positive
+        self.positive_sample = positive_sample
         self.document_id = document_id
         self.answer = answer
         self.offset_start_in_doc = offset_start_in_doc

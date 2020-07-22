@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Type
 import logging
+from collections import defaultdict
 
 from haystack.database.base import Document
 from haystack.database.base import BaseDocumentStore
@@ -21,6 +22,7 @@ class BaseRetriever(ABC):
         doc_index: str = "eval_document",
         label_origin: str = "gold_label",
         top_k: int = 10,
+        open_domain: bool = False
     ) -> dict:
         """
         Performs evaluation on the Retriever.
@@ -35,28 +37,51 @@ class BaseRetriever(ABC):
         :param label_index: Index/Table in DocumentStore where labeled questions are stored
         :param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
         :param top_k: How many documents to return per question
+        :param open_domain: If true, retrieval will be evaluated by checking if the answer string to a question is
+                            contained in the retrieved docs (common approach in open-domain QA).
+                            If false, retrieval uses a stricter evaluation that checks if the retrieved document ids
+                             are within ids explicitly stated in the labels.
         """
 
-        # extract all questions for evaluation
+        # Extract all questions for evaluation
         filter = {"origin": label_origin}
 
-        # TODO get Documents back here
-        questions = self.document_store.get_all_documents_in_index(index=label_index, filters=filter)
+        labels = self.document_store.get_all_labels(index=label_index, filters=filter)
 
-        # calculate recall and mean-average-precision
         correct_retrievals = 0
         summed_avg_precision = 0
-        for q_idx, question in enumerate(questions):
-            question_string = question["_source"]["question"]
-            retrieved_docs = self.retrieve(question_string, top_k=top_k, index=doc_index)
-            # check if correct doc in retrieved docs
-            for doc_idx, doc in enumerate(retrieved_docs):
-                if doc.meta["doc_id"] == question["_source"]["doc_id"]:
-                    correct_retrievals += 1
-                    summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
-                    break
 
-        number_of_questions = q_idx + 1
+        # Aggregate all positive document ids / answers per question
+        aggregated_labels = defaultdict(set)
+        for label in labels:
+            if open_domain:
+                aggregated_labels[label.question].add(label.answer)
+            else:
+                aggregated_labels[label.question].add(label.document_id)
+
+        # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
+        if open_domain:
+            for question, gold_answers in aggregated_labels.items():
+                retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
+                # check if correct doc in retrieved docs
+                for doc_idx, doc in enumerate(retrieved_docs):
+                    for gold_answer in gold_answers:
+                        if gold_answer in doc.text:
+                            correct_retrievals += 1
+                            summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
+                            break
+        # Option 2: Strict evaluation by document ids that are listed in the labels
+        else:
+            for question, gold_ids in aggregated_labels.items():
+                retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
+                # check if correct doc in retrieved docs
+                for doc_idx, doc in enumerate(retrieved_docs):
+                    if doc.meta["id"] in gold_ids:
+                        correct_retrievals += 1
+                        summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
+                        break
+        # Metrics
+        number_of_questions = len(aggregated_labels)
         recall = correct_retrievals / number_of_questions
         mean_avg_precision = summed_avg_precision / number_of_questions
 
