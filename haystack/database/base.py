@@ -102,7 +102,7 @@ class BaseDocumentStore(ABC):
     index: Optional[str]
 
     @abstractmethod
-    def write_documents(self, documents: List[dict]):
+    def write_documents(self, documents: List[dict], index: Optional[str] = None):
         """
         Indexes documents for later queries.
 
@@ -111,25 +111,27 @@ class BaseDocumentStore(ABC):
                           Optionally: Include meta data via {"text": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           It can be used for filtering and is accessible in the responses of the Finder.
+        :param index: Optional name of index where the documents shall be written to.
+                      If None, the DocumentStore's default index (self.index) will be used.
 
         :return: None
         """
         pass
 
     @abstractmethod
-    def get_all_documents(self) -> List[Document]:
+    def get_all_documents(self, index: Optional[str] = None) -> List[Document]:
         pass
 
     @abstractmethod
-    def get_document_by_id(self, id: str) -> Optional[Document]:
+    def get_document_by_id(self, id: UUID, index: Optional[str] = None) -> Optional[Document]:
         pass
 
     @abstractmethod
-    def get_document_ids_by_tags(self, tag) -> List[str]:
+    def get_document_ids_by_tags(self, tag, ) -> List[str]:
         pass
 
     @abstractmethod
-    def get_document_count(self) -> int:
+    def get_document_count(self, index: Optional[str] = None) -> int:
         pass
 
     @abstractmethod
