@@ -24,7 +24,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         search_fields: Union[str, list] = "text",
         text_field: str = "text",
         name_field: str = "name",
-        external_source_id_field: str = "external_source_id",
         embedding_field: Optional[str] = None,
         embedding_dim: Optional[int] = None,
         custom_mapping: Optional[dict] = None,
@@ -51,7 +50,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param text_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
-        :param external_source_id_field: If you have an external id (= non-elasticsearch) that identifies your documents, you can specify it here.
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
@@ -72,7 +70,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "properties": {
                         name_field: {"type": "text"},
                         text_field: {"type": "text"},
-                        external_source_id_field: {"type": "text"},
                     }
                 }
             }
@@ -93,7 +90,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.search_fields = search_fields
         self.text_field = text_field
         self.name_field = name_field
-        self.external_source_id_field = external_source_id_field
         self.embedding_field = embedding_field
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
@@ -133,7 +129,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if index is None:
             index = self.index
 
-        # Make sure we comply to Label class format
+        # Make sure we comply to Document class format
         if type(documents[0]) == dict:
             documents = [Document.from_dict(l) for l in documents]
 
@@ -145,6 +141,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 **doc.to_dict()
             }  # type: Dict[str, Any]
 
+            # rename id for elastic
+            _doc["_id"] = _doc.pop("id")
+            # don't index query score
+            _ = _doc.pop("query_score", None)
+
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
             # we "unnest" all value within "meta"
             if "meta" in _doc.keys():
@@ -155,9 +156,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         bulk(self.client, documents_to_index, request_timeout=300, refresh="wait_for")
 
     def write_labels(self, labels: Union[List[Label], List[dict]], index: str ="feedback"):
-        # TODO add option to pass label objects
         # TODO do we need self.label_index?
-
         # Make sure we comply to Label class format
         if type(labels[0]) == dict:
             labels = [Label.from_dict(l) for l in labels]
@@ -365,16 +364,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.external_source_id_field)}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, "tags")}
         meta_data["name"] = meta_data.pop(self.name_field, None)
 
         document = Document(
             id=hit["_id"],
             text=hit["_source"].get(self.text_field),
-            external_source_id=hit["_source"].get(self.external_source_id_field),
             meta=meta_data,
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
-            question=hit["_source"].get(self.faq_question_field)
+            question=hit["_source"].get(self.faq_question_field),
+            tags=hit["_source"].get("tags")
         )
         return document
 
@@ -450,16 +449,23 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "properties": {
                     self.name_field: {"type": "text"},
                     self.text_field: {"type": "text"},
-                    self.external_source_id_field: {"type": "text"},
                     self.embedding_field: {"type": "dense_vector", "dims": self.embedding_dim}
                 }
             }
         }
         self.client.indices.create(index=doc_index, ignore=400, body=default_mapping)
 
+
         docs, labels = eval_data_from_file(filename)
 
-        self.write_documents(docs, index=doc_index)
+
+        # get proper document ids
+        doc_ids = self.write_documents(docs, index=doc_index)
+
+        # # update ids in labels
+        # for l, idx in zip(labels, labels2doc):
+        #     l.document_id = doc_ids[idx]
+
         self.write_labels(labels, index=label_index)
 
     def delete_all_documents(self, index):

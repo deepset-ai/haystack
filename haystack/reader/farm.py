@@ -372,6 +372,7 @@ class FARMReader(BaseReader):
 
         # extract all questions for evaluation
         filter = {"origin": label_origin}
+
         questions = document_store.get_all_documents_in_index(index=label_index, filters=filter)
 
         # mapping from doc_id to questions

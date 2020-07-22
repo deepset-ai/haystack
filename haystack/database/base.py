@@ -1,37 +1,50 @@
 from abc import abstractmethod, ABC
-from typing import Any, Optional, Dict, List
-
+from typing import Any, Optional, Dict, List, Union
+from uuid import UUID, uuid4
 
 class Document:
-    def __init__(self, id: str, text: str, external_source_id: Optional[str] = None, query_score:Optional[float] = None,
-                 question: Optional[str] = None, meta:Dict[str, Any] = None,
+    def __init__(self, text: str,
+                 id: Optional[Union[str, UUID]] = None,
+                 query_score: Optional[float] = None,
+                 question: Optional[str] = None,
+                 meta: Dict[str, Any] = None,
                  tags: Optional[Dict[str, Any]] = None):
         """
-        TODO update
+        Object used to represent documents / passages in a standardized way within Haystack.
+        For example, this is what the retriever will return from the DocumentStore,
+        regardless if it's ElasticsearchDocumentStore or InMemoryDocumentStore.
 
-        :param id: _id field from Elasticsearch
-        :param text: "Text of the document"
-        :param external_source_id: id for the source file the document was created from. In the case when a large file is divided "
-        "across multiple Elasticsearch documents, this id can be used to reference original source file.
+        Note that there can be multiple Documents originating from one file (e.g. PDF),
+        if you split the text into smaller passsages. We'll have one Document per passage in this case.
+
+        :param id: ID used within the DocumentStore
+        :param text: Text of the document
         :param query_score: Retriever's query score for a retrieved document
         :param question: Question text for FAQs.
         :param meta: Meta fields for a document like name, url, or author.
         :param tags: Tags that allow filtering of the data
         """
         self.text = text
-        self.external_source_id = external_source_id
+        # Create a unique ID (either new one, or one from user input)
+        if id:
+            if type(id) == str:
+                self.id = UUID(hex=id, version=4)
+            if type(id) == UUID:
+                self.id = id
+        else:
+            self.id = uuid4()
+
         self.query_score = query_score
         self.question = question
         self.meta = meta
-        self.tags = tags
-        self.id = id
+        self.tags = tags # deprecate?
 
     def to_dict(self):
         #TODO what about tags, query_score etc?
-        d = {"text": self.text,
-             "id": self.id,
-             "meta": self.meta}
-        return d
+        # d = {"text": self.text,
+        #      "id": self.id,
+        #      "meta": self.meta}
+        return self.__dict__
 
     @classmethod
     def from_dict(cls, dict):
@@ -43,7 +56,7 @@ class Label:
                  answer: str,
                  positive_sample: bool,
                  origin: str,
-                 document_id: Optional[str] = None,
+                 document_id: Optional[UUID] = None,
                  offset_start_in_doc: Optional[int] = None,
                  no_answer: Optional[bool] = None,
                  model_id: Optional[int] = None):
@@ -63,7 +76,13 @@ class Label:
         self.origin = origin
         self.question = question
         self.positive_sample = positive_sample
-        self.document_id = document_id
+        if document_id:
+            if type(document_id) == str:
+                self.document_id = UUID(hex=document_id, version=4)
+            if type(document_id) == UUID:
+                self.document_id = document_id
+        else:
+            self.document_id = document_id
         self.answer = answer
         self.offset_start_in_doc = offset_start_in_doc
         self.model_id = model_id
