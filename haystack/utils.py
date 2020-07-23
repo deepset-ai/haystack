@@ -3,8 +3,9 @@ from collections import defaultdict
 import logging
 import pprint
 import pandas as pd
-from typing import Dict, Any, List
-from haystack.database.sql import Document
+from typing import Dict, Any
+from haystack.database.sql import DocumentORM
+
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ def convert_labels_to_squad(labels_file: str):
     for document_id, labels in labels_grouped_by_documents.items():
         qas = []
         for label in labels:
-            doc = Document.query.get(label["document_id"])
+            doc = DocumentORM.query.get(label["document_id"])
 
             assert (
                 doc.text[label["start_offset"] : label["end_offset"]]
