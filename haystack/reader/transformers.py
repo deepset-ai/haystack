@@ -87,6 +87,9 @@ class TransformersReader(BaseReader):
             if type(predictions) == dict:
                 predictions = [predictions]
             # assemble and format all answers
+
+            # TODO add "no answer" aggregation over all documents
+            # TODO add no answer bias on haystack side after getting "no answer" scores from transformers
             for pred in predictions:
                 context_start = max(0, pred["start"] - self.context_window_size)
                 context_end = min(len(doc.text), pred["end"] + self.context_window_size)
