@@ -1,10 +1,12 @@
+import uuid
 from typing import Any, Dict, Union, List, Optional
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, PickleType
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-
-from haystack.database.base import BaseDocumentStore, Document as DocumentSchema
+from sqlalchemy_utils import UUIDType
+from uuid import UUID
+from haystack.database.base import BaseDocumentStore, Document
 
 Base = declarative_base()  # type: Any
 
@@ -12,33 +14,33 @@ Base = declarative_base()  # type: Any
 class ORMBase(Base):
     __abstract__ = True
 
-    id = Column(Integer, primary_key=True)
+    id = Column(UUIDType(binary=False), default=uuid.uuid4, primary_key=True)
     created = Column(DateTime, server_default=func.now())
     updated = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
 
-class Document(ORMBase):
+class DocumentORM(ORMBase):
     __tablename__ = "document"
 
     text = Column(String)
     meta_data = Column(PickleType)
 
-    tags = relationship("Tag", secondary="document_tag", backref="Document")
+    tags = relationship("TagORM", secondary="document_tag", backref="Document")
 
 
-class Tag(ORMBase):
+class TagORM(ORMBase):
     __tablename__ = "tag"
 
     name = Column(String)
     value = Column(String)
 
-    documents = relationship("Document", secondary="document_tag", backref="Tag")
+    documents = relationship(DocumentORM, secondary="document_tag", backref="Tag")
 
 
-class DocumentTag(ORMBase):
+class DocumentTagORM(ORMBase):
     __tablename__ = "document_tag"
 
-    document_id = Column(Integer, ForeignKey("document.id"), nullable=False)
+    document_id = Column(UUIDType(binary=False), ForeignKey("document.id"), nullable=False)
     tag_id = Column(Integer, ForeignKey("tag.id"), nullable=False)
 
 
@@ -49,14 +51,14 @@ class SQLDocumentStore(BaseDocumentStore):
         Session = sessionmaker(bind=engine)
         self.session = Session()
 
-    def get_document_by_id(self, id: str) -> Optional[DocumentSchema]:
-        document_row = self.session.query(Document).get(id)
+    def get_document_by_id(self, id: UUID) -> Optional[Document]:
+        document_row = self.session.query(DocumentORM).get(id)
         document = self._convert_sql_row_to_document(document_row)
 
         return document
 
-    def get_all_documents(self) -> List[DocumentSchema]:
-        document_rows = self.session.query(Document).all()
+    def get_all_documents(self) -> List[Document]:
+        document_rows = self.session.query(DocumentORM).all()
         documents = []
         for row in document_rows:
             documents.append(self._convert_sql_row_to_document(row))
@@ -91,7 +93,7 @@ class SQLDocumentStore(BaseDocumentStore):
         doc_ids = [row[0] for row in query_results]
         return doc_ids
 
-    def write_documents(self, documents: List[dict]):
+    def write_documents(self, documents: Union[List[dict], List[Document]]):
         """
         Indexes documents for later queries.
 
@@ -101,21 +103,19 @@ class SQLDocumentStore(BaseDocumentStore):
         :return: None
         """
 
+        # Make sure we comply to Document class format
+        documents = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+
         for doc in documents:
-            if "meta" not in doc.keys():
-                doc["meta"] = {}
-            for k, v in doc.items():  # put additional fields other than text in meta
-                if k not in ["text", "meta", "tags"]:
-                    doc["meta"][k] = v
-            row = Document(text=doc["text"], meta_data=doc.get("meta", {}))
+            row = DocumentORM(text=doc.text, meta_data=doc.meta)
             self.session.add(row)
         self.session.commit()
 
     def get_document_count(self) -> int:
-        return self.session.query(Document).count()
+        return self.session.query(DocumentORM).count()
 
-    def _convert_sql_row_to_document(self, row) -> DocumentSchema:
-        document = DocumentSchema(
+    def _convert_sql_row_to_document(self, row) -> Document:
+        document = Document(
             id=row.id,
             text=row.text,
             meta=row.meta_data,
@@ -127,7 +127,7 @@ class SQLDocumentStore(BaseDocumentStore):
                            query_emb: List[float],
                            filters: Optional[dict] = None,
                            top_k: int = 10,
-                           index: Optional[str] = None) -> List[DocumentSchema]:
+                           index: Optional[str] = None) -> List[Document]:
 
         raise NotImplementedError("SQLDocumentStore is currently not supporting embedding queries. "
                                   "Change the query type (e.g. by choosing a different retriever) "
