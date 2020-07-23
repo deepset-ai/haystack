@@ -262,7 +262,7 @@ class FARMReader(BaseReader):
         answers = []
         no_ans_gaps = []
         best_score_answer = 0
-        for pred, inp in zip(predictions, inputs):
+        for pred in predictions:
             answers_per_document = []
             no_ans_gaps.append(pred.no_answer_gap)
             for ans in pred.prediction:
