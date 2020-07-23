@@ -27,21 +27,18 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :return: None
         """
 
-        if index: raise NotImplementedError("Custom index not yet supported for this operation")
+        if index:
+            raise NotImplementedError("Custom index not yet supported for this operation")
 
-        if documents is None:
-            return
+        # Make sure we comply to Document class format
+        documents = [Document.from_dict(d) if type(d) == dict else d for d in documents]
 
         for document in documents:
-            _doc = document.copy()
-            if type(document) == dict:
-                _doc = Document.from_dict(_doc)
-
-            self.docs[_doc.id] = _doc
+            self.docs[document.id] = document
 
             #TODO fix tags after id refactoring
-            tags = document.get("tags", [])
-            self._map_tags_to_ids(_doc.id, tags)
+            tags = document.tags
+            self._map_tags_to_ids(document.id, tags)
 
     def _map_tags_to_ids(self, hash: str, tags: List[str]):
         if isinstance(tags, list):
