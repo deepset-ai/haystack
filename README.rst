@@ -46,6 +46,9 @@ Core Features
 Components
 ==========
 
+.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/sketched_concepts_white.png
+
+
 1. **DocumentStore**: Database storing the documents for our search. We recommend Elasticsearch, but have also more light-weight options for fast prototyping (SQL or In-Memory).
 
 2. **Retriever**:  Fast, simple algorithm that identifies candidate passages from a large collection of documents. Algorithms include TF-IDF or BM25, custom Elasticsearch queries, and embedding-based approaches. The Retriever helps to narrow down the scope for Reader to smaller units of text where a given question could be answered.
@@ -76,17 +79,17 @@ Quick Start
 Installation
 ------------
 
-Recommended (because of active development)::
+PyPi::
+
+    pip install farm-haystack
+
+Master branch (if you wanna try the latest features)::
 
     git clone https://github.com/deepset-ai/haystack.git
     cd haystack
     pip install --editable .
 
 To update your installation, just do a git pull. The --editable flag will update changes immediately.
-
-From PyPi::
-
-    pip install farm-haystack
 
 Usage
 -----
@@ -100,7 +103,7 @@ Quick Tour
 1) DocumentStores
 ---------------------
 
-Haystack has an extensible DocumentStore-Layer, which is storing the documents for our search. We recommend Elasticsearch, but have also more light-weight options for fast prototyping.
+Haystack offers different options for storing your documents for search. We recommend Elasticsearch, but have also light-weight options for fast prototyping and will soon add DocumentStores that are optimized for embeddings (FAISS & Co). 
 
 Elasticsearch (Recommended)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,7 +112,7 @@ Elasticsearch (Recommended)
 * Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
 * You can either use an existing Elasticsearch index or create a new one via haystack
 * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
-* Documents can optionally be chunked into smaller units (e.g. paragraphs) before indexing to make the results returned by the Retriever more granular and accurate.
+* Documents should be chunked into smaller units (e.g. paragraphs) before indexing to make the results returned by the Retriever more granular and accurate.
 
 You can get started by running a single Elasticsearch node using docker::
 
@@ -135,18 +138,6 @@ Limitations: Retrieval (e.g. via TfidfRetriever) happens in-memory here and will
 
 2) Retrievers
 ---------------------
-ElasticsearchRetriever
-^^^^^^^^^^^^^^^^^^^^^^
-Scoring text similarity via sparse Bag-of-words representations are strong and well-established baselines in Information Retrieval.
-The default :code:`ElasticsearchRetriever` uses Elasticsearch's native scoring (BM25), but can be extended easily with custom queries or filtering.
-
-Example
-
-.. code-block:: python
-
-    retriever = ElasticsearchRetriever(document_store=document_store, custom_query=None)
-    retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
-    # returns: [Document, Document]
 
 DensePassageRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -164,9 +155,23 @@ Example
     retriever.retrieve(query="Why did the revenue increase?")
     # returns: [Document, Document]
 
+ElasticsearchRetriever
+^^^^^^^^^^^^^^^^^^^^^^
+Scoring text similarity via sparse Bag-of-words representations are strong and well-established baselines in Information Retrieval.
+The default :code:`ElasticsearchRetriever` uses Elasticsearch's native scoring (BM25), but can be extended easily with custom queries or filtering.
+
+Example
+
+.. code-block:: python
+
+    retriever = ElasticsearchRetriever(document_store=document_store, custom_query=None)
+    retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
+    # returns: [Document, Document]
+
+
 EmbeddingRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
-This retriever uses a single model to embed your query and passage (e.g. Sentence-BERT) and find similar texts by using cosine similarity.
+This retriever uses a single model to embed your query and passage (e.g. Sentence-BERT) and finds similar texts by using cosine similarity. This works well if your query and passage are a similar type of text, e.g. you want to find the most similar question in your FAQ given a user question. 
 
 Example
 
@@ -181,15 +186,17 @@ Example
 TfidfRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
 Basic in-memory retriever getting texts from the DocumentStore, creating TF-IDF representations in-memory and allowing to query them.
+Simple baseline for quick prototypes. Not recommended for production.
 
 3) Readers
 ---------------------
-Neural networks (i.e. mostly Transformer-based) that read through texts in detail to find an answer. Use diverse models like BERT, RoBERTa or XLNet trained via `FARM <https://github.com/deepset-ai/FARM>`_ or  on SQuAD like tasks. The Reader takes multiple passages of text as input and returns top-n answers with corresponding confidence scores.
+Neural networks (i.e. mostly Transformer-based) that read through texts in detail to find an answer. Use diverse models like BERT, RoBERTa or XLNet trained via `FARM <https://github.com/deepset-ai/FARM>`_ or on SQuAD-like datasets. The Reader takes multiple passages of text as input and returns top-n answers with corresponding confidence scores.
 Both readers can load either a local model or any public model from  `Hugging Face's model hub <https://huggingface.co/models>`_
 
 FARMReader
 ^^^^^^^^^^
 Implementing various QA models via the `FARM <https://github.com/deepset-ai/FARM>`_ Framework.
+
 Example
 
 .. code-block:: python
@@ -208,10 +215,11 @@ Example
 
 This Reader comes with:
 
-* quite many configuration options
-* multiple processes for preprocessing
+* extensive configuration options (no answer boost, aggregation options ...) 
+* multiprocessing to speed-up preprocessing
 * option to train
 * option to evaluate
+* option to load all QA models directly from HuggingFace's model hub
 
 TransformersReader
 ^^^^^^^^^^^^^^^^^^
