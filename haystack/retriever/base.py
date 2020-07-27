@@ -76,7 +76,7 @@ class BaseRetriever(ABC):
                 retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
-                    if doc.id in gold_ids:
+                    if str(doc.id) in gold_ids:
                         correct_retrievals += 1
                         summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
                         break

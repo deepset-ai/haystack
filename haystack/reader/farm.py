@@ -395,7 +395,7 @@ class FARMReader(BaseReader):
                 "context": doc.text
             }
             # get all questions / answers
-            aggregated_per_question: Dict[str, List[Any]] = defaultdict(list)
+            aggregated_per_question: Dict[str, Any] = defaultdict(list)
             for label in aggregated_per_doc[doc_id]:
                 # add to existing answers
                 if label.question in aggregated_per_question.keys():
