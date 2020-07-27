@@ -160,8 +160,8 @@ class Finder:
 
         finder_start_time = time.time()
         # extract all questions for evaluation
-        filter = {"origin": label_origin}
-        questions = self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter)  # type: ignore
+        filters = {"origin": [label_origin]}
+        questions = self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filters)  # type: ignore
 
         correct_retrievals = 0
         summed_avg_precision_retriever = 0

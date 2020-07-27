@@ -209,14 +209,21 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             "query": {
                 "bool": {
                     "must": {
-                        "match_all" : {}
+                        "match_all": {}
                     }
                 }
             }
         }  # type: Dict[str, Any]
 
         if filters:
-           body["query"]["bool"]["filter"] = {"term": filters}
+            filter_clause = []
+            for key, values in filters.items():
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+            body["query"]["bool"]["filter"] = filter_clause
         result = scan(self.client, query=body, index=index)
 
         return result
