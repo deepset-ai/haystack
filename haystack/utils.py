@@ -34,6 +34,7 @@ def export_answers_to_csv(agg_results: list, output_file):
     Exports answers coming from finder.get_answers() to a CSV file
     :param agg_results: list of predictions coming from finder.get_answers()
     :param output_file: filename of output file
+    :return: None
     """
     if isinstance(agg_results, dict):
         agg_results = [agg_results]
@@ -41,7 +42,7 @@ def export_answers_to_csv(agg_results: list, output_file):
     assert "question" in agg_results[0], f"Wrong format used for {agg_results[0]}"
     assert "answers" in agg_results[0], f"Wrong format used for {agg_results[0]}"
 
-    data = {} # type: ignore
+    data = {} # type: Dict[str, list[Any]]
     data["question"] = []
     data["prediction"] = []
     data["prediction_rank"] = []
