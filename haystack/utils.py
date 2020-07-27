@@ -41,7 +41,7 @@ def export_answers_to_csv(agg_results: list, output_file):
     assert "question" in agg_results[0], f"Wrong format used for {agg_results[0]}"
     assert "answers" in agg_results[0], f"Wrong format used for {agg_results[0]}"
 
-    data = {}
+    data = {} # type: ignore
     data["question"] = []
     data["prediction"] = []
     data["prediction_rank"] = []
