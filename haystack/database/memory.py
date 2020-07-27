@@ -63,7 +63,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                 else:
                                     self.doc_tags[comp_key] = [hash]
 
-    def get_document_by_id(self, id: Union[str, UUID], index: Optional[str]=None) -> Document:
+    def get_document_by_id(self, id: Union[str, UUID], index: Optional[str] = None) -> Document:
         index = index or self.index
         return self.indexes[index][id]
 
@@ -115,7 +115,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         #TODO
         raise NotImplementedError("update_embeddings() is not yet implemented for this DocumentStore")
 
-    def get_document_ids_by_tags(self, tags: Union[List[Dict[str, Union[str, List[str]]]], Dict[str, Union[str, List[str]]]], index: Optional[str]) -> List[str]:
+    def get_document_ids_by_tags(self, tags: Union[List[Dict[str, Union[str, List[str]]]], Dict[str, Union[str, List[str]]]], index: Optional[str] = None) -> List[str]:
         """
         The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
         The format for the dict is {"tag-1": ["value-1","value-2"], "tag-2": ["value-3]" ...}
