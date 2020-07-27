@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Union, Type
+from typing import List, Optional, Union, Dict, Any
 from collections import defaultdict
 
 import numpy as np
@@ -347,7 +347,7 @@ class FARMReader(BaseReader):
 
     def eval(
             self,
-            document_store: Type[BaseDocumentStore],
+            document_store: BaseDocumentStore,
             device: str,
             label_index: str = "feedback",
             doc_index: str = "eval_document",
@@ -375,15 +375,23 @@ class FARMReader(BaseReader):
         # Aggregate all answer labels per question
         aggregated_per_doc = defaultdict(list)
         for label in labels:
+            if not label.document_id:
+                logger.error(f"Label does not contain a document_id")
+                continue
             aggregated_per_doc[label.document_id].append(label)
 
         # Create squad style dicts
-        d = {}
+        d: Dict[str, Any] = {}
         for doc_id in aggregated_per_doc.keys():
-            d[doc_id] = {}
-            d[doc_id]["context"] = document_store.get_document_by_id(doc_id, index=doc_index).text
+            doc = document_store.get_document_by_id(doc_id, index=doc_index)
+            if not doc:
+                logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
+                continue
+            d[str(doc_id)] = {
+                "context": doc.text
+            }
             # get all questions / answers
-            aggregated_per_question = defaultdict(list)
+            aggregated_per_question: Dict[str, List[Any]] = defaultdict(list)
             for label in aggregated_per_doc[doc_id]:
                 # add to existing answers
                 if label.question in aggregated_per_question.keys():
@@ -400,7 +408,7 @@ class FARMReader(BaseReader):
                                 "answer_start": label.offset_start_in_doc}]
                     }
             # Get rid of the question key again (after we aggregated we don't need it anymore)
-            d[doc_id]["qas"] = [v for v in aggregated_per_question.values()]
+            d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
 
         # Convert input format for FARM
         farm_input = [v for v in d.values()]
@@ -461,10 +469,9 @@ class FARMReader(BaseReader):
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         documents = []
-        for i, text in enumerate(texts):
+        for text in texts:
             documents.append(
                 Document(
-                    id=i,
                     text=text
                 )
             )

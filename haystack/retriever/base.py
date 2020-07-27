@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Type
+from typing import List
 import logging
 from collections import defaultdict
 
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseRetriever(ABC):
-    document_store: Type[BaseDocumentStore]
+    document_store: BaseDocumentStore
 
     @abstractmethod
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
@@ -57,7 +57,7 @@ class BaseRetriever(ABC):
             if open_domain:
                 aggregated_labels[label.question].add(label.answer)
             else:
-                aggregated_labels[label.question].add(label.document_id)
+                aggregated_labels[label.question].add(str(label.document_id))
 
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
         if open_domain:

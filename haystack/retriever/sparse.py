@@ -46,7 +46,7 @@ class ElasticsearchRetriever(BaseRetriever):
                              self.retrieve(query="Why did the revenue increase?",
                                            filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
         """
-        self.document_store = document_store  # type: ignore
+        self.document_store: ElasticsearchDocumentStore = document_store
         self.custom_query = custom_query
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:

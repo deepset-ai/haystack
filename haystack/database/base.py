@@ -31,9 +31,9 @@ class Document:
         self.text = text
         # Create a unique ID (either new one, or one from user input)
         if id:
-            if type(id) == str:
-                self.id = UUID(hex=id, version=4)
-            if type(id) == UUID:
+            if isinstance(id, str):
+                self.id = UUID(hex=str(id), version=4)
+            if isinstance(id, UUID):
                 self.id = id
         else:
             self.id = uuid4()
@@ -89,9 +89,9 @@ class Label:
         self.question = question
         self.positive_sample = positive_sample
         if document_id:
-            if type(document_id) == str:
-                self.document_id = UUID(hex=document_id, version=4)
-            if type(document_id) == UUID:
+            if isinstance(document_id, str):
+                self.document_id: Optional[UUID] = UUID(hex=str(document_id), version=4)
+            if isinstance(document_id, UUID):
                 self.document_id = document_id
         else:
             self.document_id = document_id
@@ -135,11 +135,15 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
+    def get_all_labels(self, index: str = "feedback", filters: Optional[dict] = None) -> List[Label]:
+        pass
+
+    @abstractmethod
     def get_document_by_id(self, id: UUID, index: Optional[str] = None) -> Optional[Document]:
         pass
 
     @abstractmethod
-    def get_document_ids_by_tags(self, tag, ) -> List[str]:
+    def get_document_ids_by_tags(self, tag, index) -> List[str]:
         pass
 
     @abstractmethod
@@ -153,3 +157,15 @@ class BaseDocumentStore(ABC):
                            top_k: int = 10,
                            index: Optional[str] = None) -> List[Document]:
         pass
+
+    @abstractmethod
+    def get_label_count(self, index: Optional[str] = None) -> int:
+        pass
+
+    @abstractmethod
+    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "feedback"):
+        pass
+
+    def delete_all_documents(self, index: str):
+        pass
+

@@ -1,10 +1,8 @@
 import pytest
-from typing import Type
 from haystack.database.base import BaseDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever
 
 
-@pytest.mark.parametrize("document_store", [("elasticsearch")], indirect=True)
 def test_add_eval_data(document_store):
     # add eval data (SQUAD format)
     document_store.delete_all_documents(index="test_eval_document")
@@ -12,7 +10,7 @@ def test_add_eval_data(document_store):
     document_store.add_eval_data(filename="samples/squad/small.json", doc_index="test_eval_document", label_index="test_feedback")
 
     assert document_store.get_document_count(index="test_eval_document") == 87
-    assert document_store.get_document_count(index="test_feedback") == 881
+    assert document_store.get_label_count(index="test_feedback") == 881
 
     # test documents
     docs = document_store.get_all_documents(index="test_eval_document")
@@ -41,10 +39,8 @@ def test_add_eval_data(document_store):
 
 
 
-
-@pytest.mark.parametrize("reader", [("farm")], indirect=True)
-@pytest.mark.parametrize("document_store", [("elasticsearch")], indirect=True)
-def test_eval_reader(reader, document_store: Type[BaseDocumentStore]):
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_eval_reader(reader, document_store: BaseDocumentStore):
     # add eval data (SQUAD format)
     document_store.delete_all_documents(index="test_eval_document")
     document_store.delete_all_documents(index="test_feedback")
@@ -62,9 +58,9 @@ def test_eval_reader(reader, document_store: Type[BaseDocumentStore]):
     document_store.delete_all_documents(index="test_eval_document")
     document_store.delete_all_documents(index="test_feedback")
 
-@pytest.mark.parametrize("document_store", [("elasticsearch")], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
-def test_eval_elastic_retriever(document_store: Type[BaseDocumentStore], open_domain):
+def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain):
     retriever = ElasticsearchRetriever(document_store=document_store)
 
     # add eval data (SQUAD format)
