@@ -1,12 +1,13 @@
 import uuid
 from typing import Any, Dict, Union, List, Optional
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, PickleType
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, PickleType, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy_utils import UUIDType
 from uuid import UUID
-from haystack.database.base import BaseDocumentStore, Document
+from haystack.indexing.utils import eval_data_from_file
+from haystack.database.base import BaseDocumentStore, Document, Label
 
 Base = declarative_base()  # type: Any
 
@@ -22,7 +23,8 @@ class ORMBase(Base):
 class DocumentORM(ORMBase):
     __tablename__ = "document"
 
-    text = Column(String)
+    text = Column(String, nullable=False)
+    index = Column(String, nullable=False)
     meta_data = Column(PickleType)
 
     tags = relationship("TagORM", secondary="document_tag", backref="Document")
@@ -44,28 +46,50 @@ class DocumentTagORM(ORMBase):
     tag_id = Column(Integer, ForeignKey("tag.id"), nullable=False)
 
 
+class LabelORM(ORMBase):
+    __tablename__ = "label"
+
+    document_id = Column(UUIDType(binary=False), ForeignKey("document.id"), nullable=False)
+    index = Column(String, nullable=False)
+    no_answer = Column(Boolean, nullable=False)
+    origin = Column(String, nullable=False)
+    question = Column(String, nullable=False)
+    positive_sample = Column(Boolean, nullable=False)
+    answer = Column(String, nullable=False)
+    offset_start_in_doc = Column(Integer, nullable=False)
+    model_id = Column(Integer, nullable=True)
+
+
 class SQLDocumentStore(BaseDocumentStore):
-    def __init__(self, url: str = "sqlite://"):
+    def __init__(self, url: str = "sqlite://", index="document"):
         engine = create_engine(url)
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
+        self.index = index
+        self.feedback_index = "feedback"
 
-    def get_document_by_id(self, id: UUID) -> Optional[Document]:
-        document_row = self.session.query(DocumentORM).get(id)
-        document = self._convert_sql_row_to_document(document_row)
-
+    def get_document_by_id(self, id: UUID, index=None) -> Optional[Document]:
+        index = index or self.index
+        document_row = self.session.query(DocumentORM).filter_by(index=index, id=id).first()
+        document = document_row or self._convert_sql_row_to_document(document_row)
         return document
 
-    def get_all_documents(self) -> List[Document]:
-        document_rows = self.session.query(DocumentORM).all()
-        documents = []
-        for row in document_rows:
-            documents.append(self._convert_sql_row_to_document(row))
+    def get_all_documents(self, index=None) -> List[Document]:
+        index = index or self.index
+        document_rows = self.session.query(DocumentORM).filter_by(index=index).all()
+        documents = [self._convert_sql_row_to_document(row) for row in document_rows]
 
         return documents
 
-    def get_document_ids_by_tags(self, tags: Dict[str, Union[str, List]]) -> List[str]:
+    def get_all_labels(self, index=None, filters: Optional[dict] = None):
+        index = index or self.feedback_index
+        label_rows = self.session.query(LabelORM).filter_by(index=index).all()
+        labels = [self._convert_sql_row_to_label(row) for row in label_rows]
+
+        return labels
+
+    def get_document_ids_by_tags(self, tags: Dict[str, Union[str, List]], index: Optional[str] = None) -> List[str]:
         """
         Get list of document ids that have tags from the given list of tags.
 
@@ -74,6 +98,9 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         if not tags:
             raise Exception("No tag supplied for filtering the documents")
+
+        if index:
+            raise Exception("'index' parameter is not supported in SQLDocumentStore.get_document_ids_by_tags().")
 
         query = """
                   SELECT id FROM document WHERE id in (
@@ -93,7 +120,7 @@ class SQLDocumentStore(BaseDocumentStore):
         doc_ids = [row[0] for row in query_results]
         return doc_ids
 
-    def write_documents(self, documents: Union[List[dict], List[Document]]):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index=None):
         """
         Indexes documents for later queries.
 
@@ -105,14 +132,54 @@ class SQLDocumentStore(BaseDocumentStore):
 
         # Make sure we comply to Document class format
         documents = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
-
+        index = index or self.index
         for doc in documents:
-            row = DocumentORM(text=doc.text, meta_data=doc.meta)
+            row = DocumentORM(id=doc.id, text=doc.text, meta_data=doc.meta, index=index)  # type: ignore
             self.session.add(row)
         self.session.commit()
 
-    def get_document_count(self) -> int:
-        return self.session.query(DocumentORM).count()
+    def write_labels(self, labels, index=None):
+
+        labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
+        index = index or self.index
+        for label in labels:
+            label_orm = LabelORM(
+                document_id=label.document_id,
+                no_answer=label.no_answer,
+                origin=label.origin,
+                question=label.question,
+                positive_sample=label.positive_sample,
+                answer=label.answer,
+                offset_start_in_doc=label.offset_start_in_doc,
+                model_id=label.model_id,
+                index=index,
+            )
+            self.session.add(label_orm)
+        self.session.commit()
+
+    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "feedback"):
+        """
+        Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
+
+        :param filename: Name of the file containing evaluation data
+        :type filename: str
+        :param doc_index: Elasticsearch index where evaluation documents should be stored
+        :type doc_index: str
+        :param label_index: Elasticsearch index where labeled questions should be stored
+        :type label_index: str
+        """
+
+        docs, labels = eval_data_from_file(filename)
+        self.write_documents(docs, index=doc_index)
+        self.write_labels(labels, index=label_index)
+
+    def get_document_count(self, index=None) -> int:
+        index = index or self.index
+        return self.session.query(DocumentORM).filter_by(index=index).count()
+
+    def get_label_count(self, index: Optional[str] = None) -> int:
+        index = index or self.index
+        return self.session.query(LabelORM).filter_by(index=index).count()
 
     def _convert_sql_row_to_document(self, row) -> Document:
         document = Document(
@@ -123,6 +190,19 @@ class SQLDocumentStore(BaseDocumentStore):
         )
         return document
 
+    def _convert_sql_row_to_label(self, row) -> Label:
+        label = Label(
+            document_id=row.document_id,
+            no_answer=row.no_answer,
+            origin=row.origin,
+            question=row.question,
+            positive_sample=row.positive_sample,
+            answer=row.answer,
+            offset_start_in_doc=row.offset_start_in_doc,
+            model_id=row.model_id,
+        )
+        return label
+
     def query_by_embedding(self,
                            query_emb: List[float],
                            filters: Optional[dict] = None,
@@ -132,3 +212,15 @@ class SQLDocumentStore(BaseDocumentStore):
         raise NotImplementedError("SQLDocumentStore is currently not supporting embedding queries. "
                                   "Change the query type (e.g. by choosing a different retriever) "
                                   "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")
+
+    def delete_all_documents(self, index=None):
+        """
+        Delete all documents in a index.
+
+        :param index: index name
+        :return: None
+        """
+
+        index = index or self.index
+        documents = self.session.query(DocumentORM).filter_by(index=index)
+        documents.delete(synchronize_session=False)

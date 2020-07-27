@@ -3,7 +3,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 import json
 
 from farm.data_handler.utils import http_get
@@ -14,7 +14,7 @@ from haystack.database.base import Document, Label
 logger = logging.getLogger(__name__)
 
 
-def eval_data_from_file(filename: str) -> (List[Document], List[Label]):
+def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.

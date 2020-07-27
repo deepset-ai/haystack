@@ -79,7 +79,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # create an index if not exists
         if create_index:
             self.client.indices.create(index=index, ignore=400, body=custom_mapping)
-        self.index = index
+        self.index: str = index
 
         # configure mappings to ES fields that will be used for querying / displaying results
         if type(search_fields) == str:
@@ -104,11 +104,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         document = self._convert_es_hit_to_document(result[0]) if result else None
         return document
 
-    def get_document_ids_by_tags(self, tags: dict) -> List[str]:
+    def get_document_ids_by_tags(self, tags: dict, index: Optional[str]) -> List[str]:
+        index = index or self.index
         term_queries = [{"terms": {key: value}} for key, value in tags.items()]
         query = {"query": {"bool": {"must": term_queries}}}
         logger.debug(f"Tag filter query: {query}")
-        result = self.client.search(index=self.index, body=query, size=10000)["hits"]["hits"]
+        result = self.client.search(index=index, body=query, size=10000)["hits"]["hits"]
         doc_ids = []
         for hit in result:
             doc_ids.append(hit["_id"])
@@ -132,11 +133,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             index = self.index
 
         # Make sure we comply to Document class format
-        if type(documents[0]) == dict:
-            documents = [Document.from_dict(l) for l in documents]
+        documents_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
         documents_to_index = []
-        for doc in documents:
+        for doc in documents_objects:
 
             _doc = {
                 "_op_type": "create",
@@ -163,11 +163,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def write_labels(self, labels: Union[List[Label], List[dict]], index: str ="feedback"):
         # TODO do we need self.label_index?
         # Make sure we comply to Label class format
-        if type(labels[0]) == dict:
-            labels = [Label.from_dict(l) for l in labels]
+        label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
 
         labels_to_index = []
-        for label in labels:
+        for label in label_objects:
             _label = {
                 "_op_type": "create",
                 "_index": index,
@@ -181,54 +180,31 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         body = {"doc": meta}
         self.client.update(index=self.index, doc_type="_doc", id=id, body=body)
 
-    def get_document_count(self, index: Optional[str] = None,) -> int:
+    def get_document_count(self, index: Optional[str] = None) -> int:
         if index is None:
             index = self.index
         result = self.client.count(index=index)
         count = result["count"]
         return count
 
-    def get_all_documents(self, index=None, filters: Optional[dict] = None) -> List[Document]:
+    def get_label_count(self, index: Optional[str] = None) -> int:
+        return self.get_document_count(index=index)
+
+    def get_all_documents(self, index: Optional[str] = None, filters: Optional[dict] = None) -> List[Document]:
         if index is None:
             index = self.index
 
-        body = {
-            "query": {
-                "bool": {
-                    "must": {
-                        "match_all": {}
-                    }
-                }
-            }
-        }  # type: Dict[str, Any]
-
-        if filters:
-           body["query"]["bool"]["filter"] = {"term": filters}
-
-        result = scan(self.client, query=body, index=index)
+        result = self.get_all_documents_in_index(index=index, filters=filters)
         documents = [self._convert_es_hit_to_document(hit) for hit in result]
 
         return documents
 
     def get_all_labels(self, index: str = "feedback", filters: Optional[dict] = None) -> List[Label]:
-        body = {
-            "query": {
-                "bool": {
-                    "must": {
-                        "match_all": {}
-                    }
-                }
-            }
-        }  # type: Dict[str, Any]
-
-        if filters:
-           body["query"]["bool"]["filter"] = {"term": filters}
-
-        result = scan(self.client, query=body, index=index)
+        result = self.get_all_documents_in_index(index=index, filters=filters)
         labels = [Label.from_dict(hit["_source"]) for hit in result]
         return labels
 
-    def get_all_documents_in_index(self, index: str, filters: Optional[dict] = None):
+    def get_all_documents_in_index(self, index: str, filters: Optional[dict] = None) -> List[dict]:
         body = {
             "query": {
                 "bool": {
@@ -474,7 +450,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         self.write_labels(labels, index=label_index)
 
-    def delete_all_documents(self, index):
+    def delete_all_documents(self, index: str):
         """
         Delete all documents in a index.
 

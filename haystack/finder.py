@@ -193,7 +193,7 @@ class Finder:
             retrieve_times.append(time.time() - single_retrieve_start)
             for doc_idx, doc in enumerate(retrieved_docs):
                 # check if correct doc among retrieved docs
-                if doc.meta["doc_id"] == question["_source"]["doc_id"]:
+                if doc.meta["doc_id"] == question["_source"]["doc_id"]:  # type: ignore
                     correct_retrievals += 1
                     summed_avg_precision_retriever += 1 / (doc_idx + 1)  # type: ignore
                     questions_with_docs.append({
