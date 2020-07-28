@@ -137,6 +137,9 @@ dmypy.json
 # PyCharm
 .idea
 
+# VSCode
+.vscode
+
 # haystack files
 haystack/database/qa.db
 data
@@ -146,5 +149,6 @@ tutorials/cache
 tutorials/mlruns
 tutorials/model
 models
+docs
 
 .DS_Store
