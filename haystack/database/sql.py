@@ -67,7 +67,7 @@ class SQLDocumentStore(BaseDocumentStore):
         Session = sessionmaker(bind=engine)
         self.session = Session()
         self.index = index
-        self.feedback_index = "feedback"
+        self.label_index = "label"
 
     def get_document_by_id(self, id: UUID, index=None) -> Optional[Document]:
         index = index or self.index
@@ -83,7 +83,7 @@ class SQLDocumentStore(BaseDocumentStore):
         return documents
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None):
-        index = index or self.feedback_index
+        index = index or self.label_index
         label_rows = self.session.query(LabelORM).filter_by(index=index).all()
         labels = [self._convert_sql_row_to_label(row) for row in label_rows]
 
@@ -157,7 +157,7 @@ class SQLDocumentStore(BaseDocumentStore):
             self.session.add(label_orm)
         self.session.commit()
 
-    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "feedback"):
+    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "label"):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
 
