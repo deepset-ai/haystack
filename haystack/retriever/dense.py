@@ -194,7 +194,7 @@ class DensePassageRetriever(BaseRetriever):
 class EmbeddingRetriever(BaseRetriever):
     def __init__(
         self,
-        document_store: ElasticsearchDocumentStore,
+        document_store: BaseDocumentStore,
         embedding_model: str,
         use_gpu: bool = True,
         model_format: str = "farm",
@@ -212,7 +212,7 @@ class EmbeddingRetriever(BaseRetriever):
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         """
-        self.document_store: ElasticsearchDocumentStore = document_store
+        self.document_store = document_store
         self.model_format = model_format
         self.embedding_model = embedding_model
         self.pooling_strategy = pooling_strategy
