@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from typing import List, Optional, Union
+import multiprocessing
 
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
@@ -117,6 +118,7 @@ class FARMReader(BaseReader):
         dev_split: Optional[float] = 0.1,
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
+        num_processes: Optional[int] = 0
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -139,12 +141,16 @@ class FARMReader(BaseReader):
                                   Options for different schedules are available in FARM.
         :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
         :param save_dir: Path to store the final model
+        :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
+                              Set to value of 0 to disable multiprocessing. Set to None to use all CPU cores minus one.
         :return: None
         """
 
-
         if dev_filename:
             dev_split = None
+
+        if num_processes is None:
+            num_processes = multiprocessing.cpu_count() - 1
 
         set_all_seeds(seed=42)
 
@@ -177,7 +183,7 @@ class FARMReader(BaseReader):
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
-        data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False)
+        data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes)
 
         # Quick-fix until this is fixed upstream in FARM:
         # We must avoid applying DataParallel twice (once when loading the inferencer,
