@@ -394,8 +394,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
-
-
         docs = self.get_all_documents(index)
         passages = [d.text for d in docs]
 
@@ -444,17 +442,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         }
         self.client.indices.create(index=doc_index, ignore=400, body=default_mapping)
 
-
         docs, labels = eval_data_from_file(filename)
-
-
-        # get proper document ids
-        doc_ids = self.write_documents(docs, index=doc_index)
-
-        # # update ids in labels
-        # for l, idx in zip(labels, labels2doc):
-        #     l.document_id = doc_ids[idx]
-
+        self.write_documents(docs, index=doc_index)
         self.write_labels(labels, index=label_index)
 
     def delete_all_documents(self, index: str):
