@@ -22,6 +22,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         username: str = "",
         password: str = "",
         index: str = "document",
+        label_index: str = "label",
         search_fields: Union[str, list] = "text",
         text_field: str = "text",
         name_field: str = "name",
@@ -64,23 +65,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
                                     scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
 
-        # if no custom_mapping is supplied, use the default mapping
-        if not custom_mapping:
-            custom_mapping = {
-                "mappings": {
-                    "properties": {
-                        name_field: {"type": "text"},
-                        text_field: {"type": "text"},
-                        embedding_field: {"type": "dense_vector",
-                                          "dims": embedding_dim}
-                    }
-                }
-            }
-        # create an index if not exists
-        if create_index:
-            self.client.indices.create(index=index, ignore=400, body=custom_mapping)
-        self.index: str = index
-
         # configure mappings to ES fields that will be used for querying / displaying results
         if type(search_fields) == str:
             search_fields = [search_fields]
@@ -94,6 +78,49 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
         self.faq_question_field = faq_question_field
+
+        self.custom_mapping = custom_mapping
+        if create_index:
+            self._create_document_index(index)
+        self.index: str = index
+
+        self._create_label_index(label_index)
+        self.label_index = label_index
+
+    def _create_document_index(self, index_name):
+        if self.custom_mapping:
+            mapping = self.custom_mapping
+        else:
+            mapping = {
+                "mappings": {
+                    "properties": {
+                        self.name_field: {"type": "text"},
+                        self.text_field: {"type": "text"},
+                    }
+                }
+            }
+            if self.embedding_field:
+                mapping["mappings"]["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
+        self.client.indices.create(index=index_name, ignore=400, body=mapping)
+
+    def _create_label_index(self, index_name):
+        mapping = {
+            "mappings": {
+                "properties": {
+                    "question": {"type": "text"},
+                    "answer": {"type": "text"},
+                    "is_correct_answer": {"type": "boolean"},
+                    "is_correct_document": {"type": "boolean"},
+                    "origin": {"type": "keyword"},
+                    "document_id": {"type": "keyword"},
+                    "offset_start_in_doc": {"type": "long"},
+                    "no_answer": {"type": "boolean"},
+                    "model_id": {"type": "keyword"},
+                    "type": {"type": "keyword"},
+                }
+            }
+        }
+        self.client.indices.create(index=index_name, ignore=400, body=mapping)
 
     def get_document_by_id(self, id: Union[UUID, str], index=None) -> Optional[Document]:
         if index is None:
@@ -129,6 +156,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param index: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
         :return: None
         """
+
+        if index and not self.client.indices.exists(index=index):
+            self._create_document_index(index)
+
         if index is None:
             index = self.index
 
@@ -160,8 +191,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             documents_to_index.append(_doc)
         bulk(self.client, documents_to_index, request_timeout=300, refresh="wait_for")
 
-    def write_labels(self, labels: Union[List[Label], List[dict]], index: str ="feedback"):
-        # TODO do we need self.label_index?
+    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = "label"):
+        if index and not self.client.indices.exists(index=index):
+            self._create_label_index(index)
+
         # Make sure we comply to Label class format
         label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
 
@@ -199,7 +232,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def get_all_labels(self, index: str = "feedback", filters: Optional[dict] = None) -> List[Label]:
+    def get_all_labels(self, index: str = "label", filters: Optional[dict] = None) -> List[Label]:
         result = self.get_all_documents_in_index(index=index, filters=filters)
         labels = [Label.from_dict(hit["_source"]) for hit in result]
         return labels
@@ -418,7 +451,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         bulk(self.client, doc_updates, request_timeout=300)
 
-    def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "feedback"):
+    def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label"):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
 
@@ -429,18 +462,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param label_index: Elasticsearch index where labeled questions should be stored
         :type label_index: str
         """
-
-        # Create index for eval docs if not existing
-        default_mapping = {
-            "mappings": {
-                "properties": {
-                    self.name_field: {"type": "text"},
-                    self.text_field: {"type": "text"},
-                    self.embedding_field: {"type": "dense_vector", "dims": self.embedding_dim}
-                }
-            }
-        }
-        self.client.indices.create(index=doc_index, ignore=400, body=default_mapping)
 
         docs, labels = eval_data_from_file(filename)
         self.write_documents(docs, index=doc_index)

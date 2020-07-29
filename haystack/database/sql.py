@@ -54,7 +54,8 @@ class LabelORM(ORMBase):
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String, nullable=False)
     question = Column(String, nullable=False)
-    positive_sample = Column(Boolean, nullable=False)
+    is_correct_answer = Column(Boolean, nullable=False)
+    is_correct_document = Column(Boolean, nullable=False)
     answer = Column(String, nullable=False)
     offset_start_in_doc = Column(Integer, nullable=False)
     model_id = Column(Integer, nullable=True)
@@ -148,7 +149,8 @@ class SQLDocumentStore(BaseDocumentStore):
                 no_answer=label.no_answer,
                 origin=label.origin,
                 question=label.question,
-                positive_sample=label.positive_sample,
+                is_correct_answer=label.is_correct_answer,
+                is_correct_document=label.is_correct_document,
                 answer=label.answer,
                 offset_start_in_doc=label.offset_start_in_doc,
                 model_id=label.model_id,
@@ -196,7 +198,8 @@ class SQLDocumentStore(BaseDocumentStore):
             no_answer=row.no_answer,
             origin=row.origin,
             question=row.question,
-            positive_sample=row.positive_sample,
+            is_correct_answer=row.is_correct_answer,
+            is_correct_document=row.is_correct_document,
             answer=row.answer,
             offset_start_in_doc=row.offset_start_in_doc,
             model_id=row.model_id,

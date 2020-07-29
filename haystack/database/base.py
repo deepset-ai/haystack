@@ -17,7 +17,7 @@ class Document:
         regardless if it's ElasticsearchDocumentStore or InMemoryDocumentStore.
 
         Note that there can be multiple Documents originating from one file (e.g. PDF),
-        if you split the text into smaller passsages. We'll have one Document per passage in this case.
+        if you split the text into smaller passages. We'll have one Document per passage in this case.
 
         :param id: ID used within the DocumentStore
         :param text: Text of the document
@@ -63,10 +63,12 @@ class Document:
         return cls(**_doc)
 
 
+
 class Label:
     def __init__(self, question: str,
                  answer: str,
-                 positive_sample: bool,
+                 is_correct_answer: bool,
+                 is_correct_document: bool,
                  origin: str,
                  document_id: Optional[UUID] = None,
                  offset_start_in_doc: Optional[int] = None,
@@ -77,7 +79,8 @@ class Label:
 
         :param question:
         :param answer:
-        :param positive_sample:
+        :param is_correct_answer:
+        :param is_correct_document:
         :param origin:
         :param document_id:
         :param offset_start_in_doc:
@@ -87,7 +90,8 @@ class Label:
         self.no_answer = no_answer
         self.origin = origin
         self.question = question
-        self.positive_sample = positive_sample
+        self.is_correct_answer = is_correct_answer
+        self.is_correct_document = is_correct_document
         if document_id:
             if isinstance(document_id, str):
                 self.document_id: Optional[UUID] = UUID(hex=str(document_id), version=4)

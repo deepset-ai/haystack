@@ -88,9 +88,16 @@ class Finder:
         # 2) Format response
         for doc in documents:
             #TODO proper calibratation of pseudo probabilities
-            cur_answer = {"question": doc.question, "answer": doc.text, "context": doc.text,  # type: ignore
-                          "score": doc.query_score, "offset_start": 0, "offset_end": len(doc.text), "meta": doc.meta
-                          }
+            cur_answer = {
+                "question": doc.question,
+                "answer": doc.text,
+                "document_id": doc.id,
+                "context": doc.text,
+                "score": doc.query_score,
+                "offset_start": 0,
+                "offset_end": len(doc.text),
+                "meta": doc.meta
+             }
             if self.retriever.embedding_model:  # type: ignore
                 probability = (doc.query_score + 1) / 2  # type: ignore
             else:

@@ -47,7 +47,8 @@ def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
                         label = Label(
                             question=qa["question"],
                             answer=answer["text"],
-                            positive_sample=True,
+                            is_correct_answer=True,
+                            is_correct_document=True,
                             document_id=cur_doc.id,
                             offset_start_in_doc=answer["answer_start"],
                             no_answer=qa["is_impossible"],
