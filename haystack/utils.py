@@ -3,7 +3,7 @@ from collections import defaultdict
 import logging
 import pprint
 import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, List
 from haystack.database.sql import Document
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def export_answers_to_csv(agg_results: list, output_file):
     assert "question" in agg_results[0], f"Wrong format used for {agg_results[0]}"
     assert "answers" in agg_results[0], f"Wrong format used for {agg_results[0]}"
 
-    data = {} # type: Dict[str, list[Any]]
+    data = {} # type: Dict[str, List[Any]]
     data["question"] = []
     data["prediction"] = []
     data["prediction_rank"] = []
