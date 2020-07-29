@@ -3,8 +3,10 @@ from collections import defaultdict
 import logging
 import pprint
 from typing import Dict, Any
+import pandas as pd
+import re
 from haystack.database.sql import DocumentORM
-
+from haystack.squad_schema import SquadSchema, paragraphs, qas, answer, data
 logger = logging.getLogger(__name__)
 
 
@@ -79,3 +81,80 @@ def convert_labels_to_squad(labels_file: str):
 
     with open("labels_in_squad_format.json", "w+") as outfile:
         json.dump(labels_in_squad_format, outfile)
+
+def find_answer_start(answer: str, text: str):
+    """
+    get index of beginning of answer in text
+    :param text: string where 'answer' is to be searched in
+    :param answer: substring to be searched in 'text'
+    :return: list of indices of occurrences of answer
+    """
+    # escape all (
+    answer = r"\b{}\b".format(re.escape(answer))
+    return [m.start() for m in re.finditer(answer, text)]
+
+def convert_df_to_squad(dataframe):
+    """
+    convert pandas data-frame to squad json
+    :param dataframe: Pandas dataframe where each row represents one question-context sample with other relevant info
+                    columns in the dataframe:
+                        question: question string: str
+                        answers: list of answers: [str]
+                        is_impossible: is answer absent: Optional[bool]
+                        context: context passage: str
+                        passage_id: unique identification number for a context passage: int
+                        title: title of the context passage: str
+    :return: json in Squad Format
+    """
+    squad_data = []
+
+    # Group rows with same context 'title'
+    for title, all_paragraphs in dataframe.groupby(['title']):
+        paras_in_title = []
+
+        # Group rows with same context passages identified with 'passage_id'
+        for para_id, para in all_paragraphs.groupby(['passage_id']):
+            ques_ans_in_paragraph = []
+
+            # create Squad 'qas'
+            for questions, answers in zip(para['question'], para['answers']):
+
+                # group Squad 'answers' within a list of answers
+                ans_ = [answer(text=ans, answer_start=index) for ans in answers
+                        for index in find_answer_start(ans, para.context.iloc[0])]
+                # qas
+                ques_ans_in_paragraph.append(qas(question=questions, answers=ans_))
+
+            # Group all passages with same title within a list of passages to create Squad 'passages'
+            paras_in_title.append(paragraphs(qas=ques_ans_in_paragraph,
+                                             context=para.context.iloc[0],
+                                             passage_id=para_id))
+
+        # squad 'data': list of articles grouped by title
+        squad_data.append(data(title=title, paragraphs=paras_in_title))
+    return SquadSchema(data=squad_data).json()
+
+def convert_dpr_to_squad(json_data, **kwargs):
+    """
+    convert a Dense Passage Retrieval (DPR) json file to squad-format json
+    :param json_data: json in DPR data format
+    :return Squad json
+    """
+    # convert json to pandas dataframe
+    samples_dataframe = pd.json_normalize(json_data)
+    col_name_mapping = {'questions': 'question', 'answers': 'answers', 'positive_contexts': 'positive_ctxs',
+                        'psg_id': 'passage_id', 'text': 'context'}
+
+    # Remove negative and hard negative context
+    samples_dataframe = samples_dataframe.rename(
+        columns=col_name_mapping)[['question', 'answers', 'positive_ctxs']]
+
+    # remove samples without positive context
+    samples_dataframe = samples_dataframe[samples_dataframe['positive_ctxs'].apply(lambda x: len(x)) > 0]
+
+    # Only keep the 1 positive context
+    pos_ctxs = samples_dataframe['positive_ctxs'].transform(lambda x: x[0]).apply(pd.Series)
+
+    pos_ctxs = pos_ctxs.rename(columns=col_name_mapping)[["title", "context", "passage_id"]]
+    df = pd.concat([samples_dataframe[['question', 'answers']], pos_ctxs], axis=1)
+    return convert_df_to_squad(df)
