@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import expit
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from haystack.database.base import Document
 
@@ -13,7 +13,7 @@ class BaseReader(ABC):
         pass
 
     @staticmethod
-    def _calc_no_answer(no_ans_gaps: List[float], best_score_answer: float):
+    def _calc_no_answer(no_ans_gaps: Sequence[float], best_score_answer: float):
         # "no answer" scores and positive answers scores are difficult to compare, because
         # + a positive answer score is related to one specific document
         # - a "no answer" score is related to all input documents
