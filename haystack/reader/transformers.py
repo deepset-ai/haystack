@@ -22,7 +22,6 @@ class TransformersReader(BaseReader):
         tokenizer: str = "distilbert-base-uncased",
         context_window_size: int = 30,
         use_gpu: int = 0,
-        n_best_per_passage: int = 2, # deprecate
         top_k_per_candidate: int = 4,
         no_answer: bool = True
     ):
@@ -41,7 +40,6 @@ class TransformersReader(BaseReader):
                             The context usually helps users to understand if the answer really makes sense.
         :param use_gpu: < 0  -> use cpu
                         >= 0 -> ordinal of the gpu to use
-        :param n_best_per_passage: num of best answers to take into account for each passage
         :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
                                            Note: - This is not the number of "final answers" you will receive
                                            (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
@@ -52,7 +50,6 @@ class TransformersReader(BaseReader):
         """
         self.model = pipeline('question-answering', model=model, tokenizer=tokenizer, device=use_gpu)
         self.context_window_size = context_window_size
-        self.n_best_per_passage = n_best_per_passage
         self.top_k_per_candidate = top_k_per_candidate
         self.no_answer = no_answer
 
