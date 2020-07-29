@@ -353,7 +353,7 @@ class FARMReader(BaseReader):
             self,
             document_store: BaseDocumentStore,
             device: str,
-            label_index: str = "feedback",
+            label_index: str = "label",
             doc_index: str = "eval_document",
             label_origin: str = "gold_label",
     ):
@@ -372,9 +372,9 @@ class FARMReader(BaseReader):
         """
 
         # extract all questions for evaluation
-        filter = {"origin": label_origin}
+        filters = {"origin": [label_origin]}
 
-        labels = document_store.get_all_labels(index=label_index, filters=filter)
+        labels = document_store.get_all_labels(index=label_index, filters=filters)
 
         # Aggregate all answer labels per question
         aggregated_per_doc = defaultdict(list)

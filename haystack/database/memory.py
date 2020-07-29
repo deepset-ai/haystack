@@ -15,7 +15,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.doc_tags: Dict[str, Any] = {}
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
-        self.label_index: str = "feedback"
+        self.label_index: str = "label"
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
@@ -171,7 +171,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return result
 
-    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "feedback"):
+    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "label"):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
 

@@ -139,7 +139,7 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_all_labels(self, index: str = "feedback", filters: Optional[dict] = None) -> List[Label]:
+    def get_all_labels(self, index: str = "label", filters: Optional[dict] = None) -> List[Label]:
         pass
 
     @abstractmethod
@@ -167,7 +167,7 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "feedback"):
+    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "label"):
         pass
 
     def delete_all_documents(self, index: str):

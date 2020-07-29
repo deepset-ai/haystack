@@ -18,7 +18,7 @@ class BaseRetriever(ABC):
 
     def eval(
         self,
-        label_index: str = "feedback",
+        label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold_label",
         top_k: int = 10,
