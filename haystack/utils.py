@@ -5,8 +5,9 @@ import pprint
 from typing import Dict, Any
 import pandas as pd
 import re
+import warnings
 from haystack.database.sql import DocumentORM
-from haystack.squad_schema import SquadSchema, paragraphs, qas, answer, data
+from haystack.schemas import SquadSchema, paragraphs, qas, answer, data
 logger = logging.getLogger(__name__)
 
 
@@ -84,18 +85,25 @@ def convert_labels_to_squad(labels_file: str):
 
 def find_answer_start(answer: str, text: str):
     """
-    get index of beginning of answer in text
+    Get index of beginning of answer in text
+
     :param text: string where 'answer' is to be searched in
     :param answer: substring to be searched in 'text'
     :return: list of indices of occurrences of answer
     """
     # escape all (
     answer = r"\b{}\b".format(re.escape(answer))
-    return [m.start() for m in re.finditer(answer, text)]
+    answers = [m.start() for m in re.finditer(answer, text)]
+    if not answers:
+        raise ValueError("Answer not found in context text!")
+    elif answers[1:]:
+        warnings.warn("More than one occurrence of answer found. Treating all occurrences as different answers.")
+    return answers
 
 def convert_df_to_squad(dataframe):
     """
-    convert pandas data-frame to squad json
+    Convert pandas data-frame to squad json
+
     :param dataframe: Pandas dataframe where each row represents one question-context sample with other relevant info
                     columns in the dataframe:
                         question: question string: str
@@ -134,14 +142,18 @@ def convert_df_to_squad(dataframe):
         squad_data.append(data(title=title, paragraphs=paras_in_title))
     return SquadSchema(data=squad_data).json()
 
-def convert_dpr_to_squad(json_data, **kwargs):
+def convert_dpr_to_squad(input_file: str, output_file: str):
     """
-    convert a Dense Passage Retrieval (DPR) json file to squad-format json
-    :param json_data: json in DPR data format
+    Convert a Dense Passage Retrieval (DPR) json file to squad-format json and write to output_file
+
+    :param input_file: path to json file in DPR data format
+    :param output_file: path to output json file
     :return Squad json
     """
     # convert json to pandas dataframe
+    json_data = json.load(open(input_file))
     samples_dataframe = pd.json_normalize(json_data)
+
     col_name_mapping = {'questions': 'question', 'answers': 'answers', 'positive_contexts': 'positive_ctxs',
                         'psg_id': 'passage_id', 'text': 'context'}
 
@@ -157,4 +169,15 @@ def convert_dpr_to_squad(json_data, **kwargs):
 
     pos_ctxs = pos_ctxs.rename(columns=col_name_mapping)[["title", "context", "passage_id"]]
     df = pd.concat([samples_dataframe[['question', 'answers']], pos_ctxs], axis=1)
-    return convert_df_to_squad(df)
+
+    # convert data frame to SQuAD format
+    out_json = convert_df_to_squad(df)
+
+    # write output json
+    if output_file:
+        with open(output_file, "w") as f_out:
+            json.dump(json.loads(out_json), f_out, sort_keys=True, indent=4)
+
+#samples = json.load(open("/media/vaishali/75f51685-53cb-4317-bd6e-dacf384b9259/vaishali/Documents/deepset/DPR/data/data/retriever/trivia-dev.json"))
+input_file ="/media/vaishali/75f51685-53cb-4317-bd6e-dacf384b9259/vaishali/Documents/deepset/DPR/data/data/retriever/trivia-dev.json"
+json_data = convert_dpr_to_squad(input_file, "triviaqa_in_squad.json")
