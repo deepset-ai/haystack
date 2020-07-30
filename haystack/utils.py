@@ -177,7 +177,3 @@ def convert_dpr_to_squad(input_file: str, output_file: str):
     if output_file:
         with open(output_file, "w") as f_out:
             json.dump(json.loads(out_json), f_out, sort_keys=True, indent=4)
-
-#samples = json.load(open("/media/vaishali/75f51685-53cb-4317-bd6e-dacf384b9259/vaishali/Documents/deepset/DPR/data/data/retriever/trivia-dev.json"))
-input_file ="/media/vaishali/75f51685-53cb-4317-bd6e-dacf384b9259/vaishali/Documents/deepset/DPR/data/data/retriever/trivia-dev.json"
-json_data = convert_dpr_to_squad(input_file, "triviaqa_in_squad.json")
