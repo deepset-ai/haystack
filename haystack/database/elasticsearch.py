@@ -146,13 +146,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Indexes documents for later queries in Elasticsearch.
 
-        :param documents: List of dictionaries OR list of Documents. #TODO update
-                          Default format: {"text": "<the-actual-text>"}
+        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
                           Optionally: Include meta data via {"text": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           It can be used for filtering and is accessible in the responses of the Finder.
                           Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
-                          should be changed to what you have set for self.text_field and self.name_field .
+                          should be changed to what you have set for self.text_field and self.name_field.
         :param index: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
         :return: None
         """

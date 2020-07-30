@@ -121,12 +121,16 @@ class SQLDocumentStore(BaseDocumentStore):
         doc_ids = [row[0] for row in query_results]
         return doc_ids
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index=None):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
         Indexes documents for later queries.
 
-        :param documents: List of dictionaries in the format {"text": "<the-actual-text>"}.
-                          Optionally, you can also supply meta data via "meta": {"author": "someone", "url":"some-url" ...}
+        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                          Optionally, you can also supply "tags": ["one-tag", "another-one"]
+                          or additional meta data via "meta": {"name": "<some-document-name>, "author": "someone", "url":"some-url" ...}
+        :param index: add an optional index attribute to documents. It can be later used for filtering. For instance,
+                      documents for evaluation can be indexed in a separate index than the documents for search.
 
         :return: None
         """

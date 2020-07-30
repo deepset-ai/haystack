@@ -22,11 +22,12 @@ class InMemoryDocumentStore(BaseDocumentStore):
         Indexes documents for later queries.
 
 
-        :param documents: List of dictionaries in the format {"text": "<the-actual-text>"}.
+        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
                           Optionally, you can also supply "tags": ["one-tag", "another-one"]
                           or additional meta data via "meta": {"name": "<some-document-name>, "author": "someone", "url":"some-url" ...}
-                          TODO update
-
+        :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
+                      separate index than the documents for search.
         :return: None
         """
         index = index or self.index
