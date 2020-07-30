@@ -3,7 +3,7 @@ from collections import defaultdict
 import logging
 import pprint
 import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, List
 from haystack.database.sql import DocumentORM
 
 
