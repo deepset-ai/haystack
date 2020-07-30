@@ -22,7 +22,8 @@ def test_add_eval_data(document_store):
     labels = document_store.get_all_labels(index="test_feedback")
     assert labels[0].answer == "France"
     assert labels[0].no_answer == False
-    assert labels[0].positive_sample == True
+    assert labels[0].is_correct_answer == True
+    assert labels[0].is_correct_document == True
     assert labels[0].question == 'In what country is Normandy located?'
     assert labels[0].origin == "gold_label"
     assert labels[0].offset_start_in_doc == 159
@@ -36,7 +37,6 @@ def test_add_eval_data(document_store):
     # clean up
     document_store.delete_all_documents(index="test_eval_document")
     document_store.delete_all_documents(index="test_feedback")
-
 
 
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
@@ -57,6 +57,7 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
     # clean up
     document_store.delete_all_documents(index="test_eval_document")
     document_store.delete_all_documents(index="test_feedback")
+
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
