@@ -16,3 +16,4 @@ langdetect # for PDF conversions
 wget
 python-multipart
 python-docx
+sqlalchemy_utils
