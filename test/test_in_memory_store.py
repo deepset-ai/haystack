@@ -51,12 +51,10 @@ def test_memory_store_get_by_tag_lists_union():
     document_store.write_documents(test_docs)
 
     docs = document_store.get_document_ids_by_tags({'tag2': ["1"]})
-
-    assert docs == [
-        {'text': 'testing the finder with pyhton unit test 1', 'meta': {'name': 'testing the finder 1', 'url': 'url'}, 'tags': [{'tag2': ['1']}]},
-        {'text': 'testing the finder with pyhton unit test 3', 'meta': {'name': 'testing the finder 3', 'url': 'url'}, 'tags': [{'tag2': ['1', '2']}]}
-    ]
-
+    assert docs[0].text == 'testing the finder with pyhton unit test 1'
+    assert docs[1].text == 'testing the finder with pyhton unit test 3'
+    assert docs[1].text == 'testing the finder with pyhton unit test 3'
+    assert docs[1].tags[0] == {"tag2": ["1", "2"]}
 
 def test_memory_store_get_by_tag_lists_non_existent_tag():
     test_docs = [
@@ -82,5 +80,6 @@ def test_memory_store_get_by_tag_lists_disjoint():
     document_store.write_documents(test_docs)
 
     docs = document_store.get_document_ids_by_tags({'tag3': ["3"]})
-
-    assert docs == [{'text': 'testing the finder with pyhton unit test 3', 'meta': {'name': 'testing the finder 4', 'url': 'url'}, 'tags': [{'tag3': ['1', '3']}]}]
+    assert len(docs) == 1
+    assert docs[0].text == 'testing the finder with pyhton unit test 3'
+    assert docs[0].tags[0] == {"tag3": ["1", "3"]}

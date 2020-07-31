@@ -194,7 +194,7 @@ class DensePassageRetriever(BaseRetriever):
 class EmbeddingRetriever(BaseRetriever):
     def __init__(
         self,
-        document_store: ElasticsearchDocumentStore,
+        document_store: BaseDocumentStore,
         embedding_model: str,
         use_gpu: bool = True,
         model_format: str = "farm",

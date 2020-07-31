@@ -21,7 +21,6 @@ def test_output(prediction):
     assert prediction["answers"][0]["probability"] <= 1
     assert prediction["answers"][0]["probability"] >= 0
     assert prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
-    assert prediction["answers"][0]["document_id"] == "filename1"
     assert len(prediction["answers"]) == 5
 
 
@@ -61,10 +60,7 @@ def test_answer_attributes(prediction):
 
 def test_context_window_size(test_docs_xs):
     # TODO parametrize window_size and farm/transformers reader using pytest
-    docs = []
-    for d in test_docs_xs:
-        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
-        docs.append(doc)
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     for window_size in [10, 15, 20]:
         farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", num_processes=0,
                               use_gpu=False, top_k_per_sample=5, no_ans_boost=None, context_window_size=window_size)
@@ -86,10 +82,8 @@ def test_context_window_size(test_docs_xs):
 def test_top_k(test_docs_xs):
     # TODO parametrize top_k and farm/transformers reader using pytest
     # TODO transformers reader was crashing when tested on this
-    docs = []
-    for d in test_docs_xs:
-        doc = Document(id=d["meta"]["name"], text=d["text"], meta=d["meta"])
-        docs.append(doc)
+
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     farm_reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", num_processes=0,
                              use_gpu=False, top_k_per_sample=4, no_ans_boost=None, top_k_per_candidate=4)
     for top_k in [2, 5, 10]:

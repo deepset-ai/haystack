@@ -3,13 +3,60 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
+import json
 
 from farm.data_handler.utils import http_get
 
 from haystack.indexing.file_converters.pdf import PDFToTextConverter
+from haystack.database.base import Document, Label
 
 logger = logging.getLogger(__name__)
+
+
+def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
+    """
+    Read Documents + Labels from a SQuAD-style file.
+    Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
+
+    :param filename: Path to file in SQuAD format
+    :return: (List of Documents, List of Labels)
+    """
+    docs = []
+    labels = []
+
+    with open(filename, "r") as file:
+        data = json.load(file)
+        for document in data["data"]:
+            # get all extra fields from document level (e.g. title)
+            meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
+            for paragraph in document["paragraphs"]:
+                cur_meta = {"name": document["title"]}
+                # all other fields from paragraph level
+                meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
+                cur_meta.update(meta_paragraph)
+                # meta from parent document
+                cur_meta.update(meta_doc)
+                # Create Document
+                cur_doc = Document(text=paragraph["context"], meta=cur_meta)
+                docs.append(cur_doc)
+
+                # Get Labels
+                for qa in paragraph["qas"]:
+                    for answer in qa["answers"]:
+                        label = Label(
+                            question=qa["question"],
+                            answer=answer["text"],
+                            is_correct_answer=True,
+                            is_correct_document=True,
+                            document_id=cur_doc.id,
+                            offset_start_in_doc=answer["answer_start"],
+                            no_answer=qa["is_impossible"],
+                            origin="gold_label",
+                            )
+                        labels.append(label)
+
+        return docs, labels
 
 
 def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> List[dict]:

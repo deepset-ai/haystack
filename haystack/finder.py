@@ -88,9 +88,16 @@ class Finder:
         # 2) Format response
         for doc in documents:
             #TODO proper calibratation of pseudo probabilities
-            cur_answer = {"question": doc.question, "answer": doc.text, "context": doc.text,  # type: ignore
-                          "score": doc.query_score, "offset_start": 0, "offset_end": len(doc.text), "meta": doc.meta
-                          }
+            cur_answer = {
+                "question": doc.question,
+                "answer": doc.text,
+                "document_id": doc.id,
+                "context": doc.text,
+                "score": doc.query_score,
+                "offset_start": 0,
+                "offset_end": len(doc.text),
+                "meta": doc.meta
+             }
             if self.retriever.embedding_model:  # type: ignore
                 probability = (doc.query_score + 1) / 2  # type: ignore
             else:
@@ -103,7 +110,7 @@ class Finder:
 
     def eval(
         self,
-        label_index: str = "feedback",
+        label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold_label",
         top_k_retriever: int = 10,
@@ -154,14 +161,16 @@ class Finder:
         :param top_k_reader: How many answers to return per question
         :type top_k_reader: int
         """
+        raise NotImplementedError("The Finder evaluation is unavailable in the current Haystack version due to code "
+                                  "refactoring in-progress. Please use Reader and Retriever evaluation.")
 
         if not self.reader or not self.retriever:
             raise Exception("Finder needs to have a reader and retriever for the evaluation.")
 
         finder_start_time = time.time()
         # extract all questions for evaluation
-        filter = {"origin": label_origin}
-        questions = self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filter)  # type: ignore
+        filters = {"origin": [label_origin]}
+        questions = self.retriever.document_store.get_all_documents_in_index(index=label_index, filters=filters)  # type: ignore
 
         correct_retrievals = 0
         summed_avg_precision_retriever = 0
@@ -193,7 +202,7 @@ class Finder:
             retrieve_times.append(time.time() - single_retrieve_start)
             for doc_idx, doc in enumerate(retrieved_docs):
                 # check if correct doc among retrieved docs
-                if doc.meta["doc_id"] == question["_source"]["doc_id"]:
+                if doc.meta["doc_id"] == question["_source"]["doc_id"]:  # type: ignore
                     correct_retrievals += 1
                     summed_avg_precision_retriever += 1 / (doc_idx + 1)  # type: ignore
                     questions_with_docs.append({
