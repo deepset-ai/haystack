@@ -161,6 +161,8 @@ class Finder:
         :param top_k_reader: How many answers to return per question
         :type top_k_reader: int
         """
+        raise NotImplementedError("The Finder evaluation is unavailable in the current Haystack version due to code "
+                                  "refactoring in-progress. Please use Reader and Retriever evaluation.")
 
         if not self.reader or not self.retriever:
             raise Exception("Finder needs to have a reader and retriever for the evaluation.")
