@@ -19,6 +19,5 @@ def test_get_all_documents(document_store_with_docs):
 def test_elasticsearch_update_meta(document_store_with_docs):
     document = document_store_with_docs.query(query=None, filters={"name": ["filename1"]})[0]
     document_store_with_docs.update_document_meta(document.id, meta={"meta_field": "updated_meta"})
-    time.sleep(1)
     updated_document = document_store_with_docs.query(query=None, filters={"name": ["filename1"]})[0]
     assert updated_document.meta["meta_field"] == "updated_meta"
