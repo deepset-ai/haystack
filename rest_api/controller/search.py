@@ -2,6 +2,7 @@ import logging
 import time
 from datetime import datetime
 from typing import List, Dict, Optional
+from uuid import UUID
 
 import elasticapm
 from fastapi import APIRouter
@@ -115,7 +116,7 @@ class Answer(BaseModel):
     offset_end: int
     offset_start_in_doc: Optional[int]
     offset_end_in_doc: Optional[int]
-    document_id: Optional[str] = None
+    document_id: Optional[UUID] = None
     meta: Optional[Dict[str, Optional[str]]]
 
 

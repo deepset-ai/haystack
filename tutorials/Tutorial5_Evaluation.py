@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 ##############################################
 LAUNCH_ELASTICSEARCH = True
 
-eval_retriever_only = False
+eval_retriever_only = True
 eval_reader_only = False
-eval_both = True
+eval_both = False
 
 ##############################################
 # Code
@@ -43,16 +43,30 @@ s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_d
 fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
 # Connect to Elasticsearch
-document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document", create_index=False)
+document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document",
+                                            create_index=False, embedding_field="emb",
+                                            embedding_dim=768, excluded_meta_data=["emb"])
+
 # Add evaluation data to Elasticsearch database
 if LAUNCH_ELASTICSEARCH:
-    document_store.add_eval_data("../data/nq/nq_dev_subset_v2.json")
+    document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index="eval_document", label_index="feedback" )
 else:
     logger.warning("Since we already have a running ES instance we should not index the same documents again."
                    "If you still want to do this call: 'document_store.add_eval_data('../data/nq/nq_dev_subset_v2.json')' manually ")
 
+
 # Initialize Retriever
 retriever = ElasticsearchRetriever(document_store=document_store)
+
+# Alternative: Evaluate DensePassageRetriever
+# Note, that DPR works best when you index short passages < 512 tokens as only those tokens will be used for the embedding.
+# Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
+# DPR still outperforms Elastic's BM25 by a small margin here.
+
+# from haystack.retriever.dense import DensePassageRetriever
+# retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",batch_size=32)
+# document_store.update_embeddings(retriever, index="eval_document")
+
 
 # Initialize Reader
 reader = FARMReader("deepset/roberta-base-squad2")
@@ -63,7 +77,7 @@ finder = Finder(reader, retriever)
 
 ## Evaluate Retriever on its own
 if eval_retriever_only:
-    retriever_eval_results = retriever.eval()
+    retriever_eval_results = retriever.eval(top_k=1)
     ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
     ## among the correct documents
     print("Retriever Recall:", retriever_eval_results["recall"])
@@ -86,5 +100,5 @@ if eval_reader_only:
 
 # Evaluate combination of Reader and Retriever through Finder
 if eval_both:
-    finder_eval_results = finder.eval(top_k_retriever = 10, top_k_reader = 10)
+    finder_eval_results = finder.eval(top_k_retriever=1, top_k_reader=10)
     finder.print_eval_results(finder_eval_results)
