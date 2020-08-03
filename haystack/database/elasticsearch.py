@@ -33,7 +33,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         scheme: str = "http",
         ca_certs: bool = False,
         verify_certs: bool = True,
-        create_index: bool = True
+        create_index: bool = True,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
