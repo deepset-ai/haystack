@@ -28,7 +28,7 @@ Introduction
 ============
 
 The performance of **modern Question Answering Models** (BERT, ALBERT ...) has seen drastic improvements within the last year enabling many new opportunities for accessing information more efficiently. However, those models are designed to find answers within rather small text passages. **Haystack lets you scale QA models** to large collections of documents!
-While QA is the focussed use case for haystack, we will soon support additional options to boost search (re-ranking, most-similar search ...).
+While QA is the focussed use case for Haystack, we will address further options around neural search in the future (re-ranking, most-similar search ...).
 
 Haystack is designed in a modular way and lets you use any models trained with  `FARM <https://github.com/deepset-ai/FARM>`_ or `Transformers <https://github.com/huggingface/transformers>`_.
 
@@ -46,6 +46,9 @@ Core Features
 Components
 ==========
 
+.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/sketched_concepts_white.png
+
+
 1. **DocumentStore**: Database storing the documents for our search. We recommend Elasticsearch, but have also more light-weight options for fast prototyping (SQL or In-Memory).
 
 2. **Retriever**:  Fast, simple algorithm that identifies candidate passages from a large collection of documents. Algorithms include TF-IDF or BM25, custom Elasticsearch queries, and embedding-based approaches. The Retriever helps to narrow down the scope for Reader to smaller units of text where a given question could be answered.
@@ -56,17 +59,18 @@ Components
 
 5. **REST API**: Exposes a simple API for running QA search, collecting feedback and monitoring requests
 
-6. **Labeling Tool**: `Hosted version <https://annotate.deepset.ai/login>`_  (Beta), Docker images (coming soon)
+6. **Haystack Annotate**: Create custom QA labels, `Hosted version <https://annotate.deepset.ai/login>`_  (Beta), Docker images (coming soon)
 
 
 Resources
 =========
 
-- Tutorial 1  - Basic QA Pipeline: `Jupyter notebook  <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_  or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_
-- Tutorial 2  - Fine-tuning a model on own data: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`_
-- Tutorial 3  - Basic QA Pipeline without Elasticsearch: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/update-tutorials/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`_
+- Tutorial 1  - Basic QA Pipeline: `Jupyter notebook  <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`__  or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`_
+- Tutorial 2  - Fine-tuning a model on own data: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb>`__
+- Tutorial 3  - Basic QA Pipeline without Elasticsearch: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb>`__
 - Tutorial 4  - FAQ-style QA: `Jupyter notebook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb>`__
-- Tutorial 5  - Evaluation of the whole QA-Pipeline: `Jupyter noteboook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb>`_ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb>`_
+- Tutorial 5  - Evaluation of the whole QA-Pipeline: `Jupyter noteboook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb>`__
+- Tutorial 6  - Better Retrievers via "Dense Passage Retrieval": `Jupyter noteboook <https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb>`__ or `Colab <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb>`__
 
 
 Quick Start
@@ -75,17 +79,17 @@ Quick Start
 Installation
 ------------
 
-Recommended (because of active development)::
+PyPi::
+
+    pip install farm-haystack
+
+Master branch (if you wanna try the latest features)::
 
     git clone https://github.com/deepset-ai/haystack.git
     cd haystack
     pip install --editable .
 
 To update your installation, just do a git pull. The --editable flag will update changes immediately.
-
-From PyPi::
-
-    pip install farm-haystack
 
 Usage
 -----
@@ -99,7 +103,7 @@ Quick Tour
 1) DocumentStores
 ---------------------
 
-Haystack has an extensible DocumentStore-Layer, which is storing the documents for our search. We recommend Elasticsearch, but have also more light-weight options for fast prototyping.
+Haystack offers different options for storing your documents for search. We recommend Elasticsearch, but have also light-weight options for fast prototyping and will soon add DocumentStores that are optimized for embeddings (FAISS & Co). 
 
 Elasticsearch (Recommended)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -108,11 +112,11 @@ Elasticsearch (Recommended)
 * Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
 * You can either use an existing Elasticsearch index or create a new one via haystack
 * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
-* Documents can optionally be chunked into smaller units (e.g. paragraphs) before indexing to make the results returned by the Retriever more granular and accurate.
+* Documents should be chunked into smaller units (e.g. paragraphs) before indexing to make the results returned by the Retriever more granular and accurate.
 
 You can get started by running a single Elasticsearch node using docker::
 
-     docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.1
+     docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2
 
 Or if docker is not possible for you::
 
@@ -134,6 +138,23 @@ Limitations: Retrieval (e.g. via TfidfRetriever) happens in-memory here and will
 
 2) Retrievers
 ---------------------
+
+DensePassageRetriever
+^^^^^^^^^^^^^^^^^^^^^^
+Using dense embeddings (i.e. vector representations) of texts is a powerful alternative to score similarity of texts.
+This retriever uses two BERT models - one to embed your query, one to embed your passage. It's based on the work of 
+`Karpukhin et al <https://arxiv.org/abs/2004.04906>`_ and is especially an powerful alternative if there's no direct overlap between tokens in your queries and your texts.
+
+Example
+
+.. code-block:: python
+
+    retriever = DensePassageRetriever(document_store=document_store, 
+                                      embedding_model="dpr-bert-base-nq",
+                                      do_lower_case=True, use_gpu=True)
+    retriever.retrieve(query="Why did the revenue increase?")
+    # returns: [Document, Document]
+
 ElasticsearchRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
 Scoring text similarity via sparse Bag-of-words representations are strong and well-established baselines in Information Retrieval.
@@ -147,10 +168,10 @@ Example
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
     # returns: [Document, Document]
 
+
 EmbeddingRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
-Using dense embeddings (i.e. vector representations) of texts is a powerful alternative to score similarity of texts.
-This retriever allows you to transform your query into an embedding using a model (e.g. Sentence-BERT) and find similar texts by using cosine similarity.
+This retriever uses a single model to embed your query and passage (e.g. Sentence-BERT) and finds similar texts by using cosine similarity. This works well if your query and passage are a similar type of text, e.g. you want to find the most similar question in your FAQ given a user question. 
 
 Example
 
@@ -162,20 +183,20 @@ Example
     retriever.retrieve(query="Why did the revenue increase?", filters={"years": ["2019"], "company": ["Q1", "Q2"]})
     # returns: [Document, Document]
 
-We are working on extending this category of retrievers a lot as there's a lot of exciting work in research indicating substantial performance improvements (e.g. `DPR <https://arxiv.org/abs/2004.04906>`_ , `REALM <https://arxiv.org/abs/2002.08909>`_  )
-
 TfidfRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
 Basic in-memory retriever getting texts from the DocumentStore, creating TF-IDF representations in-memory and allowing to query them.
+Simple baseline for quick prototypes. Not recommended for production.
 
 3) Readers
 ---------------------
-Neural networks (i.e. mostly Transformer-based) that read through texts in detail to find an answer. Use diverse models like BERT, RoBERTa or XLNet trained via `FARM <https://github.com/deepset-ai/FARM>`_ or  on SQuAD like tasks. The Reader takes multiple passages of text as input and returns top-n answers with corresponding confidence scores.
+Neural networks (i.e. mostly Transformer-based) that read through texts in detail to find an answer. Use diverse models like BERT, RoBERTa or XLNet trained via `FARM <https://github.com/deepset-ai/FARM>`_ or on SQuAD-like datasets. The Reader takes multiple passages of text as input and returns top-n answers with corresponding confidence scores.
 Both readers can load either a local model or any public model from  `Hugging Face's model hub <https://huggingface.co/models>`_
 
 FARMReader
 ^^^^^^^^^^
 Implementing various QA models via the `FARM <https://github.com/deepset-ai/FARM>`_ Framework.
+
 Example
 
 .. code-block:: python
@@ -194,10 +215,11 @@ Example
 
 This Reader comes with:
 
-* quite many configuration options
-* multiple processes for preprocessing
+* extensive configuration options (no answer boost, aggregation options ...) 
+* multiprocessing to speed-up preprocessing
 * option to train
 * option to evaluate
+* option to load all QA models directly from HuggingFace's model hub
 
 TransformersReader
 ^^^^^^^^^^^^^^^^^^
@@ -219,12 +241,12 @@ Example
 ---------------------
 A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is provided to:
 
-*  search answers in texts (`extractive QA  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/search.py>`_)
-*  search answers by comparing user question to existing questions (`FAQ-style QA  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/search.py>`_)
-*  collect & export user feedback on answers to gain domain-specific training data (`feedback  <https://github.com/deepset-ai/haystack/blob/master/haystack/api/controller/feedback.py>`_)
+*  search answers in texts (`extractive QA  <https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/search.py>`_)
+*  search answers by comparing user question to existing questions (`FAQ-style QA  <https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/search.py>`_)
+*  collect & export user feedback on answers to gain domain-specific training data (`feedback  <https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/feedback.py>`_)
 *  allow basic monitoring of requests (currently via APM in Kibana)
 
-To serve the API, run::
+To serve the API, adjust the values in :code:`rest_api/config.py` and run::
 
     gunicorn rest_api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker
 
@@ -242,11 +264,27 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 .. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/annotation_tool.png
 
 
-7. Indexing PDF files
----------------------
+7. Indexing PDF / Docx files
+-----------------------------
 
-Haystack has a customizable PDF text extraction pipeline with cleaning functions for header, footers, and tables. It supports complex document layouts with multi-column text.
+Haystack has basic converters to extract text from PDF and Docx files. While it's almost impossible to cover all types, layouts and special cases in PDFs, the implementation covers the most common formats and provides basic cleaning functions to remove header, footers, and tables. Multi-Column text layouts are also supported.
+The converters are easily extendable, so that you can customize them for your files if needed.
 
-8. Development
+Example:
+
+.. code-block:: python
+
+    #PDF
+    from haystack.indexing.file_converters.pdf import PDFToTextConverter    
+    converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
+    pages = converter.extract_pages(file_path=file)
+    # => list of str, one per page
+    #DOCX
+    from haystack.indexing.file_converters.docx import DocxToTextConverter
+    converter = DocxToTextConverter()
+    paragraphs = converter.extract_pages(file_path=file)
+    #  => list of str, one per paragraph (as docx has no direct notion of pages)
+
+8. Tests
 -------------------
 * Unit tests can be executed by running :code:`tox`.

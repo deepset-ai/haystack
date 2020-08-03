@@ -130,7 +130,9 @@ class BaseConverter:
         :param min_ngram: minimum length of ngram to consider
         :return: str, common string of all sections
         """
-
+        sequences = [s for s in sequences if s]  # filter empty sequences
+        if not sequences:
+            return None
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)
 

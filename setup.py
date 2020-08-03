@@ -46,7 +46,7 @@ parsed_requirements = parse_requirements('requirements.txt')
 
 setup(
     name="farm-haystack",
-    version="0.2.1",
+    version="0.3.0",
     author="Malte Pietsch, Timo Moeller, Branden Chan, Tanay Soni",
     author_email="malte.pietsch@deepset.ai",
     description="Neural Question Answering at Scale. Use modern transformer based models like BERT to find answers in large document collections",
@@ -55,7 +55,7 @@ setup(
     keywords="QA Question-Answering Reader Retriever BERT roberta albert squad mrc transfer-learning language-model transformer",
     license="Apache",
     url="https://github.com/deepset-ai/haystack",
-    download_url="https://github.com/deepset-ai/haystack/archive/0.2.1.tar.gz",
+    download_url="https://github.com/deepset-ai/haystack/archive/0.3.0.tar.gz",
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     dependency_links=dependency_links,
     install_requires=parsed_requirements,

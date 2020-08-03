@@ -1,7 +1,7 @@
 from haystack import Finder
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
-from haystack.retriever.elasticsearch import EmbeddingRetriever
+from haystack.retriever.dense import EmbeddingRetriever
 from haystack.utils import print_answers
 import pandas as pd
 import requests
@@ -42,7 +42,6 @@ if LAUNCH_ELASTICSEARCH:
 
 document_store = ElasticsearchDocumentStore(host="localhost", username="", password="",
                                             index="document",
-                                            text_field="answer",
                                             embedding_field="question_emb",
                                             embedding_dim=768,
                                             excluded_meta_data=["question_emb"])
@@ -51,7 +50,7 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
 # Instead of retrieving via Elasticsearch's plain BM25, we want to use vector similarity of the questions (user question vs. FAQ ones).
 # We can use the `EmbeddingRetriever` for this purpose and specify a model that we use for the embeddings.
 #
-retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", gpu=False)
+retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False)
 
 # Download a csv containing some FAQ data
 # Here: Some question-answer pairs related to COVID-19
@@ -67,7 +66,9 @@ print(df.head())
 
 # Get embeddings for our questions from the FAQs
 questions = list(df["question"].values)
-df["question_emb"] = retriever.create_embedding(texts=questions)
+df["question_emb"] = retriever.embed_queries(texts=questions)
+df["question_emb"] = df["question_emb"].apply(list) # convert from numpy to list for ES indexing
+df = df.rename(columns={"answer": "text"})
 
 # Convert Dataframe to list of dicts and index them in our DocumentStore
 docs_to_index = df.to_dict(orient="records")

@@ -1,20 +1,25 @@
 import logging
+import multiprocessing
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
+from collections import defaultdict
 
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import SquadProcessor
 from farm.data_handler.dataloader import NamedDataLoader
-from farm.infer import Inferencer
+from farm.data_handler.inputs import QAInput, Question
+from farm.infer import QAInferencer
 from farm.modeling.optimization import initialize_optimizer
+from farm.modeling.predictions import QAPred, QACandidate
+from farm.modeling.adaptive_model import BaseAdaptiveModel
 from farm.train import Trainer
 from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
 from scipy.special import expit
+import shutil
 
-from haystack.database.base import Document
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.database.base import Document, BaseDocumentStore
 from haystack.reader.base import BaseReader
 logger = logging.getLogger(__name__)
 
@@ -85,7 +90,7 @@ class FARMReader(BaseReader):
         else:
             self.return_no_answers = True
         self.top_k_per_candidate = top_k_per_candidate
-        self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
+        self.inferencer = QAInferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
                                           task_type="question_answering", max_seq_len=max_seq_len,
                                           doc_stride=doc_stride, num_processes=num_processes)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
@@ -113,6 +118,7 @@ class FARMReader(BaseReader):
         dev_split: Optional[float] = 0.1,
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
+        num_processes: Optional[int] = 0
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -135,12 +141,16 @@ class FARMReader(BaseReader):
                                   Options for different schedules are available in FARM.
         :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
         :param save_dir: Path to store the final model
+        :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
+                              Set to value of 0 to disable multiprocessing. Set to None to use all CPU cores minus one.
         :return: None
         """
 
-
         if dev_filename:
             dev_split = None
+
+        if num_processes is None:
+            num_processes = multiprocessing.cpu_count() - 1
 
         set_all_seeds(seed=42)
 
@@ -173,11 +183,19 @@ class FARMReader(BaseReader):
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
-        data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False)
+        data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes)
+
+        # Quick-fix until this is fixed upstream in FARM:
+        # We must avoid applying DataParallel twice (once when loading the inferencer,
+        # once when calling initalize_optimizer)
+        self.inferencer.model.save("tmp_model")
+        model = BaseAdaptiveModel.load(load_dir="tmp_model", device=device, strict=True)
+        shutil.rmtree('tmp_model')
 
         # 3. Create an optimizer and pass the already initialized model
         model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.inferencer.model,
+            model=model,
+            # model=self.inferencer.model,
             learning_rate=learning_rate,
             schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
@@ -195,6 +213,8 @@ class FARMReader(BaseReader):
             evaluate_every=evaluate_every,
             device=device,
         )
+
+
         # 5. Let it grow!
         self.inferencer.model = trainer.train()
         self.save(Path(save_dir))
@@ -299,21 +319,58 @@ class FARMReader(BaseReader):
         """
 
         # convert input to FARM format
-        input_dicts = []
+        inputs = []
         for doc in documents:
-            cur = {
-                "text": doc.text,
-                "questions": [question],
-                "document_id": doc.id
-            }
-            input_dicts.append(cur)
+            cur = QAInput(doc_text=doc.text,
+                          questions=Question(text=question,
+                                             uid=doc.id))
+            inputs.append(cur)
 
         # get answers from QA model
-        predictions = self.inferencer.inference_from_dicts(
-            dicts=input_dicts, return_json=False, multiprocessing_chunksize=1
+        predictions = self.inferencer.inference_from_objects(
+            objects=inputs, return_json=False, multiprocessing_chunksize=1
         )
-        answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
+        # assemble answers from all the different documents & format them.
+        # For the "no answer" option, we collect all no_ans_gaps and decide how likely
+        # a no answer is based on all no_ans_gaps values across all documents
+        answers = []
+        no_ans_gaps = []
+        best_score_answer = 0
+        for pred in predictions:
+            answers_per_document = []
+            no_ans_gaps.append(pred.no_answer_gap)
+            for ans in pred.prediction:
+                # skip "no answers" here
+                if self._check_no_answer(ans):
+                    pass
+                else:
+                    cur = {"answer": ans.answer,
+                           "score": ans.score,
+                           # just a pseudo prob for now
+                           "probability": float(expit(np.asarray([ans.score]) / 8)),  # type: ignore
+                           "context": ans.context_window,
+                           "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
+                           "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
+                           "offset_start_in_doc": ans.offset_answer_start,
+                           "offset_end_in_doc": ans.offset_answer_end,
+                           "document_id": pred.id}
+                    answers_per_document.append(cur)
 
+                    if ans.score > best_score_answer:
+                        best_score_answer = ans.score
+            # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance.
+            answers += answers_per_document[:self.top_k_per_candidate]
+
+        # Calculate the score for predicting "no answer", relative to our best positive answer score
+        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps,best_score_answer)
+        if self.return_no_answers:
+            answers.append(no_ans_prediction)
+
+        # sort answers by their `probability` and select top-k
+        answers = sorted(
+            answers, key=lambda k: k["probability"], reverse=True
+        )
+        answers = answers[:top_k]
         result = {"question": question,
                   "no_ans_gap": max_no_ans_gap,
                   "answers": answers}
@@ -327,7 +384,7 @@ class FARMReader(BaseReader):
         Returns a dict containing the following metrics:
             - "EM": exact match score
             - "f1": F1-Score
-            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+            - "top_n_accuracy": Proportion of predicted answers that match with correct answer
 
         :param data_dir: The directory in which the test set can be found
         :type data_dir: Path or str
@@ -357,73 +414,81 @@ class FARMReader(BaseReader):
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_recall": eval_results[0]["top_n_recall"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
         }
         return results
 
     def eval(
-        self,
-        document_store: ElasticsearchDocumentStore,
-        device: str,
-        label_index: str = "feedback",
-        doc_index: str = "eval_document",
-        label_origin: str = "gold_label",
+            self,
+            document_store: BaseDocumentStore,
+            device: str,
+            label_index: str = "label",
+            doc_index: str = "eval_document",
+            label_origin: str = "gold_label",
     ):
         """
-        Performs evaluation on evaluation documents in Elasticsearch DocumentStore.
+        Performs evaluation on evaluation documents in the DocumentStore.
 
         Returns a dict containing the following metrics:
             - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
             - "f1": Average overlap between predicted answers and their corresponding correct answers
-            - "top_n_recall": Proportion of predicted answers that overlap with correct answer
+            - "top_n_accuracy": Proportion of predicted answers that match with correct answer
 
-        :param document_store: The ElasticsearchDocumentStore containing the evaluation documents
-        :type document_store: ElasticsearchDocumentStore
+        :param document_store: DocumentStore containing the evaluation documents
         :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
-        :type device: str
-        :param label_index: Elasticsearch index where labeled questions are stored
-        :type label_index: str
-        :param doc_index: Elasticsearch index where documents that are used for evaluation are stored
-        :type doc_index: str
+        :param label_index: Index/Table name where labeled questions are stored
+        :param doc_index: Index/Table name where documents that are used for evaluation are stored
         """
 
         # extract all questions for evaluation
-        filter = {"origin": label_origin}
-        questions = document_store.get_all_documents_in_index(index=label_index, filters=filter)
+        filters = {"origin": [label_origin]}
 
-        # mapping from doc_id to questions
-        doc_questions_dict = {}
-        id = 0
-        for question in questions:
-            doc_id = question["_source"]["doc_id"]
-            if doc_id not in doc_questions_dict:
-                doc_questions_dict[doc_id] = [{
-                    "id": id,
-                    "question" : question["_source"]["question"],
-                    "answers" : question["_source"]["answers"],
-                    "is_impossible" : False if question["_source"]["answers"] else True
-                }]
-            else:
-                doc_questions_dict[doc_id].append({
-                    "id": id,
-                    "question" : question["_source"]["question"],
-                    "answers" : question["_source"]["answers"],
-                    "is_impossible" : False if question["_source"]["answers"] else True
-                })
-            id += 1
+        labels = document_store.get_all_labels(index=label_index, filters=filters)
 
-        # extract eval documents and convert data back to SQuAD-like format
-        documents = document_store.get_all_documents_in_index(index=doc_index)
-        dicts = []
-        for document in documents:
-            doc_id = document["_source"]["doc_id"]
-            text = document["_source"]["text"]
-            questions = doc_questions_dict[doc_id]
-            dicts.append({"qas" : questions, "context" : text})
+        # Aggregate all answer labels per question
+        aggregated_per_doc = defaultdict(list)
+        for label in labels:
+            if not label.document_id:
+                logger.error(f"Label does not contain a document_id")
+                continue
+            aggregated_per_doc[label.document_id].append(label)
+
+        # Create squad style dicts
+        d: Dict[str, Any] = {}
+        for doc_id in aggregated_per_doc.keys():
+            doc = document_store.get_document_by_id(doc_id, index=doc_index)
+            if not doc:
+                logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
+                continue
+            d[str(doc_id)] = {
+                "context": doc.text
+            }
+            # get all questions / answers
+            aggregated_per_question: Dict[str, Any] = defaultdict(list)
+            for label in aggregated_per_doc[doc_id]:
+                # add to existing answers
+                if label.question in aggregated_per_question.keys():
+                    aggregated_per_question[label.question]["answers"].append({
+                                "text": label.answer,
+                                "answer_start": label.offset_start_in_doc})
+                # create new one
+                else:
+                    aggregated_per_question[label.question] = {
+                        "id": str(hash(str(doc_id)+label.question)),
+                        "question": label.question,
+                        "answers": [{
+                                "text": label.answer,
+                                "answer_start": label.offset_start_in_doc}]
+                    }
+            # Get rid of the question key again (after we aggregated we don't need it anymore)
+            d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
+
+        # Convert input format for FARM
+        farm_input = [v for v in d.values()]
 
         # Create DataLoader that can be passed to the Evaluator
-        indices = range(len(dicts))
-        dataset, tensor_names = self.inferencer.processor.dataset_from_dicts(dicts, indices=indices)
+        indices = range(len(farm_input))
+        dataset, tensor_names = self.inferencer.processor.dataset_from_dicts(farm_input, indices=indices)
         data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
 
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
@@ -435,6 +500,19 @@ class FARMReader(BaseReader):
             "top_n_accuracy": eval_results[0]["top_n_accuracy"]
         }
         return results
+
+
+    @staticmethod
+    def _check_no_answer(c: QACandidate):
+        # check for correct value in "answer"
+        if c.offset_answer_start == 0 and c.offset_answer_end == 0:
+            if c.answer != "no_answer":
+                logger.error("Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'")
+        if c.answer == "no_answer":
+            return True
+        else:
+            return False
+
 
     @staticmethod
     def _calc_no_answer(no_ans_gaps: List[float], best_score_answer: float):
@@ -464,65 +542,14 @@ class FARMReader(BaseReader):
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         documents = []
-        for i, text in enumerate(texts):
+        for text in texts:
             documents.append(
                 Document(
-                    id=i,
                     text=text
                 )
             )
         predictions = self.predict(question, documents, top_k)
         return predictions
-
-    def _get_pseudo_prob(self, score):
-        return float(expit(np.asarray(score) / 8))
-
-    def _extract_answers_of_predictions(self, predictions: List[dict], top_k: Optional[int] = None):
-        # Assemble answers from all the different documents & format them.
-        # For the "no answer" option, we collect all no_ans_gaps and decide how likely
-        # a no answer is based on all no_ans_gaps values across all documents
-
-        answers = []
-        no_ans_gaps = []
-        best_score_answer = 0
-
-        for pred in predictions:
-            answers_per_document = []
-            no_ans_gaps.append(pred["predictions"][0]["no_ans_gap"])
-            for a in pred["predictions"][0]["answers"]:
-                # skip "no answers" here
-                if a["answer"] != "is_impossible":
-                    cur = {
-                        "answer": a["answer"],
-                        "score": a["score"],
-                        # just a pseudo prob for now
-                        "probability": self._get_pseudo_prob(a["score"]),
-                        "context": a["context"],
-                        "offset_start": a["offset_answer_start"] - a["offset_context_start"],
-                        "offset_end": a["offset_answer_end"] - a["offset_context_start"],
-                        "offset_start_in_doc": a["offset_answer_start"],
-                        "offset_end_in_doc": a["offset_answer_end"],
-                        "document_id": a["document_id"]
-                    }
-                    answers_per_document.append(cur)
-
-                    if a["score"] > best_score_answer:
-                        best_score_answer = a["score"]
-            # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance
-            answers += answers_per_document[:self.top_k_per_candidate]
-
-        # Calculate the score for predicting "no answer", relative to our best positive answer score
-        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_score_answer)
-        if self.return_no_answers:
-            answers.append(no_ans_prediction)
-
-        # sort answers by their `probability` and select top-k
-        answers = sorted(
-            answers, key=lambda k: k["probability"], reverse=True
-        )
-        answers = answers[:top_k]
-
-        return answers, max_no_ans_gap
 
     @classmethod
     def convert_to_onnx(cls, model_name_or_path, opset_version: int = 11, optimize_for: Optional[str] = None):
@@ -541,5 +568,5 @@ class FARMReader(BaseReader):
                              are "gpu_tensor_core" (GPUs with tensor core like V100 or T4),
                              "gpu_without_tensor_core" (most other GPUs), and "cpu".
         """
-        inferencer = Inferencer.load(model_name_or_path, task_type="question_answering")
+        inferencer = QAInferencer.load(model_name_or_path, task_type="question_answering")
         inferencer.model.convert_to_onnx(output_path=Path("onnx-export"), opset_version=opset_version, optimize_for=optimize_for)
