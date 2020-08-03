@@ -136,17 +136,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         document = self._convert_es_hit_to_document(result[0]) if result else None
         return document
 
-    def get_document_ids_by_tags(self, tags: dict, index: Optional[str]) -> List[str]:
-        index = index or self.index
-        term_queries = [{"terms": {key: value}} for key, value in tags.items()]
-        query = {"query": {"bool": {"must": term_queries}}}
-        logger.debug(f"Tag filter query: {query}")
-        result = self.client.search(index=index, body=query, size=10000)["hits"]["hits"]
-        doc_ids = []
-        for hit in result:
-            doc_ids.append(hit["_id"])
-        return doc_ids
-
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
         Indexes documents for later queries in Elasticsearch.
@@ -392,7 +381,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field, "tags")}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
         meta_data["name"] = meta_data.pop(self.name_field, None)
 
         document = Document(
@@ -401,7 +390,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             meta=meta_data,
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
             question=hit["_source"].get(self.faq_question_field),
-            tags=hit["_source"].get("tags"),
             embedding=hit["_source"].get(self.embedding_field)
         )
         return document

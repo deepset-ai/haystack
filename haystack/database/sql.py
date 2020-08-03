@@ -24,7 +24,6 @@ class DocumentORM(ORMBase):
 
     text = Column(String, nullable=False)
     index = Column(String, nullable=False)
-    meta_data = Column(PickleType)
 
     tags = relationship("TagORM", secondary="document_tag", backref="Document")
 

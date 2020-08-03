@@ -32,8 +32,8 @@ class Finder:
         :param question: the question string
         :param top_k_reader: number of answers returned by the reader
         :param top_k_retriever: number of text units to be retrieved
-        :param filters: limit scope to documents having the given tags and their corresponding values.
-            The format for the dict is {"tag-1": ["value-1","value-2"], "tag-2": ["value-3]" ...}
+        :param filters: limit scope to documents having the given meta data values.
+            The format for the dict is {"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}
         :return:
         """
 
@@ -71,8 +71,8 @@ class Finder:
 
         :param question: the question string
         :param top_k_retriever: number of text units to be retrieved
-        :param filters: limit scope to documents having the given tags and their corresponding values.
-            The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
+        :param filters: limit scope to documents having the given meta data values.
+            The format for the dict is {"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}
         :return:
         """
 

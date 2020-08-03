@@ -12,7 +12,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
     """
 
     def __init__(self, embedding_field: Optional[str] = None):
-        self.doc_tags: Dict[str, Any] = {}
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
         self.label_index: str = "label"
@@ -24,8 +23,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                          Optionally, you can also supply "tags": ["one-tag", "another-one"]
-                          or additional meta data via "meta": {"name": "<some-document-name>, "author": "someone", "url":"some-url" ...}
+                          Optionally, additional meta data can be added via "meta": {"name": "<some-document-name>, "author": "someone", "url":"some-url" ...}
         :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
                       separate index than the documents for search.
         :return: None
@@ -37,10 +35,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for document in documents_objects:
             self.indexes[index][document.id] = document
 
-            #TODO fix tags after id refactoring
-            tags = document.tags
-            self._map_tags_to_ids(document.id, tags)
-
     def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None):
         index = index or self.label_index
         label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
@@ -48,21 +42,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for label in label_objects:
             label_id = str(uuid4())
             self.indexes[index][label_id] = label
-
-    def _map_tags_to_ids(self, hash: str, tags: List[str]):
-        if isinstance(tags, list):
-            for tag in tags:
-                if isinstance(tag, dict):
-                    tag_keys = tag.keys()
-                    for tag_key in tag_keys:
-                        tag_values = tag.get(tag_key, [])
-                        if tag_values:
-                            for tag_value in tag_values:
-                                comp_key = str((tag_key, tag_value))
-                                if comp_key in self.doc_tags:
-                                    self.doc_tags[comp_key].append(hash)
-                                else:
-                                    self.doc_tags[comp_key] = [hash]
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Document:
         index = index or self.index
@@ -115,31 +94,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         #TODO
         raise NotImplementedError("update_embeddings() is not yet implemented for this DocumentStore")
-
-    def get_document_ids_by_tags(self, tags: Union[List[Dict[str, Union[str, List[str]]]], Dict[str, Union[str, List[str]]]], index: Optional[str] = None) -> List[str]:
-        """
-        The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
-        The format for the dict is {"tag-1": ["value-1","value-2"], "tag-2": ["value-3]" ...}
-        """
-        index = index or self.index
-        if not isinstance(tags, list):
-            tags = [tags]
-        result = self._find_ids_by_tags(tags, index=index)
-        return result
-
-    def _find_ids_by_tags(self, tags: List[Dict[str, Union[str, List[str]]]], index: str):
-        result = []
-        for tag in tags:
-            tag_keys = tag.keys()
-            for tag_key in tag_keys:
-                tag_values = tag.get(tag_key, None)
-                if tag_values:
-                    for tag_value in tag_values:
-                        comp_key = str((tag_key, tag_value))
-                        doc_ids = self.doc_tags.get(comp_key, [])
-                        for doc_id in doc_ids:
-                            result.append(self.indexes[index].get(doc_id))
-        return result
 
     def get_document_count(self, index=None) -> int:
         index = index or self.index
