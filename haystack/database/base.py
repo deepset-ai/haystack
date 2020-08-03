@@ -1,11 +1,11 @@
 from abc import abstractmethod, ABC
-from typing import Any, Optional, Dict, List, Union
-from uuid import UUID, uuid4
+from typing import Any, Optional, Dict, List
+from uuid import uuid4
 
 
 class Document:
     def __init__(self, text: str,
-                 id: Optional[Union[str, UUID]] = None,
+                 id: str = None,
                  query_score: Optional[float] = None,
                  question: Optional[str] = None,
                  meta: Dict[str, Any] = None,
@@ -31,12 +31,9 @@ class Document:
         self.text = text
         # Create a unique ID (either new one, or one from user input)
         if id:
-            if isinstance(id, str):
-                self.id = UUID(hex=str(id), version=4)
-            if isinstance(id, UUID):
-                self.id = id
+            self.id = str(id)
         else:
-            self.id = uuid4()
+            self.id = str(uuid4())
 
         self.query_score = query_score
         self.question = question
@@ -69,7 +66,7 @@ class Label:
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: str,
-                 document_id: Optional[UUID] = None,
+                 document_id: Optional[str] = None,
                  offset_start_in_doc: Optional[int] = None,
                  no_answer: Optional[bool] = None,
                  model_id: Optional[int] = None):
@@ -95,13 +92,7 @@ class Label:
         self.question = question
         self.is_correct_answer = is_correct_answer
         self.is_correct_document = is_correct_document
-        if document_id:
-            if isinstance(document_id, str):
-                self.document_id: Optional[UUID] = UUID(hex=str(document_id), version=4)
-            if isinstance(document_id, UUID):
-                self.document_id = document_id
-        else:
-            self.document_id = document_id
+        self.document_id = document_id
         self.answer = answer
         self.offset_start_in_doc = offset_start_in_doc
         self.model_id = model_id
@@ -146,7 +137,7 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_document_by_id(self, id: UUID, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         pass
 
     @abstractmethod

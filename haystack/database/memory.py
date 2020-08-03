@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Union
-from uuid import UUID
+from uuid import uuid4
 from collections import defaultdict
-import uuid
+
 from haystack.database.base import BaseDocumentStore, Document, Label
 from haystack.indexing.utils import eval_data_from_file
 
@@ -46,7 +46,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
 
         for label in label_objects:
-            label_id = uuid.uuid4()
+            label_id = str(uuid4())
             self.indexes[index][label_id] = label
 
     def _map_tags_to_ids(self, hash: str, tags: List[str]):
@@ -64,7 +64,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                 else:
                                     self.doc_tags[comp_key] = [hash]
 
-    def get_document_by_id(self, id: Union[str, UUID], index: Optional[str] = None) -> Document:
+    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Document:
         index = index or self.index
         return self.indexes[index][id]
 
