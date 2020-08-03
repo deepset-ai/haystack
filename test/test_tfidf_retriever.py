@@ -1,6 +1,3 @@
-from haystack.database.base import Document
-from uuid import UUID
-
 def test_tfidf_retriever():
     from haystack.retriever.sparse import TfidfRetriever
 
@@ -17,6 +14,6 @@ def test_tfidf_retriever():
     retriever = TfidfRetriever(document_store)
     retriever.fit()
     doc = retriever.retrieve("godzilla", top_k=1)[0]
-    assert doc.id == UUID("26f84672c6d7aaeb8e2cd53e9c62d62d", version=4)
+    assert doc.id == "26f84672c6d7aaeb8e2cd53e9c62d62d"
     assert doc.text == 'godzilla says hello'
     assert doc.meta == {"name": "testing the finder 1"}

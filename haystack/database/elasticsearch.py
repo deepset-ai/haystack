@@ -6,7 +6,6 @@ from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
-from uuid import UUID
 
 from haystack.database.base import BaseDocumentStore, Document, Label
 from haystack.indexing.utils import eval_data_from_file
@@ -122,7 +121,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         }
         self.client.indices.create(index=index_name, ignore=400, body=mapping)
 
-    def get_document_by_id(self, id: Union[UUID, str], index=None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
         if index is None:
             index = self.index
         query = {"query": {"ids": {"values": [id]}}}

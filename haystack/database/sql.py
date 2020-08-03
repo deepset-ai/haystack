@@ -1,13 +1,12 @@
-import uuid
 from typing import Any, Dict, Union, List, Optional
+from uuid import uuid4
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, PickleType, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy_utils import UUIDType
-from uuid import UUID
-from haystack.indexing.utils import eval_data_from_file
+
 from haystack.database.base import BaseDocumentStore, Document, Label
+from haystack.indexing.utils import eval_data_from_file
 
 Base = declarative_base()  # type: Any
 
@@ -15,7 +14,7 @@ Base = declarative_base()  # type: Any
 class ORMBase(Base):
     __abstract__ = True
 
-    id = Column(UUIDType(binary=False), default=uuid.uuid4, primary_key=True)
+    id = Column(String, primary_key=True)
     created = Column(DateTime, server_default=func.now())
     updated = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
@@ -42,14 +41,14 @@ class TagORM(ORMBase):
 class DocumentTagORM(ORMBase):
     __tablename__ = "document_tag"
 
-    document_id = Column(UUIDType(binary=False), ForeignKey("document.id"), nullable=False)
+    document_id = Column(String, ForeignKey("document.id"), nullable=False)
     tag_id = Column(Integer, ForeignKey("tag.id"), nullable=False)
 
 
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
-    document_id = Column(UUIDType(binary=False), ForeignKey("document.id"), nullable=False)
+    document_id = Column(String, ForeignKey("document.id"), nullable=False)
     index = Column(String, nullable=False)
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String, nullable=False)
@@ -70,7 +69,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self.index = index
         self.label_index = "label"
 
-    def get_document_by_id(self, id: UUID, index=None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
         index = index or self.index
         document_row = self.session.query(DocumentORM).filter_by(index=index, id=id).first()
         document = document_row or self._convert_sql_row_to_document(document_row)
@@ -149,6 +148,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index = index or self.index
         for label in labels:
             label_orm = LabelORM(
+                id=str(uuid4()),
                 document_id=label.document_id,
                 no_answer=label.no_answer,
                 origin=label.origin,
