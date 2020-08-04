@@ -65,12 +65,12 @@ class Document:
 
 class Label:
     def __init__(self, question: str,
-                 answers: List[str],
+                 answer: str,
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: str,
                  document_id: Optional[UUID] = None,
-                 offset_start_in_doc: Optional[List[int]] = None,
+                 offset_start_in_doc: Optional[int] = None,
                  no_answer: Optional[bool] = None,
                  model_id: Optional[int] = None):
         """
@@ -102,7 +102,7 @@ class Label:
                 self.document_id = document_id
         else:
             self.document_id = document_id
-        self.answers = answers
+        self.answer = answer
         self.offset_start_in_doc = offset_start_in_doc
         self.model_id = model_id
 
