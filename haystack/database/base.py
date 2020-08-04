@@ -9,7 +9,6 @@ class Document:
                  query_score: Optional[float] = None,
                  question: Optional[str] = None,
                  meta: Dict[str, Any] = None,
-                 tags: Optional[Dict[str, Any]] = None,
                  embedding: Optional[List[float]] = None):
         """
         Object used to represent documents / passages in a standardized way within Haystack.
@@ -24,7 +23,6 @@ class Document:
         :param query_score: Retriever's query score for a retrieved document
         :param question: Question text for FAQs.
         :param meta: Meta fields for a document like name, url, or author.
-        :param tags: Tags that allow filtering of the data
         :param embedding: Vector encoding of the text
         """
 
@@ -38,7 +36,6 @@ class Document:
         self.query_score = query_score
         self.question = question
         self.meta = meta
-        self.tags = tags # deprecate?
         self.embedding = embedding
 
     def to_dict(self):
@@ -47,7 +44,7 @@ class Document:
     @classmethod
     def from_dict(cls, dict):
         _doc = dict.copy()
-        init_args = ["text", "id", "query_score", "question", "meta", "tags", "embedding"]
+        init_args = ["text", "id", "query_score", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
@@ -110,14 +107,15 @@ class BaseDocumentStore(ABC):
     Base class for implementing Document Stores.
     """
     index: Optional[str]
+    label_index: Optional[str]
 
     @abstractmethod
     def write_documents(self, documents: List[dict], index: Optional[str] = None):
         """
         Indexes documents for later queries.
 
-        :param documents: List of dictionaries.
-                          Default format: {"text": "<the-actual-text>"}
+        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
                           Optionally: Include meta data via {"text": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           It can be used for filtering and is accessible in the responses of the Finder.
@@ -129,19 +127,15 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_all_documents(self, index: Optional[str] = None) -> List[Document]:
+    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
         pass
 
     @abstractmethod
-    def get_all_labels(self, index: str = "label", filters: Optional[dict] = None) -> List[Label]:
+    def get_all_labels(self, index: str = "label", filters: Optional[Optional[Dict[str, List[str]]]] = None) -> List[Label]:
         pass
 
     @abstractmethod
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
-        pass
-
-    @abstractmethod
-    def get_document_ids_by_tags(self, tag, index) -> List[str]:
         pass
 
     @abstractmethod
@@ -151,7 +145,7 @@ class BaseDocumentStore(ABC):
     @abstractmethod
     def query_by_embedding(self,
                            query_emb: List[float],
-                           filters: Optional[dict] = None,
+                           filters: Optional[Optional[Dict[str, List[str]]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None) -> List[Document]:
         pass
