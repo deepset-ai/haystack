@@ -79,7 +79,7 @@ class Label:
         or, user-feedback from the Haystack REST API.
 
         :param question: the question(or query) for finding answers.
-        :param answer: teh answer string.
+        :param answer: the answer string.
         :param is_correct_answer: whether the sample is positive or negative.
         :param is_correct_document: in case of negative sample(is_correct_answer is False), there could be two cases;
                                     incorrect answer but correct document & incorrect document. This flag denotes if

@@ -1,8 +1,7 @@
-from collections import Counter
 from typing import List, Tuple, Dict, Any
 
 
-def calculate_reader_metrics(metric_counts: Counter, correct_retrievals: int):
+def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals: int):
     number_of_has_answer = correct_retrievals - metric_counts["number_of_no_answer"]
 
     metrics = {
@@ -18,9 +17,16 @@ def calculate_reader_metrics(metric_counts: Counter, correct_retrievals: int):
         "reader_top1_f1_has_answer" : metric_counts["summed_f1_top1_has_answer"] / number_of_has_answer,
         "reader_topk_f1" : metric_counts["summed_f1_topk"] / correct_retrievals,
         "reader_topk_f1_has_answer" : metric_counts["summed_f1_topk_has_answer"] / number_of_has_answer,
-        "reader_top1_no_answer_accuracy" : metric_counts["correct_no_answers_top1"] / metric_counts["number_of_no_answer"],
-        "reader_topk_no_answer_accuracy" : metric_counts["correct_no_answers_topk"] / metric_counts["number_of_no_answer"],
     }
+
+    if metric_counts["number_of_no_answer"]:
+        metrics["reader_top1_no_answer_accuracy"] = metric_counts["correct_no_answers_top1"] / metric_counts[
+            "number_of_no_answer"]
+        metrics["reader_topk_no_answer_accuracy"] = metric_counts["correct_no_answers_topk"] / metric_counts[
+            "number_of_no_answer"]
+    else:
+        metrics["reader_top1_no_answer_accuracy"] = None
+        metrics["reader_topk_no_answer_accuracy"] = None
 
     return metrics
 
@@ -32,49 +38,38 @@ def calculate_average_precision(questions_with_docs: List[dict]):
     for question in questions_with_docs:
         for doc_idx, doc in enumerate(question["docs"]):
             # check if correct doc among retrieved docs
-            if doc.meta["doc_id"] == question["question"]["_source"]["doc_id"]:
+            if doc.id == question["question"].document_id:
                 summed_avg_precision_retriever += 1 / (doc_idx + 1)
                 questions_with_correct_doc.append({
                     "question": question["question"],
-                    "docs": question["docs"],
-                    "correct_es_doc_id": doc.id
+                    "docs": question["docs"]
                 })
                 break
 
     return questions_with_correct_doc, summed_avg_precision_retriever
 
 
-def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, Any], metric_counts: Counter,
-                       reader_type: str):
+def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, Any], metric_counts: Dict[str, float]):
     # Calculates evaluation metrics for one question and adds results to counter.
     # check if question is answerable
-    if question["question"]["_source"]["answers"]:
+    if not question.no_answer:
         for answer_idx, answer in enumerate(predicted_answers["answers"]):
             found_answer = False
             found_em = False
             best_f1 = 0
-            # check if correct document
-            if answer["document_id"] == question["correct_es_doc_id"]:
-                gold_spans = [
-                    (gold_answer["answer_start"], gold_answer["answer_start"] + len(gold_answer["text"]) + 1)
-                    for gold_answer in question["question"]["_source"]["answers"]
-                ]
-                if reader_type == "farm":
-                    predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
-                elif reader_type == "transformers":
-                    predicted_span = (answer["offset_answer_start"], answer["offset_answer_end"])
+            if answer["document_id"] == question.document_id:
+                gold_spans = [(question.offset_start_in_doc, question.offset_start_in_doc + len(question.answer))]
+                predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
 
                 for gold_span in gold_spans:
                     # check if overlap between gold answer and predicted answer
                     if not found_answer:
-                        metric_counts, found_answer = _count_overlap(
-                            gold_span, predicted_span, metric_counts, answer_idx
-                        )
+                        metric_counts, found_answer = _count_overlap(gold_span, predicted_span, metric_counts, answer_idx)
+
                     # check for exact match
                     if not found_em:
-                        metric_counts, found_em = _count_exact_match(
-                            gold_span, predicted_span, metric_counts, answer_idx
-                        )
+                        metric_counts, found_em = _count_exact_match(gold_span, predicted_span, metric_counts, answer_idx)
+
                     # calculate f1
                     current_f1 = _calculate_f1(gold_span, predicted_span)
                     # top-1 answer
@@ -87,7 +82,7 @@ def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, An
                 metric_counts["summed_f1_topk"] += best_f1
                 metric_counts["summed_f1_topk_has_answer"] += best_f1
 
-            if found_answer and found_em:
+            if found_em:
                 break
 
     # question not answerable
@@ -98,20 +93,18 @@ def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, An
     return metric_counts
 
 
-def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Counter):
+def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Dict[str, float]):
     # Calculates evaluation metrics for one question and returns adds results to counter.
 
     # check if question in answerable
-    if pred["correct_answers"]:
+    if not pred["label"].no_answer:
         for answer_idx, answer in enumerate(pred["answers"]):
             found_answer = False
             found_em = False
             best_f1 = 0
             # check if correct document:
-            if answer["document_id"] == pred["correct_doc_id"]:
-                gold_spans = [
-                    (gold_answer["answer_start"], gold_answer["answer_start"] + len(gold_answer["text"]) + 1)
-                    for gold_answer in pred["correct_answers"]]
+            if answer["document_id"] == pred["label"].document_id:
+                gold_spans = [(pred["label"].offset_start_in_doc, pred["label"].offset_start_in_doc + len(pred["label"].answer))]
                 predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
 
                 for gold_span in gold_spans:
@@ -147,7 +140,7 @@ def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Counter):
 def _count_overlap(
     gold_span: Tuple[int, int],
     predicted_span: Tuple[int, int],
-    metric_counts: Counter,
+    metric_counts: Dict[str, float],
     answer_idx: int
     ):
     # Checks if overlap between prediction and real answer.
@@ -170,7 +163,7 @@ def _count_overlap(
 def _count_exact_match(
     gold_span: Tuple[int, int],
     predicted_span: Tuple[int, int],
-    metric_counts: Counter,
+    metric_counts: Dict[str, float],
     answer_idx: int
     ):
     # Check if exact match between prediction and real answer.
