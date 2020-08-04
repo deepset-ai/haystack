@@ -107,14 +107,15 @@ class BaseDocumentStore(ABC):
     Base class for implementing Document Stores.
     """
     index: Optional[str]
+    label_index: Optional[str]
 
     @abstractmethod
     def write_documents(self, documents: List[dict], index: Optional[str] = None):
         """
         Indexes documents for later queries.
 
-        :param documents: List of dictionaries.
-                          Default format: {"text": "<the-actual-text>"}
+        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
                           Optionally: Include meta data via {"text": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           It can be used for filtering and is accessible in the responses of the Finder.
@@ -126,11 +127,11 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_all_documents(self, index: Optional[str] = None) -> List[Document]:
+    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
         pass
 
     @abstractmethod
-    def get_all_labels(self, index: str = "label", filters: Optional[dict] = None) -> List[Label]:
+    def get_all_labels(self, index: str = "label", filters: Optional[Optional[Dict[str, List[str]]]] = None) -> List[Label]:
         pass
 
     @abstractmethod
@@ -144,7 +145,7 @@ class BaseDocumentStore(ABC):
     @abstractmethod
     def query_by_embedding(self,
                            query_emb: List[float],
-                           filters: Optional[dict] = None,
+                           filters: Optional[Optional[Dict[str, List[str]]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None) -> List[Document]:
         pass

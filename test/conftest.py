@@ -1,20 +1,19 @@
-
+import os
 import tarfile
 import time
 import urllib.request
 from subprocess import Popen, PIPE, STDOUT, run
-import os
 
 import pytest
 from elasticsearch import Elasticsearch
 
+from haystack.database.base import Document
+from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.database.memory import InMemoryDocumentStore
+from haystack.database.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 
-from haystack.database.base import Document
-from haystack.database.sql import SQLDocumentStore
-from haystack.database.memory import InMemoryDocumentStore
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
 @pytest.fixture(scope='session')
 def elasticsearch_dir(tmpdir_factory):
@@ -122,7 +121,6 @@ def document_store_with_docs(request, test_docs_xs, elasticsearch_fixture):
         document_store = ElasticsearchDocumentStore(index="haystack_test")
         assert document_store.get_document_count() == 0
         document_store.write_documents(test_docs_xs)
-        time.sleep(2)
 
     return document_store
 

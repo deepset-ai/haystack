@@ -9,6 +9,7 @@ import numpy as np
 
 from haystack.database.base import BaseDocumentStore, Document, Label
 from haystack.indexing.utils import eval_data_from_file
+from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.index: str = index
 
         self._create_label_index(label_index)
-        self.label_index = label_index
+        self.label_index: str = label_index
         self.update_existing_documents = update_existing_documents
 
     def _create_document_index(self, index_name):
@@ -187,7 +188,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             documents_to_index.append(_doc)
         bulk(self.client, documents_to_index, request_timeout=300, refresh="wait_for")
 
-    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = "label"):
+    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None):
+        index = index or self.label_index
         if index and not self.client.indices.exists(index=index):
             self._create_label_index(index)
 
@@ -219,7 +221,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_label_count(self, index: Optional[str] = None) -> int:
         return self.get_document_count(index=index)
 
-    def get_all_documents(self, index: Optional[str] = None, filters: Optional[dict] = None) -> List[Document]:
+    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
         if index is None:
             index = self.index
 
@@ -228,12 +230,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def get_all_labels(self, index: str = "label", filters: Optional[dict] = None) -> List[Label]:
+    def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+        index = index or self.label_index
         result = self.get_all_documents_in_index(index=index, filters=filters)
         labels = [Label.from_dict(hit["_source"]) for hit in result]
         return labels
 
-    def get_all_documents_in_index(self, index: str, filters: Optional[dict] = None) -> List[dict]:
+    def get_all_documents_in_index(self, index: str, filters: Optional[Dict[str, List[str]]] = None) -> List[dict]:
         body = {
             "query": {
                 "bool": {
@@ -335,7 +338,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def query_by_embedding(self,
                            query_emb: np.array,
-                           filters: Optional[dict] = None,
+                           filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None) -> List[Document]:
         if index is None:
@@ -408,12 +411,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                  }
         return stats
 
-    def update_embeddings(self, retriever, index=None):
+    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
         :param retriever: Retriever
+        :param index: Index name to update
         :return: None
         """
         if index is None:
@@ -427,7 +431,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         #TODO Index embeddings every X batches to avoid OOM for huge document collections
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
-        embeddings = retriever.embed_passages(passages)
+        embeddings = retriever.embed_passages(passages)  # type: ignore
 
         assert len(docs) == len(embeddings)
 
