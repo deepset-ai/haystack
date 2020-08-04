@@ -129,17 +129,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.client.indices.create(index=index_name, ignore=400, body=mapping)
 
     def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
-        if index is None:
-            index = self.index
+        index = index or self.index
         documents = self.get_documents_by_id([id], index=index)
         if documents:
             return documents[0]
         else:
             return None
 
-    def get_documents_by_id(self, ids: Union[List[str], List[UUID]], index=None) -> List[Document]:
-        if index is None:
-            index = self.index
+    def get_documents_by_id(self, ids: List[str], index=None) -> List[Document]:
+        index = index or self.index
         query = {"query": {"ids": {"values": ids}}}
         result = self.client.search(index=index, body=query)["hits"]["hits"]
         documents = [self._convert_es_hit_to_document(hit) for hit in result]

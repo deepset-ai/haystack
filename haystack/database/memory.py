@@ -55,17 +55,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
         index = index or self.index
-        documents = [self._convert_memory_hit_to_document(self.indexes[index][id], doc_id=id) for id in ids]
+        documents = [self.indexes[index][id] for id in ids]
         return documents
-
-    def _convert_memory_hit_to_document(self, hit: Dict[str, Any], doc_id: Optional[str] = None) -> Document:
-        document = Document(
-            id=doc_id,
-            text=hit.get("text", None),
-            meta=hit.get("meta", {}),
-            query_score=hit.get("query_score", None),
-        )
-        return document
 
     def query_by_embedding(self,
                            query_emb: List[float],
