@@ -23,3 +23,20 @@ class data(BaseModel):
 class SquadSchema(BaseModel):
     version: Optional[str] = None
     data: List[data]
+
+class context_passage(BaseModel):
+    title: str
+    text: str
+    passage_id: str
+    score: Optional[float] = 0
+    title_score: Optional[float] = 0
+
+class retriever_training_sample(BaseModel):
+    question: str
+    answers: List[str]
+    positive_ctxs: List[context_passage]
+    negative_ctxs: List[context_passage]
+    hard_negative_ctxs: List[context_passage]
+
+class retriever_json(BaseModel):
+    data: List[retriever_training_sample]

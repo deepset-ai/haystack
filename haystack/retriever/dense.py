@@ -3,6 +3,8 @@ from typing import Type, List, Union, Tuple
 import torch
 import numpy as np
 from pathlib import Path
+import random
+import json
 
 from farm.infer import Inferencer
 
@@ -10,7 +12,7 @@ from haystack.database.base import Document, BaseDocumentStore
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
-
+from haystack.schemas import context_passage, retriever_json, retriever_training_sample
 from haystack.retriever.dpr_utils import HFBertEncoder, BertTensorizer, BertTokenizer,\
     Tensorizer, load_states_from_checkpoint, download_dpr
 
@@ -189,6 +191,84 @@ class DensePassageRetriever(BaseRetriever):
                      key.startswith(prefix)}
         model_to_load.load_state_dict(ctx_state)
         return encoder
+
+    def prepare_training_data(self, negative_retriever: BaseRetriever, output_path: str = None, top_k: int = 20):
+        """
+        Create training data. json of format:
+            [...,
+                {
+                    question: str,
+                    answers: List[str],
+                    positive_ctxs: List[
+                                                ...,
+                                                {   title: str,
+                                                    text: str,
+                                                    passage_id: str,
+                                                    score: Optional[float],
+                                                    title_score: Optional[float]
+                                                },
+                                                ...,
+                                        ],
+                    negative_ctxs: List[
+                                                ...,
+                                                {   title: str,
+                                                    text: str,
+                                                    passage_id: str,
+                                                    score: Optional[float],
+                                                    title_score: Optional[float]
+                                                },
+                                                ...,
+
+                                        ],
+                    hard_negative_ctxs: List[
+                                                ...,
+                                                {   title: str,
+                                                    text: str,
+                                                    passage_id: str,
+                                                    score: Optional[float],
+                                                    title_score: Optional[float]
+                                                },
+                                                ...,
+                                        ]
+                }
+            ....]
+
+        :param negative_retriever: retriever to extract hard-negative contexts
+        :param output_path: path to output json
+        :param top_k: maximum number of hard-negatives to be saved
+        :return: None
+        """
+        all_samples = []
+        all_labelled_documents = self.document_store.get_all_documents()
+        id2doc_map = {doc.id: doc for doc in all_labelled_documents}
+        for label in self.document_store.get_all_labels():
+            retrieved_documents = negative_retriever.retrieve(
+                query=label.question,
+                top_k=top_k,
+                index=self.document_store.index
+            )
+
+            random.shuffle(all_labelled_documents)
+            negatives = [context_passage(title=doc.meta["name"], text=doc.text, passage_id=doc.meta["passage_id"])
+                         for doc in all_labelled_documents[:top_k] if label.answer not in doc.text]
+
+            hard_negatives = [context_passage(title=doc.meta["name"], text=doc.text, passage_id=doc.meta["passage_id"])
+                              for doc in retrieved_documents if label.answer not in doc.text]
+
+            positive_doc = id2doc_map[label.document_id]
+            positive_ctx = [context_passage(title=positive_doc.meta["name"], text=positive_doc.text,
+                                            passage_id=positive_doc.meta["passage_id"])]
+
+            all_samples.append(retriever_training_sample(question=label.question,
+                                                         answers=[label.answer],
+                                                         positive_ctxs=positive_ctx,
+                                                         negative_ctxs=negatives,
+                                                         hard_negative_ctxs=hard_negatives))
+
+        retrieved_data = json.loads(retriever_json(data=all_samples).json())
+        with open(output_path, "w") as f:
+            json.dump(retrieved_data["data"], f)
+        return retrieved_data["data"]
 
 
 class EmbeddingRetriever(BaseRetriever):

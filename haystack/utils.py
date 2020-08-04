@@ -6,6 +6,7 @@ from typing import Dict, Any
 import pandas as pd
 import re
 import warnings
+import string
 from haystack.database.sql import DocumentORM
 from haystack.schemas import SquadSchema, paragraphs, qas, answer, data
 logger = logging.getLogger(__name__)
@@ -92,13 +93,18 @@ def find_answer_start(answer: str, text: str):
     :return: list of indices of occurrences of answer
     """
     # escape all (
-    answer = r"\b{}\b".format(re.escape(answer))
-    answers = [m.start() for m in re.finditer(answer, text)]
+    special_chars = {"(": "\(", ")": "\)", "[": "\[", "]":"\]", "+":"\+", "*":"\*"}
+    table = str.maketrans(special_chars)
+    answer = answer.translate(table)
+
+    answers = [m.start() for m in re.finditer(answer.lower(), text.lower())]
     if not answers:
-        raise ValueError("Answer not found in context text!")
-    elif answers[1:]:
+        warnings.warn("No answer found in context!")
+    if answers[1:]:
         warnings.warn("More than one occurrence of answer found. Treating all occurrences as different answers.")
     return answers
+
+
 
 def convert_df_to_squad(dataframe):
     """
@@ -125,21 +131,30 @@ def convert_df_to_squad(dataframe):
             ques_ans_in_paragraph = []
 
             # create Squad 'qas'
-            for questions, answers in zip(para['question'], para['answers']):
+            for question, answers in zip(para['question'], para['answers']):
 
                 # group Squad 'answers' within a list of answers
                 ans_ = [answer(text=ans, answer_start=index) for ans in answers
                         for index in find_answer_start(ans, para.context.iloc[0])]
                 # qas
-                ques_ans_in_paragraph.append(qas(question=questions, answers=ans_))
+                if ans_:
+                    ques_ans_in_paragraph.append(qas(question=question, answers=ans_))
+                else:
+                    warnings.warn(f"No answer span found for question \"{question}\"! Skipping qas!")
 
             # Group all passages with same title within a list of passages to create Squad 'passages'
-            paras_in_title.append(paragraphs(qas=ques_ans_in_paragraph,
-                                             context=para.context.iloc[0],
-                                             passage_id=para_id))
+            if ques_ans_in_paragraph:
+                paras_in_title.append(paragraphs(qas=ques_ans_in_paragraph,
+                                                 context=para.context.iloc[0],
+                                                 passage_id=para_id))
+            else:
+                warnings.warn(f"No answer span found for paragraph \"{para.context.iloc[0]}\"! Skipping paragraph")
 
         # squad 'data': list of articles grouped by title
-        squad_data.append(data(title=title, paragraphs=paras_in_title))
+        if paras_in_title:
+            squad_data.append(data(title=title, paragraphs=paras_in_title))
+    if not squad_data:
+        raise ValueError("squad data is empty! Check whether answers exist in context!")
     return SquadSchema(data=squad_data).json()
 
 def convert_dpr_to_squad(input_file: str, output_file: str):
@@ -177,3 +192,4 @@ def convert_dpr_to_squad(input_file: str, output_file: str):
     if output_file:
         with open(output_file, "w") as f_out:
             json.dump(json.loads(out_json), f_out, sort_keys=True, indent=4)
+    return json.loads(out_json)
