@@ -572,6 +572,7 @@ class FARMReader(BaseReader):
             no_ans_score = best_score_answer - max_no_ans_gap
 
         no_ans_prediction = {
+            "answer": None,
             "score": no_ans_score,
             "probability": self._get_pseudo_prob(no_ans_score),
             "context": None,
