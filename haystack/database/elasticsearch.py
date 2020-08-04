@@ -34,6 +34,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         ca_certs: bool = False,
         verify_certs: bool = True,
         create_index: bool = True,
+        update_existing_documents: bool = False,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -60,6 +61,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param ca_certs: Root certificates for SSL
         :param verify_certs: Whether to be strict about ca certificates
         :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
+                                          documents. When set as True, any document with an existing ID gets updated.
+                                          If set to False, an error is raised if the document ID of the document being
+                                          added already exists.
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
                                     scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
@@ -85,6 +90,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         self._create_label_index(label_index)
         self.label_index = label_index
+        self.update_existing_documents = update_existing_documents
 
     def _create_document_index(self, index_name):
         if self.custom_mapping:
@@ -145,6 +151,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Indexes documents for later queries in Elasticsearch.
 
+        When using explicit document IDs, any existing document with the same ID gets updated.
+
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
                           Optionally: Include meta data via {"text": "<the-actual-text>",
@@ -169,7 +177,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         for doc in documents_objects:
 
             _doc = {
-                "_op_type": "create",
+                "_op_type": "index" if self.update_existing_documents else "create",
                 "_index": index,
                 **doc.to_dict()
             }  # type: Dict[str, Any]
@@ -200,7 +208,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         labels_to_index = []
         for label in label_objects:
             _label = {
-                "_op_type": "create",
+                "_op_type": "index" if self.update_existing_documents else "create",
                 "_index": index,
                 **label.to_dict()
             }  # type: Dict[str, Any]
