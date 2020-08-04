@@ -1,7 +1,7 @@
 from typing import Any, Dict, Union, List, Optional
 from uuid import uuid4
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, PickleType, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -14,7 +14,7 @@ Base = declarative_base()  # type: Any
 class ORMBase(Base):
     __abstract__ = True
 
-    id = Column(String, primary_key=True)
+    id = Column(String, default=lambda: str(uuid4()), primary_key=True)
     created = Column(DateTime, server_default=func.now())
     updated = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
@@ -24,25 +24,24 @@ class DocumentORM(ORMBase):
 
     text = Column(String, nullable=False)
     index = Column(String, nullable=False)
-    meta_data = Column(PickleType)
 
-    tags = relationship("TagORM", secondary="document_tag", backref="Document")
+    meta = relationship("MetaORM", secondary="document_meta", backref="Document")
 
 
-class TagORM(ORMBase):
-    __tablename__ = "tag"
+class MetaORM(ORMBase):
+    __tablename__ = "meta"
 
     name = Column(String)
     value = Column(String)
 
-    documents = relationship(DocumentORM, secondary="document_tag", backref="Tag")
+    documents = relationship(DocumentORM, secondary="document_meta", backref="Meta")
 
 
-class DocumentTagORM(ORMBase):
-    __tablename__ = "document_tag"
+class DocumentMetaORM(ORMBase):
+    __tablename__ = "document_meta"
 
     document_id = Column(String, ForeignKey("document.id"), nullable=False)
-    tag_id = Column(Integer, ForeignKey("tag.id"), nullable=False)
+    meta_id = Column(Integer, ForeignKey("meta.id"), nullable=False)
 
 
 class LabelORM(ORMBase):
@@ -75,11 +74,17 @@ class SQLDocumentStore(BaseDocumentStore):
         document = document_row or self._convert_sql_row_to_document(document_row)
         return document
 
-    def get_all_documents(self, index=None) -> List[Document]:
+    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
         index = index or self.index
-        document_rows = self.session.query(DocumentORM).filter_by(index=index).all()
-        documents = [self._convert_sql_row_to_document(row) for row in document_rows]
 
+        if filters:
+            for key, values in filters.items():
+                results = self.session.query(DocumentORM).filter(DocumentORM.meta.any(MetaORM.name.in_([key]))).\
+                        filter(DocumentORM.meta.any(MetaORM.value.in_(values))).all()
+        else:
+            results = self.session.query(DocumentORM).filter_by(index=index).all()
+
+        documents = [self._convert_sql_row_to_document(row) for row in results]
         return documents
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None):
@@ -89,45 +94,15 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return labels
 
-    def get_document_ids_by_tags(self, tags: Dict[str, Union[str, List]], index: Optional[str] = None) -> List[str]:
-        """
-        Get list of document ids that have tags from the given list of tags.
-
-        :param tags: limit scope to documents having the given tags and their corresponding values.
-                     The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
-        """
-        if not tags:
-            raise Exception("No tag supplied for filtering the documents")
-
-        if index:
-            raise Exception("'index' parameter is not supported in SQLDocumentStore.get_document_ids_by_tags().")
-
-        query = """
-                  SELECT id FROM document WHERE id in (
-                      SELECT dt.document_id
-                      FROM document_tag dt JOIN
-                          tag t
-                          ON t.id = dt.tag_id
-                      GROUP BY dt.document_id
-              """
-        tag_filters = []
-        for tag in tags:
-            tag_filters.append(f"SUM(CASE WHEN t.value='{tag}' THEN 1 ELSE 0 END) > 0")
-
-        final_query = f"{query} HAVING {' AND '.join(tag_filters)});"
-        query_results = self.session.execute(final_query)
-
-        doc_ids = [row[0] for row in query_results]
-        return doc_ids
-
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
         Indexes documents for later queries.
 
-        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+      :param documents: a list of Python dictionaries or a list of Haystack Document objects.
                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                          Optionally, you can also supply "tags": ["one-tag", "another-one"]
-                          or additional meta data via "meta": {"name": "<some-document-name>, "author": "someone", "url":"some-url" ...}
+                          Optionally: Include meta data via {"text": "<the-actual-text>",
+                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                          It can be used for filtering and is accessible in the responses of the Finder.
         :param index: add an optional index attribute to documents. It can be later used for filtering. For instance,
                       documents for evaluation can be indexed in a separate index than the documents for search.
 
@@ -135,11 +110,12 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         # Make sure we comply to Document class format
-        documents = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+        document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
         index = index or self.index
-        for doc in documents:
-            row = DocumentORM(id=doc.id, text=doc.text, meta_data=doc.meta, index=index)  # type: ignore
-            self.session.add(row)
+        for doc in document_objects:
+            meta_orms = [MetaORM(name=key, value=value) for key, value in doc.meta.items()]
+            doc_orm = DocumentORM(id=doc.id, text=doc.text, meta=meta_orms, index=index)
+            self.session.add(doc_orm)
         self.session.commit()
 
     def write_labels(self, labels, index=None):
@@ -148,7 +124,6 @@ class SQLDocumentStore(BaseDocumentStore):
         index = index or self.index
         for label in labels:
             label_orm = LabelORM(
-                id=str(uuid4()),
                 document_id=label.document_id,
                 no_answer=label.no_answer,
                 origin=label.origin,
@@ -163,7 +138,7 @@ class SQLDocumentStore(BaseDocumentStore):
             self.session.add(label_orm)
         self.session.commit()
 
-    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "label"):
+    def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label"):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
 
@@ -191,8 +166,7 @@ class SQLDocumentStore(BaseDocumentStore):
         document = Document(
             id=row.id,
             text=row.text,
-            meta=row.meta_data,
-            tags=row.tags
+            meta={meta.name: meta.value for meta in row.meta}
         )
         return document
 
