@@ -9,6 +9,7 @@ from elasticsearch import Elasticsearch
 
 from haystack.database.base import Document
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.database.faiss import FAISSDocumentStore
 from haystack.database.memory import InMemoryDocumentStore
 from haystack.database.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
@@ -102,43 +103,35 @@ def no_answer_prediction(no_answer_reader, test_docs_xs):
     return prediction
 
 
-@pytest.fixture(params=["sql", "memory", "elasticsearch"])
+@pytest.fixture(params=[ "faiss"])
 def document_store_with_docs(request, test_docs_xs, elasticsearch_fixture):
-    if request.param == "sql":
-        if os.path.exists("qa_test.db"):
-            os.remove("qa_test.db")
-        document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
-        document_store.write_documents(test_docs_xs)
-
-    if request.param == "memory":
-        document_store = InMemoryDocumentStore()
-        document_store.write_documents(test_docs_xs)
-
-    if request.param == "elasticsearch":
-        # make sure we start from a fresh index
-        client = Elasticsearch()
-        client.indices.delete(index='haystack_test', ignore=[404])
-        document_store = ElasticsearchDocumentStore(index="haystack_test")
-        assert document_store.get_document_count() == 0
-        document_store.write_documents(test_docs_xs)
-
+    document_store = get_document_store(request.param)
+    document_store.write_documents(test_docs_xs)
     return document_store
 
 
-@pytest.fixture(params=["sql", "memory", "elasticsearch"])
+@pytest.fixture(params=["faiss"])
 def document_store(request, test_docs_xs, elasticsearch_fixture):
-    if request.param == "sql":
+    return get_document_store(request.param)
+
+
+def get_document_store(document_store_type):
+    if document_store_type == "sql":
         if os.path.exists("qa_test.db"):
             os.remove("qa_test.db")
         document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
-
-    if request.param == "memory":
+    elif document_store_type == "memory":
         document_store = InMemoryDocumentStore()
-
-    if request.param == "elasticsearch":
+    elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="haystack_test")
+    elif document_store_type == "faiss":
+        if os.path.exists("qa_test_faiss.db"):
+            os.remove("qa_test_faiss.db")
+        document_store = FAISSDocumentStore(sql_url="sqlite:///qa_test_faiss.db")
+    else:
+        raise Exception(f"No document store fixture for '{document_store_type}'")
 
     return document_store

@@ -1,10 +1,11 @@
-from abc import abstractmethod, ABC
 import logging
-from typing import Any, Optional, Dict, List
+from abc import abstractmethod, ABC
+from typing import Any, Optional, Dict, List, Union
 from uuid import uuid4
 
 
 logger = logging.getLogger(__name__)
+
 
 class Document:
     def __init__(self, text: str,
@@ -180,7 +181,7 @@ class BaseDocumentStore(ABC):
     label_index: Optional[str]
 
     @abstractmethod
-    def write_documents(self, documents: List[dict], index: Optional[str] = None):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
         Indexes documents for later queries.
 
