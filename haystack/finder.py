@@ -9,7 +9,7 @@ from scipy.special import expit
 
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
-from haystack.database.base import Label
+from haystack.database.base import Label, Document
 from haystack.eval import calculate_average_precision, eval_counts_reader_batch, calculate_reader_metrics, \
     eval_counts_reader
 
@@ -174,7 +174,7 @@ class Finder:
         filters = {"origin": [label_origin]}
         questions = self.retriever.document_store.get_all_labels(index=label_index, filters=filters)
 
-        counts = defaultdict(int)
+        counts = defaultdict(float)  # type: Dict[str, float]
         retrieve_times = []
         read_times = []
 
@@ -210,11 +210,11 @@ class Finder:
             if (q_idx + 1) % 100 == 0:
                 print(f"Processed {q_idx+1} questions.")
 
-            question = question_docs["question"]
+            question = question_docs["question"]  # type: ignore
             question_string = question.question
-            docs = question_docs["docs"]
+            docs = question_docs["docs"]  # type: ignore
             single_reader_start = time.time()
-            predicted_answers = self.reader.predict(question_string, docs, top_k=top_k_reader)
+            predicted_answers = self.reader.predict(question_string, docs, top_k=top_k_reader)  # type: ignore
             read_times.append(time.time() - single_reader_start)
             counts = eval_counts_reader(question, predicted_answers, counts)
 
@@ -299,7 +299,7 @@ class Finder:
         if not self.reader or not self.retriever:
             raise Exception("Finder needs to have a reader and retriever for the evalutaion.")
 
-        counts = defaultdict(int)
+        counts = defaultdict(float)  # type: Dict[str, float]
         finder_start_time = time.time()
 
         # extract all questions for evaluation
@@ -351,7 +351,7 @@ class Finder:
 
         for question in questions:
             question_string = question.question
-            retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k, index=doc_index)
+            retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k, index=doc_index)  # type: ignore
             questions_with_docs.append({
                 "question": question,
                 "docs": retrieved_docs

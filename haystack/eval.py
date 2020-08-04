@@ -1,5 +1,7 @@
 from typing import List, Tuple, Dict, Any
 
+from haystack.database.base import Label
+
 
 def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals: int):
     number_of_has_answer = correct_retrievals - metric_counts["number_of_no_answer"]
@@ -25,8 +27,8 @@ def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals
         metrics["reader_topk_no_answer_accuracy"] = metric_counts["correct_no_answers_topk"] / metric_counts[
             "number_of_no_answer"]
     else:
-        metrics["reader_top1_no_answer_accuracy"] = None
-        metrics["reader_topk_no_answer_accuracy"] = None
+        metrics["reader_top1_no_answer_accuracy"] = None  # type: ignore
+        metrics["reader_topk_no_answer_accuracy"] = None  # type: ignore
 
     return metrics
 
@@ -49,7 +51,7 @@ def calculate_average_precision(questions_with_docs: List[dict]):
     return questions_with_correct_doc, summed_avg_precision_retriever
 
 
-def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, Any], metric_counts: Dict[str, float]):
+def eval_counts_reader(question: Label, predicted_answers: Dict[str, Any], metric_counts: Dict[str, float]):
     # Calculates evaluation metrics for one question and adds results to counter.
     # check if question is answerable
     if not question.no_answer:
@@ -58,20 +60,20 @@ def eval_counts_reader(question: Dict[str, Any], predicted_answers: Dict[str, An
             found_em = False
             best_f1 = 0
             if answer["document_id"] == question.document_id:
-                gold_spans = [(question.offset_start_in_doc, question.offset_start_in_doc + len(question.answer))]
+                gold_spans = [(question.offset_start_in_doc, question.offset_start_in_doc + len(question.answer))]  # type: ignore
                 predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
 
                 for gold_span in gold_spans:
                     # check if overlap between gold answer and predicted answer
                     if not found_answer:
-                        metric_counts, found_answer = _count_overlap(gold_span, predicted_span, metric_counts, answer_idx)
+                        metric_counts, found_answer = _count_overlap(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
 
                     # check for exact match
                     if not found_em:
-                        metric_counts, found_em = _count_exact_match(gold_span, predicted_span, metric_counts, answer_idx)
+                        metric_counts, found_em = _count_exact_match(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
 
                     # calculate f1
-                    current_f1 = _calculate_f1(gold_span, predicted_span)
+                    current_f1 = _calculate_f1(gold_span, predicted_span)  # type: ignore
                     # top-1 answer
                     if answer_idx == 0:
                         metric_counts["summed_f1_top1"] += current_f1
@@ -199,7 +201,7 @@ def _calculate_f1(gold_span: Tuple[int, int], predicted_span: Tuple[int, int]):
         return 0
 
 
-def _count_no_answer(answers: List[dict], metric_counts: Dict[str, int]):
+def _count_no_answer(answers: List[dict], metric_counts: Dict[str, float]):
     # Checks if one of the answers is 'no answer'.
 
     for answer_idx, answer in enumerate(answers):
