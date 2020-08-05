@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from datetime import datetime
@@ -162,7 +163,7 @@ def doc_qa(model_id: int, request: Question):
 
         elasticapm.set_custom_context({"results": results})
         end_time = time.time()
-        logger.info({"request": request.json(), "results": results, "time": f"{(end_time - start_time):.2f}"})
+        logger.info(json.dumps({"request": request.dict(), "results": results, "time": f"{(end_time - start_time):.2f}"}))
 
         return {"results": results}
 
@@ -190,6 +191,6 @@ def faq_qa(model_id: int, request: Question):
         results.append(result)
 
     elasticapm.set_custom_context({"results": results})
-    logger.info({"request": request.json(), "results": results})
+    logger.info(json.dumps({"request": request.dict(), "results": results}))
 
     return {"results": results}
