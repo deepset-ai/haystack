@@ -97,7 +97,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def _get_phi(self, documents: List[Document]) -> int:
         phi = 0
         for doc in documents:
-            norms = (doc.embedding ** 2).sum()
+            norms = (doc.embedding ** 2).sum()  # type: ignore
             phi = max(phi, norms)
         return phi
 
