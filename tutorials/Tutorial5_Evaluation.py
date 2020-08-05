@@ -14,12 +14,14 @@ logger = logging.getLogger(__name__)
 ##############################################
 # Settings
 ##############################################
-LAUNCH_ELASTICSEARCH = True
+LAUNCH_ELASTICSEARCH = False
 
 eval_retriever_only = True
 eval_reader_only = False
 eval_both = False
 
+doc_index = "tutorial5_docs" # make sure these indices do not collide with existing ones
+label_index = "tutorial5_labels"
 ##############################################
 # Code
 ##############################################
@@ -47,12 +49,12 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
                                             create_index=False, embedding_field="emb",
                                             embedding_dim=768, excluded_meta_data=["emb"])
 
+
 # Add evaluation data to Elasticsearch database
-if LAUNCH_ELASTICSEARCH:
-    document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index="eval_document", label_index="feedback" )
-else:
-    logger.warning("Since we already have a running ES instance we should not index the same documents again."
-                   "If you still want to do this call: 'document_store.add_eval_data('../data/nq/nq_dev_subset_v2.json')' manually ")
+# We first delete the custom tutorial indices to not have duplicate elements
+document_store.delete_all_documents(index=doc_index)
+document_store.delete_all_documents(index=label_index)
+document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index=doc_index, label_index=label_index)
 
 
 # Initialize Retriever
@@ -77,7 +79,7 @@ finder = Finder(reader, retriever)
 
 ## Evaluate Retriever on its own
 if eval_retriever_only:
-    retriever_eval_results = retriever.eval(top_k=1)
+    retriever_eval_results = retriever.eval(top_k=1, label_index=label_index, doc_index=doc_index)
     ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
     ## among the correct documents
     print("Retriever Recall:", retriever_eval_results["recall"])
@@ -86,7 +88,7 @@ if eval_retriever_only:
 
 # Evaluate Reader on its own
 if eval_reader_only:
-    reader_eval_results = reader.eval(document_store=document_store, device=device)
+    reader_eval_results = reader.eval(document_store=document_store, device=device, label_index=label_index, doc_index=doc_index)
     # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
     #reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
 
@@ -100,5 +102,5 @@ if eval_reader_only:
 
 # Evaluate combination of Reader and Retriever through Finder
 if eval_both:
-    finder_eval_results = finder.eval(top_k_retriever=1, top_k_reader=10)
+    finder_eval_results = finder.eval(top_k_retriever=1, top_k_reader=10, label_index=label_index, doc_index=doc_index)
     finder.print_eval_results(finder_eval_results)

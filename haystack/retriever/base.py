@@ -46,7 +46,7 @@ class BaseRetriever(ABC):
         # Extract all questions for evaluation
         filters = {"origin": [label_origin]}
 
-        labels = self.document_store.get_all_labels(index=label_index, filters=filters)
+        labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
 
         correct_retrievals = 0
         summed_avg_precision = 0

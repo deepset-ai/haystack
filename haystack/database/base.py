@@ -84,13 +84,79 @@ class Label:
         :param no_answer: whether the question in unanswerable.
         :param model_id: model_id used for prediction(in-case of user feedback).
         """
+        self.question = question
+        self.answer = answer
+        self.is_correct_answer = is_correct_answer
+        self.is_correct_document = is_correct_document
+        self.origin = origin
+        self.document_id = document_id
+        self.offset_start_in_doc = offset_start_in_doc
+        self.no_answer = no_answer
+        self.model_id = model_id
+
+    @classmethod
+    def from_dict(cls, dict):
+        return cls(**dict)
+
+    def to_dict(self):
+        return self.__dict__
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+                getattr(other, 'question', None) == self.question and
+                getattr(other, 'answer', None) == self.answer and
+                getattr(other, 'is_correct_answer', None) == self.is_correct_answer and
+                getattr(other, 'is_correct_document', None) == self.is_correct_document and
+                getattr(other, 'origin', None) == self.origin and
+                getattr(other, 'document_id', None) == self.document_id and
+                getattr(other, 'offset_start_in_doc', None) == self.offset_start_in_doc and
+                getattr(other, 'no_answer', None) == self.no_answer and
+                getattr(other, 'model_id', None) == self.model_id)
+
+    def __hash__(self):
+        return hash(self.question +
+                    self.answer +
+                    str(self.is_correct_answer) +
+                    str(self.is_correct_document) +
+                    str(self.origin) +
+                    str(self.document_id) +
+                    str(self.offset_start_in_doc) +
+                    str(self.no_answer) +
+                    str(self.model_id))
+
+
+class Aggregated_Label:
+    def __init__(self, question: str,
+                 multiple_answers: List[str],
+                 is_correct_answer: bool,
+                 is_correct_document: bool,
+                 origin: str,
+                 document_id: Optional[List[str]] = None,
+                 offset_start_in_doc: Optional[List[int]] = None,
+                 no_answer: Optional[bool] = None,
+                 model_id: Optional[int] = None):
+        """
+        Object used to aggregate multiple possible answers for the same question
+
+        :param question: the question(or query) for finding answers.
+        :param multiple_answers: list of possible answer strings
+        :param is_correct_answer: whether the sample is positive or negative.
+        :param is_correct_document: in case of negative sample(is_correct_answer is False), there could be two cases;
+                                    incorrect answer but correct document & incorrect document. This flag denotes if
+                                    the returned document was correct.
+        :param origin: the source for the labels. It can be used to later for filtering.
+        :param document_id: the document_store's ID for the returned answer document.
+        :param offset_start_in_doc: the answer start offset in the document.
+        :param no_answer: whether the question in unanswerable.
+        :param model_id: model_id used for prediction(in-case of user feedback).
+        """
         self.no_answer = no_answer
         self.origin = origin
         self.question = question
         self.is_correct_answer = is_correct_answer
         self.is_correct_document = is_correct_document
         self.document_id = document_id
-        self.answer = answer
+        self.multiple_answers = multiple_answers
         self.offset_start_in_doc = offset_start_in_doc
         self.model_id = model_id
 
@@ -131,7 +197,11 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_all_labels(self, index: str = "label", filters: Optional[Optional[Dict[str, List[str]]]] = None) -> List[Label]:
+    def get_all_labels(self, index: str = "label", filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+        pass
+
+    @abstractmethod
+    def get_all_labels_aggregated(self, index: str = "label", filters: Optional[Dict[str, List[str]]] = None) -> List[Aggregated_Label]:
         pass
 
     @abstractmethod

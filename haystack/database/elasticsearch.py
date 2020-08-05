@@ -7,7 +7,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
 
-from haystack.database.base import BaseDocumentStore, Document, Label
+from haystack.database.base import BaseDocumentStore, Document, Label, Aggregated_Label
 from haystack.indexing.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
@@ -235,6 +235,40 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         result = self.get_all_documents_in_index(index=index, filters=filters)
         labels = [Label.from_dict(hit["_source"]) for hit in result]
         return labels
+
+    def get_all_labels_aggregated(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Aggregated_Label]:
+        all_labels = self.get_all_labels(index=index, filters=filters)
+        question_ans_dict = {}
+        for l in all_labels:
+            if l.question in question_ans_dict:
+                question_ans_dict[l.question].append(l)
+            else:
+                question_ans_dict[l.question] = [l]
+        aggregated_labels = []
+        for q,ls in question_ans_dict.item():
+            ls = list(set(ls)) #get rid of exact duplicates
+            # check if there are both text answer and "no answer" present
+            t_present = False
+            no_present = False
+            no_idx = []
+            for idx,l in enumerate(ls):
+                if len(l.answer) == 0:
+                    no_present = True
+                else:
+                    t_present = True
+                    no_idx.append(idx)
+            # if both text and no answer are present, remove no answer labels
+            if t_present and no_present:
+                logger.warning(f"Both text label and 'no answer possible' label is present for question: {ls[0].question}")
+                for remove_idx in no_idx[::-1]:
+                    ls.delete(remove_idx)
+            
+        return None
+
+    @staticmethod
+    def deduplicate_labels(labels: List[Label]) -> Aggregated_Label:
+
+        return None
 
     def get_all_documents_in_index(self, index: str, filters: Optional[Dict[str, List[str]]] = None) -> List[dict]:
         body = {
@@ -468,7 +502,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def delete_all_documents(self, index: str):
         """
-        Delete all documents in a index.
+        Delete all documents in an index.
 
         :param index: index name
         :return: None
