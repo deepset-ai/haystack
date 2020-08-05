@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, List, Optional, Type
+from typing import Union, List, Optional
 
 import faiss
 import numpy as np
@@ -24,6 +24,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     the vector embeddings are indexed in a FAISS Index.
 
     """
+
     def __init__(
         self,
         sql_url: str = "sqlite:///",
@@ -58,61 +59,87 @@ class FAISSDocumentStore(SQLDocumentStore):
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
+        if self.phi > 0:
+            raise Exception("Addition of more data in an existing index is not supported.")
+
+        index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
         add_vectors = False if document_objects[0].embedding is None else True
 
         if add_vectors:
-            if self.phi > 0:
-                raise Exception("Addition of more data in an existing index is not supported.")
-            phi = 0
-            for doc in document_objects:
-                norms = (doc.embedding ** 2).sum()
-                phi = max(phi, norms)
+            phi = self._get_phi(document_objects)
             self.phi = 0
 
         for i in range(0, len(document_objects), self.index_buffer_size):
             if add_vectors:
-                vectors = [np.reshape(doc.embedding, (1, -1)) for doc in document_objects[i:i + self.index_buffer_size]]
-                norms = [(doc_vector ** 2).sum() for doc_vector in vectors]
-                aux_dims = [np.sqrt(phi - norm) for norm in norms]
-                hnsw_vectors = [np.hstack((doc_vector, aux_dims[i].reshape(-1, 1))) for i, doc_vector in
-                                enumerate(vectors)]
-                hnsw_vectors = np.concatenate(hnsw_vectors, axis=0)
+                embeddings = [doc.embedding for doc in document_objects[i : i + self.index_buffer_size]]
+                hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
                 self.faiss_index.add(hnsw_vectors)
 
             docs_to_write_in_sql = []
-            for doc in document_objects[i:i + self.index_buffer_size]:
+            for vector_id, doc in enumerate(document_objects[i : i + self.index_buffer_size]):
                 meta = doc.meta
                 if add_vectors:
-                    meta["vector_id"] = i
+                    meta["vector_id"] = vector_id
                 docs_to_write_in_sql.append(doc)
 
-            super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql)
+            super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
 
-    def update_embeddings(self, retriever: Type[BaseRetriever]):
+    def _get_hnsw_vectors(self, embeddings: List[np.array], phi: int) -> np.array:
+        vectors = [np.reshape(emb, (1, -1)) for emb in embeddings]
+        norms = [(doc_vector ** 2).sum() for doc_vector in vectors]
+        aux_dims = [np.sqrt(phi - norm) for norm in norms]
+        hnsw_vectors = [np.hstack((doc_vector, aux_dims[i].reshape(-1, 1))) for i, doc_vector in enumerate(vectors)]
+        hnsw_vectors = np.concatenate(hnsw_vectors, axis=0)
+        return hnsw_vectors
+
+    def _get_phi(self, documents: List[Document]) -> int:
+        phi = 0
+        for doc in documents:
+            norms = (doc.embedding ** 2).sum()
+            phi = max(phi, norms)
+        return phi
+
+    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
-        :param retriever: Retriever
+        :param retriever: Retriever to use to get embeddings for text
+        :param index: Index name to update
         :return: None
         """
+        if self.phi > 0:
+            raise Exception("Addition of more data in an existing index is not supported.")
+
         # Some FAISS indexes(like the default HNSWx) do not support removing vectors, so a new index is created.
-        index = self._create_new_index(index_factory=self.index_factory, vector_size=self.vector_size)
+        faiss_index = self._create_new_index(index_factory=self.index_factory, vector_size=self.vector_size)
+        index = index or self.index
 
-        doc_count = self.get_document_count()
-        for i in range(0, doc_count, self.index_buffer_size):
-            docs = self.get_all_documents(offset=i, limit=self.index_buffer_size)
+        documents = self.get_all_documents(index=index)
+        for doc in documents:
+            embedding = retriever.embed_passages([doc.text])[0]  # type: ignore
+            doc.embedding = embedding
 
-            passages = [d.text for d in docs]
-            logger.info(f"Updating embeddings for {len(passages)} docs ...")
-            embeddings = retriever.embed_passages(passages)
+        phi = self._get_phi(documents)
+        self.phi = 0
 
-            assert len(docs) == len(embeddings)
-            index.add(embeddings)
+        for i in range(0, len(documents), self.index_buffer_size):
+            embeddings = [doc.embedding for doc in documents[i : i + self.index_buffer_size]]
+            hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
+            faiss_index.add(hnsw_vectors)
 
-        self.faiss_index = index
+        doc_meta_to_update = []
+        for vector_id, doc in enumerate(documents[i : i + self.index_buffer_size]):
+            meta = doc.meta or {}
+            meta["vector_id"] = vector_id
+            doc_meta_to_update.append((doc.id, meta))
+
+        for doc_id, meta in doc_meta_to_update:
+            super(FAISSDocumentStore, self).update_document_meta(id=doc_id, meta=meta)
+
+        self.faiss_index = faiss_index
 
     def query_by_embedding(
         self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
@@ -121,12 +148,14 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
         query_emb = query_emb.reshape(1, -1)
 
-        aux_dim = np.zeros(len(query_emb), dtype='float32')
-        nhsw_vectors = np.hstack((query_emb, aux_dim.reshape(-1, 1)))
-        _, vector_id_matrix = self.faiss_index.search(nhsw_vectors, top_k)
-
+        aux_dim = np.zeros(len(query_emb), dtype="float32")
+        hnsw_vectors = np.hstack((query_emb, aux_dim.reshape(-1, 1)))
+        _, vector_id_matrix = self.faiss_index.search(hnsw_vectors, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
-        documents = [self.get_all_documents(filters={"vector_id": [vector_id]})[0] for vector_id in vector_ids_for_query]
+
+        documents = [
+            self.get_all_documents(filters={"vector_id": [vector_id]})[0] for vector_id in vector_ids_for_query
+        ]
 
         return documents
 
@@ -141,3 +170,4 @@ class FAISSDocumentStore(SQLDocumentStore):
         Load a saved FAISS index from a file.
         """
         self.faiss_index = faiss.read_index(str(file_path))
+        self.phi = 1  # raise exception on adding documents on existing index

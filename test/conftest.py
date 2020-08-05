@@ -117,20 +117,20 @@ def document_store(request, test_docs_xs, elasticsearch_fixture):
 
 def get_document_store(document_store_type):
     if document_store_type == "sql":
-        if os.path.exists("qa_test.db"):
-            os.remove("qa_test.db")
-        document_store = SQLDocumentStore(url="sqlite:///qa_test.db")
+        if os.path.exists("haystack_test.db"):
+            os.remove("haystack_test.db")
+        document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore()
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
-        client.indices.delete(index='haystack_test', ignore=[404])
+        client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="haystack_test")
     elif document_store_type == "faiss":
-        if os.path.exists("qa_test_faiss.db"):
-            os.remove("qa_test_faiss.db")
-        document_store = FAISSDocumentStore(sql_url="sqlite:///qa_test_faiss.db")
+        if os.path.exists("haystack_test_faiss.db"):
+            os.remove("haystack_test_faiss.db")
+        document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db")
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
 

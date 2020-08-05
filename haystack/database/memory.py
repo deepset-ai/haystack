@@ -45,7 +45,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             label_id = str(uuid4())
             self.indexes[index][label_id] = label
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Document:
+    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         index = index or self.index
         documents = self.get_documents_by_id([id], index=index)
         if documents:
