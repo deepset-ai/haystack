@@ -10,10 +10,16 @@ USAGE
    :maxdepth: 4
    :caption: Contents:
 
-   usage/intro.rst
-   usage/get_started.rst
-   usage/overview.rst
-   usage/concepts.rst
+   usage/intro
+   usage/get_started
+   usage/overview
+   usage/reader
+   usage/retriever
+   usage/finder
+   usage/scaling_to_open_domain
+   usage/database
+   usage/domain_adaptation
+   usage/other_features
 
 Indices and tables
 ==================
