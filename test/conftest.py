@@ -85,7 +85,7 @@ def no_answer_reader(request):
     if request.param == "transformers":
         return TransformersReader(model="deepset/roberta-base-squad2",
                                   tokenizer="deepset/roberta-base-squad2",
-                                  use_gpu=-1, n_best_per_passage=5)
+                                  use_gpu=-1, top_k_per_candidate=5)
 
 
 @pytest.fixture()
