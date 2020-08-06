@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 ##############################################
 # Settings
 ##############################################
-LAUNCH_ELASTICSEARCH = False
+LAUNCH_ELASTICSEARCH = True
 
 eval_retriever_only = True
 eval_reader_only = False
