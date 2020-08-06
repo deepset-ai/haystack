@@ -17,6 +17,7 @@ don't know how to add rest_api and in what structure
    api/retriever
    api/database
    api/indexing
+   api/rest_api
    api/file_converters
 
 
