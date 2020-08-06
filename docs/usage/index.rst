@@ -10,9 +10,9 @@ USAGE
    :maxdepth: 4
    :caption: Contents:
 
+   usage/intro.rst
    usage/get_started.rst
    usage/overview.rst
-   usage/tutorials.rst
    usage/concepts.rst
 
 Indices and tables

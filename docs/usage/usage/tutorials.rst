@@ -1,8 +1,14 @@
+
 Tutorials
 =========
 
+
 1) Start using Haystack to search through your own documents
 ------------------------------------------------------------
+
+    Make this a button?
+
+    A link-  .. ref:: `1) Start using Haystack to search through your own documents`
 
 2) Make Haystack understand your jargon
 ---------------------------------------
@@ -18,3 +24,4 @@ Tutorials
 
 6) SoTA: Powerup Haystack with DPR
 ----------------------------------
+
