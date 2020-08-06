@@ -135,8 +135,8 @@ class MultiLabel:
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: str,
-                 multiple_document_ids: Optional[List[str]] = None,
-                 multiple_offset_start_in_docs: Optional[List[int]] = None,
+                 multiple_document_ids: List[Optional[str]] = None,
+                 multiple_offset_start_in_docs: List[Optional[int]] = None,
                  no_answer: Optional[bool] = None,
                  model_id: Optional[int] = None):
         """
@@ -236,7 +236,7 @@ class BaseDocumentStore(ABC):
                 logger.warning(
                     f"Both text label and 'no answer possible' label is present for question: {ls[0].question}")
                 for remove_idx in no_idx[::-1]:
-                    ls.delete(remove_idx)
+                    ls.pop(remove_idx)
             # when all labels to a question say "no answer" we just need the first occurence
             elif no_present and not t_present:
                 ls = ls[:1]
