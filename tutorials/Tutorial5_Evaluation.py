@@ -20,7 +20,8 @@ eval_retriever_only = True
 eval_reader_only = False
 eval_both = False
 
-doc_index = "tutorial5_docs" # make sure these indices do not collide with existing ones
+# make sure these indices do not collide with existing ones, the indices will be wiped clean before data is inserted
+doc_index = "tutorial5_docs"
 label_index = "tutorial5_labels"
 ##############################################
 # Code

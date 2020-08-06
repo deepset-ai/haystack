@@ -82,7 +82,7 @@ class Label:
         :param document_id: the document_store's ID for the returned answer document.
         :param offset_start_in_doc: the answer start offset in the document.
         :param no_answer: whether the question in unanswerable.
-        :param model_id: model_id used for prediction(in-case of user feedback).
+        :param model_id: model_id used for prediction (in-case of user feedback).
         """
         self.question = question
         self.answer = answer
@@ -101,6 +101,7 @@ class Label:
     def to_dict(self):
         return self.__dict__
 
+    # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
                 getattr(other, 'question', None) == self.question and
@@ -131,8 +132,8 @@ class Aggregated_Label:
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: str,
-                 document_id: Optional[List[str]] = None,
-                 offset_start_in_doc: Optional[List[int]] = None,
+                 multiple_document_ids: Optional[List[str]] = None,
+                 multiple_offset_start_in_docs: Optional[List[int]] = None,
                  no_answer: Optional[bool] = None,
                  model_id: Optional[int] = None):
         """
@@ -145,19 +146,19 @@ class Aggregated_Label:
                                     incorrect answer but correct document & incorrect document. This flag denotes if
                                     the returned document was correct.
         :param origin: the source for the labels. It can be used to later for filtering.
-        :param document_id: the document_store's ID for the returned answer document.
-        :param offset_start_in_doc: the answer start offset in the document.
+        :param multiple_document_ids: the document_store's IDs for the returned answer documents.
+        :param multiple_offset_start_in_docs: the answer start offsets in the document.
         :param no_answer: whether the question in unanswerable.
-        :param model_id: model_id used for prediction(in-case of user feedback).
+        :param model_id: model_id used for prediction (in-case of user feedback).
         """
-        self.no_answer = no_answer
-        self.origin = origin
         self.question = question
+        self.multiple_answers = multiple_answers
         self.is_correct_answer = is_correct_answer
         self.is_correct_document = is_correct_document
-        self.document_id = document_id
-        self.multiple_answers = multiple_answers
-        self.offset_start_in_doc = offset_start_in_doc
+        self.origin = origin
+        self.multiple_document_ids = multiple_document_ids
+        self.multiple_offset_start_in_docs = multiple_offset_start_in_docs
+        self.no_answer = no_answer
         self.model_id = model_id
 
     @classmethod

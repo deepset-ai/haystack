@@ -237,15 +237,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return labels
 
     def get_all_labels_aggregated(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Aggregated_Label]:
+        aggregated_labels = []
         all_labels = self.get_all_labels(index=index, filters=filters)
+        # Collect all answers to a question in a dict
         question_ans_dict = {}
         for l in all_labels:
             if l.question in question_ans_dict:
                 question_ans_dict[l.question].append(l)
             else:
                 question_ans_dict[l.question] = [l]
-        aggregated_labels = []
-        for q,ls in question_ans_dict.item():
+
+        # Aggregate labels
+        for q,ls in question_ans_dict.items():
             ls = list(set(ls)) #get rid of exact duplicates
             # check if there are both text answer and "no answer" present
             t_present = False
@@ -262,13 +265,32 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 logger.warning(f"Both text label and 'no answer possible' label is present for question: {ls[0].question}")
                 for remove_idx in no_idx[::-1]:
                     ls.delete(remove_idx)
+            # when all labels to a question say "no answer" we just need the first occurence
+            elif no_present and not t_present:
+                ls = ls[:1]
+
+            # construct Aggregated_label
+            for i,l in enumerate(ls):
+                if i == 0:
+                    agg_label = Aggregated_Label(question=l.question,
+                                             multiple_answers=[l.answer],
+                                             is_correct_answer=l.is_correct_answer,
+                                             is_correct_document=l.is_correct_document,
+                                             origin=l.origin,
+                                             multiple_document_ids=[l.document_id] if l.document_id else [],
+                                             multiple_offset_start_in_docs=[l.offset_start_in_doc] if l.offset_start_in_doc else [],
+                                             no_answer=l.no_answer,
+                                             model_id=l.model_id,
+                                             )
+                else:
+                    agg_label.multiple_answers.append(l.answer)
+                    agg_label.multiple_document_ids.append(l.document_id)
+                    agg_label.multiple_offset_start_in_docs.append(l.offset_start_in_doc)
+            aggregated_labels.append(agg_label)
+
             
-        return None
+        return aggregated_labels
 
-    @staticmethod
-    def deduplicate_labels(labels: List[Label]) -> Aggregated_Label:
-
-        return None
 
     def get_all_documents_in_index(self, index: str, filters: Optional[Dict[str, List[str]]] = None) -> List[dict]:
         body = {
