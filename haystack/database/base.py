@@ -135,8 +135,8 @@ class MultiLabel:
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: str,
-                 multiple_document_ids: List[Optional[str]] = None,
-                 multiple_offset_start_in_docs: List[Optional[int]] = None,
+                 multiple_document_ids: List[Any] = None,
+                 multiple_offset_start_in_docs: List[Any] = None,
                  no_answer: Optional[bool] = None,
                  model_id: Optional[int] = None):
         """
@@ -201,7 +201,7 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_all_labels(self, index: str = "label", filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+    def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
         pass
 
     def get_all_labels_aggregated(self,
@@ -211,7 +211,7 @@ class BaseDocumentStore(ABC):
         all_labels = self.get_all_labels(index=index, filters=filters)
 
         # Collect all answers to a question in a dict
-        question_ans_dict = {}
+        question_ans_dict = {} # type: Dict[str,List[str]]
         for l in all_labels:
             if l.question in question_ans_dict:
                 question_ans_dict[l.question].append(l)
