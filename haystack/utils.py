@@ -2,8 +2,10 @@ import json
 from collections import defaultdict
 import logging
 import pprint
-from typing import Dict, Any
-from haystack.database.sql import Document
+import pandas as pd
+from typing import Dict, Any, List
+from haystack.database.sql import DocumentORM
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,38 @@ def print_answers(results: dict, details: str = "all"):
         pp.pprint(results)
 
 
+def export_answers_to_csv(agg_results: list, output_file):
+    """
+    Exports answers coming from finder.get_answers() to a CSV file
+    :param agg_results: list of predictions coming from finder.get_answers()
+    :param output_file: filename of output file
+    :return: None
+    """
+    if isinstance(agg_results, dict):
+        agg_results = [agg_results]
+
+    assert "question" in agg_results[0], f"Wrong format used for {agg_results[0]}"
+    assert "answers" in agg_results[0], f"Wrong format used for {agg_results[0]}"
+
+    data = {} # type: Dict[str, List[Any]]
+    data["question"] = []
+    data["prediction"] = []
+    data["prediction_rank"] = []
+    data["prediction_context"] = []
+
+    for res in agg_results:
+        for i in range(len(res["answers"])):
+            temp = res["answers"][i]
+            data["question"].append(res["question"])
+            data["prediction"].append(temp["answer"])
+            data["prediction_rank"].append(i + 1)
+            data["prediction_context"].append(temp["context"])
+
+    df = pd.DataFrame(data)
+    df.to_csv(output_file, index=False)
+
+
+
 def convert_labels_to_squad(labels_file: str):
     """
     Convert the export from the labeling UI to SQuAD format for training.
@@ -46,7 +80,7 @@ def convert_labels_to_squad(labels_file: str):
     for document_id, labels in labels_grouped_by_documents.items():
         qas = []
         for label in labels:
-            doc = Document.query.get(label["document_id"])
+            doc = DocumentORM.query.get(label["document_id"])
 
             assert (
                 doc.text[label["start_offset"] : label["end_offset"]]

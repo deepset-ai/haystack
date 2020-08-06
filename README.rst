@@ -116,7 +116,7 @@ Elasticsearch (Recommended)
 
 You can get started by running a single Elasticsearch node using docker::
 
-     docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.1
+     docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2
 
 Or if docker is not possible for you::
 
@@ -270,7 +270,9 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 Haystack has basic converters to extract text from PDF and Docx files. While it's almost impossible to cover all types, layouts and special cases in PDFs, the implementation covers the most common formats and provides basic cleaning functions to remove header, footers, and tables. Multi-Column text layouts are also supported.
 The converters are easily extendable, so that you can customize them for your files if needed.
 
-Example::
+Example:
+
+.. code-block:: python
 
     #PDF
     from haystack.indexing.file_converters.pdf import PDFToTextConverter    

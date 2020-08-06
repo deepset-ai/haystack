@@ -1,6 +1,9 @@
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Union
+from uuid import uuid4
+from collections import defaultdict
 
-from haystack.database.base import BaseDocumentStore, Document
+from haystack.database.base import BaseDocumentStore, Document, Label
+from haystack.indexing.utils import eval_data_from_file
 
 
 class InMemoryDocumentStore(BaseDocumentStore):
@@ -9,63 +12,42 @@ class InMemoryDocumentStore(BaseDocumentStore):
     """
 
     def __init__(self, embedding_field: Optional[str] = None):
-        self.docs = {}  # type: Dict[str, Any]
-        self.doc_tags = {}  # type: Dict[str, Any]
-        self.embedding_field = embedding_field
-        self.index = None
+        self.indexes: Dict[str, Dict] = defaultdict(dict)
+        self.index: str = "document"
+        self.label_index: str = "label"
 
-    def write_documents(self, documents: List[dict]):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
         Indexes documents for later queries.
 
-        :param documents: List of dictionaries in the format {"text": "<the-actual-text>"}.
-                          Optionally, you can also supply "tags": ["one-tag", "another-one"]
-                          or additional meta data via "meta": {"name": "<some-document-name>, "author": "someone", "url":"some-url" ...}
 
+       :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                          Optionally: Include meta data via {"text": "<the-actual-text>",
+                          "meta": {"name": "<some-document-name>, "author": "somebody", ...}}
+                          It can be used for filtering and is accessible in the responses of the Finder.
+        :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
+                      separate index than the documents for search.
         :return: None
         """
-        import hashlib
+        index = index or self.index
 
-        if documents is None:
-            return
+        documents_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
-        for document in documents:
-            text = document["text"]
-            if "meta" not in document.keys():
-                document["meta"] = {}
-            for k, v in document.items():  # put additional fields other than text in meta
-                if k not in ["text", "meta", "tags"]:
-                    document["meta"][k] = v
+        for document in documents_objects:
+            self.indexes[index][document.id] = document
 
-            if not text:
-                raise Exception("A document cannot have empty text field.")
+    def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None):
+        index = index or self.label_index
+        label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
 
-            hash = hashlib.md5(text.encode("utf-8")).hexdigest()
+        for label in label_objects:
+            label_id = str(uuid4())
+            self.indexes[index][label_id] = label
 
-            self.docs[hash] = document
-
-            tags = document.get("tags", [])
-
-            self._map_tags_to_ids(hash, tags)
-
-    def _map_tags_to_ids(self, hash: str, tags: List[str]):
-        if isinstance(tags, list):
-            for tag in tags:
-                if isinstance(tag, dict):
-                    tag_keys = tag.keys()
-                    for tag_key in tag_keys:
-                        tag_values = tag.get(tag_key, [])
-                        if tag_values:
-                            for tag_value in tag_values:
-                                comp_key = str((tag_key, tag_value))
-                                if comp_key in self.doc_tags:
-                                    self.doc_tags[comp_key].append(hash)
-                                else:
-                                    self.doc_tags[comp_key] = [hash]
-
-    def get_document_by_id(self, id: str) -> Document:
-        document = self._convert_memory_hit_to_document(self.docs[id], doc_id=id)
-        return document
+    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Document:
+        index = index or self.index
+        return self.indexes[index][id]
 
     def _convert_memory_hit_to_document(self, hit: Dict[str, Any], doc_id: Optional[str] = None) -> Document:
         document = Document(
@@ -78,7 +60,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def query_by_embedding(self,
                            query_emb: List[float],
-                           filters: Optional[dict] = None,
+                           filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None) -> List[Document]:
 
@@ -90,22 +72,17 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                       "InMemoryDocumentStore.query_by_embedding(). Please remove filters or "
                                       "use a different DocumentStore (e.g. ElasticsearchDocumentStore).")
 
-        if self.embedding_field is None:
-            raise Exception(
-                "To use query_by_embedding() 'embedding field' must "
-                "be specified when initializing the document store."
-            )
+        index = index or self.index
 
         if query_emb is None:
             return []
 
         candidate_docs = []
-        for idx, hit in self.docs.items():
-            hit["query_score"] = dot(query_emb, hit[self.embedding_field]) / (
-                norm(query_emb) * norm(hit[self.embedding_field])
+        for idx, doc in self.indexes[index].items():
+            doc.query_score = dot(query_emb, doc.embedding) / (
+                norm(query_emb) * norm(doc.embedding)
             )
-            _doc = self._convert_memory_hit_to_document(hit=hit, doc_id=idx)
-            candidate_docs.append(_doc)
+            candidate_docs.append(doc)
 
         return sorted(candidate_docs, key=lambda x: x.query_score, reverse=True)[0:top_k]
 
@@ -120,35 +97,79 @@ class InMemoryDocumentStore(BaseDocumentStore):
         #TODO
         raise NotImplementedError("update_embeddings() is not yet implemented for this DocumentStore")
 
-    def get_document_ids_by_tags(self, tags: Union[List[Dict[str, Union[str, List[str]]]], Dict[str, Union[str, List[str]]]]) -> List[str]:
-        """
-        The format for the dict is {"tag-1": "value-1", "tag-2": "value-2" ...}
-        The format for the dict is {"tag-1": ["value-1","value-2"], "tag-2": ["value-3]" ...}
-        """
-        if not isinstance(tags, list):
-            tags = [tags]
-        result = self._find_ids_by_tags(tags)
+    def get_document_count(self, index: Optional[str] = None) -> int:
+        index = index or self.index
+        return len(self.indexes[index].items())
+
+    def get_label_count(self, index: Optional[str] = None) -> int:
+        index = index or self.label_index
+        return len(self.indexes[index].items())
+
+    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
+        index = index or self.index
+        documents = list(self.indexes[index].values())
+        filtered_documents = []
+
+        if filters:
+            for doc in documents:
+                is_hit = True
+                for key, values in filters.items():
+                    if doc.meta.get(key):
+                        if doc.meta[key] not in values:
+                            is_hit = False
+                    else:
+                        is_hit = False
+                if is_hit:
+                    filtered_documents.append(doc)
+        else:
+            filtered_documents = documents
+
+        return filtered_documents
+
+    def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+        index = index or self.label_index
+
+        if filters:
+            result = []
+            for label in self.indexes[index].values():
+                label_dict = label.to_dict()
+                is_hit = True
+                for key, values in filters.items():
+                    if label_dict[key] not in values:
+                        is_hit = False
+                        break
+                if is_hit:
+                    result.append(label)
+        else:
+            result = list(self.indexes[index].values())
+
         return result
 
-    def _find_ids_by_tags(self, tags: List[Dict[str, Union[str, List[str]]]]):
-        result = []
-        for tag in tags:
-            tag_keys = tag.keys()
-            for tag_key in tag_keys:
-                tag_values = tag.get(tag_key, None)
-                if tag_values:
-                    for tag_value in tag_values:
-                        comp_key = str((tag_key, tag_value))
-                        doc_ids = self.doc_tags.get(comp_key, [])
-                        for doc_id in doc_ids:
-                            result.append(self.docs.get(doc_id))
-        return result
+    def add_eval_data(self, filename: str, doc_index: Optional[str] = None, label_index: Optional[str] = None):
+        """
+        Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
 
-    def get_document_count(self) -> int:
-        return len(self.docs.items())
+        :param filename: Name of the file containing evaluation data
+        :type filename: str
+        :param doc_index: Elasticsearch index where evaluation documents should be stored
+        :type doc_index: str
+        :param label_index: Elasticsearch index where labeled questions should be stored
+        :type label_index: str
+        """
 
-    def get_all_documents(self) -> List[Document]:
-        return [
-            Document(id=item[0], text=item[1]["text"], meta=item[1].get("meta", {}))
-            for item in self.docs.items()
-        ]
+        docs, labels = eval_data_from_file(filename)
+        doc_index = doc_index or self.index
+        label_index = label_index or self.label_index
+        self.write_documents(docs, index=doc_index)
+        self.write_labels(labels, index=label_index)
+
+    def delete_all_documents(self, index: Optional[str] = None):
+        """
+        Delete all documents in a index.
+
+        :param index: index name
+        :return: None
+        """
+
+        index = index or self.index
+        self.indexes[index] = {}

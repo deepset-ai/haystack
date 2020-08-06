@@ -2,21 +2,16 @@ import logging
 
 import uvicorn
 from elasticapm.contrib.starlette import make_apm_client, ElasticAPM
-from elasticsearch import Elasticsearch
 from fastapi import FastAPI, HTTPException
 from starlette.middleware.cors import CORSMiddleware
 
-from rest_api.config import DB_HOST, DB_USER, DB_PW, DB_PORT, ES_CONN_SCHEME, APM_SERVER, APM_SERVICE_NAME
+from rest_api.config import APM_SERVER, APM_SERVICE_NAME
 from rest_api.controller.errors.http_error import http_error_handler
 from rest_api.controller.router import router as api_router
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 logger = logging.getLogger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
-
-elasticsearch_client = Elasticsearch(
-    hosts=[{"host": DB_HOST, "port": DB_PORT}], http_auth=(DB_USER, DB_PW), scheme=ES_CONN_SCHEME, ca_certs=False, verify_certs=False
-)
 
 
 def get_application() -> FastAPI:

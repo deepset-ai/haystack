@@ -42,7 +42,6 @@ if LAUNCH_ELASTICSEARCH:
 
 document_store = ElasticsearchDocumentStore(host="localhost", username="", password="",
                                             index="document",
-                                            text_field="answer",
                                             embedding_field="question_emb",
                                             embedding_dim=768,
                                             excluded_meta_data=["question_emb"])
@@ -69,6 +68,7 @@ print(df.head())
 questions = list(df["question"].values)
 df["question_emb"] = retriever.embed_queries(texts=questions)
 df["question_emb"] = df["question_emb"].apply(list) # convert from numpy to list for ES indexing
+df = df.rename(columns={"answer": "text"})
 
 # Convert Dataframe to list of dicts and index them in our DocumentStore
 docs_to_index = df.to_dict(orient="records")
