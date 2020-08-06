@@ -88,12 +88,6 @@ In contrast to Tutorial 1 (extractive QA), we:
                                                 embedding_dim=768,
                                                 excluded_meta_data=["question_emb"])
 
-
-.. parsed-literal::
-
-    04/28/2020 12:27:32 - INFO - elasticsearch -   PUT http://localhost:9200/document [status:400 request:0.010s]
-
-
 Create a Retriever using embeddings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -114,12 +114,6 @@ from source.
     # wait until ES has started
     #! sleep 30
 
-
-.. parsed-literal::
-
-    4cc342fd2f0096e6335390e66029716ef452e2853ddd11a5b9802a4fdde20cdc
-
-
 .. code:: ipython3
 
     # In Colab / No Docker environments: Start Elasticsearch from source
@@ -145,12 +139,6 @@ from source.
     document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document", 
                                                 embedding_field="embedding", embedding_dim=768)
 
-
-.. parsed-literal::
-
-    07/03/2020 11:46:26 - INFO - elasticsearch -   PUT http://localhost:9200/document [status:200 request:0.343s]
-
-
 Cleaning & indexing documents
 -----------------------------
 
@@ -169,18 +157,6 @@ Game of Thrones articles to our DocumentStore
     
     # Now, let's write the dicts containing documents to our DB.
     document_store.write_documents(dicts)
-
-
-.. parsed-literal::
-
-    07/03/2020 11:46:28 - INFO - haystack.indexing.utils -   Found data stored in `data/article_txt_got`. Delete this first if you really want to fetch new data.
-    07/03/2020 11:46:28 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.300s]
-    07/03/2020 11:46:28 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.209s]
-    07/03/2020 11:46:28 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.124s]
-    07/03/2020 11:46:29 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.101s]
-    07/03/2020 11:46:29 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.125s]
-    07/03/2020 11:46:29 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.096s]
-
 
 Initalize Retriever, Reader, & Finder
 -------------------------------------
@@ -212,62 +188,6 @@ Retriever
     # At query time, we only need to embed the query and compare it the existing doc embeddings which is very fast.
     document_store.update_embeddings(retriever)
 
-
-.. parsed-literal::
-
-    07/03/2020 11:46:29 - INFO - haystack.retriever.dpr_utils -   Loading saved model from models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp
-    07/03/2020 11:46:29 - INFO - haystack.retriever.dense -   Loaded encoder params:  {'do_lower_case': True, 'pretrained_model_cfg': 'bert-base-uncased', 'encoder_model_type': 'hf_bert', 'pretrained_file': None, 'projection_dim': 0, 'sequence_length': 256}
-    07/03/2020 11:46:36 - INFO - haystack.retriever.dense -   Loading saved model state ...
-    07/03/2020 11:46:36 - INFO - haystack.retriever.dense -   Loading saved model state ...
-    07/03/2020 11:46:37 - INFO - elasticsearch -   GET http://localhost:9200/document/_search?scroll=5m&size=1000 [status:200 request:0.177s]
-    07/03/2020 11:46:37 - INFO - elasticsearch -   GET http://localhost:9200/_search/scroll [status:200 request:0.053s]
-    07/03/2020 11:46:37 - INFO - elasticsearch -   GET http://localhost:9200/_search/scroll [status:200 request:0.047s]
-    07/03/2020 11:46:37 - INFO - elasticsearch -   GET http://localhost:9200/_search/scroll [status:200 request:0.003s]
-    07/03/2020 11:46:37 - INFO - elasticsearch -   DELETE http://localhost:9200/_search/scroll [status:200 request:0.005s]
-    07/03/2020 11:46:37 - INFO - haystack.database.elasticsearch -   Updating embeddings for 2811 docs ...
-    07/03/2020 11:46:55 - INFO - haystack.retriever.dense -   Embedded 80 / 2811 texts
-    07/03/2020 11:47:13 - INFO - haystack.retriever.dense -   Embedded 160 / 2811 texts
-    07/03/2020 11:47:35 - INFO - haystack.retriever.dense -   Embedded 240 / 2811 texts
-    07/03/2020 11:47:55 - INFO - haystack.retriever.dense -   Embedded 320 / 2811 texts
-    07/03/2020 11:48:15 - INFO - haystack.retriever.dense -   Embedded 400 / 2811 texts
-    07/03/2020 11:48:34 - INFO - haystack.retriever.dense -   Embedded 480 / 2811 texts
-    07/03/2020 11:48:53 - INFO - haystack.retriever.dense -   Embedded 560 / 2811 texts
-    07/03/2020 11:49:15 - INFO - haystack.retriever.dense -   Embedded 640 / 2811 texts
-    07/03/2020 11:49:35 - INFO - haystack.retriever.dense -   Embedded 720 / 2811 texts
-    07/03/2020 11:49:57 - INFO - haystack.retriever.dense -   Embedded 800 / 2811 texts
-    07/03/2020 11:50:20 - INFO - haystack.retriever.dense -   Embedded 880 / 2811 texts
-    07/03/2020 11:50:44 - INFO - haystack.retriever.dense -   Embedded 960 / 2811 texts
-    07/03/2020 11:51:07 - INFO - haystack.retriever.dense -   Embedded 1040 / 2811 texts
-    07/03/2020 11:51:29 - INFO - haystack.retriever.dense -   Embedded 1120 / 2811 texts
-    07/03/2020 11:51:52 - INFO - haystack.retriever.dense -   Embedded 1200 / 2811 texts
-    07/03/2020 11:52:14 - INFO - haystack.retriever.dense -   Embedded 1280 / 2811 texts
-    07/03/2020 11:52:38 - INFO - haystack.retriever.dense -   Embedded 1360 / 2811 texts
-    07/03/2020 11:53:00 - INFO - haystack.retriever.dense -   Embedded 1440 / 2811 texts
-    07/03/2020 11:53:23 - INFO - haystack.retriever.dense -   Embedded 1520 / 2811 texts
-    07/03/2020 11:53:48 - INFO - haystack.retriever.dense -   Embedded 1600 / 2811 texts
-    07/03/2020 11:54:09 - INFO - haystack.retriever.dense -   Embedded 1680 / 2811 texts
-    07/03/2020 11:54:33 - INFO - haystack.retriever.dense -   Embedded 1760 / 2811 texts
-    07/03/2020 11:54:56 - INFO - haystack.retriever.dense -   Embedded 1840 / 2811 texts
-    07/03/2020 11:55:18 - INFO - haystack.retriever.dense -   Embedded 1920 / 2811 texts
-    07/03/2020 11:55:41 - INFO - haystack.retriever.dense -   Embedded 2000 / 2811 texts
-    07/03/2020 11:56:08 - INFO - haystack.retriever.dense -   Embedded 2080 / 2811 texts
-    07/03/2020 11:56:32 - INFO - haystack.retriever.dense -   Embedded 2160 / 2811 texts
-    07/03/2020 11:56:54 - INFO - haystack.retriever.dense -   Embedded 2240 / 2811 texts
-    07/03/2020 11:57:18 - INFO - haystack.retriever.dense -   Embedded 2320 / 2811 texts
-    07/03/2020 11:57:40 - INFO - haystack.retriever.dense -   Embedded 2400 / 2811 texts
-    07/03/2020 11:58:04 - INFO - haystack.retriever.dense -   Embedded 2480 / 2811 texts
-    07/03/2020 11:58:39 - INFO - haystack.retriever.dense -   Embedded 2560 / 2811 texts
-    07/03/2020 11:59:16 - INFO - haystack.retriever.dense -   Embedded 2640 / 2811 texts
-    07/03/2020 11:59:53 - INFO - haystack.retriever.dense -   Embedded 2720 / 2811 texts
-    07/03/2020 12:00:33 - INFO - haystack.retriever.dense -   Embedded 2800 / 2811 texts
-    07/03/2020 12:00:42 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:2.577s]
-    07/03/2020 12:00:44 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:2.085s]
-    07/03/2020 12:00:46 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:1.918s]
-    07/03/2020 12:00:49 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:1.933s]
-    07/03/2020 12:00:51 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:1.562s]
-    07/03/2020 12:00:52 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:1.150s]
-
-
 Reader
 ~~~~~~
 
@@ -285,25 +205,6 @@ FARMReader
     # Hugging Face's model hub (https://huggingface.co/models)
     
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
-
-
-.. parsed-literal::
-
-    07/03/2020 12:00:52 - INFO - farm.utils -   device: cpu n_gpu: 0, distributed training: False, automatic mixed precision training: None
-    07/03/2020 12:00:52 - INFO - farm.infer -   Could not find `deepset/roberta-base-squad2` locally. Try to download from model hub ...
-    07/03/2020 12:00:59 - WARNING - farm.modeling.language_model -   Could not automatically detect from language model name what language it is. 
-    	 We guess it's an *ENGLISH* model ... 
-    	 If not: Init the language model by supplying the 'language' param.
-    07/03/2020 12:01:07 - WARNING - farm.modeling.prediction_head -   Some unused parameters are passed to the QuestionAnsweringHead. Might not be a problem. Params: {"loss_ignore_index": -1}
-    /home/mp/miniconda3/envs/py37/lib/python3.7/site-packages/transformers/tokenization_utils.py:831: FutureWarning: Parameter max_len is deprecated and will be removed in a future release. Use model_max_length instead.
-      category=FutureWarning,
-    07/03/2020 12:01:11 - INFO - farm.utils -   device: cpu n_gpu: 0, distributed training: False, automatic mixed precision training: None
-    07/03/2020 12:01:11 - INFO - farm.infer -   Got ya 7 parallel workers to do inference ...
-    07/03/2020 12:01:11 - INFO - farm.infer -    0    0    0    0    0    0    0 
-    07/03/2020 12:01:11 - INFO - farm.infer -   /w\  /w\  /w\  /w\  /w\  /w\  /w\
-    07/03/2020 12:01:11 - INFO - farm.infer -   /'\  / \  /'\  /'\  / \  / \  /'\
-    07/03/2020 12:01:11 - INFO - farm.infer -               
-
 
 Finder
 ~~~~~~
@@ -327,52 +228,6 @@ Voilà! Ask a question!
     #prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
     #prediction = finder.get_answers(question="Who is the sister of Sansa?", top_k_retriever=10, top_k_reader=5)
 
-
-.. parsed-literal::
-
-    07/03/2020 12:07:16 - INFO - elasticsearch -   GET http://localhost:9200/document/_search [status:200 request:0.018s]
-    07/03/2020 12:07:16 - INFO - haystack.finder -   Reader is looking for detailed answer in 11362 chars ...
-    Inferencing Samples: 100%|██████████| 1/1 [00:00<00:00,  1.09 Batches/s]
-    Inferencing Samples: 100%|██████████| 1/1 [00:00<00:00,  2.05 Batches/s]
-    Inferencing Samples: 100%|██████████| 1/1 [00:01<00:00,  1.76s/ Batches]
-    Inferencing Samples: 100%|██████████| 1/1 [00:00<00:00,  1.50 Batches/s]
-    Inferencing Samples: 100%|██████████| 1/1 [00:00<00:00,  1.93 Batches/s]
-    Inferencing Samples: 100%|██████████| 1/1 [00:00<00:00,  2.15 Batches/s]
-    Inferencing Samples: 100%|██████████| 1/1 [00:00<00:00,  1.64 Batches/s]
-    Inferencing Samples: 100%|██████████| 1/1 [00:00<00:00,  1.93 Batches/s]
-    Inferencing Samples: 100%|██████████| 1/1 [00:02<00:00,  2.60s/ Batches]
-    Inferencing Samples: 100%|██████████| 1/1 [00:00<00:00,  1.10 Batches/s]
-
-
 .. code:: ipython3
 
     print_answers(prediction, details="minimal")
-
-
-.. parsed-literal::
-
-    [   {   'answer': 'David J. Peterson',
-            'context': "ge for ''Game of Thrones''\n"
-                       'The Dothraki vocabulary was created by David J. Peterson '
-                       'well in advance of the adaptation. HBO hired the Language '
-                       'Creation'},
-        {   'answer': 'David J. Peterson',
-            'context': '\n'
-                       '===Creation===\n'
-                       'David J. Peterson, creator of the spoken Valyrian '
-                       "languages for ''Game of Thrones''\n"
-                       'To create the Dothraki and Valyrian languages to b'},
-        {   'answer': 'David J. Peterson',
-            'context': 'orld. The language was developed for the TV series by the '
-                       'linguist David J. Peterson, working off the Dothraki words '
-                       "and phrases in Martin's novels.\n"
-                       ','},
-        {   'answer': 'Peterson',
-            'context': "e does not exist in the fictional world of ''A Song of Ice "
-                       "and Fire'', Peterson chose to treat the similarity as "
-                       "coincidental and made ''dracarys'' an"},
-        {   'answer': 'Peterson',
-            'context': 'ystem. Another word, \'\'trēsy\'\', meaning "son", was '
-                       "coined in honour of Peterson's 3000th Twitter follower.\n"
-                       'Peterson did not create a High Valyrian wri'}]
-

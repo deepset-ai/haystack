@@ -1,6 +1,8 @@
 Other Features
 ==============
 
+SEE GITHUB README
+
 Rest API
 --------
 

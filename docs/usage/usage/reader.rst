@@ -32,6 +32,14 @@ ALBERT XL is best performance but practically speaking too large
 
 code snippet on how to load a model
 
+FARM vs Transformers
+--------------------
+
+HF Transformers has become Core LM implementation
+but pipelines around LM that make it QA are diff
+Diff aggregation strat, diff speed, diff saving loading
+Do we have stats on any of this? (point to Benchmarks)
+
 Languages other than English
 ----------------------------
 

@@ -68,12 +68,6 @@ from source.
     # Recommended: Start Elasticsearch using Docker
     #! docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2
 
-
-.. parsed-literal::
-
-    0ae423cd9c30d6f02ca2073e430d4e1f4403d88b8ec316411ec4c198bad3d416
-
-
 .. code:: ipython3
 
     # In Colab / No Docker environments: Start Elasticsearch from source
@@ -96,12 +90,6 @@ from source.
     
     from haystack.database.elasticsearch import ElasticsearchDocumentStore
     document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
-
-
-.. parsed-literal::
-
-    07/07/2020 10:41:47 - INFO - elasticsearch -   PUT http://localhost:9200/document [status:200 request:0.364s]
-
 
 Cleaning & indexing documents
 -----------------------------
@@ -136,23 +124,6 @@ apply a basic cleaning function, and index them in Elasticsearch.
     
     # Now, let's write the dicts containing documents to our DB.
     document_store.write_documents(dicts)
-
-
-.. parsed-literal::
-
-    07/07/2020 10:41:48 - INFO - haystack.indexing.utils -   Found data stored in `data/article_txt_got`. Delete this first if you really want to fetch new data.
-    07/07/2020 10:41:48 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.461s]
-    07/07/2020 10:41:49 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.259s]
-    07/07/2020 10:41:49 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.205s]
-    07/07/2020 10:41:49 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.158s]
-    07/07/2020 10:41:49 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.126s]
-    07/07/2020 10:41:49 - INFO - elasticsearch -   POST http://localhost:9200/_bulk [status:200 request:0.095s]
-
-
-.. parsed-literal::
-
-    [{'name': '384_Maelor_Targaryen.txt', 'text': '#REDIRECT The Princess and the Queen'}, {'name': '314_Pypar.txt', 'text': "#REDIRECT List of Game of Thrones characters#Night's Watch"}, {'name': '73_A_Man_Without_Honor.txt', 'text': '"\'\'\'A Man Without Honor\'\'\'" is the seventh episode of the second season of HBO\'s medieval fantasy television series \'\'Game of Thrones\'\'.\nThe episode is written by series co-creators David Benioff and D. B. Weiss and directed, for the second time in this season, by David Nutter. It premiered on May 13, 2012.\nThe name of the episode comes from Catelyn Stark\'s assessment of Ser Jaime Lannister: "You are a man without honor," after he kills a member of his own family to attempt escape.'}]
-
 
 Initalize Retriever, Reader, & Finder
 -------------------------------------
@@ -224,18 +195,6 @@ FARMReader
     
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False)
 
-
-.. parsed-literal::
-
-    04/28/2020 12:29:45 - INFO - farm.utils -   device: cpu n_gpu: 0, distributed training: False, automatic mixed precision training: None
-    04/28/2020 12:29:45 - INFO - farm.infer -   Could not find `deepset/roberta-base-squad2` locally. Try to download from model hub ...
-    04/28/2020 12:29:49 - WARNING - farm.modeling.language_model -   Could not automatically detect from language model name what language it is. 
-    	 We guess it's an *ENGLISH* model ... 
-    	 If not: Init the language model by supplying the 'language' param.
-    04/28/2020 12:29:54 - WARNING - farm.modeling.prediction_head -   Some unused parameters are passed to the QuestionAnsweringHead. Might not be a problem. Params: {"loss_ignore_index": -1}
-    04/28/2020 12:29:58 - INFO - farm.utils -   device: cpu n_gpu: 0, distributed training: False, automatic mixed precision training: None
-
-
 TransformersReader
 ^^^^^^^^^^^^^^^^^^
 
@@ -263,14 +222,6 @@ Voilà! Ask a question!
     # The higher top_k_retriever, the better (but also the slower) your answers. 
     prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
 
-
-.. parsed-literal::
-
-    04/28/2020 12:27:53 - INFO - elasticsearch -   GET http://localhost:9200/document/_search [status:200 request:0.113s]
-    04/28/2020 12:27:53 - INFO - haystack.retriever.elasticsearch -   Got 10 candidates from retriever
-    04/28/2020 12:27:53 - INFO - haystack.finder -   Reader is looking for detailed answer in 362347 chars ...
-
-
 .. code:: ipython3
 
     # prediction = finder.get_answers(question="Who created the Dothraki vocabulary?", top_k_reader=5)
@@ -279,31 +230,3 @@ Voilà! Ask a question!
 .. code:: ipython3
 
     print_answers(prediction, details="minimal")
-
-
-.. parsed-literal::
-
-    [   {   'answer': 'Eddard',
-            'context': 's Nymeria after a legendary warrior queen. She travels '
-                       "with her father, Eddard, to King's Landing when he is made "
-                       'Hand of the King. Before she leaves,'},
-        {   'answer': 'Ned',
-            'context': 'girl disguised as a boy all along and is surprised to '
-                       "learn she is Arya, Ned Stark's daughter. After the "
-                       'Goldcloaks get help from Ser Amory Lorch and '},
-        {   'answer': 'Ned',
-            'context': 'in the television series.\n'
-                       '\n'
-                       '\n'
-                       '====Season 1====\n'
-                       'Arya accompanies her father Ned and her sister Sansa to '
-                       "King's Landing. Before their departure, Arya's ha"},
-        {   'answer': 'Balon Greyjoy',
-            'context': 'He sends Theon to the Iron Islands hoping to broker an '
-                       "alliance with Balon Greyjoy, Theon's father. In exchange "
-                       'for Greyjoy support, Robb as the King '},
-        {   'answer': 'Brynden Tully',
-            'context': 'o the weather. Sandor decides to instead take her to her '
-                       'great-uncle Brynden Tully. On their way to Riverrun, they '
-                       "encounter two men on Arya's death l"}]
-

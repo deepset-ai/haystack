@@ -15,8 +15,8 @@ Combined with Reader using the Finder
 Code snippets for both
 
 
-BM25
-----
+BM25 and TF-IDF
+---------------
 
 The Algorithm
 ~~~~~~~~~~~~~
@@ -74,6 +74,9 @@ This will add time to indexing since all documents need to be put through an enc
 But this ensures strong performance without adding much time to querying (Is querying any slower?)
 
 Code example and point to tutorial
+
+Embedding Retrieval
+-------------------
 
 Choosing Top K
 --------------

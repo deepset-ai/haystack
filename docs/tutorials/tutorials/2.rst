@@ -64,20 +64,6 @@ dropdown. Then change the ``use_gpu`` arguments below to ``True``
     # train_data = "PATH/TO_YOUR/TRAIN_DATA" 
     reader.train(data_dir=train_data, train_filename="dev-v2.0.json", use_gpu=True, n_epochs=1, save_dir="my_model")
 
-
-.. parsed-literal::
-
-    04/28/2020 14:39:27 - INFO - farm.utils -   device: cpu n_gpu: 0, distributed training: False, automatic mixed precision training: None
-    04/28/2020 14:39:27 - INFO - farm.infer -   Could not find `distilbert-base-uncased-distilled-squad` locally. Try to download from model hub ...
-    04/28/2020 14:39:29 - WARNING - farm.modeling.language_model -   Could not automatically detect from language model name what language it is. 
-    	 We guess it's an *ENGLISH* model ... 
-    	 If not: Init the language model by supplying the 'language' param.
-    04/28/2020 14:39:31 - WARNING - farm.modeling.prediction_head -   Some unused parameters are passed to the QuestionAnsweringHead. Might not be a problem. Params: {"loss_ignore_index": -1}
-    04/28/2020 14:39:33 - INFO - farm.utils -   device: cpu n_gpu: 0, distributed training: False, automatic mixed precision training: None
-    04/28/2020 14:39:33 - INFO - farm.utils -   device: cpu n_gpu: 0, distributed training: False, automatic mixed precision training: None
-    Preprocessing Dataset data/squad20/dev-v2.0.json: 100%|██████████| 1204/1204 [00:02<00:00, 402.13 Dicts/s]
-    Train epoch 0/1 (Cur. train loss: 0.0000):   0%|          | 0/1213 [00:00<?, ?it/s]
-
 .. code:: ipython3
 
     # Saving the model happens automatically at the end of training into the `save_dir` you specified
