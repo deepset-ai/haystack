@@ -43,18 +43,28 @@ class Document:
 
     @classmethod
     def from_dict(cls, dict):
+        field_map = {}#{"context": "text"}
         _doc = dict.copy()
+        #import pdb
         init_args = ["text", "id", "query_score", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
         for k, v in _doc.items():
-            if k not in init_args:
+            if k not in init_args and k not in field_map:
                 _doc["meta"][k] = v
+        #pdb.set_trace()
         # remove additional fields from top level
-        _doc = {k: v for k, v in _doc.items() if k in init_args}
-
-        return cls(**_doc)
+        _new_doc = {}
+        for k,v in _doc.items():
+            if k in init_args:
+                _new_doc[k] = v
+            elif k in field_map:
+                temp = k
+                k = field_map[k]
+                _new_doc[k] = v
+        #pdb.set_trace()
+        return cls(**_new_doc)
 
 
 class Label:
