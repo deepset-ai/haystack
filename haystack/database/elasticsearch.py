@@ -468,7 +468,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def delete_all_documents(self, index: str):
         """
-        Delete all documents in a index.
+        Delete all documents in an index.
 
         :param index: index name
         :return: None
