@@ -441,6 +441,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         from haystack.retriever.dense import DensePassageRetriever
         if isinstance(retriever,DensePassageRetriever):
             titles = [d.meta['name'] for d in docs] 
+            titles = [d.meta['name'] if 'name' in d.meta.keys() else None for d in docs]
+
             embeddings = retriever.embed_passages(passages,titles)  # type: ignore
         else: #EmbeddingRetriever
             embeddings = retriever.embed_passages(passages)  # type: ignore
