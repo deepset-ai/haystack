@@ -128,6 +128,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         }
         self.client.indices.create(index=index_name, ignore=400, body=mapping)
 
+    # TODO: Add flexibility to define other non-meta and meta fields expected by the Document class
+    def _create_document_field_map(self) -> Dict:
+        return {
+            self.text_field: "text",
+            self.embedding_field: "embedding",
+            self.faq_question_field if self.faq_question_field else "question": "question"
+        }
+
     def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
         if index is None:
             index = self.index
@@ -161,7 +169,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             index = self.index
 
         # Make sure we comply to Document class format
-        documents_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+        documents_objects = [Document.from_dict(d, self._create_document_field_map()) if isinstance(d, dict) else d for d in documents]
 
         documents_to_index = []
         for doc in documents_objects:
