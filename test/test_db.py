@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.database.base import Document
+from haystack.database.base import Document, Label
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
@@ -37,6 +37,25 @@ def test_get_documents_by_id(document_store_with_docs):
     doc = document_store_with_docs.get_document_by_id(documents[0].id)
     assert doc.id == documents[0].id
     assert doc.text == documents[0].text
+
+
+def test_labels(document_store):
+    label = Label(
+        question="question",
+        answer="answer",
+        is_correct_answer=True,
+        is_correct_document=True,
+        document_id="123",
+        offset_start_in_doc=12,
+        no_answer=False,
+        origin="gold_label",
+    )
+    document_store.write_labels([label], index="haystack_test_label")
+    labels = document_store.get_all_labels(index="haystack_test_label")
+    assert len(labels) == 1
+
+    labels = document_store.get_all_labels()
+    assert len(labels) == 0
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
