@@ -9,6 +9,18 @@ retriever is a quick way of selecting only the most relevant
 Important to speedup and scaling
 Saves the Reader work
 
+Traditional approaches like TF-IDF and BM25 are keyword based (a.k.a. sparse methods) and have proven to be very effective.
+New deep learning based approaches (also referred to as dense methods) such as Dense Passage Retrieval offer even better performance.
+While they are computationally intensive during indexing, they are designed to be fast during querying.
+
+It is important to mention, however, that there are qualitative differences between the two styles of retrieval.
+While dense methods are very capable of building strong semantic representations of text,
+they struggle when encountering out-of-vocabulary words.
+By contrast, sparse methods do not keep a learned vocab and are not thrown off by novel words or names.
+
+!! Show example from DPR paper? !!
+
+
 Points to doc store (link) when initialized
 Combined with Reader using the Finder
 

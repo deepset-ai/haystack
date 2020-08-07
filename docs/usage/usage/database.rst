@@ -17,6 +17,8 @@ Elasticsearch vs SQL vs In Memory vs FAISS
 
 Show some code snippets of each using tab elements
 
+Use tabbed element to show how each is initialized
+
 Indexing
 --------
 

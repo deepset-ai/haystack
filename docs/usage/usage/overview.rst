@@ -1,72 +1,68 @@
-Overview
-========
+Conceptual Overview
+===================
 
 Retriever-Reader Pipeline
 -------------------------
 
-Haystack based on powerful 2 stage process
+Queries in Haystack are processed in two distinct stages handled by a **Retriever** and a **Reader**.
 
-What is reader
-power of QA
-Transformer DL based
+!! Diagram of Reader Retriever Pipeline !!
 
-Retriever works in conjunction
-Light weight search for relevant documents
-Proposes candidates
+**Readers**, also known as Open-Domain QA systems in Machine Learning speak,
+are powerful models that do close analysis of documents and perform the core task of question answering.
+The Readers in Haystack are trained from the latest transformer based language models and can be significantly sped up using GPU acceleration (!! benchmarks link !!)
+However, it is not currently feasible to apply to use the Reader directly on large collection of documents.
 
-Diagram!!!
+!! Image of What a reader does and maybe architecture !!
 
-Trade off?
-but most documents probs irrelevant anyway so let's throw out the obviously irrel
-
-See benchmarks
+The **Retriever** assists the Reader by proposing a small set of candidate documents for the Reader to process.
+It functions as a lightweight filter that can scan through all documents in the database,
+quickly identifying the relevant and dismissing the irrelevant.
+Current methods are described as being either sparse (i.e. keyword based) or dense (i.e. neural network based).
+Though dense methods require significantly more processing time during indexing,
+both are designed to be fast enough that the Retriever can be applied to the full database with each query.
 
 Indexing and Querying
 ---------------------
 
-Two very different stages
-Depends somehwat on which approach is chosen
+**Indexing** and **querying** are two separate but equally important processes in Haystack.
 
-Indexing is the process of storing your documents in a way that will optimize for when you search
-Indexing performed just once at the point of loading data into database
-For keyword based retrievers like elastic search, this involves the creation of an inverted index (word -> pages).
-In dense approaches, this involves creating the document embeddings that get compared to your query embedding. (REPHRASE)
+To **index** is to store your documents in a way that will optimize your search.
+It is performed just once, at the point of loading the data into your database.
+For sparse keyword based retrievers, this involves the creation of an inverted index that maps words to the documents which contain them.
+For dense neural network based retrievers, indexing involves computing the document embeddings which will be compared against the query embedding.
 
-Diagrams of inverted index / document embeds
+!! Diagrams of inverted index / document embeds !!
 
-Highlight some words.
+Here is an example of how you index your documents in Haystack using an ``ElasticsearchDocumentStore``.
+
+!! Make this a tab element to show how different datastores are initialized !!
 
 .. code-block::
 
     # Database to store your docs
-    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
+    document_store = ElasticsearchDocumentStore()
 
     # Clean & index your docs
-    dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+    dicts = convert_files_to_dicts(doc_dir, clean_func=clean_wiki_text)
     document_store.write_documents(dicts)
 
-Give query, engage full system on and indexed database
-Gain answer
-Good indexing methods take time away from querying
+**Querying** involves searching for an answer to a given question within the full document store.
+This process will:
+* make the Retriever filter for a small set of relevant candidate documents
+* get the Reader to process this set of candidate documents
+* return potential answers to the given question
+
+Generally speaking, there are much tighter time constraints on querying and so in Haystack, it is a much more lightweight operation.
+Indexing should precompute any of the results that might be useful at query time.
+
+In Haystack, querying is performed on a ``Finder`` object which connects the reader to the retriever.
 
 .. code-block::
 
-    # The Finder sticks together reader and retriever in a pipeline to answer our actual questions.
+    # The Finder sticks together reader and retriever in a pipeline to answer our questions.
     finder = Finder(reader, retriever)
 
-    # ## Voilà! Ask a question!
-    prediction = finder.get_answers(question="Who is the father of Sansa Stark?", top_k_retriever=10, top_k_reader=5)
-
-Customising Haystack
---------------------
-
-Many options for each component
-Non exhaustive list
-
-Doc store - inmemory, elasticsearch, sql, dpr
-Reader - BERT, RoBERTa, ELECTRA etc in their FARM and Transformers variants
-Retriever - BM25, TFIDF, DPR
-File Converters - txt, pdf, docx
-Top K
-Reader model params (batch size, max seq len, doc stride)
-
+    # Voilà! Ask a question!
+    question = "Who is the father of Sansa Stark?"
+    prediction = finder.get_answers(question)

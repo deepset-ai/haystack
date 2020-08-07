@@ -1,14 +1,40 @@
 Reader
 ======
 
-Core tech that powers Haystack
-Deep neural networks, currently almost exclusively transformers
-a.k.a. closed domain QA systems in ML speak
-Performs close reading of text to extract best answers
+The Reader, also known as Open-Domain QA systems in Machine Learning speak,
+is the core component that enables Haystack to find the answers that you need.
+Haystack uses Readers built on the latest transformer based language models.
+Their strong grasp of semantics and sensitivity to syntactic structure
+have enabled them to reach state-of-the-art performance on question answering tasks such as SQuAD and Natural Questions.
 
-Combined with Retriever using Finder (link)
-Code snippet on how to initialize
-Code snippet on how to combine with retriever
+In Haystack, they can be initialized either through the deepset FARM library or HuggingFace Transformers.
+All steps required to perform question answering, including tokenization, embedding computation,
+span prediction and candidate aggregation, are handled by the Reader.
+
+.. tabs::
+
+    .. tab:: FARM
+
+        .. code-block:: python
+
+            model = "deepset/roberta-base-squad2"
+            reader = FARMReader(model, use_gpu=True)
+
+    .. tab:: Transformers
+
+        .. code-block:: python
+
+            model = "deepset/roberta-base-squad2"
+            reader = TransformersReader(model, use_gpu=1)
+
+While these models can run on CPU it is generally recommended that they be run with GPU acceleration (!!see benchmarks!!).
+
+On the higher level, the Reader is combined with the Retriever using the Finder class.
+
+.. code-block:: python
+
+    # Combine Reader and Retriever in Finder
+    finder = Finder(reader, retriever)
 
 From Language Model to Reader
 -----------------------------
@@ -18,6 +44,9 @@ adapt language models
 pick a best start and end token
 deal with documents of any length
 Handle other answer types like no answer
+
+When fed a query and a document, the model will predict the probability of each token being the start or end of an answer span.
+
 
 Choosing the Right Model
 ------------------------
@@ -30,6 +59,8 @@ Models such as RoBERTa base trained on SQuAD (give model hub model name) are a g
 Very promising next generation of distilled models which shrink down size but retain performance
 ALBERT XL is best performance but practically speaking too large
 
+Can download from HF model hub
+
 code snippet on how to load a model
 
 FARM vs Transformers
@@ -39,6 +70,8 @@ HF Transformers has become Core LM implementation
 but pipelines around LM that make it QA are diff
 Diff aggregation strat, diff speed, diff saving loading
 Do we have stats on any of this? (point to Benchmarks)
+
+Use tabbed element to show how the two are initialized
 
 Languages other than English
 ----------------------------
