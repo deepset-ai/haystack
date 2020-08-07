@@ -20,3 +20,9 @@ def test_faiss_indexing(document_store):
     # test insertion of documents in an existing index fails
     with pytest.raises(Exception):
         document_store.write_documents(documents)
+
+    # test saving the index
+    document_store.save("haystack_test_faiss")
+
+    # test loading the index
+    document_store.load(sql_url="sqlite:///haystack_test.db", faiss_file_path="haystack_test_faiss")
