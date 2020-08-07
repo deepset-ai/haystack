@@ -169,7 +169,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             index = self.index
 
         # Make sure we comply to Document class format
-        documents_objects = [Document.from_dict(d, self._create_document_field_map()) if isinstance(d, dict) else d for d in documents]
+        documents_objects = [Document.from_dict(d, field_map=self._create_document_field_map())
+                             if isinstance(d, dict) else d for d in documents]
 
         documents_to_index = []
         for doc in documents_objects:
@@ -177,7 +178,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             _doc = {
                 "_op_type": "index" if self.update_existing_documents else "create",
                 "_index": index,
-                **doc.to_dict()
+                **doc.to_dict(field_map=self._create_document_field_map())
             }  # type: Dict[str, Any]
 
             # rename id for elastic

@@ -14,7 +14,7 @@ from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_
     EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, RETRIEVER_TYPE, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
     DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
-    EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER
+    EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER, NAME_FIELD_NAME
 from rest_api.controller.utils import RequestLimiter
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
@@ -37,6 +37,7 @@ document_store = ElasticsearchDocumentStore(
     ca_certs=False,
     verify_certs=False,
     text_field=TEXT_FIELD_NAME,
+    name_field=NAME_FIELD_NAME,
     search_fields=SEARCH_FIELD_NAME,
     embedding_dim=EMBEDDING_DIM,
     embedding_field=EMBEDDING_FIELD_NAME,

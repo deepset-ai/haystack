@@ -38,8 +38,14 @@ class Document:
         self.meta = meta
         self.embedding = embedding
 
-    def to_dict(self):
-        return self.__dict__
+    def to_dict(self, field_map={}):
+        #import pdb;pdb.set_trace()
+        inv_field_map = {v:k for k, v in field_map.items()}
+        _doc: Dict[str, str] = {}
+        for k, v in self.__dict__.items():
+            k = k if k not in inv_field_map else inv_field_map[k]
+            _doc[k] = v
+        return _doc
 
     @classmethod
     def from_dict(cls, dict, field_map={}):
