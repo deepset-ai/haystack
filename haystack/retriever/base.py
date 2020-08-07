@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
 import logging
-from collections import defaultdict
 
 from haystack.database.base import Document
 from haystack.database.base import BaseDocumentStore
@@ -57,7 +56,7 @@ class BaseRetriever(ABC):
             if open_domain:
                 question_label_dict[label.question] = label.multiple_answers
             else:
-                deduplicated_doc_ids = set([str(x) for x in label.multiple_document_ids])
+                deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
                 question_label_dict[label.question] = deduplicated_doc_ids
 
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
