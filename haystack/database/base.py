@@ -45,7 +45,6 @@ class Document:
         self.embedding = embedding
 
     def to_dict(self, field_map={}):
-        #import pdb;pdb.set_trace()
         inv_field_map = {v:k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
