@@ -28,40 +28,32 @@ class FAISSDocumentStore(SQLDocumentStore):
     def __init__(
         self,
         sql_url: str = "sqlite:///",
-        index_factory: str = "HNSW4",
         index_buffer_size: int = 10_000,
         vector_size: int = 768,
+        faiss_index: Optional[IndexHNSWFlat] = None,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
-        :param index_factory: FAISS provides a function to build composite index based on comma separated list of
-                              components. The FAISS documentation has guidelines for choosing
-                              an index: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index.
-                              More details on index_factory: https://github.com/facebookresearch/faiss/wiki/The-index-factory
-
-                              The default index here is fast with good accuracy at the cost of higher memory usage. It
-                              does not require any training.
         :param index_buffer_size: When working with large dataset, the indexing process(FAISS + SQL) can be buffered in
                                   smaller chunks to reduce memory footprint.
         :param vector_size: the embedding vector size.
+        :param faiss_index: load an existing FAISS Index.
         """
         self.vector_size = vector_size
-        self.faiss_index: IndexHNSWFlat = self._create_new_index(index_factory=index_factory, vector_size=vector_size)
-        self.index_factory = index_factory
-
+        self.faiss_index = faiss_index
         self.index_buffer_size = index_buffer_size
-        self.phi = 0
         super().__init__(url=sql_url)
 
-    def _create_new_index(self, index_factory: str, vector_size: int):
+    def _create_new_index(self, vector_size: int, index_factory: str = "HNSW4"):
         index = faiss.index_factory(vector_size + 1, index_factory)
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
-        if self.phi > 0:
+        if self.faiss_index is not None:
             raise Exception("Addition of more data in an existing index is not supported.")
 
+        faiss_index = self._create_new_index(vector_size=self.vector_size)
         index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
@@ -69,13 +61,12 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         if add_vectors:
             phi = self._get_phi(document_objects)
-            self.phi = 0
 
         for i in range(0, len(document_objects), self.index_buffer_size):
             if add_vectors:
-                embeddings = [doc.embedding for doc in document_objects[i : i + self.index_buffer_size]]
+                embeddings = [doc.embedding for doc in document_objects[i: i + self.index_buffer_size]]
                 hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
-                self.faiss_index.add(hnsw_vectors)
+                faiss_index.add(hnsw_vectors)
 
             docs_to_write_in_sql = []
             for vector_id, doc in enumerate(document_objects[i : i + self.index_buffer_size]):
@@ -85,8 +76,16 @@ class FAISSDocumentStore(SQLDocumentStore):
                 docs_to_write_in_sql.append(doc)
 
             super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
+        self.faiss_index = faiss_index
 
     def _get_hnsw_vectors(self, embeddings: List[np.array], phi: int) -> np.array:
+        """
+        HNSW indices in FAISS only support L2 distance. This transformation adds an additional dimension to obtain
+        corresponding inner products.
+
+        You can read ore details here:
+        https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances#how-can-i-do-max-inner-product-search-on-indexes-that-support-only-l2
+        """
         vectors = [np.reshape(emb, (1, -1)) for emb in embeddings]
         norms = [(doc_vector ** 2).sum() for doc_vector in vectors]
         aux_dims = [np.sqrt(phi - norm) for norm in norms]
@@ -110,11 +109,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Index name to update
         :return: None
         """
-        if self.phi > 0:
-            raise Exception("Addition of more data in an existing index is not supported.")
-
         # Some FAISS indexes(like the default HNSWx) do not support removing vectors, so a new index is created.
-        faiss_index = self._create_new_index(index_factory=self.index_factory, vector_size=self.vector_size)
+        faiss_index = self._create_new_index(vector_size=self.vector_size)
         index = index or self.index
 
         documents = self.get_all_documents(index=index)
@@ -123,7 +119,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             doc.embedding = embedding
 
         phi = self._get_phi(documents)
-        self.phi = 0
 
         for i in range(0, len(documents), self.index_buffer_size):
             embeddings = [doc.embedding for doc in documents[i : i + self.index_buffer_size]]
@@ -159,15 +154,28 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def save_index(self, file_path: Union[str, Path]):
+    def save(self, file_path: Union[str, Path]):
         """
         Save FAISS Index to the specified file.
         """
         faiss.write_index(self.faiss_index, str(file_path))
 
-    def load_index(self, file_path: Union[str, Path]):
+    @classmethod
+    def load(
+            cls,
+            faiss_file_path: Union[str, Path],
+            sql_url: str,
+            index_buffer_size: int = 10_000,
+            vector_size: int = 768
+    ):
         """
-        Load a saved FAISS index from a file.
+        Load a saved FAISS index from a file and connect to the SQL database.
         """
-        self.faiss_index = faiss.read_index(str(file_path))
-        self.phi = 1  # raise exception on adding documents on existing index
+        faiss_index = faiss.read_index(str(faiss_file_path))
+        return cls(
+            faiss_index=faiss_index,
+            sql_url=sql_url,
+            index_buffer_size=index_buffer_size,
+            vector_size=vector_size
+        )
+
