@@ -434,10 +434,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         docs = self.get_all_documents(index)
         passages = [d.text for d in docs]
-
+    
         #TODO Index embeddings every X batches to avoid OOM for huge document collections
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
-        embeddings = retriever.embed_passages(passages)  # type: ignore
+        
+        from haystack.retriever.dense import DensePassageRetriever
+        if isinstance(retriever,DensePassageRetriever):
+            titles = [d.meta['name'] for d in docs] 
+            embeddings = retriever.embed_passages(passages,titles)  # type: ignore
+        else: #EmbeddingRetriever
+            embeddings = retriever.embed_passages(passages)  # type: ignore
 
         assert len(docs) == len(embeddings)
 
