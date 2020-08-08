@@ -9,6 +9,7 @@ import json
 from farm.data_handler.utils import http_get
 
 from haystack.indexing.file_converters.pdf import PDFToTextConverter
+from haystack.indexing.file_converters.tika import TikaConverter
 from haystack.database.base import Document, Label
 
 logger = logging.getLogger(__name__)
@@ -98,6 +99,48 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
                 documents.append({"text": para, "meta": {"name": path.name}})
         else:
             documents.append({"text": text, "meta": {"name": path.name}})
+
+    return documents
+
+
+def tika_convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> List[dict]:
+    """
+    Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
+    Document Store.
+
+    :param dir_path: path for the documents to be written to the database
+    :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
+    :param split_paragraphs: split text in paragraphs.
+
+    :return: None
+    """
+    converter = TikaConverter(remove_header_footer=True)
+    file_paths = [p for p in Path(dir_path).glob("**/*")]
+
+    documents = []
+    for path in file_paths:
+        print(path)
+        pages, meta = converter.extract_pages(path)
+        meta["name"] = path.name
+        text = ' '.join(pages)
+
+        if clean_func:
+            text = clean_func(text)
+
+        if split_paragraphs:
+            paragraph = ''
+            for para in text.split("\n\n"):
+                para = para.strip()
+                if not para:  # skip empty and segements
+                    continue
+                paragraph += ' ' + para
+                if para[-1] in '.?!\'")]':
+                    documents.append({"text": paragraph, "meta": meta})
+                    paragraph = ''
+            if paragraph:
+                documents.append({"text": paragraph, "meta": meta})
+        else:
+            documents.append({"text": ' '.join(pages), "meta": meta})
 
     return documents
 
