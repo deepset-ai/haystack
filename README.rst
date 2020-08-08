@@ -285,6 +285,14 @@ Example:
     paragraphs = converter.extract_pages(file_path=file)
     #  => list of str, one per paragraph (as docx has no direct notion of pages)
 
+Advanced document convertion is enabled by leveraging mature text extration library `Apache Tika <https://tika.apache.org/>`_, which is mostly written in Java. Although it's possible to call Tika API from Python, the current :code:`TikaConverter` only supports RESTful call to a Tika server running at localhost. One may either run Tika as a REST service at port 9998 (default), or to start a `docker container for Tika <https://hub.docker.com/r/apache/tika/tags>`_. The latter is recommended, as it's easily scalable, and does not require setting up any Java runtime environment. What's more, future update is also taken care of by docker.
+Either way, TikaConverter makes RESTful calls to convert any document format supported by Tika. Example code can be found at :code:`indexing/file_converters/utils.py`'s :code:`tika_convert)_files_to_dicts` function:
+
+.. code-block:: python
+
+    converter = TikaConverter(remove_header_footer=True)
+    pages, meta = converter.extract_pages(file_path=path)
+
 8. Tests
 -------------------
 * Unit tests can be executed by running :code:`tox`.
