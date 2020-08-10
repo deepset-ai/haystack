@@ -169,6 +169,7 @@ def _count_exact_match(
     answer_idx: int
     ):
     # Check if exact match between prediction and real answer.
+    # As evaluation needs to be framework independent, we cannot use the farm.evaluation.metrics.py functions.
 
     found_em = False
 
@@ -187,6 +188,7 @@ def _count_exact_match(
 
 def _calculate_f1(gold_span: Tuple[int, int], predicted_span: Tuple[int, int]):
     # Calculates F1-Score for prediction based on real answer.
+    # As evaluation needs to be framework independent, we cannot use the farm.evaluation.metrics.py functions.
 
     pred_indices = list(range(predicted_span[0], predicted_span[1] + 1))
     gold_indices = list(range(gold_span[0], gold_span[1] + 1))

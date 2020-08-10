@@ -114,8 +114,8 @@ class Finder:
 
     def eval(
         self,
-        label_index: str = "feedback",
-        doc_index: str = "eval_document",
+        label_index: str,
+        doc_index: str,
         label_origin: str = "gold_label",
         top_k_retriever: int = 10,
         top_k_reader: int = 10,
@@ -243,8 +243,8 @@ class Finder:
 
     def eval_batch(
         self,
-        label_index: str = "feedback",
-        doc_index : str = "eval_document",
+        label_index: str,
+        doc_index : str,
         label_origin: str = "gold_label",
         top_k_retriever: int = 10,
         top_k_reader: int = 10,

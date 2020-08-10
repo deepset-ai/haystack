@@ -322,46 +322,7 @@ class FARMReader(BaseReader):
             objects=inputs, return_json=False, multiprocessing_chunksize=1
         )
         # assemble answers from all the different documents & format them.
-        # For the "no answer" option, we collect all no_ans_gaps and decide how likely
-        # a no answer is based on all no_ans_gaps values across all documents
-        answers = []
-        no_ans_gaps = []
-        best_score_answer = 0
-        for pred in predictions:
-            answers_per_document = []
-            no_ans_gaps.append(pred.no_answer_gap)
-            for ans in pred.prediction:
-                # skip "no answers" here
-                if self._check_no_answer(ans):
-                    pass
-                else:
-                    cur = {"answer": ans.answer,
-                           "score": ans.score,
-                           # just a pseudo prob for now
-                           "probability": float(expit(np.asarray([ans.score]) / 8)),  # type: ignore
-                           "context": ans.context_window,
-                           "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
-                           "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
-                           "offset_start_in_doc": ans.offset_answer_start,
-                           "offset_end_in_doc": ans.offset_answer_end,
-                           "document_id": pred.id}
-                    answers_per_document.append(cur)
-
-                    if ans.score > best_score_answer:
-                        best_score_answer = ans.score
-            # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance.
-            answers += answers_per_document[:self.top_k_per_candidate]
-
-        # Calculate the score for predicting "no answer", relative to our best positive answer score
-        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps,best_score_answer)
-        if self.return_no_answers:
-            answers.append(no_ans_prediction)
-
-        # sort answers by their `probability` and select top-k
-        answers = sorted(
-            answers, key=lambda k: k["probability"], reverse=True
-        )
-        answers = answers[:top_k]
+        answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
         result = {"question": question,
                   "no_ans_gap": max_no_ans_gap,
                   "answers": answers}
