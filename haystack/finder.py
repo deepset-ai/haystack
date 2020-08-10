@@ -9,7 +9,7 @@ from scipy.special import expit
 
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
-from haystack.database.base import Label, Document
+from haystack.database.base import MultiLabel, Document
 from haystack.eval import calculate_average_precision, eval_counts_reader_batch, calculate_reader_metrics, \
     eval_counts_reader
 
@@ -172,7 +172,7 @@ class Finder:
         finder_start_time = time.time()
         # extract all questions for evaluation
         filters = {"origin": [label_origin]}
-        questions = self.retriever.document_store.get_all_labels(index=label_index, filters=filters)
+        questions = self.retriever.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
 
         counts = defaultdict(float)  # type: Dict[str, float]
         retrieve_times = []
@@ -189,7 +189,7 @@ class Finder:
 
             # check if correct doc among retrieved docs
             for doc_idx, doc in enumerate(retrieved_docs):
-                if doc.id == question.document_id:
+                if doc.id in question.multiple_document_ids:
                     counts["correct_retrievals"] += 1
                     counts["summed_avg_precision_retriever"] += 1 / (doc_idx + 1)
                     questions_with_docs.append({
@@ -304,7 +304,7 @@ class Finder:
 
         # extract all questions for evaluation
         filters = {"origin": [label_origin]}
-        questions = self.retriever.document_store.get_all_labels(index=label_index, filters=filters)
+        questions = self.retriever.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
         number_of_questions = len(questions)
 
         # retrieve documents
@@ -345,7 +345,7 @@ class Finder:
         return results
 
 
-    def _retrieve_docs(self, questions: List[Label], top_k: int, doc_index: str):
+    def _retrieve_docs(self, questions: List[MultiLabel], top_k: int, doc_index: str):
         # Retrieves documents for a list of Labels (= questions)
         questions_with_docs = []
 

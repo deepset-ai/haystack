@@ -1,6 +1,6 @@
 from typing import List, Tuple, Dict, Any
 
-from haystack.database.base import Label
+from haystack.database.base import MultiLabel
 
 
 def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals: int):
@@ -40,7 +40,7 @@ def calculate_average_precision(questions_with_docs: List[dict]):
     for question in questions_with_docs:
         for doc_idx, doc in enumerate(question["docs"]):
             # check if correct doc among retrieved docs
-            if doc.id == question["question"].document_id:
+            if doc.id in question["question"].multiple_document_ids:
                 summed_avg_precision_retriever += 1 / (doc_idx + 1)
                 questions_with_correct_doc.append({
                     "question": question["question"],
@@ -51,7 +51,7 @@ def calculate_average_precision(questions_with_docs: List[dict]):
     return questions_with_correct_doc, summed_avg_precision_retriever
 
 
-def eval_counts_reader(question: Label, predicted_answers: Dict[str, Any], metric_counts: Dict[str, float]):
+def eval_counts_reader(question: MultiLabel, predicted_answers: Dict[str, Any], metric_counts: Dict[str, float]):
     # Calculates evaluation metrics for one question and adds results to counter.
     # check if question is answerable
     if not question.no_answer:
@@ -59,27 +59,32 @@ def eval_counts_reader(question: Label, predicted_answers: Dict[str, Any], metri
             found_answer = False
             found_em = False
             best_f1 = 0
-            if answer["document_id"] == question.document_id:
-                gold_spans = [(question.offset_start_in_doc, question.offset_start_in_doc + len(question.answer))]  # type: ignore
-                predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
+            if answer["document_id"] in question.multiple_document_ids:
+                gold_spans = [{"offset_start": question.multiple_offset_start_in_docs[i],
+                               "offset_end": question.multiple_offset_start_in_docs[i] + len(question.multiple_answers[i]),
+                               "doc_id": question.multiple_document_ids[i]} for i in range(len(question.multiple_answers))]  # type: ignore
+                predicted_span = {"offset_start": answer["offset_start_in_doc"],
+                                  "offset_end": answer["offset_end_in_doc"],
+                                  "doc_id": answer["document_id"]}
 
                 for gold_span in gold_spans:
-                    # check if overlap between gold answer and predicted answer
-                    if not found_answer:
-                        metric_counts, found_answer = _count_overlap(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
+                    if gold_span["doc_id"] == predicted_span["doc_id"]:
+                        # check if overlap between gold answer and predicted answer
+                        if not found_answer:
+                            metric_counts, found_answer = _count_overlap(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
 
-                    # check for exact match
-                    if not found_em:
-                        metric_counts, found_em = _count_exact_match(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
+                        # check for exact match
+                        if not found_em:
+                            metric_counts, found_em = _count_exact_match(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
 
-                    # calculate f1
-                    current_f1 = _calculate_f1(gold_span, predicted_span)  # type: ignore
-                    # top-1 answer
-                    if answer_idx == 0:
-                        metric_counts["summed_f1_top1"] += current_f1
-                        metric_counts["summed_f1_top1_has_answer"] += current_f1
-                    if current_f1 > best_f1:
-                        best_f1 = current_f1
+                        # calculate f1
+                        current_f1 = _calculate_f1(gold_span, predicted_span)  # type: ignore
+                        # top-1 answer
+                        if answer_idx == 0:
+                            metric_counts["summed_f1_top1"] += current_f1
+                            metric_counts["summed_f1_top1_has_answer"] += current_f1
+                        if current_f1 > best_f1:
+                            best_f1 = current_f1
                 # top-k answers: use best f1-score
                 metric_counts["summed_f1_topk"] += best_f1
                 metric_counts["summed_f1_topk_has_answer"] += best_f1
@@ -105,30 +110,36 @@ def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Dict[str, floa
             found_em = False
             best_f1 = 0
             # check if correct document:
-            if answer["document_id"] == pred["label"].document_id:
-                gold_spans = [(pred["label"].offset_start_in_doc, pred["label"].offset_start_in_doc + len(pred["label"].answer))]
-                predicted_span = (answer["offset_start_in_doc"], answer["offset_end_in_doc"])
+            if answer["document_id"] in pred["label"].multiple_document_ids:
+                gold_spans = [{"offset_start": pred["label"].multiple_offset_start_in_docs[i],
+                               "offset_end": pred["label"].multiple_offset_start_in_docs[i] + len(pred["label"].multiple_answers[i]),
+                               "doc_id": pred["label"].multiple_document_ids[i]}
+                              for i in range(len(pred["label"].multiple_answers))]  # type: ignore
+                predicted_span = {"offset_start": answer["offset_start_in_doc"],
+                                  "offset_end": answer["offset_end_in_doc"],
+                                  "doc_id": answer["document_id"]}
 
                 for gold_span in gold_spans:
-                    # check if overlap between gold answer and predicted answer
-                    if not found_answer:
-                        metric_counts, found_answer = _count_overlap(
-                            gold_span, predicted_span, metric_counts, answer_idx
-                        )
-                    # check for exact match
-                    if not found_em:
-                        metric_counts, found_em = _count_exact_match(
-                            gold_span, predicted_span, metric_counts, answer_idx
-                        )
-                    # calculate f1
-                    current_f1 = _calculate_f1(gold_span, predicted_span)
-                    # top-1 answer
-                    if answer_idx == 0:
-                        metric_counts["summed_f1_top1"] += current_f1
-                        metric_counts["summed_f1_top1_has_answer"] += current_f1
-                    if current_f1 > best_f1:
-                        best_f1 = current_f1
-                    # top-k answers: use best f1-score
+                    if gold_span["doc_id"] == predicted_span["doc_id"]:
+                        # check if overlap between gold answer and predicted answer
+                        if not found_answer:
+                            metric_counts, found_answer = _count_overlap(
+                                gold_span, predicted_span, metric_counts, answer_idx
+                            )
+                        # check for exact match
+                        if not found_em:
+                            metric_counts, found_em = _count_exact_match(
+                                gold_span, predicted_span, metric_counts, answer_idx
+                            )
+                        # calculate f1
+                        current_f1 = _calculate_f1(gold_span, predicted_span)
+                        # top-1 answer
+                        if answer_idx == 0:
+                            metric_counts["summed_f1_top1"] += current_f1
+                            metric_counts["summed_f1_top1_has_answer"] += current_f1
+                        if current_f1 > best_f1:
+                            best_f1 = current_f1
+                # top-k answers: use best f1-score
                 metric_counts["summed_f1_topk"] += best_f1
                 metric_counts["summed_f1_topk_has_answer"] += best_f1
     # question not answerable
@@ -140,8 +151,8 @@ def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Dict[str, floa
 
 
 def _count_overlap(
-    gold_span: Tuple[int, int],
-    predicted_span: Tuple[int, int],
+    gold_span: Dict[str, Any],
+    predicted_span: Dict[str, Any],
     metric_counts: Dict[str, float],
     answer_idx: int
     ):
@@ -149,7 +160,8 @@ def _count_overlap(
 
     found_answer = False
 
-    if (gold_span[0] <= predicted_span[1]) and (predicted_span[0] <= gold_span[1]):
+    if (gold_span["offset_start"] <= predicted_span["offset_end"]) and \
+       (predicted_span["offset_start"] <= gold_span["offset_end"]):
         # top-1 answer
         if answer_idx == 0:
             metric_counts["correct_readings_top1"] += 1
@@ -163,8 +175,8 @@ def _count_overlap(
 
 
 def _count_exact_match(
-    gold_span: Tuple[int, int],
-    predicted_span: Tuple[int, int],
+    gold_span: Dict[str, Any],
+    predicted_span: Dict[str, Any],
     metric_counts: Dict[str, float],
     answer_idx: int
     ):
@@ -173,7 +185,8 @@ def _count_exact_match(
 
     found_em = False
 
-    if (gold_span[0] == predicted_span[0]) and (gold_span[1] == predicted_span[1]):
+    if (gold_span["offset_start"] == predicted_span["offset_start"]) and \
+       (gold_span["offset_end"] == predicted_span["offset_end"]):
         # top-1 answer
         if answer_idx == 0:
             metric_counts["exact_matches_top1"] += 1
@@ -186,12 +199,12 @@ def _count_exact_match(
     return metric_counts, found_em
 
 
-def _calculate_f1(gold_span: Tuple[int, int], predicted_span: Tuple[int, int]):
+def _calculate_f1(gold_span: Dict[str, Any], predicted_span: Dict[str, Any]):
     # Calculates F1-Score for prediction based on real answer.
     # As evaluation needs to be framework independent, we cannot use the farm.evaluation.metrics.py functions.
 
-    pred_indices = list(range(predicted_span[0], predicted_span[1] + 1))
-    gold_indices = list(range(gold_span[0], gold_span[1] + 1))
+    pred_indices = list(range(predicted_span["offset_start"], predicted_span["offset_end"]))
+    gold_indices = list(range(gold_span["offset_start"], gold_span["offset_end"]))
     n_overlap = len([x for x in pred_indices if x in gold_indices])
     if pred_indices and gold_indices and n_overlap:
         precision = n_overlap / len(pred_indices)
