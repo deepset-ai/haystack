@@ -1,5 +1,5 @@
 import logging
-from typing import Type, List, Union, Tuple
+from typing import Type, List, Union, Tuple, Optional
 import torch
 import numpy as np
 from pathlib import Path
@@ -122,7 +122,7 @@ class DensePassageRetriever(BaseRetriever):
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
 
-    def embed_passages(self, texts: List[str], titles: List[str] = None) -> List[np.array]:
+    def embed_passages(self, texts: List[str], titles: Optional[List[str]] = None) -> List[np.array]:
         """
         Create embeddings for a list of passages using the passage encoder
 
@@ -138,7 +138,7 @@ class DensePassageRetriever(BaseRetriever):
                                     texts: List[str],
                                     model: torch.nn.Module,
                                     tensorizer: Tensorizer,
-                                    titles: List[str] = None, #useful only for passage embedding with DPR!
+                                    titles: Optional[List[str]] = None, #useful only for passage embedding with DPR!
                                     batch_size: int = 16) -> List[Tuple[object, np.array]]:
         n = len(texts)
         total = 0

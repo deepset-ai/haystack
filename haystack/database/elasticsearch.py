@@ -10,6 +10,7 @@ import numpy as np
 from haystack.database.base import BaseDocumentStore, Document, Label
 from haystack.indexing.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
+from haystack.retriever.dense import DensePassageRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -437,12 +438,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     
         #TODO Index embeddings every X batches to avoid OOM for huge document collections
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
-        
-        from haystack.retriever.dense import DensePassageRetriever
-        if isinstance(retriever,DensePassageRetriever):
-            titles = [d.meta['name'] if 'name' in d.meta.keys() else None for d in docs]
 
-            embeddings = retriever.embed_passages(passages,titles)  # type: ignore
+        # TODO send whole Document to retriever and let retriever decide what fields to embed
+        if isinstance(retriever,DensePassageRetriever):
+            titles = []
+            for d in docs:
+                if d.meta is not None:
+                    titles.append(d.meta['name'] if 'name' in d.meta.keys() else None)
+            if len(titles) == len(passages):
+                embeddings = retriever.embed_passages(passages,titles)  # type: ignore
+            else:
+                embeddings = retriever.embed_passages(passages)  # type: ignore
         else: #EmbeddingRetriever
             embeddings = retriever.embed_passages(passages)  # type: ignore
 

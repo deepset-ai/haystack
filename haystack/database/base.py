@@ -14,7 +14,7 @@ class Document:
                  id: str = None,
                  query_score: Optional[float] = None,
                  question: Optional[str] = None,
-                 meta: Dict[str, Any] = None,
+                 meta: Optional[Dict[str, Any]] = None,
                  embedding: Optional[np.array] = None):
         """
         Object used to represent documents / passages in a standardized way within Haystack.
