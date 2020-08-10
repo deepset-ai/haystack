@@ -40,7 +40,7 @@ class FARMReader(BaseReader):
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
-        no_ans_boost: Optional[int] = None,
+        no_ans_boost: Optional[float] = None,
         top_k_per_candidate: int = 3,
         top_k_per_sample: int = 1,
         num_processes: Optional[int] = None,
@@ -553,35 +553,6 @@ class FARMReader(BaseReader):
             return True
         else:
             return False
-
-    def _calc_no_answer(self, no_ans_gaps: List[float], best_score_answer: float):
-        # "no answer" scores and positive answers scores are difficult to compare, because
-        # + a positive answer score is related to one specific document
-        # - a "no answer" score is related to all input documents
-        # Thus we compute the "no answer" score relative to the best possible answer and adjust it by
-        # the most significant difference between scores.
-        # Most significant difference: a model switching from predicting an answer to "no answer" (or vice versa).
-        # No_ans_gap coming from FARM mean how much no_ans_boost should change to switch predictions
-
-        no_ans_gaps = np.array(no_ans_gaps)
-        max_no_ans_gap = np.max(no_ans_gaps)
-        # all passages "no answer" as top score
-        if (np.sum(no_ans_gaps < 0) == len(no_ans_gaps)):  # type: ignore
-            no_ans_score = best_score_answer - max_no_ans_gap  # max_no_ans_gap is negative, so it increases best pos score
-        else:  # case: at least one passage predicts an answer (positive no_ans_gap)
-            no_ans_score = best_score_answer - max_no_ans_gap
-
-        no_ans_prediction = {
-            "answer": None,
-            "score": no_ans_score,
-            "probability": self._get_pseudo_prob(no_ans_score),
-            "context": None,
-            "offset_start": 0,
-            "offset_end": 0,
-            "document_id": None
-        }
-
-        return no_ans_prediction, max_no_ans_gap
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         documents = []

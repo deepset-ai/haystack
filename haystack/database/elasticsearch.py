@@ -6,10 +6,10 @@ from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
-from uuid import UUID
 
 from haystack.database.base import BaseDocumentStore, Document, Label
 from haystack.indexing.utils import eval_data_from_file
+from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         scheme: str = "http",
         ca_certs: bool = False,
         verify_certs: bool = True,
-        create_index: bool = True
+        create_index: bool = True,
+        update_existing_documents: bool = False,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -61,6 +62,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param ca_certs: Root certificates for SSL
         :param verify_certs: Whether to be strict about ca certificates
         :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
+                                          documents. When set as True, any document with an existing ID gets updated.
+                                          If set to False, an error is raised if the document ID of the document being
+                                          added already exists.
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
                                     scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
@@ -85,7 +90,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.index: str = index
 
         self._create_label_index(label_index)
-        self.label_index = label_index
+        self.label_index: str = label_index
+        self.update_existing_documents = update_existing_documents
 
     def _create_document_index(self, index_name):
         if self.custom_mapping:
@@ -122,29 +128,26 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         }
         self.client.indices.create(index=index_name, ignore=400, body=mapping)
 
-    def get_document_by_id(self, id: Union[UUID, str], index=None) -> Optional[Document]:
-        if index is None:
-            index = self.index
-        query = {"query": {"ids": {"values": [id]}}}
-        result = self.client.search(index=index, body=query)["hits"]["hits"]
-
-        document = self._convert_es_hit_to_document(result[0]) if result else None
-        return document
-
-    def get_document_ids_by_tags(self, tags: dict, index: Optional[str]) -> List[str]:
+    def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
         index = index or self.index
-        term_queries = [{"terms": {key: value}} for key, value in tags.items()]
-        query = {"query": {"bool": {"must": term_queries}}}
-        logger.debug(f"Tag filter query: {query}")
-        result = self.client.search(index=index, body=query, size=10000)["hits"]["hits"]
-        doc_ids = []
-        for hit in result:
-            doc_ids.append(hit["_id"])
-        return doc_ids
+        documents = self.get_documents_by_id([id], index=index)
+        if documents:
+            return documents[0]
+        else:
+            return None
+
+    def get_documents_by_id(self, ids: List[str], index=None) -> List[Document]:
+        index = index or self.index
+        query = {"query": {"ids": {"values": ids}}}
+        result = self.client.search(index=index, body=query)["hits"]["hits"]
+        documents = [self._convert_es_hit_to_document(hit) for hit in result]
+        return documents
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
         Indexes documents for later queries in Elasticsearch.
+
+        When using explicit document IDs, any existing document with the same ID gets updated.
 
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
@@ -170,7 +173,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         for doc in documents_objects:
 
             _doc = {
-                "_op_type": "create",
+                "_op_type": "index" if self.update_existing_documents else "create",
                 "_index": index,
                 **doc.to_dict()
             }  # type: Dict[str, Any]
@@ -191,7 +194,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             documents_to_index.append(_doc)
         bulk(self.client, documents_to_index, request_timeout=300, refresh="wait_for")
 
-    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = "label"):
+    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None):
+        index = index or self.label_index
         if index and not self.client.indices.exists(index=index):
             self._create_label_index(index)
 
@@ -201,7 +205,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         labels_to_index = []
         for label in label_objects:
             _label = {
-                "_op_type": "create",
+                "_op_type": "index" if self.update_existing_documents else "create",
                 "_index": index,
                 **label.to_dict()
             }  # type: Dict[str, Any]
@@ -223,7 +227,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_label_count(self, index: Optional[str] = None) -> int:
         return self.get_document_count(index=index)
 
-    def get_all_documents(self, index: Optional[str] = None, filters: Optional[dict] = None) -> List[Document]:
+    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
         if index is None:
             index = self.index
 
@@ -232,12 +236,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def get_all_labels(self, index: str = "label", filters: Optional[dict] = None) -> List[Label]:
+    def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+        index = index or self.label_index
         result = self.get_all_documents_in_index(index=index, filters=filters)
         labels = [Label.from_dict(hit["_source"]) for hit in result]
         return labels
 
-    def get_all_documents_in_index(self, index: str, filters: Optional[dict] = None) -> List[dict]:
+    def get_all_documents_in_index(self, index: str, filters: Optional[Dict[str, List[str]]] = None) -> List[dict]:
         body = {
             "query": {
                 "bool": {
@@ -339,7 +344,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def query_by_embedding(self,
                            query_emb: np.array,
-                           filters: Optional[dict] = None,
+                           filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None) -> List[Document]:
         if index is None:
@@ -385,7 +390,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field, "tags")}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
         meta_data["name"] = meta_data.pop(self.name_field, None)
 
         document = Document(
@@ -394,7 +399,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             meta=meta_data,
             query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
             question=hit["_source"].get(self.faq_question_field),
-            tags=hit["_source"].get("tags"),
             embedding=hit["_source"].get(self.embedding_field)
         )
         return document
@@ -413,12 +417,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                  }
         return stats
 
-    def update_embeddings(self, retriever, index=None):
+    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
         :param retriever: Retriever
+        :param index: Index name to update
         :return: None
         """
         if index is None:
@@ -432,7 +437,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         #TODO Index embeddings every X batches to avoid OOM for huge document collections
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
-        embeddings = retriever.embed_passages(passages)
+        embeddings = retriever.embed_passages(passages)  # type: ignore
 
         assert len(docs) == len(embeddings)
 
@@ -469,7 +474,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def delete_all_documents(self, index: str):
         """
-        Delete all documents in a index.
+        Delete all documents in an index.
 
         :param index: index name
         :return: None
