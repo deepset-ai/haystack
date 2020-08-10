@@ -44,23 +44,34 @@ class Document:
         self.meta = meta
         self.embedding = embedding
 
-    def to_dict(self):
-        return self.__dict__
+    def to_dict(self, field_map={}):
+        inv_field_map = {v:k for k, v in field_map.items()}
+        _doc: Dict[str, str] = {}
+        for k, v in self.__dict__.items():
+            k = k if k not in inv_field_map else inv_field_map[k]
+            _doc[k] = v
+        return _doc
 
     @classmethod
-    def from_dict(cls, dict):
+    def from_dict(cls, dict, field_map={}):
         _doc = dict.copy()
         init_args = ["text", "id", "query_score", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
         for k, v in _doc.items():
-            if k not in init_args:
+            if k not in init_args and k not in field_map:
                 _doc["meta"][k] = v
         # remove additional fields from top level
-        _doc = {k: v for k, v in _doc.items() if k in init_args}
+        _new_doc = {}
+        for k, v in _doc.items():
+            if k in init_args:
+                _new_doc[k] = v
+            elif k in field_map:
+                k = field_map[k]
+                _new_doc[k] = v
 
-        return cls(**_doc)
+        return cls(**_new_doc)
 
 
 class Label:

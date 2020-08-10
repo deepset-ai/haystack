@@ -1,6 +1,9 @@
+import numpy as np
 import pytest
+from elasticsearch import Elasticsearch
 
 from haystack.database.base import Document, Label
+from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
@@ -64,3 +67,17 @@ def test_elasticsearch_update_meta(document_store_with_docs):
     document_store_with_docs.update_document_meta(document.id, meta={"meta_field": "updated_meta"})
     updated_document = document_store_with_docs.query(query=None, filters={"name": ["filename1"]})[0]
     assert updated_document.meta["meta_field"] == "updated_meta"
+
+
+def test_elasticsearch_custom_fields(elasticsearch_fixture):
+    client = Elasticsearch()
+    client.indices.delete(index='haystack_test_custom', ignore=[404])
+    document_store = ElasticsearchDocumentStore(index="haystack_test_custom", text_field="custom_text_field",
+                                                embedding_field="custom_embedding_field")
+
+    doc_to_write = {"custom_text_field": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
+    document_store.write_documents([doc_to_write])
+    documents = document_store.get_all_documents()
+    assert len(documents) == 1
+    assert documents[0].text == "test"
+    np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
