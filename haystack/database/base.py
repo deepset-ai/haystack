@@ -252,9 +252,8 @@ class BaseDocumentStore(ABC):
                                            is_correct_answer=l.is_correct_answer,
                                            is_correct_document=l.is_correct_document,
                                            origin=l.origin,
-                                           multiple_document_ids=[l.document_id] if l.document_id else [],
-                                           multiple_offset_start_in_docs=[
-                                                     l.offset_start_in_doc] if l.offset_start_in_doc else [],
+                                           multiple_document_ids=[l.document_id],
+                                           multiple_offset_start_in_docs=[l.offset_start_in_doc],
                                            no_answer=l.no_answer,
                                            model_id=l.model_id,
                                            )

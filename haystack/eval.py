@@ -9,7 +9,7 @@ def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals
     metrics = {
         "reader_top1_accuracy" : metric_counts["correct_readings_top1"] / correct_retrievals,
         "reader_top1_accuracy_has_answer" : metric_counts["correct_readings_top1_has_answer"] / number_of_has_answer,
-        "reader_top_k_accuracy" : metric_counts["correct_readings_topk"] / correct_retrievals,
+        "reader_topk_accuracy" : metric_counts["correct_readings_topk"] / correct_retrievals,
         "reader_topk_accuracy_has_answer" : metric_counts["correct_readings_topk_has_answer"] / number_of_has_answer,
         "reader_top1_em" : metric_counts["exact_matches_top1"] / correct_retrievals,
         "reader_top1_em_has_answer" : metric_counts["exact_matches_top1_has_answer"] / number_of_has_answer,
@@ -55,10 +55,10 @@ def eval_counts_reader(question: MultiLabel, predicted_answers: Dict[str, Any], 
     # Calculates evaluation metrics for one question and adds results to counter.
     # check if question is answerable
     if not question.no_answer:
+        found_answer = False
+        found_em = False
+        best_f1 = 0
         for answer_idx, answer in enumerate(predicted_answers["answers"]):
-            found_answer = False
-            found_em = False
-            best_f1 = 0
             if answer["document_id"] in question.multiple_document_ids:
                 gold_spans = [{"offset_start": question.multiple_offset_start_in_docs[i],
                                "offset_end": question.multiple_offset_start_in_docs[i] + len(question.multiple_answers[i]),
@@ -66,7 +66,7 @@ def eval_counts_reader(question: MultiLabel, predicted_answers: Dict[str, Any], 
                 predicted_span = {"offset_start": answer["offset_start_in_doc"],
                                   "offset_end": answer["offset_end_in_doc"],
                                   "doc_id": answer["document_id"]}
-
+                best_f1_in_gold_spans = 0
                 for gold_span in gold_spans:
                     if gold_span["doc_id"] == predicted_span["doc_id"]:
                         # check if overlap between gold answer and predicted answer
@@ -79,18 +79,20 @@ def eval_counts_reader(question: MultiLabel, predicted_answers: Dict[str, Any], 
 
                         # calculate f1
                         current_f1 = _calculate_f1(gold_span, predicted_span)  # type: ignore
-                        # top-1 answer
-                        if answer_idx == 0:
-                            metric_counts["summed_f1_top1"] += current_f1
-                            metric_counts["summed_f1_top1_has_answer"] += current_f1
-                        if current_f1 > best_f1:
-                            best_f1 = current_f1
-                # top-k answers: use best f1-score
-                metric_counts["summed_f1_topk"] += best_f1
-                metric_counts["summed_f1_topk_has_answer"] += best_f1
+                        if current_f1 > best_f1_in_gold_spans:
+                            best_f1_in_gold_spans = current_f1
+                # top-1 f1
+                if answer_idx == 0:
+                    metric_counts["summed_f1_top1"] += best_f1_in_gold_spans
+                    metric_counts["summed_f1_top1_has_answer"] += best_f1_in_gold_spans
+                if best_f1_in_gold_spans > best_f1:
+                    best_f1 = best_f1_in_gold_spans
 
             if found_em:
                 break
+        # top-k answers: use best f1-score
+        metric_counts["summed_f1_topk"] += best_f1
+        metric_counts["summed_f1_topk_has_answer"] += best_f1
 
     # question not answerable
     else:
@@ -101,14 +103,14 @@ def eval_counts_reader(question: MultiLabel, predicted_answers: Dict[str, Any], 
 
 
 def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Dict[str, float]):
-    # Calculates evaluation metrics for one question and returns adds results to counter.
+    # Calculates evaluation metrics for one question and adds results to counter.
 
-    # check if question in answerable
+    # check if question is answerable
     if not pred["label"].no_answer:
+        found_answer = False
+        found_em = False
+        best_f1 = 0
         for answer_idx, answer in enumerate(pred["answers"]):
-            found_answer = False
-            found_em = False
-            best_f1 = 0
             # check if correct document:
             if answer["document_id"] in pred["label"].multiple_document_ids:
                 gold_spans = [{"offset_start": pred["label"].multiple_offset_start_in_docs[i],
@@ -119,6 +121,7 @@ def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Dict[str, floa
                                   "offset_end": answer["offset_end_in_doc"],
                                   "doc_id": answer["document_id"]}
 
+                best_f1_in_gold_spans = 0
                 for gold_span in gold_spans:
                     if gold_span["doc_id"] == predicted_span["doc_id"]:
                         # check if overlap between gold answer and predicted answer
@@ -133,15 +136,22 @@ def eval_counts_reader_batch(pred: Dict[str, Any], metric_counts: Dict[str, floa
                             )
                         # calculate f1
                         current_f1 = _calculate_f1(gold_span, predicted_span)
-                        # top-1 answer
-                        if answer_idx == 0:
-                            metric_counts["summed_f1_top1"] += current_f1
-                            metric_counts["summed_f1_top1_has_answer"] += current_f1
-                        if current_f1 > best_f1:
-                            best_f1 = current_f1
-                # top-k answers: use best f1-score
-                metric_counts["summed_f1_topk"] += best_f1
-                metric_counts["summed_f1_topk_has_answer"] += best_f1
+                        if current_f1 > best_f1_in_gold_spans:
+                            best_f1_in_gold_spans = current_f1
+                # top-1 f1
+                if answer_idx == 0:
+                    metric_counts["summed_f1_top1"] += best_f1_in_gold_spans
+                    metric_counts["summed_f1_top1_has_answer"] += best_f1_in_gold_spans
+                if best_f1_in_gold_spans > best_f1:
+                    best_f1 = best_f1_in_gold_spans
+
+            if found_em:
+                break
+
+        # top-k answers: use best f1-score
+        metric_counts["summed_f1_topk"] += best_f1
+        metric_counts["summed_f1_topk_has_answer"] += best_f1
+
     # question not answerable
     else:
         metric_counts["number_of_no_answer"] += 1
@@ -200,7 +210,7 @@ def _count_exact_match(
 
 
 def _calculate_f1(gold_span: Dict[str, Any], predicted_span: Dict[str, Any]):
-    # Calculates F1-Score for prediction based on real answer.
+    # Calculates F1-Score for prediction based on real answer using character offsets.
     # As evaluation needs to be framework independent, we cannot use the farm.evaluation.metrics.py functions.
 
     pred_indices = list(range(predicted_span["offset_start"], predicted_span["offset_end"]))

@@ -409,7 +409,7 @@ class Finder:
 
         eval_results["reader_top1_accuracy"] = eval_counts["correct_readings_top1"] / correct_retrievals
         eval_results["reader_top1_accuracy_has_answer"] = eval_counts["correct_readings_top1_has_answer"] / number_of_has_answer
-        eval_results["reader_top_k_accuracy"] = eval_counts["correct_readings_topk"] / correct_retrievals
+        eval_results["reader_topk_accuracy"] = eval_counts["correct_readings_topk"] / correct_retrievals
         eval_results["reader_topk_accuracy_has_answer"] = eval_counts["correct_readings_topk_has_answer"] / number_of_has_answer
         eval_results["reader_top1_em"] = eval_counts["exact_matches_top1"] / correct_retrievals
         eval_results["reader_top1_em_has_answer"] = eval_counts["exact_matches_top1_has_answer"] / number_of_has_answer

@@ -1,6 +1,7 @@
 import pytest
 from haystack.database.base import BaseDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.finder import Finder
 
 
 def test_add_eval_data(document_store):
@@ -74,6 +75,43 @@ def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain):
     results = retriever.eval(top_k=1, label_index="test_feedback", doc_index="test_eval_document", open_domain=open_domain)
     assert results["recall"] == 1.0
     assert results["map"] == 1.0
+
+    # clean up
+    document_store.delete_all_documents(index="test_eval_document")
+    document_store.delete_all_documents(index="test_feedback")
+
+
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_eval_finder(document_store: BaseDocumentStore, reader):
+    retriever = ElasticsearchRetriever(document_store=document_store)
+    finder = Finder(reader=reader, retriever=retriever)
+
+    # add eval data (SQUAD format)
+    document_store.delete_all_documents(index="test_eval_document")
+    document_store.delete_all_documents(index="test_feedback")
+    document_store.add_eval_data(filename="samples/squad/tiny.json", doc_index="test_eval_document", label_index="test_feedback")
+    assert document_store.get_document_count(index="test_eval_document") == 2
+
+    # eval finder
+    results = finder.eval(label_index="test_feedback", doc_index="test_eval_document", top_k_retriever=1, top_k_reader=5)
+    assert results["retriever_recall"] == 1.0
+    assert results["retriever_map"] == 1.0
+    assert abs(results["reader_topk_f1"] - 0.66666) < 0.001
+    assert abs(results["reader_topk_em"] - 0.5) < 0.001
+    assert abs(results["reader_topk_accuracy"] - 1) < 0.001
+    assert results["reader_top1_f1"] <= results["reader_topk_f1"]
+    assert results["reader_top1_em"] <= results["reader_topk_em"]
+    assert results["reader_top1_accuracy"] <= results["reader_topk_accuracy"]
+
+    # batch eval finder
+    results_batch = finder.eval_batch(label_index="test_feedback", doc_index="test_eval_document", top_k_retriever=1,
+                          top_k_reader=5)
+    assert results_batch["retriever_recall"] == 1.0
+    assert results_batch["retriever_map"] == 1.0
+    assert results_batch["reader_top1_f1"] == results["reader_top1_f1"]
+    assert results_batch["reader_top1_em"] == results["reader_top1_em"]
+    assert results_batch["reader_topk_accuracy"] == results["reader_topk_accuracy"]
 
     # clean up
     document_store.delete_all_documents(index="test_eval_document")
