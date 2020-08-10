@@ -51,7 +51,7 @@ class TransformersReader(BaseReader):
         self.model = pipeline('question-answering', model=model, tokenizer=tokenizer, device=use_gpu)
         self.context_window_size = context_window_size
         self.top_k_per_candidate = top_k_per_candidate
-        self.no_answer = no_answer
+        self.return_no_answers = no_answer
 
         # TODO context_window_size behaviour different from behavior in FARMReader
 
@@ -87,7 +87,7 @@ class TransformersReader(BaseReader):
         best_overall_score = 0
         for doc in documents:
             query = {"context": doc.text, "question": question}
-            predictions = self.model(query, topk=self.top_k_per_candidate, handle_impossible_answer=self.no_answer)
+            predictions = self.model(query, topk=self.top_k_per_candidate, handle_impossible_answer=self.return_no_answers)
             # for single preds (e.g. via top_k=1) transformers returns a dict instead of a list
             if type(predictions) == dict:
                 predictions = [predictions]
@@ -124,7 +124,7 @@ class TransformersReader(BaseReader):
         # Calculate the score for predicting "no answer", relative to our best positive answer score
         no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_overall_score)
 
-        if self.no_answer:
+        if self.return_no_answers:
             answers.append(no_ans_prediction)
         # sort answers by their `probability` and select top-k
         answers = sorted(
@@ -136,3 +136,8 @@ class TransformersReader(BaseReader):
                    "answers": answers}
 
         return results
+
+    def predict_batch(self, question_doc_list: List[dict], top_k_per_question: Optional[int] = None,
+                      batch_size: Optional[int] = None):
+
+        raise NotImplementedError("Batch prediction not yet available in TransformersReader.")

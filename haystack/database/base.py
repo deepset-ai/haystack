@@ -90,7 +90,7 @@ class Label:
         or, user-feedback from the Haystack REST API.
 
         :param question: the question(or query) for finding answers.
-        :param answer: teh answer string.
+        :param answer: the answer string.
         :param is_correct_answer: whether the sample is positive or negative.
         :param is_correct_document: in case of negative sample(is_correct_answer is False), there could be two cases;
                                     incorrect answer but correct document & incorrect document. This flag denotes if
@@ -263,9 +263,8 @@ class BaseDocumentStore(ABC):
                                            is_correct_answer=l.is_correct_answer,
                                            is_correct_document=l.is_correct_document,
                                            origin=l.origin,
-                                           multiple_document_ids=[l.document_id] if l.document_id else [],
-                                           multiple_offset_start_in_docs=[
-                                                     l.offset_start_in_doc] if l.offset_start_in_doc else [],
+                                           multiple_document_ids=[l.document_id],
+                                           multiple_offset_start_in_docs=[l.offset_start_in_doc],
                                            no_answer=l.no_answer,
                                            model_id=l.model_id,
                                            )
