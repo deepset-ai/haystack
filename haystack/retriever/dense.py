@@ -1,5 +1,5 @@
 import logging
-from typing import Type, List, Union, Tuple
+from typing import Type, List, Union, Tuple, Optional
 import torch
 import numpy as np
 from pathlib import Path
@@ -122,14 +122,15 @@ class DensePassageRetriever(BaseRetriever):
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
 
-    def embed_passages(self, texts: List[str]) -> List[np.array]:
+    def embed_passages(self, texts: List[str], titles: Optional[List[str]] = None) -> List[np.array]:
         """
         Create embeddings for a list of passages using the passage encoder
 
         :param texts: passage to embed
+        :param titles: passage title to also take into account during embedding
         :return: embeddings, one per input passage
         """
-        result = self._generate_batch_predictions(texts=texts, model=self.passage_encoder,
+        result = self._generate_batch_predictions(texts=texts, titles=titles, model=self.passage_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
 
@@ -137,15 +138,20 @@ class DensePassageRetriever(BaseRetriever):
                                     texts: List[str],
                                     model: torch.nn.Module,
                                     tensorizer: Tensorizer,
+                                    titles: Optional[List[str]] = None, #useful only for passage embedding with DPR!
                                     batch_size: int = 16) -> List[Tuple[object, np.array]]:
         n = len(texts)
         total = 0
         results = []
         for j, batch_start in enumerate(range(0, n, batch_size)):
-
-            batch_token_tensors = [tensorizer.text_to_tensor(ctx) for ctx in
+            
+            if model==self.passage_encoder and titles:
+                batch_token_tensors = [tensorizer.text_to_tensor(text=ctx_text,title=ctx_title) for ctx_text,ctx_title in
+                                   zip(texts[batch_start:batch_start + batch_size],titles[batch_start:batch_start + batch_size])]
+            else:
+                batch_token_tensors = [tensorizer.text_to_tensor(text=ctx_text) for ctx_text in
                                    texts[batch_start:batch_start + batch_size]]
-
+                
             ctx_ids_batch = torch.stack(batch_token_tensors, dim=0).to(self.device)
             ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
             ctx_attn_mask = tensorizer.get_attn_mask(ctx_ids_batch).to(self.device)
