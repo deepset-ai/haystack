@@ -10,7 +10,6 @@ import numpy as np
 from haystack.database.base import BaseDocumentStore, Document, Label
 from haystack.indexing.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
-from haystack.retriever.dense import DensePassageRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -440,6 +439,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
 
         # TODO send whole Document to retriever and let retriever decide what fields to embed
+        from haystack.retriever.dense import DensePassageRetriever
         if isinstance(retriever,DensePassageRetriever):
             titles = []
             for d in docs:
