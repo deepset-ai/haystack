@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 import random
 import json
+import os
 
 from farm.infer import Inferencer
 
@@ -15,6 +16,7 @@ from haystack.retriever.sparse import logger
 from haystack.schemas import context_passage, retriever_json, retriever_training_sample
 from haystack.retriever.dpr_utils import HFBertEncoder, BertTensorizer, BertTokenizer,\
     Tensorizer, load_states_from_checkpoint, download_dpr
+from transformers import DPRContextEncoder, DPRQuestionEncoder, DPRConfig
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +50,13 @@ class DensePassageRetriever(BaseRetriever):
             >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", use_gpu=True)
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or remote name of model checkpoint. The format equals the 
-                                one used by original author's in https://github.com/facebookresearch/DPR. 
-                                Currently available remote names: "dpr-bert-base-nq" 
+        :param embedding_model: Local path or remote name of model checkpoint. The format equals the
+                                one used by original author's in https://github.com/facebookresearch/DPR.
+                                Currently available remote names: "dpr-bert-base-nq"
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
         :param do_lower_case: Whether to lower case the text input in the tokenizer
-        :param encoder_model_type: 
+        :param encoder_model_type:
         :param use_amp: Whether to use Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
         :param use_amp: Optional usage of Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
                         Choose `None` or AMP optimization level:
@@ -92,19 +94,18 @@ class DensePassageRetriever(BaseRetriever):
         self.sequence_length = saved_state.encoder_params["sequence_length"]
 
         # Init & Load Encoders
-        self.query_encoder = HFBertEncoder.init_encoder(self.pretrained_model_cfg,
-                                                        projection_dim=self.projection_dim,
-                                                        dropout=0.0)
-        self.passage_encoder = HFBertEncoder.init_encoder(self.pretrained_model_cfg,
-                                                          projection_dim=self.projection_dim,
-                                                          dropout=0.0)
-        self.passage_encoder = self._prepare_model(self.passage_encoder, saved_state, prefix="ctx_model.")
-        self.query_encoder = self._prepare_model(self.query_encoder, saved_state, prefix="question_model.")
+        dpr_cfg = DPRConfig(projection_dim=self.projection_dim, config=self.pretrained_model_cfg, dropout=0.0)
+        self.query_encoder = DPRQuestionEncoder.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
+        self.passage_encoder = DPRContextEncoder.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
+
+        self.passage_encoder = self._prepare_model(self.passage_encoder, saved_state, prefix="ctx_encoder.bert_model.")
+        self.query_encoder = self._prepare_model(self.query_encoder, saved_state, prefix="question_encoder.bert_model.")
         #self.encoder = BiEncoder(question_encoder, ctx_encoder, fix_ctx_encoder=self.fix_ctx_encoder)
 
         # Load Tokenizer & Tensorizer
         tokenizer = BertTokenizer.from_pretrained(self.pretrained_model_cfg, do_lower_case=self.do_lower_case)
         self.tensorizer = BertTensorizer(tokenizer, self.sequence_length)
+
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
@@ -152,7 +153,8 @@ class DensePassageRetriever(BaseRetriever):
             ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
             ctx_attn_mask = tensorizer.get_attn_mask(ctx_ids_batch).to(self.device)
             with torch.no_grad():
-                _, out, _ = model(ctx_ids_batch, ctx_seg_batch, ctx_attn_mask)
+                out = model(input_ids=ctx_ids_batch, attention_mask=ctx_attn_mask, token_type_ids=ctx_seg_batch)
+                out = out.pooler_output
             out = out.cpu()
 
             total += len(batch_token_tensors)
@@ -182,13 +184,14 @@ class DensePassageRetriever(BaseRetriever):
         encoder.eval()
 
         # load weights from the model file
-        model_to_load = encoder.module if hasattr(encoder, 'module') else encoder
+        model_to_load = encoder.base_model.bert_model if hasattr(encoder, 'base_model') and hasattr(encoder.base_model,
+                                                                                                    'bert_model') else encoder
         logger.info('Loading saved model state ...')
         logger.debug('saved model keys =%s', saved_state.model_dict.keys())
 
-        prefix_len = len(prefix)
+        prefix_len = prefix.find('_') + 7
         ctx_state = {key[prefix_len:]: value for (key, value) in saved_state.model_dict.items() if
-                     key.startswith(prefix)}
+                     key.startswith(prefix[:prefix.find('_')])}
         model_to_load.load_state_dict(ctx_state)
         return encoder
 
