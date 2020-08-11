@@ -46,7 +46,7 @@ document_store.write_documents(dicts[:16])
 
 ### Retriever
 retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",
-                                  do_lower_case=True, use_gpu=True)
+                                  do_lower_case=True, use_gpu=True, embed_title=True)
 
 # Important:
 # Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all
