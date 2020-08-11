@@ -442,25 +442,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
         docs = self.get_all_documents(index)
-        passages = [d.text for d in docs]
-    
-        #TODO Index embeddings every X batches to avoid OOM for huge document collections
-        logger.info(f"Updating embeddings for {len(passages)} docs ...")
-
-        # TODO send whole Document to retriever and let retriever decide what fields to embed
-        from haystack.retriever.dense import DensePassageRetriever
-        if isinstance(retriever,DensePassageRetriever):
-            titles = []
-            for d in docs:
-                if d.meta is not None:
-                    titles.append(d.meta['name'] if 'name' in d.meta.keys() else None)
-            if len(titles) == len(passages):
-                embeddings = retriever.embed_passages(passages,titles)  # type: ignore
-            else:
-                embeddings = retriever.embed_passages(passages)  # type: ignore
-        else: #EmbeddingRetriever
-            embeddings = retriever.embed_passages(passages)  # type: ignore
-
+        logger.info(f"Updating embeddings for {len(docs)} docs ...")
+        embeddings = retriever.embed_passages(docs)  # type: ignore
         assert len(docs) == len(embeddings)
 
         if embeddings[0].shape[0] != self.embedding_dim:

@@ -32,6 +32,7 @@ class DensePassageRetriever(BaseRetriever):
                  batch_size: int = 16,
                  do_lower_case: bool = False,
                  use_amp: str = None,
+                 embed_title: bool = True
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -78,6 +79,7 @@ class DensePassageRetriever(BaseRetriever):
 
         self.use_amp = use_amp
         self.do_lower_case = do_lower_case
+        self.embed_title = embed_title
 
         # Load checkpoint (incl. additional model params)
         saved_state = load_states_from_checkpoint(self.embedding_model)
@@ -122,7 +124,7 @@ class DensePassageRetriever(BaseRetriever):
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
 
-    def embed_passages(self, texts: List[str], titles: Optional[List[str]] = None) -> List[np.array]:
+    def embed_passages(self, docs: List[Document]) -> List[np.array]:
         """
         Create embeddings for a list of passages using the passage encoder
 
@@ -130,6 +132,15 @@ class DensePassageRetriever(BaseRetriever):
         :param titles: passage title to also take into account during embedding
         :return: embeddings, one per input passage
         """
+        texts = [d.text for d in docs]
+        titles = []
+        if self.embed_title:
+            for d in docs:
+                if d.meta is not None:
+                    titles.append(d.meta["name"] if "name" in d.meta.keys() else None)
+            if len(titles) != len(texts):
+                titles = []
+
         result = self._generate_batch_predictions(texts=texts, titles=titles, model=self.passage_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
         return result
@@ -284,12 +295,13 @@ class EmbeddingRetriever(BaseRetriever):
         """
         return self.embed(texts)
 
-    def embed_passages(self, texts: List[str]) -> List[np.array]:
+    def embed_passages(self, docs: List[Document]) -> List[np.array]:
         """
         Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 
         :param texts: passage to embed
         :return: embeddings, one per input passage
         """
+        texts = [d.text for d in docs]
 
         return self.embed(texts)
