@@ -36,6 +36,7 @@ On the higher level, the Reader is combined with the Retriever using the Finder 
     # Combine Reader and Retriever in Finder
     finder = Finder(reader, retriever)
 
+
 From Language Model to Reader
 -----------------------------
 
@@ -275,6 +276,8 @@ The French and Italian models are both monolingual langauge models trained on Fr
 and their authors report decent results in their model cards here (!!link!!) and here (!!link!!).
 Note that there is also a large variant of the French model available on the model hub.
 There also exist Korean QA models on the model hub but their performance is not reported.
+
+!! DPR IS ENGLISH SPECIFIC !!
 
 The zero-shot model that is shown above is a multilingual XLM-RoBERTa Large that is trained on English SQuAD.
 It is clear, from our evaluations, that the model has been able to transfer some of its English QA capabilities to other languages,
