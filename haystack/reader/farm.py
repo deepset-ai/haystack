@@ -115,7 +115,7 @@ class FARMReader(BaseReader):
         learning_rate: float = 1e-5,
         max_seq_len: Optional[int] = None,
         warmup_proportion: float = 0.2,
-        dev_split: Optional[float] = 0.1,
+        dev_split: float = 0,
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None
@@ -130,7 +130,7 @@ class FARMReader(BaseReader):
         :param dev_filename: filename of dev / eval data
         :param test_file_name: filename of test data
         :param dev_split: Instead of specifying a dev_filename you can also specify a ratio (e.g. 0.1) here
-                          that get's split off from training data for eval.
+                          that get's split off from training data for eval. Might not work on machines with few cores.
         :param use_gpu: Whether to use GPU (if available)
         :param batch_size: Number of samples the model receives in one batch for training
         :param n_epochs: number of iterations on the whole training data set
