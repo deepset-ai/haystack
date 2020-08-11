@@ -131,6 +131,7 @@ class FARMReader(BaseReader):
         :param test_file_name: filename of test data
         :param dev_split: Instead of specifying a dev_filename you can also specify a ratio (e.g. 0.1) here
                           that get's split off from training data for eval. Might not work on machines with few cores.
+                          Default value of 0 does not split away a dev set.
         :param use_gpu: Whether to use GPU (if available)
         :param batch_size: Number of samples the model receives in one batch for training
         :param n_epochs: number of iterations on the whole training data set
@@ -148,7 +149,7 @@ class FARMReader(BaseReader):
         """
 
         if dev_filename:
-            dev_split = None
+            dev_split = 0
 
         if num_processes is None:
             num_processes = multiprocessing.cpu_count() - 1 or 1
