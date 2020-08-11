@@ -118,7 +118,7 @@ class FARMReader(BaseReader):
         dev_split: Optional[float] = 0.1,
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
-        num_processes: Optional[int] = 0
+        num_processes: Optional[int] = 1
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -142,7 +142,7 @@ class FARMReader(BaseReader):
         :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
         :param save_dir: Path to store the final model
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
-                              Set to value of 0 to disable multiprocessing. Set to None to use all CPU cores minus one.
+                              Set to value of 1 to disable multiprocessing. Set to None to use all CPU cores minus one.
         :return: None
         """
 
@@ -150,7 +150,7 @@ class FARMReader(BaseReader):
             dev_split = None
 
         if num_processes is None:
-            num_processes = multiprocessing.cpu_count() - 1
+            num_processes = multiprocessing.cpu_count() - 1 or 1
 
         set_all_seeds(seed=42)
 
