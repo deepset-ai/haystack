@@ -287,20 +287,25 @@ Example:
 
 Advanced document convertion is enabled by leveraging mature text extraction library `Apache Tika <https://tika.apache.org/>`_, which is mostly written in Java. Although it's possible to call Tika API from Python, the current :code:`TikaConverter` only supports RESTful call to a Tika server running at localhost. One may either run Tika as a REST service at port 9998 (default), or to start a `docker container for Tika <https://hub.docker.com/r/apache/tika/tags>`_. The latter is recommended, as it's easily scalable, and does not require setting up any Java runtime environment. What's more, future update is also taken care of by docker.
 Either way, TikaConverter makes RESTful calls to convert any document format supported by Tika. Example code can be found at :code:`indexing/file_converters/utils.py`'s :code:`tika_convert)_files_to_dicts` function:
+
 :code:`TikaConverter` supports 341 file formats, including
-most common text file formats, e.g. HTML, XML, Microsoft Office OLE2/XML/OOXML, OpenOffice ODF, iWorks, PDF, ePub, RTF, TXT, RSS, CHM...
-text embedded in media files, e.g. WAV, MP3, Vorbis, Flac, PNG, GIF, JPG, BMP, TIF, PSD, WebP, WMF, EMF, MP4, Quicktime, 3GPP, Ogg, FLV...
-mail and database files, e.g. Unitx mailboxes, Outlook PST/MSG/TNEF, SQLite3, Microsoft Access, dBase...
-and many more other formats...
-and all those file formats in archive files, e.g. TAR, ZIP, BZip2, GZip 7Zip, RAR!
-If you feel adventurous, Tika even supports some image OCR with Tesseract, or object recognition for image and video files.
-Check out complete list of files supported by the most recent `Apache Tika 1.24.1 <https://tika.apache.org/1.24.1/formats.html>`_
-It also makes a document's metadata available, including typical fields like file name,  file dates and a lot more (e.g. Author and keywords for PDF if they're available in the files), which may save you some time in data labeling or other downstream tasks.
+
+* most common text file formats, e.g. HTML, XML, Microsoft Office OLE2/XML/OOXML, OpenOffice ODF, iWorks, PDF, ePub, RTF, TXT, RSS, CHM...
+* text embedded in media files, e.g. WAV, MP3, Vorbis, Flac, PNG, GIF, JPG, BMP, TIF, PSD, WebP, WMF, EMF, MP4, Quicktime, 3GPP, Ogg, FLV...
+* mail and database files, e.g. Unitx mailboxes, Outlook PST/MSG/TNEF, SQLite3, Microsoft Access, dBase...
+* and many more other formats...
+* and all those file formats in archive files, e.g. TAR, ZIP, BZip2, GZip 7Zip, RAR!
+
+Check out complete list of files supported by the most recent `Apache Tika 1.24.1 <https://tika.apache.org/1.24.1/formats.html>`_.
+If you feel adventurous, Tika even supports some image OCR with Tesseract, or object recognition for image and video files. (not implemented yet)
+
+:code:`TikaConverter` also makes a document's metadata available, including typical fields like file name,  file dates and a lot more (e.g. Author and keywords for PDF if they're available in the files), which may save you some time in data labeling or other downstream tasks.
 
 .. code-block:: python
 
     converter = TikaConverter(remove_header_footer=True)
-    pages, meta = converter.extract_pages(file_path=path)
+    pages = converter.extract_pages(file_path=path)
+    pages, meta = converter.extract_pages(file_path=path, return_meta=True)
 
 8. Tests
 -------------------
