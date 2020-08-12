@@ -11,9 +11,9 @@ from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
 
-from haystack.retriever.dpr_utils import HFBertEncoder, BertTensorizer, BertTokenizer,\
-    Tensorizer, load_states_from_checkpoint, download_dpr
-from transformers import DPRContextEncoder, DPRQuestionEncoder, DPRConfig
+from haystack.retriever.dpr_utils import load_states_from_checkpoint, download_dpr
+from transformers import DPRContextEncoder, DPRQuestionEncoder, DPRConfig, DPRContextEncoderTokenizer, \
+    DPRQuestionEncoderTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +68,12 @@ class DensePassageRetriever(BaseRetriever):
 
         #TODO Proper Download + Caching of model if not locally available
         if embedding_model == "dpr-bert-base-nq":
-            if not Path("models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp").is_file():
-                download_dpr(resource_key="checkpoint.retriever.single.nq.bert-base-encoder", out_dir="models/dpr")
-            self.embedding_model = "models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp"
-
+            import os
+            emb_path = "/media/vaishali/75f51685-53cb-4317-bd6e-dacf384b9259/vaishali/Documents/deepset/models/dpr/checkpoint/retriever/single/nq"
+            if not Path(os.path.join(emb_path, "bert-base-encoder.cp")).is_file():
+                download_dpr(resource_key="checkpoint.retriever.single.nq.bert-base-encoder",
+                             out_dir="/media/vaishali/75f51685-53cb-4317-bd6e-dacf384b9259/vaishali/Documents/deepset/models/dpr")
+            self.embedding_model = os.path.join(emb_path, "bert-base-encoder.cp")
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
@@ -92,16 +94,16 @@ class DensePassageRetriever(BaseRetriever):
 
         # Init & Load Encoders
         dpr_cfg = DPRConfig(projection_dim=self.projection_dim, config=self.pretrained_model_cfg, dropout=0.0)
+
+        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
         self.query_encoder = DPRQuestionEncoder.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
+
+        self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
         self.passage_encoder = DPRContextEncoder.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
 
         self.passage_encoder = self._prepare_model(self.passage_encoder, saved_state, prefix="ctx_encoder.bert_model.")
         self.query_encoder = self._prepare_model(self.query_encoder, saved_state, prefix="question_encoder.bert_model.")
         #self.encoder = BiEncoder(question_encoder, ctx_encoder, fix_ctx_encoder=self.fix_ctx_encoder)
-
-        # Load Tokenizer & Tensorizer
-        tokenizer = BertTokenizer.from_pretrained(self.pretrained_model_cfg, do_lower_case=self.do_lower_case)
-        self.tensorizer = BertTensorizer(tokenizer, self.sequence_length)
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
@@ -118,7 +120,8 @@ class DensePassageRetriever(BaseRetriever):
         :return: embeddings, one per input queries
         """
         result = self._generate_batch_predictions(texts=texts, model=self.query_encoder,
-                                                  tensorizer=self.tensorizer, batch_size=self.batch_size)
+                                                  tokenizer=self.query_tokenizer,
+                                                  batch_size=self.batch_size)
         return result
 
     def embed_passages(self, texts: List[str], titles: Optional[List[str]] = None) -> List[np.array]:
@@ -129,37 +132,50 @@ class DensePassageRetriever(BaseRetriever):
         :param titles: passage title to also take into account during embedding
         :return: embeddings, one per input passage
         """
-        result = self._generate_batch_predictions(texts=texts, titles=titles, model=self.passage_encoder,
-                                                  tensorizer=self.tensorizer, batch_size=self.batch_size)
+        result = self._generate_batch_predictions(texts=texts, titles=titles,
+                                                  model=self.passage_encoder,
+                                                  tokenizer=self.passage_tokenizer,
+                                                  batch_size=self.batch_size)
         return result
+
+    def _tensorizer(self, tokenizer, title: str, text: str, add_special_tokens: bool = True):
+        if title:
+            texts = [tuple((title_, text_)) for title_, text_ in zip(title, text)]
+            out = tokenizer.batch_encode_plus(texts, truncation=True,
+                                              add_special_tokens=add_special_tokens,
+                                              max_length=self.sequence_length,
+                                              pad_to_max_length=True)
+
+        else:
+            out = tokenizer.batch_encode_plus(text, add_special_tokens=add_special_tokens, truncation=True,
+                                              max_length=self.sequence_length,
+                                              pad_to_max_length=True)
+
+        token_ids = torch.tensor(out['input_ids'])
+        token_type_ids = torch.tensor(out['token_type_ids'])
+        attention_mask = torch.tensor(out['attention_mask'])
+        return token_ids, token_type_ids, attention_mask
 
     def _generate_batch_predictions(self,
                                     texts: List[str],
                                     model: torch.nn.Module,
-                                    tensorizer: Tensorizer,
+                                    tokenizer,
                                     titles: Optional[List[str]] = None, #useful only for passage embedding with DPR!
                                     batch_size: int = 16) -> List[Tuple[object, np.array]]:
         n = len(texts)
         total = 0
         results = []
-        for j, batch_start in enumerate(range(0, n, batch_size)):
-            
-            if model==self.passage_encoder and titles:
-                batch_token_tensors = [tensorizer.text_to_tensor(text=ctx_text,title=ctx_title) for ctx_text,ctx_title in
-                                   zip(texts[batch_start:batch_start + batch_size],titles[batch_start:batch_start + batch_size])]
-            else:
-                batch_token_tensors = [tensorizer.text_to_tensor(text=ctx_text) for ctx_text in
-                                   texts[batch_start:batch_start + batch_size]]
-                
-            ctx_ids_batch = torch.stack(batch_token_tensors, dim=0).to(self.device)
-            ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
-            ctx_attn_mask = tensorizer.get_attn_mask(ctx_ids_batch).to(self.device)
+        for batch_start in range(0, n, batch_size):
+            ctx_title = titles[batch_start:batch_start + batch_size] if titles else None
+            ctx_text = texts[batch_start:batch_start + batch_size]
+            ctx_ids_batch, ctx_seg_batch, ctx_attn_mask = self._tensorizer(tokenizer, text=ctx_text, title=ctx_title)
+
             with torch.no_grad():
                 out = model(input_ids=ctx_ids_batch, attention_mask=ctx_attn_mask, token_type_ids=ctx_seg_batch)
                 out = out.pooler_output
             out = out.cpu()
 
-            total += len(batch_token_tensors)
+            total += ctx_ids_batch.size()[0]
 
             results.extend([
                 (out[i].view(-1).numpy())
