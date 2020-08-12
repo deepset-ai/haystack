@@ -68,12 +68,9 @@ class DensePassageRetriever(BaseRetriever):
 
         #TODO Proper Download + Caching of model if not locally available
         if embedding_model == "dpr-bert-base-nq":
-            import os
-            emb_path = "/media/vaishali/75f51685-53cb-4317-bd6e-dacf384b9259/vaishali/Documents/deepset/models/dpr/checkpoint/retriever/single/nq"
-            if not Path(os.path.join(emb_path, "bert-base-encoder.cp")).is_file():
-                download_dpr(resource_key="checkpoint.retriever.single.nq.bert-base-encoder",
-                             out_dir="/media/vaishali/75f51685-53cb-4317-bd6e-dacf384b9259/vaishali/Documents/deepset/models/dpr")
-            self.embedding_model = os.path.join(emb_path, "bert-base-encoder.cp")
+            if not Path("models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp").is_file():
+                download_dpr(resource_key="checkpoint.retriever.single.nq.bert-base-encoder", out_dir="models/dpr")
+            self.embedding_model = "models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp"
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
