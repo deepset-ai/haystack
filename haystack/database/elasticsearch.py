@@ -400,7 +400,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
-        meta_data["name"] = meta_data.pop(self.name_field, None)
 
         document = Document(
             id=hit["_id"],
@@ -443,7 +442,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         docs = self.get_all_documents(index)
         passages = [d.text for d in docs]
-    
+
         #TODO Index embeddings every X batches to avoid OOM for huge document collections
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
 
