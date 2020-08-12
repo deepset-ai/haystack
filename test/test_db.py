@@ -4,6 +4,7 @@ from elasticsearch import Elasticsearch
 
 from haystack.database.base import Document, Label
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.database.faiss import FAISSDocumentStore
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
@@ -40,6 +41,39 @@ def test_get_documents_by_id(document_store_with_docs):
     doc = document_store_with_docs.get_document_by_id(documents[0].id)
     assert doc.id == documents[0].id
     assert doc.text == documents[0].text
+
+
+def test_write_document_meta(document_store):
+    documents = [
+        {"text": "dict_without_meta", "id": "1"},
+        {"text": "dict_with_meta", "meta_field": "test2", "name": "filename2", "id": "2"},
+        Document(text="document_object_without_meta", id="3"),
+        Document(text="document_object_with_meta", meta={"meta_field": "test4", "name": "filename3"}, id="4"),
+    ]
+    document_store.write_documents(documents)
+    documents_in_store = document_store.get_all_documents()
+    assert len(documents_in_store) == 4
+
+    assert not document_store.get_document_by_id("1").meta
+    assert document_store.get_document_by_id("2").meta["meta_field"] == "test2"
+    assert not document_store.get_document_by_id("3").meta
+    assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
+
+
+def test_write_document_index(document_store):
+    documents = [
+        {"text": "text1", "id": "1"},
+        {"text": "text2", "id": "2"},
+    ]
+    document_store.write_documents([documents[0]], index="haystack_test_1")
+    assert len(document_store.get_all_documents(index="haystack_test_1")) == 1
+
+    if not isinstance(document_store, FAISSDocumentStore):  # addition of more documents is not supported in FAISS
+        document_store.write_documents([documents[1]], index="haystack_test_2")
+        assert len(document_store.get_all_documents(index="haystack_test_2")) == 1
+
+    assert len(document_store.get_all_documents(index="haystack_test_1")) == 1
+    assert len(document_store.get_all_documents()) == 0
 
 
 def test_labels(document_store):
