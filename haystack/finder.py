@@ -371,7 +371,7 @@ class Finder:
         print("Top-k accuracy")
         print(f"Reader Top-1 accuracy             : {finder_eval_results['reader_top1_accuracy']:.3f}")
         print(f"Reader Top-1 accuracy (has answer): {finder_eval_results['reader_top1_accuracy_has_answer']:.3f}")
-        print(f"Reader Top-k accuracy             : {finder_eval_results['reader_top_k_accuracy']:.3f}")
+        print(f"Reader Top-k accuracy             : {finder_eval_results['reader_topk_accuracy']:.3f}")
         print(f"Reader Top-k accuracy (has answer): {finder_eval_results['reader_topk_accuracy_has_answer']:.3f}")
         print("Exact Match")
         print(f"Reader Top-1 EM                   : {finder_eval_results['reader_top1_em']:.3f}")
