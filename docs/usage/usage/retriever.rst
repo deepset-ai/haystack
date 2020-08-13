@@ -44,10 +44,12 @@ Broadly speaking, retrieval methods can be split into two categories: **dense** 
 
 **Sparse** methods, like TF-IDF and BM25, operate by looking for shared keywords between the document and query.
 They have proven to be a simple but effective approach to the problem of search.
+These retrievers don't need to be trained and will work on any language.
 
 More recently, **dense** approaches such as Dense Passage Retrieval (DPR) have shown even better performance than their sparse counter parts.
 These methods embed both document and query into a shared embedding space using deep neural networks
 and the top candidates are the nearest neighbour documents to the query.
+These models are usually langauge specific.
 
 Terminology
 ~~~~~~~~~~~
@@ -145,43 +147,47 @@ See `this <https://www.elastic.co/blog/practical-bm25-part-2-the-bm25-algorithm-
 Dense Passage Retrieval
 -----------------------
 
-The Algorithm
-~~~~~~~~~~~~~
+`Dense Passage Retrieval <https://arxiv.org/abs/2004.04906>`_ is a highly performant retrieval method that calculates relevance using dense representations.
+Two separate transformer models are used to encode documents and queries
+and the dot product simalrity of their resultant embeddings is the metric by which they are ranked.
+The original implementation use two BERT base uncased models but DPR models could in theory be built for other model architectures and languages.
 
-The paper
-Modern transformer baseed language models have shown great success in representing the semantics of natural language in limited length embeddings
-They are good candidates for retrieval
-Dense Passage Retrieval is conceptually straight forward but also very effective
+!! Diagram !!
 
-Diagram!!
+Indexing using DPR is comparatively expensive in terms of required computation since all documents in the database need to be processed through the transformer.
+The embeddings that are creating in this step can be stored in FAISS, a database optimized for vector similarity.
+DPR can also work with the ElasticsearchDocumentStore or the InMemoryDocumentStore.
 
-Turns both query and doc into embeddings
-distance measure (WHCIH ONE) determines whether the model thinks the passage is relevant to query
-Training is done effectively via in batch negatives
+There are two design decisions that have made DPR particularly performant.
+The use of separate passage and query encoders is well suited to the task of information retrieval
+since the language of queries is very different to that of passages.
+For one, they are usually significantly shorter.
 
-One encoder for query, one encoder for passage
-This is necessary since the nature of the query and documents is very different
-Yet they have to be embedded into a common vector space
+Also DPR is trained using a method known as in-batch negatives.
+This approach uses gold label passages in the same batch as negative examples
+and makes for a highly efficient training regime when paired with dot product similarity.
 
-Sets it apart from single encoder systems for similarity (Google's USE)
-BERT doesn't really use sentence distribution in training, only word distribution
-Siamese networks like sentence transformers have not proven to be so effective in practice
+In Haystack, you can simply download the pretrained encoders needed to start using DPR.
+If you'd like to learn how to set up a DPR based system, have a look at our tutorial !! Link !!
 
-Index time significant
-Query can be very fast with vector similarity database
+!! Code Snippet !!
 
-In Haystack
-~~~~~~~~~~~
+!! Training in future? !!
 
-Use pretrained Query and Document encoders (Can they be retrained?)
-Performance is best using a vector optimized database e.g. FAISS (Can we use other databases?)
-This will add time to indexing since all documents need to be put through an encoder
-But this ensures strong performance without adding much time to querying (Is querying any slower?)
-
-Code example and point to tutorial
+!! Talk more about benchmarks, SoTA, results !!
 
 Embedding Retrieval
 -------------------
+
+In Haystack, you also have the option of using a single transformer model to encode document and query.
+One style of model that is suited to this kind of retrieval is that of `Sentence Transformers <https://github.com/UKPLab/sentence-transformers>`_.
+These models are trained in Siamese Networks and use triplet loss such that they learn to embed similar sentences near to each other in a shared embedding space.
+
+They are particular suited to cases where your query input is similar in style to that of the documents in your database
+i.e. when you are searching for most similar documents.
+This is not inherently suited to query based search where the length, language and format of the query usually significantly differs from the searched for text.
+
+!! Code Snippet !!
 
 Choosing Top K
 --------------
