@@ -133,7 +133,6 @@ class DensePassageRetriever(BaseRetriever):
                                               add_special_tokens=add_special_tokens,
                                               max_length=self.sequence_length,
                                               pad_to_max_length=True)
-
         else:
             out = tokenizer.batch_encode_plus(text, add_special_tokens=add_special_tokens, truncation=True,
                                               max_length=self.sequence_length,
@@ -271,14 +270,3 @@ class EmbeddingRetriever(BaseRetriever):
         """
 
         return self.embed(texts)
-
-"""
-document_store = ElasticsearchDocumentStore()
-dpr = DensePassageRetriever(document_store=document_store, question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=False)
-dpr.batch_size = 2
-#queries = dpr.embed_queries(["Hello, is my dog cute ?", "who is this ?"])
-#logger.info("querties")
-#logger.info(queries)
-passages, passages2 = dpr.embed_passages(["Hello, is my dog cute ?", "who is this ?"], titles=["Dogs are cute", "WHO"])
-"""
