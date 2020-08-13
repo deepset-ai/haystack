@@ -28,7 +28,8 @@ class DensePassageRetriever(BaseRetriever):
 
     def __init__(self,
                  document_store: BaseDocumentStore,
-                 embedding_model: str,
+                 question_embedding_model: str,
+                 passage_embedding_model: str,
                  use_gpu: bool = True,
                  batch_size: int = 16,
                  do_lower_case: bool = False,
@@ -63,14 +64,10 @@ class DensePassageRetriever(BaseRetriever):
         """
 
         self.document_store = document_store
-        self.embedding_model = embedding_model
+        self.question_embedding_model = question_embedding_model
+        self.passage_embedding_model = passage_embedding_model
         self.batch_size = batch_size
 
-        #TODO Proper Download + Caching of model if not locally available
-        if embedding_model == "dpr-bert-base-nq":
-            if not Path("models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp").is_file():
-                download_dpr(resource_key="checkpoint.retriever.single.nq.bert-base-encoder", out_dir="models/dpr")
-            self.embedding_model = "models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp"
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
@@ -78,29 +75,17 @@ class DensePassageRetriever(BaseRetriever):
 
         self.use_amp = use_amp
         self.do_lower_case = do_lower_case
-
-        # Load checkpoint (incl. additional model params)
-        saved_state = load_states_from_checkpoint(self.embedding_model)
-        logger.info('Loaded encoder params:  %s', saved_state.encoder_params)
-        self.do_lower_case = saved_state.encoder_params["do_lower_case"]
-        self.pretrained_model_cfg = saved_state.encoder_params["pretrained_model_cfg"]
-        self.encoder_model_type = saved_state.encoder_params["encoder_model_type"]
-        self.pretrained_file = saved_state.encoder_params["pretrained_file"]
-        self.projection_dim = saved_state.encoder_params["projection_dim"]
-        self.sequence_length = saved_state.encoder_params["sequence_length"]
+        self.sequence_length = 256
+        self.projection_dim = 768
 
         # Init & Load Encoders
-        dpr_cfg = DPRConfig(projection_dim=self.projection_dim, config=self.pretrained_model_cfg, dropout=0.0)
+        self.question_config = DPRConfig(projection_dim=self.projection_dim, config=self.question_embedding_model, dropout=0.0)
+        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(self.question_embedding_model, config=self.question_config)
+        self.query_encoder = DPRQuestionEncoder.from_pretrained(self.question_embedding_model, config=self.question_config)
 
-        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
-        self.query_encoder = DPRQuestionEncoder.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
-
-        self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
-        self.passage_encoder = DPRContextEncoder.from_pretrained(self.pretrained_model_cfg, config=dpr_cfg)
-
-        self.passage_encoder = self._prepare_model(self.passage_encoder, saved_state, prefix="ctx_encoder.bert_model.")
-        self.query_encoder = self._prepare_model(self.query_encoder, saved_state, prefix="question_encoder.bert_model.")
-        #self.encoder = BiEncoder(question_encoder, ctx_encoder, fix_ctx_encoder=self.fix_ctx_encoder)
+        self.passage_config = DPRConfig(projection_dim=self.projection_dim, config=self.passage_embedding_model, dropout=0.0)
+        self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(self.passage_embedding_model, config=self.passage_config)
+        self.passage_encoder = DPRContextEncoder.from_pretrained(self.passage_embedding_model, config=self.passage_config)
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
@@ -116,6 +101,7 @@ class DensePassageRetriever(BaseRetriever):
         :param texts: queries to embed
         :return: embeddings, one per input queries
         """
+        texts = [self._normalize_question(q) for q in texts]
         result = self._generate_batch_predictions(texts=texts, model=self.query_encoder,
                                                   tokenizer=self.query_tokenizer,
                                                   batch_size=self.batch_size)
@@ -134,6 +120,11 @@ class DensePassageRetriever(BaseRetriever):
                                                   tokenizer=self.passage_tokenizer,
                                                   batch_size=self.batch_size)
         return result
+
+    def _normalize_question(self, question: str) -> str:
+        if question[-1] == '?':
+            question = question[:-1]
+        return question
 
     def _tensorizer(self, tokenizer, title: str, text: str, add_special_tokens: bool = True):
         if title:
@@ -183,33 +174,6 @@ class DensePassageRetriever(BaseRetriever):
                 logger.info(f'Embedded {total} / {n} texts')
 
         return results
-
-    def _prepare_model(self, encoder, saved_state, prefix):
-        encoder.to(self.device)
-        if self.use_amp:
-            try:
-                import apex
-                from apex import amp
-                apex.amp.register_half_function(torch, "einsum")
-            except ImportError:
-                raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-
-            encoder, _ = amp.initialize(encoder, None, opt_level=self.use_amp)
-
-        encoder.eval()
-
-        # load weights from the model file
-        model_to_load = encoder.base_model.bert_model if hasattr(encoder, 'base_model') and hasattr(encoder.base_model,
-                                                                                                    'bert_model') else encoder
-        logger.info('Loading saved model state ...')
-        logger.debug('saved model keys =%s', saved_state.model_dict.keys())
-
-        prefix_len = prefix.find('_') + 7
-        ctx_state = {key[prefix_len:]: value for (key, value) in saved_state.model_dict.items() if
-                     key.startswith(prefix[:prefix.find('_')])}
-        model_to_load.load_state_dict(ctx_state)
-        return encoder
-
 
 class EmbeddingRetriever(BaseRetriever):
     def __init__(
@@ -307,3 +271,14 @@ class EmbeddingRetriever(BaseRetriever):
         """
 
         return self.embed(texts)
+
+"""
+document_store = ElasticsearchDocumentStore()
+dpr = DensePassageRetriever(document_store=document_store, question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=False)
+dpr.batch_size = 2
+#queries = dpr.embed_queries(["Hello, is my dog cute ?", "who is this ?"])
+#logger.info("querties")
+#logger.info(queries)
+passages, passages2 = dpr.embed_passages(["Hello, is my dog cute ?", "who is this ?"], titles=["Dogs are cute", "WHO"])
+"""
