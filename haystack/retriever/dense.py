@@ -30,6 +30,8 @@ class DensePassageRetriever(BaseRetriever):
                  document_store: BaseDocumentStore,
                  question_embedding_model: str,
                  passage_embedding_model: str,
+                 sequence_length: int = 256,
+                 projection_dim: int = 768,
                  use_gpu: bool = True,
                  batch_size: int = 16,
                  do_lower_case: bool = False,
@@ -75,8 +77,8 @@ class DensePassageRetriever(BaseRetriever):
 
         self.use_amp = use_amp
         self.do_lower_case = do_lower_case
-        self.sequence_length = 256
-        self.projection_dim = 768
+        self.sequence_length = sequence_length
+        self.projection_dim = projection_dim
 
         # Init & Load Encoders
         self.question_config = DPRConfig(projection_dim=self.projection_dim, config=self.question_embedding_model, dropout=0.0)

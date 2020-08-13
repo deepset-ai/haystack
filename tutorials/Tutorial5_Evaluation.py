@@ -1,6 +1,7 @@
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.indexing.utils import fetch_archive_from_http
 from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader.farm import FARMReader
 from haystack.finder import Finder
 from farm.utils import initialize_device_settings
@@ -57,7 +58,6 @@ document_store.delete_all_documents(index=doc_index)
 document_store.delete_all_documents(index=label_index)
 document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index=doc_index, label_index=label_index)
 
-
 # Initialize Retriever
 retriever = ElasticsearchRetriever(document_store=document_store)
 
@@ -65,10 +65,9 @@ retriever = ElasticsearchRetriever(document_store=document_store)
 # Note, that DPR works best when you index short passages < 512 tokens as only those tokens will be used for the embedding.
 # Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
 # DPR still outperforms Elastic's BM25 by a small margin here.
-
-# from haystack.retriever.dense import DensePassageRetriever
-# retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",batch_size=32)
-# document_store.update_embeddings(retriever, index="eval_document")
+# retriever = DensePassageRetriever(document_store=document_store, question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+#                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=False)
+# document_store.update_embeddings(retriever, index=doc_index)
 
 
 # Initialize Reader
@@ -80,7 +79,7 @@ finder = Finder(reader, retriever)
 
 ## Evaluate Retriever on its own
 if eval_retriever_only:
-    retriever_eval_results = retriever.eval(top_k=1, label_index=label_index, doc_index=doc_index)
+    retriever_eval_results = retriever.eval(top_k=20, label_index=label_index, doc_index=doc_index)
     ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
     ## among the correct documents
     print("Retriever Recall:", retriever_eval_results["recall"])
