@@ -25,7 +25,10 @@ jobs:
       uses: elastic/elastic-github-actions/elasticsearch@25ad91e35aeee806711d335fc9dec7927ae49bc6
       with:
         stack-version: 7.6.0
-        
+    
+    - name: Run Apache Tika
+      run: docker run -d -p 9998:9998 apache/tika:1.24.1
+    
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
       with:
