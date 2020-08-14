@@ -4,6 +4,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
 
+import requests
 from tika import parser as tikaparser
 
 from haystack.indexing.file_converters.base import BaseConverter
@@ -67,7 +68,10 @@ class TikaConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
-
+        ping = requests.get(tika_url)
+        if ping.status_code != 200:
+            raise Exception(f"Apache Tika server is not reachable at the URL '{tika_url}'. To run it locally"
+                            f"with Docker, execute: 'docker run -p 9998:9998 apache/tika:1.24.1'")
         self.tika_url = tika_url
         super().__init__(
             remove_numeric_tables=remove_numeric_tables,
