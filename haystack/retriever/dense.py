@@ -127,7 +127,7 @@ class DensePassageRetriever(BaseRetriever):
             question = question[:-1]
         return question
 
-    def _tensorizer(self, tokenizer, title: str, text: str, add_special_tokens: bool = True):
+    def _tensorizer(self, tokenizer, title: Optional[List[str]], text: List[str], add_special_tokens: bool = True):
         if title:
             texts = [tuple((title_, text_)) for title_, text_ in zip(title, text)]
             out = tokenizer.batch_encode_plus(texts, truncation=True,
