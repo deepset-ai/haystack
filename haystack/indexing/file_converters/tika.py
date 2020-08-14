@@ -11,9 +11,12 @@ logger = logging.getLogger(__name__)
 
 # Use the built-in HTML parser with minimum dependencies
 class TikaXHTMLParser(HTMLParser):
-    ingest = True
-    page = ''
-    pages = []
+    
+    def __init__(self):
+        self.ingest = True
+        self.page = ''
+        self.pages: List[str] = []
+        super(TikaXHTMLParser, self).__init__()
 
     def handle_starttag(self, tag, attrs):
         # find page div
