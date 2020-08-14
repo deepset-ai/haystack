@@ -66,7 +66,7 @@ retriever = ElasticsearchRetriever(document_store=document_store)
 # Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
 # DPR still outperforms Elastic's BM25 by a small margin here.
 # retriever = DensePassageRetriever(document_store=document_store, question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-#                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=False)
+#                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=True)
 # document_store.update_embeddings(retriever, index=doc_index)
 
 

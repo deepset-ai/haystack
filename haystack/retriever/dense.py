@@ -11,8 +11,7 @@ from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
 
-from haystack.retriever.dpr_utils import load_states_from_checkpoint, download_dpr
-from transformers import DPRContextEncoder, DPRQuestionEncoder, DPRConfig, DPRContextEncoderTokenizer, \
+from haystack.retriever.dpr_utils import DPRContextEncoder, DPRQuestionEncoder, DPRConfig, DPRContextEncoderTokenizer, \
     DPRQuestionEncoderTokenizer
 
 logger = logging.getLogger(__name__)

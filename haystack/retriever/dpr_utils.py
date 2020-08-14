@@ -15,7 +15,7 @@ import pathlib
 import wget
 
 import torch
-from torch import nn
+from torch import nn, Tensor
 from torch import Tensor as T
 from torch.serialization import default_restore_location
 import collections
@@ -23,136 +23,576 @@ from farm.file_utils import http_get
 
 from transformers.tokenization_bert import BertTokenizer
 from transformers.modeling_bert import BertModel, BertConfig
+from transformers.file_utils import ModelOutput, add_start_docstrings, add_start_docstrings_to_callable, replace_return_docstrings
+from transformers.modeling_outputs import BaseModelOutputWithPooling
+from transformers.modeling_utils import PreTrainedModel
+from transformers.file_utils import add_end_docstrings, add_start_docstrings
+from transformers.tokenization_bert import BertTokenizer, BertTokenizerFast
+from transformers.tokenization_utils_base import BatchEncoding, TensorType
+
+import logging
+from dataclasses import dataclass
+from typing import Optional, Tuple, Union
+
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-CheckpointState = collections.namedtuple("CheckpointState",
-                                         ['model_dict', 'optimizer_dict', 'scheduler_dict', 'offset', 'epoch',
-                                          'encoder_params'])
+_CONFIG_FOR_DOC = "DPRConfig"
 
-
+DPR_CONTEXT_ENCODER_PRETRAINED_MODEL_ARCHIVE_LIST = [
+    "facebook/dpr-ctx_encoder-single-nq-base",
+]
+DPR_QUESTION_ENCODER_PRETRAINED_MODEL_ARCHIVE_LIST = [
+    "facebook/dpr-question_encoder-single-nq-base",
+]
+DPR_READER_PRETRAINED_MODEL_ARCHIVE_LIST = [
+    "facebook/dpr-reader-single-nq-base",
+]
 # CLASSES
-class HFBertEncoder(BertModel):
 
-    def __init__(self, config, project_dim: int = 0):
-        BertModel.__init__(self, config)
-        assert config.hidden_size > 0, 'Encoder hidden_size can\'t be zero'
-        self.encode_proj = nn.Linear(config.hidden_size, project_dim) if project_dim != 0 else None
+###########
+#tokenization_dpr
+###########
+
+VOCAB_FILES_NAMES = {"vocab_file": "vocab.txt"}
+
+CONTEXT_ENCODER_PRETRAINED_VOCAB_FILES_MAP = {
+    "vocab_file": {
+        "facebook/dpr-ctx_encoder-single-nq-base": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
+    }
+}
+QUESTION_ENCODER_PRETRAINED_VOCAB_FILES_MAP = {
+    "vocab_file": {
+        "facebook/dpr-question_encoder-single-nq-base": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
+    }
+}
+READER_PRETRAINED_VOCAB_FILES_MAP = {
+    "vocab_file": {
+        "facebook/dpr-reader-single-nq-base": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
+    }
+}
+
+CONTEXT_ENCODER_PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
+    "facebook/dpr-ctx_encoder-single-nq-base": 512,
+}
+QUESTION_ENCODER_PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
+    "facebook/dpr-question_encoder-single-nq-base": 512,
+}
+READER_PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
+    "facebook/dpr-reader-single-nq-base": 512,
+}
+
+
+CONTEXT_ENCODER_PRETRAINED_INIT_CONFIGURATION = {
+    "facebook/dpr-ctx_encoder-single-nq-base": {"do_lower_case": True},
+}
+QUESTION_ENCODER_PRETRAINED_INIT_CONFIGURATION = {
+    "facebook/dpr-question_encoder-single-nq-base": {"do_lower_case": True},
+}
+READER_PRETRAINED_INIT_CONFIGURATION = {
+    "facebook/dpr-reader-single-nq-base": {"do_lower_case": True},
+}
+
+
+class DPRContextEncoderTokenizer(BertTokenizer):
+    r"""
+    Constructs a  DPRContextEncoderTokenizer.
+
+    :class:`~transformers.DPRContextEncoderTokenizer` is identical to :class:`~transformers.BertTokenizer` and runs end-to-end
+    tokenization: punctuation splitting + wordpiece.
+
+    Refer to superclass :class:`~transformers.BertTokenizer` for usage examples and documentation concerning
+    parameters.
+    """
+
+    vocab_files_names = VOCAB_FILES_NAMES
+    pretrained_vocab_files_map = CONTEXT_ENCODER_PRETRAINED_VOCAB_FILES_MAP
+    max_model_input_sizes = CONTEXT_ENCODER_PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
+    pretrained_init_configuration = CONTEXT_ENCODER_PRETRAINED_INIT_CONFIGURATION
+
+
+class DPRContextEncoderTokenizerFast(BertTokenizerFast):
+    r"""
+    Constructs a  "Fast" DPRContextEncoderTokenizer (backed by HuggingFace's `tokenizers` library).
+
+    :class:`~transformers.DPRContextEncoderTokenizerFast` is identical to :class:`~transformers.BertTokenizerFast` and runs end-to-end
+    tokenization: punctuation splitting + wordpiece.
+
+    Refer to superclass :class:`~transformers.BertTokenizerFast` for usage examples and documentation concerning
+    parameters.
+    """
+
+    vocab_files_names = VOCAB_FILES_NAMES
+    pretrained_vocab_files_map = CONTEXT_ENCODER_PRETRAINED_VOCAB_FILES_MAP
+    max_model_input_sizes = CONTEXT_ENCODER_PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
+    pretrained_init_configuration = CONTEXT_ENCODER_PRETRAINED_INIT_CONFIGURATION
+
+
+class DPRQuestionEncoderTokenizer(BertTokenizer):
+    r"""
+    Constructs a  DPRQuestionEncoderTokenizer.
+
+    :class:`~transformers.DPRQuestionEncoderTokenizer` is identical to :class:`~transformers.BertTokenizer` and runs end-to-end
+    tokenization: punctuation splitting + wordpiece.
+
+    Refer to superclass :class:`~transformers.BertTokenizer` for usage examples and documentation concerning
+    parameters.
+    """
+
+    vocab_files_names = VOCAB_FILES_NAMES
+    pretrained_vocab_files_map = QUESTION_ENCODER_PRETRAINED_VOCAB_FILES_MAP
+    max_model_input_sizes = QUESTION_ENCODER_PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
+    pretrained_init_configuration = QUESTION_ENCODER_PRETRAINED_INIT_CONFIGURATION
+
+
+class DPRQuestionEncoderTokenizerFast(BertTokenizerFast):
+    r"""
+    Constructs a  "Fast" DPRQuestionEncoderTokenizer (backed by HuggingFace's `tokenizers` library).
+
+    :class:`~transformers.DPRQuestionEncoderTokenizerFast` is identical to :class:`~transformers.BertTokenizerFast` and runs end-to-end
+    tokenization: punctuation splitting + wordpiece.
+
+    Refer to superclass :class:`~transformers.BertTokenizerFast` for usage examples and documentation concerning
+    parameters.
+    """
+
+    vocab_files_names = VOCAB_FILES_NAMES
+    pretrained_vocab_files_map = QUESTION_ENCODER_PRETRAINED_VOCAB_FILES_MAP
+    max_model_input_sizes = QUESTION_ENCODER_PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
+    pretrained_init_configuration = QUESTION_ENCODER_PRETRAINED_INIT_CONFIGURATION
+
+
+
+
+##########
+# configuration_dpr
+##########
+
+
+DPR_PRETRAINED_CONFIG_ARCHIVE_MAP = {
+    "facebook/dpr-ctx_encoder-single-nq-base": "https://s3.amazonaws.com/models.huggingface.co/bert/facebook/dpr-ctx_encoder-single-nq-base/config.json",
+    "facebook/dpr-question_encoder-single-nq-base": "https://s3.amazonaws.com/models.huggingface.co/bert/facebook/dpr-question_encoder-single-nq-base/config.json",
+    "facebook/dpr-reader-single-nq-base": "https://s3.amazonaws.com/models.huggingface.co/bert/facebook/dpr-reader-single-nq-base/config.json",
+}
+
+
+class DPRConfig(BertConfig):
+    r"""
+        :class:`~transformers.DPRConfig` is the configuration class to store the configuration of a
+        `DPRModel`.
+
+        This is the configuration class to store the configuration of a `DPRContextEncoder`, `DPRQuestionEncoder`, or a `DPRReader`.
+        It is used to instantiate the components of the DPR model.
+
+        Args:
+            projection_dim (:obj:`int`, optional, defaults to 0):
+                Dimension of the projection for the context and question encoders.
+                If it is set to zero (default), then no projection is done.
+    """
+    model_type = "dpr"
+
+    def __init__(self, projection_dim: int = 0, **kwargs):  # projection of the encoders, 0 for no projection
+        super().__init__(**kwargs)
+        self.projection_dim = projection_dim
+
+##########
+# Outputs
+##########
+
+
+@dataclass
+class DPRContextEncoderOutput(ModelOutput):
+    """
+    Class for outputs of :class:`~transformers.DPRQuestionEncoder`.
+
+    Args:
+        pooler_output: (:obj:``torch.FloatTensor`` of shape ``(batch_size, embeddings_size)``):
+            The DPR encoder outputs the `pooler_output` that corresponds to the context representation.
+            Last layer hidden-state of the first token of the sequence (classification token)
+            further processed by a Linear layer. This output is to be used to embed contexts for
+            nearest neighbors queries with questions embeddings.
+        hidden_states (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``output_hidden_states=True`` is passed or when ``config.output_hidden_states=True``):
+            Tuple of :obj:`torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer)
+            of shape :obj:`(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        attentions (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``output_attentions=True`` is passed or when ``config.output_attentions=True``):
+            Tuple of :obj:`torch.FloatTensor` (one for each layer) of shape
+            :obj:`(batch_size, num_heads, sequence_length, sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    pooler_output: torch.FloatTensor
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+
+@dataclass
+class DPRQuestionEncoderOutput(ModelOutput):
+    """
+    Class for outputs of :class:`~transformers.DPRQuestionEncoder`.
+
+    Args:
+        pooler_output: (:obj:``torch.FloatTensor`` of shape ``(batch_size, embeddings_size)``):
+            The DPR encoder outputs the `pooler_output` that corresponds to the question representation.
+            Last layer hidden-state of the first token of the sequence (classification token)
+            further processed by a Linear layer. This output is to be used to embed questions for
+            nearest neighbors queries with context embeddings.
+        hidden_states (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``output_hidden_states=True`` is passed or when ``config.output_hidden_states=True``):
+            Tuple of :obj:`torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer)
+            of shape :obj:`(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        attentions (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``output_attentions=True`` is passed or when ``config.output_attentions=True``):
+            Tuple of :obj:`torch.FloatTensor` (one for each layer) of shape
+            :obj:`(batch_size, num_heads, sequence_length, sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    pooler_output: torch.FloatTensor
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+
+
+@dataclass
+class DPRReaderOutput(ModelOutput):
+    """
+    Class for outputs of :class:`~transformers.DPRQuestionEncoder`.
+
+    Args:
+        start_logits: (:obj:``torch.FloatTensor`` of shape ``(n_passages, sequence_length)``):
+            Logits of the start index of the span for each passage.
+        end_logits: (:obj:``torch.FloatTensor`` of shape ``(n_passages, sequence_length)``):
+            Logits of the end index of the span for each passage.
+        relevance_logits: (:obj:`torch.FloatTensor`` of shape ``(n_passages, )``):
+            Outputs of the QA classifier of the DPRReader that corresponds to the scores of each passage
+            to answer the question, compared to all the other passages.
+        hidden_states (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``output_hidden_states=True`` is passed or when ``config.output_hidden_states=True``):
+            Tuple of :obj:`torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer)
+            of shape :obj:`(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        attentions (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``output_attentions=True`` is passed or when ``config.output_attentions=True``):
+            Tuple of :obj:`torch.FloatTensor` (one for each layer) of shape
+            :obj:`(batch_size, num_heads, sequence_length, sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    start_logits: torch.FloatTensor
+    end_logits: torch.FloatTensor
+    relevance_logits: torch.FloatTensor
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+
+##################
+# PreTrainedModel
+##################
+
+class DPREncoder(PreTrainedModel):
+
+    base_model_prefix = "bert_model"
+
+    def __init__(self, config: DPRConfig):
+        super().__init__(config)
+        self.bert_model = BertModel(config)
+        assert self.bert_model.config.hidden_size > 0, "Encoder hidden_size can't be zero"
+        self.projection_dim = config.projection_dim
+        if self.projection_dim > 0:
+            self.encode_proj = nn.Linear(self.bert_model.config.hidden_size, config.projection_dim)
         self.init_weights()
 
-    @classmethod
-    def init_encoder(cls, cfg_name: str, projection_dim: int = 0, dropout: float = 0.1, **kwargs) -> BertModel:
-        cfg = BertConfig.from_pretrained(cfg_name if cfg_name else 'bert-base-uncased')
-        if dropout != 0:
-            cfg.attention_probs_dropout_prob = dropout
-            cfg.hidden_dropout_prob = dropout
-        return cls.from_pretrained(cfg_name, config=cfg, project_dim=projection_dim, **kwargs)
-
-    def forward(self, input_ids: torch.Tensor, token_type_ids: torch.Tensor, attention_mask: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        if self.config.output_hidden_states:
-            sequence_output, pooled_output, hidden_states = super().forward(input_ids=input_ids,
-                                                                            token_type_ids=token_type_ids,
-                                                                            attention_mask=attention_mask)
-        else:
-            hidden_states = None
-            sequence_output, pooled_output = super().forward(input_ids=input_ids, token_type_ids=token_type_ids,
-                                                             attention_mask=attention_mask)
-        # Using the CLS token, therefore only working for BERT-like model architectures having a CLS token at
+    def forward(
+        self,
+        input_ids: Tensor,
+        attention_mask: Optional[Tensor] = None,
+        token_type_ids: Optional[Tensor] = None,
+        inputs_embeds: Optional[Tensor] = None,
+        output_attentions: bool = False,
+        output_hidden_states: bool = False,
+        return_tuple: bool = False,
+    ) -> Union[BaseModelOutputWithPooling, Tuple[Tensor, ...]]:
+        outputs = self.bert_model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_tuple=return_tuple,
+        )
+        sequence_output, pooled_output = outputs[:2]
         pooled_output = sequence_output[:, 0, :]
-        if self.encode_proj:
+        if self.projection_dim > 0:
             pooled_output = self.encode_proj(pooled_output)
-        return sequence_output, pooled_output, hidden_states
 
-    def get_out_size(self):
-        if self.encode_proj:
+        if return_tuple:
+            return (sequence_output, pooled_output) + outputs[2:]
+
+        return BaseModelOutputWithPooling(
+            last_hidden_state=sequence_output,
+            pooler_output=pooled_output,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+        )
+
+    @property
+    def embeddings_size(self) -> int:
+        if self.projection_dim > 0:
             return self.encode_proj.out_features
-        return self.config.hidden_size
+        return self.bert_model.config.hidden_size
+
+    def init_weights(self):
+        self.bert_model.init_weights()
+        if self.projection_dim > 0:
+            self.encode_proj.apply(self.bert_model._init_weights)
 
 
-class Tensorizer(object):
+class DPRPretrainedContextEncoder(PreTrainedModel):
+    """ An abstract class to handle weights initialization and
+        a simple interface for downloading and loading pretrained models.
     """
-    Component for all text to model input data conversions and related utility methods
+
+    config_class = DPRConfig
+    load_tf_weights = None
+    base_model_prefix = "ctx_encoder"
+
+    def init_weights(self):
+        self.ctx_encoder.init_weights()
+
+
+class DPRPretrainedQuestionEncoder(PreTrainedModel):
+    """ An abstract class to handle weights initialization and
+        a simple interface for downloading and loading pretrained models.
     """
 
-    # Note: title, if present, is supposed to be put before text (i.e. optional title + document body)
-    def text_to_tensor(self, text: str, title: str = None, add_special_tokens: bool = True):
-        raise NotImplementedError
+    config_class = DPRConfig
+    load_tf_weights = None
+    base_model_prefix = "question_encoder"
 
-    def get_pair_separator_ids(self) -> T:
-        raise NotImplementedError
-
-    def get_pad_id(self) -> int:
-        raise NotImplementedError
-
-    def get_attn_mask(self, tokens_tensor: T):
-        raise NotImplementedError
-
-    def is_sub_word_id(self, token_id: int):
-        raise NotImplementedError
-
-    def to_string(self, token_ids, skip_special_tokens=True):
-        raise NotImplementedError
-
-    def set_pad_to_max(self, pad: bool):
-        raise NotImplementedError
+    def init_weights(self):
+        self.question_encoder.init_weights()
 
 
-class BertTensorizer(Tensorizer):
-    def __init__(self, tokenizer: BertTokenizer, max_length: int, pad_to_max: bool = True):
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-        self.pad_to_max = pad_to_max
+DPR_START_DOCSTRING = r"""
 
-    def text_to_tensor(self, text: str, title: str = None, add_special_tokens: bool = True):
-        text = text.strip()
+    This model is a PyTorch `torch.nn.Module <https://pytorch.org/docs/stable/nn.html#torch.nn.Module>`_ sub-class.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general
+    usage and behavior.
 
-        # tokenizer automatic padding is explicitly disabled since its inconsistent behavior
-        if title:
-            token_ids = self.tokenizer.encode(title, text_pair=text, truncation=True, add_special_tokens=add_special_tokens,
-                                              max_length=self.max_length,
-                                              pad_to_max_length=False)
+    Parameters:
+        config (:class:`~transformers.DPRConfig`): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the configuration.
+            Check out the :meth:`~transformers.PreTrainedModel.from_pretrained` method to load the model weights.
+"""
+
+
+DPR_ENCODERS_INPUTS_DOCSTRING = r"""
+    Args:
+        input_ids: (:obj:``torch.LongTensor`` of shape ``(batch_size, sequence_length)``):
+            Indices of input sequence tokens in the vocabulary.
+            To match pre-training, DPR input sequence should be formatted with [CLS] and [SEP] tokens as follows:
+
+            (a) For sequence pairs (for a pair title+text for example):
+
+                ``tokens:         [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]``
+
+                ``token_type_ids:   0   0  0    0    0     0       0   0   1  1  1  1   1   1``
+
+            (b) For single sequences (for a question for example):
+
+                ``tokens:         [CLS] the dog is hairy . [SEP]``
+
+                ``token_type_ids:   0   0   0   0  0     0   0``
+
+            DPR is a model with absolute position embeddings so it's usually advised to pad the inputs on
+            the right rather than the left.
+
+            Indices can be obtained using :class:`transformers.DPRTokenizer`.
+            See :func:`transformers.PreTrainedTokenizer.encode` and
+            :func:`transformers.PreTrainedTokenizer.convert_tokens_to_ids` for details.
+        attention_mask: (:obj:``torch.FloatTensor`` of shape ``(batch_size, sequence_length)``, `optional`, defaults to :obj:`None`):
+            Mask to avoid performing attention on padding token indices.
+            Mask values selected in ``[0, 1]``:
+            ``1`` for tokens that are NOT MASKED, ``0`` for MASKED tokens.
+        token_type_ids: (:obj:``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, `optional`, defaults to :obj:`None`):
+            Segment token indices to indicate first and second portions of the inputs.
+            Indices are selected in ``[0, 1]``: ``0`` corresponds to a `sentence A` token, ``1``
+            corresponds to a `sentence B` token
+        inputs_embeds (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`, `optional`, defaults to :obj:`None`):
+            Optionally, instead of passing :obj:`input_ids` you can choose to directly pass an embedded representation.
+            This is useful if you want more control over how to convert `input_ids` indices into associated vectors
+        output_attentions (:obj:`bool`, `optional`, defaults to :obj:`None`):
+            If set to ``True``, the attentions tensors of all attention layers are returned. See ``attentions`` under returned tensors for more detail.
+        output_hidden_states (:obj:`bool`, `optional`, defaults to :obj:`None`):
+            If set to ``True``, the hidden states tensors of all layers are returned. See ``hidden_states`` under returned tensors for more detail.
+"""
+
+
+@add_start_docstrings(
+    "The bare DPRContextEncoder transformer outputting pooler outputs as context representations.",
+    DPR_START_DOCSTRING,
+)
+class DPRContextEncoder(DPRPretrainedContextEncoder):
+    def __init__(self, config: DPRConfig):
+        super().__init__(config)
+        self.config = config
+        self.ctx_encoder = DPREncoder(config)
+        self.init_weights()
+
+    @add_start_docstrings_to_callable(DPR_ENCODERS_INPUTS_DOCSTRING)
+    @replace_return_docstrings(output_type=DPRContextEncoderOutput, config_class=_CONFIG_FOR_DOC)
+    def forward(
+        self,
+        input_ids: Optional[Tensor] = None,
+        attention_mask: Optional[Tensor] = None,
+        token_type_ids: Optional[Tensor] = None,
+        inputs_embeds: Optional[Tensor] = None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_tuple=None,
+    ) -> Union[DPRContextEncoderOutput, Tuple[Tensor, ...]]:
+        r"""
+    Return:
+
+    Examples::
+
+        from transformers import DPRContextEncoder, DPRContextEncoderTokenizer
+        tokenizer = DPRContextEncoderTokenizer.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
+        model = DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
+        input_ids = tokenizer("Hello, is my dog cute ?", return_tensors='pt')["input_ids"]
+        embeddings = model(input_ids)[0]  # the embeddings of the given context.
+
+        """
+
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        return_tuple = return_tuple if return_tuple is not None else self.config.use_return_tuple
+
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+        elif input_ids is not None:
+            input_shape = input_ids.size()
+        elif inputs_embeds is not None:
+            input_shape = inputs_embeds.size()[:-1]
         else:
-            token_ids = self.tokenizer.encode(text, add_special_tokens=add_special_tokens, truncation=True,
-                                              max_length=self.max_length,
-                                              pad_to_max_length=False)
+            raise ValueError("You have to specify either input_ids or inputs_embeds")
 
-        seq_len = self.max_length
-        if self.pad_to_max and len(token_ids) < seq_len:
-            token_ids = token_ids + [self.tokenizer.pad_token_id] * (seq_len - len(token_ids))
-        if len(token_ids) > seq_len:
-            token_ids = token_ids[0:seq_len]
-            token_ids[-1] = self.tokenizer.sep_token_id
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
 
-        return torch.tensor(token_ids)
+        if attention_mask is None:
+            attention_mask = (
+                torch.ones(input_shape, device=device)
+                if input_ids is None
+                else (input_ids != self.config.pad_token_id)
+            )
+        if token_type_ids is None:
+            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
 
-    def get_pair_separator_ids(self) -> T:
-        return torch.tensor([self.tokenizer.sep_token_id])
+        outputs = self.ctx_encoder(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_tuple=return_tuple,
+        )
 
-    def get_pad_id(self) -> int:
-        return self.tokenizer.pad_token_type_id
+        if return_tuple:
+            return outputs[1:]
+        return DPRContextEncoderOutput(
+            pooler_output=outputs.pooler_output, hidden_states=outputs.hidden_states, attentions=outputs.attentions
+        )
 
-    def get_attn_mask(self, tokens_tensor: T) -> T:
-        return tokens_tensor != self.get_pad_id()
 
-    def is_sub_word_id(self, token_id: int):
-        token = self.tokenizer.convert_ids_to_tokens([token_id])[0]
-        return token.startswith("##") or token.startswith(" ##")
 
-    def to_string(self, token_ids, skip_special_tokens=True):
-        return self.tokenizer.decode(token_ids, skip_special_tokens=True)
+@add_start_docstrings(
+    "The bare DPRQuestionEncoder transformer outputting pooler outputs as question representations.",
+    DPR_START_DOCSTRING,
+)
+class DPRQuestionEncoder(DPRPretrainedQuestionEncoder):
+    def __init__(self, config: DPRConfig):
+        super().__init__(config)
+        self.config = config
+        self.question_encoder = DPREncoder(config)
+        self.init_weights()
 
-    def set_pad_to_max(self, do_pad: bool):
-        self.pad_to_max = do_pad
+    @add_start_docstrings_to_callable(DPR_ENCODERS_INPUTS_DOCSTRING)
+    @replace_return_docstrings(output_type=DPRQuestionEncoderOutput, config_class=_CONFIG_FOR_DOC)
+    def forward(
+        self,
+        input_ids: Optional[Tensor] = None,
+        attention_mask: Optional[Tensor] = None,
+        token_type_ids: Optional[Tensor] = None,
+        inputs_embeds: Optional[Tensor] = None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_tuple=None,
+    ) -> Union[DPRQuestionEncoderOutput, Tuple[Tensor, ...]]:
+        r"""
+    Return:
+
+    Examples::
+
+        from transformers import DPRQuestionEncoder, DPRQuestionEncoderTokenizer
+        tokenizer = DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+        model = DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+        input_ids = tokenizer("Hello, is my dog cute ?", return_tensors='pt')["input_ids"]
+        embeddings = model(input_ids)[0]  # the embeddings of the given question.
+        """
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        return_tuple = return_tuple if return_tuple is not None else self.config.use_return_tuple
+
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+        elif input_ids is not None:
+            input_shape = input_ids.size()
+        elif inputs_embeds is not None:
+            input_shape = inputs_embeds.size()[:-1]
+        else:
+            raise ValueError("You have to specify either input_ids or inputs_embeds")
+
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+
+        if attention_mask is None:
+            attention_mask = (
+                torch.ones(input_shape, device=device)
+                if input_ids is None
+                else (input_ids != self.config.pad_token_id)
+            )
+        if token_type_ids is None:
+            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
+
+        outputs = self.question_encoder(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_tuple=return_tuple,
+        )
+
+        if return_tuple:
+            return outputs[1:]
+        return DPRQuestionEncoderOutput(
+            pooler_output=outputs.pooler_output, hidden_states=outputs.hidden_states, attentions=outputs.attentions
+        )
 
 
 # UTILS
-def load_states_from_checkpoint(model_file: str) -> CheckpointState:
-    logger.info('Loading saved model from %s', model_file)
-    state_dict = torch.load(model_file, map_location=lambda s, l: default_restore_location(s, 'cpu'))
-    return CheckpointState(**state_dict)
-
-
 def move_to_device(sample, device):
     if len(sample) == 0:
         return {}
@@ -174,155 +614,6 @@ def move_to_device(sample, device):
 
     return _move_to_device(sample, device)
 
-# DOWNLOADS
-NQ_LICENSE_FILES = [
-    'https://dl.fbaipublicfiles.com/dpr/nq_license/LICENSE',
-    'https://dl.fbaipublicfiles.com/dpr/nq_license/README',
-]
-
-
-RESOURCES_MAP = {
-    'checkpoint.retriever.single.nq.bert-base-encoder': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/checkpoint/retriever/single/nq/hf_bert_base.cp',
-        'original_ext': '.cp',
-        'compressed': False,
-        'desc': 'Biencoder weights trained on NQ data and HF bert-base-uncased model'
-    },
-
-    'checkpoint.retriever.multiset.bert-base-encoder': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/checkpoint/retriver/multiset/hf_bert_base.cp',
-        'original_ext': '.cp',
-        'compressed': False,
-        'desc': 'Biencoder weights trained on multi set data and HF bert-base-uncased model'
-    },
-    'data.wikipedia_split.psgs_w100': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/wikipedia_split/psgs_w100.tsv.gz',
-        'original_ext': '.tsv',
-        'compressed': True,
-        'desc': 'Entire wikipedia passages set obtain by splitting all pages into 100-word segments (no overlap)'
-    },
-    'data.retriever.nq-dev': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-nq-dev.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'NQ dev subset with passages pools for the Retriever train time validation',
-        'license_files': NQ_LICENSE_FILES,
-    },
-
-    'data.retriever.nq-train': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-nq-train.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'NQ train subset with passages pools for the Retriever training',
-        'license_files': NQ_LICENSE_FILES,
-    },
-
-    'data.retriever.trivia-dev': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-trivia-dev.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'TriviaQA dev subset with passages pools for the Retriever train time validation'
-    },
-
-    'data.retriever.trivia-train': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-trivia-train.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'TriviaQA train subset with passages pools for the Retriever training'
-    },
-
-    'data.retriever.qas.nq-dev': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/nq-dev.qa.csv',
-        'original_ext': '.csv',
-        'compressed': False,
-        'desc': 'NQ dev subset for Retriever validation and IR results generation',
-        'license_files': NQ_LICENSE_FILES,
-    },
-
-    'data.retriever.qas.nq-test': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/nq-test.qa.csv',
-        'original_ext': '.csv',
-        'compressed': False,
-        'desc': 'NQ test subset for Retriever validation and IR results generation',
-        'license_files': NQ_LICENSE_FILES,
-    },
-
-    'data.retriever.qas.nq-train': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/nq-train.qa.csv',
-        'original_ext': '.csv',
-        'compressed': False,
-        'desc': 'NQ train subset for Retriever validation and IR results generation',
-        'license_files': NQ_LICENSE_FILES,
-    },
-    'data.retriever.qas.trivia-dev': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/trivia-dev.qa.csv.gz',
-        'original_ext': '.csv',
-        'compressed': True,
-        'desc': 'Trivia dev subset for Retriever validation and IR results generation'
-    },
-
-    'data.retriever.qas.trivia-test': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/trivia-test.qa.csv.gz',
-        'original_ext': '.csv',
-        'compressed': True,
-        'desc': 'Trivia test subset for Retriever validation and IR results generation'
-    },
-
-    'data.retriever.qas.trivia-train': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever/trivia-train.qa.csv.gz',
-        'original_ext': '.csv',
-        'compressed': True,
-        'desc': 'Trivia train subset for Retriever validation and IR results generation'
-    },
-
-    'data.gold_passages_info.nq_train': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/nq_gold_info/nq-train_gold_info.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'Original NQ (our train subset) gold positive passages and alternative question tokenization',
-        'license_files': NQ_LICENSE_FILES,
-    },
-
-    'data.gold_passages_info.nq_dev': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/nq_gold_info/nq-dev_gold_info.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'Original NQ (our dev subset) gold positive passages and alternative question tokenization',
-        'license_files': NQ_LICENSE_FILES,
-    },
-
-    'data.gold_passages_info.nq_test': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/nq_gold_info/nq-test_gold_info.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'Original NQ (our test, original dev subset) gold positive passages and alternative question '
-                'tokenization',
-        'license_files': NQ_LICENSE_FILES,
-    },
-    'data.retriever_results.nq.single.test': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever_results/single/nq-test.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'Retrieval results of NQ test dataset for the encoder trained on NQ',
-        'license_files': NQ_LICENSE_FILES,
-    },
-    'data.retriever_results.nq.single.dev': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever_results/single/nq-dev.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'Retrieval results of NQ dev dataset for the encoder trained on NQ',
-        'license_files': NQ_LICENSE_FILES,
-    },
-    'data.retriever_results.nq.single.train': {
-        's3_url': 'https://dl.fbaipublicfiles.com/dpr/data/retriever_results/single/nq-train.json.gz',
-        'original_ext': '.json',
-        'compressed': True,
-        'desc': 'Retrieval results of NQ train dataset for the encoder trained on NQ',
-        'license_files': NQ_LICENSE_FILES,
-    }
-}
-
-
 def unpack(gzip_file: str, out_file: str):
     print('Uncompressing ', gzip_file)
     input = gzip.GzipFile(gzip_file, 'rb')
@@ -332,77 +623,3 @@ def unpack(gzip_file: str, out_file: str):
     output.write(s)
     output.close()
     print('Saved to ', out_file)
-
-
-def download_resource(s3_url: str, original_ext: str, compressed: bool, resource_key: str, out_dir: str) -> str:
-    print('Loading from ', s3_url)
-
-    # create local dir
-    path_names = resource_key.split('.')
-
-    root_dir = out_dir if out_dir else './'
-    save_root = os.path.join(root_dir, *path_names[:-1])  # last segment is for file name
-
-    pathlib.Path(save_root).mkdir(parents=True, exist_ok=True)
-
-    local_file = os.path.join(save_root, path_names[-1] + ('.tmp' if compressed else original_ext))
-
-    if os.path.exists(local_file):
-        print('File already exist ', local_file)
-        return save_root
-
-    wget.download(s3_url, out=local_file)
-
-    print('Saved to ', local_file)
-
-    if compressed:
-        uncompressed_file = os.path.join(save_root, path_names[-1] + original_ext)
-        unpack(local_file, uncompressed_file)
-        os.remove(local_file)
-    return save_root
-
-
-def download_file(s3_url: str, out_dir: str, file_name: str):
-    print('Loading from ', s3_url)
-    local_file = os.path.join(out_dir, file_name)
-
-    if os.path.exists(local_file):
-        print('File already exist ', local_file)
-        return
-    with open(local_file, "w") as file:
-        http_get(s3_url, temp_file=file)
-    wget.download(s3_url, out=local_file)
-    print('Saved to ', local_file)
-
-
-def download_dpr(resource_key: str, out_dir: str):
-    if resource_key not in RESOURCES_MAP:
-        # match by prefix
-        resources = [k for k in RESOURCES_MAP.keys() if k.startswith(resource_key)]
-        if resources:
-            for key in resources:
-                download_dpr(key, out_dir)
-        else:
-            print('no resources found for specified key')
-        return
-    download_info = RESOURCES_MAP[resource_key]
-
-    s3_url: Union[str, List[str]] = download_info['s3_url'] # type: ignore
-    original_ext: str = download_info['original_ext'] # type: ignore
-    compressed: bool = download_info['compressed'] # type: ignore
-
-    save_root_dir = None
-    if isinstance(s3_url, list):
-        for i, url in enumerate(s3_url):
-            save_root_dir = download_resource(url, original_ext, compressed,
-                                              '{}_{}'.format(resource_key, i), out_dir)
-    else:
-        save_root_dir = download_resource(s3_url, original_ext, compressed,
-                                          resource_key, out_dir)
-
-    license_files = download_info.get('license_files', None)
-    if not license_files:
-        return
-
-    download_file(license_files[0], save_root_dir, 'LICENSE')  # type: ignore
-    download_file(license_files[1], save_root_dir, 'README') # type: ignore
