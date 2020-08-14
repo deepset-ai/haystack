@@ -92,6 +92,7 @@ class TikaConverter(BaseConverter):
         parser.feed(parsed["content"])
 
         cleaned_pages = []
+        # TODO investigate title of document appearing in the first extracted page
         for page in parser.pages:
             lines = page.splitlines()
             cleaned_lines = []
