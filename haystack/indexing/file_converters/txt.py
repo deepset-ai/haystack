@@ -1,7 +1,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple, Any, Dict
 
 from haystack.indexing.file_converters.base import BaseConverter
 
@@ -44,7 +44,7 @@ class TextConverter(BaseConverter):
             valid_languages=valid_languages,
         )
 
-    def extract_pages(self, file_path: Path) -> List[str]:
+    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
         with open(file_path) as f:
             text = f.read()
             pages = text.split("\f")
@@ -89,5 +89,5 @@ class TextConverter(BaseConverter):
             )
             logger.info(f"Removed header '{header}' and footer {footer} in {file_path}")
 
-        return cleaned_pages
+        return cleaned_pages, None
 

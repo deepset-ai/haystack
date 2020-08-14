@@ -85,7 +85,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
             with open(path) as doc:
                 text = doc.read()
         elif path.suffix.lower() == ".pdf" and pdf_converter:
-            pages = pdf_converter.extract_pages(path)
+            pages, _ = pdf_converter.extract_pages(path)
             text = "\n".join(pages)
         else:
             raise Exception(f"Indexing of {path.suffix} files is not currently supported.")
@@ -104,8 +104,13 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
     return documents
 
 
-def tika_convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None\
-    , split_paragraphs: bool = False, merge_short: bool = True, merge_lowercase: bool = True) -> List[dict]:
+def tika_convert_files_to_dicts(
+        dir_path: str,
+        clean_func: Optional[Callable] = None,
+        split_paragraphs: bool = False,
+        merge_short: bool = True,
+        merge_lowercase: bool = True
+) -> List[dict]:
     """
     Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
@@ -116,21 +121,17 @@ def tika_convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = 
 
     :return: None
     """
-    converter = TikaConverter(remove_header_footer=True, return_meta=True)
+    converter = TikaConverter(remove_header_footer=True)
     file_paths = [p for p in Path(dir_path).glob("**/*")]
 
     documents = []
     for path in file_paths:
-        print(path)
         pages, meta = converter.extract_pages(path)
+        meta = meta or {}
         meta["name"] = path.name
         text = ' '.join(pages)
 
         if split_paragraphs:
-            # for para in text.split("\n\n"):
-            #     if not para.strip():  # skip empty paragraphs
-            #         continue
-            #     documents.append({"text": para, "meta": {"name": path.name}})
             if pages:
                 paras = pages[0].split("\n\n")
                 # pop the last paragraph from the first page

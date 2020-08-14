@@ -1,36 +1,37 @@
 import logging
 import re
-from pathlib import Path
-from typing import List, Optional
 from html.parser import HTMLParser
+from pathlib import Path
+from typing import List, Optional, Tuple, Dict, Any
+
 from tika import parser as tikaparser
 
 from haystack.indexing.file_converters.base import BaseConverter
 
 logger = logging.getLogger(__name__)
 
+
 # Use the built-in HTML parser with minimum dependencies
 class TikaXHTMLParser(HTMLParser):
-    
     def __init__(self):
         self.ingest = True
-        self.page = ''
+        self.page = ""
         self.pages: List[str] = []
         super(TikaXHTMLParser, self).__init__()
 
     def handle_starttag(self, tag, attrs):
         # find page div
-        pagediv = [value for attr, value in  attrs if attr == 'class' and value == 'page']
-        if tag == 'div' and pagediv:
+        pagediv = [value for attr, value in attrs if attr == "class" and value == "page"]
+        if tag == "div" and pagediv:
             self.ingest = True
 
     def handle_endtag(self, tag):
         # close page div, or a single page without page div, save page and open a new page
-        if (tag == 'div' or tag == 'body') and self.ingest:
+        if (tag == "div" or tag == "body") and self.ingest:
             self.ingest = False
             # restore words hyphened to the next line
-            self.pages.append(self.page.replace('-\n', ''))
-            self.page = ''
+            self.pages.append(self.page.replace("-\n", ""))
+            self.page = ""
 
     def handle_data(self, data):
         if self.ingest:
@@ -38,17 +39,17 @@ class TikaXHTMLParser(HTMLParser):
 
 
 class TikaConverter(BaseConverter):
-    meta = {}
-
     def __init__(
-            self,
-            remove_numeric_tables: Optional[bool] = False,
-            remove_whitespace: Optional[bool] = None,
-            remove_empty_lines: Optional[bool] = None,
-            remove_header_footer: Optional[bool] = None,
-            valid_languages: Optional[List[str]] = None,
+        self,
+        tika_url: str = "http://localhost:9998/tika",
+        remove_numeric_tables: Optional[bool] = False,
+        remove_whitespace: Optional[bool] = None,
+        remove_empty_lines: Optional[bool] = None,
+        remove_header_footer: Optional[bool] = None,
+        valid_languages: Optional[List[str]] = None,
     ):
         """
+        :param tika_url: URL of the Tika server
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
                                       does not have table parsing capability for finding answers. However, tables
@@ -67,6 +68,7 @@ class TikaConverter(BaseConverter):
                                 in garbled text.
         """
 
+        self.tika_url = tika_url
         super().__init__(
             remove_numeric_tables=remove_numeric_tables,
             remove_whitespace=remove_whitespace,
@@ -75,10 +77,15 @@ class TikaConverter(BaseConverter):
             valid_languages=valid_languages,
         )
 
-    def extract_pages(self, file_path: Path) -> List[str]:
-        parsed = tikaparser.from_file(file_path.as_posix(), 'http://localhost:9998/tika', xmlContent=True)
+    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+        """
+        :param file_path: Path of file to be converted.
+
+        :return: a list of pages and the extracted meta data of the file.
+        """
+        parsed = tikaparser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
         parser = TikaXHTMLParser()
-        parser.feed(parsed['content'])
+        parser.feed(parsed["content"])
 
         cleaned_pages = []
         for page in parser.pages:
@@ -110,7 +117,7 @@ class TikaConverter(BaseConverter):
             document_text = "".join(cleaned_pages)
             if not self.validate_language(document_text):
                 logger.warning(
-                    f"The language for '{file_path}'' is not one of {self.valid_languages}. The file may not have "
+                    f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
                     f"been decoded in the correct text format."
                 )
 
@@ -120,5 +127,4 @@ class TikaConverter(BaseConverter):
             )
             logger.info(f"Removed header '{header}' and footer '{footer}' in {file_path}")
 
-        return cleaned_pages, parsed['metadata']
-
+        return cleaned_pages, parsed["metadata"]
