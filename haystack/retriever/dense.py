@@ -102,8 +102,8 @@ class DensePassageRetriever(BaseRetriever):
         :param texts: queries to embed
         :return: embeddings, one per input queries
         """
-        texts = [self._normalize_question(q) for q in texts]
-        result = self._generate_batch_predictions(texts=texts, model=self.query_encoder,
+        queries = [self._normalize_question(q) for q in texts]
+        result = self._generate_batch_predictions(texts=queries, model=self.query_encoder,
                                                   tokenizer=self.query_tokenizer,
                                                   batch_size=self.batch_size)
         return result
