@@ -10,25 +10,16 @@ import logging
 from typing import Tuple, Union, List
 
 import gzip
-import os
-import pathlib
-import wget
+import re
 
 import torch
 from torch import nn, Tensor
-from torch import Tensor as T
-from torch.serialization import default_restore_location
-import collections
-from farm.file_utils import http_get
 
-from transformers.tokenization_bert import BertTokenizer
 from transformers.modeling_bert import BertModel, BertConfig
-from transformers.file_utils import ModelOutput, add_start_docstrings, add_start_docstrings_to_callable, replace_return_docstrings
-from transformers.modeling_outputs import BaseModelOutputWithPooling
+from transformers.file_utils import add_start_docstrings_to_callable
 from transformers.modeling_utils import PreTrainedModel
-from transformers.file_utils import add_end_docstrings, add_start_docstrings
+from transformers.file_utils import add_start_docstrings
 from transformers.tokenization_bert import BertTokenizer, BertTokenizerFast
-from transformers.tokenization_utils_base import BatchEncoding, TensorType
 
 import logging
 from dataclasses import dataclass
@@ -51,6 +42,119 @@ DPR_READER_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "facebook/dpr-reader-single-nq-base",
 ]
 # CLASSES
+############
+# file_utils
+############
+
+class ModelOutput:
+    """
+    Base class for all model outputs as dataclass. Has a ``__getitem__`` that allows indexing by integer or slice (like
+    a tuple) or strings (like a dictionnary) that will ignore the ``None`` attributes.
+    """
+
+    def to_tuple(self):
+        """
+        Converts :obj:`self` to a tuple.
+
+        Return: A tuple containing all non-:obj:`None` attributes of the :obj:`self`.
+        """
+        return tuple(getattr(self, f) for f in self.__dataclass_fields__.keys() if getattr(self, f, None) is not None)
+
+    def to_dict(self):
+        """
+        Converts :obj:`self` to a Python dictionary.
+
+        Return: A dictionary containing all non-:obj:`None` attributes of the :obj:`self`.
+        """
+        return {f: getattr(self, f) for f in self.__dataclass_fields__.keys() if getattr(self, f, None) is not None}
+
+    def __getitem__(self, i):
+        return self.to_dict()[i] if isinstance(i, str) else self.to_tuple()[i]
+
+    def __len__(self):
+        return len(self.to_tuple())
+
+RETURN_INTRODUCTION = r"""
+    Returns:
+        :class:`~{full_output_type}` or :obj:`tuple(torch.FloatTensor)` (if ``return_tuple=True`` is passed or when ``config.return_tuple=True``) comprising various elements depending on the configuration (:class:`~transformers.{config_class}`) and inputs:
+"""
+
+def _prepare_output_docstrings(output_type, config_class):
+    """
+    Prepares the return part of the docstring using `output_type`.
+    """
+    docstrings = output_type.__doc__
+
+    # Remove the head of the docstring to keep the list of args only
+    lines = docstrings.split("\n")
+    i = 0
+    while i < len(lines) and re.search(r"^\s*(Args|Parameters):\s*$", lines[i]) is None:
+        i += 1
+    if i < len(lines):
+        docstrings = "\n".join(lines[(i + 1) :])
+
+    # Add the return introduction
+    full_output_type = f"{output_type.__module__}.{output_type.__name__}"
+    intro = RETURN_INTRODUCTION.format(full_output_type=full_output_type, config_class=config_class)
+    return intro + docstrings
+
+def replace_return_docstrings(output_type=None, config_class=None):
+    def docstring_decorator(fn):
+        docstrings = fn.__doc__
+        lines = docstrings.split("\n")
+        i = 0
+        while i < len(lines) and re.search(r"^\s*Returns?:\s*$", lines[i]) is None:
+            i += 1
+        if i < len(lines):
+            lines[i] = _prepare_output_docstrings(output_type, config_class)
+            docstrings = "\n".join(lines)
+        else:
+            raise ValueError(
+                f"The function {fn} should have an empty 'Return:' or 'Returns:' in its docstring as placeholder, current docstring is:\n{docstrings}"
+            )
+        fn.__doc__ = docstrings
+        return fn
+
+    return docstring_decorator
+
+###########
+# modeling_outputs
+###########
+@dataclass
+class BaseModelOutputWithPooling(ModelOutput):
+    """
+    Base class for model's outputs that also contains a pooling of the last hidden states.
+
+    Args:
+        last_hidden_state (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`):
+            Sequence of hidden-states at the output of the last layer of the model.
+        pooler_output (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, hidden_size)`):
+            Last layer hidden-state of the first token of the sequence (classification token)
+            further processed by a Linear layer and a Tanh activation function. The Linear
+            layer weights are trained from the next sentence prediction (classification)
+            objective during pretraining.
+
+            This output is usually *not* a good summary
+            of the semantic content of the input, you're often better with averaging or pooling
+            the sequence of hidden-states for the whole input sequence.
+        hidden_states (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``output_hidden_states=True`` is passed or when ``config.output_hidden_states=True``):
+            Tuple of :obj:`torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer)
+            of shape :obj:`(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        attentions (:obj:`tuple(torch.FloatTensor)`, `optional`, returned when ``output_attentions=True`` is passed or when ``config.output_attentions=True``):
+            Tuple of :obj:`torch.FloatTensor` (one for each layer) of shape
+            :obj:`(batch_size, num_heads, sequence_length, sequence_length)`.
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
+            heads.
+    """
+
+    last_hidden_state: torch.FloatTensor
+    pooler_output: torch.FloatTensor
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+
 
 ###########
 #tokenization_dpr
