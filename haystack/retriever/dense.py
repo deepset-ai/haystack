@@ -30,7 +30,7 @@ class DensePassageRetriever(BaseRetriever):
                  question_embedding_model: str,
                  passage_embedding_model: str,
                  sequence_length: int = 256,
-                 projection_dim: int = 768,
+                 projection_dim: int = 0,
                  use_gpu: bool = True,
                  batch_size: int = 16,
                  do_lower_case: bool = False,

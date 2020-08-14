@@ -59,15 +59,15 @@ document_store.delete_all_documents(index=label_index)
 document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index=doc_index, label_index=label_index)
 
 # Initialize Retriever
-retriever = ElasticsearchRetriever(document_store=document_store)
+#retriever = ElasticsearchRetriever(document_store=document_store)
 
 # Alternative: Evaluate DensePassageRetriever
 # Note, that DPR works best when you index short passages < 512 tokens as only those tokens will be used for the embedding.
 # Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
 # DPR still outperforms Elastic's BM25 by a small margin here.
-# retriever = DensePassageRetriever(document_store=document_store, question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-#                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu="cuda")
-# document_store.update_embeddings(retriever, index=doc_index)
+retriever = DensePassageRetriever(document_store=document_store, question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=True)
+document_store.update_embeddings(retriever, index=doc_index)
 
 
 # Initialize Reader
