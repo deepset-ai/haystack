@@ -420,7 +420,7 @@ class DPREncoder(PreTrainedModel):
         inputs_embeds: Optional[Tensor] = None,
         output_attentions: bool = False,
         output_hidden_states: bool = False,
-        return_tuple: bool = False,
+        return_tuple: bool = True,
     ) -> Union[BaseModelOutputWithPooling, Tuple[Tensor, ...]]:
         outputs = self.bert_model(
             input_ids=input_ids,
@@ -429,7 +429,6 @@ class DPREncoder(PreTrainedModel):
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
-            return_tuple=return_tuple,
         )
         sequence_output, pooled_output = outputs[:2]
         pooled_output = sequence_output[:, 0, :]
@@ -560,7 +559,7 @@ class DPRContextEncoder(DPRPretrainedContextEncoder):
         inputs_embeds: Optional[Tensor] = None,
         output_attentions=None,
         output_hidden_states=None,
-        return_tuple=None,
+        return_tuple=True,
     ) -> Union[DPRContextEncoderOutput, Tuple[Tensor, ...]]:
         r"""
     Return:
@@ -579,7 +578,7 @@ class DPRContextEncoder(DPRPretrainedContextEncoder):
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
-        #return_tuple = return_tuple if return_tuple is not None else self.config.use_return_tuple
+        return_tuple = return_tuple if return_tuple is not None else self.config.use_return_tuple
 
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
@@ -608,7 +607,6 @@ class DPRContextEncoder(DPRPretrainedContextEncoder):
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
-            return_tuple=return_tuple,
         )
 
         if return_tuple:
@@ -639,7 +637,7 @@ class DPRQuestionEncoder(DPRPretrainedQuestionEncoder):
         inputs_embeds: Optional[Tensor] = None,
         output_attentions=None,
         output_hidden_states=None,
-        return_tuple=None,
+        return_tuple=True,
     ) -> Union[DPRQuestionEncoderOutput, Tuple[Tensor, ...]]:
         r"""
     Return:

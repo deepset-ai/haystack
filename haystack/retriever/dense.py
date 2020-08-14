@@ -160,7 +160,9 @@ class DensePassageRetriever(BaseRetriever):
 
             with torch.no_grad():
                 out = model(input_ids=ctx_ids_batch, attention_mask=ctx_attn_mask, token_type_ids=ctx_seg_batch)
-                out = out.pooler_output
+                # TODO revert back to when updating transformers
+                # out = out.pooler_output
+                out = out[0]
             out = out.cpu()
 
             total += ctx_ids_batch.size()[0]
