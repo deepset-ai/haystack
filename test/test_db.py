@@ -95,6 +95,61 @@ def test_labels(document_store):
     assert len(labels) == 0
 
 
+def test_multilabel(document_store):
+    labels =[
+        Label(
+            question="question",
+            answer="answer1",
+            is_correct_answer=True,
+            is_correct_document=True,
+            document_id="123",
+            offset_start_in_doc=12,
+            no_answer=False,
+            origin="gold_label",
+        ),
+        # different answer in same doc
+        Label(
+            question="question",
+            answer="answer2",
+            is_correct_answer=True,
+            is_correct_document=True,
+            document_id="123",
+            offset_start_in_doc=42,
+            no_answer=False,
+            origin="gold_label",
+        ),
+        # answer in different doc
+        Label(
+            question="question",
+            answer="answer3",
+            is_correct_answer=True,
+            is_correct_document=True,
+            document_id="321",
+            offset_start_in_doc=7,
+            no_answer=False,
+            origin="gold_label",
+        ),
+    ]
+    document_store.write_labels(labels, index="haystack_test_multilabel")
+    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel")
+    labels = document_store.get_all_labels(index="haystack_test_multilabel")
+
+    assert len(multi_labels) == 1
+    assert len(labels) == 3
+
+    assert len(multi_labels[0].multiple_answers) == 3
+    assert len(multi_labels[0].multiple_answers) \
+           == len(multi_labels[0].multiple_document_ids) \
+           == len(multi_labels[0].multiple_offset_start_in_docs)
+
+    multi_labels = document_store.get_all_labels_aggregated()
+    assert len(multi_labels) == 0
+
+    # clean up
+    document_store.delete_all_documents(index="haystack_test_multilabel")
+
+
+
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_update_meta(document_store_with_docs):
     document = document_store_with_docs.query(query=None, filters={"name": ["filename1"]})[0]
