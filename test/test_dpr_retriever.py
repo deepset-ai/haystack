@@ -3,6 +3,7 @@ import time
 
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.database.base import Document
+from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
@@ -28,10 +29,13 @@ def test_dpr_inmemory_retrieval(document_store):
     time.sleep(2)
 
     docs_with_emb = document_store.get_all_documents(index="test_dpr")
-    assert (len(docs_with_emb[0].embedding) == 768)
-    assert (abs(docs_with_emb[0].embedding[0] - (-0.30634)) < 0.001)
-    assert (abs(docs_with_emb[1].embedding[0] - (-0.24695)) < 0.001)
-    assert (abs(docs_with_emb[2].embedding[0] - (-0.37449)) < 0.001)
+
+    # FAISSDocumentStore doesn't return embeddings, so these tests only work with ElasticsearchDocumentStore
+    if isinstance(document_store, ElasticsearchDocumentStore):
+        assert (len(docs_with_emb[0].embedding) == 768)
+        assert (abs(docs_with_emb[0].embedding[0] - (-0.30634)) < 0.001)
+        assert (abs(docs_with_emb[1].embedding[0] - (-0.24695)) < 0.001)
+        assert (abs(docs_with_emb[2].embedding[0] - (-0.37449)) < 0.001)
 
     res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?", index="test_dpr")
     assert res[0].meta["name"] == "1"
