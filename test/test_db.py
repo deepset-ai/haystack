@@ -129,13 +129,35 @@ def test_multilabel(document_store):
             no_answer=False,
             origin="gold_label",
         ),
+        # 'no answer', should be excluded from MultiLabel
+        Label(
+            question="question",
+            answer="",
+            is_correct_answer=True,
+            is_correct_document=True,
+            document_id="777",
+            offset_start_in_doc=0,
+            no_answer=True,
+            origin="gold_label",
+        ),
+        # is_correct_answer=False, should be excluded from MultiLabel
+        Label(
+            question="question",
+            answer="answer5",
+            is_correct_answer=False,
+            is_correct_document=True,
+            document_id="123",
+            offset_start_in_doc=99,
+            no_answer=True,
+            origin="gold_label",
+        ),
     ]
     document_store.write_labels(labels, index="haystack_test_multilabel")
     multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel")
     labels = document_store.get_all_labels(index="haystack_test_multilabel")
 
     assert len(multi_labels) == 1
-    assert len(labels) == 3
+    assert len(labels) == 5
 
     assert len(multi_labels[0].multiple_answers) == 3
     assert len(multi_labels[0].multiple_answers) \
