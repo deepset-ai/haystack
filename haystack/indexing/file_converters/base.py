@@ -2,7 +2,7 @@ from abc import abstractmethod
 from functools import partial, reduce
 from itertools import chain
 from pathlib import Path
-from typing import List, Optional, Tuple, Generator, Set, Dict, Any
+from typing import List, Optional, Tuple, Generator, Set
 
 import langdetect
 
@@ -45,7 +45,7 @@ class BaseConverter:
         self.valid_languages = valid_languages
 
     @abstractmethod
-    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+    def extract_pages(self, file_path: Path) -> List[str]:
         pass
 
     def validate_language(self, text: str) -> bool:

@@ -1,14 +1,14 @@
 from haystack.indexing.file_converters.base import BaseConverter
 import logging
 from pathlib import Path
-from typing import List, Dict, Optional, Any, Tuple
+from typing import List
 import docx
 
 logger = logging.getLogger(__name__)
 
 
 class DocxToTextConverter(BaseConverter):
-    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+    def extract_pages(self, file_path: Path) -> List[str]:
         """
         Extract text from a .docx file.
         Note: As docx doesn't contain "page" information, we actually extract and return a list of paragraphs here.
@@ -26,4 +26,4 @@ class DocxToTextConverter(BaseConverter):
         for para in doc.paragraphs:
             if para.text.strip() != "":
                 fullText.append(para.text)
-        return fullText, None
+        return fullText
