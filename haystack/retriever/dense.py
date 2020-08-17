@@ -138,8 +138,8 @@ class DensePassageRetriever(BaseRetriever):
             for d in docs:
                 if d.meta is not None:
                     titles.append(d.meta["name"] if "name" in d.meta.keys() else None)
-            if len(titles) != len(texts):
-                titles = []
+        if len(titles) != len(texts):
+                titles = None
 
         result = self._generate_batch_predictions(texts=texts, titles=titles, model=self.passage_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
