@@ -149,7 +149,6 @@ def test_multilabel(document_store):
     document_store.delete_all_documents(index="haystack_test_multilabel")
 
 
-
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_update_meta(document_store_with_docs):
     document = document_store_with_docs.query(query=None, filters={"name": ["filename1"]})[0]
