@@ -108,14 +108,14 @@ class FARMReader(BaseReader):
         data_dir: str,
         train_filename: str,
         dev_filename: Optional[str] = None,
-        test_file_name: Optional[str] = None,
+        test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
         max_seq_len: Optional[int] = None,
         warmup_proportion: float = 0.2,
-        dev_split: Optional[float] = 0.1,
+        dev_split: float = 0,
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None
@@ -128,9 +128,10 @@ class FARMReader(BaseReader):
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: filename of training data
         :param dev_filename: filename of dev / eval data
-        :param test_file_name: filename of test data
+        :param test_filename: filename of test data
         :param dev_split: Instead of specifying a dev_filename you can also specify a ratio (e.g. 0.1) here
-                          that get's split off from training data for eval.
+                          that get's split off from training data for eval. Might not work on machines with few cores.
+                          Default value of 0 does not split away a dev set.
         :param use_gpu: Whether to use GPU (if available)
         :param batch_size: Number of samples the model receives in one batch for training
         :param n_epochs: number of iterations on the whole training data set
@@ -148,7 +149,7 @@ class FARMReader(BaseReader):
         """
 
         if dev_filename:
-            dev_split = None
+            dev_split = 0
 
         if num_processes is None:
             num_processes = multiprocessing.cpu_count() - 1 or 1
@@ -178,7 +179,7 @@ class FARMReader(BaseReader):
             train_filename=train_filename,
             dev_filename=dev_filename,
             dev_split=dev_split,
-            test_filename=test_file_name,
+            test_filename=test_filename,
             data_dir=Path(data_dir),
         )
 
