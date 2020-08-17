@@ -227,6 +227,10 @@ class BaseDocumentStore(ABC):
         # Collect all answers to a question in a dict
         question_ans_dict = {} # type: ignore
         for l in all_labels:
+            # only aggregate labels with correct answers, as only those can be currently used in evaluation
+            if not l.is_correct_answer:
+                continue
+
             if l.question in question_ans_dict:
                 question_ans_dict[l.question].append(l)
             else:
@@ -242,9 +246,9 @@ class BaseDocumentStore(ABC):
             for idx, l in enumerate(ls):
                 if len(l.answer) == 0:
                     no_present = True
+                    no_idx.append(idx)
                 else:
                     t_present = True
-                    no_idx.append(idx)
             # if both text and no answer are present, remove no answer labels
             if t_present and no_present:
                 logger.warning(
