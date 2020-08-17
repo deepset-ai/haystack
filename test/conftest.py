@@ -53,6 +53,11 @@ def xpdf_fixture():
             )
 
 
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
+def document_store(request, test_docs_xs, elasticsearch_fixture):
+    return get_document_store(request.param)
+
+
 @pytest.fixture()
 def test_docs_xs():
     return [

@@ -94,22 +94,34 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.update_existing_documents = update_existing_documents
 
     def _create_document_index(self, index_name):
+        if self.client.indices.exists(index=index_name):
+            return
+
         if self.custom_mapping:
             mapping = self.custom_mapping
         else:
             mapping = {
                 "mappings": {
                     "properties": {
-                        self.name_field: {"type": "text"},
+                        self.name_field: {"type": "keyword"},
                         self.text_field: {"type": "text"},
-                    }
+                    },
+                    "dynamic_templates": [
+                        {
+                            "strings": {
+                                "path_match": "*",
+                                "match_mapping_type": "string",
+                                "mapping": {"type": "keyword"}}}
+                    ],
                 }
             }
             if self.embedding_field:
                 mapping["mappings"]["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
-        self.client.indices.create(index=index_name, ignore=400, body=mapping)
+        self.client.indices.create(index=index_name, body=mapping)
 
     def _create_label_index(self, index_name):
+        if self.client.indices.exists(index=index_name):
+            return
         mapping = {
             "mappings": {
                 "properties": {
@@ -126,7 +138,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 }
             }
         }
-        self.client.indices.create(index=index_name, ignore=400, body=mapping)
+        self.client.indices.create(index=index_name, body=mapping)
 
     # TODO: Add flexibility to define other non-meta and meta fields expected by the Document class
     def _create_document_field_map(self) -> Dict:
@@ -400,7 +412,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
-        meta_data["name"] = meta_data.pop(self.name_field, None)
+        name = meta_data.pop(self.name_field, None)
+        if name:
+            meta_data["name"] = name
 
         document = Document(
             id=hit["_id"],
@@ -443,7 +457,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         docs = self.get_all_documents(index)
         passages = [d.text for d in docs]
-    
+
         #TODO Index embeddings every X batches to avoid OOM for huge document collections
         logger.info(f"Updating embeddings for {len(passages)} docs ...")
 

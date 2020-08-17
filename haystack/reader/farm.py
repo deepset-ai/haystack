@@ -108,7 +108,7 @@ class FARMReader(BaseReader):
         data_dir: str,
         train_filename: str,
         dev_filename: Optional[str] = None,
-        test_file_name: Optional[str] = None,
+        test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
@@ -128,7 +128,7 @@ class FARMReader(BaseReader):
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: filename of training data
         :param dev_filename: filename of dev / eval data
-        :param test_file_name: filename of test data
+        :param test_filename: filename of test data
         :param dev_split: Instead of specifying a dev_filename you can also specify a ratio (e.g. 0.1) here
                           that get's split off from training data for eval. Might not work on machines with few cores.
                           Default value of 0 does not split away a dev set.
@@ -179,7 +179,7 @@ class FARMReader(BaseReader):
             train_filename=train_filename,
             dev_filename=dev_filename,
             dev_split=dev_split,
-            test_filename=test_file_name,
+            test_filename=test_filename,
             data_dir=Path(data_dir),
         )
 
