@@ -20,7 +20,7 @@ class TransformersReader(BaseReader):
         self,
         model: str = "distilbert-base-uncased-distilled-squad",
         tokenizer: Optional[str] = None,
-        context_window_size: int = 150,
+        context_window_size: int = 70,
         use_gpu: int = 0,
         top_k_per_candidate: int = 4,
         return_no_answers: bool = True,
