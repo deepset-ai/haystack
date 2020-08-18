@@ -79,7 +79,7 @@ finder = Finder(reader, retriever)
 
 ## Evaluate Retriever on its own
 if eval_retriever_only:
-    retriever_eval_results = retriever.eval(top_k=20, label_index=label_index, doc_index=doc_index)
+    retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
     ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
     ## among the correct documents
     print("Retriever Recall:", retriever_eval_results["recall"])
