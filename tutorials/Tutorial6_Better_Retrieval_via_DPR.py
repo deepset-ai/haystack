@@ -26,7 +26,7 @@ dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, spl
 document_store.write_documents(dicts)
 
 ### Retriever
-retriever = DensePassageRetriever(document_store=document_store, question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+retriever = DensePassageRetriever(document_store=document_store, query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
                             passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=True)
 
 # Important:

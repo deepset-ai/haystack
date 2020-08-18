@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 ##############################################
 # Settings
 ##############################################
-LAUNCH_ELASTICSEARCH = True
+LAUNCH_ELASTICSEARCH = False
 
 eval_retriever_only = True
 eval_reader_only = False
@@ -42,9 +42,9 @@ if LAUNCH_ELASTICSEARCH:
     time.sleep(30)
 
 # Download evaluation data, which is a subset of Natural Questions development set containing 50 documents
-doc_dir = "../data/nq"
-s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v2.json.zip"
-fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
+#doc_dir = "../data/nq"
+#s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v2.json.zip"
+#fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
 # Connect to Elasticsearch
 document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document",
@@ -56,18 +56,19 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
 # We first delete the custom tutorial indices to not have duplicate elements
 document_store.delete_all_documents(index=doc_index)
 document_store.delete_all_documents(index=label_index)
-document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index=doc_index, label_index=label_index)
+document_store.add_eval_data(filename="/home/ubuntu/DPR/data/data/retriever/nq2Squad-dev.json", doc_index=doc_index, label_index=label_index)
+#  "../data/nq/nq_dev_subset_v2.json"
 
 # Initialize Retriever
-retriever = ElasticsearchRetriever(document_store=document_store)
+# retriever = ElasticsearchRetriever(document_store=document_store)
 
 # Alternative: Evaluate DensePassageRetriever
 # Note, that DPR works best when you index short passages < 512 tokens as only those tokens will be used for the embedding.
 # Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
 # DPR still outperforms Elastic's BM25 by a small margin here.
-#retriever = DensePassageRetriever(document_store=document_store, question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-#                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=True)
-#document_store.update_embeddings(retriever, index=doc_index)
+retriever = DensePassageRetriever(document_store=document_store, query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=True)
+document_store.update_embeddings(retriever, index=doc_index)
 
 
 # Initialize Reader

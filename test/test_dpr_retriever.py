@@ -12,7 +12,7 @@ def test_dpr_inmemory_retrieval(document_store):
     ]
 
     retriever = DensePassageRetriever(document_store=document_store,
-                                      question_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
                                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base", use_gpu=True)
     embedded = []
     for doc in documents:
