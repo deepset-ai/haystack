@@ -171,6 +171,69 @@ def test_multilabel(document_store):
     document_store.delete_all_documents(index="haystack_test_multilabel")
 
 
+def test_multilabel_no_answer(document_store):
+    labels = [
+        Label(
+            question="question",
+            answer="",
+            is_correct_answer=True,
+            is_correct_document=True,
+            document_id="777",
+            offset_start_in_doc=0,
+            no_answer=True,
+            origin="gold_label",
+        ),
+        # no answer in different doc
+        Label(
+            question="question",
+            answer="",
+            is_correct_answer=True,
+            is_correct_document=True,
+            document_id="123",
+            offset_start_in_doc=0,
+            no_answer=True,
+            origin="gold_label",
+        ),
+        # no answer in same doc, should be excluded
+        Label(
+            question="question",
+            answer="",
+            is_correct_answer=True,
+            is_correct_document=True,
+            document_id="777",
+            offset_start_in_doc=0,
+            no_answer=True,
+            origin="gold_label",
+        ),
+        # no answer with is_correct_answer=False, should be excluded
+        Label(
+            question="question",
+            answer="",
+            is_correct_answer=False,
+            is_correct_document=True,
+            document_id="321",
+            offset_start_in_doc=0,
+            no_answer=True,
+            origin="gold_label",
+        ),
+    ]
+
+    document_store.write_labels(labels, index="haystack_test_multilabel_no_answer")
+    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel_no_answer")
+    labels = document_store.get_all_labels(index="haystack_test_multilabel_no_answer")
+
+    assert len(multi_labels) == 1
+    assert len(labels) == 4
+
+    assert len(multi_labels[0].multiple_document_ids) == 2
+    assert len(multi_labels[0].multiple_answers) \
+           == len(multi_labels[0].multiple_document_ids) \
+           == len(multi_labels[0].multiple_offset_start_in_docs)
+
+    # clean up
+    document_store.delete_all_documents(index="haystack_test_multilabel_no_answer")
+
+
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_update_meta(document_store_with_docs):
     document = document_store_with_docs.query(query=None, filters={"name": ["filename1"]})[0]
