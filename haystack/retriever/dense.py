@@ -27,9 +27,9 @@ class DensePassageRetriever(BaseRetriever):
 
     def __init__(self,
                  document_store: BaseDocumentStore,
-                 question_embedding_model: str,
+                 query_embedding_model: str,
                  passage_embedding_model: str,
-                 sequence_length: int = 256,
+                 max_seq_len: int = 256,
                  projection_dim: int = 0,
                  use_gpu: bool = True,
                  batch_size: int = 16,
@@ -38,24 +38,32 @@ class DensePassageRetriever(BaseRetriever):
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
-        The checkpoint format matches the one of the original author's in the repository (https://github.com/facebookresearch/DPR)
-        See their readme for manual download instructions: https://github.com/facebookresearch/DPR#resources--data-formats
+        The checkpoint format matches huggingface transformers' model format
 
         :Example:
 
             # remote model from FAIR
-            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="dpr-bert-base-nq", use_gpu=True)
+            >>> DensePassageRetriever(document_store=your_doc_store,
+                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                      use_gpu=True)
             # or from local path
-            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", use_gpu=True)
-
+            >>> DensePassageRetriever(document_store=your_doc_store,
+                                      query_embedding_model="local-path/query-checkpoint",
+                                      passage_embedding_model="local-path/ctx-checkpoint",
+                                      use_gpu=True)
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or remote name of model checkpoint. The format equals the 
-                                one used by original author's in https://github.com/facebookresearch/DPR. 
-                                Currently available remote names: "dpr-bert-base-nq" 
+        :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
+                                one used by hugging-face transformers' modelhub models
+                                Currently available remote names: "facebook/dpr-question_encoder-single-nq-base"
+        :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
+                                one used by hugging-face transformers' modelhub models
+                                Currently available remote names: "facebook/dpr-ctx_encoder-single-nq-base"
+        :param max_seq_len: Longest length of each sequence
+        :param projection_dim: dimension of an additional final layer. When set to 0, no final layer is added to the encoders
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
         :param do_lower_case: Whether to lower case the text input in the tokenizer
-        :param encoder_model_type: 
         :param use_amp: Whether to use Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
         :param use_amp: Optional usage of Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
                         Choose `None` or AMP optimization level:
@@ -65,7 +73,7 @@ class DensePassageRetriever(BaseRetriever):
         """
 
         self.document_store = document_store
-        self.question_embedding_model = question_embedding_model
+        self.query_embedding_model = query_embedding_model
         self.passage_embedding_model = passage_embedding_model
         self.batch_size = batch_size
 
@@ -76,13 +84,13 @@ class DensePassageRetriever(BaseRetriever):
 
         self.use_amp = use_amp
         self.do_lower_case = do_lower_case
-        self.sequence_length = sequence_length
+        self.max_seq_len = max_seq_len
         self.projection_dim = projection_dim
 
         # Init & Load Encoders
-        self.question_config = DPRConfig(projection_dim=self.projection_dim, config=self.question_embedding_model, dropout=0.0)
-        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(self.question_embedding_model, config=self.question_config)
-        self.query_encoder = DPRQuestionEncoder.from_pretrained(self.question_embedding_model, config=self.question_config)
+        self.query_config = DPRConfig(projection_dim=self.projection_dim, config=self.query_embedding_model, dropout=0.0)
+        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(self.query_embedding_model, config=self.query_config)
+        self.query_encoder = DPRQuestionEncoder.from_pretrained(self.query_embedding_model, config=self.query_config)
 
         self.passage_config = DPRConfig(projection_dim=self.projection_dim, config=self.passage_embedding_model, dropout=0.0)
         self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(self.passage_embedding_model, config=self.passage_config)
@@ -102,7 +110,7 @@ class DensePassageRetriever(BaseRetriever):
         :param texts: queries to embed
         :return: embeddings, one per input queries
         """
-        queries = [self._normalize_question(q) for q in texts]
+        queries = [self._normalize_query(q) for q in texts]
         result = self._generate_batch_predictions(texts=queries, model=self.query_encoder,
                                                   tokenizer=self.query_tokenizer,
                                                   batch_size=self.batch_size)
@@ -122,21 +130,40 @@ class DensePassageRetriever(BaseRetriever):
                                                   batch_size=self.batch_size)
         return result
 
-    def _normalize_question(self, question: str) -> str:
-        if question[-1] == '?':
-            question = question[:-1]
-        return question
+    def _normalize_query(self, query: str) -> str:
+        if query[-1] == '?':
+            query = query[:-1]
+        return query
 
-    def _tensorizer(self, tokenizer, title: Optional[List[str]], text: List[str], add_special_tokens: bool = True):
+    def _tensorizer(self, tokenizer: Union[DPRQuestionEncoderTokenizer, DPRContextEncoderTokenizer],
+                    text: List[str],
+                    title: Optional[List[str]],
+                    add_special_tokens: bool = True):
+        """
+        Creates tensors from text sequences
+        :Example:
+            >>> ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained()
+            >>> dpr_object._tensorizer(tokenizer=ctx_tokenizer, text=passages, title=titles)
+
+        :param tokenizer: An instance of DPRQuestionEncoderTokenizer or DPRContextEncoderTokenizer.
+        :param text: list of text sequences to be tokenized
+        :param title: optional list of titles assoicated with each text sequence
+        :param add_special_tokens: boolean for encoding of special tokens in each sequence
+
+        Returns:
+                token_ids: list of token ids from vocabulary
+                token_type_ids: list of token type ids
+                attention_mask: list of indices specifying which tokens should be attended to by the encoder
+        """
         if title:
             texts = [tuple((title_, text_)) for title_, text_ in zip(title, text)]
             out = tokenizer.batch_encode_plus(texts, truncation=True,
                                               add_special_tokens=add_special_tokens,
-                                              max_length=self.sequence_length,
+                                              max_length=self.max_seq_len,
                                               pad_to_max_length=True)
         else:
             out = tokenizer.batch_encode_plus(text, add_special_tokens=add_special_tokens, truncation=True,
-                                              max_length=self.sequence_length,
+                                              max_length=self.max_seq_len,
                                               pad_to_max_length=True)
 
         token_ids = torch.tensor(out['input_ids'])
