@@ -114,9 +114,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         index = index or self.index
 
         documents = self.get_all_documents(index=index)
-        for doc in documents:
-            embedding = retriever.embed_passages([doc.text])[0]  # type: ignore
-            doc.embedding = embedding
+        logger.info(f"Updating embeddings for {len(documents)} docs ...")
+        embeddings = retriever.embed_passages(documents)  # type: ignore
+        assert len(documents) == len(embeddings)
+        for i, doc in enumerate(documents):
+            doc.embedding = embeddings[i]
 
         phi = self._get_phi(documents)
 
