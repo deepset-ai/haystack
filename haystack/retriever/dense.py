@@ -239,9 +239,10 @@ class DensePassageRetriever(BaseRetriever):
             ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
 
             # handle case when embed_title set but some samples in batch do not contain title
-            if tokenizer == self.passage_tokenizer and self.embed_title and titles_mask:
-                titles_mask_tensor = torch.tensor(titles_mask).to(self.device)
-                if not torch.all(torch.eq(titles_mask_tensor, torch.ones_like(titles_mask_tensor))):
+            if self.embed_title and titles:
+                titles_mask_tensor = torch.tensor(titles_mask[batch_start:batch_start + batch_size]).to(self.device)
+                # ignore when all passages have titles or all passages have no titles
+                if torch.all(torch.tensor([(titles_mask_tensor==bool_value).any() for bool_value in [False,True]])):
                     ctx_ids_batch, ctx_attn_mask = self._handle_titleless_passages(titles_mask_tensor, ctx_ids_batch, ctx_attn_mask)
 
             with torch.no_grad():
