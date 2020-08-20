@@ -173,7 +173,7 @@ class DensePassageRetriever(BaseRetriever):
 
         # combine titles with passages only if some titles are present with passages
         if self.embed_title and title:
-            final_text = [tuple((title_, text_)) for title_, text_ in zip(title, text)]
+            final_text = [tuple((title_, text_)) for title_, text_ in zip(title, text)] #type: Union[List[Tuple[str, ...]], List[str]]
         else:
             final_text = text
         out = tokenizer.batch_encode_plus(final_text, add_special_tokens=add_special_tokens, truncation=True,
@@ -228,7 +228,7 @@ class DensePassageRetriever(BaseRetriever):
         for batch_start in range(0, n, batch_size):
             # create batch of titles only for passages
             ctx_title = None
-            if self.embed_title and titles and sum(titles_mask[batch_start:batch_start + batch_size]) > 0:
+            if self.embed_title and titles and titles_mask and sum(titles_mask[batch_start:batch_start + batch_size]) > 0:
                 ctx_title = titles[batch_start:batch_start + batch_size]
 
             # create batch of text
@@ -239,7 +239,7 @@ class DensePassageRetriever(BaseRetriever):
             ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
 
             # handle case when embed_title set but some samples in batch do not contain title
-            if self.embed_title and titles:
+            if self.embed_title and titles_mask:
                 titles_mask_tensor = torch.tensor(titles_mask[batch_start:batch_start + batch_size]).to(self.device)
                 # ignore when all passages have titles or all passages have no titles
                 if torch.all(torch.tensor([(titles_mask_tensor==bool_value).any() for bool_value in [False,True]])):
