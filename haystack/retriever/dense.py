@@ -30,7 +30,6 @@ class DensePassageRetriever(BaseRetriever):
                  query_embedding_model: str,
                  passage_embedding_model: str,
                  max_seq_len: int = 256,
-                 projection_dim: int = 0,
                  use_gpu: bool = True,
                  batch_size: int = 16,
                  do_lower_case: bool = False,
@@ -77,6 +76,7 @@ class DensePassageRetriever(BaseRetriever):
         self.query_embedding_model = query_embedding_model
         self.passage_embedding_model = passage_embedding_model
         self.batch_size = batch_size
+        self.max_seq_len = max_seq_len
 
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -87,24 +87,12 @@ class DensePassageRetriever(BaseRetriever):
         self.do_lower_case = do_lower_case
         self.embed_title = embed_title
 
-        # Load checkpoint (incl. additional model params)
-        saved_state = load_states_from_checkpoint(self.embedding_model)
-        logger.info('Loaded encoder params:  %s', saved_state.encoder_params)
-        self.do_lower_case = saved_state.encoder_params["do_lower_case"]
-        self.pretrained_model_cfg = saved_state.encoder_params["pretrained_model_cfg"]
-        self.encoder_model_type = saved_state.encoder_params["encoder_model_type"]
-        self.pretrained_file = saved_state.encoder_params["pretrained_file"]
-        self.projection_dim = saved_state.encoder_params["projection_dim"]
-        self.sequence_length = saved_state.encoder_params["sequence_length"]
-
         # Init & Load Encoders
-        self.query_config = DPRConfig(projection_dim=self.projection_dim, config=self.query_embedding_model, dropout=0.0)
-        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(self.query_embedding_model, config=self.query_config)
-        self.query_encoder = DPRQuestionEncoder.from_pretrained(self.query_embedding_model, config=self.query_config)
+        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(self.query_embedding_model)
+        self.query_encoder = DPRQuestionEncoder.from_pretrained(self.query_embedding_model)
 
-        self.passage_config = DPRConfig(projection_dim=self.projection_dim, config=self.passage_embedding_model, dropout=0.0)
-        self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(self.passage_embedding_model, config=self.passage_config)
-        self.passage_encoder = DPRContextEncoder.from_pretrained(self.passage_embedding_model, config=self.passage_config)
+        self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(self.passage_embedding_model)
+        self.passage_encoder = DPRContextEncoder.from_pretrained(self.passage_embedding_model)
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
@@ -136,15 +124,25 @@ class DensePassageRetriever(BaseRetriever):
         """
         texts = [d.text for d in docs]
         titles = []
+        titles_mask = []
         if self.embed_title:
             for d in docs:
                 if d.meta is not None:
-                    titles.append(d.meta["name"] if "name" in d.meta.keys() else None)
+                    titles.append(d.meta["name"] if "name" in d.meta.keys() else "")
+                    titles_mask.append(1 if "name" in d.meta.keys() else 0)
+                else:
+                    titles.append("")
+                    titles_mask.append(0)
+        """
         if len(titles) != len(texts):
             titles = None  # type: ignore
+        """
 
-        result = self._generate_batch_predictions(texts=texts, titles=titles, model=self.passage_encoder,
-                                                  tensorizer=self.tensorizer, batch_size=self.batch_size)
+        result = self._generate_batch_predictions(texts=texts, titles=titles,
+                                                  titles_mask=titles_mask,
+                                                  model=self.passage_encoder,
+                                                  tokenizer=self.passage_tokenizer,
+                                                  batch_size=self.batch_size)
         return result
 
     def _normalize_query(self, query: str) -> str:
@@ -154,7 +152,7 @@ class DensePassageRetriever(BaseRetriever):
 
     def _tensorizer(self, tokenizer: Union[DPRQuestionEncoderTokenizer, DPRContextEncoderTokenizer],
                     text: List[str],
-                    title: Optional[List[str]],
+                    title: Optional[List[str]] = None,
                     add_special_tokens: bool = True):
         """
         Creates tensors from text sequences
@@ -172,14 +170,13 @@ class DensePassageRetriever(BaseRetriever):
                 token_type_ids: list of token type ids
                 attention_mask: list of indices specifying which tokens should be attended to by the encoder
         """
-        if title:
-            texts = [tuple((title_, text_)) for title_, text_ in zip(title, text)]
-            out = tokenizer.batch_encode_plus(texts, truncation=True,
-                                              add_special_tokens=add_special_tokens,
-                                              max_length=self.max_seq_len,
-                                              pad_to_max_length=True)
+
+        # combine titles with passages only if some titles are present with passages
+        if self.embed_title and title:
+            final_text = [tuple((title_, text_)) for title_, text_ in zip(title, text)]
         else:
-            out = tokenizer.batch_encode_plus(text, add_special_tokens=add_special_tokens, truncation=True,
+            final_text = text
+        out = tokenizer.batch_encode_plus(final_text, add_special_tokens=add_special_tokens, truncation=True,
                                               max_length=self.max_seq_len,
                                               pad_to_max_length=True)
 
@@ -188,19 +185,64 @@ class DensePassageRetriever(BaseRetriever):
         attention_mask = torch.tensor(out['attention_mask'])
         return token_ids, token_type_ids, attention_mask
 
+    def _handle_titleless_passages(self, titles_mask, ctx_ids_batch, ctx_attn_mask):
+        """
+        handles titleless samples in batch
+        :Example:
+            >>> ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained()
+            >>> dpr_object._tensorizer(tokenizer=ctx_tokenizer, text=passages, title=titles)
+
+        :param titles_mask: tensor of bools indicating where the sample contains a title
+        :param ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices
+        :param ctx_attn_mask: tensor of shape (batch_size, max_seq_len) containing attention mask
+
+        Returns:
+                ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices with [SEP] token removed
+                ctx_attn_mask: tensor of shape (batch_size, max_seq_len) reflecting the ctx_ids_batch changes
+        """
+        # get all titlessless pasaage indices
+        no_title_indices = torch.nonzero(1 - titles_mask).squeeze(-1)
+
+        # remove [SEP] token index for titleless passages and add 1 pad at the enc
+        ctx_ids_batch[no_title_indices] = torch.cat((ctx_ids_batch[no_title_indices, 0].unsqueeze(-1),
+                                          ctx_ids_batch[no_title_indices, 2:],
+                                          torch.tensor([0]).expand(len(no_title_indices)).unsqueeze(-1)), dim=1)
+
+        # Modify attention mask to refect [SEP] token removal and 1 pad addition in ctx_ids_batch
+        ctx_attn_mask[no_title_indices] = torch.cat((ctx_attn_mask[no_title_indices, 0].unsqueeze(-1),
+                                         ctx_attn_mask[no_title_indices, 2:],
+                                         torch.tensor([0]).expand(len(no_title_indices)).unsqueeze(-1)), dim=1)
+
+        return ctx_ids_batch, ctx_attn_mask
+
     def _generate_batch_predictions(self,
                                     texts: List[str],
                                     model: torch.nn.Module,
-                                    tokenizer,
+                                    tokenizer: Union[DPRQuestionEncoderTokenizer, DPRContextEncoderTokenizer],
                                     titles: Optional[List[str]] = None, #useful only for passage embedding with DPR!
+                                    titles_mask: Optional[List[int]] = None,
                                     batch_size: int = 16) -> List[Tuple[object, np.array]]:
         n = len(texts)
         total = 0
         results = []
         for batch_start in range(0, n, batch_size):
-            ctx_title = titles[batch_start:batch_start + batch_size] if titles else None
+            # create batch of titles only for passages
+            ctx_title = None
+            if self.embed_title and titles and sum(titles_mask[batch_start:batch_start + batch_size]) > 0:
+                ctx_title = titles[batch_start:batch_start + batch_size]
+
+            # create batch of text
             ctx_text = texts[batch_start:batch_start + batch_size]
-            ctx_ids_batch, ctx_seg_batch, ctx_attn_mask = self._tensorizer(tokenizer, text=ctx_text, title=ctx_title)
+
+            # tensorize the batch
+            ctx_ids_batch, _, ctx_attn_mask = self._tensorizer(tokenizer, text=ctx_text, title=ctx_title)
+            ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
+
+            # handle case when embed_title set but some samples in batch do not contain title
+            if tokenizer == self.passage_tokenizer and self.embed_title and titles_mask:
+                titles_mask_tensor = torch.tensor(titles_mask).to(self.device)
+                if not torch.all(torch.eq(titles_mask_tensor, torch.ones_like(titles_mask_tensor))):
+                    ctx_ids_batch, ctx_attn_mask = self._handle_titleless_passages(titles_mask_tensor, ctx_ids_batch, ctx_attn_mask)
 
             with torch.no_grad():
                 out = model(input_ids=ctx_ids_batch, attention_mask=ctx_attn_mask, token_type_ids=ctx_seg_batch)
