@@ -255,9 +255,6 @@ class BaseDocumentStore(ABC):
                     f"Both text label and 'no answer possible' label is present for question: {ls[0].question}")
                 for remove_idx in no_idx[::-1]:
                     ls.pop(remove_idx)
-            # when all labels to a question say "no answer" we just need the first occurence
-            elif no_present and not t_present:
-                ls = ls[:1]
 
             # construct Aggregated_label
             for i, l in enumerate(ls):
