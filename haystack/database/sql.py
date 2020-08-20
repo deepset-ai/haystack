@@ -180,7 +180,11 @@ class SQLDocumentStore(BaseDocumentStore):
         return self.session.query(LabelORM).filter_by(index=index).count()
 
     def _convert_sql_row_to_document(self, row) -> Document:
-        document = Document(id=row.id, text=row.text, meta={meta.name: meta.value for meta in row.meta})
+        document = Document(
+            id=row.id,
+            text=row.text,
+            meta={meta.name: meta.value for meta in row.meta}
+        )
         return document
 
     def _convert_sql_row_to_label(self, row) -> Label:
@@ -197,15 +201,15 @@ class SQLDocumentStore(BaseDocumentStore):
         )
         return label
 
-    def query_by_embedding(
-        self, query_emb: List[float], filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
-    ) -> List[Document]:
+    def query_by_embedding(self,
+                           query_emb: List[float],
+                           filters: Optional[dict] = None,
+                           top_k: int = 10,
+                           index: Optional[str] = None) -> List[Document]:
 
-        raise NotImplementedError(
-            "SQLDocumentStore is currently not supporting embedding queries. "
-            "Change the query type (e.g. by choosing a different retriever) "
-            "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)"
-        )
+        raise NotImplementedError("SQLDocumentStore is currently not supporting embedding queries. "
+                                  "Change the query type (e.g. by choosing a different retriever) "
+                                  "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")
 
     def delete_all_documents(self, index=None):
         """
