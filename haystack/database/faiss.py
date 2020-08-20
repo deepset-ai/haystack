@@ -152,7 +152,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         documents = self.get_all_documents(filters={"vector_id": vector_ids_for_query}, index=index)
         # sort the documents as per query results
-        documents = sorted(documents, key=lambda doc: vector_ids_for_query.index(doc.meta["vector_id"]))
+        documents = sorted(documents, key=lambda doc: vector_ids_for_query.index(doc.meta["vector_id"]))  # type: ignore
 
         return documents
 
