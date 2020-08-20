@@ -188,9 +188,6 @@ class DensePassageRetriever(BaseRetriever):
     def _handle_titleless_passages(self, titles_mask, ctx_ids_batch, ctx_attn_mask):
         """
         handles titleless samples in batch
-        :Example:
-            >>> ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained()
-            >>> dpr_object._tensorizer(tokenizer=ctx_tokenizer, text=passages, title=titles)
 
         :param titles_mask: tensor of bools indicating where the sample contains a title
         :param ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices
@@ -200,15 +197,15 @@ class DensePassageRetriever(BaseRetriever):
                 ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices with [SEP] token removed
                 ctx_attn_mask: tensor of shape (batch_size, max_seq_len) reflecting the ctx_ids_batch changes
         """
-        # get all titlessless pasaage indices
+        # get all untitled passage indices
         no_title_indices = torch.nonzero(1 - titles_mask).squeeze(-1)
 
-        # remove [SEP] token index for titleless passages and add 1 pad at the enc
+        # remove [SEP] token index for untitled passages and add 1 pad to compensate
         ctx_ids_batch[no_title_indices] = torch.cat((ctx_ids_batch[no_title_indices, 0].unsqueeze(-1),
                                           ctx_ids_batch[no_title_indices, 2:],
                                           torch.tensor([0]).expand(len(no_title_indices)).unsqueeze(-1)), dim=1)
 
-        # Modify attention mask to refect [SEP] token removal and 1 pad addition in ctx_ids_batch
+        # Modify attention mask to reflect [SEP] token removal and pad addition in ctx_ids_batch
         ctx_attn_mask[no_title_indices] = torch.cat((ctx_attn_mask[no_title_indices, 0].unsqueeze(-1),
                                          ctx_attn_mask[no_title_indices, 2:],
                                          torch.tensor([0]).expand(len(no_title_indices)).unsqueeze(-1)), dim=1)
@@ -238,11 +235,11 @@ class DensePassageRetriever(BaseRetriever):
             ctx_ids_batch, _, ctx_attn_mask = self._tensorizer(tokenizer, text=ctx_text, title=ctx_title)
             ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
 
-            # handle case when embed_title set but some samples in batch do not contain title
+            # handle case when embed_title set but some samples in batch are untitled
             if self.embed_title and titles_mask:
                 titles_mask_tensor = torch.tensor(titles_mask[batch_start:batch_start + batch_size]).to(self.device)
                 # ignore when all passages have titles or all passages have no titles
-                if torch.all(torch.tensor([(titles_mask_tensor==bool_value).any() for bool_value in [False,True]])):
+                if torch.all(torch.tensor([(titles_mask_tensor == bool_value).any() for bool_value in [False, True]])):
                     ctx_ids_batch, ctx_attn_mask = self._handle_titleless_passages(titles_mask_tensor, ctx_ids_batch, ctx_attn_mask)
 
             with torch.no_grad():
