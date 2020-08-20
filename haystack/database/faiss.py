@@ -150,9 +150,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         _, vector_id_matrix = self.faiss_index.search(hnsw_vectors, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
 
-        documents = [
-            self.get_all_documents(filters={"vector_id": [vector_id]})[0] for vector_id in vector_ids_for_query
-        ]
+        documents = self.get_all_documents(filters={"vector_id": vector_ids_for_query})
 
         return documents
 
