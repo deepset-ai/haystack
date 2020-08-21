@@ -31,8 +31,8 @@ class DocumentORM(ORMBase):
 class MetaORM(ORMBase):
     __tablename__ = "meta"
 
-    name = Column(String)
-    value = Column(String)
+    name = Column(String, index=True)
+    value = Column(String, index=True)
 
     documents = relationship(DocumentORM, secondary="document_meta", backref="Meta")
 
@@ -80,36 +80,18 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def get_all_documents(  # type: ignore
-        self,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+    def get_all_documents(
+        self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None
     ) -> List[Document]:
         index = index or self.index
-        document_rows = self.session.query(DocumentORM).filter_by(index=index).all()
-        if offset:
-            document_rows = document_rows.offset(offset)
-        if limit:
-            document_rows = document_rows.limit(limit)
-
-        documents = []
-        for row in document_rows:
-            documents.append(self._convert_sql_row_to_document(row))
+        query = self.session.query(DocumentORM).filter_by(index=index)
 
         if filters:
             for key, values in filters.items():
-                results = (
-                    self.session.query(DocumentORM)
-                    .filter(DocumentORM.meta.any(MetaORM.name.in_([key])))
-                    .filter(DocumentORM.meta.any(MetaORM.value.in_(values)))
-                    .all()
-                )
-        else:
-            results = self.session.query(DocumentORM).filter_by(index=index).all()
+                query = query.filter(DocumentORM.meta.any(MetaORM.name.in_([key])))\
+                             .filter(DocumentORM.meta.any(MetaORM.value.in_(values)))
 
-        documents = [self._convert_sql_row_to_document(row) for row in results]
+        documents = [self._convert_sql_row_to_document(row) for row in query.all()]
         return documents
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None):
