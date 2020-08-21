@@ -2,6 +2,7 @@ import logging
 from typing import Type, List, Union, Tuple, Optional
 import torch
 import numpy as np
+import warnings
 from pathlib import Path
 
 from farm.infer import Inferencer
@@ -175,6 +176,11 @@ class DensePassageRetriever(BaseRetriever):
                 ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices with [SEP] token removed
                 ctx_attn_mask: tensor of shape (batch_size, max_seq_len) reflecting the ctx_ids_batch changes
         """
+        # Skip step if encoder not bert model
+        if self.passage_encoder.ctx_encoder.base_model_prefix != 'bert_model':
+            warnings.warn("Context encoder is not a BERT model. Skipping removal of [SEP] tokens")
+            return ctx_ids_batch, ctx_attn_mask
+
         # get all untitled passage indices
         no_title_indices = torch.nonzero(1 - titles_mask).squeeze(-1)
 
