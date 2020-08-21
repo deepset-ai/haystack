@@ -33,8 +33,8 @@ class DensePassageRetriever(BaseRetriever):
                  use_gpu: bool = True,
                  batch_size: int = 16,
                  do_lower_case: bool = False,
-                 use_amp: str = None,
-                 embed_title: bool = True
+                 embed_title: bool = True,
+                 remove_sep_tok_from_untitled_passages: bool = True
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -60,21 +60,12 @@ class DensePassageRetriever(BaseRetriever):
                                 one used by hugging-face transformers' modelhub models
                                 Currently available remote names: "facebook/dpr-ctx_encoder-single-nq-base"
         :param max_seq_len: Longest length of each sequence
-        :param projection_dim: dimension of an additional final layer. When set to 0, no final layer is added to the encoders
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
         :param do_lower_case: Whether to lower case the text input in the tokenizer
-        :param use_amp: Whether to use Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
-        :param use_amp: Optional usage of Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
-                        Choose `None` or AMP optimization level:
-                              - None -> Not using amp at all
-                              - 'O0' -> Regular FP32
-                              - 'O1' -> Mixed Precision (recommended, if optimization wanted)
         """
 
         self.document_store = document_store
-        self.query_embedding_model = query_embedding_model
-        self.passage_embedding_model = passage_embedding_model
         self.batch_size = batch_size
         self.max_seq_len = max_seq_len
 
@@ -83,16 +74,16 @@ class DensePassageRetriever(BaseRetriever):
         else:
             self.device = torch.device("cpu")
 
-        self.use_amp = use_amp
         self.do_lower_case = do_lower_case
         self.embed_title = embed_title
+        self.remove_sep_tok_from_untitled_passages = remove_sep_tok_from_untitled_passages
 
         # Init & Load Encoders
-        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(self.query_embedding_model)
-        self.query_encoder = DPRQuestionEncoder.from_pretrained(self.query_embedding_model)
+        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(query_embedding_model)
+        self.query_encoder = DPRQuestionEncoder.from_pretrained(query_embedding_model)
 
-        self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(self.passage_embedding_model)
-        self.passage_encoder = DPRContextEncoder.from_pretrained(self.passage_embedding_model)
+        self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(passage_embedding_model)
+        self.passage_encoder = DPRContextEncoder.from_pretrained(passage_embedding_model)
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
@@ -118,28 +109,15 @@ class DensePassageRetriever(BaseRetriever):
         """
         Create embeddings for a list of passages using the passage encoder
 
-        :param texts: passage to embed
-        :param titles: passage title to also take into account during embedding
-        :return: embeddings, one per input passage
+        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
+        :return: embeddings of documents / passages shape (batch_size, embedding_dim)
         """
         texts = [d.text for d in docs]
-        titles = []
-        titles_mask = []
+        titles = None
         if self.embed_title:
-            for d in docs:
-                if d.meta is not None:
-                    titles.append(d.meta["name"] if "name" in d.meta.keys() else "")
-                    titles_mask.append(1 if "name" in d.meta.keys() else 0)
-                else:
-                    titles.append("")
-                    titles_mask.append(0)
-        """
-        if len(titles) != len(texts):
-            titles = None  # type: ignore
-        """
+            titles = [d.meta["name"] if d.meta and "name" in d.meta else "" for d in docs]
 
         result = self._generate_batch_predictions(texts=texts, titles=titles,
-                                                  titles_mask=titles_mask,
                                                   model=self.passage_encoder,
                                                   tokenizer=self.passage_tokenizer,
                                                   batch_size=self.batch_size)
@@ -185,9 +163,9 @@ class DensePassageRetriever(BaseRetriever):
         attention_mask = torch.tensor(out['attention_mask'])
         return token_ids, token_type_ids, attention_mask
 
-    def _handle_titleless_passages(self, titles_mask, ctx_ids_batch, ctx_attn_mask):
+    def _remove_sep_tok_from_untitled_passages(self, titles_mask, ctx_ids_batch, ctx_attn_mask):
         """
-        handles titleless samples in batch
+        removes [SEP] token from titleless samples in batch
 
         :param titles_mask: tensor of bools indicating where the sample contains a title
         :param ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices
@@ -202,13 +180,14 @@ class DensePassageRetriever(BaseRetriever):
 
         # remove [SEP] token index for untitled passages and add 1 pad to compensate
         ctx_ids_batch[no_title_indices] = torch.cat((ctx_ids_batch[no_title_indices, 0].unsqueeze(-1),
-                                          ctx_ids_batch[no_title_indices, 2:],
-                                          torch.tensor([0]).expand(len(no_title_indices)).unsqueeze(-1)), dim=1)
+                                                     ctx_ids_batch[no_title_indices, 2:],
+                                                     torch.tensor([self.passage_tokenizer.pad_token_id]).expand(len(no_title_indices)).unsqueeze(-1)),
+                                                    dim=1)
 
         # Modify attention mask to reflect [SEP] token removal and pad addition in ctx_ids_batch
         ctx_attn_mask[no_title_indices] = torch.cat((ctx_attn_mask[no_title_indices, 0].unsqueeze(-1),
-                                         ctx_attn_mask[no_title_indices, 2:],
-                                         torch.tensor([0]).expand(len(no_title_indices)).unsqueeze(-1)), dim=1)
+                                                     ctx_attn_mask[no_title_indices, 2:],
+                                                     torch.tensor([self.passage_tokenizer.pad_token_id]).expand(len(no_title_indices)).unsqueeze(-1)), dim=1)
 
         return ctx_ids_batch, ctx_attn_mask
 
@@ -217,7 +196,6 @@ class DensePassageRetriever(BaseRetriever):
                                     model: torch.nn.Module,
                                     tokenizer: Union[DPRQuestionEncoderTokenizer, DPRContextEncoderTokenizer],
                                     titles: Optional[List[str]] = None, #useful only for passage embedding with DPR!
-                                    titles_mask: Optional[List[int]] = None,
                                     batch_size: int = 16) -> List[Tuple[object, np.array]]:
         n = len(texts)
         total = 0
@@ -225,7 +203,7 @@ class DensePassageRetriever(BaseRetriever):
         for batch_start in range(0, n, batch_size):
             # create batch of titles only for passages
             ctx_title = None
-            if self.embed_title and titles and titles_mask and sum(titles_mask[batch_start:batch_start + batch_size]) > 0:
+            if self.embed_title and titles:
                 ctx_title = titles[batch_start:batch_start + batch_size]
 
             # create batch of text
@@ -235,12 +213,13 @@ class DensePassageRetriever(BaseRetriever):
             ctx_ids_batch, _, ctx_attn_mask = self._tensorizer(tokenizer, text=ctx_text, title=ctx_title)
             ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
 
-            # handle case when embed_title set but some samples in batch are untitled
-            if self.embed_title and titles_mask:
-                titles_mask_tensor = torch.tensor(titles_mask[batch_start:batch_start + batch_size]).to(self.device)
-                # ignore when all passages have titles or all passages have no titles
-                if torch.all(torch.tensor([(titles_mask_tensor == bool_value).any() for bool_value in [False, True]])):
-                    ctx_ids_batch, ctx_attn_mask = self._handle_titleless_passages(titles_mask_tensor, ctx_ids_batch, ctx_attn_mask)
+            # remove [SEP] token from untitled passages in batch
+            if self.embed_title and self.remove_sep_tok_from_untitled_passages and titles:
+                titles_mask_tensor = torch.tensor(list(map(lambda x: 0 if x == "" else 1,
+                                                           titles[batch_start:batch_start + batch_size]))).to(self.device)
+                ctx_ids_batch, ctx_attn_mask = self._remove_sep_tok_from_untitled_passages(titles_mask_tensor,
+                                                                                           ctx_ids_batch,
+                                                                                           ctx_attn_mask)
 
             with torch.no_grad():
                 out = model(input_ids=ctx_ids_batch, attention_mask=ctx_attn_mask, token_type_ids=ctx_seg_batch)
