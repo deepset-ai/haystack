@@ -67,7 +67,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                           documents. When set as True, any document with an existing ID gets updated.
                                           If set to False, an error is raised if the document ID of the document being
                                           added already exists.
-        :param refresh_type: type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search. More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+        :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+                             Values:
+                             - 'wait_for' => continue only after changes are visible (slow, but safe)
+                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after indexing)
+                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
                                     scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
