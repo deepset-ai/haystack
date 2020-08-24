@@ -163,11 +163,11 @@ class DensePassageRetriever(BaseRetriever):
         attention_mask = torch.tensor(out['attention_mask'])
         return token_ids, token_type_ids, attention_mask
 
-    def _remove_sep_tok_from_untitled_passages(self, titles_mask, ctx_ids_batch, ctx_attn_mask):
+    def _remove_sep_tok_from_untitled_passages(self, titles, ctx_ids_batch, ctx_attn_mask):
         """
-        removes [SEP] token from titleless samples in batch
+        removes [SEP] token from untitled samples in batch
 
-        :param titles_mask: tensor of bools indicating where the sample contains a title
+        :param titles: tensor of shape(batch_size, max_seq_len) containing titles for each sample
         :param ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices
         :param ctx_attn_mask: tensor of shape (batch_size, max_seq_len) containing attention mask
 
@@ -179,6 +179,9 @@ class DensePassageRetriever(BaseRetriever):
         if self.passage_encoder.ctx_encoder.base_model_prefix != 'bert_model':
             logger.warning("Context encoder is not a BERT model. Skipping removal of [SEP] tokens")
             return ctx_ids_batch, ctx_attn_mask
+
+        # create a mask for titles in the batch
+        titles_mask = torch.tensor(list(map(lambda x: 0 if x == "" else 1, titles))).to(self.device)
 
         # get all untitled passage indices
         no_title_indices = torch.nonzero(1 - titles_mask).squeeze(-1)
@@ -219,10 +222,8 @@ class DensePassageRetriever(BaseRetriever):
             ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
 
             # remove [SEP] token from untitled passages in batch
-            if self.embed_title and self.remove_sep_tok_from_untitled_passages and titles:
-                titles_mask_tensor = torch.tensor(list(map(lambda x: 0 if x == "" else 1,
-                                                           titles[batch_start:batch_start + batch_size]))).to(self.device)
-                ctx_ids_batch, ctx_attn_mask = self._remove_sep_tok_from_untitled_passages(titles_mask_tensor,
+            if self.embed_title and self.remove_sep_tok_from_untitled_passages and ctx_title:
+                ctx_ids_batch, ctx_attn_mask = self._remove_sep_tok_from_untitled_passages(ctx_title,
                                                                                            ctx_ids_batch,
                                                                                            ctx_attn_mask)
 
