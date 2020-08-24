@@ -6,7 +6,7 @@ from haystack.database.base import Document
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 def test_dpr_inmemory_retrieval(document_store):
 
     documents = [
