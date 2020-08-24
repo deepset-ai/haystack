@@ -118,10 +118,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()")
 
         for doc, emb in zip(docs, embeddings):
-            d = self.indexes[index][doc.id]
-            doc_dict = d.to_dict()
-            doc_dict[self.embedding_field] = emb.tolist()
-            self.indexes[index][doc.id] = Document.from_dict(doc_dict)
+            self.indexes[index][doc.id].embedding = emb
 
     def get_document_count(self, index: Optional[str] = None) -> int:
         index = index or self.index
