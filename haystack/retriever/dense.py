@@ -80,10 +80,10 @@ class DensePassageRetriever(BaseRetriever):
 
         # Init & Load Encoders
         self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(query_embedding_model)
-        self.query_encoder = DPRQuestionEncoder.from_pretrained(query_embedding_model)
+        self.query_encoder = DPRQuestionEncoder.from_pretrained(query_embedding_model).to(self.device)
 
         self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(passage_embedding_model)
-        self.passage_encoder = DPRContextEncoder.from_pretrained(passage_embedding_model)
+        self.passage_encoder = DPRContextEncoder.from_pretrained(passage_embedding_model).to(self.device)
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
@@ -158,16 +158,16 @@ class DensePassageRetriever(BaseRetriever):
                                               max_length=self.max_seq_len,
                                               pad_to_max_length=True)
 
-        token_ids = torch.tensor(out['input_ids'])
-        token_type_ids = torch.tensor(out['token_type_ids'])
-        attention_mask = torch.tensor(out['attention_mask'])
+        token_ids = torch.tensor(out['input_ids']).to(self.device)
+        token_type_ids = torch.tensor(out['token_type_ids']).to(self.device)
+        attention_mask = torch.tensor(out['attention_mask']).to(self.device)
         return token_ids, token_type_ids, attention_mask
 
     def _remove_sep_tok_from_untitled_passages(self, titles, ctx_ids_batch, ctx_attn_mask):
         """
         removes [SEP] token from untitled samples in batch
 
-        :param titles: tensor of shape(batch_size, max_seq_len) containing titles for each sample
+        :param titles: list of titles for each sample
         :param ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices
         :param ctx_attn_mask: tensor of shape (batch_size, max_seq_len) containing attention mask
 
@@ -189,13 +189,13 @@ class DensePassageRetriever(BaseRetriever):
         # remove [SEP] token index for untitled passages and add 1 pad to compensate
         ctx_ids_batch[no_title_indices] = torch.cat((ctx_ids_batch[no_title_indices, 0].unsqueeze(-1),
                                                      ctx_ids_batch[no_title_indices, 2:],
-                                                     torch.tensor([self.passage_tokenizer.pad_token_id]).expand(len(no_title_indices)).unsqueeze(-1)),
+                                                     torch.tensor([self.passage_tokenizer.pad_token_id]).expand(len(no_title_indices)).unsqueeze(-1).to(self.device)),
                                                     dim=1)
-
         # Modify attention mask to reflect [SEP] token removal and pad addition in ctx_ids_batch
         ctx_attn_mask[no_title_indices] = torch.cat((ctx_attn_mask[no_title_indices, 0].unsqueeze(-1),
                                                      ctx_attn_mask[no_title_indices, 2:],
-                                                     torch.tensor([self.passage_tokenizer.pad_token_id]).expand(len(no_title_indices)).unsqueeze(-1)), dim=1)
+                                                     torch.tensor([self.passage_tokenizer.pad_token_id]).expand(len(no_title_indices)).unsqueeze(-1).to(self.device)),
+                                                    dim=1)
 
         return ctx_ids_batch, ctx_attn_mask
 
