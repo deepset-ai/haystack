@@ -61,9 +61,10 @@ class DensePassageRetriever(BaseRetriever):
         :param max_seq_len: Longest length of each sequence
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
-        :param embed_title: boolean indicating whether to embed titles with passages
-        :param remove_sep_tok_from_untitled_passages: boolean indicating whether to remove [SEP] token encoding from
-                                if titles are missing for passages
+        :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding   
+        :param remove_sep_tok_from_untitled_passages: If embed_title is true, there are different strategies to deal with documents that don't have a title.
+                                                      True => Embed passage as single text, similar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP])
+                                                      False => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
         """
 
         self.document_store = document_store
