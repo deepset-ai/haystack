@@ -32,7 +32,6 @@ class DensePassageRetriever(BaseRetriever):
                  max_seq_len: int = 256,
                  use_gpu: bool = True,
                  batch_size: int = 16,
-                 do_lower_case: bool = False,
                  embed_title: bool = True,
                  remove_sep_tok_from_untitled_passages: bool = True
                  ):
@@ -62,7 +61,9 @@ class DensePassageRetriever(BaseRetriever):
         :param max_seq_len: Longest length of each sequence
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
-        :param do_lower_case: Whether to lower case the text input in the tokenizer
+        :param embed_title: boolean indicating whether to embed titles with passages
+        :param remove_sep_tok_from_untitled_passages: boolean indicating whether to remove [SEP] token encoding from
+                                if titles are missing for passages
         """
 
         self.document_store = document_store
@@ -74,7 +75,6 @@ class DensePassageRetriever(BaseRetriever):
         else:
             self.device = torch.device("cpu")
 
-        self.do_lower_case = do_lower_case
         self.embed_title = embed_title
         self.remove_sep_tok_from_untitled_passages = remove_sep_tok_from_untitled_passages
 
@@ -140,8 +140,8 @@ class DensePassageRetriever(BaseRetriever):
 
         :param tokenizer: An instance of DPRQuestionEncoderTokenizer or DPRContextEncoderTokenizer.
         :param text: list of text sequences to be tokenized
-        :param title: optional list of titles assoicated with each text sequence
-        :param add_special_tokens: boolean for encoding of special tokens in each sequence
+        :param title: optional list of titles associated with each text sequence
+        :param add_special_tokens: boolean for whether to encode special tokens in each sequence
 
         Returns:
                 token_ids: list of token ids from vocabulary
@@ -165,7 +165,26 @@ class DensePassageRetriever(BaseRetriever):
 
     def _remove_sep_tok_from_untitled_passages(self, titles, ctx_ids_batch, ctx_attn_mask):
         """
-        removes [SEP] token from untitled samples in batch
+        removes [SEP] token from untitled samples in batch. For batches which has some untitled passages, remove [SEP]
+        token used to segment titles and passage from untitled samples in the batch
+        (Official DPR code do not encode [SEP] tokens in untitled passages)
+
+        :Example:
+            # Encoding passages with 'embed_title' = True. 1st passage is titled, 2nd passage is untitled
+            >>> texts = ['Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions.',
+                          'Democratic Republic of the Congo to the south. Angola\'s capital, Luanda, lies on the Atlantic coast in the northwest of the country.'
+                        ]
+            >> titles = ["0", '']
+            >>> token_ids, token_type_ids, attention_mask = self._tensorizer(self.passage_tokenizer, text=texts, title=titles)
+            >>> [self.passage_tokenizer.ids_to_tokens[tok.item()] for tok in token_ids[0]]
+            ['[CLS]', '0', '[SEP]', 'aaron', 'aaron', '(', 'or', ';', ....]
+            >>> [self.passage_tokenizer.ids_to_tokens[tok.item()] for tok in token_ids[1]]
+            ['[CLS]', '[SEP]', 'democratic', 'republic', 'of', 'the', ....]
+            >>> new_ids, new_attn = self._remove_sep_tok_from_untitled_passages(titles, token_ids, attention_mask)
+            >>> [self.passage_tokenizer.ids_to_tokens[tok.item()] for tok in token_ids[0]]
+            ['[CLS]', '0', '[SEP]', 'aaron', 'aaron', '(', 'or', ';', ....]
+            >>> [self.passage_tokenizer.ids_to_tokens[tok.item()] for tok in token_ids[1]]
+            ['[CLS]', 'democratic', 'republic', 'of', 'the', 'congo', ...]
 
         :param titles: list of titles for each sample
         :param ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices

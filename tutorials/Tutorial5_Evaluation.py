@@ -71,8 +71,7 @@ retriever = ElasticsearchRetriever(document_store=document_store)
 #                                   use_gpu=True,
 #                                   embed_title=True,
 #                                   remove_sep_tok_from_untitled_passages=True)
-
-document_store.update_embeddings(retriever, index=doc_index)
+# document_store.update_embeddings(retriever, index=doc_index)
 
 
 # Initialize Reader
