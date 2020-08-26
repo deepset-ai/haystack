@@ -395,9 +395,9 @@ class FARMReader(BaseReader):
         """
 
         if self.top_k_per_candidate != 4:
-            logger.warning(f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
-                           f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
-                           f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5")
+            logger.info(f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
+                        f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
+                        f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5")
 
         # extract all questions for evaluation
         filters = {"origin": [label_origin]}
