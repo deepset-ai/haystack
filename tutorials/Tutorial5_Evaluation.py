@@ -75,7 +75,7 @@ retriever = ElasticsearchRetriever(document_store=document_store)
 
 
 # Initialize Reader
-reader = FARMReader("deepset/roberta-base-squad2")
+reader = FARMReader("deepset/roberta-base-squad2", top_k_per_candidate=4)
 
 # Initialize Finder which sticks together Reader and Retriever
 finder = Finder(reader, retriever)
