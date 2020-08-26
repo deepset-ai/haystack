@@ -394,6 +394,11 @@ class FARMReader(BaseReader):
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         """
 
+        if self.top_k_per_candidate != 4:
+            logger.info(f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
+                        f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
+                        f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5")
+
         # extract all questions for evaluation
         filters = {"origin": [label_origin]}
 
@@ -409,7 +414,8 @@ class FARMReader(BaseReader):
 
         # Create squad style dicts
         d: Dict[str, Any] = {}
-        for doc_id in aggregated_per_doc.keys():
+        all_doc_ids = [x.id for x in document_store.get_all_documents(doc_index)]
+        for doc_id in all_doc_ids:
             doc = document_store.get_document_by_id(doc_id, index=doc_index)
             if not doc:
                 logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
@@ -419,21 +425,25 @@ class FARMReader(BaseReader):
             }
             # get all questions / answers
             aggregated_per_question: Dict[str, Any] = defaultdict(list)
-            for label in aggregated_per_doc[doc_id]:
-                # add to existing answers
-                if label.question in aggregated_per_question.keys():
-                    aggregated_per_question[label.question]["answers"].append({
-                                "text": label.answer,
-                                "answer_start": label.offset_start_in_doc})
-                # create new one
-                else:
-                    aggregated_per_question[label.question] = {
-                        "id": str(hash(str(doc_id)+label.question)),
-                        "question": label.question,
-                        "answers": [{
-                                "text": label.answer,
-                                "answer_start": label.offset_start_in_doc}]
-                    }
+            if doc_id in aggregated_per_doc:
+                for label in aggregated_per_doc[doc_id]:
+                    # add to existing answers
+                    if label.question in aggregated_per_question.keys():
+                        # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
+                        if len(aggregated_per_question[label.question]["answers"]) >= 6:
+                            continue
+                        aggregated_per_question[label.question]["answers"].append({
+                                    "text": label.answer,
+                                    "answer_start": label.offset_start_in_doc})
+                    # create new one
+                    else:
+                        aggregated_per_question[label.question] = {
+                            "id": str(hash(str(doc_id)+label.question)),
+                            "question": label.question,
+                            "answers": [{
+                                    "text": label.answer,
+                                    "answer_start": label.offset_start_in_doc}]
+                        }
             # Get rid of the question key again (after we aggregated we don't need it anymore)
             d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
 
