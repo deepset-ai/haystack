@@ -45,19 +45,31 @@ def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
 
                 # Get Labels
                 for qa in paragraph["qas"]:
-                    for answer in qa["answers"]:
+                    if len(qa["answers"]) > 0:
+                        for answer in qa["answers"]:
+                            label = Label(
+                                question=qa["question"],
+                                answer=answer["text"],
+                                is_correct_answer=True,
+                                is_correct_document=True,
+                                document_id=cur_doc.id,
+                                offset_start_in_doc=answer["answer_start"],
+                                no_answer=qa["is_impossible"],
+                                origin="gold_label",
+                                )
+                            labels.append(label)
+                    else:
                         label = Label(
                             question=qa["question"],
-                            answer=answer["text"],
+                            answer="",
                             is_correct_answer=True,
                             is_correct_document=True,
                             document_id=cur_doc.id,
-                            offset_start_in_doc=answer["answer_start"],
+                            offset_start_in_doc=0,
                             no_answer=qa["is_impossible"],
                             origin="gold_label",
-                            )
+                        )
                         labels.append(label)
-
         return docs, labels
 
 
