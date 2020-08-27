@@ -141,6 +141,8 @@ class FAISSDocumentStore(SQLDocumentStore):
     def query_by_embedding(
         self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
     ) -> List[Document]:
+        if filters:
+            raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
         if not self.faiss_index:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
         query_emb = query_emb.reshape(1, -1)
