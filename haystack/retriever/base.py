@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List
 import logging
+from time import perf_counter
+from functools import wraps
 
 from haystack.database.base import Document
 from haystack.database.base import BaseDocumentStore
@@ -14,6 +16,18 @@ class BaseRetriever(ABC):
     @abstractmethod
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         pass
+
+    def timing(self, fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if "timing" not in self.__dict__:
+                self.timing = 0
+            tic = perf_counter()
+            ret = fn(*args, **kwargs)
+            toc = perf_counter()
+            self.timing += toc - tic
+            return ret
+        return wrapper
 
     def eval(
         self,
@@ -45,6 +59,8 @@ class BaseRetriever(ABC):
         # Extract all questions for evaluation
         filters = {"origin": [label_origin]}
 
+        timed_retrieve = self.timing(self.retrieve)
+
         labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
 
         correct_retrievals = 0
@@ -62,7 +78,7 @@ class BaseRetriever(ABC):
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
         if open_domain:
             for question, gold_answers in question_label_dict.items():
-                retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
+                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_answer in gold_answers:
@@ -73,7 +89,7 @@ class BaseRetriever(ABC):
         # Option 2: Strict evaluation by document ids that are listed in the labels
         else:
             for question, gold_ids in question_label_dict.items():
-                retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
+                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_id in gold_ids:
