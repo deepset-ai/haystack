@@ -307,6 +307,13 @@ If you feel adventurous, Tika even supports some image OCR with Tesseract, or ob
     pages = converter.extract_pages(file_path=path)
     pages, meta = converter.extract_pages(file_path=path, return_meta=True)
 
-8. Tests
--------------------
-* Unit tests can be executed by running :code:`tox`.
+Contributing
+=============
+We are very open to contributions from the community - be it the fix of a small typo or a completely new feature! You don't need to be an Haystack expert for providing meaningful improvements.
+To avoid any extra work on either side, please check our `Contributor Guidelines <https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md>`_ first.
+
+Tests will automatically run for every commit you push to your PR. You can also run them locally by executing `pytest <https://docs.pytest.org/en/stable/>`_   in your terminal from the root folder of this repository: 
+
+.. code-block:: bash
+
+    pytest test/
