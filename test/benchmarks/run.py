@@ -6,6 +6,8 @@ from haystack.database.elasticsearch import Elasticsearch, ElasticsearchDocument
 from haystack.database.faiss import FAISSDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever
+from haystack.reader.farm import FARMReader
+from haystack.reader.transformers import TransformersReader
 from time import perf_counter
 
 from pathlib import Path
@@ -13,8 +15,9 @@ from pathlib import Path
 
 retriever_doc_stores = [("elastic", "elasticsearch"),
                         ("dpr", "faiss")]
-reader_models = [""]
-reader_type = ["farm", "transformers"]
+reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2", "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2", "deepset/xlm-roberta-large-squad2"]
+
+reader_types = ["farm"]
 
 data_dir = Path("../../data/nq")
 filename = "nq_dev_subset_v3.json"
@@ -22,8 +25,10 @@ s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_d
 doc_index = "eval_document"
 label_index = "label"
 
+
 def prepare_data(data_dir):
     fetch_archive_from_http(url=s3_url, output_dir=data_dir)
+
 
 def get_document_store(document_store_type):
     """ TODO This method is taken from test/conftest.py but maybe should be within Haystack.
@@ -38,7 +43,10 @@ def get_document_store(document_store_type):
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
-        document_store = ElasticsearchDocumentStore(index="haystack_test")
+        document_store = ElasticsearchDocumentStore(index="eval_document")
+        # ElasticsearchDocumentStore(host="localhost", username="", password="", index="document",
+        #                            create_index=False, embedding_field="emb",
+        #                            embedding_dim=768, excluded_meta_data=["emb"])
     elif document_store_type == "faiss":
         if os.path.exists("haystack_test_faiss.db"):
             os.remove("haystack_test_faiss.db")
@@ -46,6 +54,7 @@ def get_document_store(document_store_type):
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
     return document_store
+
 
 def get_retriever(retriever_name, doc_store):
     if retriever_name == "elastic":
@@ -59,29 +68,65 @@ def get_retriever(retriever_name, doc_store):
                                       use_gpu=True)
 
 
+def get_reader(reader_name, reader_type):
+    reader_class = None
+    if reader_type == "farm":
+        reader_class = FARMReader
+    elif reader_type == "transformers":
+        reader_class = TransformersReader
+    return reader_class(reader_name, top_k_per_candidate=4)
+
+
+
 def benchmark_indexing(doc_store, data_dir, filename, retriever):
+    tic = perf_counter()
+    index_to_doc_store(doc_store, data_dir, filename, retriever)
+    toc = perf_counter()
+    time = toc - tic
+    return doc_store, time
+
+def index_to_doc_store(doc_store, data_dir, filename, retriever):
     doc_store.delete_all_documents(index=doc_index)
     doc_store.delete_all_documents(index=label_index)
-    tic = perf_counter()
     doc_store.add_eval_data(data_dir / filename)
     try:
         doc_store.update_embeddings(retriever, index=doc_index)
     except AttributeError:
         pass
-    toc = perf_counter()
-    time = toc - tic
-    return doc_store, time
-
 
 def main():
-    # prepare_data(data_dir)
+    retriever_results = []
+    reader_results = []
+
+    prepare_data(data_dir)
     for retriever_name, doc_store_name in retriever_doc_stores:
         doc_store = get_document_store(doc_store_name)
         retriever = get_retriever(retriever_name, doc_store)
         doc_store, indexing_time = benchmark_indexing(doc_store, data_dir, filename, retriever)
         results = retriever.eval()
         results["indexing_time"] = indexing_time
+        results["retriever"] = retriever_name
+        results["doc_store"] = doc_store_name
         print(results)
+        retriever_results.append(results)
+
+    doc_store = get_document_store("elasticsearch")
+    index_to_doc_store(doc_store, data_dir, filename, None)
+    for reader_name in reader_models:
+        for reader_type in reader_types:
+            reader = get_reader(reader_name, reader_type)
+            results = reader.eval(document_store=doc_store,
+                                  doc_index=doc_index,
+                                  label_index=label_index,
+                                  device="cuda")
+            print(results)
+            results["reader"] = reader_name
+            reader_results.append(results)
+
+    print(retriever_results)
+    print(reader_results)
+
+
 
 if __name__ == "__main__":
     main()
