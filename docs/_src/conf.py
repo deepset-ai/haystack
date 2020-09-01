@@ -45,6 +45,9 @@ exclude_patterns = []
 #
 html_theme = 'sphinx_rtd_theme'
 
+# This fixes weird spacing between bullet points in lists
+html4_writer = True
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -64,6 +67,16 @@ html_logo="img/logo.png"
 # Additional layouts
 html_additional_pages = {"index": "pages/index.html"}
 
-# Custom css
+# -- Add autodocs for __init__() methods -------------------------------------
+
+def skip(app, what, name, obj, would_skip, options):
+    if name == "__init__":
+        return False
+    return would_skip
+
+
 def setup(app):
-    app.add_stylesheet("rtd_theme.css")
+	# Custom css
+	app.add_stylesheet("rtd_theme.css")
+	app.connect("autodoc-skip-member", skip)
+
