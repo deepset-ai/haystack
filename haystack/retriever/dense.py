@@ -39,11 +39,10 @@ class DensePassageRetriever(BaseRetriever):
         See their readme for manual download instructions: https://github.com/facebookresearch/DPR#resources--data-formats
 
         :Example:
-
-            # remote model from FAIR
-            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="dpr-bert-base-nq", use_gpu=True)
-            # or from local path
-            >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", use_gpu=True)
+                >>> # remote model from FAIR
+                >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="dpr-bert-base-nq", use_gpu=True)
+                >>> # or from local path
+                >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", use_gpu=True)
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or remote name of model checkpoint. The format equals the 
@@ -53,7 +52,6 @@ class DensePassageRetriever(BaseRetriever):
         :param batch_size: Number of questions or passages to encode at once
         :param do_lower_case: Whether to lower case the text input in the tokenizer
         :param encoder_model_type: 
-        :param use_amp: Whether to use Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
         :param use_amp: Optional usage of Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
                         Choose `None` or AMP optimization level:
                               - None -> Not using amp at all
@@ -115,8 +113,8 @@ class DensePassageRetriever(BaseRetriever):
         """
         Create embeddings for a list of queries using the query encoder
 
-        :param texts: queries to embed
-        :return: embeddings, one per input queries
+        :param texts: Queries to embed
+        :return: Embeddings, one per input queries
         """
         result = self._generate_batch_predictions(texts=texts, model=self.query_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
@@ -126,8 +124,8 @@ class DensePassageRetriever(BaseRetriever):
         """
         Create embeddings for a list of passages using the passage encoder
 
-        :param texts: passage to embed
-        :return: embeddings, one per input passage
+        :param texts: Passage to embed
+        :return: Embeddings, one per input passage
         """
         result = self._generate_batch_predictions(texts=texts, model=self.passage_encoder,
                                                   tensorizer=self.tensorizer, batch_size=self.batch_size)
@@ -203,12 +201,20 @@ class EmbeddingRetriever(BaseRetriever):
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or name of model in Hugging Face's model hub. Example: 'deepset/sentence_bert'
+        :param embedding_model: Local path or name of model in Hugging Face's model hub. Example: ``'deepset/sentence_bert'``
         :param use_gpu: Whether to use gpu or not
-        :param model_format: Name of framework that was used for saving the model. Options: 'farm', 'transformers', 'sentence_transformers'
+        :param model_format: Name of framework that was used for saving the model. Options:
+
+                             - ``'farm'``
+                             - ``'transformers'``
+                             - ``'sentence_transformers'``
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
-                                 Options: 'cls_token' (sentence vector), 'reduce_mean' (sentence vector),
-                                 reduce_max (sentence vector), 'per_token' (individual token vectors)
+                                 Options:
+
+                                 - ``'cls_token'`` (sentence vector)
+                                 - ``'reduce_mean'`` (sentence vector)
+                                 - ``'reduce_max'`` (sentence vector)
+                                 - ``'per_token'`` (individual token vectors)
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         """
@@ -249,8 +255,9 @@ class EmbeddingRetriever(BaseRetriever):
     def embed(self, texts: Union[List[str], str]) -> List[np.array]:
         """
         Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
-        :param texts: texts to embed
-        :return: list of embeddings (one per input text). Each embedding is a list of floats.
+
+        :param texts: Texts to embed
+        :return: List of embeddings (one per input text). Each embedding is a list of floats.
         """
 
         # for backward compatibility: cast pure str input
@@ -273,8 +280,8 @@ class EmbeddingRetriever(BaseRetriever):
         """
         Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
 
-        :param texts: queries to embed
-        :return: embeddings, one per input queries
+        :param texts: Queries to embed
+        :return: Embeddings, one per input queries
         """
         return self.embed(texts)
 
@@ -282,8 +289,8 @@ class EmbeddingRetriever(BaseRetriever):
         """
         Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 
-        :param texts: passage to embed
-        :return: embeddings, one per input passage
+        :param texts: Passage to embed
+        :return: Embeddings, one per input passage
         """
 
         return self.embed(texts)

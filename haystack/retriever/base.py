@@ -29,7 +29,8 @@ class BaseRetriever(ABC):
         Retriever is evaluated based on whether it finds the correct document given the question string and at which
         position in the ranking of documents the correct document is.
 
-        Returns a dict containing the following metrics:
+        |  Returns a dict containing the following metrics:
+
             - "recall": Proportion of questions for which correct document is among retrieved documents
             - "mean avg precision": Mean of average precision for each question. Rewards retrievers that give relevant
               documents a higher rank.
@@ -37,10 +38,10 @@ class BaseRetriever(ABC):
         :param label_index: Index/Table in DocumentStore where labeled questions are stored
         :param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
         :param top_k: How many documents to return per question
-        :param open_domain: If true, retrieval will be evaluated by checking if the answer string to a question is
+        :param open_domain: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
                             contained in the retrieved docs (common approach in open-domain QA).
                             If false, retrieval uses a stricter evaluation that checks if the retrieved document ids
-                             are within ids explicitly stated in the labels.
+                            are within ids explicitly stated in the labels.
         """
 
         # Extract all questions for evaluation
