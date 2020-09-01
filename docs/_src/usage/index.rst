@@ -27,6 +27,8 @@ or our API page for comprehensive descriptions of individual functions.
    usage/database
    usage/domain_adaptation
    usage/other_features
+   usage/terms
+
 
 Indices and tables
 ==================
