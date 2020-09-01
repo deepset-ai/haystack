@@ -1,5 +1,5 @@
 import logging
-from typing import Type, List, Union, Tuple
+from typing import Type, List, Union, Tuple, Optional
 import torch
 import numpy as np
 from pathlib import Path
@@ -11,8 +11,8 @@ from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
 
-from haystack.retriever.dpr_utils import HFBertEncoder, BertTensorizer, BertTokenizer,\
-    Tensorizer, load_states_from_checkpoint, download_dpr
+from haystack.retriever.dpr_utils import DPRContextEncoder, DPRQuestionEncoder, DPRConfig, DPRContextEncoderTokenizer, \
+    DPRQuestionEncoderTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +27,17 @@ class DensePassageRetriever(BaseRetriever):
 
     def __init__(self,
                  document_store: BaseDocumentStore,
-                 embedding_model: str,
+                 query_embedding_model: str,
+                 passage_embedding_model: str,
+                 max_seq_len: int = 256,
                  use_gpu: bool = True,
                  batch_size: int = 16,
-                 do_lower_case: bool = False,
-                 use_amp: str = None,
+                 embed_title: bool = True,
+                 remove_sep_tok_from_untitled_passages: bool = True
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
-        The checkpoint format matches the one of the original author's in the repository (https://github.com/facebookresearch/DPR)
-        See their readme for manual download instructions: https://github.com/facebookresearch/DPR#resources--data-formats
+        The checkpoint format matches huggingface transformers' model format
 
         :Example:
                 >>> # remote model from FAIR
@@ -45,62 +46,40 @@ class DensePassageRetriever(BaseRetriever):
                 >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", use_gpu=True)
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or remote name of model checkpoint. The format equals the 
-                                one used by original author's in https://github.com/facebookresearch/DPR. 
-                                Currently available remote names: "dpr-bert-base-nq" 
+        :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
+                                      one used by hugging-face transformers' modelhub models
+                                      Currently available remote names: ``"facebook/dpr-question_encoder-single-nq-base"``
+        :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
+                                        one used by hugging-face transformers' modelhub models
+                                        Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+        :param max_seq_len: Longest length of each sequence
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
-        :param do_lower_case: Whether to lower case the text input in the tokenizer
-        :param encoder_model_type: 
-        :param use_amp: Optional usage of Automatix Mixed Precision optimization from apex's to improve speed and memory consumption.
-                        Choose `None` or AMP optimization level:
-                              - None -> Not using amp at all
-                              - 'O0' -> Regular FP32
-                              - 'O1' -> Mixed Precision (recommended, if optimization wanted)
+        :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding
+        :param remove_sep_tok_from_untitled_passages: If embed_title is ``True``, there are different strategies to deal with documents that don't have a title.
+
+                                                      - ``True`` => Embed passage as single text, si`milar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP])
+                                                      - ``False`` => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
         """
 
         self.document_store = document_store
-        self.embedding_model = embedding_model
         self.batch_size = batch_size
-
-        #TODO Proper Download + Caching of model if not locally available
-        if embedding_model == "dpr-bert-base-nq":
-            if not Path("models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp").is_file():
-                download_dpr(resource_key="checkpoint.retriever.single.nq.bert-base-encoder", out_dir="models/dpr")
-            self.embedding_model = "models/dpr/checkpoint/retriever/single/nq/bert-base-encoder.cp"
+        self.max_seq_len = max_seq_len
 
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
 
-        self.use_amp = use_amp
-        self.do_lower_case = do_lower_case
-
-        # Load checkpoint (incl. additional model params)
-        saved_state = load_states_from_checkpoint(self.embedding_model)
-        logger.info('Loaded encoder params:  %s', saved_state.encoder_params)
-        self.do_lower_case = saved_state.encoder_params["do_lower_case"]
-        self.pretrained_model_cfg = saved_state.encoder_params["pretrained_model_cfg"]
-        self.encoder_model_type = saved_state.encoder_params["encoder_model_type"]
-        self.pretrained_file = saved_state.encoder_params["pretrained_file"]
-        self.projection_dim = saved_state.encoder_params["projection_dim"]
-        self.sequence_length = saved_state.encoder_params["sequence_length"]
+        self.embed_title = embed_title
+        self.remove_sep_tok_from_untitled_passages = remove_sep_tok_from_untitled_passages
 
         # Init & Load Encoders
-        self.query_encoder = HFBertEncoder.init_encoder(self.pretrained_model_cfg,
-                                                        projection_dim=self.projection_dim,
-                                                        dropout=0.0)
-        self.passage_encoder = HFBertEncoder.init_encoder(self.pretrained_model_cfg,
-                                                          projection_dim=self.projection_dim,
-                                                          dropout=0.0)
-        self.passage_encoder = self._prepare_model(self.passage_encoder, saved_state, prefix="ctx_model.")
-        self.query_encoder = self._prepare_model(self.query_encoder, saved_state, prefix="question_model.")
-        #self.encoder = BiEncoder(question_encoder, ctx_encoder, fix_ctx_encoder=self.fix_ctx_encoder)
+        self.query_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained(query_embedding_model)
+        self.query_encoder = DPRQuestionEncoder.from_pretrained(query_embedding_model).to(self.device)
 
-        # Load Tokenizer & Tensorizer
-        tokenizer = BertTokenizer.from_pretrained(self.pretrained_model_cfg, do_lower_case=self.do_lower_case)
-        self.tensorizer = BertTensorizer(tokenizer, self.sequence_length)
+        self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(passage_embedding_model)
+        self.passage_encoder = DPRContextEncoder.from_pretrained(passage_embedding_model).to(self.device)
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
         if index is None:
@@ -116,42 +95,161 @@ class DensePassageRetriever(BaseRetriever):
         :param texts: Queries to embed
         :return: Embeddings, one per input queries
         """
-        result = self._generate_batch_predictions(texts=texts, model=self.query_encoder,
-                                                  tensorizer=self.tensorizer, batch_size=self.batch_size)
+        queries = [self._normalize_query(q) for q in texts]
+        result = self._generate_batch_predictions(texts=queries, model=self.query_encoder,
+                                                  tokenizer=self.query_tokenizer,
+                                                  batch_size=self.batch_size)
         return result
 
-    def embed_passages(self, texts: List[str]) -> List[np.array]:
+    def embed_passages(self, docs: List[Document]) -> List[np.array]:
         """
         Create embeddings for a list of passages using the passage encoder
 
-        :param texts: Passage to embed
-        :return: Embeddings, one per input passage
+        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
+        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
         """
-        result = self._generate_batch_predictions(texts=texts, model=self.passage_encoder,
-                                                  tensorizer=self.tensorizer, batch_size=self.batch_size)
+        texts = [d.text for d in docs]
+        titles = None
+        if self.embed_title:
+            titles = [d.meta["name"] if d.meta and "name" in d.meta else "" for d in docs]
+
+        result = self._generate_batch_predictions(texts=texts, titles=titles,
+                                                  model=self.passage_encoder,
+                                                  tokenizer=self.passage_tokenizer,
+                                                  batch_size=self.batch_size)
         return result
+
+    def _normalize_query(self, query: str) -> str:
+        if query[-1] == '?':
+            query = query[:-1]
+        return query
+
+    def _tensorizer(self, tokenizer: Union[DPRQuestionEncoderTokenizer, DPRContextEncoderTokenizer],
+                    text: List[str],
+                    title: Optional[List[str]] = None,
+                    add_special_tokens: bool = True):
+        """
+        Creates tensors from text sequences
+        :Example:
+            >>> ctx_tokenizer = DPRContextEncoderTokenizer.from_pretrained()
+            >>> dpr_object._tensorizer(tokenizer=ctx_tokenizer, text=passages, title=titles)
+
+        :param tokenizer: An instance of DPRQuestionEncoderTokenizer or DPRContextEncoderTokenizer.
+        :param text: list of text sequences to be tokenized
+        :param title: optional list of titles associated with each text sequence
+        :param add_special_tokens: boolean for whether to encode special tokens in each sequence
+
+        Returns:
+                token_ids: list of token ids from vocabulary
+                token_type_ids: list of token type ids
+                attention_mask: list of indices specifying which tokens should be attended to by the encoder
+        """
+
+        # combine titles with passages only if some titles are present with passages
+        if self.embed_title and title:
+            final_text = [tuple((title_, text_)) for title_, text_ in zip(title, text)] #type: Union[List[Tuple[str, ...]], List[str]]
+        else:
+            final_text = text
+        out = tokenizer.batch_encode_plus(final_text, add_special_tokens=add_special_tokens, truncation=True,
+                                              max_length=self.max_seq_len,
+                                              pad_to_max_length=True)
+
+        token_ids = torch.tensor(out['input_ids']).to(self.device)
+        token_type_ids = torch.tensor(out['token_type_ids']).to(self.device)
+        attention_mask = torch.tensor(out['attention_mask']).to(self.device)
+        return token_ids, token_type_ids, attention_mask
+
+    def _remove_sep_tok_from_untitled_passages(self, titles, ctx_ids_batch, ctx_attn_mask):
+        """
+        removes [SEP] token from untitled samples in batch. For batches which has some untitled passages, remove [SEP]
+        token used to segment titles and passage from untitled samples in the batch
+        (Official DPR code do not encode [SEP] tokens in untitled passages)
+
+        :Example:
+            # Encoding passages with 'embed_title' = True. 1st passage is titled, 2nd passage is untitled
+            >>> texts = ['Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions.',
+                          'Democratic Republic of the Congo to the south. Angola\'s capital, Luanda, lies on the Atlantic coast in the northwest of the country.'
+                        ]
+            >> titles = ["0", '']
+            >>> token_ids, token_type_ids, attention_mask = self._tensorizer(self.passage_tokenizer, text=texts, title=titles)
+            >>> [self.passage_tokenizer.ids_to_tokens[tok.item()] for tok in token_ids[0]]
+            ['[CLS]', '0', '[SEP]', 'aaron', 'aaron', '(', 'or', ';', ....]
+            >>> [self.passage_tokenizer.ids_to_tokens[tok.item()] for tok in token_ids[1]]
+            ['[CLS]', '[SEP]', 'democratic', 'republic', 'of', 'the', ....]
+            >>> new_ids, new_attn = self._remove_sep_tok_from_untitled_passages(titles, token_ids, attention_mask)
+            >>> [self.passage_tokenizer.ids_to_tokens[tok.item()] for tok in token_ids[0]]
+            ['[CLS]', '0', '[SEP]', 'aaron', 'aaron', '(', 'or', ';', ....]
+            >>> [self.passage_tokenizer.ids_to_tokens[tok.item()] for tok in token_ids[1]]
+            ['[CLS]', 'democratic', 'republic', 'of', 'the', 'congo', ...]
+
+        :param titles: list of titles for each sample
+        :param ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices
+        :param ctx_attn_mask: tensor of shape (batch_size, max_seq_len) containing attention mask
+
+        Returns:
+                ctx_ids_batch: tensor of shape (batch_size, max_seq_len) containing token indices with [SEP] token removed
+                ctx_attn_mask: tensor of shape (batch_size, max_seq_len) reflecting the ctx_ids_batch changes
+        """
+        # Skip [SEP] removal if passage encoder not bert model
+        if self.passage_encoder.ctx_encoder.base_model_prefix != 'bert_model':
+            logger.warning("Context encoder is not a BERT model. Skipping removal of [SEP] tokens")
+            return ctx_ids_batch, ctx_attn_mask
+
+        # create a mask for titles in the batch
+        titles_mask = torch.tensor(list(map(lambda x: 0 if x == "" else 1, titles))).to(self.device)
+
+        # get all untitled passage indices
+        no_title_indices = torch.nonzero(1 - titles_mask).squeeze(-1)
+
+        # remove [SEP] token index for untitled passages and add 1 pad to compensate
+        ctx_ids_batch[no_title_indices] = torch.cat((ctx_ids_batch[no_title_indices, 0].unsqueeze(-1),
+                                                     ctx_ids_batch[no_title_indices, 2:],
+                                                     torch.tensor([self.passage_tokenizer.pad_token_id]).expand(len(no_title_indices)).unsqueeze(-1).to(self.device)),
+                                                    dim=1)
+        # Modify attention mask to reflect [SEP] token removal and pad addition in ctx_ids_batch
+        ctx_attn_mask[no_title_indices] = torch.cat((ctx_attn_mask[no_title_indices, 0].unsqueeze(-1),
+                                                     ctx_attn_mask[no_title_indices, 2:],
+                                                     torch.tensor([self.passage_tokenizer.pad_token_id]).expand(len(no_title_indices)).unsqueeze(-1).to(self.device)),
+                                                    dim=1)
+
+        return ctx_ids_batch, ctx_attn_mask
 
     def _generate_batch_predictions(self,
                                     texts: List[str],
                                     model: torch.nn.Module,
-                                    tensorizer: Tensorizer,
+                                    tokenizer: Union[DPRQuestionEncoderTokenizer, DPRContextEncoderTokenizer],
+                                    titles: Optional[List[str]] = None, #useful only for passage embedding with DPR!
                                     batch_size: int = 16) -> List[Tuple[object, np.array]]:
         n = len(texts)
         total = 0
         results = []
-        for j, batch_start in enumerate(range(0, n, batch_size)):
+        for batch_start in range(0, n, batch_size):
+            # create batch of titles only for passages
+            ctx_title = None
+            if self.embed_title and titles:
+                ctx_title = titles[batch_start:batch_start + batch_size]
 
-            batch_token_tensors = [tensorizer.text_to_tensor(ctx) for ctx in
-                                   texts[batch_start:batch_start + batch_size]]
+            # create batch of text
+            ctx_text = texts[batch_start:batch_start + batch_size]
 
-            ctx_ids_batch = torch.stack(batch_token_tensors, dim=0).to(self.device)
+            # tensorize the batch
+            ctx_ids_batch, _, ctx_attn_mask = self._tensorizer(tokenizer, text=ctx_text, title=ctx_title)
             ctx_seg_batch = torch.zeros_like(ctx_ids_batch).to(self.device)
-            ctx_attn_mask = tensorizer.get_attn_mask(ctx_ids_batch).to(self.device)
+
+            # remove [SEP] token from untitled passages in batch
+            if self.embed_title and self.remove_sep_tok_from_untitled_passages and ctx_title:
+                ctx_ids_batch, ctx_attn_mask = self._remove_sep_tok_from_untitled_passages(ctx_title,
+                                                                                           ctx_ids_batch,
+                                                                                           ctx_attn_mask)
+
             with torch.no_grad():
-                _, out, _ = model(ctx_ids_batch, ctx_seg_batch, ctx_attn_mask)
+                out = model(input_ids=ctx_ids_batch, attention_mask=ctx_attn_mask, token_type_ids=ctx_seg_batch)
+                # TODO revert back to when updating transformers
+                # out = out.pooler_output
+                out = out[0]
             out = out.cpu()
 
-            total += len(batch_token_tensors)
+            total += ctx_ids_batch.size()[0]
 
             results.extend([
                 (out[i].view(-1).numpy())
@@ -162,32 +260,6 @@ class DensePassageRetriever(BaseRetriever):
                 logger.info(f'Embedded {total} / {n} texts')
 
         return results
-
-    def _prepare_model(self, encoder, saved_state, prefix):
-        encoder.to(self.device)
-        if self.use_amp:
-            try:
-                import apex
-                from apex import amp
-                apex.amp.register_half_function(torch, "einsum")
-            except ImportError:
-                raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-
-            encoder, _ = amp.initialize(encoder, None, opt_level=self.use_amp)
-
-        encoder.eval()
-
-        # load weights from the model file
-        model_to_load = encoder.module if hasattr(encoder, 'module') else encoder
-        logger.info('Loading saved model state ...')
-        logger.debug('saved model keys =%s', saved_state.model_dict.keys())
-
-        prefix_len = len(prefix)
-        ctx_state = {key[prefix_len:]: value for (key, value) in saved_state.model_dict.items() if
-                     key.startswith(prefix)}
-        model_to_load.load_state_dict(ctx_state)
-        return encoder
-
 
 class EmbeddingRetriever(BaseRetriever):
     def __init__(
@@ -285,12 +357,13 @@ class EmbeddingRetriever(BaseRetriever):
         """
         return self.embed(texts)
 
-    def embed_passages(self, texts: List[str]) -> List[np.array]:
+    def embed_passages(self, docs: List[Document]) -> List[np.array]:
         """
         Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 
-        :param texts: Passage to embed
+        :param docs: List of documents to embed
         :return: Embeddings, one per input passage
         """
+        texts = [d.text for d in docs]
 
         return self.embed(texts)

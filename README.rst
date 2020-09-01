@@ -4,7 +4,7 @@ Haystack — Neural Question Answering At Scale
 .. image:: https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master
 	:target: https://github.com/deepset-ai/haystack/actions
 	:alt: Build
-	
+
 .. image:: https://camo.githubusercontent.com/34b3a249cd6502d0a521ab2f42c8830b7cfd03fa/687474703a2f2f7777772e6d7970792d6c616e672e6f72672f7374617469632f6d7970795f62616467652e737667
 	:target: http://mypy-lang.org/
 	:alt: Checked with mypy
@@ -20,7 +20,7 @@ Haystack — Neural Question Answering At Scale
 .. image:: https://img.shields.io/github/last-commit/deepset-ai/haystack
 	:target: https://github.com/deepset-ai/haystack/commits/master
 	:alt: Last Commit
-	
+
 
 
 
@@ -103,7 +103,7 @@ Quick Tour
 1) DocumentStores
 ---------------------
 
-Haystack offers different options for storing your documents for search. We recommend Elasticsearch, but have also light-weight options for fast prototyping and will soon add DocumentStores that are optimized for embeddings (FAISS & Co). 
+Haystack offers different options for storing your documents for search. We recommend Elasticsearch, but have also light-weight options for fast prototyping and will soon add DocumentStores that are optimized for embeddings (FAISS & Co).
 
 Elasticsearch (Recommended)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,14 +142,14 @@ Limitations: Retrieval (e.g. via TfidfRetriever) happens in-memory here and will
 DensePassageRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
 Using dense embeddings (i.e. vector representations) of texts is a powerful alternative to score similarity of texts.
-This retriever uses two BERT models - one to embed your query, one to embed your passage. It's based on the work of 
+This retriever uses two BERT models - one to embed your query, one to embed your passage. It's based on the work of
 `Karpukhin et al <https://arxiv.org/abs/2004.04906>`_ and is especially an powerful alternative if there's no direct overlap between tokens in your queries and your texts.
 
 Example
 
 .. code-block:: python
 
-    retriever = DensePassageRetriever(document_store=document_store, 
+    retriever = DensePassageRetriever(document_store=document_store,
                                       embedding_model="dpr-bert-base-nq",
                                       do_lower_case=True, use_gpu=True)
     retriever.retrieve(query="Why did the revenue increase?")
@@ -171,7 +171,7 @@ Example
 
 EmbeddingRetriever
 ^^^^^^^^^^^^^^^^^^^^^^
-This retriever uses a single model to embed your query and passage (e.g. Sentence-BERT) and finds similar texts by using cosine similarity. This works well if your query and passage are a similar type of text, e.g. you want to find the most similar question in your FAQ given a user question. 
+This retriever uses a single model to embed your query and passage (e.g. Sentence-BERT) and finds similar texts by using cosine similarity. This works well if your query and passage are a similar type of text, e.g. you want to find the most similar question in your FAQ given a user question.
 
 Example
 
@@ -215,7 +215,7 @@ Example
 
 This Reader comes with:
 
-* extensive configuration options (no answer boost, aggregation options ...) 
+* extensive configuration options (no answer boost, aggregation options ...)
 * multiprocessing to speed-up preprocessing
 * option to train
 * option to evaluate
@@ -255,9 +255,9 @@ You will find the Swagger API documentation at http://127.0.0.1:80/docs
 
 6. Labeling Tool
 ---------------------
-* Use the `hosted version <https://annotate.deepset.ai/login>`_  (Beta) or deploy it yourself via Docker images (coming soon)  
+* Use the `hosted version <https://annotate.deepset.ai/login>`_  (Beta) or deploy it yourself via Docker images (coming soon)
 * Create labels with different techniques: Come up with questions (+ answers) while reading passages (SQuAD style) or have a set of predefined questions and look for answers in the document (~ Natural Questions).
-* Structure your work via organizations, projects, users 
+* Structure your work via organizations, projects, users
 * Upload your documents or import labels from an existing SQuAD-style dataset
 * Coming soon: more file formats for document upload, metrics for label quality ...
 
@@ -275,7 +275,7 @@ Example:
 .. code-block:: python
 
     #PDF
-    from haystack.indexing.file_converters.pdf import PDFToTextConverter    
+    from haystack.indexing.file_converters.pdf import PDFToTextConverter
     converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
     pages = converter.extract_pages(file_path=file)
     # => list of str, one per page
@@ -285,6 +285,35 @@ Example:
     paragraphs = converter.extract_pages(file_path=file)
     #  => list of str, one per paragraph (as docx has no direct notion of pages)
 
-8. Tests
--------------------
-* Unit tests can be executed by running :code:`tox`.
+Advanced document convertion is enabled by leveraging mature text extraction library `Apache Tika <https://tika.apache.org/>`_, which is mostly written in Java. Although it's possible to call Tika API from Python, the current :code:`TikaConverter` only supports RESTful call to a Tika server running at localhost. One may either run Tika as a REST service at port 9998 (default), or to start a `docker container for Tika <https://hub.docker.com/r/apache/tika/tags>`_. The latter is recommended, as it's easily scalable, and does not require setting up any Java runtime environment. What's more, future update is also taken care of by docker.
+Either way, TikaConverter makes RESTful calls to convert any document format supported by Tika. Example code can be found at :code:`indexing/file_converters/utils.py`'s :code:`tika_convert)_files_to_dicts` function:
+
+:code:`TikaConverter` supports 341 file formats, including
+
+* most common text file formats, e.g. HTML, XML, Microsoft Office OLE2/XML/OOXML, OpenOffice ODF, iWorks, PDF, ePub, RTF, TXT, RSS, CHM...
+* text embedded in media files, e.g. WAV, MP3, Vorbis, Flac, PNG, GIF, JPG, BMP, TIF, PSD, WebP, WMF, EMF, MP4, Quicktime, 3GPP, Ogg, FLV...
+* mail and database files, e.g. Unitx mailboxes, Outlook PST/MSG/TNEF, SQLite3, Microsoft Access, dBase...
+* and many more other formats...
+* and all those file formats in archive files, e.g. TAR, ZIP, BZip2, GZip 7Zip, RAR!
+
+Check out complete list of files supported by the most recent `Apache Tika 1.24.1 <https://tika.apache.org/1.24.1/formats.html>`_.
+If you feel adventurous, Tika even supports some image OCR with Tesseract, or object recognition for image and video files. (not implemented yet)
+
+:code:`TikaConverter` also makes a document's metadata available, including typical fields like file name,  file dates and a lot more (e.g. Author and keywords for PDF if they're available in the files), which may save you some time in data labeling or other downstream tasks.
+
+.. code-block:: python
+
+    converter = TikaConverter(remove_header_footer=True)
+    pages = converter.extract_pages(file_path=path)
+    pages, meta = converter.extract_pages(file_path=path, return_meta=True)
+
+Contributing
+=============
+We are very open to contributions from the community - be it the fix of a small typo or a completely new feature! You don't need to be an Haystack expert for providing meaningful improvements.
+To avoid any extra work on either side, please check our `Contributor Guidelines <https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md>`_ first.
+
+Tests will automatically run for every commit you push to your PR. You can also run them locally by executing `pytest <https://docs.pytest.org/en/stable/>`_   in your terminal from the root folder of this repository: 
+
+.. code-block:: bash
+
+    pytest test/

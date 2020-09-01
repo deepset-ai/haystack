@@ -31,8 +31,8 @@ class DocumentORM(ORMBase):
 class MetaORM(ORMBase):
     __tablename__ = "meta"
 
-    name = Column(String)
-    value = Column(String)
+    name = Column(String, index=True)
+    value = Column(String, index=True)
 
     documents = relationship(DocumentORM, secondary="document_meta", backref="Meta")
 
@@ -68,23 +68,30 @@ class SQLDocumentStore(BaseDocumentStore):
         self.index = index
         self.label_index = "label"
 
-    def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
-        index = index or self.index
-        document_row = self.session.query(DocumentORM).filter_by(index=index, id=id).first()
-        document = document_row or self._convert_sql_row_to_document(document_row)
+    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+        documents = self.get_documents_by_id([id], index)
+        document = documents[0] if documents else None
         return document
 
-    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
         index = index or self.index
+        results = self.session.query(DocumentORM).filter(DocumentORM.id.in_(ids), DocumentORM.index == index).all()
+        documents = [self._convert_sql_row_to_document(row) for row in results]
+
+        return documents
+
+    def get_all_documents(
+        self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None
+    ) -> List[Document]:
+        index = index or self.index
+        query = self.session.query(DocumentORM).filter_by(index=index)
 
         if filters:
             for key, values in filters.items():
-                results = self.session.query(DocumentORM).filter(DocumentORM.meta.any(MetaORM.name.in_([key]))).\
-                        filter(DocumentORM.meta.any(MetaORM.value.in_(values))).all()
-        else:
-            results = self.session.query(DocumentORM).filter_by(index=index).all()
+                query = query.filter(DocumentORM.meta.any(MetaORM.name.in_([key])))\
+                             .filter(DocumentORM.meta.any(MetaORM.value.in_(values)))
 
-        documents = [self._convert_sql_row_to_document(row) for row in results]
+        documents = [self._convert_sql_row_to_document(row) for row in query.all()]
         return documents
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None):
@@ -113,7 +120,8 @@ class SQLDocumentStore(BaseDocumentStore):
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
         index = index or self.index
         for doc in document_objects:
-            meta_orms = [MetaORM(name=key, value=value) for key, value in doc.meta.items()]
+            meta_fields = doc.meta or {}
+            meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
             doc_orm = DocumentORM(id=doc.id, text=doc.text, meta=meta_orms, index=index)
             self.session.add(doc_orm)
         self.session.commit()
@@ -121,7 +129,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def write_labels(self, labels, index=None):
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
-        index = index or self.index
+        index = index or self.label_index
         for label in labels:
             label_orm = LabelORM(
                 document_id=label.document_id,
@@ -136,6 +144,15 @@ class SQLDocumentStore(BaseDocumentStore):
                 index=index,
             )
             self.session.add(label_orm)
+        self.session.commit()
+
+    def update_document_meta(self, id: str, meta: Dict[str, str]):
+        document = self.session.query(DocumentORM).get(id)
+        meta_orms = [
+            self._get_or_create(session=self.session, model=MetaORM, name=key, value=value)
+            for key, value in meta.items()
+        ]
+        document.meta = meta_orms
         self.session.commit()
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label"):
@@ -205,3 +222,13 @@ class SQLDocumentStore(BaseDocumentStore):
         index = index or self.index
         documents = self.session.query(DocumentORM).filter_by(index=index)
         documents.delete(synchronize_session=False)
+
+    def _get_or_create(self, session, model, **kwargs):
+        instance = session.query(model).filter_by(**kwargs).first()
+        if instance:
+            return instance
+        else:
+            instance = model(**kwargs)
+            session.add(instance)
+            session.commit()
+            return instance

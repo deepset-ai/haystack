@@ -118,17 +118,17 @@ class FARMReader(BaseReader):
         data_dir: str,
         train_filename: str,
         dev_filename: Optional[str] = None,
-        test_file_name: Optional[str] = None,
+        test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
         max_seq_len: Optional[int] = None,
         warmup_proportion: float = 0.2,
-        dev_split: Optional[float] = 0.1,
+        dev_split: float = 0,
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
-        num_processes: Optional[int] = 0
+        num_processes: Optional[int] = None
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -139,7 +139,7 @@ class FARMReader(BaseReader):
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
-        :param test_file_name: Filename of test data
+        :param test_filename: Filename of test data
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
@@ -153,15 +153,16 @@ class FARMReader(BaseReader):
         :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
         :param save_dir: Path to store the final model
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
-                              Set to value of 0 to disable multiprocessing. Set to None to use all CPU cores minus one.
+                              Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
+                              Set to None to use all CPU cores minus one.
         :return: None
         """
 
         if dev_filename:
-            dev_split = None
+            dev_split = 0
 
         if num_processes is None:
-            num_processes = multiprocessing.cpu_count() - 1
+            num_processes = multiprocessing.cpu_count() - 1 or 1
 
         set_all_seeds(seed=42)
 
@@ -188,7 +189,7 @@ class FARMReader(BaseReader):
             train_filename=train_filename,
             dev_filename=dev_filename,
             dev_split=dev_split,
-            test_filename=test_file_name,
+            test_filename=test_filename,
             data_dir=Path(data_dir),
         )
 
@@ -240,6 +241,65 @@ class FARMReader(BaseReader):
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
+    def predict_batch(self, question_doc_list: List[dict], top_k_per_question: int = None, batch_size: int = None):
+        """
+        Use loaded QA model to find answers for a list of questions in each question's supplied list of Document.
+
+        Returns list of dictionaries containing answers sorted by (desc.) probability
+
+        :param question_doc_list: List of dictionaries containing questions with their retrieved documents
+        :param top_k_per_question: The maximum number of answers to return for each question
+        :param batch_size: Number of samples the model receives in one batch for inference
+        :return: List of dictionaries containing question and answers
+        """
+
+        # convert input to FARM format
+        inputs = []
+        number_of_docs = []
+        labels = []
+
+        # build input objects for inference_from_objects
+        for question_with_docs in question_doc_list:
+            documents = question_with_docs["docs"]
+            question = question_with_docs["question"]
+            labels.append(question)
+            number_of_docs.append(len(documents))
+
+            for doc in documents:
+                cur = QAInput(doc_text=doc.text,
+                              questions=Question(text=question.question,
+                                                 uid=doc.id))
+                inputs.append(cur)
+
+        self.inferencer.batch_size = batch_size
+        # make predictions on all document-question pairs
+        predictions = self.inferencer.inference_from_objects(
+            objects=inputs, return_json=False, multiprocessing_chunksize=1
+        )
+
+        # group predictions together
+        grouped_predictions = []
+        left_idx = 0
+        right_idx = 0
+        for number in number_of_docs:
+            right_idx = left_idx + number
+            grouped_predictions.append(predictions[left_idx:right_idx])
+            left_idx = right_idx
+
+        result = []
+        for idx, group in enumerate(grouped_predictions):
+            answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k_per_question)
+            question = group[0]
+            cur_label = labels[idx]
+            result.append({
+                "question": question,
+                "no_ans_gap": max_no_ans_gap,
+                "answers": answers,
+                "label": cur_label
+            })
+
+        return result
+
     def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
@@ -280,46 +340,7 @@ class FARMReader(BaseReader):
             objects=inputs, return_json=False, multiprocessing_chunksize=1
         )
         # assemble answers from all the different documents & format them.
-        # For the "no answer" option, we collect all no_ans_gaps and decide how likely
-        # a no answer is based on all no_ans_gaps values across all documents
-        answers = []
-        no_ans_gaps = []
-        best_score_answer = 0
-        for pred in predictions:
-            answers_per_document = []
-            no_ans_gaps.append(pred.no_answer_gap)
-            for ans in pred.prediction:
-                # skip "no answers" here
-                if self._check_no_answer(ans):
-                    pass
-                else:
-                    cur = {"answer": ans.answer,
-                           "score": ans.score,
-                           # just a pseudo prob for now
-                           "probability": float(expit(np.asarray([ans.score]) / 8)),  # type: ignore
-                           "context": ans.context_window,
-                           "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
-                           "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
-                           "offset_start_in_doc": ans.offset_answer_start,
-                           "offset_end_in_doc": ans.offset_answer_end,
-                           "document_id": pred.id}
-                    answers_per_document.append(cur)
-
-                    if ans.score > best_score_answer:
-                        best_score_answer = ans.score
-            # only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance.
-            answers += answers_per_document[:self.top_k_per_candidate]
-
-        # Calculate the score for predicting "no answer", relative to our best positive answer score
-        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps,best_score_answer)
-        if self.return_no_answers:
-            answers.append(no_ans_prediction)
-
-        # sort answers by their `probability` and select top-k
-        answers = sorted(
-            answers, key=lambda k: k["probability"], reverse=True
-        )
-        answers = answers[:top_k]
+        answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
         result = {"question": question,
                   "no_ans_gap": max_no_ans_gap,
                   "answers": answers}
@@ -387,6 +408,11 @@ class FARMReader(BaseReader):
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         """
 
+        if self.top_k_per_candidate != 4:
+            logger.info(f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
+                        f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
+                        f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5")
+
         # extract all questions for evaluation
         filters = {"origin": [label_origin]}
 
@@ -402,7 +428,8 @@ class FARMReader(BaseReader):
 
         # Create squad style dicts
         d: Dict[str, Any] = {}
-        for doc_id in aggregated_per_doc.keys():
+        all_doc_ids = [x.id for x in document_store.get_all_documents(doc_index)]
+        for doc_id in all_doc_ids:
             doc = document_store.get_document_by_id(doc_id, index=doc_index)
             if not doc:
                 logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
@@ -412,21 +439,25 @@ class FARMReader(BaseReader):
             }
             # get all questions / answers
             aggregated_per_question: Dict[str, Any] = defaultdict(list)
-            for label in aggregated_per_doc[doc_id]:
-                # add to existing answers
-                if label.question in aggregated_per_question.keys():
-                    aggregated_per_question[label.question]["answers"].append({
-                                "text": label.answer,
-                                "answer_start": label.offset_start_in_doc})
-                # create new one
-                else:
-                    aggregated_per_question[label.question] = {
-                        "id": str(hash(str(doc_id)+label.question)),
-                        "question": label.question,
-                        "answers": [{
-                                "text": label.answer,
-                                "answer_start": label.offset_start_in_doc}]
-                    }
+            if doc_id in aggregated_per_doc:
+                for label in aggregated_per_doc[doc_id]:
+                    # add to existing answers
+                    if label.question in aggregated_per_question.keys():
+                        # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
+                        if len(aggregated_per_question[label.question]["answers"]) >= 6:
+                            continue
+                        aggregated_per_question[label.question]["answers"].append({
+                                    "text": label.answer,
+                                    "answer_start": label.offset_start_in_doc})
+                    # create new one
+                    else:
+                        aggregated_per_question[label.question] = {
+                            "id": str(hash(str(doc_id)+label.question)),
+                            "question": label.question,
+                            "answers": [{
+                                    "text": label.answer,
+                                    "answer_start": label.offset_start_in_doc}]
+                        }
             # Get rid of the question key again (after we aggregated we don't need it anymore)
             d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
 
@@ -448,6 +479,56 @@ class FARMReader(BaseReader):
         }
         return results
 
+    def _extract_answers_of_predictions(self, predictions: List[QAPred], top_k: Optional[int] = None):
+        # Assemble answers from all the different documents and format them.
+        # For the 'no answer' option, we collect all no_ans_gaps and decide how likely
+        # a no answer is based on all no_ans_gaps values across all documents
+        answers = []
+        no_ans_gaps = []
+        best_score_answer = 0
+
+        for pred in predictions:
+            answers_per_document = []
+            no_ans_gaps.append(pred.no_answer_gap)
+            for ans in pred.prediction:
+                # skip 'no answers' here
+                if self._check_no_answer(ans):
+                    pass
+                else:
+                    cur = {
+                        "answer": ans.answer,
+                        "score": ans.score,
+                        # just a pseudo prob for now
+                        "probability": self._get_pseudo_prob(ans.score),
+                        "context": ans.context_window,
+                        "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
+                        "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
+                        "offset_start_in_doc": ans.offset_answer_start,
+                        "offset_end_in_doc": ans.offset_answer_end,
+                        "document_id": pred.id
+                    }
+                    answers_per_document.append(cur)
+
+                    if ans.score > best_score_answer:
+                        best_score_answer = ans.score
+
+            # Only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance
+            answers += answers_per_document[:self.top_k_per_candidate]
+
+        # calculate the score for predicting 'no answer', relative to our best positive answer score
+        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_score_answer)
+        if self.return_no_answers:
+            answers.append(no_ans_prediction)
+
+        # sort answers by score and select top-k
+        answers = sorted(answers, key=lambda k: k["score"], reverse=True)
+        answers = answers[:top_k]
+
+        return answers, max_no_ans_gap
+
+    @staticmethod
+    def _get_pseudo_prob(score: float):
+        return float(expit(np.asarray(score) / 8))
 
     @staticmethod
     def _check_no_answer(c: QACandidate):
@@ -459,7 +540,6 @@ class FARMReader(BaseReader):
             return True
         else:
             return False
-
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         """

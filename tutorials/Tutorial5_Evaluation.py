@@ -1,6 +1,7 @@
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
 from haystack.indexing.utils import fetch_archive_from_http
 from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader.farm import FARMReader
 from haystack.finder import Finder
 from farm.utils import initialize_device_settings
@@ -20,6 +21,9 @@ eval_retriever_only = True
 eval_reader_only = False
 eval_both = False
 
+# make sure these indices do not collide with existing ones, the indices will be wiped clean before data is inserted
+doc_index = "tutorial5_docs"
+label_index = "tutorial5_labels"
 ##############################################
 # Code
 ##############################################
@@ -47,13 +51,12 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
                                             create_index=False, embedding_field="emb",
                                             embedding_dim=768, excluded_meta_data=["emb"])
 
-# Add evaluation data to Elasticsearch database
-if LAUNCH_ELASTICSEARCH:
-    document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index="eval_document", label_index="feedback" )
-else:
-    logger.warning("Since we already have a running ES instance we should not index the same documents again."
-                   "If you still want to do this call: 'document_store.add_eval_data('../data/nq/nq_dev_subset_v2.json')' manually ")
 
+# Add evaluation data to Elasticsearch database
+# We first delete the custom tutorial indices to not have duplicate elements
+document_store.delete_all_documents(index=doc_index)
+document_store.delete_all_documents(index=label_index)
+document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index=doc_index, label_index=label_index)
 
 # Initialize Retriever
 retriever = ElasticsearchRetriever(document_store=document_store)
@@ -62,14 +65,17 @@ retriever = ElasticsearchRetriever(document_store=document_store)
 # Note, that DPR works best when you index short passages < 512 tokens as only those tokens will be used for the embedding.
 # Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
 # DPR still outperforms Elastic's BM25 by a small margin here.
-
-# from haystack.retriever.dense import DensePassageRetriever
-# retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",batch_size=32)
-# document_store.update_embeddings(retriever, index="eval_document")
+# retriever = DensePassageRetriever(document_store=document_store,
+#                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+#                                   passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+#                                   use_gpu=True,
+#                                   embed_title=True,
+#                                   remove_sep_tok_from_untitled_passages=True)
+# document_store.update_embeddings(retriever, index=doc_index)
 
 
 # Initialize Reader
-reader = FARMReader("deepset/roberta-base-squad2")
+reader = FARMReader("deepset/roberta-base-squad2", top_k_per_candidate=4)
 
 # Initialize Finder which sticks together Reader and Retriever
 finder = Finder(reader, retriever)
@@ -77,7 +83,7 @@ finder = Finder(reader, retriever)
 
 ## Evaluate Retriever on its own
 if eval_retriever_only:
-    retriever_eval_results = retriever.eval(top_k=1)
+    retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
     ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
     ## among the correct documents
     print("Retriever Recall:", retriever_eval_results["recall"])
@@ -86,7 +92,7 @@ if eval_retriever_only:
 
 # Evaluate Reader on its own
 if eval_reader_only:
-    reader_eval_results = reader.eval(document_store=document_store, device=device)
+    reader_eval_results = reader.eval(document_store=document_store, device=device, label_index=label_index, doc_index=doc_index)
     # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
     #reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
 
@@ -100,5 +106,5 @@ if eval_reader_only:
 
 # Evaluate combination of Reader and Retriever through Finder
 if eval_both:
-    finder_eval_results = finder.eval(top_k_retriever=1, top_k_reader=10)
+    finder_eval_results = finder.eval(top_k_retriever=1, top_k_reader=10, label_index=label_index, doc_index=doc_index)
     finder.print_eval_results(finder_eval_results)

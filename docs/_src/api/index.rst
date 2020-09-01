@@ -19,6 +19,7 @@ don't know how to add rest_api and in what structure
    api/indexing
    api/rest_api
    api/file_converters
+   api/finder
 
 
 Indices and tables

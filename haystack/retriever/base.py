@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
 import logging
-from collections import defaultdict
 
 from haystack.database.base import Document
 from haystack.database.base import BaseDocumentStore
@@ -47,22 +46,23 @@ class BaseRetriever(ABC):
         # Extract all questions for evaluation
         filters = {"origin": [label_origin]}
 
-        labels = self.document_store.get_all_labels(index=label_index, filters=filters)
+        labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
 
         correct_retrievals = 0
         summed_avg_precision = 0
 
-        # Aggregate all positive document ids / answers per question
-        aggregated_labels = defaultdict(set)
+        # Collect questions and corresponding answers/document_ids in a dict
+        question_label_dict = {}
         for label in labels:
             if open_domain:
-                aggregated_labels[label.question].add(label.answer)
+                question_label_dict[label.question] = label.multiple_answers
             else:
-                aggregated_labels[label.question].add(str(label.document_id))
+                deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
+                question_label_dict[label.question] = deduplicated_doc_ids
 
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
         if open_domain:
-            for question, gold_answers in aggregated_labels.items():
+            for question, gold_answers in question_label_dict.items():
                 retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
@@ -73,16 +73,17 @@ class BaseRetriever(ABC):
                             break
         # Option 2: Strict evaluation by document ids that are listed in the labels
         else:
-            for question, gold_ids in aggregated_labels.items():
+            for question, gold_ids in question_label_dict.items():
                 retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
-                    if str(doc.id) in gold_ids:
-                        correct_retrievals += 1
-                        summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
-                        break
+                    for gold_id in gold_ids:
+                        if str(doc.id) == gold_id:
+                            correct_retrievals += 1
+                            summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
+                            break
         # Metrics
-        number_of_questions = len(aggregated_labels)
+        number_of_questions = len(question_label_dict)
         recall = correct_retrievals / number_of_questions
         mean_avg_precision = summed_avg_precision / number_of_questions
 
