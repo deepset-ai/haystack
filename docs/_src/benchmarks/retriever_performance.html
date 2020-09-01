@@ -1,0 +1,44 @@
+<html>
+  <head>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['bar']});
+      google.charts.setOnLoadCallback(drawChart);
+
+      function drawChart() {
+        var data = google.visualization.arrayToDataTable(
+          [
+            ["Model", "Recall", "Index Time", "Query Time"],
+            ["BM24 (Elasticsearch)", 1.0, 3.868239733, 0.47588522500000074],
+            ["DPR (FAISS)", 1.0, 3.868239733, 0.47588522500000074],
+          ]);
+
+        var options = {
+          chart: {
+            title: 'Reader Performance',
+            subtitle: 'Time and Accuracy Benchmarks',
+          },
+          bars: 'horizontal', // Required for Material Bar Charts.
+          series: {
+            0: { axis: 'recall' }, // Bind series 0 to an axis named 'distance'.
+            1: { axis: 'time' }, // Bind series 1 to an axis named 'brightness'.
+            2: { axis: 'time' } // Bind series 1 to an axis named 'brightness'.
+          },
+          axes: {
+            x: {
+              recall: {label: 'recall'}, // Bottom x-axis.
+              time: {side: 'top', label: 'seconds'} // Top x-axis.
+            }
+          }
+        };
+
+        var chart = new google.charts.Bar(document.getElementById('barchart_material'));
+
+        chart.draw(data, google.charts.Bar.convertOptions(options));
+      }
+    </script>
+  </head>
+  <body>
+    <div id="barchart_material" style="width: 900px; height: 500px;"></div>
+  </body>
+</html>
