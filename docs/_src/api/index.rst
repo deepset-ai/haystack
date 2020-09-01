@@ -13,8 +13,8 @@ don't know how to add rest_api and in what structure
    :maxdepth: 2
    :caption: Contents:
 
-   api/reader
    api/retriever
+   api/reader
    api/database
    api/indexing
    api/rest_api

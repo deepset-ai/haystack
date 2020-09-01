@@ -221,7 +221,7 @@ you might like to try ALBERT XXL which has set SoTA performance on SQuAD 2.0.
 Languages other than English
 ----------------------------
 
-Haystack is also very well suited to doing open-domain QA on languages other than English.
+Haystack is also very well suited to open-domain QA on languages other than English.
 While models are comparatively more performant on English,
 thanks to a wealth of available English training data,
 there are a couple QA models that are directly usable in Haystack and also worth mentioning.

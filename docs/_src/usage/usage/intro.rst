@@ -18,7 +18,7 @@ Thanks to the power of Transformer based language models, results are chosen bas
 rather than lexical overlap.
 Search systems built with Haystack are designed to bridge the gap between the web search experience and local offline search.
 
-!!Image!!
+.. image:: ../../img/search.png
 
 Information Extractor
 ---------------------
@@ -44,11 +44,3 @@ Haystack will match incoming questions to questions in your FAQs and return the 
 This is a quick way to give your customers more dynamic access to your existing documentation.
 
 !!Image!!
-
-API
----
-
-Call on Haystack in your own applications through the API.
-Haystack can be used as a flexible fall back option when chatbots are unable to classify user intents.
-
-!!More?!!

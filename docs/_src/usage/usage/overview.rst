@@ -15,12 +15,24 @@ However, it is not currently feasible to apply to use the Reader directly on lar
 
 !! Image of What a reader does and maybe architecture !!
 
-The **Retriever** assists the Reader by proposing a small set of candidate documents for the Reader to process.
-It functions as a lightweight filter that can scan through all documents in the database,
-quickly identifying the relevant and dismissing the irrelevant.
-Current methods are described as being either sparse (i.e. keyword based) or dense (i.e. neural network based).
-Though dense methods require significantly more processing time during indexing,
-both are designed to be fast enough that the Retriever can be applied to the full database with each query.
+The **Retriever** assists the Reader by acting as a lightweight filter that reduces the number of documents that the Reader has to process.
+It does this by:
+
+* Scanning through all documents in the database
+* Quickly identifying the relevant and dismissing the irrelevant
+* Passing on only a small candidate set of documents to the Reader
+
+Current methods fall into one of the two categories:
+
+* sparse
+    - keyword based
+    - fast indexing and querying
+
+
+* dense
+    - neural network based
+    - computationally heavy indexing but fast querying
+
 
 Indexing and Querying
 ---------------------
