@@ -4,26 +4,21 @@ Retriever
 
 The Retriever is a lightweight filter that can quickly go through the full document store and pass a set of candidate documents to the Reader.
 It gets a sense of the topics being mentioned in a document but doesn't pay as much close attention to the finer details as the Reader does.
+It is an tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process.
 
-When searching through large collections of documents, its usually the case that more documents are irrelevant to the query than not.
-The Retriever is an efficient tool for sifting out the obvious negative cases and saves the Reader from doing more work than it needs to.
+Recommendations:
 
-We currently recommend using BM25 if you're looking for a sparse option, or Dense Passage Retrieval if you're looking for a dense option.
-Haystack also has support for TF-IDF and embedding retrieval.
+* BM25 (sparse)
+* Dense Passage Retrieval (dense)
 
+..
+   _comment: !! Example speedup from slides !!
 
-!! Example speedup from slides !!
-
-!! Benchmarks !!
-
-.. code-block:: python
-
-    retriever = ElasticsearchRetriever(document_store)
-    finder = Finder(reader, retriever)
-
+..
+   _comment: !! Benchmarks !!
 
 Note that not all Retrievers can be paired with every DocumentStore.
-Here is a table showing which combinations are supported:
+Here are the combinations which are supported:
 
 +-----------+--------+---------------+-----+-------+
 |           | Memory | Elasticsearch | SQL | FAISS |
@@ -37,65 +32,12 @@ Here is a table showing which combinations are supported:
 |    DPR    |    Y   |       Y       |  N  |   Y   |
 +-----------+--------+---------------+-----+-------+
 
-Dense vs Sparse
----------------
-
-Broadly speaking, retrieval methods can be split into two categories: **dense** and **sparse**.
-
-**Sparse** methods, like TF-IDF and BM25, operate by looking for shared keywords between the document and query.
-They have proven to be a simple but effective approach to the problem of search.
-These retrievers don't need to be trained and will work on any language.
-
-More recently, **dense** approaches such as Dense Passage Retrieval (DPR) have shown even better performance than their sparse counter parts.
-These methods embed both document and query into a shared embedding space using deep neural networks
-and the top candidates are the nearest neighbour documents to the query.
-These models are usually langauge specific.
-
-Terminology
-~~~~~~~~~~~
-
-!! Diagram of what a sparse vector looks like vs dense vector !!
-
-The terms **dense** and **sparse** refer to the representations that the algorithms build for each document and query.
-**Sparse** methods characterise texts using vectors with one dimension corresponding to each word in the vocabulary.
-Dimensions will be zero if the word is absent and non-zero if it is present.
-Since most documents contain only a small subset of the full vocabulary,
-these vectors are considered sparse since non-zero values are few and far between.
-
-**Dense** methods, by contrast, pass text as input into neural network encoders
-and represent text in a vector of a manually defined size (!! what is default size of DPR vecs? !!).
-Though individual dimensions are not mapped to any corresponding vocabulary or linguistic feature,
-each dimension encodes some information about the text.
-There are rarely 0s in these vectors hence their relative density.
-
-Qualitative Differences
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Between these two types there are also some qualitative differences too.
-For example, sparse methods treat text as a bag-of-words meaning that they do not take word order and syntax into account,
-while the latest generation of dense methods use transformer based encoders
-which are designed to be sensitive to these factors.
-
-Also dense methods are very capable of building strong semantic representations of text,
-but they struggle when encountering out-of-vocabulary words such as new names.
-By contrast, sparse methods don't need to learn representations of words,
-they only care about whether they are present or absent in the text.
-As such, they handle out-of-vocabulary words with no problem.
-
-!! Show example from DPR paper? !!
-
-Indexing
-~~~~~~~~
-
-Dense methods perform indexing by processing all the documents through a neural network and storing the resultant vectors.
-This is a much more expensive operation than the creation of the inverted-index in sparse methods
-and will require significant computational power and time.
-See their individual sections (!! link !!) for more details on this point.
-
-!! Benchmark? !!
 
 TF-IDF
 ------
+
+Description
+~~~~~~~~~~~
 
 TF-IDF is a commonly used baseline for information retrieval that exploits two key intuitions:
 
@@ -108,11 +50,15 @@ Given a query, a tf-idf score is computed for each document as follows:
 
     score = tf * idf
 
-Where ``tf`` is how many times words in the query occur in that document
-and ``idf`` is the inverse of the fraction of documents containing the word.
+Where:
+
+* ``tf`` is how many times words in the query occur in that document.
+* ``idf`` is the inverse of the fraction of documents containing the word.
+
 In practice, both terms are usually log normalised.
 
-In Haystack, you can use TF-IDF simply by initialising a ``TfidfRetriever``
+Usage
+~~~~~
 
 .. code-block:: python
 
@@ -126,13 +72,17 @@ have a look at !!link!!
 BM25
 ----
 
+Description
+~~~~~~~~~~~
+
 BM25 is a variant of TF-IDF that we recommend you use if you are looking for a retrieval method that does not need a neural network for indexing.
 It improves upon its predecessor in two main aspects:
 
 * It saturates ``tf`` after a set number of occurrences of the given term in the document
 * It normalises by document length so that short documents are favoured over long documents if they have the same amount of word overlap with the query
 
-Haystack uses the Elasticsearch implementation of BM25 and as such needs to be paired with the ``ElasticsearchDocumentStore``
+Usage
+~~~~~
 
 .. code-block:: python
 
@@ -147,15 +97,19 @@ See `this <https://www.elastic.co/blog/practical-bm25-part-2-the-bm25-algorithm-
 Dense Passage Retrieval
 -----------------------
 
+Description
+~~~~~~~~~~~
+
 `Dense Passage Retrieval <https://arxiv.org/abs/2004.04906>`_ is a highly performant retrieval method that calculates relevance using dense representations.
 Two separate transformer models are used to encode documents and queries
 and the dot product simalrity of their resultant embeddings is the metric by which they are ranked.
 The original implementation use two BERT base uncased models but DPR models could in theory be built for other model architectures and languages.
 
-!! Diagram !!
+..
+   _comment: !! Diagram !!
 
 Indexing using DPR is comparatively expensive in terms of required computation since all documents in the database need to be processed through the transformer.
-The embeddings that are creating in this step can be stored in FAISS, a database optimized for vector similarity.
+The embeddings that are created in this step can be stored in FAISS, a database optimized for vector similarity.
 DPR can also work with the ElasticsearchDocumentStore or the InMemoryDocumentStore.
 
 There are two design decisions that have made DPR particularly performant.
@@ -168,7 +122,12 @@ This approach uses gold label passages in the same batch as negative examples
 and makes for a highly efficient training regime when paired with dot product similarity.
 
 In Haystack, you can simply download the pretrained encoders needed to start using DPR.
-If you'd like to learn how to set up a DPR based system, have a look at our tutorial !! Link !!
+If you'd like to learn how to set up a DPR based system, have a look at our tutorials.
+..
+   _comment: !! Link !!
+
+Usage
+~~~~~
 
 !! Code Snippet !!
 
@@ -179,6 +138,9 @@ If you'd like to learn how to set up a DPR based system, have a look at our tuto
 Embedding Retrieval
 -------------------
 
+Description
+~~~~~~~~~~~
+
 In Haystack, you also have the option of using a single transformer model to encode document and query.
 One style of model that is suited to this kind of retrieval is that of `Sentence Transformers <https://github.com/UKPLab/sentence-transformers>`_.
 These models are trained in Siamese Networks and use triplet loss such that they learn to embed similar sentences near to each other in a shared embedding space.
@@ -187,11 +149,80 @@ They are particular suited to cases where your query input is similar in style t
 i.e. when you are searching for most similar documents.
 This is not inherently suited to query based search where the length, language and format of the query usually significantly differs from the searched for text.
 
+Usage
+~~~~~
+
 !! Code Snippet !!
 
-Choosing Top K
---------------
+Dense vs Sparse
+---------------
 
-Top K is configurable
-How to choose an appropriate K?
-What about all those params? Top k per candidate / top k per sample etc
+Broadly speaking, retrieval methods can be split into two categories: **dense** and **sparse**.
+
+**Sparse** methods, like TF-IDF and BM25, operate by looking for shared keywords between the document and query.
+They are:
+
+* simple but effective
+* don't need to be trained
+* work on any language
+
+
+More recently, **dense** approaches such as Dense Passage Retrieval (DPR) have shown even better performance than their sparse counter parts.
+These methods embed both document and query into a shared embedding space using deep neural networks
+and the top candidates are the nearest neighbour documents to the query.
+They are:
+
+* powerful but computationally more expensive especially during indexing
+* trained using labelled datasets
+* language specific
+
+
+Qualitative Differences
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Between these two types there are also some qualitative differences too.
+For example, sparse methods treat text as a bag-of-words meaning that they **do not take word order and syntax into account**,
+while the latest generation of dense methods use transformer based encoders
+which are designed to be **sensitive** to these factors.
+
+Also dense methods are very capable of building strong semantic representations of text,
+but they **struggle when encountering out-of-vocabulary** words such as new names.
+By contrast, sparse methods don't need to learn representations of words,
+they only care about whether they are present or absent in the text.
+As such, **they handle out-of-vocabulary words with no problem**.
+
+..
+   _comment: !! Show example from DPR paper? !!
+
+Indexing
+~~~~~~~~
+
+Dense methods perform indexing by processing all the documents through a neural network and storing the resulting vectors.
+This is a much more expensive operation than the creation of the inverted-index in sparse methods
+and will require significant computational power and time.
+
+..
+   _comment: !!See their individual sections (!! link !!) for more details on this point. Benchmarks too !!
+
+Terminology
+~~~~~~~~~~~
+
+..
+   _comment: !! Diagram of what a sparse vector looks like vs dense vector. !!
+
+..
+   _comment: !! This section should be turned into something more like a side note !!
+
+The terms **dense** and **sparse** refer to the representations that the algorithms build for each document and query.
+**Sparse** methods characterise texts using vectors with one dimension corresponding to each word in the vocabulary.
+Dimensions will be zero if the word is absent and non-zero if it is present.
+Since most documents contain only a small subset of the full vocabulary,
+these vectors are considered sparse since non-zero values are few and far between.
+
+**Dense** methods, by contrast, pass text as input into neural network encoders
+and represent text in a vector of a manually defined size (usually 768).
+Though individual dimensions are not mapped to any corresponding vocabulary or linguistic feature,
+each dimension encodes some information about the text.
+There are rarely 0s in these vectors hence their relative density.
+
+
