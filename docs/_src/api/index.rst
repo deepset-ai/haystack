@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to Haystack's API documentation!
-====================================
+========================================
 
 file_converters.Docx is failing
 don't know how to add rest_api and in what structure

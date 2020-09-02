@@ -83,3 +83,4 @@ In Haystack, querying is performed with a ``Finder`` object which connects the r
     # Voilà! Ask a question!
     question = "Who is the father of Sansa Stark?"
     prediction = finder.get_answers(question)
+

@@ -55,19 +55,22 @@ Where:
 * ``tf`` is how many times words in the query occur in that document.
 * ``idf`` is the inverse of the fraction of documents containing the word.
 
-In practice, both terms are usually log normalised.
+In practice, both terms are usually log normalised. If you'd like to learn more about the exact details of the algorithm,
+have a look at `this video <https://www.youtube.com/watch?v=hNXwhF0OZ_o>`_
 
-Usage
-~~~~~
+Initialisation
+~~~~~~~~~~~~~~
 
 .. code-block:: python
 
     document_store = InMemoryDocumentStore()
     ...
     retriever = TfidfRetriever(document_store)
+    ...
+    finder = Finder(reader, retriever)
 
-If you'd like to learn more about the exact details of the algorithm,
-have a look at !!link!!
+
+
 
 BM25
 ----
@@ -81,18 +84,21 @@ It improves upon its predecessor in two main aspects:
 * It saturates ``tf`` after a set number of occurrences of the given term in the document
 * It normalises by document length so that short documents are favoured over long documents if they have the same amount of word overlap with the query
 
-Usage
-~~~~~
+Initialisation
+~~~~~~~~~~~~~~
 
 .. code-block:: python
 
     document_store = ElasticsearchDocumentStore()
     ...
     retriever = ElasticsearchRetriever(document_store)
+    ...
+    finder = Finder(reader, retriever)
 
 See `this <https://www.elastic.co/blog/practical-bm25-part-2-the-bm25-algorithm-and-its-variables>`_ blog post for more details about the algorithm.
 
-!! Diagram showing TFIDF vs BM25 !!
+..
+   _comment: !! Diagram showing TFIDF vs BM25 !!
 
 Dense Passage Retrieval
 -----------------------
@@ -101,9 +107,12 @@ Description
 ~~~~~~~~~~~
 
 `Dense Passage Retrieval <https://arxiv.org/abs/2004.04906>`_ is a highly performant retrieval method that calculates relevance using dense representations.
-Two separate transformer models are used to encode documents and queries
-and the dot product simalrity of their resultant embeddings is the metric by which they are ranked.
-The original implementation use two BERT base uncased models but DPR models could in theory be built for other model architectures and languages.
+Key features:
+
+* One BERT base model to encode documents
+* One Bert base model to encode queries
+* Ranking of documents done by dot product similarity between query and document embeddings
+
 
 ..
    _comment: !! Diagram !!
@@ -113,27 +122,35 @@ The embeddings that are created in this step can be stored in FAISS, a database 
 DPR can also work with the ElasticsearchDocumentStore or the InMemoryDocumentStore.
 
 There are two design decisions that have made DPR particularly performant.
-The use of separate passage and query encoders is well suited to the task of information retrieval
-since the language of queries is very different to that of passages.
-For one, they are usually significantly shorter.
 
-Also DPR is trained using a method known as in-batch negatives.
-This approach uses gold label passages in the same batch as negative examples
-and makes for a highly efficient training regime when paired with dot product similarity.
+* Separate encoders for document and query helps since queries are much shorter than documents
+* Training with 'In-batch negatives' (gold labels are treated as negative examples for other samples in same batch) is highly efficient
+
 
 In Haystack, you can simply download the pretrained encoders needed to start using DPR.
 If you'd like to learn how to set up a DPR based system, have a look at our tutorials.
+
+
+Initialisation
+~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    document_store = FAISSDocumentStore()
+    ...
+    retriever = DensePassageRetriever(
+        document_store=document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base"
+    )
+    ...
+    finder = Finder(reader, retriever)
+
 ..
-   _comment: !! Link !!
+   _comment: !! Training in future? !!
 
-Usage
-~~~~~
-
-!! Code Snippet !!
-
-!! Training in future? !!
-
-!! Talk more about benchmarks, SoTA, results !!
+..
+   _comment: !! Talk more about benchmarks, SoTA, results !!
 
 Embedding Retrieval
 -------------------
@@ -149,13 +166,21 @@ They are particular suited to cases where your query input is similar in style t
 i.e. when you are searching for most similar documents.
 This is not inherently suited to query based search where the length, language and format of the query usually significantly differs from the searched for text.
 
-Usage
-~~~~~
+Initialisation
+~~~~~~~~~~~~~~
 
-!! Code Snippet !!
+.. code-block:: python
 
-Dense vs Sparse
----------------
+    document_store = ElasticsearchDocumentStore()
+    ...
+    retriever = EmbeddingRetriever(document_store=document_store,
+                                   embedding_model="deepset/sentence_bert")
+    ...
+    finder = Finder(reader, retriever)
+
+
+Deeper Dive: Dense vs Sparse
+-----------------------------
 
 Broadly speaking, retrieval methods can be split into two categories: **dense** and **sparse**.
 
@@ -165,7 +190,6 @@ They are:
 * simple but effective
 * don't need to be trained
 * work on any language
-
 
 More recently, **dense** approaches such as Dense Passage Retrieval (DPR) have shown even better performance than their sparse counter parts.
 These methods embed both document and query into a shared embedding space using deep neural networks

@@ -20,19 +20,9 @@ or our API page for comprehensive descriptions of individual functions.
    usage/intro
    usage/get_started
    usage/overview
-   usage/reader
-   usage/retriever
-   usage/finder
-   usage/scaling_to_open_domain
    usage/database
+   usage/retriever
+   usage/reader
    usage/domain_adaptation
    usage/other_features
    usage/terms
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

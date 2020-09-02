@@ -21,14 +21,17 @@ The exact steps involved in indexing depend on what kind of retrieval method is 
 
 **Language Model** - The component in an NLP model that stores general language understanding, but no task specific knowledge.
 
-**Model Hub** - The repository set up by HuggingFace where trained models can be saved to and loaded from.
+**Model Hub** - The `repository <https://huggingface.co/models>`_ set up by HuggingFace where trained models can be saved to and loaded from.
 With Haystack, you can directly load and use any question answering model found on the model hub.
 
 **Neural Network** - A machine learning architecture composed of artificial neurons that learn a task when exposed to labelled training data.
 
+**Prediction Head** - The modelling component that adapts the general knowledge of the language model for a specific task.
+In question answering models (and hence in Haystack Readers), this is usually a single layer neural network.
+
 **Querying** - The task of returning relevant documents from a database.
 
-**Question Answering** - A popular task in the world of NLP where systems have to find answers to questions.
+**Question Answering (QA)** - A popular task in the world of NLP where systems have to find answers to questions.
 The term is generally used to refer to extractive question answering,
 where a system has to find the minimal text span in a given document that contains the answer to the question.
 
@@ -44,6 +47,9 @@ but on the similarity of meaning between a query and a piece of text.
 **Sparse** - Vectors that are composed primarily of zeros are called sparse.
 Retrieval methods are also considered sparse if they build sparse vector representations of documents.
 
+**SQuAD** - The `Stanford Question Answering Dataset <https://rajpurkar.github.io/SQuAD-explorer/>`_ is the defacto standard QA dataset.
+The documents are paragraphs from Wikipedia and the question / answer pairs are created by human annotators.
+
 **Transformers** - Originally refers to the deep learning architecture that is composed of stacked self-attention layers
 (first conceptualised `here <https://arxiv.org/pdf/1706.03762.pdf>`_).
 Can also refer to HuggingFace's `repository <https://github.com/huggingface/transformers>`_
@@ -51,19 +57,5 @@ which contains implementations of popular model architectures.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-Prediction Head
 
 

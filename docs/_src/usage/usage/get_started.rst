@@ -28,12 +28,11 @@ Installation
         By default, this will give you the latest version of the master branch.
         Use regular git commands to switch between different branches and commits.
 
-Docker
-------
+..
+   _comment: !! Have a tab for docker!!
 
-.. code-block::
-
-    !~TODO~!
+..
+   -comment: !! Have a hello world example!!
 
 Basic Code Example
 ------------------
