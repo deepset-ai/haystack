@@ -287,7 +287,7 @@ class BaseDocumentStore(ABC):
     @abstractmethod
     def query_by_embedding(self,
                            query_emb: List[float],
-                           filters: Optional[Optional[Dict[str, List[str]]]] = None,
+                           filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None) -> List[Document]:
         pass

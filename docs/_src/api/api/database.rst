@@ -6,7 +6,6 @@ Base
 
 .. automodule:: haystack.database.base
    :members:
-   :undoc-members:
    :show-inheritance:
 
 Elasticsearch
@@ -14,7 +13,6 @@ Elasticsearch
 
 .. automodule:: haystack.database.elasticsearch
    :members:
-   :undoc-members:
    :show-inheritance:
 
 Memory

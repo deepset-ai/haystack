@@ -41,9 +41,14 @@ class DensePassageRetriever(BaseRetriever):
 
         :Example:
                 >>> # remote model from FAIR
-                >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="dpr-bert-base-nq", use_gpu=True)
+                >>> DensePassageRetriever(document_store=your_doc_store,
+                >>>                       query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                >>>                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
+
                 >>> # or from local path
-                >>> DensePassageRetriever(document_store=your_doc_store, embedding_model="some_path/ber-base-encoder.cp", use_gpu=True)
+                >>> DensePassageRetriever(document_store=your_doc_store,
+                >>>                       query_embedding_model="model_directory/question-encoder",
+                >>>                       passage_embedding_model="model_directory/context-encoder")
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
@@ -273,7 +278,7 @@ class EmbeddingRetriever(BaseRetriever):
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or name of model in Hugging Face's model hub. Example: ``'deepset/sentence_bert'``
+        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
         :param use_gpu: Whether to use gpu or not
         :param model_format: Name of framework that was used for saving the model. Options:
 
