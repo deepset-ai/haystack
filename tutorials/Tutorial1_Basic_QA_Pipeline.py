@@ -29,7 +29,7 @@ LAUNCH_ELASTICSEARCH = True
 # ## Document Store
 #
 # Haystack finds answers to queries within the documents stored in a `DocumentStore`. The current implementations of
-# `DocumentStore` include `ElasticsearchDocumentStore`, `SQLDocumentStore`, and `InMemoryDocumentStore`.
+# `DocumentStore` include `ElasticsearchDocumentStore`, `FAISSDocumentStore`, `SQLDocumentStore`, and `InMemoryDocumentStore`.
 #
 # **Here:** We recommended Elasticsearch as it comes preloaded with features like full-text queries, BM25 retrieval,
 # and vector storage for text embeddings.
@@ -58,13 +58,13 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
 
 # ## Cleaning & indexing documents
 #
-# Haystack provides a customizable cleaning and indexing pipeline for ingesting documents in Document Stores.
+# Haystack provides a customizable cleaning and indexing pipeline for loading documents into Document Stores.
 #
-# In this tutorial, we download Wikipedia articles on Game of Thrones, apply a basic cleaning function, and index
+# In this tutorial, we download Wikipedia articles about Game of Thrones, apply a basic cleaning function, and index
 # them in Elasticsearch.
 
 
-# Let's first get some documents that we want to query
+# Let's first fetch some documents that we want to query
 # Here: 517 Wikipedia articles for Game of Thrones
 doc_dir = "data/article_txt_got"
 s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"

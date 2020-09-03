@@ -2,7 +2,7 @@ from nbconvert import RSTExporter
 import os
 from pathlib import Path
 
-dir = Path("../../../tutorials")
+dir = Path("../../../../tutorials")
 
 notebooks = [x for x in os.listdir(dir) if x[-6:] == ".ipynb"]
 notebooks = sorted(notebooks, key=lambda x: x[8])

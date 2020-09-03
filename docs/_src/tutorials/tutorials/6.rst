@@ -1,5 +1,5 @@
 Better retrieval via “Dense Passage Retrieval”
-==============================================
+----------------------------------------------
 
 Importance of Retrievers
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -17,9 +17,11 @@ Family of algorithms based on counting the occurences of words
 (bag-of-words) resulting in very sparse vectors with length = vocab
 size.
 
-| Examples: BM25, TF-IDF
-| Pros: Simple, fast, well explainable
-| Cons: Relies on exact keyword matches between query and text
+**Examples**: BM25, TF-IDF
+
+**Pros**: Simple, fast, well explainable
+
+**Cons**: Relies on exact keyword matches between query and text
 
 Dense
 ^^^^^
@@ -36,9 +38,12 @@ Recent work suggests that dual encoders work better, likely because they
 can deal better with the different nature of query and passage (length,
 style, syntax …).
 
-Examples: REALM, DPR, Sentence-Transformers … Pros: Captures semantinc
-similarity instead of “word matches” (e.g. synonyms, related topics …)
-Cons: Computationally more heavy, initial training of model
+**Examples**: REALM, DPR, Sentence-Transformers
+
+**Pros**: Captures semantinc similarity instead of “word matches”
+(e.g. synonyms, related topics …)
+
+**Cons**: Computationally more heavy, initial training of model
 
 “Dense Passage Retrieval”
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,15 +69,15 @@ open-domain QA benchmarks.”*
 | Paper: https://arxiv.org/abs/2004.04906
 | Original Code: https://fburl.com/qa-dpr
 
-*Use
-this*\ `link <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb>`__\ *to
-open the notebook in Google Colab.*
+*Use this*
+`link <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb>`__
+*to open the notebook in Google Colab.*
 
 Prepare environment
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 Colab: Enable the GPU runtime
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 | Make sure you enable the GPU runtime to experience decent speed in
   this tutorial.
@@ -85,7 +90,12 @@ Colab: Enable the GPU runtime
 
 .. code:: ipython3
 
-    ! pip install git+https://github.com/deepset-ai/haystack.git
+    # Install the latest release of Haystack in your own environment 
+    #! pip install farm-haystack
+    
+    # Install the latest master of Haystack and install the version of torch that works with the colab GPUs
+    !pip install git+https://github.com/deepset-ai/haystack.git
+    !pip install torch==1.5.1+cu101 torchvision==0.6.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 
 .. code:: ipython3
 
@@ -97,50 +107,22 @@ Colab: Enable the GPU runtime
     from haystack.utils import print_answers
 
 Document Store
---------------
+~~~~~~~~~~~~~~
 
-Start an Elasticsearch server
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can start Elasticsearch on your local machine instance using Docker.
-If Docker is not readily available in your environment (e.g. in Colab
-notebooks), you can also manually download and execute Elasticsearch
-from source.
+FAISS is a library for efficient similarity search on a cluster of dense
+vectors. The ``FAISSDocumentStore`` uses a SQL(SQLite in-memory be
+default) database under-the-hood to store the document text and other
+meta data. The vector embeddings of the text are indexed on a FAISS
+Index that later is queried for searching answers.
 
 .. code:: ipython3
 
-    # Recommended: Start Elasticsearch using Docker
-    #! docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2
-    # wait until ES has started
-    #! sleep 30
-
-.. code:: ipython3
-
-    # In Colab / No Docker environments: Start Elasticsearch from source
-    ! wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.2-linux-x86_64.tar.gz -q
-    ! tar -xzf elasticsearch-7.6.2-linux-x86_64.tar.gz
-    ! chown -R daemon:daemon elasticsearch-7.6.2
+    from haystack.database.faiss import FAISSDocumentStore
     
-    import os
-    from subprocess import Popen, PIPE, STDOUT
-    es_server = Popen(['elasticsearch-7.6.2/bin/elasticsearch'],
-                       stdout=PIPE, stderr=STDOUT,
-                       preexec_fn=lambda: os.setuid(1)  # as daemon
-                      )
-    # wait until ES has started
-    ! sleep 30
-
-.. code:: ipython3
-
-    # Connect to Elasticsearch
-    from haystack.database.elasticsearch import ElasticsearchDocumentStore
-    
-    # We need to set `embedding_field` and `embedding_dim`, when we plan to use a dense retriever
-    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document", 
-                                                embedding_field="embedding", embedding_dim=768)
+    document_store = FAISSDocumentStore()
 
 Cleaning & indexing documents
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Similarly to the previous tutorials, we download, convert and index some
 Game of Thrones articles to our DocumentStore
@@ -159,10 +141,10 @@ Game of Thrones articles to our DocumentStore
     document_store.write_documents(dicts)
 
 Initalize Retriever, Reader, & Finder
--------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Retriever
-~~~~~~~~~
+^^^^^^^^^
 
 **Here:** We use a ``DensePassageRetriever``
 
@@ -178,9 +160,14 @@ Retriever
 .. code:: ipython3
 
     from haystack.retriever.dense import DensePassageRetriever
-    retriever = DensePassageRetriever(document_store=document_store, embedding_model="dpr-bert-base-nq",
-                                      do_lower_case=True, use_gpu=True)
-    
+    retriever = DensePassageRetriever(document_store=document_store,
+                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                      use_gpu=True,
+                                      embed_title=True,
+                                      max_seq_len=256,
+                                      batch_size=16,
+                                      remove_sep_tok_from_untitled_passages=True)
     # Important: 
     # Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all
     # previously indexed documents and update their embedding representation. 
@@ -189,7 +176,7 @@ Retriever
     document_store.update_embeddings(retriever)
 
 Reader
-~~~~~~
+^^^^^^
 
 Similar to previous Tutorials we now initalize our reader.
 
@@ -197,7 +184,7 @@ Here we use a FARMReader with the *deepset/roberta-base-squad2* model
 (see: https://huggingface.co/deepset/roberta-base-squad2)
 
 FARMReader
-^^^^^^^^^^
+''''''''''
 
 .. code:: ipython3
 
@@ -207,7 +194,7 @@ FARMReader
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
 
 Finder
-~~~~~~
+^^^^^^
 
 The Finder sticks together reader and retriever in a pipeline to answer
 our actual questions.
@@ -217,7 +204,7 @@ our actual questions.
     finder = Finder(reader, retriever)
 
 Voilà! Ask a question!
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: ipython3
 
@@ -231,3 +218,4 @@ Voilà! Ask a question!
 .. code:: ipython3
 
     print_answers(prediction, details="minimal")
+

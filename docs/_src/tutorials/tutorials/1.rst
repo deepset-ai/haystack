@@ -12,14 +12,18 @@ slightly different domain: “Game of Thrones”.
 Let’s see how we can use a bunch of Wikipedia articles to answer a
 variety of questions about the marvellous seven kingdoms…
 
-*Use
-this*\ `link <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`__\ *to
-open the notebook in Google Colab.*
+*Use this*
+`link <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb>`__
+*to open the notebook in Google Colab.*
 
 .. code:: ipython3
 
-    ! pip install git+https://github.com/deepset-ai/haystack.git
+    # Install the latest release of Haystack in your own environment 
     #! pip install farm-haystack
+    
+    # Install the latest master of Haystack and install the version of torch that works with the colab GPUs
+    !pip install git+https://github.com/deepset-ai/haystack.git
+    !pip install torch==1.5.1+cu101 torchvision==0.6.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 
 .. code:: ipython3
 
@@ -35,8 +39,8 @@ Document Store
 
 Haystack finds answers to queries within the documents stored in a
 ``DocumentStore``. The current implementations of ``DocumentStore``
-include ``ElasticsearchDocumentStore``, ``SQLDocumentStore``, and
-``InMemoryDocumentStore``.
+include ``ElasticsearchDocumentStore``, ``FAISSDocumentStore``,
+``SQLDocumentStore``, and ``InMemoryDocumentStore``.
 
 **Here:** We recommended Elasticsearch as it comes preloaded with
 features like `full-text
@@ -95,14 +99,14 @@ Cleaning & indexing documents
 -----------------------------
 
 Haystack provides a customizable cleaning and indexing pipeline for
-ingesting documents in Document Stores.
+loading documents into Document Stores.
 
-In this tutorial, we download Wikipedia articles on Game of Thrones,
+In this tutorial, we download Wikipedia articles about Game of Thrones,
 apply a basic cleaning function, and index them in Elasticsearch.
 
 .. code:: ipython3
 
-    # Let's first get some documents that we want to query
+    # Let's first fetch some documents that we want to query
     # Here: 517 Wikipedia articles for Game of Thrones
     doc_dir = "data/article_txt_got"
     s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
@@ -115,7 +119,11 @@ apply a basic cleaning function, and index them in Elasticsearch.
     
     # We now have a list of dictionaries that we can write to our document store.
     # If your texts come from a different source (e.g. a DB), you can of course skip convert_files_to_dicts() and create the dictionaries yourself.
-    # The default format here is: {"name": "<some-document-name>, "text": "<the-actual-text>"}
+    # The default format here is:
+    # {
+    #    'text': "<DOCUMENT_TEXT_HERE>",
+    #    'meta': {'name': "<DOCUMENT_NAME_HERE>", ...}
+    #}
     # (Optionally: you can also add more key-value-pairs here, that will be indexed as fields in Elasticsearch and
     # can be accessed later for filtering or shown in the responses of the Finder)
     

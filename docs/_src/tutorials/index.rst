@@ -11,10 +11,3 @@ Tutorials
    4) Answer incoming questions using FAQ pages <tutorials/4>
    5) Benchmark the different components of Haystack <tutorials/5>
    6) SoTA: Powerup Haystack with DPR <tutorials/6>
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

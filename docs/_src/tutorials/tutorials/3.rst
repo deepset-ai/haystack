@@ -12,8 +12,12 @@ refer to the Tutorial 1.
 
 .. code:: ipython3
 
-    ! pip install git+https://github.com/deepset-ai/haystack.git
+    # Install the latest release of Haystack in your own environment 
     #! pip install farm-haystack
+    
+    # Install the latest master of Haystack and install the version of torch that works with the colab GPUs
+    !pip install git+https://github.com/deepset-ai/haystack.git
+    !pip install torch==1.5.1+cu101 torchvision==0.6.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 
 .. code:: ipython3
 

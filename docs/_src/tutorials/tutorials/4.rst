@@ -5,24 +5,32 @@ While *extractive Question Answering* works on pure texts and is
 therefore more generalizable, there’s also a common alternative that
 utilizes existing FAQ data.
 
-Pros: - Very fast at inference time - Utilize existing FAQ data - Quite
-good control over answers
+**Pros**:
 
-Cons: - Generalizability: We can only answer questions that are similar
-to existing ones in FAQ
+-  Very fast at inference time
+-  Utilize existing FAQ data
+-  Quite good control over answers
+
+**Cons**:
+
+-  Generalizability: We can only answer questions that are similar to
+   existing ones in FAQ
 
 In some use cases, a combination of extractive QA and FAQ-style can also
 be an interesting option.
 
-*Use
-this*\ `link <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_Tutorial4_FAQ_style_QA.ipynb>`__\ *to
-open the notebook in Google Colab.*
+*Use this*
+`link <https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_Tutorial4_FAQ_style_QA.ipynb>`__
+*to open the notebook in Google Colab.*
 
 .. code:: ipython3
 
-    #TODO
-    ! pip install git+https://github.com/deepset-ai/haystack.git
+    # Install the latest release of Haystack in your own environment 
     #! pip install farm-haystack
+    
+    # Install the latest master of Haystack and install the version of torch that works with the colab GPUs
+    !pip install git+https://github.com/deepset-ai/haystack.git
+    !pip install torch==1.5.1+cu101 torchvision==0.6.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 
 .. code:: ipython3
 
@@ -83,7 +91,6 @@ In contrast to Tutorial 1 (extractive QA), we:
     from haystack.database.elasticsearch import ElasticsearchDocumentStore
     document_store = ElasticsearchDocumentStore(host="localhost", username="", password="",
                                                 index="document",
-                                                text_field="answer",
                                                 embedding_field="question_emb",
                                                 embedding_dim=768,
                                                 excluded_meta_data=["question_emb"])
@@ -124,6 +131,7 @@ download some question-answer pairs related to COVID-19
     questions = list(df["question"].values)
     df["question_emb"] = retriever.embed_queries(texts=questions)
     df["question_emb"] = df["question_emb"].apply(list) # convert from numpy to list for ES indexing
+    df = df.rename(columns={"answer": "text"})
     
     # Convert Dataframe to list of dicts and index them in our DocumentStore
     docs_to_index = df.to_dict(orient="records")
