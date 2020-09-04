@@ -19,8 +19,8 @@ def parse_requirements(filename):
     parsed_requirements = [line.strip()
                            for line in parsed_requirements
                            if not ((line.strip()[0] == "#") or line.strip().startswith('--find-links') or ("git+https" in line))]
-    parsed_requirements.append(
-        'farm @ git+https://github.com/deepset-ai/FARM.git@000d7d2e623849754587cbb3e46aee0d288ea1f0#egg=farm@v0.4.6#egg=farm')
+    #parsed_requirements.append(
+    #    'farm @ git+https://github.com/deepset-ai/FARM.git@000d7d2e623849754587cbb3e46aee0d288ea1f0#egg=farm@v0.4.6#egg=farm')
 
     return parsed_requirements
 
