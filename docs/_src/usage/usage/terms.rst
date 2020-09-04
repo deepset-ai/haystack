@@ -6,7 +6,9 @@ Glossary
 **Dense** - Vectors that contain many non-zero values are considered dense.
 Retrieval methods can also be called dense if they create dense vector representations of documents.
 
-**Document** -
+**Document** - A Document in Haystack refers to the individual pieces of text that are stored in the DocumentStore.
+Multiple Documents might originally come from the one file.
+It is ultimately up to you how to divide up your corpus into Documents.
 
 **Document Store** - The component in Haystack that stores the text documents and their metadata.
 Can have a variety of backends such as Elasticsearch, SQL or FAISS.
@@ -28,8 +30,6 @@ With Haystack, you can directly load and use any question answering model found 
 
 **Prediction Head** - The modelling component that adapts the general knowledge of the language model for a specific task.
 In question answering models (and hence in Haystack Readers), this is usually a single layer neural network.
-
-**Query** - 
 
 **Querying** - The task of returning relevant documents from a database.
 

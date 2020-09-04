@@ -32,3 +32,11 @@ Txt
    :members:
    :undoc-members:
    :show-inheritance:
+
+Tika
+-----
+
+.. automodule:: haystack.indexing.file_converters.tika
+   :members:
+   :undoc-members:
+   :show-inheritance:

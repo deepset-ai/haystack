@@ -20,5 +20,4 @@ or our API page for comprehensive descriptions of individual functions.
    usage/retriever
    usage/reader
    usage/domain_adaptation
-   usage/other_features
    usage/terms

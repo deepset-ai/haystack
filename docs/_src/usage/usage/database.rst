@@ -4,7 +4,7 @@ Document Stores
 Initialisation
 --------------
 
-Initialising a new Document Store is straight forward
+Initialising a new Document Store is straight forward.
 
 .. tabs::
 
@@ -55,7 +55,12 @@ They are loaded using the ``DocumentStore.write_documents()`` method.
 File Conversion
 ---------------
 
+There are a range of different file converters in Haystack that can help get your data into the right format.
+Haystack features support for txt, pdf and docx formats and there is even a converted that leverages Apache Tika.
+See the File Converters section in the API docs for more information.
 
+..
+   _comment: !! Code snippets for each type !!
 
 Haystack also has a ``convert_files_to_dicts()`` utility function that will convert
 all txt or pdf files in a given folder into this dictionary format.
@@ -65,7 +70,6 @@ all txt or pdf files in a given folder into this dictionary format.
     document_store = ElasticsearchDocumentStore()
     dicts = convert_files_to_dicts(dir_path=doc_dir)
     document_store.write_documents(dicts)
-
 
 Writing Documents
 -----------------
