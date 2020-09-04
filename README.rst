@@ -248,9 +248,9 @@ A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is provide
 
 To serve the API, adjust the values in :code:`rest_api/config.py` and run::
 
-    gunicorn rest_api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker
+    gunicorn rest_api.application:app -b 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker
 
-You will find the Swagger API documentation at http://127.0.0.1:80/docs
+You will find the Swagger API documentation at http://127.0.0.1:8000/docs
 
 
 6. Labeling Tool
