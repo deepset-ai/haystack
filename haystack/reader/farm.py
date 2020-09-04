@@ -3,6 +3,7 @@ import multiprocessing
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 from collections import defaultdict
+from time import perf_counter
 
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
@@ -451,6 +452,7 @@ class FARMReader(BaseReader):
         farm_input = [v for v in d.values()]
 
         # Create DataLoader that can be passed to the Evaluator
+        tic = perf_counter()
         indices = range(len(farm_input))
         dataset, tensor_names = self.inferencer.processor.dataset_from_dicts(farm_input, indices=indices)
         data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
@@ -458,10 +460,12 @@ class FARMReader(BaseReader):
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
 
         eval_results = evaluator.eval(self.inferencer.model)
+        toc = perf_counter()
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"],
+            "reader_time": toc - tic
         }
         return results
 

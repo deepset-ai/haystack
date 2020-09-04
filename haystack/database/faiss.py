@@ -109,11 +109,17 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Index name to update
         :return: None
         """
+
+        index = index or self.index
+        documents = self.get_all_documents(index=index)
+
+        if len(documents) == 0:
+            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
+            self.faiss_index = None
+            return
+
         # Some FAISS indexes(like the default HNSWx) do not support removing vectors, so a new index is created.
         faiss_index = self._create_new_index(vector_size=self.vector_size)
-        index = index or self.index
-
-        documents = self.get_all_documents(index=index)
         logger.info(f"Updating embeddings for {len(documents)} docs ...")
         embeddings = retriever.embed_passages(documents)  # type: ignore
         assert len(documents) == len(embeddings)
@@ -127,14 +133,14 @@ class FAISSDocumentStore(SQLDocumentStore):
             hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
             faiss_index.add(hnsw_vectors)
 
-        doc_meta_to_update = []
-        for vector_id, doc in enumerate(documents[i : i + self.index_buffer_size]):
-            meta = doc.meta or {}
-            meta["vector_id"] = vector_id
-            doc_meta_to_update.append((doc.id, meta))
+            doc_meta_to_update = []
+            for vector_id, doc in enumerate(documents[i : i + self.index_buffer_size]):
+                meta = doc.meta or {}
+                meta["vector_id"] = vector_id
+                doc_meta_to_update.append((doc.id, meta))
 
-        for doc_id, meta in doc_meta_to_update:
-            super(FAISSDocumentStore, self).update_document_meta(id=doc_id, meta=meta)
+            for doc_id, meta in doc_meta_to_update:
+                super(FAISSDocumentStore, self).update_document_meta(id=doc_id, meta=meta)
 
         self.faiss_index = faiss_index
 

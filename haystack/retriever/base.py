@@ -20,12 +20,12 @@ class BaseRetriever(ABC):
     def timing(self, fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            if "timing" not in self.__dict__:
-                self.timing = 0
+            if "retrieve_time" not in self.__dict__:
+                self.retrieve_time = 0
             tic = perf_counter()
             ret = fn(*args, **kwargs)
             toc = perf_counter()
-            self.timing += toc - tic
+            self.retrieve_time += toc - tic
             return ret
         return wrapper
 
@@ -105,4 +105,4 @@ class BaseRetriever(ABC):
         logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
                      f" the top-{top_k} candidate passages selected by the retriever."))
 
-        return {"recall": recall, "map": mean_avg_precision}
+        return {"recall": recall, "map": mean_avg_precision, "retrieve_time": self.retrieve_time}
