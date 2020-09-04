@@ -3,7 +3,6 @@ Retriever
 =========
 
 The Retriever is a lightweight filter that can quickly go through the full document store and pass a set of candidate documents to the Reader.
-It gets a sense of the topics being mentioned in a document but doesn't pay as much close attention to the finer details as the Reader does.
 It is an tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process.
 
 Recommendations:
@@ -72,8 +71,8 @@ Initialisation
 
 
 
-BM25
-----
+BM25 (Recommended)
+------------------
 
 Description
 ~~~~~~~~~~~
@@ -100,8 +99,8 @@ See `this <https://www.elastic.co/blog/practical-bm25-part-2-the-bm25-algorithm-
 ..
    _comment: !! Diagram showing TFIDF vs BM25 !!
 
-Dense Passage Retrieval
------------------------
+Dense Passage Retrieval (Recommended)
+-------------------------------------
 
 Description
 ~~~~~~~~~~~

@@ -4,62 +4,106 @@ Document Stores
 Initialisation
 --------------
 
-
 Initialising a new Document Store is straight forward
 
-.. code-block:: python
+.. tabs::
 
-    document_store = ElasticsearchDocumentStore()
+    .. tab:: Elasticsearch
 
+        .. code-block:: python
+
+            document_store = ElasticsearchDocumentStore()
+
+    .. tab:: FAISS
+
+        .. code-block:: python
+
+            document_store = FAISSDocumentStore()
+
+    .. tab:: SQL
+
+        .. code-block:: python
+
+            document_store = SQLDocumentStore()
+
+    .. tab:: In Memory
+
+        .. code-block:: python
+
+            document_store = InMemoryDocumentStore()
+
+Each DocumentStore constructor allows for arguments specifying how to connect to existing databases and the names of indexes.
+See API documentation for more info.
 
 Preparing Documents
 -------------------
 
-
-Document Stores expect the documents in your corpus to be passed in in the following dictionary form.
+DocumentStores expect Documents in dictionary form, like that below.
+They are loaded using the ``DocumentStore.write_documents()`` method.
 
 .. code-block:: python
 
-    {
-        'text': DOCUMENT_TEXT_HERE,
-        'meta': {'name': DOCUMENT_NAME, ...}
-    }
+    document_store = ElasticsearchDocumentStore()
+    dicts = [
+        {
+            'text': DOCUMENT_TEXT_HERE,
+            'meta': {'name': DOCUMENT_NAME, ...}
+        }, ...
+    ]
+    document_store.write_documents(dicts)
 
-Haystack also has a convert_files_to_dicts() function that will convert
+File Conversion
+---------------
+
+
+
+Haystack also has a ``convert_files_to_dicts()`` utility function that will convert
 all txt or pdf files in a given folder into this dictionary format.
 
 .. code-block:: python
 
+    document_store = ElasticsearchDocumentStore()
     dicts = convert_files_to_dicts(dir_path=doc_dir)
+    document_store.write_documents(dicts)
 
-Indexing Documents
-------------------
 
-To add documents, simply use the following method:
+Writing Documents
+-----------------
+
+Haystack allows for you to write store documents in an optimised fashion so that query times can be kept low.
+
+For Sparse Retrievers
+~~~~~~~~~~~~~~~~~~~~~
+
+For **sparse**, keyword based retrievers such as BM25 and TF-IDF,
+you simply have to call ``DocumentStore.write_documents()``.
+The creation of the inverted index which optimises querying speed is handled automatically.
 
 .. code-block:: python
 
     document_store.write_documents(dicts)
 
-Note that this indexes the document and its meta data, but does not compute the embeddings
-needed for dense retrievers such as the DensePassageRetriever or the EmbeddingRetriever.
-For these models, you will also have to use the following lines.
+For Dense Retrievers
+~~~~~~~~~~~~~~~~~~~~
+
+For **dense** neural network based retrievers like Dense Passage Retrieval, or Embedding Retrieval,
+indexing involves computing the Document embeddings which will be compared against the Query embedding.
+
+The storing of the text is handled by ``DocumentStore.write_documents()`` and the computation of the
+embeddings is started by ``DocumentStore.update_embeddings()``.
 
 .. code-block:: python
 
+    document_store.write_documents(dicts)
     document_store.update_embeddings(retriever)
 
 This step is computationally intensive since it will engage the transformer based encoders.
-Having a GPU acceleration will significantly speed up this step.
+Having GPU acceleration will significantly speed this up.
 
-Connecting to the Retriever
----------------------------
-
-The document store is passed in as an argument when the Retriever is being initialised.
-
-.. code-block:: python
-
-    retriever = EmbeddingRetriever(document_store=document_store)
+..
+   _comment: !! Diagrams of inverted index / document embeds !!
+..
+   _comment: !! Make this a tab element to show how different datastores are initialized !!
 
 Choosing the right database
 ---------------------------
@@ -73,10 +117,3 @@ Elasticsearch vs SQL vs In Memory vs FAISS
 Show some code snippets of each using tab elements
 
 Use tabbed element to show how each is initialized
-
-Indexing
---------
-
-Code snippets of how to index to each
-maybe use tab elements if diff for each
-

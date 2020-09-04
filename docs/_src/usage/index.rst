@@ -16,7 +16,6 @@ or our API page for comprehensive descriptions of individual functions.
 
    usage/intro
    usage/get_started
-   usage/overview
    usage/database
    usage/retriever
    usage/reader

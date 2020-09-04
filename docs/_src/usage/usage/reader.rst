@@ -50,27 +50,36 @@ To get you started, we have a few recommendations for you to try out.
 
             .. tab:: RoBERTa (base)
 
+                **An optimised variant of BERT and a great starting point.**
+
                 .. code-block:: python
 
                     reader = FARMReader("deepset/roberta-base-squad2")
 
-            .. tab:: ELECTRA (base)
-
-                .. code-block:: python
-
-                    reader = FARMReader("deepset/electra-base-squad2")
+                - **Pro**: Strong all round model
+                - **Con**: There are other models that are either faster or more accurate
 
             .. tab:: MiniLM
+
+                **A cleverly distilled model that sacrifices a little accuracy for speed.**
 
                 .. code-block:: python
 
                     reader = FARMReader("deepset/minilm-uncased-squad2")
 
+                - **Pro**: Inference speed up to 50% faster than BERT base
+                - **Con**: Still doesn't match the best base sized models in accuracy
+
             .. tab:: ALBERT (XXL)
 
-                    .. code-block:: python
+                **Large, powerful, SotA model.**
 
-                        reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
+                .. code-block:: python
+
+                    reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
+
+                - **Pro**: Better accuracy than any other open source model in QA
+                - **Con**: The computational power needed make it impractical for most use cases
 
     .. tab:: Transformers
 
@@ -78,33 +87,42 @@ To get you started, we have a few recommendations for you to try out.
 
             .. tab:: RoBERTa (base)
 
+                **An optimised variant of BERT and a great starting point.**
+
                 .. code-block:: python
 
                     reader = TransformersReader("deepset/roberta-base-squad2")
 
-            .. tab:: ELECTRA (base)
-
-                .. code-block:: python
-
-                    reader = TransformersReader("deepset/electra-base-squad2")
+                - **Pro**: Strong all round model
+                - **Con**: There are other models that are either faster or more accurate
 
             .. tab:: MiniLM
+
+                **A cleverly distilled model that sacrifices a little accuracy for speed.**
 
                 .. code-block:: python
 
                     reader = TransformersReader("deepset/minilm-uncased-squad2")
 
+                - **Pro**: Inference speed up to 50% faster than BERT base
+                - **Con**: Still doesn't match the best base sized models in accuracy
+
             .. tab:: ALBERT (XXL)
+
+                **Large, powerful, SotA model.**
 
                 .. code-block:: python
 
                     reader = TransformersReader("ahotrod/albert_xxlargev1_squad2_512")
 
-In the class of base sized models trained on SQuAD, **RoBERTa** has shown better performance than BERT
+                - **Pro**: Better accuracy than any other open source model in QA
+                - **Con**: The computational power needed make it impractical for most use cases
+
+**All-rounder**: In the class of base sized models trained on SQuAD, **RoBERTa** has shown better performance than BERT
 and can be capably handled by any machine equipped with a single NVidia V100 GPU.
 We recommend this as the starting point for anyone wanting to create a performant and computationally reasonable instance of Haystack.
 
-If **speed** and **GPU memory** are more of a priority to you than accuracy,
+**Built for Speed**: If speed and GPU memory are more of a priority to you than accuracy,
 you should try the MiniLM model.
 It is a smaller model that is trained to mimic larger models through the distillation process,
 and it outperforms the BERT base on SQuAD even though it is about 40% smaller.
@@ -113,8 +131,8 @@ and it outperforms the BERT base on SQuAD even though it is about 40% smaller.
    _comment: !! In our tests we found that it was XX% faster than BERT and ~X% better in perfomance. Compared to RoBERTa, it is only off by about X% absolute,
 
 
-For most, **ALBERT XXL** will be too large to feasibly work with.
-But if **performance** is your sole concern, and you have the computational resources,
+**State of the Art Accuracy**: For most, **ALBERT XXL** will be too large to feasibly work with.
+But if performance is your sole concern, and you have the computational resources,
 you might like to try ALBERT XXL which has set SoTA performance on SQuAD 2.0.
 
 ..
@@ -181,7 +199,7 @@ and their authors report decent results in their model cards
 Note that there is also a `large variant <https://huggingface.co/illuin/camembert-large-fquad>`_ of the French model available on the model hub.
 There also exist Korean QA models on the model hub but their performance is not reported.
 
-The zero-shot model that is shown above is a **multilingual XLM-RoBERTa Large** that is trained on English SQuAD.
+The **zero-shot model** that is shown above is a **multilingual XLM-RoBERTa Large** that is trained on English SQuAD.
 It is clear, from our `evaluations <https://huggingface.co/deepset/xlm-roberta-large-squad2#model_card>`_,
 that the model has been able to transfer some of its English QA capabilities to other languages,
 but still its performance lags behind that of the monolingual models.
@@ -266,12 +284,9 @@ These can be set when the Reader is initialized.
 
     .. tab:: Transformers
 
-        !! CAN'T CURRENTLY BE SET YET !!
-
         .. code-block:: python
 
-            reader = TransformersReader(model, use_gpu=1)
-
+            reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...
 
 Predictions are made on each individual passage and the process of aggregation picks the best candidates across all passages.
 If you'd like to learn more about what is happening behind the scenes, have a look at `this <https://medium.com/deepset-ai/modern-question-answering-systems-explained-4d0913744097>`_ article.

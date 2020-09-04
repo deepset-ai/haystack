@@ -3,10 +3,10 @@ Glossary
 
 **BERT** - A popular, transformer based language model which has been improved upon but is still considered a common benchmark.
 
-**Deep Learning** - A subfield of AI that focuses on building effective model architectures composed of stacked Neural Network layers.
-
 **Dense** - Vectors that contain many non-zero values are considered dense.
 Retrieval methods can also be called dense if they create dense vector representations of documents.
+
+**Document** -
 
 **Document Store** - The component in Haystack that stores the text documents and their metadata.
 Can have a variety of backends such as Elasticsearch, SQL or FAISS.
@@ -28,6 +28,8 @@ With Haystack, you can directly load and use any question answering model found 
 
 **Prediction Head** - The modelling component that adapts the general knowledge of the language model for a specific task.
 In question answering models (and hence in Haystack Readers), this is usually a single layer neural network.
+
+**Query** - 
 
 **Querying** - The task of returning relevant documents from a database.
 
