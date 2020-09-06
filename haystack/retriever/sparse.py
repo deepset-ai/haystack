@@ -57,7 +57,7 @@ class ElasticsearchRetriever(BaseRetriever):
 
         if verbose:
             logger.info(f"Got {len(documents)} candidates from retriever")
-            logger.info("{}.{} - {}".format(self.__name__, __name__, documents[0:5]))
+            logger.info("{} - {}".format(__name__, documents[0:5]))
 
         return documents
 
