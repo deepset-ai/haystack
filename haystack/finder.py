@@ -45,13 +45,13 @@ class Finder:
             raise AttributeError("Finder.get_answers requires self.retriever AND self.reader")
 
         # 1) Apply retriever(with optional filters) to get fast candidate documents
-        documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
+        documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever, verbose=verbose)
 
         if verbose:
             if documents is None or len(documents) == 0:
-                print("documents are empty")
+                logger.info("documents are empty")
             else:
-                print("documents: {}".format(documents[0:5]))
+                logger.info("documents: {}".format(documents[0:5]))
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")

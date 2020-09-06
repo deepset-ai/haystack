@@ -12,7 +12,7 @@ class BaseRetriever(ABC):
     document_store: BaseDocumentStore
 
     @abstractmethod
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None, verbose: bool = False) -> List[Document]:
         pass
 
     def eval(

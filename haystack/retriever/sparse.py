@@ -49,12 +49,15 @@ class ElasticsearchRetriever(BaseRetriever):
         self.document_store: ElasticsearchDocumentStore = document_store
         self.custom_query = custom_query
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None, verbose: bool = False) -> List[Document]:
         if index is None:
             index = self.document_store.index
 
         documents = self.document_store.query(query, filters, top_k, self.custom_query, index)
-        logger.info(f"Got {len(documents)} candidates from retriever")
+
+        if verbose:
+            logger.info(f"Got {len(documents)} candidates from retriever")
+            logger.info("{}.{} - {}".format(self.__name__, __name__, documents[0:5]))
 
         return documents
 
