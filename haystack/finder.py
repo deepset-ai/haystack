@@ -29,7 +29,7 @@ class Finder:
         if self.reader is None and self.retriever is None:
             raise AttributeError("Finder: self.reader and self.retriever can not be both None")
 
-    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: Optional[dict] = None):
+    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: Optional[dict] = None, verbose: bool = False):
         """
         Get top k answers for a given question.
 
@@ -46,6 +46,12 @@ class Finder:
 
         # 1) Apply retriever(with optional filters) to get fast candidate documents
         documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
+
+        if verbose:
+            if documents is None or len(documents) == 0:
+                print("documents are empty")
+            else:
+                print("documents: {}".format(documents[0:5]))
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
