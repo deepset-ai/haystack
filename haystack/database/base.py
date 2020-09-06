@@ -52,6 +52,12 @@ class Document:
             _doc[k] = v
         return _doc
 
+    def __str__(self):
+        return "question:{}, text:{}, meta:{}".format(self.question, self.text, self.meta)
+
+    def __repr__(self):
+        return "id:{}, question:{}, text:{}, meta:{}".format(self.id, self.question, self.text, self.meta)
+
     @classmethod
     def from_dict(cls, dict, field_map={}):
         _doc = dict.copy()
