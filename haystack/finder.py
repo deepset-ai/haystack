@@ -66,6 +66,9 @@ class Finder:
                                       documents=documents,
                                       top_k=top_k_reader)  # type: Dict[str, Any]
 
+        if verbose:
+            logger.info("results of reader: {}".format(results))
+
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
             ans["meta"] = {}
