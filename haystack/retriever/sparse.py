@@ -53,7 +53,7 @@ class ElasticsearchRetriever(BaseRetriever):
         if index is None:
             index = self.document_store.index
 
-        documents = self.document_store.query(query, filters, top_k, self.custom_query, index)
+        documents = self.document_store.query(query, filters, top_k, self.custom_query, index, verbose=verbose)
 
         if verbose:
             logger.info(f"Got {len(documents)} candidates from retriever")

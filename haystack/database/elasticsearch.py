@@ -301,6 +301,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
+        verbose: bool = False
     ) -> List[Document]:
 
         if index is None:
@@ -333,6 +334,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     values_str = json.dumps(values)
                     substitutions[key] = values_str
             custom_query_json = template.substitute(**substitutions)
+
+            if verbose:
+                logger.info("custom_query_json: {}".format(custom_query_json))
+
             body = json.loads(custom_query_json)
             # add top_k
             body["size"] = str(top_k)
