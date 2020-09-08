@@ -86,7 +86,7 @@ class DensePassageRetriever(BaseRetriever):
         self.passage_tokenizer = DPRContextEncoderTokenizer.from_pretrained(passage_embedding_model)
         self.passage_encoder = DPRContextEncoder.from_pretrained(passage_embedding_model).to(self.device)
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None, verbose: bool = False) -> List[Document]:
         if index is None:
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])

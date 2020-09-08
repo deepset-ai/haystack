@@ -68,7 +68,7 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
     """
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None, verbose: bool = False) -> List[Document]:
         if index is None:
             index = self.document_store.index
         documents = self.document_store.query(query=None, filters=filters, top_k=top_k,

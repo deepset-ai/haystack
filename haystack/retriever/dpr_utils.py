@@ -98,6 +98,7 @@ def _prepare_output_docstrings(output_type, config_class):
     intro = RETURN_INTRODUCTION.format(full_output_type=full_output_type, config_class=config_class)
     return intro + docstrings
 
+
 def replace_return_docstrings(output_type=None, config_class=None):
     def docstring_decorator(fn):
         docstrings = fn.__doc__
