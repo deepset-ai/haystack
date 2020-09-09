@@ -91,6 +91,8 @@ Master branch (if you wanna try the latest features)::
 
 To update your installation, just do a git pull. The --editable flag will update changes immediately.
 
+Note: On Windows you might need :code:`pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html` to install PyTorch correctly
+
 Usage
 -----
 .. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/code_snippet_usage.png
