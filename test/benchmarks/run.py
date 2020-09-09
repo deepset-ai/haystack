@@ -20,7 +20,7 @@ reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
 reader_types = ["farm"]
 
 data_dir = Path("../../data/nq")
-filename = "nq_dev_subset_v3.json"
+filename = "nq2squad-dev.json"
 s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v3.json.zip"
 doc_index = "eval_document"
 label_index = "label"
