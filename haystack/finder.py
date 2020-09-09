@@ -29,7 +29,7 @@ class Finder:
         if self.reader is None and self.retriever is None:
             raise AttributeError("Finder: self.reader and self.retriever can not be both None")
 
-    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: Optional[dict] = None):
+    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: Optional[dict] = None, index: str = None):
         """
         Get top k answers for a given question.
 
@@ -38,6 +38,7 @@ class Finder:
         :param top_k_retriever: number of text units to be retrieved
         :param filters: limit scope to documents having the given meta data values.
             The format for the dict is {"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}
+        :param index: index to retrieve documents from
         :return:
         """
 
@@ -45,7 +46,7 @@ class Finder:
             raise AttributeError("Finder.get_answers requires self.retriever AND self.reader")
 
         # 1) Apply retriever(with optional filters) to get fast candidate documents
-        documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever)
+        documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever, index=index)
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
@@ -69,7 +70,7 @@ class Finder:
 
         return results
 
-    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10, filters: Optional[dict] = None):
+    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10, filters: Optional[dict] = None, index: str = None):
         """
         Get top k answers for a given question using only a retriever.
 
@@ -77,6 +78,7 @@ class Finder:
         :param top_k_retriever: number of text units to be retrieved
         :param filters: limit scope to documents having the given meta data values.
             The format for the dict is {"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}
+        :param index: index to retrieve documents from
         :return:
         """
 
@@ -87,7 +89,7 @@ class Finder:
 
 
         # 1) Apply retriever to match similar questions via cosine similarity of embeddings
-        documents = self.retriever.retrieve(question, top_k=top_k_retriever, filters=filters)
+        documents = self.retriever.retrieve(question, top_k=top_k_retriever, filters=filters, index=index)
 
         # 2) Format response
         for doc in documents:
