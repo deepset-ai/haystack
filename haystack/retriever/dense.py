@@ -8,6 +8,7 @@ from farm.infer import Inferencer
 
 from haystack.database.base import Document, BaseDocumentStore
 from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.database.faiss import FAISSDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
 
@@ -342,6 +343,10 @@ class EmbeddingRetriever(BaseRetriever):
             emb = self.embedding_model.encode(texts)  # type: ignore
             # cast to float64 as float32 can cause trouble when serializing for ES
             emb = [(r.astype('float64')) for r in emb]
+
+        if isinstance(self.document_store, FAISSDocumentStore):
+                        emb = [(r.astype('float32')) for r in emb]
+
         return emb
 
     def embed_queries(self, texts: List[str]) -> List[np.array]:
