@@ -104,10 +104,11 @@ class Finder:
                 "offset_end": len(doc.text),
                 "meta": doc.meta
              }
+            query_score = doc.query_score or np.nan
             if self.retriever.embedding_model:  # type: ignore
-                probability = (doc.query_score + 1) / 2  # type: ignore
+                probability = (query_score + 1) / 2  # type: ignore
             else:
-                probability = float(expit(np.asarray(doc.query_score / 8)))  # type: ignore
+                probability = float(expit(np.asarray(query_score / 8)))  # type: ignore
 
             cur_answer["probability"] = probability
             results["answers"].append(cur_answer)
