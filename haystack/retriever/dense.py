@@ -345,7 +345,7 @@ class EmbeddingRetriever(BaseRetriever):
             emb = [(r.astype('float64')) for r in emb]
 
         if isinstance(self.document_store, FAISSDocumentStore):
-                        emb = [(r.astype('float32')) for r in emb]
+            emb = [(r.astype('float32')) for r in emb]
 
         return emb
 
