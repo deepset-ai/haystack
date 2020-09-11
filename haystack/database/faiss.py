@@ -156,7 +156,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         # sort the documents as per query results
         documents = sorted(documents, key=lambda doc: vector_ids_for_query.index(doc.meta["vector_id"]))  # type: ignore
 
-        # assign query score to each vector
+        # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             doc.query_score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
