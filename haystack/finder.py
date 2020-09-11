@@ -104,7 +104,7 @@ class Finder:
                 "offset_end": len(doc.text),
                 "meta": doc.meta
              }
-            query_score = doc.query_score or np.nan
+            query_score = np.nan if doc.query_score is None else doc.query_score
             if self.retriever.embedding_model:  # type: ignore
                 probability = (query_score + 1) / 2  # type: ignore
             else:
