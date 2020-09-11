@@ -9,6 +9,7 @@ from scipy.special import expit
 
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
+from haystack.retriever.sparse import TfidfRetriever
 from haystack.database.base import MultiLabel, Document
 from haystack.eval import calculate_average_precision, eval_counts_reader_batch, calculate_reader_metrics, \
     eval_counts_reader
@@ -68,7 +69,7 @@ class Finder:
                 if doc.id == ans["document_id"]:
                     ans["meta"] = doc.meta
                     # correct document offsets for auto-segmented documents from tfidf retriever
-                    if "document_offset" in ans["meta"].keys():
+                    if isinstance(self.retriever, TfidfRetriever):
                         doc_offset = ans["meta"].pop("document_offset")
                         ans["offset_start_in_doc"] += doc_offset
                         ans["offset_end_in_doc"] += doc_offset
