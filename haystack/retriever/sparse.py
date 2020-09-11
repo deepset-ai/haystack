@@ -107,16 +107,19 @@ class TfidfRetriever(BaseRetriever):
         """
         documents = self.document_store.get_all_documents()
 
+        running_offset = 0
         paragraphs = []
         p_id = 0
         for doc in documents:
             for p in doc.text.split("\n\n"):  # TODO: this assumes paragraphs are separated by "\n\n". Can be switched to paragraph tokenizer.
-                if not p.strip():  # skip empty paragraphs
-                    continue
-                paragraphs.append(
-                    Paragraph(document_id=doc.id, paragraph_id=p_id, text=(p,), meta=doc.meta)
-                )
-                p_id += 1
+                if p.strip():  # skip empty paragraphs
+                    # maintain the document offset
+                    doc.meta["document_offset"] = running_offset
+                    paragraphs.append(
+                        Paragraph(document_id=doc.id, paragraph_id=p_id, text=(p,), meta=doc.meta)
+                    )
+                    p_id += 1
+                running_offset += len(p)
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
         return paragraphs
 
@@ -149,7 +152,7 @@ class TfidfRetriever(BaseRetriever):
 
         # get actual content for the top candidates
         paragraphs = list(df_sliced.text.values)
-        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"],  "meta": row.get("meta", {})}
+        meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"], "meta": row.get("meta", {})}
                      for idx, row in df_sliced.iterrows()]
 
         documents = []

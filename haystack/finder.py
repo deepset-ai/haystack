@@ -67,6 +67,10 @@ class Finder:
             for doc in documents:
                 if doc.id == ans["document_id"]:
                     ans["meta"] = doc.meta
+                    # correct document offsets for auto-segmented documents
+                    doc_offset = ans["meta"].pop("document_offset", 0)
+                    ans["offset_start_in_doc"] += doc_offset
+                    ans["offset_end_in_doc"] += doc_offset
 
         return results
 
