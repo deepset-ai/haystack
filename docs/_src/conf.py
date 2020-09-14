@@ -27,7 +27,8 @@ extensions = ['sphinx.ext.autodoc',
 		'sphinx_tabs.tabs', 
 		'sphinx_copybutton', 
 		'nbsphinx', 
-		'sphinx.ext.autosectionlabel']
+		'sphinx.ext.autosectionlabel',
+                'sphinx_markdown_builder']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['../templates']
@@ -35,7 +36,7 @@ templates_path = ['../templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ['build/*']
 
 
 # -- Options for HTML output -------------------------------------------------
