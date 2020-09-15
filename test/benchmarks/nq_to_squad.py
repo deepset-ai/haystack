@@ -19,7 +19,16 @@ DEEPSET DOCSTRING:
 A modified version of the script from here:
 https://github.com/google/retrieval-qa-eval/blob/master/nq_to_squad.py
 Edits have been made by deepset in order to create a dev set for Haystack benchmarking.
-Input should be the official NQ dev set.
+Input should be the official NQ dev set (v1.0-simplified-nq-dev-all.jsonl.gz)
+
+Expected numbers are:
+Converted 7830 NQ records into 5678 SQuAD records.
+Removed samples: yes/no: 177 multi_short: 648 non_para 1192 long_ans_only: 130 errors: 5
+Removed annotations: long_answer: 4610 short_answer: 953 no_answer: ~1006
+where:
+multi_short - annotations where there are multiple disjoint short answers
+non_para - where the annotation occurs in an html element that is not a paragraph
+
 
 ORIGINAL DOCSTRING:
 
@@ -54,6 +63,7 @@ n_yn = 0
 n_ms = 0
 n_non_p = 0
 n_long_ans_only = 0
+n_error = 0
 
 # Dropped annotations
 n_long_ans = 0
@@ -142,11 +152,16 @@ def reduce_annotations(anno_types, answers):
       answers = []
   return answers, is_impossible
 
+
+
 def nq_to_squad(record):
   """Convert a Natural Questions record to SQuAD format."""
 
   doc_bytes = record["document_html"].encode("utf-8")
   doc_tokens = record["document_tokens"]
+
+  question_text = record["question_text"]
+  question_text = question_text[0].upper() + question_text[1:] + "?"
 
   answers = []
   anno_types = []
@@ -213,7 +228,7 @@ def nq_to_squad(record):
               [{"context": paragraph,
                 "qas": [{"answers": answers,
                          "id": record["example_id"],
-                         "question": record["question_text"],
+                         "question": question_text,
                          "is_impossible": is_impossible}]}]}
 
 def main():
@@ -243,14 +258,19 @@ def main():
       for line in f:
         records += 1
         nq_record = json.loads(line)
-        squad_record = nq_to_squad(nq_record)
+        try:
+            squad_record = nq_to_squad(nq_record)
+        except:
+            squad_record = None
+            global n_error
+            n_error += 1
         if squad_record:
           nq_as_squad["data"].append(squad_record)
-        if records % 1 == 0:
+        if records % 100 == 0:
           logging.info("processed %s records", records)
   print("Converted %s NQ records into %s SQuAD records." %
         (records, len(nq_as_squad["data"])))
-  print(f"Removed samples: yes/no: {n_yn} multi_short: {n_ms} non_para {n_non_p} long_ans_only: {n_long_ans_only}")
+  print(f"Removed samples: yes/no: {n_yn} multi_short: {n_ms} non_para {n_non_p} long_ans_only: {n_long_ans_only} errors: {n_error}")
   print(f"Removed annotations: long_answer: {n_long_ans} short_answer: {n_short} no_answer: ~{n_no_ans}")
 
   with open(args.output_file, "w") as f:
