@@ -1,6 +1,7 @@
-*******************************************************
-Haystack — Neural Question Answering At Scale
-*******************************************************
+.. image:: https://github.com/deepset-ai/haystack/blob/add_logo/docs/img/haystack_logo_blue_banner.png?raw=true
+    :align: center
+    :alt: FARM LOGO
+
 .. image:: https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master
 	:target: https://github.com/deepset-ai/haystack/actions
 	:alt: Build
