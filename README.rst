@@ -1,4 +1,4 @@
-.. image:: https://github.com/deepset-ai/haystack/blob/add_logo/docs/img/haystack_logo_blue_banner.png?raw=true
+.. image:: https://github.com/deepset-ai/haystack/blob/master/docs/img/haystack_logo_blue_banner.png?raw=true
     :align: center
     :alt: FARM LOGO
 
