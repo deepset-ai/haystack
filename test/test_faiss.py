@@ -1,3 +1,4 @@
+import faiss
 import numpy as np
 import pytest
 from haystack import Document
@@ -128,3 +129,36 @@ def test_faiss_finding(document_store):
     prediction = finder.get_answers_via_similar_questions(question="How to test this?", top_k_retriever=1)
 
     assert len(prediction.get('answers', [])) == 1
+
+
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
+def test_faiss_indexing_with_different_params(document_store):
+
+    document_store.write_documents(DOCUMENTS, index_factory='IVF4,Flat',
+                                   convert_l2_to_ip=False, metric_type=faiss.METRIC_L2, allow_training=True)
+    documents_indexed = document_store.get_all_documents()
+
+    # test if number of documents is correct
+    assert len(documents_indexed) == len(DOCUMENTS)
+
+    # test if correct vector_ids are assigned
+    for i, doc in enumerate(documents_indexed):
+        assert doc.meta["vector_id"] == str(i)
+
+    # test insertion of documents in an existing index should pass
+    document_store.write_documents(DOCUMENTS, index_factory='IVF4,Flat',
+                                   convert_l2_to_ip=False, metric_type=faiss.METRIC_L2, allow_training=True)
+    documents_indexed = document_store.get_all_documents()
+
+    # test if number of documents is correct
+    assert len(documents_indexed) == 2 * len(DOCUMENTS)
+
+    # test if correct vector_ids are assigned
+    for i, doc in enumerate(documents_indexed):
+        assert doc.meta["vector_id"] == str(i)
+
+    # test saving the index
+    document_store.save("haystack_test_faiss")
+
+    # test loading the index
+    document_store.load(sql_url="sqlite:///haystack_test.db", faiss_file_path="haystack_test_faiss")
