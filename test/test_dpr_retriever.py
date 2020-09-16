@@ -3,7 +3,7 @@ import time
 
 from haystack.retriever.dense import DensePassageRetriever
 from haystack import Document
-from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)

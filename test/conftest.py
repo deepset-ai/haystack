@@ -9,10 +9,10 @@ import requests
 from elasticsearch import Elasticsearch
 
 from haystack import Document
-from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
-from haystack.documentstore.faiss import FAISSDocumentStore
-from haystack.documentstore.memory import InMemoryDocumentStore
-from haystack.documentstore.sql import SQLDocumentStore
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_store.memory import InMemoryDocumentStore
+from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 

@@ -16,7 +16,7 @@ from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_
     DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
     EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER, NAME_FIELD_NAME
 from rest_api.controller.utils import RequestLimiter
-from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.retriever.base import BaseRetriever

@@ -1,6 +1,6 @@
 def test_module_imports():
     from haystack import Finder
-    from haystack.documentstore.sql import SQLDocumentStore
+    from haystack.document_store.sql import SQLDocumentStore
     from haystack.indexing.cleaning import clean_wiki_text
     from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
     from haystack.reader.farm import FARMReader

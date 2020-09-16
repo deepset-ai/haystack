@@ -3,7 +3,7 @@ from typing import List
 import logging
 
 from haystack import Document
-from haystack.documentstore.base import BaseDocumentStore
+from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
 

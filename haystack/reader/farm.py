@@ -20,7 +20,7 @@ from scipy.special import expit
 import shutil
 
 from haystack import Document
-from haystack.documentstore.base import BaseDocumentStore
+from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
 
 logger = logging.getLogger(__name__)

@@ -14,7 +14,7 @@ import subprocess
 import time
 
 from haystack import Finder
-from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.indexing.cleaning import clean_wiki_text
 from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader

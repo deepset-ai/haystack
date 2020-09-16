@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 from collections import defaultdict
 
-from haystack.documentstore.base import BaseDocumentStore
+from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
 from haystack.indexing.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
@@ -115,7 +115,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         if embeddings[0].shape[0] != self.embedding_dim:
             raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                               f" doesn't match embedding dim. in documentstore ({self.embedding_dim})."
+                               f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()")
 
         for doc, emb in zip(docs, embeddings):

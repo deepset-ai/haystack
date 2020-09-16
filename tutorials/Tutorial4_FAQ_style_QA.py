@@ -1,5 +1,5 @@
 from haystack import Finder
-from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 from haystack.retriever.dense import EmbeddingRetriever
 from haystack.utils import print_answers

@@ -3,8 +3,8 @@ import pytest
 from elasticsearch import Elasticsearch
 
 from haystack import Document, Label
-from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
-from haystack.documentstore.faiss import FAISSDocumentStore
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.faiss import FAISSDocumentStore
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):

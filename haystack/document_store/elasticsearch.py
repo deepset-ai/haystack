@@ -7,7 +7,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
 
-from haystack.documentstore.base import BaseDocumentStore
+from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
 from haystack.indexing.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
@@ -471,7 +471,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         if embeddings[0].shape[0] != self.embedding_dim:
             raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                               f" doesn't match embedding dim. in documentstore ({self.embedding_dim})."
+                               f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
         doc_updates = []
         for doc, emb in zip(docs, embeddings):

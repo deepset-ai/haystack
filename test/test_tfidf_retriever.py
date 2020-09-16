@@ -7,7 +7,7 @@ def test_tfidf_retriever():
         {"name": "testing the finder 3", "text": "alien says arghh"}
     ]
 
-    from haystack.documentstore.memory import InMemoryDocumentStore
+    from haystack.document_store.memory import InMemoryDocumentStore
     document_store = InMemoryDocumentStore()
     document_store.write_documents(test_docs)
 

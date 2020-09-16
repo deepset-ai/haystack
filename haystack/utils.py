@@ -4,7 +4,7 @@ import logging
 import pprint
 import pandas as pd
 from typing import Dict, Any, List
-from haystack.documentstore.sql import DocumentORM
+from haystack.document_store.sql import DocumentORM
 
 
 logger = logging.getLogger(__name__)

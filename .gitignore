@@ -138,7 +138,7 @@ dmypy.json
 .idea
 
 # haystack files
-haystack/documentstore/qa.db
+haystack/document_store/qa.db
 data
 mlruns
 src
