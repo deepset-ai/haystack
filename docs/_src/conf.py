@@ -28,7 +28,8 @@ extensions = ['sphinx.ext.autodoc',
 		'sphinx_copybutton', 
 		'nbsphinx', 
 		'sphinx.ext.autosectionlabel',
-                'sphinx_markdown_builder']
+                'sphinx_markdown_builder',
+                'recommonmark']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['../templates']
@@ -67,6 +68,13 @@ html_logo="img/logo.png"
 
 # Additional layouts
 html_additional_pages = {"index": "pages/index.html"}
+
+#The file extensions of source files.
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'restructuredtext',
+    '.md': 'markdown',
+}
 
 # -- Add autodocs for __init__() methods -------------------------------------
 
