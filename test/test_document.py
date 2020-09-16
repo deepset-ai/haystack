@@ -1,4 +1,4 @@
-from haystack.database.base import Document
+from haystack.documentstore.base import Document
 
 
 def test_document_data_access():

@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from haystack.reader.transformers_utils import pipeline
 
-from haystack.database.base import Document
+from haystack.documentstore.base import Document
 from haystack.reader.base import BaseReader
 
 

@@ -1,5 +1,5 @@
 import pytest
-from haystack.database.base import BaseDocumentStore
+from haystack.documentstore.base import BaseDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.finder import Finder
 

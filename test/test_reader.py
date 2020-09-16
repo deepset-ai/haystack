@@ -1,6 +1,6 @@
 import math
 
-from haystack.database.base import Document
+from haystack.documentstore.base import Document
 from haystack.reader.base import BaseReader
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader

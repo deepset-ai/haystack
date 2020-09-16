@@ -8,11 +8,11 @@ import pytest
 import requests
 from elasticsearch import Elasticsearch
 
-from haystack.database.base import Document
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
-from haystack.database.faiss import FAISSDocumentStore
-from haystack.database.memory import InMemoryDocumentStore
-from haystack.database.sql import SQLDocumentStore
+from haystack.documentstore.base import Document
+from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
+from haystack.documentstore.faiss import FAISSDocumentStore
+from haystack.documentstore.memory import InMemoryDocumentStore
+from haystack.documentstore.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 

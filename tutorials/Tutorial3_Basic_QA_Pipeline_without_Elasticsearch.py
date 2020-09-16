@@ -8,8 +8,8 @@
 
 
 from haystack import Finder
-from haystack.database.memory import InMemoryDocumentStore
-from haystack.database.sql import SQLDocumentStore
+from haystack.documentstore.memory import InMemoryDocumentStore
+from haystack.documentstore.sql import SQLDocumentStore
 from haystack.indexing.cleaning import clean_wiki_text
 from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader

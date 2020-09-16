@@ -1,5 +1,5 @@
 from haystack import Finder
-from haystack.database.faiss import FAISSDocumentStore
+from haystack.documentstore.faiss import FAISSDocumentStore
 from haystack.indexing.cleaning import clean_wiki_text
 from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader
@@ -8,7 +8,7 @@ from haystack.retriever.dense import DensePassageRetriever
 
 
 # FAISS is a library for efficient similarity search on a cluster of dense vectors.
-# The FAISSDocumentStore uses a SQL(SQLite in-memory be default) database under-the-hood
+# The FAISSDocumentStore uses a SQL(SQLite in-memory be default) documentstore under-the-hood
 # to store the document text and other meta data. The vector embeddings of the text are
 # indexed on a FAISS Index that later is queried for searching answers.
 document_store = FAISSDocumentStore()

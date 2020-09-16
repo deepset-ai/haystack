@@ -1,6 +1,6 @@
 from typing import List, Tuple, Dict, Any
 
-from haystack.database.base import MultiLabel
+from haystack.documentstore.base import MultiLabel
 
 
 def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals: int):

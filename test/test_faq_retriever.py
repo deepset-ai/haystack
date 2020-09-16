@@ -3,7 +3,7 @@ from haystack import Finder
 
 def test_faq_retriever_in_memory_store():
 
-    from haystack.database.memory import InMemoryDocumentStore
+    from haystack.documentstore.memory import InMemoryDocumentStore
     from haystack.retriever.dense import EmbeddingRetriever
 
     document_store = InMemoryDocumentStore(embedding_field="embedding")

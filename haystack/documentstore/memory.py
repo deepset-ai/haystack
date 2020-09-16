@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 from collections import defaultdict
 
-from haystack.database.base import BaseDocumentStore, Document, Label
+from haystack.documentstore.base import BaseDocumentStore, Document, Label
 from haystack.indexing.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 

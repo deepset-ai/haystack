@@ -1,4 +1,4 @@
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
 from haystack.indexing.utils import fetch_archive_from_http
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.retriever.dense import DensePassageRetriever
@@ -52,7 +52,7 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
                                             embedding_dim=768, excluded_meta_data=["emb"])
 
 
-# Add evaluation data to Elasticsearch database
+# Add evaluation data to Elasticsearch documentstore
 # We first delete the custom tutorial indices to not have duplicate elements
 document_store.delete_all_documents(index=doc_index)
 document_store.delete_all_documents(index=label_index)

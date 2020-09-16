@@ -3,7 +3,7 @@ from scipy.special import expit
 from abc import ABC, abstractmethod
 from typing import List, Optional, Sequence
 
-from haystack.database.base import Document
+from haystack.documentstore.base import Document
 
 
 class BaseReader(ABC):

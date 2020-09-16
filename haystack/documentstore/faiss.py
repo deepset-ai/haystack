@@ -6,8 +6,8 @@ import faiss
 import numpy as np
 from faiss.swigfaiss import IndexHNSWFlat
 
-from haystack.database.base import Document
-from haystack.database.sql import SQLDocumentStore
+from haystack.documentstore.base import Document
+from haystack.documentstore.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)

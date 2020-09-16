@@ -9,7 +9,7 @@ import langdetect
 
 class BaseConverter:
     """
-    Base class for implementing file converts to transform input documents to text format for indexing in database.
+    Base class for implementing file converts to transform input documents to text format for indexing in documentstore.
     """
 
     def __init__(
