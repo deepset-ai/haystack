@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from haystack.indexing.file_converters.pdf import PDFToTextConverter
-from haystack.indexing.file_converters.tika import TikaConverter
+from haystack.file_converter.pdf import PDFToTextConverter
+from haystack.file_converter.tika import TikaConverter
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
