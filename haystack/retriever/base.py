@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List
 import logging
 
-from haystack.database.base import Document
-from haystack.database.base import BaseDocumentStore
+from haystack import Document
+from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
 

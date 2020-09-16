@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import List, Optional, Tuple, Any, Dict
 
-from haystack.indexing.file_converters.base import BaseConverter
+from haystack.file_converter.base import BaseConverter
 
 logger = logging.getLogger(__name__)
 
