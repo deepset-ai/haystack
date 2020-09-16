@@ -9,25 +9,24 @@ from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from time import perf_counter
+import pandas as pd
 
 from pathlib import Path
 
 
-retriever_doc_stores = [("elastic", "elasticsearch"),
-                        ("dpr", "faiss")]
+retriever_doc_stores = [("dpr", "faiss"), ("elastic", "elasticsearch")]
+data_dir_retriever = Path("../../data/retriever")
+filename_retriever = "nq2squad-dev.json"
+filename_passages = "psgs_w100.tsv"
+
 reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2", "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2", "deepset/xlm-roberta-large-squad2"]
-
 reader_types = ["farm"]
+data_dir_reader = Path("../../data/squad20")
+filename_reader = "dev-v2.0.json"
 
-data_dir = Path("../../data/nq")
-filename = "nq2squad-dev.json"
-s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v3.json.zip"
 doc_index = "eval_document"
 label_index = "label"
 
-
-def prepare_data(data_dir):
-    fetch_archive_from_http(url=s3_url, output_dir=data_dir)
 
 def get_document_store(document_store_type):
     """ TODO This method is taken from test/conftest.py but maybe should be within Haystack.
@@ -72,7 +71,6 @@ def get_reader(reader_name, reader_type):
     return reader_class(reader_name, top_k_per_candidate=4)
 
 
-
 def benchmark_indexing(doc_store, data_dir, filename, retriever):
     tic = perf_counter()
     index_to_doc_store(doc_store, data_dir, filename, retriever)
@@ -89,37 +87,59 @@ def index_to_doc_store(doc_store, data_dir, filename, retriever):
     except AttributeError:
         pass
 
-def main():
-    retriever_results = []
+def perform_reader_eval():
     reader_results = []
+    doc_store = get_document_store("elasticsearch")
+    index_to_doc_store(doc_store, data_dir_reader, filename_reader, None)
+    for reader_name in reader_models:
+        for reader_type in reader_types:
+            try:
+                reader = get_reader(reader_name, reader_type)
+                results = reader.eval(document_store=doc_store,
+                                      doc_index=doc_index,
+                                      label_index=label_index,
+                                      device="cuda")
+                print(results)
+                results["reader"] = reader_name
+                results["error"] = ""
+                reader_results.append(results)
+            except Exception as e:
+                results = {'EM': 0., 'f1': 0., 'top_n_accuracy': 0., 'reader_time': 0., 'reader': reader_name, "error": e}
+                reader_results.append(results)
+    reader_df = pd.DataFrame.from_records(reader_results)
+    reader_df.to_csv("reader_results.csv")
 
-    prepare_data(data_dir)
+
+
+def perform_retriever_eval():
+    retriever_results = []
     for retriever_name, doc_store_name in retriever_doc_stores:
+        # try:
         doc_store = get_document_store(doc_store_name)
         retriever = get_retriever(retriever_name, doc_store)
-        doc_store, indexing_time = benchmark_indexing(doc_store, data_dir, filename, retriever)
+        doc_store, indexing_time = benchmark_indexing(doc_store, data_dir_retriever, filename_retriever, retriever)
         results = retriever.eval()
         results["indexing_time"] = indexing_time
         results["retriever"] = retriever_name
         results["doc_store"] = doc_store_name
         print(results)
         retriever_results.append(results)
+        # except Exception as e:
+        #     retriever_results.append(str(e))
 
-    doc_store = get_document_store("elasticsearch")
-    index_to_doc_store(doc_store, data_dir, filename, None)
-    for reader_name in reader_models:
-        for reader_type in reader_types:
-            reader = get_reader(reader_name, reader_type)
-            results = reader.eval(document_store=doc_store,
-                                  doc_index=doc_index,
-                                  label_index=label_index,
-                                  device="cuda")
-            print(results)
-            results["reader"] = reader_name
-            reader_results.append(results)
+    retriever_df = pd.DataFrame.from_records(retriever_results)
+    retriever_df.to_csv("retriever_results.csv")
 
-    print(retriever_results)
-    print(reader_results)
+
+
+def main():
+    perform_retriever_eval()
+    # perform_reader_eval()
+
+
+
+
+
 
 
 
