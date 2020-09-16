@@ -17,7 +17,7 @@ COPY README.rst models* /home/user/models/
 # optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/
 
-# optional: copy data directory containing docs for indexing
+# optional: copy data directory containing docs for ingestion
 #COPY data /home/user/data
 
 EXPOSE 8000

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from haystack.indexing.file_converters.docx import DocxToTextConverter
+from haystack.file_converter.docx import DocxToTextConverter
 
 
 def test_extract_pages():

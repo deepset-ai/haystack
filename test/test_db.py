@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
 
-from haystack.database.base import Document, Label
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
-from haystack.database.faiss import FAISSDocumentStore
+from haystack import Document, Label
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.faiss import FAISSDocumentStore
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):

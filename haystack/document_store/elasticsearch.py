@@ -7,8 +7,9 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
 
-from haystack.database.base import BaseDocumentStore, Document, Label
-from haystack.indexing.utils import eval_data_from_file
+from haystack.document_store.base import BaseDocumentStore
+from haystack import Document, Label
+from haystack.preprocessor.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                              Values:
                              - 'wait_for' => continue only after changes are visible (slow, but safe)
-                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after indexing)
+                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
@@ -470,7 +471,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         if embeddings[0].shape[0] != self.embedding_dim:
             raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                               f" doesn't match embedding dim. in documentstore ({self.embedding_dim})."
+                               f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
         doc_updates = []
         for doc, emb in zip(docs, embeddings):
