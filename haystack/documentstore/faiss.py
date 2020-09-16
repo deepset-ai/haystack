@@ -6,7 +6,7 @@ import faiss
 import numpy as np
 from faiss.swigfaiss import IndexHNSWFlat
 
-from haystack.documentstore.base import Document
+from haystack import Document
 from haystack.documentstore.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 

@@ -2,7 +2,7 @@ import pytest
 import time
 
 from haystack.retriever.dense import DensePassageRetriever
-from haystack.documentstore.base import Document
+from haystack import Document
 from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
 
 

@@ -8,7 +8,7 @@ import pytest
 import requests
 from elasticsearch import Elasticsearch
 
-from haystack.documentstore.base import Document
+from haystack import Document
 from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
 from haystack.documentstore.faiss import FAISSDocumentStore
 from haystack.documentstore.memory import InMemoryDocumentStore

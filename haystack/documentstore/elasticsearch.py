@@ -7,7 +7,8 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
 
-from haystack.documentstore.base import BaseDocumentStore, Document, Label
+from haystack.documentstore.base import BaseDocumentStore
+from haystack import Document, Label
 from haystack.indexing.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 

@@ -5,7 +5,8 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, F
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
-from haystack.documentstore.base import BaseDocumentStore, Document, Label
+from haystack.documentstore.base import BaseDocumentStore
+from haystack import Document, Label
 from haystack.indexing.utils import eval_data_from_file
 
 Base = declarative_base()  # type: Any

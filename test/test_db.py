@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
 
-from haystack.documentstore.base import Document, Label
+from haystack import Document, Label
 from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
 from haystack.documentstore.faiss import FAISSDocumentStore
 

@@ -19,8 +19,10 @@ from farm.utils import set_all_seeds, initialize_device_settings
 from scipy.special import expit
 import shutil
 
-from haystack.documentstore.base import Document, BaseDocumentStore
+from haystack import Document
+from haystack.documentstore.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
+
 logger = logging.getLogger(__name__)
 
 

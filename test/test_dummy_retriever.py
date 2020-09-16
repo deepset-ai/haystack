@@ -1,4 +1,4 @@
-from haystack.documentstore.base import Document
+from haystack import Document
 import pytest
 
 

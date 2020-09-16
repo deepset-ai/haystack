@@ -6,7 +6,8 @@ from pathlib import Path
 
 from farm.infer import Inferencer
 
-from haystack.documentstore.base import Document, BaseDocumentStore
+from haystack.documentstore.base import BaseDocumentStore
+from haystack import Document
 from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger

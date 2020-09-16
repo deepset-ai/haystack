@@ -2,6 +2,7 @@ import logging
 
 import pandas as pd
 from haystack.finder import Finder
+from haystack.schema import Document, Label, MultiLabel
 
 pd.options.display.max_colwidth = 80
 

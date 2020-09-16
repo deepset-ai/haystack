@@ -5,7 +5,8 @@ from typing import List
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from haystack.documentstore.base import Document, BaseDocumentStore
+from haystack.documentstore.base import BaseDocumentStore
+from haystack import Document
 from haystack.documentstore.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from collections import namedtuple

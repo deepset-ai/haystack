@@ -9,7 +9,7 @@ from scipy.special import expit
 
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
-from haystack.documentstore.base import MultiLabel, Document
+from haystack import MultiLabel, Document
 from haystack.eval import calculate_average_precision, eval_counts_reader_batch, calculate_reader_metrics, \
     eval_counts_reader
 
