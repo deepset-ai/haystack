@@ -1,5 +1,5 @@
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.indexing.utils import fetch_archive_from_http
+from haystack.preprocessor.utils import fetch_archive_from_http
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader.farm import FARMReader

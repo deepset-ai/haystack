@@ -9,7 +9,7 @@ import numpy as np
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.indexing.utils import eval_data_from_file
+from haystack.preprocessor.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                              Values:
                              - 'wait_for' => continue only after changes are visible (slow, but safe)
-                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after indexing)
+                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),

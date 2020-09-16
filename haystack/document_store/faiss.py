@@ -35,7 +35,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
-        :param index_buffer_size: When working with large dataset, the indexing process(FAISS + SQL) can be buffered in
+        :param index_buffer_size: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
                                   smaller chunks to reduce memory footprint.
         :param vector_size: the embedding vector size.
         :param faiss_index: load an existing FAISS Index.

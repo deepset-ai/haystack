@@ -9,8 +9,8 @@ import json
 
 from farm.data_handler.utils import http_get
 
-from haystack.indexing.file_converters.pdf import PDFToTextConverter
-from haystack.indexing.file_converters.tika import TikaConverter
+from haystack.file_converter.pdf import PDFToTextConverter
+from haystack.file_converter.tika import TikaConverter
 from haystack import Document, Label
 
 logger = logging.getLogger(__name__)

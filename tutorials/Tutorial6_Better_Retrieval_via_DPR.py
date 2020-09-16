@@ -1,7 +1,7 @@
 from haystack import Finder
 from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.indexing.cleaning import clean_wiki_text
-from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
+from haystack.preprocessor.cleaning import clean_wiki_text
+from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader
 from haystack.utils import print_answers
 from haystack.retriever.dense import DensePassageRetriever
@@ -13,7 +13,7 @@ from haystack.retriever.dense import DensePassageRetriever
 # indexed on a FAISS Index that later is queried for searching answers.
 document_store = FAISSDocumentStore()
 
-# ## Cleaning & indexing documents
+# ## Preprocessing of documents
 # Let's first get some documents that we want to query
 doc_dir = "data/article_txt_got"
 s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"

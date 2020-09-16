@@ -10,8 +10,8 @@
 from haystack import Finder
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
-from haystack.indexing.cleaning import clean_wiki_text
-from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
+from haystack.preprocessor.cleaning import clean_wiki_text
+from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.retriever.sparse import TfidfRetriever
@@ -25,10 +25,14 @@ document_store = InMemoryDocumentStore()
 # document_store = SQLDocumentStore(url="sqlite:///qa.db")
 
 
-# ## Cleaning & indexing documents
+# ## Preprocessing of documents
 #
-# Haystack provides a customizable cleaning and indexing pipeline for ingesting documents in Document Stores.
-#
+# Haystack provides a customizable pipeline for:
+# - converting files into texts
+# - cleaning texts
+# - splitting texts
+# - writing them to a Document Store
+
 # In this tutorial, we download Wikipedia articles on Game of Thrones, apply a basic cleaning function, and index
 # them in Elasticsearch.
 # Let's first get some documents that we want to query

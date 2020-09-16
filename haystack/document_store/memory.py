@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.indexing.utils import eval_data_from_file
+from haystack.preprocessor.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
 import logging
