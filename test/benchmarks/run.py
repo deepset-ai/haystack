@@ -16,8 +16,8 @@ from pathlib import Path
 
 retriever_doc_stores = [("dpr", "faiss"), ("elastic", "elasticsearch")]
 data_dir_retriever = Path("../../data/retriever")
-filename_retriever = "nq2squad-dev.json"
-filename_passages = "psgs_w100.tsv"
+filename_retriever = "nq2squad-dev.json"            # Found at s3://ext-haystack-retriever-eval
+filename_passages = "psgs_w100_minus_gold.tsv"      # Found at s3://ext-haystack-retriever-eval
 
 reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2", "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2", "deepset/xlm-roberta-large-squad2"]
 reader_types = ["farm"]
