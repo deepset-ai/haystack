@@ -4,12 +4,9 @@ from statistics import mean
 from typing import Optional, Dict, Any, List
 from collections import defaultdict
 
-import numpy as np
-from scipy.special import expit
-
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
-from haystack import MultiLabel, Document
+from haystack import MultiLabel
 from haystack.eval import calculate_average_precision, eval_counts_reader_batch, calculate_reader_metrics, \
     eval_counts_reader
 
@@ -99,17 +96,13 @@ class Finder:
                 "answer": doc.text,
                 "document_id": doc.id,
                 "context": doc.text,
-                "score": doc.query_score,
+                "score": doc.score,
+                "probability": doc.probability,
                 "offset_start": 0,
                 "offset_end": len(doc.text),
                 "meta": doc.meta
              }
-            if self.retriever.embedding_model:  # type: ignore
-                probability = (doc.query_score + 1) / 2  # type: ignore
-            else:
-                probability = float(expit(np.asarray(doc.query_score / 8)))  # type: ignore
 
-            cur_answer["probability"] = probability
             results["answers"].append(cur_answer)
 
         return results
