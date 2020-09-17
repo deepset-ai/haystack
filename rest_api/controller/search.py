@@ -102,7 +102,7 @@ FINDERS = {1: Finder(reader=reader, retriever=retriever)}
 #############################################
 class Question(BaseModel):
     questions: List[str]
-    filters: Optional[Dict[str, Optional[str]]] = None
+    filters: Optional[Dict[str, str]] = None
     top_k_reader: int = DEFAULT_TOP_K_READER
     top_k_retriever: int = DEFAULT_TOP_K_RETRIEVER
 
@@ -118,7 +118,7 @@ class Answer(BaseModel):
     offset_start_in_doc: Optional[int]
     offset_end_in_doc: Optional[int]
     document_id: Optional[str] = None
-    meta: Optional[Dict[str, Optional[str]]]
+    meta: Optional[Dict[str, str]]
 
 
 class AnswersToIndividualQuestion(BaseModel):
