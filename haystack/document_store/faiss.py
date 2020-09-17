@@ -123,7 +123,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             vector_size: int = 768,
             index_store: Optional[FaissIndexStore] = None,
             index_factory: Optional[str] = "HNSW4",
-            index: Optional[str] = "document"
+            index: Optional[str] = "document",
+            faiss_indexes: Optional[Dict[str, FaissIndexStore]] = {}
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
@@ -136,7 +137,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.index = index
         self.vector_size = vector_size
         self.index_factory = index_factory
-        self.faiss_indexes = Dict[str, FaissIndexStore]
+        self.faiss_indexes = faiss_indexes
         self.index_buffer_size = index_buffer_size
 
         if index_store:
