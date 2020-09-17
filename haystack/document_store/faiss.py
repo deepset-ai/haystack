@@ -136,7 +136,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.index = index
         self.vector_size = vector_size
         self.index_factory = index_factory
-        self.faiss_indexes = {}
+        self.faiss_indexes = Dict[str, FaissIndexStore]
         self.index_buffer_size = index_buffer_size
 
         if index_store:
