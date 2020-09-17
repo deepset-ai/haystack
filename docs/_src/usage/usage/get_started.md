@@ -40,6 +40,7 @@ Use regular git commands to switch between different branches and commits.
 
 
 </div>
+
 Note: On Windows add the arg `-f https://download.pytorch.org/whl/torch_stable.html` to install PyTorch correctly
 
 <!-- _comment: !! Have a tab for docker!! -->
