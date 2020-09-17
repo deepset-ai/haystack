@@ -2,7 +2,7 @@ import logging
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Dict, Tuple, Any
+from typing import List, Optional, Dict, Any
 
 from haystack.file_converter.base import BaseConverter
 
@@ -60,7 +60,7 @@ class PDFToTextConverter(BaseConverter):
             valid_languages=valid_languages,
         )
 
-    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+    def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
 
         pages = self._read_pdf(file_path, layout=False)
 
@@ -114,7 +114,9 @@ class PDFToTextConverter(BaseConverter):
             )
             logger.info(f"Removed header '{header}' and footer {footer} in {file_path}")
 
-        return cleaned_pages, None
+        text = "\f".join(cleaned_pages)
+        document = {"text": text, "meta": meta}
+        return document
 
     def _read_pdf(self, file_path: Path, layout: bool) -> List[str]:
         """

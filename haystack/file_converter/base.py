@@ -45,7 +45,7 @@ class BaseConverter:
         self.valid_languages = valid_languages
 
     @abstractmethod
-    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+    def convert(self, file_path: Path, meta: Optional[Dict[str, str]]) -> Dict[str, Any]:
         pass
 
     def validate_language(self, text: str) -> bool:
