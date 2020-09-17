@@ -1,6 +1,7 @@
-*******************************************************
-Haystack — Neural Question Answering At Scale
-*******************************************************
+.. image:: https://github.com/deepset-ai/haystack/blob/master/docs/img/haystack_logo_blue_banner.png?raw=true
+    :align: center
+    :alt: Haystack Logo
+
 .. image:: https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master
 	:target: https://github.com/deepset-ai/haystack/actions
 	:alt: Build
@@ -90,6 +91,8 @@ Master branch (if you wanna try the latest features)::
     pip install --editable .
 
 To update your installation, just do a git pull. The --editable flag will update changes immediately.
+
+Note: On Windows you might need :code:`pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html` to install PyTorch correctly
 
 Usage
 -----
@@ -248,9 +251,9 @@ A simple REST API based on `FastAPI <https://fastapi.tiangolo.com/>`_ is provide
 
 To serve the API, adjust the values in :code:`rest_api/config.py` and run::
 
-    gunicorn rest_api.application:app -b 0.0.0.0:80 -k uvicorn.workers.UvicornWorker
+    gunicorn rest_api.application:app -b 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker -t 300
 
-You will find the Swagger API documentation at http://127.0.0.1:80/docs
+You will find the Swagger API documentation at http://127.0.0.1:8000/docs
 
 
 6. Labeling Tool

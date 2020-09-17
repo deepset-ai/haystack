@@ -9,9 +9,9 @@ import json
 
 from farm.data_handler.utils import http_get
 
-from haystack.indexing.file_converters.pdf import PDFToTextConverter
-from haystack.indexing.file_converters.tika import TikaConverter
-from haystack.database.base import Document, Label
+from haystack.file_converter.pdf import PDFToTextConverter
+from haystack.file_converter.tika import TikaConverter
+from haystack import Document, Label
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
     Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
 
-    :param dir_path: path for the documents to be written to the database
+    :param dir_path: path for the documents to be written to the DocumentStore
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
 
@@ -127,7 +127,7 @@ def tika_convert_files_to_dicts(
     Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
 
-    :param dir_path: path for the documents to be written to the database
+    :param dir_path: path for the documents to be written to the DocumentStore
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
 

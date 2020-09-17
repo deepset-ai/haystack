@@ -141,7 +141,7 @@ dmypy.json
 .vscode
 
 # haystack files
-haystack/database/qa.db
+haystack/document_store/qa.db
 data
 mlruns
 src

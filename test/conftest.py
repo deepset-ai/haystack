@@ -1,48 +1,81 @@
 import os
-import tarfile
+import subprocess
 import time
-import urllib.request
-from subprocess import Popen, PIPE, STDOUT, run
+from subprocess import run
+from sys import platform
 
 import pytest
+import requests
 from elasticsearch import Elasticsearch
 
-from haystack.database.base import Document
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
-from haystack.database.faiss import FAISSDocumentStore
-from haystack.database.memory import InMemoryDocumentStore
-from haystack.database.sql import SQLDocumentStore
+from haystack import Document
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_store.memory import InMemoryDocumentStore
+from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 
 
-@pytest.fixture(scope='session')
-def elasticsearch_dir(tmpdir_factory):
-    return tmpdir_factory.mktemp('elasticsearch')
-
-
 @pytest.fixture(scope="session")
-def elasticsearch_fixture(elasticsearch_dir):
+def elasticsearch_fixture():
     # test if a ES cluster is already running. If not, download and start an ES instance locally.
     try:
-        client = Elasticsearch(hosts=[{"host": "localhost"}])
+        client = Elasticsearch(hosts=[{"host": "localhost", "port": "9200"}])
         client.info()
     except:
-        print("Downloading and starting an Elasticsearch instance for the tests ...")
-        thetarfile = "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.1-linux-x86_64.tar.gz"
-        ftpstream = urllib.request.urlopen(thetarfile)
-        thetarfile = tarfile.open(fileobj=ftpstream, mode="r|gz")
-        thetarfile.extractall(path=elasticsearch_dir)
-        es_server = Popen([elasticsearch_dir / "elasticsearch-7.6.1/bin/elasticsearch"], stdout=PIPE, stderr=STDOUT)
-        time.sleep(40)
+        print("Starting Elasticsearch ...")
+        status = subprocess.run(
+            ['docker run -d --name elasticsearch -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.1'],
+            shell=True
+        )
+        if status.returncode:
+            raise Exception(
+                "Failed to launch Elasticsearch. Please check docker container logs.")
+        time.sleep(30)
 
 
 @pytest.fixture(scope="session")
-def xpdf_fixture():
+def tika_fixture():
+    try:
+        tika_url = "http://localhost:9998/tika"
+        ping = requests.get(tika_url)
+        if ping.status_code != 200:
+            raise Exception(
+                "Unable to connect Tika. Please check tika endpoint {0}.".format(tika_url))
+    except:
+        print("Starting Tika ...")
+        status = subprocess.run(
+            ['docker run -d --name tika -p 9998:9998 apache/tika:1.24.1'],
+            shell=True
+        )
+        if status.returncode:
+            raise Exception(
+                "Failed to launch Tika. Please check docker container logs.")
+        time.sleep(30)
+
+
+@pytest.fixture(scope="session")
+def xpdf_fixture(tika_fixture):
     verify_installation = run(["pdftotext"], shell=True)
     if verify_installation.returncode == 127:
-        commands = """ wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.02.tar.gz &&
-                       tar -xvf xpdf-tools-linux-4.02.tar.gz && sudo cp xpdf-tools-linux-4.02/bin64/pdftotext /usr/local/bin"""
+        if platform.startswith("linux"):
+            platform_id = "linux"
+            sudo_prefix = "sudo"
+        elif platform.startswith("darwin"):
+            platform_id = "mac"
+            # For Mac, generally sudo need password in interactive console.
+            # But most of the cases current user already have permission to copy to /user/local/bin.
+            # Hence removing sudo requirement for Mac.
+            sudo_prefix = ""
+        else:
+            raise Exception(
+                """Currently auto installation of pdftotext is not supported on {0} platform """.format(platform)
+            )
+
+        commands = """ wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-{0}-4.02.tar.gz &&
+                       tar -xvf xpdf-tools-{0}-4.02.tar.gz &&
+                       {1} cp xpdf-tools-{0}-4.02/bin64/pdftotext /usr/local/bin""".format(platform_id, sudo_prefix)
         run([commands], shell=True)
 
         verify_installation = run(["pdftotext -v"], shell=True)

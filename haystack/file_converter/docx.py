@@ -1,4 +1,4 @@
-from haystack.indexing.file_converters.base import BaseConverter
+from haystack.file_converter.base import BaseConverter
 import logging
 from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple

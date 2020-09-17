@@ -48,7 +48,7 @@ DPR_READER_PRETRAINED_MODEL_ARCHIVE_LIST = [
 
 class ModelOutput:
     """
-    Base class for all model outputs as dataclass. Has a ``__getitem__`` that allows indexing by integer or slice (like
+    Base class for all model outputs as dataclass. Has a ``__getitem__`` that allows preprocessor by integer or slice (like
     a tuple) or strings (like a dictionnary) that will ignore the ``None`` attributes.
     """
 
