@@ -4,7 +4,7 @@ from typing import Union, List, Optional, Dict
 
 import faiss
 import numpy as np
-from faiss import Index
+from faiss import Index, IndexIDMap
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
@@ -21,15 +21,19 @@ class FaissIndexStore:
             # https://github.com/facebookresearch/faiss/wiki/The-index-factory
             **kwargs
     ):
-        self.dimension = kwargs.get('dimension', 768)
+
         self.allow_training = kwargs.get('allow_training', False)
         self.convert_l2_to_ip = kwargs.get('convert_l2_to_ip', True)
-        self.index_factory = kwargs.get('index_factory', 'HNSW4')
-        metric_type = kwargs.get('metric_type', None)
 
         if faiss_index:
             self.faiss_index = faiss_index
+            self.dimension = None
+            self.index_factory = None
         else:
+            self.index_factory = kwargs.get('index_factory', 'HNSW4')
+            metric_type = kwargs.get('metric_type', None)
+            self.dimension = kwargs.get('dimension', 768)
+
             new_dimension = self.dimension
             if self.convert_l2_to_ip:
                 new_dimension = self.dimension + 1
@@ -63,7 +67,7 @@ class FaissIndexStore:
         hnsw_vectors = np.concatenate(hnsw_vectors, axis=0)
         return hnsw_vectors
 
-    def add_vectors(self, embeddings: List[np.array]):
+    def add_vectors(self, embeddings: List[np.array]) -> List[np.int64]:
         if self.convert_l2_to_ip:
             vectors_to_add = self._get_hnsw_vectors(embeddings, self._get_phi(embeddings))
         else:
@@ -76,7 +80,14 @@ class FaissIndexStore:
         if not self.faiss_index.is_trained and self.allow_training:
             self.faiss_index.train(vectors_to_add)
 
-        return self.faiss_index.add(vectors_to_add)
+        total_indices = self.size()
+        ids = np.arange(total_indices, total_indices + len(embeddings), 1, dtype=np.int64)
+
+        if isinstance(self.faiss_index, IndexIDMap):
+            self.faiss_index.add_with_ids(vectors_to_add, ids)
+        else:
+            self.faiss_index.add(vectors_to_add)
+        return ids
 
     def search_vectors(self, embeddings: List[np.array], top_k: int):
         vectors = embeddings
@@ -110,9 +121,9 @@ class FAISSDocumentStore(SQLDocumentStore):
             sql_url: str = "sqlite:///",
             index_buffer_size: int = 10_000,
             vector_size: int = 768,
-            faiss_index: Optional[Index] = None,
-            index_factory: str = "HNSW4",
-            index: str = "document"
+            index_store: Optional[FaissIndexStore] = None,
+            index_factory: Optional[str] = "HNSW4",
+            index: Optional[str] = "document"
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
@@ -128,21 +139,24 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.faiss_indexes = {}
         self.index_buffer_size = index_buffer_size
 
-        if faiss_index:
-            self.get_or_create_fiass_index(index_name=index, faiss_index=faiss_index)
+        if index_store:
+            self.get_or_create_fiass_index(index=index, index_store=index_store)
 
-        super().__init__(url=sql_url)
+        super().__init__(url=sql_url, index=index)
 
-    def get_or_create_fiass_index(self, index: Optional[str] = None, faiss_index: Optional[Index] = None, **kwargs):
+    def get_or_create_fiass_index(self, index: Optional[str] = None, index_store: Optional[FaissIndexStore] = None,
+                                  **kwargs):
         index = index or self.index
-        if not self.faiss_indexes or not self.faiss_indexes[index]:
+        if index_store:
+            self.faiss_indexes[index] = index_store
+        elif not self.faiss_indexes or index not in self.faiss_indexes:
             if kwargs and kwargs.get('index_factory') is None:
                 kwargs['index_factory'] = self.index_factory
 
             if kwargs and kwargs.get('dimension') is None:
                 kwargs['dimension'] = self.vector_size
 
-            self.faiss_indexes[index] = FaissIndexStore(faiss_index=faiss_index, **kwargs)
+            self.faiss_indexes[index] = FaissIndexStore(**kwargs)
         return self.faiss_indexes[index]
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, **kwargs):
@@ -150,21 +164,19 @@ class FAISSDocumentStore(SQLDocumentStore):
         index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
         add_vectors = False if document_objects[0].embedding is None else True
-
-        vector_id = 0
-        if add_vectors:
-            faiss_index = self.get_or_create_fiass_index(index=index, **kwargs)
-            vector_id = faiss_index.size()
-            embeddings = [doc.embedding for doc in document_objects]
-            faiss_index.add_vectors(embeddings=embeddings)
+        faiss_index = self.get_or_create_fiass_index(index=index, **kwargs)
 
         for i in range(0, len(document_objects), self.index_buffer_size):
+            vector_ids = []
+            if add_vectors:
+                embeddings_batch = [doc.embedding for doc in document_objects[i: i + self.index_buffer_size]]
+                vector_ids = faiss_index.add_vectors(embeddings=embeddings_batch)
+
             docs_to_write_in_sql = []
-            for doc in document_objects[i: i + self.index_buffer_size]:
+            for idx, doc in enumerate(document_objects[i: i + self.index_buffer_size]):
                 meta = doc.meta
-                if add_vectors:
-                    meta["vector_id"] = vector_id
-                    vector_id += 1
+                if add_vectors and len(vector_ids) > 0:
+                    meta["vector_id"] = str(vector_ids[idx])
                 docs_to_write_in_sql.append(doc)
 
             super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
@@ -182,7 +194,6 @@ class FAISSDocumentStore(SQLDocumentStore):
         faiss_index = self.get_or_create_fiass_index(index=index, **kwargs)
         # Some FAISS indexes(like the default HNSWx) do not support removing vectors, so a new index is created.
         faiss_index.reset()
-        vector_id = faiss_index.size()
 
         documents = self.get_all_documents(index=index)
         logger.info(f"Updating embeddings for {len(documents)} docs ...")
@@ -192,10 +203,10 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_id_map = {}
         for i in range(0, len(documents), self.index_buffer_size):
             embeddings_batch = [embedding for embedding in embeddings[i: i + self.index_buffer_size]]
-            faiss_index.add_vectors(embeddings=embeddings_batch)
+            vector_ids = faiss_index.add_vectors(embeddings=embeddings_batch)
 
-            for doc in documents[i: i + self.index_buffer_size]:
-                vector_id_map[doc.id] = vector_id
+            for idx, doc in enumerate(documents[i: i + self.index_buffer_size]):
+                vector_id_map[doc.id] = str(vector_ids[idx])
                 vector_id += 1
 
         self.update_vector_ids(vector_id_map, index=index)
@@ -206,7 +217,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     ) -> List[Document]:
 
         index = index or self.index
-        if not self.faiss_indexes[index]:
+        if index not in self.faiss_indexes:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
 
         if filters:
@@ -229,10 +240,10 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def delete_all_documents(self, index=None):
+    def delete_all_documents(self, index: Optional[str] = None):
         index = index or self.index
         super(FAISSDocumentStore, self).delete_all_documents(index=index)
-        if self.faiss_indexes and self.faiss_indexes[index] is not None:
+        if self.faiss_indexes and index in self.faiss_indexes:
             self.faiss_indexes[index].reset()
 
     def save(self, file_path: Union[str, Path]):
@@ -260,7 +271,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         return cls(
             index=index,
             index_factory=index_factory,
-            faiss_index=faiss_index,
+            index_store=FaissIndexStore(faiss_index=faiss_index),
             sql_url=sql_url,
             index_buffer_size=index_buffer_size,
             vector_size=vector_size
