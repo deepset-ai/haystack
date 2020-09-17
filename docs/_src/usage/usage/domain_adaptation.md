@@ -1,10 +1,10 @@
 <!---
-title: "Domain Adaption"
-metaTitle: "Domain Adaption"
+title: "Domain Adaptation"
+metaTitle: "Domain Adaptation"
 metaDescription: ""
-slug: "/docs/domain_adaption"
+slug: "/docs/domain_adaptation"
 date: "2020-09-03"
-id: "domain_adaptionmd"
+id: "domain_adaptationmd"
 --->
 
 # Domain Adaptation
