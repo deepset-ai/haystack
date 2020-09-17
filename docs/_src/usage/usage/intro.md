@@ -116,12 +116,12 @@ Current methods fall into one of the two categories:
 
 
 * sparse
-        * keyword based
-        * fast indexing and querying
-        * e.g. BM25
+     * keyword based
+     * fast indexing and querying
+     * e.g. BM25
 
 
 * dense
-        * neural network based
-        * computationally heavy indexing but fast querying
-        * e.g. Dense Passage Retrieval
+     * neural network based
+     * computationally heavy indexing but fast querying
+     * e.g. Dense Passage Retrieval

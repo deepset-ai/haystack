@@ -52,14 +52,9 @@ class FARMReader(BaseReader):
     ):
 
         """
-        :param model_name_or_path: Directory of a saved model or the name of a public model:
-
-                                   - ``'bert-base-cased'``
-                                   - ``'deepset/bert-base-cased-squad2'``
-                                   - ``'deepset/bert-base-cased-squad2'``
-                                   - ``'distilbert-base-uncased-distilled-squad'``
-                                   - ``...``
-                                   See https://huggingface.co/models for full list of available models.
+        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+        'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
+        See https://huggingface.co/models for full list of available models.
         :param context_window_size: The size, in characters, of the window around the answer span that is used when
                                     displaying the context around the answer.
         :param batch_size: Number of samples the model receives in one batch for inference.
@@ -67,27 +62,20 @@ class FARMReader(BaseReader):
                            to a value so only a single batch is used.
         :param use_gpu: Whether to use GPU (if available)
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
-                             Possible values:
-
-                             - None (default) = disable returning "no answer" predictions
-                             - Negative = lower chance of "no answer" being predicted
-                             - Positive = increase chance of "no answer"
-        :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever
-                                    (might be a long text).
-                                    Note:
-
-                                    - This is not the number of "final answers" you will receive (see `top_k` in
-                                      FARMReader.predict() or Finder.get_answers() for that)
-                                    - FARM includes no_answer in the sorted list of predictions
-        :param top_k_per_sample: How many answers to extract from each small text passage that the model can
-                                 process at once (one "candidate doc" is usually split into many smaller "passages").
-                                 You usually want a very small value here, as it slows down inference and you
-                                 don't gain much of quality by having multiple answers from one passage.
-                                 Note:
-
-                                 - This is not the number of "final answers" you will receive
-                                   (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
-                                 - FARM includes no_answer in the sorted list of predictions
+        If set to None (default), disables returning "no answer" predictions.
+        If a negative number, there is a lower chance of "no_answer" being predicted.
+        If a positive number, there is an increased chance of "no_answer"
+        :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+        Note that this is not the number of "final answers" you will receive
+        (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+        and that FARM includes no_answer in the sorted list of predictions.
+        :param top_k_per_sample: How many answers to extract from each small text passage that the model can process at once
+        (one "candidate doc" is usually split into many smaller "passages").
+        You usually want a very small value here, as it slows down inference
+        and you don't gain much of quality by having multiple answers from one passage.
+        Note that this is not the number of "final answers" you will receive
+        (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+        and that FARM includes no_answer in the sorted list of predictions.
         :param num_processes: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
                               multiprocessing. Set to None to let Inferencer determine optimum number. If you
                               want to debug the Language Model, you might need to disable multiprocessing!
@@ -308,7 +296,7 @@ class FARMReader(BaseReader):
 
         Returns dictionaries containing answers sorted by (desc.) probability.
         Example:
-        ::
+
             {'question': 'Who is the father of Arya Stark?',
             'answers': [
                          {'answer': 'Eddard,',
@@ -548,19 +536,19 @@ class FARMReader(BaseReader):
         Use loaded QA model to find answers for a question in the supplied list of Document.
         Returns dictionaries containing answers sorted by (desc.) probability.
         Example:
-        ::
-            {'question': 'Who is the father of Arya Stark?',
-            'answers': [
-                         {'answer': 'Eddard,',
-                         'context': " She travels with her father, Eddard, to King's Landing when he is ",
-                         'offset_answer_start': 147,
-                         'offset_answer_end': 154,
-                         'probability': 0.9787139466668613,
-                         'score': None,
-                         'document_id': '1337'
-                         },
-                        ...
-                       ]
+
+            {
+                'question': 'Who is the father of Arya Stark?',
+                'answers':[
+                             {'answer': 'Eddard,',
+                             'context': " She travels with her father, Eddard, to King's Landing when he is ",
+                             'offset_answer_start': 147,
+                             'offset_answer_end': 154,
+                             'probability': 0.9787139466668613,
+                             'score': None,
+                             'document_id': '1337'
+                             },...
+                          ]
             }
 
         :param question: Question string
@@ -585,9 +573,10 @@ class FARMReader(BaseReader):
         can be loaded with in the `FARMReader` using the export path as `model_name_or_path` param.
 
         Usage:
-            >>> from haystack.reader.farm import FARMReader
-            >>> FARMReader.convert_to_onnx(model_name_or_path="deepset/bert-base-cased-squad2", optimize_for="gpu_tensor_core")
-            >>> FARMReader(model_name_or_path=Path("onnx-export"))
+
+            `from haystack.reader.farm import FARMReader
+            FARMReader.convert_to_onnx(model_name_or_path="deepset/bert-base-cased-squad2", optimize_for="gpu_tensor_core")
+            FARMReader(model_name_or_path=Path("onnx-export"))`
 
 
         :param opset_version: ONNX opset version

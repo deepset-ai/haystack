@@ -42,19 +42,14 @@ class TransformersReader(BaseReader):
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param context_window_size: Num of chars (before and after the answer) to return as "context" for each answer.
                                     The context usually helps users to understand if the answer really makes sense.
-        :param use_gpu: - < 0  -> use cpu
-                        - >= 0 -> ordinal of the gpu to use
-        :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever
-                                    (might be a long text). Note:
-
-                                    - This is not the number of "final answers" you will receive
-                                      (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
-                                    - Can include no_answer in the sorted list of predictions
-        :param return_no_answers: - True -> Hugging Face model could return an "impossible"/"empty" answer (i.e. when there is an unanswerable question)
-                                  - False -> otherwise
-
-                                  no_answer_boost is unfortunately not available with TransformersReader. If you would like to
-                                  set no_answer_boost, use a FARMReader.
+        :param use_gpu: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+        :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+        Note that this is not the number of "final answers" you will receive
+        (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
+        and that no_answer can be included in the sorted list of predictions.
+        :param return_no_answers: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
+        If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
+        If you would like to set no_answer_boost, use a `FARMReader`.
         :param max_seq_len: max sequence length of one input text for the model
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 
@@ -74,7 +69,7 @@ class TransformersReader(BaseReader):
 
         Returns dictionaries containing answers sorted by (desc.) probability.
         Example:
-        ::
+        
             {'question': 'Who is the father of Arya Stark?',
             'answers': [
                          {'answer': 'Eddard,',
