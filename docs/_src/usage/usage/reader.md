@@ -113,7 +113,7 @@ reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
 **Transformers**
 
 <div class="filter">
-<a href="#roberta_">FRoBERTa (base)</a> <a href="#minilm_">MiniLM</a> <a href="#albert_">ALBERT (XXL)</a>
+<a href="#roberta_">RoBERTa (base)</a> <a href="#minilm_">MiniLM</a> <a href="#albert_">ALBERT (XXL)</a>
 </div>
 <div class="filter-roberta_ table-wrapper" markdown="block">
 
