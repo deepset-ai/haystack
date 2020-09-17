@@ -10,12 +10,18 @@ id: "databasemd"
 
 # Document Stores
 
+You can think of the Document Store as a "data base" that:
+- stores your texts and meta data  
+- provides them to the retriever at query time 
+
+There are different DocumentStores in Haystack to fit different use cases and tech stacks. 
+
 ## Initialisation
 
 Initialising a new Document Store is straight forward.
 
 <div class="filter">
-<a href="#elasticsearch">Elasticsearch</a> <a href="#faiss">FAISS</a> <a href="#sql">SQL</a> <a href="#inmemory">In Memory</a>
+<a href="#elasticsearch">Elasticsearch</a> <a href="#faiss">FAISS</a> <a href="#inmemory">In Memory</a> <a href="#sql">SQL</a>
 </div>
 <div class="filter-elasticsearch table-wrapper" markdown="block">
 
@@ -113,14 +119,65 @@ Having GPU acceleration will significantly speed this up.
 
 <!-- _comment: !! Diagrams of inverted index / document embeds !! -->
 <!-- _comment: !! Make this a tab element to show how different datastores are initialized !! -->
-## Choosing the right database
+## Choosing the right document store
 
-Document storage is important
-There are many types and each has implications on memory consumption, indexing and querying
+The Document stores have different characteristics. You should choose one depending on the maturity of your project, the use case and technical environment: 
 
-Talk about trade offs
-Elasticsearch vs SQL vs In Memory vs FAISS
 
-Show some code snippets of each using tab elements
+<div class="filter">
+<a href="#elasticsearch">Elasticsearch</a> <a href="#faiss">FAISS</a> <a href="#inmemory">In Memory</a> <a href="#sql">SQL</a>
+</div>
+<div class="filter-elasticsearch table-wrapper" markdown="block">
 
-Use tabbed element to show how each is initialized
+**Pros:** 
+- Fast & accurate sparse retrieval
+- Basic support for dense retrieval
+- Production-ready 
+- Many options to tune sparse retrieval
+
+**Cons:** 
+- Slow for dense retrieval with more than ~ 1 Mio documents
+
+</div>
+<div class="filter-faiss table-wrapper" markdown="block">
+
+**Pros:** 
+- Fast & accurate dense retrieval
+- Highly scalable due to approximate nearest neighbour algorithms (ANN)
+- Many options to tune dense retrieval via different index types 
+
+**Cons:**
+- No efficient sparse retrieval
+
+</div>
+<div class="filter-sql table-wrapper" markdown="block">
+
+**Pros:**
+- Simple
+- Exists already in many environments
+
+**Cons:**
+- Only compatible with minimal Tf-IDF Retriever
+- Bad retrieval performance
+- Not recommended for production
+
+</div>
+<div class="filter-inmemory table-wrapper" markdown="block">
+
+**Pros:**
+- Simple & fast to test
+- No database requirements
+
+**Cons:** 
+- Not scalable
+- Not persisting your data on disk
+
+</div>
+
+#### Our recommendations
+
+**Restricted environmen:** Use the `InMemoryDocumentStore`, if you just give Haystack a quick try on a small sample and work in a restricted environment that complicates running elasticsearch or other databases  
+
+**Allrounder:** Use the `ElasticSearchDocumentStore`, if you want to evaluate the performance of different retrieval options (dense vs. sparse) and aim for a smooth transition from PoC to production
+
+**Vector Specialist:** Use the `FAISSDocumentStore`, if your want to focus on dense retrieval and possibly deal with larger datasets
