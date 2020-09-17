@@ -85,12 +85,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         candidate_docs = []
         for idx, doc in self.indexes[index].items():
-            doc.query_score = dot(query_emb, doc.embedding) / (
+            doc.score = dot(query_emb, doc.embedding) / (
                 norm(query_emb) * norm(doc.embedding)
             )
+            doc.probability = (doc.score + 1) / 2
             candidate_docs.append(doc)
 
-        return sorted(candidate_docs, key=lambda x: x.query_score, reverse=True)[0:top_k]
+        return sorted(candidate_docs, key=lambda x: x.score, reverse=True)[0:top_k]
 
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
         """
