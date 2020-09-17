@@ -212,7 +212,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             _doc["_id"] = str(_doc.pop("id"))
 
             # don't index query score and empty fields
-            _ = _doc.pop("query_score", None)
+            _ = _doc.pop("score", None)
             _ = _doc.pop("probability", None)
             _doc = {k:v for k,v in _doc.items() if v is not None}
 
@@ -426,20 +426,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if name:
             meta_data["name"] = name
 
-        query_score = hit["_score"] if hit["_score"] else None
-        if query_score:
+        score = hit["_score"] if hit["_score"] else None
+        if score:
             if adapt_score_for_embedding:
-                query_score -= 1
-                probability = (query_score + 1) / 2  # scaling probability from cosine similarity
+                score -= 1
+                probability = (score + 1) / 2  # scaling probability from cosine similarity
             else:
-                probability = float(expit(np.asarray(query_score / 8)))  # scaling probability from TFIDF/BM25
+                probability = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
         else:
             probability = None
         document = Document(
             id=hit["_id"],
             text=hit["_source"].get(self.text_field),
             meta=meta_data,
-            query_score=query_score,
+            score=score,
             probability=probability,
             question=hit["_source"].get(self.faq_question_field),
             embedding=hit["_source"].get(self.embedding_field)

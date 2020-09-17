@@ -96,7 +96,7 @@ class Finder:
                 "answer": doc.text,
                 "document_id": doc.id,
                 "context": doc.text,
-                "score": doc.query_score,
+                "score": doc.score,
                 "probability": doc.probability,
                 "offset_start": 0,
                 "offset_end": len(doc.text),
