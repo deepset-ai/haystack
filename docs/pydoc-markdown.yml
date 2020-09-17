@@ -1,0 +1,43 @@
+loaders:
+  - type: python
+    search_path: [../haystack]
+processor:
+  - type: filter
+    expression: not name.startswith('_') and default()
+  - documented_only: true
+  - do_not_filter_modules: false
+  - skip_empty_modules: true
+renderer:
+  type: mkdocs
+  pages:
+    - title: Database
+      contents:
+        - database.base.*
+        - database.elasticsearch.*
+        - database.memory.*
+        - database.sql.*
+    - title: Retriever
+      contents:
+        - retriever.base.*
+        - retriever.dense.*
+        - retriever.sparse.*
+    - title: Reader
+      contents:
+        - reader.base.*
+        - reader.farm.*
+        - reader.transformers.*
+    - title: Indexing
+      contents:
+        - indexing.cleaning.*
+        - indexing.utils.*
+    - title: File converters
+      contents:
+        - indexing.file_converters.base.*
+        - indexing.file_converters.docx.*
+        - indexing.file_converters.pdf.*
+        - indexing.file_converters.txt.*
+        - indexing.file_converters.tika.*
+  mkdocs_config:
+    mkdocs_config:
+      site_name: Haystack
+      theme: readthedocs

@@ -1,5 +1,13 @@
-Glossary
-========
+<!---
+title: "Glossary"
+metaTitle: "Glossary"
+metaDescription: ""
+slug: "/docs/terms"
+date: "2020-09-03"
+id: "termsmd"
+--->
+
+# Glossary
 
 **BERT** - A popular, transformer based language model which has been improved upon but is still considered a common benchmark.
 
@@ -13,8 +21,8 @@ It is ultimately up to you how to divide up your corpus into Documents.
 **Document Store** - The component in Haystack that stores the text documents and their metadata.
 Can have a variety of backends such as Elasticsearch, SQL or FAISS.
 
-**FARM** - An open-source transfer learning `framework <https://github.com/deepset-ai/FARM>`_ by deepset.
-FARM's question answering models are used in Haystack's Readers.
+**FARM** - An open-source transfer learning [framework](https://github.com/deepset-ai/FARM) by deepset.
+FARM’s question answering models are used in Haystack’s Readers.
 
 **Finder** - The component in Haystack that connects the Retriever to the Reader.
 
@@ -23,7 +31,7 @@ The exact steps involved in indexing depend on what kind of retrieval method is 
 
 **Language Model** - The component in an NLP model that stores general language understanding, but no task specific knowledge.
 
-**Model Hub** - The `repository <https://huggingface.co/models>`_ set up by HuggingFace where trained models can be saved to and loaded from.
+**Model Hub** - The [repository](https://huggingface.co/models) set up by HuggingFace where trained models can be saved to and loaded from.
 With Haystack, you can directly load and use any question answering model found on the model hub.
 
 **Neural Network** - A machine learning architecture composed of artificial neurons that learn a task when exposed to labelled training data.
@@ -49,15 +57,10 @@ but on the similarity of meaning between a query and a piece of text.
 **Sparse** - Vectors that are composed primarily of zeros are called sparse.
 Retrieval methods are also considered sparse if they build sparse vector representations of documents.
 
-**SQuAD** - The `Stanford Question Answering Dataset <https://rajpurkar.github.io/SQuAD-explorer/>`_ is the defacto standard QA dataset.
+**SQuAD** - The [Stanford Question Answering Dataset](https://rajpurkar.github.io/SQuAD-explorer/) is the defacto standard QA dataset.
 The documents are paragraphs from Wikipedia and the question / answer pairs are created by human annotators.
 
 **Transformers** - Originally refers to the deep learning architecture that is composed of stacked self-attention layers
-(first conceptualised `here <https://arxiv.org/pdf/1706.03762.pdf>`_).
-Can also refer to HuggingFace's `repository <https://github.com/huggingface/transformers>`_
+(first conceptualised [here](https://arxiv.org/pdf/1706.03762.pdf)).
+Can also refer to HuggingFace’s [repository](https://github.com/huggingface/transformers)
 which contains implementations of popular model architectures.
-
-
-
-
-

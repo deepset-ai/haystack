@@ -27,7 +27,9 @@ extensions = ['sphinx.ext.autodoc',
 		'sphinx_tabs.tabs', 
 		'sphinx_copybutton', 
 		'nbsphinx', 
-		'sphinx.ext.autosectionlabel']
+		'sphinx.ext.autosectionlabel',
+                'sphinx_markdown_builder',
+                'recommonmark']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['../templates']
@@ -35,7 +37,7 @@ templates_path = ['../templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ['build/*']
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -66,6 +68,13 @@ html_logo="img/logo.png"
 
 # Additional layouts
 html_additional_pages = {"index": "pages/index.html"}
+
+#The file extensions of source files.
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'restructuredtext',
+    '.md': 'markdown',
+}
 
 # -- Add autodocs for __init__() methods -------------------------------------
 
