@@ -7,7 +7,8 @@ import numpy as np
 class Document:
     def __init__(self, text: str,
                  id: str = None,
-                 query_score: Optional[float] = None,
+                 score: Optional[float] = None,
+                 probability: Optional[float] = None,
                  question: Optional[str] = None,
                  meta: Optional[Dict[str, Any]] = None,
                  embedding: Optional[np.array] = None):
@@ -21,7 +22,8 @@ class Document:
 
         :param id: ID used within the DocumentStore
         :param text: Text of the document
-        :param query_score: Retriever's query score for a retrieved document
+        :param score: Retriever's query score for a retrieved document
+        :param probability: a psuedo probability by scaling score in the range 0 to 1
         :param question: Question text for FAQs.
         :param meta: Meta fields for a document like name, url, or author.
         :param embedding: Vector encoding of the text
@@ -34,7 +36,8 @@ class Document:
         else:
             self.id = str(uuid4())
 
-        self.query_score = query_score
+        self.score = score
+        self.probability = probability
         self.question = question
         self.meta = meta
         self.embedding = embedding
@@ -50,7 +53,7 @@ class Document:
     @classmethod
     def from_dict(cls, dict, field_map={}):
         _doc = dict.copy()
-        init_args = ["text", "id", "query_score", "question", "meta", "embedding"]
+        init_args = ["text", "id", "score", "probability", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
