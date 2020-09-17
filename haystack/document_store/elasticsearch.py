@@ -6,6 +6,7 @@ from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
+from scipy.special import expit
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
@@ -212,6 +213,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             # don't index query score and empty fields
             _ = _doc.pop("query_score", None)
+            _ = _doc.pop("probability", None)
             _doc = {k:v for k,v in _doc.items() if v is not None}
 
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
@@ -414,21 +416,31 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             logger.debug(f"Retriever query: {body}")
             result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
 
-            documents = [self._convert_es_hit_to_document(hit, score_adjustment=-1) for hit in result]
+            documents = [self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True) for hit in result]
             return documents
 
-    def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
+    def _convert_es_hit_to_document(self, hit: dict, adapt_score_for_embedding: bool = False) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
 
+        query_score = hit["_score"] if hit["_score"] else None
+        if query_score:
+            if adapt_score_for_embedding:
+                query_score -= 1
+                probability = (query_score + 1) / 2  # scaling probability from cosine similarity
+            else:
+                probability = float(expit(np.asarray(query_score / 8)))  # scaling probability from TFIDF/BM25
+        else:
+            probability = None
         document = Document(
             id=hit["_id"],
             text=hit["_source"].get(self.text_field),
             meta=meta_data,
-            query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
+            query_score=query_score,
+            probability=probability,
             question=hit["_source"].get(self.faq_question_field),
             embedding=hit["_source"].get(self.embedding_field)
         )

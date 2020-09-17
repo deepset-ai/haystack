@@ -160,7 +160,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             doc.query_score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
-
+            doc.probability = (doc.query_score + 1) / 2
         return documents
 
     def save(self, file_path: Union[str, Path]):
