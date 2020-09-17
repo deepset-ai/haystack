@@ -10,7 +10,7 @@ id: "databasemd"
 
 # Document Stores
 
-You can think of the Document Store as a "data base" that:
+You can think of the Document Store as a "database" that:
 - stores your texts and meta data  
 - provides them to the retriever at query time 
 
@@ -157,7 +157,7 @@ The Document stores have different characteristics. You should choose one depend
 - Exists already in many environments
 
 **Cons:**
-- Only compatible with minimal Tf-IDF Retriever
+- Only compatible with minimal TF-IDF Retriever
 - Bad retrieval performance
 - Not recommended for production
 
@@ -176,8 +176,8 @@ The Document stores have different characteristics. You should choose one depend
 
 #### Our recommendations
 
-**Restricted environmen:** Use the `InMemoryDocumentStore`, if you just give Haystack a quick try on a small sample and work in a restricted environment that complicates running elasticsearch or other databases  
+**Restricted environment:** Use the `InMemoryDocumentStore`, if you are just giving Haystack a quick try on a small sample and are working in a restricted environment that complicates running Elasticsearch or other databases  
 
-**Allrounder:** Use the `ElasticSearchDocumentStore`, if you want to evaluate the performance of different retrieval options (dense vs. sparse) and aim for a smooth transition from PoC to production
+**Allrounder:** Use the `ElasticSearchDocumentStore`, if you want to evaluate the performance of different retrieval options (dense vs. sparse) and are aiming for a smooth transition from PoC to production
 
-**Vector Specialist:** Use the `FAISSDocumentStore`, if your want to focus on dense retrieval and possibly deal with larger datasets
+**Vector Specialist:** Use the `FAISSDocumentStore`, if you want to focus on dense retrieval and possibly deal with larger datasets
