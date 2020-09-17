@@ -10,12 +10,12 @@ processor:
 renderer:
   type: mkdocs
   pages:
-    - title: Database
+    - title: DocumentStore
       contents:
-        - database.base.*
-        - database.elasticsearch.*
-        - database.memory.*
-        - database.sql.*
+        - document_store.base.*
+        - document_store.elasticsearch.*
+        - document_store.memory.*
+        - document_store.sql.*
     - title: Retriever
       contents:
         - retriever.base.*
@@ -26,17 +26,17 @@ renderer:
         - reader.base.*
         - reader.farm.*
         - reader.transformers.*
-    - title: Indexing
+    - title: Preprocessing
       contents:
-        - indexing.cleaning.*
-        - indexing.utils.*
-    - title: File converters
+        - preprocessor.cleaning.*
+        - preprocessor.utils.*
+    - title: File Converters
       contents:
-        - indexing.file_converters.base.*
-        - indexing.file_converters.docx.*
-        - indexing.file_converters.pdf.*
-        - indexing.file_converters.txt.*
-        - indexing.file_converters.tika.*
+        - file_converter.base.*
+        - file_converter.docx.*
+        - file_converter.pdf.*
+        - file_converter.txt.*
+        - file_converter.tika.*
   mkdocs_config:
     mkdocs_config:
       site_name: Haystack
