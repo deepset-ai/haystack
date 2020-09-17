@@ -36,9 +36,11 @@ $ pip install --editable .
 ```
 
 By default, this will give you the latest version of the master branch.
-Use regular git commands to switch between different branches and commits.
+Use regular git commands to switch between different branches and commits.  
+
 
 </div>
+Note: On Windows add the arg `-f https://download.pytorch.org/whl/torch_stable.html` to install PyTorch correctly
 
 <!-- _comment: !! Have a tab for docker!! -->
 <!-- -comment: !! Have a hello world example!! -->

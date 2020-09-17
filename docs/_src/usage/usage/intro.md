@@ -9,27 +9,24 @@ id: "intromd"
 
 # What is Haystack?
 
-Haystack is an **open-source toolkit** for building **end-to-end open domain QA systems**.
-Recent advances in Deep Learning and Language Modeling have enabled the application of QA to real world settings
+Haystack is an **open-source framework** for building **end-to-end question answering systems** for large document collections.
+Recent advances in NLP have enabled the application of QA to real world settings
 and Haystack is designed to be the bridge between research and industry.
 
 
-* **Powerful ML models**: Utilize all latest transformer based models (BERT, RoBERTa, MiniLM)
+* **Latest NLP models**: Utilize all transformer based models (BERT, RoBERTa, MiniLM, DPR ...) and smoothly switch when new ones get published
 
+* **Flexible databases**: Load data into and query from a range of databases such as Elasticsearch, FAISS, SQL and more
 
-* **Database Support**: Haystack can initialize, load data into and query from a range of databases such as Elasticsearch, FAISS, SQL and more
+* **Scalability**: Production-ready deployments that scale to millions of documents
 
+* **End-to-End**: All tooling you need to implement, evaluate, improve and run a QA system
 
-* **Scalable**: Production-ready deployments via Elasticsearch backend & REST API
+* **Domain adaptation**: Fine-tune models to your own domain & improve them continuously via user feedback
 
+## Use cases
 
-* **Customizable**: Fine-tune models to your own domain & improve them continuously via user feedback
-
-## Uses
-
-Here are just a few examples of what can be done with Haystack:
-
-### Search System
+### Semantic Search System
 
 Take the leap from using keyword search on your own documents to semantic search with Haystack.
 
