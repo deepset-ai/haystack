@@ -6,13 +6,14 @@ from pathlib import Path
 
 from farm.infer import Inferencer
 
-from haystack.database.base import Document, BaseDocumentStore
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.base import BaseDocumentStore
+from haystack import Document
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
 
-from haystack.retriever.dpr_utils import DPRContextEncoder, DPRQuestionEncoder, DPRConfig, DPRContextEncoderTokenizer, \
-    DPRQuestionEncoderTokenizer
+from transformers.modeling_dpr import DPRContextEncoder, DPRQuestionEncoder
+from transformers.tokenization_dpr import DPRContextEncoderTokenizer, DPRQuestionEncoderTokenizer
 
 logger = logging.getLogger(__name__)
 

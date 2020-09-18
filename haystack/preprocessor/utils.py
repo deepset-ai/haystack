@@ -9,9 +9,9 @@ import json
 
 from farm.data_handler.utils import http_get
 
-from haystack.indexing.file_converters.pdf import PDFToTextConverter
-from haystack.indexing.file_converters.tika import TikaConverter
-from haystack.database.base import Document, Label
+from haystack.file_converter.pdf import PDFToTextConverter
+from haystack.file_converter.tika import TikaConverter
+from haystack import Document, Label
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
     Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
 
-    :param dir_path: path for the documents to be written to the database
+    :param dir_path: path for the documents to be written to the DocumentStore
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
 
@@ -97,8 +97,8 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
             with open(path) as doc:
                 text = doc.read()
         elif path.suffix.lower() == ".pdf" and pdf_converter:
-            pages, _ = pdf_converter.extract_pages(path)
-            text = "\n".join(pages)
+            document = pdf_converter.convert(path)
+            text = document["text"]
         else:
             raise Exception(f"Indexing of {path.suffix} files is not currently supported.")
 
@@ -127,7 +127,7 @@ def tika_convert_files_to_dicts(
     Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
 
-    :param dir_path: path for the documents to be written to the database
+    :param dir_path: path for the documents to be written to the DocumentStore
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
 
@@ -138,10 +138,11 @@ def tika_convert_files_to_dicts(
 
     documents = []
     for path in file_paths:
-        pages, meta = converter.extract_pages(path)
-        meta = meta or {}
+        document = converter.convert(path)
+        meta = document["meta"] or {}
         meta["name"] = path.name
-        text = ' '.join(pages)
+        text = document["text"]
+        pages = text.split("\f")
 
         if split_paragraphs:
             if pages:

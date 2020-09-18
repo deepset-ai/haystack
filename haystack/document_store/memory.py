@@ -2,8 +2,9 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 from collections import defaultdict
 
-from haystack.database.base import BaseDocumentStore, Document, Label
-from haystack.indexing.utils import eval_data_from_file
+from haystack.document_store.base import BaseDocumentStore
+from haystack import Document, Label
+from haystack.preprocessor.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
 import logging
@@ -84,12 +85,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         candidate_docs = []
         for idx, doc in self.indexes[index].items():
-            doc.query_score = dot(query_emb, doc.embedding) / (
+            doc.score = dot(query_emb, doc.embedding) / (
                 norm(query_emb) * norm(doc.embedding)
             )
+            doc.probability = (doc.score + 1) / 2
             candidate_docs.append(doc)
 
-        return sorted(candidate_docs, key=lambda x: x.query_score, reverse=True)[0:top_k]
+        return sorted(candidate_docs, key=lambda x: x.score, reverse=True)[0:top_k]
 
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
         """
@@ -114,7 +116,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         if embeddings[0].shape[0] != self.embedding_dim:
             raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                               f" doesn't match embedding dim. in documentstore ({self.embedding_dim})."
+                               f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()")
 
         for doc, emb in zip(docs, embeddings):

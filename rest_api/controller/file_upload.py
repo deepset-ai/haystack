@@ -12,9 +12,9 @@ from fastapi import UploadFile, File, Form
 from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, \
     SEARCH_FIELD_NAME, FILE_UPLOAD_PATH, EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, VALID_LANGUAGES, \
     FAQ_QUESTION_FIELD_NAME, REMOVE_NUMERIC_TABLES, REMOVE_WHITESPACE, REMOVE_EMPTY_LINES, REMOVE_HEADER_FOOTER
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
-from haystack.indexing.file_converters.pdf import PDFToTextConverter
-from haystack.indexing.file_converters.txt import TextConverter
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.file_converter.pdf import PDFToTextConverter
+from haystack.file_converter.txt import TextConverter
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ def upload_file_to_document_store(
                 remove_header_footer=remove_header_footer,
                 valid_languages=valid_languages,
             )
-            pages = pdf_converter.extract_pages(file_path)
+            document = pdf_converter.convert(file_path)
         elif file.filename.split(".")[-1].lower() == "txt":
             txt_converter = TextConverter(
                 remove_numeric_tables=remove_numeric_tables,
@@ -72,12 +72,12 @@ def upload_file_to_document_store(
                 remove_header_footer=remove_header_footer,
                 valid_languages=valid_languages,
             )
-            pages = txt_converter.extract_pages(file_path)
+            document = txt_converter.convert(file_path)
         else:
             raise HTTPException(status_code=415, detail=f"Only .pdf and .txt file formats are supported.")
 
-        document = {TEXT_FIELD_NAME: "\n".join(pages), "name": file.filename}
-        document_store.write_documents([document])
+        document_to_write = {TEXT_FIELD_NAME: document["text"], "name": file.filename}
+        document_store.write_documents([document_to_write])
         return "File upload was successful."
     finally:
         file.file.close()

@@ -1,48 +1,17 @@
 import logging
 import re
-from html.parser import HTMLParser
+import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Dict, Any
 
-import requests
-from tika import parser as tikaparser
-
-from haystack.indexing.file_converters.base import BaseConverter
+from haystack.file_converter.base import BaseConverter
 
 logger = logging.getLogger(__name__)
 
 
-# Use the built-in HTML parser with minimum dependencies
-class TikaXHTMLParser(HTMLParser):
-    def __init__(self):
-        self.ingest = True
-        self.page = ""
-        self.pages: List[str] = []
-        super(TikaXHTMLParser, self).__init__()
-
-    def handle_starttag(self, tag, attrs):
-        # find page div
-        pagediv = [value for attr, value in attrs if attr == "class" and value == "page"]
-        if tag == "div" and pagediv:
-            self.ingest = True
-
-    def handle_endtag(self, tag):
-        # close page div, or a single page without page div, save page and open a new page
-        if (tag == "div" or tag == "body") and self.ingest:
-            self.ingest = False
-            # restore words hyphened to the next line
-            self.pages.append(self.page.replace("-\n", ""))
-            self.page = ""
-
-    def handle_data(self, data):
-        if self.ingest:
-            self.page += data
-
-
-class TikaConverter(BaseConverter):
+class PDFToTextConverter(BaseConverter):
     def __init__(
         self,
-        tika_url: str = "http://localhost:9998/tika",
         remove_numeric_tables: Optional[bool] = False,
         remove_whitespace: Optional[bool] = None,
         remove_empty_lines: Optional[bool] = None,
@@ -50,7 +19,6 @@ class TikaConverter(BaseConverter):
         valid_languages: Optional[List[str]] = None,
     ):
         """
-        :param tika_url: URL of the Tika server
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
                                       does not have table parsing capability for finding answers. However, tables
@@ -68,11 +36,22 @@ class TikaConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
-        ping = requests.get(tika_url)
-        if ping.status_code != 200:
-            raise Exception(f"Apache Tika server is not reachable at the URL '{tika_url}'. To run it locally"
-                            f"with Docker, execute: 'docker run -p 9998:9998 apache/tika:1.24.1'")
-        self.tika_url = tika_url
+        verify_installation = subprocess.run(["pdftotext -v"], shell=True)
+        if verify_installation.returncode == 127:
+            raise Exception(
+                """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
+                
+                   Installation on Linux:
+                   wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.02.tar.gz &&
+                   tar -xvf xpdf-tools-linux-4.02.tar.gz && sudo cp xpdf-tools-linux-4.02/bin64/pdftotext /usr/local/bin
+                   
+                   Installation on MacOS:
+                   brew install xpdf
+                   
+                   You can find more details here: https://www.xpdfreader.com
+                """
+            )
+
         super().__init__(
             remove_numeric_tables=remove_numeric_tables,
             remove_whitespace=remove_whitespace,
@@ -81,19 +60,22 @@ class TikaConverter(BaseConverter):
             valid_languages=valid_languages,
         )
 
-    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
-        """
-        :param file_path: Path of file to be converted.
+    def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
 
-        :return: a list of pages and the extracted meta data of the file.
-        """
-        parsed = tikaparser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
-        parser = TikaXHTMLParser()
-        parser.feed(parsed["content"])
+        pages = self._read_pdf(file_path, layout=False)
 
         cleaned_pages = []
-        # TODO investigate title of document appearing in the first extracted page
-        for page in parser.pages:
+        for page in pages:
+            # pdftotext tool provides an option to retain the original physical layout of a PDF page. This behaviour
+            # can be toggled by using the layout param.
+            #  layout=True
+            #      + table structures get retained better
+            #      - multi-column pages(eg, research papers) gets extracted with text from multiple columns on same line
+            #  layout=False
+            #      + keeps strings in content stream order, hence multi column layout works well
+            #      - cells of tables gets split across line
+            #
+            #  Here, as a "safe" default, layout is turned off.
             lines = page.splitlines()
             cleaned_lines = []
             for line in lines:
@@ -113,8 +95,8 @@ class TikaConverter(BaseConverter):
 
             page = "\n".join(cleaned_lines)
 
-            # always clean up empty lines:
-            page = re.sub(r"\n\n+", "\n\n", page)
+            if self.remove_empty_lines:
+                page = re.sub(r"\n\n+", "\n\n", page)
 
             cleaned_pages.append(page)
 
@@ -130,6 +112,27 @@ class TikaConverter(BaseConverter):
             cleaned_pages, header, footer = self.find_and_remove_header_footer(
                 cleaned_pages, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
             )
-            logger.info(f"Removed header '{header}' and footer '{footer}' in {file_path}")
+            logger.info(f"Removed header '{header}' and footer {footer} in {file_path}")
 
-        return cleaned_pages, parsed["metadata"]
+        text = "\f".join(cleaned_pages)
+        document = {"text": text, "meta": meta}
+        return document
+
+    def _read_pdf(self, file_path: Path, layout: bool) -> List[str]:
+        """
+        Extract pages from the pdf file at file_path.
+
+        :param file_path: path of the pdf file
+        :param layout: whether to retain the original physical layout for a page. If disabled, PDF pages are read in
+                       the content stream order.
+        """
+        if layout:
+            command = ["pdftotext", "-layout", str(file_path), "-"]
+        else:
+            command = ["pdftotext", str(file_path), "-"]
+        output = subprocess.run(command, stdout=subprocess.PIPE, shell=False)
+        document = output.stdout.decode(errors="ignore")
+        pages = document.split("\f")
+        pages = pages[:-1]  # the last page in the split is always empty.
+        return pages
+

@@ -16,7 +16,7 @@ from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_
     DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
     EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER, NAME_FIELD_NAME
 from rest_api.controller.utils import RequestLimiter
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.retriever.base import BaseRetriever
@@ -102,7 +102,7 @@ FINDERS = {1: Finder(reader=reader, retriever=retriever)}
 #############################################
 class Question(BaseModel):
     questions: List[str]
-    filters: Optional[Dict[str, Optional[str]]] = None
+    filters: Optional[Dict[str, str]] = None
     top_k_reader: int = DEFAULT_TOP_K_READER
     top_k_retriever: int = DEFAULT_TOP_K_RETRIEVER
 
@@ -118,7 +118,7 @@ class Answer(BaseModel):
     offset_start_in_doc: Optional[int]
     offset_end_in_doc: Optional[int]
     document_id: Optional[str] = None
-    meta: Optional[Dict[str, Optional[str]]]
+    meta: Optional[Dict[str, str]]
 
 
 class AnswersToIndividualQuestion(BaseModel):

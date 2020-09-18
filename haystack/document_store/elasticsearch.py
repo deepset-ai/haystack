@@ -6,9 +6,11 @@ from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import numpy as np
+from scipy.special import expit
 
-from haystack.database.base import BaseDocumentStore, Document, Label
-from haystack.indexing.utils import eval_data_from_file
+from haystack.document_store.base import BaseDocumentStore
+from haystack import Document, Label
+from haystack.preprocessor.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
@@ -70,7 +72,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                              Values:
                              - 'wait_for' => continue only after changes are visible (slow, but safe)
-                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after indexing)
+                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
@@ -210,7 +212,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             _doc["_id"] = str(_doc.pop("id"))
 
             # don't index query score and empty fields
-            _ = _doc.pop("query_score", None)
+            _ = _doc.pop("score", None)
+            _ = _doc.pop("probability", None)
             _doc = {k:v for k,v in _doc.items() if v is not None}
 
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
@@ -413,21 +416,31 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             logger.debug(f"Retriever query: {body}")
             result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
 
-            documents = [self._convert_es_hit_to_document(hit, score_adjustment=-1) for hit in result]
+            documents = [self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True) for hit in result]
             return documents
 
-    def _convert_es_hit_to_document(self, hit: dict, score_adjustment: int = 0) -> Document:
+    def _convert_es_hit_to_document(self, hit: dict, adapt_score_for_embedding: bool = False) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
 
+        score = hit["_score"] if hit["_score"] else None
+        if score:
+            if adapt_score_for_embedding:
+                score -= 1
+                probability = (score + 1) / 2  # scaling probability from cosine similarity
+            else:
+                probability = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
+        else:
+            probability = None
         document = Document(
             id=hit["_id"],
             text=hit["_source"].get(self.text_field),
             meta=meta_data,
-            query_score=hit["_score"] + score_adjustment if hit["_score"] else None,
+            score=score,
+            probability=probability,
             question=hit["_source"].get(self.faq_question_field),
             embedding=hit["_source"].get(self.embedding_field)
         )
@@ -470,7 +483,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         if embeddings[0].shape[0] != self.embedding_dim:
             raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                               f" doesn't match embedding dim. in documentstore ({self.embedding_dim})."
+                               f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
         doc_updates = []
         for doc, emb in zip(docs, embeddings):

@@ -4,8 +4,8 @@ import logging
 from time import perf_counter
 from functools import wraps
 
-from haystack.database.base import Document
-from haystack.database.base import BaseDocumentStore
+from haystack import Document
+from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
 

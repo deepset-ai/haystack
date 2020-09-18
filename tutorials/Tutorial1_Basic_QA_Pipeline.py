@@ -14,9 +14,9 @@ import subprocess
 import time
 
 from haystack import Finder
-from haystack.database.elasticsearch import ElasticsearchDocumentStore
-from haystack.indexing.cleaning import clean_wiki_text
-from haystack.indexing.utils import convert_files_to_dicts, fetch_archive_from_http
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.preprocessor.cleaning import clean_wiki_text
+from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.utils import print_answers
@@ -56,11 +56,15 @@ if LAUNCH_ELASTICSEARCH:
 # Connect to Elasticsearch
 document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
 
-# ## Cleaning & indexing documents
+# ## Preprocessing of documents
 #
-# Haystack provides a customizable cleaning and indexing pipeline for ingesting documents in Document Stores.
-#
-# In this tutorial, we download Wikipedia articles on Game of Thrones, apply a basic cleaning function, and index
+# Haystack provides a customizable pipeline for:
+# - converting files into texts
+# - cleaning texts
+# - splitting texts
+# - writing them to a Document Store
+
+# In this tutorial, we download Wikipedia articles on Game of Thrones, apply a basic cleaning function, and add
 # them in Elasticsearch.
 
 
