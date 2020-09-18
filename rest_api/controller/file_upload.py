@@ -63,7 +63,7 @@ def upload_file_to_document_store(
                 remove_header_footer=remove_header_footer,
                 valid_languages=valid_languages,
             )
-            pages = pdf_converter.extract_pages(file_path)
+            document = pdf_converter.convert(file_path)
         elif file.filename.split(".")[-1].lower() == "txt":
             txt_converter = TextConverter(
                 remove_numeric_tables=remove_numeric_tables,
@@ -72,12 +72,12 @@ def upload_file_to_document_store(
                 remove_header_footer=remove_header_footer,
                 valid_languages=valid_languages,
             )
-            pages = txt_converter.extract_pages(file_path)
+            document = txt_converter.convert(file_path)
         else:
             raise HTTPException(status_code=415, detail=f"Only .pdf and .txt file formats are supported.")
 
-        document = {TEXT_FIELD_NAME: "\n".join(pages), "name": file.filename}
-        document_store.write_documents([document])
+        document_to_write = {TEXT_FIELD_NAME: document["text"], "name": file.filename}
+        document_store.write_documents([document_to_write])
         return "File upload was successful."
     finally:
         file.file.close()

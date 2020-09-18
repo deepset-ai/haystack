@@ -81,7 +81,7 @@ class TikaConverter(BaseConverter):
             valid_languages=valid_languages,
         )
 
-    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+    def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         :param file_path: Path of file to be converted.
 
@@ -132,4 +132,6 @@ class TikaConverter(BaseConverter):
             )
             logger.info(f"Removed header '{header}' and footer '{footer}' in {file_path}")
 
-        return cleaned_pages, parsed["metadata"]
+        text = "\f".join(cleaned_pages)
+        document = {"text": text, "meta": {**parsed["metadata"], **(meta or {})}}
+        return document

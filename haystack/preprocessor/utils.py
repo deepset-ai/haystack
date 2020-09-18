@@ -97,8 +97,8 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
             with open(path) as doc:
                 text = doc.read()
         elif path.suffix.lower() == ".pdf" and pdf_converter:
-            pages, _ = pdf_converter.extract_pages(path)
-            text = "\n".join(pages)
+            document = pdf_converter.convert(path)
+            text = document["text"]
         else:
             raise Exception(f"Indexing of {path.suffix} files is not currently supported.")
 
@@ -138,10 +138,11 @@ def tika_convert_files_to_dicts(
 
     documents = []
     for path in file_paths:
-        pages, meta = converter.extract_pages(path)
-        meta = meta or {}
+        document = converter.convert(path)
+        meta = document["meta"] or {}
         meta["name"] = path.name
-        text = ' '.join(pages)
+        text = document["text"]
+        pages = text.split("\f")
 
         if split_paragraphs:
             if pages:
