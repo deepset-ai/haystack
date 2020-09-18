@@ -1,4 +1,4 @@
-.. image:: https://github.com/deepset-ai/haystack/blob/master/docs/img/haystack_logo_blue_banner.png?raw=true
+.. image:: https://github.com/deepset-ai/haystack/blob/master/docs/_src/img/haystack_logo_blue_banner.png?raw=true
     :align: center
     :alt: Haystack Logo
 
@@ -47,7 +47,7 @@ Core Features
 Components
 ==========
 
-.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/sketched_concepts_white.png
+.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/sketched_concepts_white.png
 
 
 1. **DocumentStore**: Database storing the documents for our search. We recommend Elasticsearch, but have also more light-weight options for fast prototyping (SQL or In-Memory).
@@ -96,7 +96,7 @@ Note: On Windows you might need :code:`pip install farm-haystack -f https://down
 
 Usage
 -----
-.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/code_snippet_usage.png
+.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/code_snippet_usage.png
 
 
 Quick Tour
@@ -264,7 +264,7 @@ You will find the Swagger API documentation at http://127.0.0.1:8000/docs
 * Upload your documents or import labels from an existing SQuAD-style dataset
 * Coming soon: more file formats for document upload, metrics for label quality ...
 
-.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/annotation_tool.png
+.. image:: https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/annotation_tool.png
 
 
 7. Indexing PDF / Docx files
