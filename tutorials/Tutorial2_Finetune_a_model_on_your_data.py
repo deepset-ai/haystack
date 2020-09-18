@@ -1,7 +1,7 @@
 # # Fine-tuning a model on your own data
 # 
 # For many use cases it is sufficient to just use one of the existing public models that were trained on SQuAD or
-# other public QA datasets (e.g. ).
+# other public QA datasets (e.g. Natural Questions).
 # However, if you have domain-specific questions, fine-tuning your model on custom examples will very likely boost
 # your performance. While this varies by domain, we saw that ~ 2000 examples can easily increase performance by +5-20%.
 # 
@@ -21,7 +21,7 @@ from haystack.reader.farm import FARMReader
 # 
 # 2. **Feedback**:   For production systems, you can collect training data from direct user feedback via Haystack's
 #                    REST API interface. This includes a customizable user feedback API for providing feedback on the
-#                    answer returned by the API. The API provides feedback export endpoint to obtain the feedback data
+#                    answer returned by the API. The API provides a feedback export endpoint to obtain the feedback data
 #                    for fine-tuning your model further.
 # 
 # 

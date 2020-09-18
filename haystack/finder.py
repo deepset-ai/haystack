@@ -21,6 +21,12 @@ class Finder:
     """
 
     def __init__(self, reader: Optional[BaseReader], retriever: Optional[BaseRetriever]):
+        """
+        Initialize a Finder instance.
+
+        :param reader: Reader instance
+        :param retriever: Retriever instance
+        """
         self.retriever = retriever
         self.reader = reader
         if self.reader is None and self.retriever is None:
@@ -30,12 +36,12 @@ class Finder:
         """
         Get top k answers for a given question.
 
-        :param question: the question string
-        :param top_k_reader: number of answers returned by the reader
-        :param top_k_retriever: number of text units to be retrieved
-        :param filters: limit scope to documents having the given meta data values.
-            The format for the dict is {"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}
-        :param index: index to retrieve documents from
+        :param question: The question string
+        :param top_k_reader: Number of answers returned by the reader
+        :param top_k_retriever: Number of text units to be retrieved
+        :param filters: Limit scope to documents having the given meta data values.
+            The format for the dict is `{"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}``
+        :param index: Index to retrieve documents from
         :return:
         """
 
@@ -71,11 +77,11 @@ class Finder:
         """
         Get top k answers for a given question using only a retriever.
 
-        :param question: the question string
-        :param top_k_retriever: number of text units to be retrieved
-        :param filters: limit scope to documents having the given meta data values.
-            The format for the dict is {"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}
-        :param index: index to retrieve documents from
+        :param question: The question string
+        :param top_k_retriever: Number of text units to be retrieved
+        :param filters: Limit scope to documents having the given meta data values.
+            The format for the dict is ``{"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}``
+        :param index: Index to retrieve documents from
         :return:
         """
 
@@ -118,38 +124,37 @@ class Finder:
         """
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
         of the Retriever.
-
         Returns a dict containing the following metrics:
-            - "retriever_recall": Proportion of questions for which correct document is among retrieved documents
-            - "retriever_map": Mean of average precision for each question. Rewards retrievers that give relevant
+            - ``"retriever_recall"``: Proportion of questions for which correct document is among retrieved documents
+            - ``"retriever_map"``: Mean of average precision for each question. Rewards retrievers that give relevant
               documents a higher rank.
-            - "reader_top1_accuracy": Proportion of highest ranked predicted answers that overlap with corresponding correct answer
-            - "reader_top1_accuracy_has_answer": Proportion of highest ranked predicted answers that overlap
-                                                 with corresponding correct answer for answerable questions
-            - "reader_top_k_accuracy": Proportion of predicted answers that overlap with corresponding correct answer
-            - "reader_topk_accuracy_has_answer": Proportion of predicted answers that overlap with corresponding correct answer
-                                                 for answerable questions
-            - "reader_top1_em": Proportion of exact matches of highest ranked predicted answers with their corresponding
-                                correct answers
-            - "reader_top1_em_has_answer": Proportion of exact matches of highest ranked predicted answers with their corresponding
-                                           correct answers for answerable questions
-            - "reader_topk_em": Proportion of exact matches of predicted answers with their corresponding correct answers
-            - "reader_topk_em_has_answer": Proportion of exact matches of predicted answers with their corresponding
-                                           correct answers for answerable questions
-            - "reader_top1_f1": Average overlap between highest ranked predicted answers and their corresponding correct answers
-            - "reader_top1_f1_has_answer": Average overlap between highest ranked predicted answers and their corresponding
-                                           correct answers for answerable questions
-            - "reader_topk_f1": Average overlap between predicted answers and their corresponding correct answers
-            - "reader_topk_f1_has_answer": Average overlap between predicted answers and their corresponding correct answers
-                                           for answerable questions
-            - "reader_top1_no_answer_accuracy": Proportion of correct predicting unanswerable question at highest ranked prediction
-            - "reader_topk_no_answer_accuracy": Proportion of correct predicting unanswerable question among all predictions
-            - "total_retrieve_time": Time retriever needed to retrieve documents for all questions
-            - "avg_retrieve_time": Average time needed to retrieve documents for one question
-            - "total_reader_time": Time reader needed to extract answer out of retrieved documents for all questions
-                                   where the correct document is among the retrieved ones
-            - "avg_reader_time": Average time needed to extract answer out of retrieved documents for one question
-            - "total_finder_time": Total time for whole pipeline
+            - ``"reader_top1_accuracy"``: Proportion of highest ranked predicted answers that overlap with corresponding correct answer
+            - ``"reader_top1_accuracy_has_answer"``: Proportion of highest ranked predicted answers that overlap
+              with corresponding correct answer for answerable questions
+            - ``"reader_top_k_accuracy"``: Proportion of predicted answers that overlap with corresponding correct answer
+            - ``"reader_topk_accuracy_has_answer"``: Proportion of predicted answers that overlap with corresponding correct answer
+              for answerable questions
+            - ``"reader_top1_em"``: Proportion of exact matches of highest ranked predicted answers with their corresponding
+              correct answers
+            - ``"reader_top1_em_has_answer"``: Proportion of exact matches of highest ranked predicted answers with their corresponding
+              correct answers for answerable questions
+            - ``"reader_topk_em"``: Proportion of exact matches of predicted answers with their corresponding correct answers
+            - ``"reader_topk_em_has_answer"``: Proportion of exact matches of predicted answers with their corresponding
+              correct answers for answerable questions
+            - ``"reader_top1_f1"``: Average overlap between highest ranked predicted answers and their corresponding correct answers
+            - ``"reader_top1_f1_has_answer"``: Average overlap between highest ranked predicted answers and their corresponding
+              correct answers for answerable questions
+            - ``"reader_topk_f1"``: Average overlap between predicted answers and their corresponding correct answers
+            - ``"reader_topk_f1_has_answer"``: Average overlap between predicted answers and their corresponding correct answers
+              for answerable questions
+            - ``"reader_top1_no_answer_accuracy"``: Proportion of correct predicting unanswerable question at highest ranked prediction
+            - ``"reader_topk_no_answer_accuracy"``: Proportion of correct predicting unanswerable question among all predictions
+            - ``"total_retrieve_time"``: Time retriever needed to retrieve documents for all questions
+            - ``"avg_retrieve_time"``: Average time needed to retrieve documents for one question
+            - ``"total_reader_time"``: Time reader needed to extract answer out of retrieved documents for all questions
+              where the correct document is among the retrieved ones
+            - ``"avg_reader_time"``: Average time needed to extract answer out of retrieved documents for one question
+            - ``"total_finder_time"``: Total time for whole pipeline
 
         :param label_index: Elasticsearch index where labeled questions are stored
         :type label_index: str
@@ -249,36 +254,37 @@ class Finder:
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
         of the Retriever. Passes all retrieved question-document pairs to the Reader at once.
         Returns a dict containing the following metrics:
-            - "retriever_recall": Proportion of questions for which correct document is among retrieved documents
-            - "retriever_map": Mean of average precision for each question. Rewards retrievers that give relevant
+            - ``"retriever_recall"``: Proportion of questions for which correct document is among retrieved documents
+            - ``"retriever_map"``: Mean of average precision for each question. Rewards retrievers that give relevant
               documents a higher rank.
-            - "reader_top1_accuracy": Proportion of highest ranked predicted answers that overlap with corresponding correct answer
-            - "reader_top1_accuracy_has_answer": Proportion of highest ranked predicted answers that overlap
-                                                 with corresponding correct answer for answerable questions
-            - "reader_top_k_accuracy": Proportion of predicted answers that overlap with corresponding correct answer
-            - "reader_topk_accuracy_has_answer": Proportion of predicted answers that overlap with corresponding correct answer
-                                                 for answerable questions
-            - "reader_top1_em": Proportion of exact matches of highest ranked predicted answers with their corresponding
-                                correct answers
-            - "reader_top1_em_has_answer": Proportion of exact matches of highest ranked predicted answers with their corresponding
-                                           correct answers for answerable questions
-            - "reader_topk_em": Proportion of exact matches of predicted answers with their corresponding correct answers
-            - "reader_topk_em_has_answer": Proportion of exact matches of predicted answers with their corresponding
-                                           correct answers for answerable questions
-            - "reader_top1_f1": Average overlap between highest ranked predicted answers and their corresponding correct answers
-            - "reader_top1_f1_has_answer": Average overlap between highest ranked predicted answers and their corresponding
-                                           correct answers for answerable questions
-            - "reader_topk_f1": Average overlap between predicted answers and their corresponding correct answers
-            - "reader_topk_f1_has_answer": Average overlap between predicted answers and their corresponding correct answers
-                                           for answerable questions
-            - "reader_top1_no_answer_accuracy": Proportion of correct predicting unanswerable question at highest ranked prediction
-            - "reader_topk_no_answer_accuracy": Proportion of correct predicting unanswerable question among all predictions
-            - "total_retrieve_time": Time retriever needed to retrieve documents for all questions
-            - "avg_retrieve_time": Average time needed to retrieve documents for one question
-            - "total_reader_time": Time reader needed to extract answer out of retrieved documents for all questions
-                                   where the correct document is among the retrieved ones
-            - "avg_reader_time": Average time needed to extract answer out of retrieved documents for one question
-            - "total_finder_time": Total time for whole pipeline
+            - ``"reader_top1_accuracy"``: Proportion of highest ranked predicted answers that overlap with corresponding correct answer
+            - ``"reader_top1_accuracy_has_answer"``: Proportion of highest ranked predicted answers that overlap
+              with corresponding correct answer for answerable questions
+            - ``"reader_top_k_accuracy"``: Proportion of predicted answers that overlap with corresponding correct answer
+            - ``"reader_topk_accuracy_has_answer"``: Proportion of predicted answers that overlap with corresponding correct answer
+              for answerable questions
+            - ``"reader_top1_em"``: Proportion of exact matches of highest ranked predicted answers with their corresponding
+              correct answers
+            - ``"reader_top1_em_has_answer"``: Proportion of exact matches of highest ranked predicted answers with their corresponding
+              correct answers for answerable questions
+            - ``"reader_topk_em"``: Proportion of exact matches of predicted answers with their corresponding correct answers
+            - ``"reader_topk_em_has_answer"``: Proportion of exact matches of predicted answers with their corresponding
+              correct answers for answerable questions
+            - ``"reader_top1_f1"``: Average overlap between highest ranked predicted answers and their corresponding correct answers
+            - ``"reader_top1_f1_has_answer"``: Average overlap between highest ranked predicted answers and their corresponding
+              correct answers for answerable questions
+            - ``"reader_topk_f1"``: Average overlap between predicted answers and their corresponding correct answers
+            - ``"reader_topk_f1_has_answer"``: Average overlap between predicted answers and their corresponding correct answers
+              for answerable questions
+            - ``"reader_top1_no_answer_accuracy"``: Proportion of correct predicting unanswerable question at highest ranked prediction
+            - ``"reader_topk_no_answer_accuracy"``: Proportion of correct predicting unanswerable question among all predictions
+            - ``"total_retrieve_time"``: Time retriever needed to retrieve documents for all questions
+            - ``"avg_retrieve_time"``: Average time needed to retrieve documents for one question
+            - ``"total_reader_time"``: Time reader needed to extract answer out of retrieved documents for all questions
+              where the correct document is among the retrieved ones
+            - ``"avg_reader_time"``: Average time needed to extract answer out of retrieved documents for one question
+            - ``"total_finder_time"``: Total time for whole pipeline
+
         :param label_index: Elasticsearch index where labeled questions are stored
         :type label_index: str
         :param doc_index: Elasticsearch index where documents that are used for evaluation are stored

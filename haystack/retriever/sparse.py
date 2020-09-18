@@ -23,29 +23,31 @@ class ElasticsearchRetriever(BaseRetriever):
                              Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
                              that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
                              names must match with the filters dict supplied in self.retrieve().
+                             ::
 
-                             An example custom_query:
-                            {
-                                "size": 10,
-                                "query": {
-                                    "bool": {
-                                        "should": [{"multi_match": {
-                                            "query": "${question}",                 // mandatory $question placeholder
-                                            "type": "most_fields",
-                                            "fields": ["text", "title"]}}],
-                                        "filter": [                                 // optional custom filters
-                                            {"terms": {"year": "${years}"}},
-                                            {"terms": {"quarter": "${quarters}"}},
-                                            {"range": {"date": {"gte": "${date}"}}}
-                                            ],
+                                 An example custom_query:
+                                 {
+                                    "size": 10,
+                                    "query": {
+                                        "bool": {
+                                            "should": [{"multi_match": {
+                                                "query": "${question}",                 // mandatory $question placeholder
+                                                "type": "most_fields",
+                                                "fields": ["text", "title"]}}],
+                                            "filter": [                                 // optional custom filters
+                                                {"terms": {"year": "${years}"}},
+                                                {"terms": {"quarter": "${quarters}"}},
+                                                {"range": {"date": {"gte": "${date}"}}}
+                                                ],
 
-                                    }
-                                },
-                            }
+                                        }
+                                    },
+                                 }
 
                              For this custom_query, a sample retrieve() could be:
-                             self.retrieve(query="Why did the revenue increase?",
-                                           filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                             ::
+                                 self.retrieve(query="Why did the revenue increase?",
+                                               filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
         """
         self.document_store: ElasticsearchDocumentStore = document_store
         self.custom_query = custom_query
