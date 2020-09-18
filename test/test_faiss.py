@@ -28,7 +28,7 @@ def test_faiss_write_docs(document_store, index_buffer_size):
         original_doc = [d for d in documents if d["text"] == doc.text][0]
         stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(original_doc["embedding"], stored_emb[:-1])
+        assert np.allclose(original_doc["embedding"], stored_emb[:-1], rtol=0.0001)
 
     # test insertion of documents in an existing index fails
     with pytest.raises(Exception):
@@ -80,6 +80,6 @@ def test_faiss_update_docs(document_store, index_buffer_size):
         updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
         stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(updated_embedding, stored_emb[:-1])
+        assert np.allclose(updated_embedding, stored_emb[:-1], rtol=0.0001)
 
 
