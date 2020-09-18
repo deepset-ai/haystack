@@ -1,12 +1,10 @@
+import pytest
 from haystack import Finder
+from haystack.retriever.dense import EmbeddingRetriever
 
 
-def test_faq_retriever_in_memory_store():
-
-    from haystack.document_store.memory import InMemoryDocumentStore
-    from haystack.retriever.dense import EmbeddingRetriever
-
-    document_store = InMemoryDocumentStore(embedding_field="embedding")
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+def test_embedding_retriever(document_store):
 
     documents = [
         {'text': 'By running tox in the command line!', 'meta': {'name': 'How to test this library?', 'question': 'How to test this library?'}},
