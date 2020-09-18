@@ -1,9 +1,8 @@
-from haystack.indexing.utils import fetch_archive_from_http
 import os
-from haystack.database.sql import SQLDocumentStore
-from haystack.database.memory import InMemoryDocumentStore
-from haystack.database.elasticsearch import Elasticsearch, ElasticsearchDocumentStore
-from haystack.database.faiss import FAISSDocumentStore
+from haystack.document_store.sql import SQLDocumentStore
+from haystack.document_store.memory import InMemoryDocumentStore
+from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore
+from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader.farm import FARMReader
@@ -14,7 +13,7 @@ import pandas as pd
 from pathlib import Path
 
 
-retriever_doc_stores = [("dpr", "faiss"), ("elastic", "elasticsearch")]
+retriever_doc_stores = [("elastic", "elasticsearch"), ("dpr", "faiss")]
 data_dir_retriever = Path("../../data/retriever")
 filename_retriever = "nq2squad-dev.json"            # Found at s3://ext-haystack-retriever-eval
 filename_passages = "psgs_w100_minus_gold.tsv"      # Found at s3://ext-haystack-retriever-eval
