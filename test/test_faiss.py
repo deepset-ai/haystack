@@ -84,8 +84,9 @@ def test_faiss_retrieving(document_store):
     document_store.write_documents(DOCUMENTS)
 
     retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False)
-    embedding = retriever.retrieve(query="How to test this?")
-
+    result = retriever.retrieve(query="How to test this?")
+    assert len(result) == 3
+    assert type(result[0]) == Document
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_faiss_finding(document_store):
