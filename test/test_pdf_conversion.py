@@ -7,7 +7,7 @@ from haystack.file_converter.tika import TikaConverter
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
-def test_extract_pages(Converter, xpdf_fixture):
+def test_convert(Converter, xpdf_fixture):
     converter = Converter()
     document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
     pages = document["text"].split("\f")
