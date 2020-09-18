@@ -28,8 +28,8 @@ class DensePassageRetriever(BaseRetriever):
 
     def __init__(self,
                  document_store: BaseDocumentStore,
-                 query_embedding_model: str,
-                 passage_embedding_model: str,
+                 query_embedding_model: str = "facebook/dpr-question_encoder-single-nq-base",
+                 passage_embedding_model: str = "facebook/dpr-ctx_encoder-single-nq-base",
                  max_seq_len: int = 256,
                  use_gpu: bool = True,
                  batch_size: int = 16,
@@ -40,32 +40,20 @@ class DensePassageRetriever(BaseRetriever):
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
         The checkpoint format matches huggingface transformers' model format
 
-        :Example:
-
-            # remote model from FAIR
-            >>> DensePassageRetriever(document_store=your_doc_store,
-                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-                                      use_gpu=True)
-            # or from local path
-            >>> DensePassageRetriever(document_store=your_doc_store,
-                                      query_embedding_model="local-path/query-checkpoint",
-                                      passage_embedding_model="local-path/ctx-checkpoint",
-                                      use_gpu=True)
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
-                                one used by hugging-face transformers' modelhub models
-                                Currently available remote names: "facebook/dpr-question_encoder-single-nq-base"
+                                      one used by hugging-face transformers' modelhub models
+                                      Currently available remote names: ``"facebook/dpr-question_encoder-single-nq-base"``
         :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
-                                one used by hugging-face transformers' modelhub models
-                                Currently available remote names: "facebook/dpr-ctx_encoder-single-nq-base"
+                                        one used by hugging-face transformers' modelhub models
+                                        Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
         :param max_seq_len: Longest length of each sequence
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
-        :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding   
-        :param remove_sep_tok_from_untitled_passages: If embed_title is true, there are different strategies to deal with documents that don't have a title.
-                                                      True => Embed passage as single text, similar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP])
-                                                      False => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
+        :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding
+        :param remove_sep_tok_from_untitled_passages: If embed_title is ``True``, there are different strategies to deal with documents that don't have a title.
+        If this param is ``True`` => Embed passage as single text, similar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP]).
+        If this param is ``False`` => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
         """
 
         self.document_store = document_store
@@ -98,8 +86,8 @@ class DensePassageRetriever(BaseRetriever):
         """
         Create embeddings for a list of queries using the query encoder
 
-        :param texts: queries to embed
-        :return: embeddings, one per input queries
+        :param texts: Queries to embed
+        :return: Embeddings, one per input queries
         """
         queries = [self._normalize_query(q) for q in texts]
         result = self._generate_batch_predictions(texts=queries, model=self.query_encoder,
@@ -112,7 +100,7 @@ class DensePassageRetriever(BaseRetriever):
         Create embeddings for a list of passages using the passage encoder
 
         :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-        :return: embeddings of documents / passages shape (batch_size, embedding_dim)
+        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
         """
         texts = [d.text for d in docs]
         titles = None
@@ -279,12 +267,20 @@ class EmbeddingRetriever(BaseRetriever):
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or name of model in Hugging Face's model hub. Example: 'deepset/sentence_bert'
+        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
         :param use_gpu: Whether to use gpu or not
-        :param model_format: Name of framework that was used for saving the model. Options: 'farm', 'transformers', 'sentence_transformers'
+        :param model_format: Name of framework that was used for saving the model. Options:
+
+                             - ``'farm'``
+                             - ``'transformers'``
+                             - ``'sentence_transformers'``
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
-                                 Options: 'cls_token' (sentence vector), 'reduce_mean' (sentence vector),
-                                 reduce_max (sentence vector), 'per_token' (individual token vectors)
+                                 Options:
+
+                                 - ``'cls_token'`` (sentence vector)
+                                 - ``'reduce_mean'`` (sentence vector)
+                                 - ``'reduce_max'`` (sentence vector)
+                                 - ``'per_token'`` (individual token vectors)
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         """
@@ -325,8 +321,9 @@ class EmbeddingRetriever(BaseRetriever):
     def embed(self, texts: Union[List[str], str]) -> List[np.array]:
         """
         Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
-        :param texts: texts to embed
-        :return: list of embeddings (one per input text). Each embedding is a list of floats.
+
+        :param texts: Texts to embed
+        :return: List of embeddings (one per input text). Each embedding is a list of floats.
         """
 
         # for backward compatibility: cast pure str input
@@ -349,8 +346,8 @@ class EmbeddingRetriever(BaseRetriever):
         """
         Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
 
-        :param texts: queries to embed
-        :return: embeddings, one per input queries
+        :param texts: Queries to embed
+        :return: Embeddings, one per input queries
         """
         return self.embed(texts)
 
@@ -358,8 +355,8 @@ class EmbeddingRetriever(BaseRetriever):
         """
         Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 
-        :param texts: passage to embed
-        :return: embeddings, one per input passage
+        :param docs: List of documents to embed
+        :return: Embeddings, one per input passage
         """
         texts = [d.text for d in docs]
 
