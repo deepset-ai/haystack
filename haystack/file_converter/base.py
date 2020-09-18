@@ -45,7 +45,16 @@ class BaseConverter:
         self.valid_languages = valid_languages
 
     @abstractmethod
-    def extract_pages(self, file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]:
+    def convert(self, file_path: Path, meta: Optional[Dict[str, str]]) -> Dict[str, Any]:
+        """
+        Convert a file to a dictionary containing the text and any associated meta data.
+
+        File converters may extract file meta like name or size. In addition to it, user
+        supplied meta data like author, url, external IDs can be supplied as a dictionary.
+
+        :param file_path: path of the file to convert
+        :param meta: dictionary of meta data key-value pairs to append in the returned document.
+        """
         pass
 
     def validate_language(self, text: str) -> bool:
