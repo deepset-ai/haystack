@@ -28,8 +28,8 @@ class DensePassageRetriever(BaseRetriever):
 
     def __init__(self,
                  document_store: BaseDocumentStore,
-                 query_embedding_model: str,
-                 passage_embedding_model: str,
+                 query_embedding_model: str = "facebook/dpr-question_encoder-single-nq-base",
+                 passage_embedding_model: str = "facebook/dpr-ctx_encoder-single-nq-base",
                  max_seq_len: int = 256,
                  use_gpu: bool = True,
                  batch_size: int = 16,
@@ -39,17 +39,6 @@ class DensePassageRetriever(BaseRetriever):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
         The checkpoint format matches huggingface transformers' model format
-
-        :Example:
-                >>> # remote model from FAIR
-                >>> DensePassageRetriever(document_store=your_doc_store,
-                >>>                       query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                >>>                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
-
-                >>> # or from local path
-                >>> DensePassageRetriever(document_store=your_doc_store,
-                >>>                       query_embedding_model="model_directory/question-encoder",
-                >>>                       passage_embedding_model="model_directory/context-encoder")
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
@@ -63,9 +52,8 @@ class DensePassageRetriever(BaseRetriever):
         :param batch_size: Number of questions or passages to encode at once
         :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding
         :param remove_sep_tok_from_untitled_passages: If embed_title is ``True``, there are different strategies to deal with documents that don't have a title.
-
-                                                      - ``True`` => Embed passage as single text, si`milar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP])
-                                                      - ``False`` => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
+        If this param is ``True`` => Embed passage as single text, similar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP]).
+        If this param is ``False`` => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
         """
 
         self.document_store = document_store
