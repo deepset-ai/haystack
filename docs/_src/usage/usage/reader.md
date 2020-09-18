@@ -214,7 +214,7 @@ reader = FARMReader("deepset/xlm-roberta-large-squad2")
 **Transformers**
 
 <div class="filter">
-<a href="#french_">French</a> <a href="#italien_">Italien</a> <a href="#zeroshot_">Zero-shot</a>
+<a href="#french_">French</a> <a href="#italian_">Italian</a> <a href="#zeroshot_">Zero-shot</a>
 </div>
 <div class="filter-french_ table-wrapper" markdown="block">
 
@@ -223,7 +223,7 @@ reader = TransformersReader("illuin/camembert-base-fquad")
 ```
 
 </div>
-<div class="filter-italien_ table-wrapper" markdown="block">
+<div class="filter-italian_ table-wrapper" markdown="block">
 
 ```python
 reader = TransformersReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
