@@ -210,7 +210,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             # cast embedding type as ES cannot deal with np.array
             if _doc[self.embedding_field] is not None:
-                _doc[self.embedding_field] = _doc[self.embedding_field].tolist()
+                if type(_doc[self.embedding_field]) == np.ndarray:
+                    _doc[self.embedding_field] = _doc[self.embedding_field].tolist()
 
             # rename id for elastic
             _doc["_id"] = str(_doc.pop("id"))
