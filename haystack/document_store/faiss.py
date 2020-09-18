@@ -72,7 +72,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             for vector_id, doc in enumerate(document_objects[i : i + self.index_buffer_size]):
                 meta = doc.meta
                 if add_vectors:
-                    meta["vector_id"] = vector_id
+                    # add offset due to index_buffer_size
+                    meta["vector_id"] = vector_id + i
                 docs_to_write_in_sql.append(doc)
 
             super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
@@ -130,7 +131,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         doc_meta_to_update = []
         for vector_id, doc in enumerate(documents[i : i + self.index_buffer_size]):
             meta = doc.meta or {}
-            meta["vector_id"] = vector_id
+            # add offset due to index_buffer_size
+            meta["vector_id"] = vector_id + i
             doc_meta_to_update.append((doc.id, meta))
 
         for doc_id, meta in doc_meta_to_update:
@@ -159,8 +161,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
-            doc.score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
-            doc.probability = (doc.score + 1) / 2
+            doc.query_score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
+
         return documents
 
     def save(self, file_path: Union[str, Path]):
