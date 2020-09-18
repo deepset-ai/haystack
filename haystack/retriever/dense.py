@@ -338,8 +338,7 @@ class EmbeddingRetriever(BaseRetriever):
             # text is single string, sentence-transformers needs a list of strings
             # get back list of numpy embedding vectors
             emb = self.embedding_model.encode(texts)  # type: ignore
-            # cast to float64 as float32 can cause trouble when serializing for ES
-            emb = [(r.astype('float64')) for r in emb]
+            emb = [r for r in emb]
         return emb
 
     def embed_queries(self, texts: List[str]) -> List[np.array]:

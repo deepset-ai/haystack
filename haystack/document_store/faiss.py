@@ -67,6 +67,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + self.index_buffer_size]]
                 hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
+                hnsw_vectors = hnsw_vectors.astype(np.float32)
                 faiss_index.add(hnsw_vectors)
 
             docs_to_write_in_sql = []
@@ -130,6 +131,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             vector_id = faiss_index.ntotal
             embeddings = [doc.embedding for doc in documents[i: i + self.index_buffer_size]]
             hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
+            hnsw_vectors = hnsw_vectors.astype(np.float32)
             faiss_index.add(hnsw_vectors)
 
             for doc in documents[i: i + self.index_buffer_size]:
@@ -150,7 +152,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
         if not self.faiss_index:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
-        query_emb = query_emb.reshape(1, -1)
+        query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
         aux_dim = np.zeros(len(query_emb), dtype="float32")
         hnsw_vectors = np.hstack((query_emb, aux_dim.reshape(-1, 1)))
