@@ -26,7 +26,7 @@ class DocumentORM(ORMBase):
     text = Column(String, nullable=False)
     index = Column(String, nullable=False)
 
-    meta = relationship("MetaORM", secondary="document_meta", backref="Document")
+    meta = relationship("MetaORM", backref="Document")
 
 
 class MetaORM(ORMBase):
@@ -34,15 +34,9 @@ class MetaORM(ORMBase):
 
     name = Column(String, index=True)
     value = Column(String, index=True)
-
-    documents = relationship(DocumentORM, secondary="document_meta", backref="Meta")
-
-
-class DocumentMetaORM(ORMBase):
-    __tablename__ = "document_meta"
-
     document_id = Column(String, ForeignKey("document.id"), nullable=False)
-    meta_id = Column(Integer, ForeignKey("meta.id"), nullable=False)
+
+    documents = relationship(DocumentORM, backref="Meta")
 
 
 class LabelORM(ORMBase):
@@ -88,9 +82,9 @@ class SQLDocumentStore(BaseDocumentStore):
         query = self.session.query(DocumentORM).filter_by(index=index)
 
         if filters:
+            query = query.join(MetaORM)
             for key, values in filters.items():
-                query = query.filter(DocumentORM.meta.any(MetaORM.name.in_([key])))\
-                             .filter(DocumentORM.meta.any(MetaORM.value.in_(values)))
+                query = query.filter(MetaORM.name == key, MetaORM.value.in_(values))
 
         documents = [self._convert_sql_row_to_document(row) for row in query.all()]
         return documents
@@ -148,12 +142,10 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session.commit()
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
-        document = self.session.query(DocumentORM).get(id)
-        meta_orms = [
-            self._get_or_create(session=self.session, model=MetaORM, name=key, value=value)
-            for key, value in meta.items()
-        ]
-        document.meta = meta_orms
+        self.session.query(MetaORM).filter_by(document_id=id).delete()
+        meta_orms = [MetaORM(name=key, value=value, document_id=id) for key, value in meta.items()]
+        for m in meta_orms:
+            self.session.add(m)
         self.session.commit()
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label"):
