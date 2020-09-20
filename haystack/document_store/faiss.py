@@ -98,7 +98,7 @@ class FaissIndexStore:
         aux_dims = [np.sqrt(phi - norm) for norm in norms]
         hnsw_vectors = [np.hstack((doc_vector, aux_dims[i].reshape(-1, 1))) for i, doc_vector in enumerate(vectors)]
         hnsw_vectors = np.concatenate(hnsw_vectors, axis=0)
-        return hnsw_vectors
+        return hnsw_vectors.astype(np.float32, copy=False)
 
     def add_vectors(self, embeddings: List[np.array]) -> np.ndarray:
         """
@@ -209,6 +209,17 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         super().__init__(url=sql_url, index=index)
 
+    def get_faiss_index(self, index: Optional[str] = None) -> Union[None, Index]:
+        """
+        This return associated FIASS Index
+
+        :param index: Index name
+        :return: FAISS Index
+        """
+        index = index or self.index
+        assert index is not None
+        return None if index not in self.index_dict else self.index_dict[index].faiss_index
+
     def get_or_create_index_store(self, index: Optional[str] = None, index_store: Optional[FaissIndexStore] = None,
                                   **kwargs) -> FaissIndexStore:
         """
@@ -306,7 +317,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
 
         faiss_index = self.index_dict[index]
-        query_emb = query_emb.reshape(1, -1)
+        query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
         score_matrix, vector_id_matrix = faiss_index.search_vectors(embeddings=query_emb, top_k=top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
