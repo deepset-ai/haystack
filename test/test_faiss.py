@@ -241,7 +241,7 @@ def test_faiss_passing_index_from_outside():
     faiss_index = faiss.index_factory(768, 'IDMap,Flat', faiss.METRIC_L2)
     index_store = FaissIndexStore(faiss_index=faiss_index, convert_l2_to_ip=False)
 
-    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", index_store=index_store,
+    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", custom_index_store=index_store,
                                         index="index_from_outside")
     document_store.delete_all_documents()
     document_store.write_documents(DOCUMENTS)
