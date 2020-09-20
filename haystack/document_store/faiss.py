@@ -97,8 +97,7 @@ class FaissIndexStore:
         norms = [(doc_vector ** 2).sum() for doc_vector in vectors]
         aux_dims = [np.sqrt(phi - norm) for norm in norms]
         hnsw_vectors = [np.hstack((doc_vector, aux_dims[i].reshape(-1, 1))) for i, doc_vector in enumerate(vectors)]
-        hnsw_vectors = np.concatenate(hnsw_vectors, axis=0)
-        return hnsw_vectors.astype(np.float32, copy=False)
+        return np.concatenate(hnsw_vectors, axis=0).astype(np.float32)
 
     def add_vectors(self, embeddings: List[np.array]) -> np.ndarray:
         """
