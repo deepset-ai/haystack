@@ -104,6 +104,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def _create_document_index(self, index_name):
         if self.client.indices.exists(index=index_name):
+            if self.embedding_field:
+                mapping = self.client.indices.get(index_name)[index_name]["mappings"]
+                mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
+                self.client.indices.put_mapping(index=index_name, body=mapping)
             return
 
         if self.custom_mapping:
