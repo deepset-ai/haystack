@@ -9,11 +9,14 @@ from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from time import perf_counter
 import pandas as pd
+import json
 
 from pathlib import Path
 
 
-retriever_doc_stores = [("elastic", "elasticsearch"), ("dpr", "faiss")]
+# retriever_doc_stores = [ ("dpr", "faiss"), ("elastic", "elasticsearch")]
+retriever_doc_stores = [ ("dpr", "faiss")]
+
 data_dir_retriever = Path("../../data/retriever")
 filename_retriever = "nq2squad-dev.json"            # Found at s3://ext-haystack-retriever-eval
 filename_passages = "psgs_w100_minus_gold.tsv"      # Found at s3://ext-haystack-retriever-eval
@@ -25,7 +28,6 @@ filename_reader = "dev-v2.0.json"
 
 doc_index = "eval_document"
 label_index = "label"
-
 
 def get_document_store(document_store_type):
     """ TODO This method is taken from test/conftest.py but maybe should be within Haystack.
@@ -70,21 +72,29 @@ def get_reader(reader_name, reader_type):
     return reader_class(reader_name, top_k_per_candidate=4)
 
 
-def benchmark_indexing(doc_store, data_dir, filename, retriever):
+def benchmark_indexing(doc_store, data_dir, filename, retriever, neg_psgs_file=None):
     tic = perf_counter()
-    index_to_doc_store(doc_store, data_dir, filename, retriever)
+    index_to_doc_store(doc_store, data_dir, filename, retriever, neg_psgs_file)
     toc = perf_counter()
     time = toc - tic
     return doc_store, time
 
-def index_to_doc_store(doc_store, data_dir, filename, retriever):
+def index_to_doc_store(doc_store, data_dir, filename, retriever, neg_psgs_file=None):
     doc_store.delete_all_documents(index=doc_index)
     doc_store.delete_all_documents(index=label_index)
     doc_store.add_eval_data(data_dir / filename)
+    if neg_psgs_file:
+        neg_psgs = squad_to_dicts(data_dir / neg_psgs_file)
+        doc_store.write_documents(neg_psgs, doc_index)
     try:
         doc_store.update_embeddings(retriever, index=doc_index)
     except AttributeError:
         pass
+
+def squad_to_dicts(filename):
+    data = json.load(open(filename))["data"]
+    print()
+    return data
 
 def perform_reader_eval():
     reader_results = []
