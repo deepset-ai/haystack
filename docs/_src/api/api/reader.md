@@ -1,17 +1,8 @@
-<!---
-title: "Reader"
-metaTitle: "Reader"
-metaDescription: ""
-slug: "/docs/apireader"
-date: "2020-09-03"
-id: "apireadermd"
---->
+<a name="farm"></a>
+# farm
 
-<a name="reader.farm"></a>
-# reader.farm
-
-<a name="reader.farm.FARMReader"></a>
-## FARMReader Objects
+<a name="farm.FARMReader"></a>
+## FARMReader
 
 ```python
 class FARMReader(BaseReader)
@@ -25,7 +16,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
  - directly get predictions via predict()
  - fine-tune the model on QA data via train()
 
-<a name="reader.farm.FARMReader.__init__"></a>
+<a name="farm.FARMReader.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -34,13 +25,8 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 
 **Arguments**:
 
-- `model_name_or_path`: Directory of a saved model or the name of a public model:
-
-- ``'bert-base-cased'``
-- ``'deepset/bert-base-cased-squad2'``
-- ``'deepset/bert-base-cased-squad2'``
-- ``'distilbert-base-uncased-distilled-squad'``
-- ``...``
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
 See https://huggingface.co/models for full list of available models.
 - `context_window_size`: The size, in characters, of the window around the answer span that is used when
 displaying the context around the answer.
@@ -49,34 +35,27 @@ Memory consumption is much lower in inference mode. Recommendation: Increase the
 to a value so only a single batch is used.
 - `use_gpu`: Whether to use GPU (if available)
 - `no_ans_boost`: How much the no_answer logit is boosted/increased.
-Possible values:
-
-- None (default) = disable returning "no answer" predictions
-- Negative = lower chance of "no answer" being predicted
-- Positive = increase chance of "no answer"
-- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever
-(might be a long text).
-Note:
-
-- This is not the number of "final answers" you will receive (see `top_k` in
-FARMReader.predict() or Finder.get_answers() for that)
-- FARM includes no_answer in the sorted list of predictions
-- `top_k_per_sample`: How many answers to extract from each small text passage that the model can
-process at once (one "candidate doc" is usually split into many smaller "passages").
-You usually want a very small value here, as it slows down inference and you
-don't gain much of quality by having multiple answers from one passage.
-Note:
-
-- This is not the number of "final answers" you will receive
+If set to None (default), disables returning "no answer" predictions.
+If a negative number, there is a lower chance of "no_answer" being predicted.
+If a positive number, there is an increased chance of "no_answer"
+- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+Note that this is not the number of "final answers" you will receive
 (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
-- FARM includes no_answer in the sorted list of predictions
+and that FARM includes no_answer in the sorted list of predictions.
+- `top_k_per_sample`: How many answers to extract from each small text passage that the model can process at once
+(one "candidate doc" is usually split into many smaller "passages").
+You usually want a very small value here, as it slows down inference
+and you don't gain much of quality by having multiple answers from one passage.
+Note that this is not the number of "final answers" you will receive
+(see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+and that FARM includes no_answer in the sorted list of predictions.
 - `num_processes`: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
 multiprocessing. Set to None to let Inferencer determine optimum number. If you
 want to debug the Language Model, you might need to disable multiprocessing!
 - `max_seq_len`: Max sequence length of one input text for the model
 - `doc_stride`: Length of striding window for splitting long texts (used if ``len(text) > max_seq_len``)
 
-<a name="reader.farm.FARMReader.train"></a>
+<a name="farm.FARMReader.train"></a>
 #### train
 
 ```python
@@ -114,7 +93,7 @@ Set to None to use all CPU cores minus one.
 
 None
 
-<a name="reader.farm.FARMReader.save"></a>
+<a name="farm.FARMReader.save"></a>
 #### save
 
 ```python
@@ -127,7 +106,7 @@ Saves the Reader model so that it can be reused at a later point in time.
 
 - `directory`: Directory where the Reader model should be saved
 
-<a name="reader.farm.FARMReader.predict_batch"></a>
+<a name="farm.FARMReader.predict_batch"></a>
 #### predict\_batch
 
 ```python
@@ -148,7 +127,7 @@ Returns list of dictionaries containing answers sorted by (desc.) probability
 
 List of dictionaries containing question and answers
 
-<a name="reader.farm.FARMReader.predict"></a>
+<a name="farm.FARMReader.predict"></a>
 #### predict
 
 ```python
@@ -159,7 +138,7 @@ Use loaded QA model to find answers for a question in the supplied list of Docum
 
 Returns dictionaries containing answers sorted by (desc.) probability.
 Example:
-::
+
 {'question': 'Who is the father of Arya Stark?',
 'answers': [
 {'answer': 'Eddard,',
@@ -184,7 +163,7 @@ Example:
 
 Dict containing question and answers
 
-<a name="reader.farm.FARMReader.eval_on_file"></a>
+<a name="farm.FARMReader.eval_on_file"></a>
 #### eval\_on\_file
 
 ```python
@@ -206,7 +185,7 @@ Returns a dict containing the following metrics:
 - `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
 :type device: str
 
-<a name="reader.farm.FARMReader.eval"></a>
+<a name="farm.FARMReader.eval"></a>
 #### eval
 
 ```python
@@ -226,7 +205,7 @@ Returns a dict containing the following metrics:
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 
-<a name="reader.farm.FARMReader.predict_on_texts"></a>
+<a name="farm.FARMReader.predict_on_texts"></a>
 #### predict\_on\_texts
 
 ```python
@@ -236,9 +215,10 @@ Returns a dict containing the following metrics:
 Use loaded QA model to find answers for a question in the supplied list of Document.
 Returns dictionaries containing answers sorted by (desc.) probability.
 Example:
-::
-{'question': 'Who is the father of Arya Stark?',
-'answers': [
+
+{
+'question': 'Who is the father of Arya Stark?',
+'answers':[
 {'answer': 'Eddard,',
 'context': " She travels with her father, Eddard, to King's Landing when he is ",
 'offset_answer_start': 147,
@@ -246,8 +226,7 @@ Example:
 'probability': 0.9787139466668613,
 'score': None,
 'document_id': '1337'
-},
-...
+},...
 ]
 }
 
@@ -261,7 +240,7 @@ Example:
 
 Dict containing question and answers
 
-<a name="reader.farm.FARMReader.convert_to_onnx"></a>
+<a name="farm.FARMReader.convert_to_onnx"></a>
 #### convert\_to\_onnx
 
 ```python
@@ -272,13 +251,12 @@ Dict containing question and answers
 Convert a PyTorch BERT model to ONNX format and write to ./onnx-export dir. The converted ONNX model
 can be loaded with in the `FARMReader` using the export path as `model_name_or_path` param.
 
-**Usage:**
+Usage:
 
-```python
-from haystack.reader.farm import FARMReader
+`from haystack.reader.farm import FARMReader
 FARMReader.convert_to_onnx(model_name_or_path="deepset/bert-base-cased-squad2", optimize_for="gpu_tensor_core")
-FARMReader(model_name_or_path=Path("onnx-export"))
-``` 
+FARMReader(model_name_or_path=Path("onnx-export"))`
+
 
 **Arguments**:
 
@@ -287,11 +265,11 @@ FARMReader(model_name_or_path=Path("onnx-export"))
 are "gpu_tensor_core" (GPUs with tensor core like V100 or T4),
 "gpu_without_tensor_core" (most other GPUs), and "cpu".
 
-<a name="reader.transformers"></a>
-# reader.transformers
+<a name="transformers"></a>
+# transformers
 
-<a name="reader.transformers.TransformersReader"></a>
-## TransformersReader Objects
+<a name="transformers.TransformersReader"></a>
+## TransformersReader
 
 ```python
 class TransformersReader(BaseReader)
@@ -305,7 +283,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interfa
 
     - directly get predictions via predict()
 
-<a name="reader.transformers.TransformersReader.__init__"></a>
+<a name="transformers.TransformersReader.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -327,23 +305,18 @@ See https://huggingface.co/models for full list of available QA models
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
 The context usually helps users to understand if the answer really makes sense.
-- `use_gpu`: - < 0  -> use cpu
-- >= 0 -> ordinal of the gpu to use
-- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever
-(might be a long text). Note:
-
-- This is not the number of "final answers" you will receive
+- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+Note that this is not the number of "final answers" you will receive
 (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
-- Can include no_answer in the sorted list of predictions
-- `return_no_answers`: - True -> Hugging Face model could return an "impossible"/"empty" answer (i.e. when there is an unanswerable question)
-- False -> otherwise
-
-no_answer_boost is unfortunately not available with TransformersReader. If you would like to
-set no_answer_boost, use a FARMReader.
+and that no_answer can be included in the sorted list of predictions.
+- `return_no_answers`: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
+If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
+If you would like to set no_answer_boost, use a `FARMReader`.
 - `max_seq_len`: max sequence length of one input text for the model
 - `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 
-<a name="reader.transformers.TransformersReader.predict"></a>
+<a name="transformers.TransformersReader.predict"></a>
 #### predict
 
 ```python
@@ -354,7 +327,7 @@ Use loaded QA model to find answers for a question in the supplied list of Docum
 
 Returns dictionaries containing answers sorted by (desc.) probability.
 Example:
-::
+
 {'question': 'Who is the father of Arya Stark?',
 'answers': [
 {'answer': 'Eddard,',
@@ -378,4 +351,7 @@ Example:
 **Returns**:
 
 Dict containing question and answers
+
+<a name="base"></a>
+# base
 
