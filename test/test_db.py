@@ -97,6 +97,16 @@ def test_write_document_index(document_store):
     assert len(document_store.get_all_documents(index="haystack_test_1")) == 1
     assert len(document_store.get_all_documents()) == 0
 
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_write_document_with_embeddings(document_store):
+    documents = [
+        {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
+        {"text": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
+        {"text": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
+        {"text": "text4", "id": "4", "embedding": None},
+    ]
+    document_store.write_documents(documents, index="haystack_test_1")
+    assert len(document_store.get_all_documents(index="haystack_test_1")) == 4
 
 def test_labels(document_store):
     label = Label(

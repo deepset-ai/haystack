@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% set title = _('Overview') %}
+{% block body %}
+  <h1>Haystack Documentation</h1>
+  <p>
+    {{ _('Welcome! This is') }}
+    {% block description %}{{ _('the documentation for') }} Haystack
+    {% endblock %}.
+</p>
+{% block tables %}
+<h2>Haystack</h2>
+<table class="contentstable" align="center">
+  <tr>
+    <td width="50%">
+      <p class="biglink">
+        <a class="biglink" href="">
+          What can Haystack do?
+        </a>
+        <br />
+      </p>
+    <td width="50%">
+      <p class="biglink">
+        <a class="biglink" href="">
+          Conceptual overview
+        </a>
+    </td>
+  </tr>
+</table>
+
+<h2>Getting started</h2>
+<table class="contentstable" align="center">
+  <tr>
+    <td width="50%">
+      <p class="biglink">
+        <a class="biglink" href="">
+          Installation guides
+        </a>
+      </p>
+    </td>
+    <td width="50%">
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto("ddocs/views/intro") }}">
+         Tutorial
+        </a>
+      </p>
+    </td>
+  </tr>
+</table>
+
+<h2>Links</h2>
+<table class="contentstable" align="center"><tr>
+  <td>
+    <p class="biglink"><a class="biglink" href="">Download Haystack</a></p>
+  </td></tr>
+</table>
+{% endblock %}
+{% endblock %}

@@ -8,12 +8,13 @@ from haystack.reader.base import BaseReader
 
 class TransformersReader(BaseReader):
     """
-    Transformer based model for extractive Question Answering using the huggingface's transformers framework
+    Transformer based model for extractive Question Answering using the HuggingFace's transformers framework
     (https://github.com/huggingface/transformers).
-    While the underlying model can vary (BERT, Roberta, DistilBERT ...) the interface remains the same.
+    While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
 
-    With the reader, you can:
-     - directly get predictions via predict()
+    |  With the reader, you can:
+
+        - directly get predictions via predict()
     """
 
     def __init__(
@@ -30,26 +31,25 @@ class TransformersReader(BaseReader):
         """
         Load a QA model from Transformers.
         Available models include:
-        - distilbert-base-uncased-distilled-squad
-        - bert-large-cased-whole-word-masking-finetuned-squad
-        - bert-large-uncased-whole-word-masking-finetuned-squad
+
+        - ``'distilbert-base-uncased-distilled-squad`'``
+        - ``'bert-large-cased-whole-word-masking-finetuned-squad``'
+        - ``'bert-large-uncased-whole-word-masking-finetuned-squad``'
 
         See https://huggingface.co/models for full list of available QA models
 
-        :param model: name of the model
-        :param tokenizer: name of the tokenizer (usually the same as model)
-        :param context_window_size: num of chars (before and after the answer) to return as "context" for each answer.
-                            The context usually helps users to understand if the answer really makes sense.
-        :param use_gpu: < 0  -> use cpu
-                        >= 0 -> ordinal of the gpu to use
+        :param model: Name of the model
+        :param tokenizer: Name of the tokenizer (usually the same as model)
+        :param context_window_size: Num of chars (before and after the answer) to return as "context" for each answer.
+                                    The context usually helps users to understand if the answer really makes sense.
+        :param use_gpu: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
         :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
-                                           Note: - This is not the number of "final answers" you will receive
-                                           (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
-                                         - Can includes no_answer in the sorted list of predictions
-        :param return_no_answers: True -> Hugging Face model could return an "impossible"/"empty" answer (i.e. when there is an unanswerable question)
-                                  False -> otherwise
-                                  no_answer_boost is unfortunately not available with TransformersReader. If you would like to
-                                  set no_answer_boost, use a FARMReader
+        Note that this is not the number of "final answers" you will receive
+        (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
+        and that no_answer can be included in the sorted list of predictions.
+        :param return_no_answers: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
+        If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
+        If you would like to set no_answer_boost, use a `FARMReader`.
         :param max_seq_len: max sequence length of one input text for the model
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 
@@ -67,26 +67,27 @@ class TransformersReader(BaseReader):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
 
-        Returns dictionaries containing answers sorted by (desc.) probability
+        Returns dictionaries containing answers sorted by (desc.) probability.
         Example:
-        {'question': 'Who is the father of Arya Stark?',
-        'answers': [
-                     {'answer': 'Eddard,',
-                     'context': " She travels with her father, Eddard, to King's Landing when he is ",
-                     'offset_answer_start': 147,
-                     'offset_answer_end': 154,
-                     'probability': 0.9787139466668613,
-                     'score': None,
-                     'document_id': None
-                     },
-                    ...
-                   ]
-        }
+        
+            {'question': 'Who is the father of Arya Stark?',
+            'answers': [
+                         {'answer': 'Eddard,',
+                         'context': " She travels with her father, Eddard, to King's Landing when he is ",
+                         'offset_answer_start': 147,
+                         'offset_answer_end': 154,
+                         'probability': 0.9787139466668613,
+                         'score': None,
+                         'document_id': '1337'
+                         },
+                        ...
+                       ]
+            }
 
-        :param question: question string
-        :param documents: list of Document in which to search for the answer
-        :param top_k: the maximum number of answers to return
-        :return: dict containing question and answers
+        :param question: Question string
+        :param documents: List of Document in which to search for the answer
+        :param top_k: The maximum number of answers to return
+        :return: Dict containing question and answers
 
         """
         # get top-answers for each candidate passage

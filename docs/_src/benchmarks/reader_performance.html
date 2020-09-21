@@ -1,0 +1,36 @@
+<html>
+  <head>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['bar']});
+      google.charts.setOnLoadCallback(drawChart);
+
+      function drawChart() {
+        var data = google.visualization.arrayToDataTable(
+          [
+            ["Model", "Top 10 Accuracy", "Time"],
+            ["RoBERTa", 72.22222222222222, 56.033346766999784],
+            ["MiniLM", 38.88888888888889, 49.28621050500078],
+            ["BERT base", 31.48148148148148, 42.67899718899935],
+            ["BERT large", 53.70370370370371, 74.21550956300052],
+            ["XLMR large", 72.22222222222222, 76.56486266000047]
+          ]);
+
+        var options = {
+          chart: {
+            title: 'Reader Performance',
+            subtitle: 'Time and Accuracy Benchmarks',
+          },
+          bars: 'horizontal' // Required for Material Bar Charts.
+        };
+
+        var chart = new google.charts.Bar(document.getElementById('barchart_material'));
+
+        chart.draw(data, google.charts.Bar.convertOptions(options));
+      }
+    </script>
+  </head>
+  <body>
+    <div id="barchart_material" style="width: 900px; height: 500px;"></div>
+  </body>
+</html>

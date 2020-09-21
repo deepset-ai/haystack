@@ -63,19 +63,23 @@ class FAISSDocumentStore(SQLDocumentStore):
             phi = self._get_phi(document_objects)
 
         for i in range(0, len(document_objects), self.index_buffer_size):
+            vector_id = faiss_index.ntotal
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + self.index_buffer_size]]
                 hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
+                hnsw_vectors = hnsw_vectors.astype(np.float32)
                 faiss_index.add(hnsw_vectors)
 
             docs_to_write_in_sql = []
-            for vector_id, doc in enumerate(document_objects[i : i + self.index_buffer_size]):
+            for doc in document_objects[i : i + self.index_buffer_size]:
                 meta = doc.meta
                 if add_vectors:
                     meta["vector_id"] = vector_id
+                    vector_id += 1
                 docs_to_write_in_sql.append(doc)
 
             super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
+
         self.faiss_index = faiss_index
 
     def _get_hnsw_vectors(self, embeddings: List[np.array], phi: int) -> np.array:
@@ -127,16 +131,19 @@ class FAISSDocumentStore(SQLDocumentStore):
             doc.embedding = embeddings[i]
 
         phi = self._get_phi(documents)
+        doc_meta_to_update = []
 
         for i in range(0, len(documents), self.index_buffer_size):
-            embeddings = [doc.embedding for doc in documents[i : i + self.index_buffer_size]]
+            vector_id = faiss_index.ntotal
+            embeddings = [doc.embedding for doc in documents[i: i + self.index_buffer_size]]
             hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
+            hnsw_vectors = hnsw_vectors.astype(np.float32)
             faiss_index.add(hnsw_vectors)
 
-            doc_meta_to_update = []
-            for vector_id, doc in enumerate(documents[i : i + self.index_buffer_size]):
+            for doc in documents[i: i + self.index_buffer_size]:
                 meta = doc.meta or {}
                 meta["vector_id"] = vector_id
+                vector_id += 1
                 doc_meta_to_update.append((doc.id, meta))
 
             for doc_id, meta in doc_meta_to_update:
@@ -151,7 +158,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
         if not self.faiss_index:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
-        query_emb = query_emb.reshape(1, -1)
+        query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
         aux_dim = np.zeros(len(query_emb), dtype="float32")
         hnsw_vectors = np.hstack((query_emb, aux_dim.reshape(-1, 1)))
@@ -167,6 +174,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         for doc in documents:
             doc.score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
             doc.probability = (doc.score + 1) / 2
+
         return documents
 
     def save(self, file_path: Union[str, Path]):
