@@ -50,10 +50,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
-        if self.faiss_index is not None:
-            raise Exception("Addition of more data in an existing index is not supported.")
 
-        faiss_index = self._create_new_index(vector_size=self.vector_size)
+        self.faiss_index = self.faiss_index or self._create_new_index(vector_size=self.vector_size)
         index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
@@ -63,12 +61,12 @@ class FAISSDocumentStore(SQLDocumentStore):
             phi = self._get_phi(document_objects)
 
         for i in range(0, len(document_objects), self.index_buffer_size):
-            vector_id = faiss_index.ntotal
+            vector_id = self.faiss_index.ntotal
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + self.index_buffer_size]]
                 hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
                 hnsw_vectors = hnsw_vectors.astype(np.float32)
-                faiss_index.add(hnsw_vectors)
+                self.faiss_index.add(hnsw_vectors)
 
             docs_to_write_in_sql = []
             for doc in document_objects[i : i + self.index_buffer_size]:
@@ -79,8 +77,6 @@ class FAISSDocumentStore(SQLDocumentStore):
                 docs_to_write_in_sql.append(doc)
 
             super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
-
-        self.faiss_index = faiss_index
 
     def _get_hnsw_vectors(self, embeddings: List[np.array], phi: int) -> np.array:
         """
@@ -113,8 +109,10 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Index name to update
         :return: None
         """
-        # Some FAISS indexes(like the default HNSWx) do not support removing vectors, so a new index is created.
-        faiss_index = self._create_new_index(vector_size=self.vector_size)
+        self.faiss_index = self.faiss_index or self._create_new_index(vector_size=self.vector_size)
+        # To clear out the FAISS index contents and frees all memory immediately that is in use by the index
+        self.faiss_index.reset()
+
         index = index or self.index
 
         documents = self.get_all_documents(index=index)
@@ -128,11 +126,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         doc_meta_to_update = []
 
         for i in range(0, len(documents), self.index_buffer_size):
-            vector_id = faiss_index.ntotal
+            vector_id = self.faiss_index.ntotal
             embeddings = [doc.embedding for doc in documents[i: i + self.index_buffer_size]]
             hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
             hnsw_vectors = hnsw_vectors.astype(np.float32)
-            faiss_index.add(hnsw_vectors)
+            self.faiss_index.add(hnsw_vectors)
 
             for doc in documents[i: i + self.index_buffer_size]:
                 meta = doc.meta or {}
@@ -142,8 +140,6 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         for doc_id, meta in doc_meta_to_update:
             super(FAISSDocumentStore, self).update_document_meta(id=doc_id, meta=meta)
-
-        self.faiss_index = faiss_index
 
     def query_by_embedding(
         self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
