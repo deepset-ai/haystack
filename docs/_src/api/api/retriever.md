@@ -1,23 +1,14 @@
-<!---
-title: "Retriever"
-metaTitle: "Retriever"
-metaDescription: ""
-slug: "/docs/apiretriever"
-date: "2020-09-03"
-id: "apiretrievermd"
---->
+<a name="sparse"></a>
+# sparse
 
-<a name="retriever.sparse"></a>
-# retriever.sparse
-
-<a name="retriever.sparse.ElasticsearchRetriever"></a>
-## ElasticsearchRetriever Objects
+<a name="sparse.ElasticsearchRetriever"></a>
+## ElasticsearchRetriever
 
 ```python
 class ElasticsearchRetriever(BaseRetriever)
 ```
 
-<a name="retriever.sparse.ElasticsearchRetriever.__init__"></a>
+<a name="sparse.ElasticsearchRetriever.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -58,8 +49,8 @@ For this custom_query, a sample retrieve() could be:
 self.retrieve(query="Why did the revenue increase?",
 filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
 
-<a name="retriever.sparse.ElasticsearchFilterOnlyRetriever"></a>
-## ElasticsearchFilterOnlyRetriever Objects
+<a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
+## ElasticsearchFilterOnlyRetriever
 
 ```python
 class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
@@ -68,8 +59,8 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
 Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
 Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
 
-<a name="retriever.sparse.TfidfRetriever"></a>
-## TfidfRetriever Objects
+<a name="sparse.TfidfRetriever"></a>
+## TfidfRetriever
 
 ```python
 class TfidfRetriever(BaseRetriever)
@@ -82,11 +73,11 @@ computations when text is passed on to a Reader for QA.
 
 It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 
-<a name="retriever.dense"></a>
-# retriever.dense
+<a name="dense"></a>
+# dense
 
-<a name="retriever.dense.DensePassageRetriever"></a>
-## DensePassageRetriever Objects
+<a name="dense.DensePassageRetriever"></a>
+## DensePassageRetriever
 
 ```python
 class DensePassageRetriever(BaseRetriever)
@@ -97,29 +88,15 @@ See the original paper for more details:
 Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Question Answering."
 (https://arxiv.org/abs/2004.04906).
 
-<a name="retriever.dense.DensePassageRetriever.__init__"></a>
+<a name="dense.DensePassageRetriever.__init__"></a>
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: str, passage_embedding_model: str, max_seq_len: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, remove_sep_tok_from_untitled_passages: bool = True)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: str = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: str = "facebook/dpr-ctx_encoder-single-nq-base", max_seq_len: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, remove_sep_tok_from_untitled_passages: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
 The checkpoint format matches huggingface transformers' model format
-
-**Example**
-
-```python
-# remote model from FAIR
-DensePassageRetriever(document_store=your_doc_store,
-                       query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
-
-# or from local path
-DensePassageRetriever(document_store=your_doc_store,
-                      query_embedding_model="model_directory/question-encoder",
-                      passage_embedding_model="model_directory/context-encoder")
-``` 
 
 **Arguments**:
 
@@ -135,11 +112,10 @@ Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
 - `batch_size`: Number of questions or passages to encode at once
 - `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding
 - `remove_sep_tok_from_untitled_passages`: If embed_title is ``True``, there are different strategies to deal with documents that don't have a title.
+If this param is ``True`` => Embed passage as single text, similar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP]).
+If this param is ``False`` => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
 
-- ``True`` => Embed passage as single text, si`milar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP])
-- ``False`` => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
-
-<a name="retriever.dense.DensePassageRetriever.embed_queries"></a>
+<a name="dense.DensePassageRetriever.embed_queries"></a>
 #### embed\_queries
 
 ```python
@@ -156,7 +132,7 @@ Create embeddings for a list of queries using the query encoder
 
 Embeddings, one per input queries
 
-<a name="retriever.dense.DensePassageRetriever.embed_passages"></a>
+<a name="dense.DensePassageRetriever.embed_passages"></a>
 #### embed\_passages
 
 ```python
@@ -173,14 +149,14 @@ Create embeddings for a list of passages using the passage encoder
 
 Embeddings of documents / passages shape (batch_size, embedding_dim)
 
-<a name="retriever.dense.EmbeddingRetriever"></a>
-## EmbeddingRetriever Objects
+<a name="dense.EmbeddingRetriever"></a>
+## EmbeddingRetriever
 
 ```python
 class EmbeddingRetriever(BaseRetriever)
 ```
 
-<a name="retriever.dense.EmbeddingRetriever.__init__"></a>
+<a name="dense.EmbeddingRetriever.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -207,7 +183,7 @@ Options:
 - `emb_extraction_layer`: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
 Default: -1 (very last layer).
 
-<a name="retriever.dense.EmbeddingRetriever.embed"></a>
+<a name="dense.EmbeddingRetriever.embed"></a>
 #### embed
 
 ```python
@@ -224,7 +200,7 @@ Create embeddings for each text in a list of texts using the retrievers model (`
 
 List of embeddings (one per input text). Each embedding is a list of floats.
 
-<a name="retriever.dense.EmbeddingRetriever.embed_queries"></a>
+<a name="dense.EmbeddingRetriever.embed_queries"></a>
 #### embed\_queries
 
 ```python
@@ -241,7 +217,7 @@ Create embeddings for a list of queries. For this Retriever type: The same as ca
 
 Embeddings, one per input queries
 
-<a name="retriever.dense.EmbeddingRetriever.embed_passages"></a>
+<a name="dense.EmbeddingRetriever.embed_passages"></a>
 #### embed\_passages
 
 ```python
@@ -258,17 +234,17 @@ Create embeddings for a list of passages. For this Retriever type: The same as c
 
 Embeddings, one per input passage
 
-<a name="retriever.base"></a>
-# retriever.base
+<a name="base"></a>
+# base
 
-<a name="retriever.base.BaseRetriever"></a>
-## BaseRetriever Objects
+<a name="base.BaseRetriever"></a>
+## BaseRetriever
 
 ```python
 class BaseRetriever(ABC)
 ```
 
-<a name="retriever.base.BaseRetriever.retrieve"></a>
+<a name="base.BaseRetriever.retrieve"></a>
 #### retrieve
 
 ```python
@@ -286,7 +262,7 @@ that are most relevant to the query.
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
-<a name="retriever.base.BaseRetriever.eval"></a>
+<a name="base.BaseRetriever.eval"></a>
 #### eval
 
 ```python
