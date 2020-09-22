@@ -1,23 +1,14 @@
-<!---
-title: "File Converters"
-metaTitle: "File Converters"
-metaDescription: ""
-slug: "/docs/file_converters"
-date: "2020-09-03"
-id: "file_convertersmd"
---->
+<a name="txt"></a>
+# txt
 
-<a name="indexing.file_converters.txt"></a>
-# indexing.file\_converters.txt
-
-<a name="indexing.file_converters.txt.TextConverter"></a>
-## TextConverter Objects
+<a name="txt.TextConverter"></a>
+## TextConverter
 
 ```python
 class TextConverter(BaseConverter)
 ```
 
-<a name="indexing.file_converters.txt.TextConverter.__init__"></a>
+<a name="txt.TextConverter.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -43,21 +34,21 @@ This option can be used to add test for encoding errors. If the extracted text i
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
 
-<a name="indexing.file_converters.docx"></a>
-# indexing.file\_converters.docx
+<a name="docx"></a>
+# docx
 
-<a name="indexing.file_converters.docx.DocxToTextConverter"></a>
-## DocxToTextConverter Objects
+<a name="docx.DocxToTextConverter"></a>
+## DocxToTextConverter
 
 ```python
 class DocxToTextConverter(BaseConverter)
 ```
 
-<a name="indexing.file_converters.docx.DocxToTextConverter.extract_pages"></a>
-#### extract\_pages
+<a name="docx.DocxToTextConverter.convert"></a>
+#### convert
 
 ```python
- | extract_pages(file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]
 ```
 
 Extract text from a .docx file.
@@ -68,17 +59,17 @@ For compliance with other converters we nevertheless opted for keeping the metho
 
 - `file_path`: Path to the .docx file you want to convert
 
-<a name="indexing.file_converters.tika"></a>
-# indexing.file\_converters.tika
+<a name="tika"></a>
+# tika
 
-<a name="indexing.file_converters.tika.TikaConverter"></a>
-## TikaConverter Objects
+<a name="tika.TikaConverter"></a>
+## TikaConverter
 
 ```python
 class TikaConverter(BaseConverter)
 ```
 
-<a name="indexing.file_converters.tika.TikaConverter.__init__"></a>
+<a name="tika.TikaConverter.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -105,11 +96,11 @@ This option can be used to add test for encoding errors. If the extracted text i
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
 
-<a name="indexing.file_converters.tika.TikaConverter.extract_pages"></a>
-#### extract\_pages
+<a name="tika.TikaConverter.convert"></a>
+#### convert
 
 ```python
- | extract_pages(file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]
 ```
 
 **Arguments**:
@@ -120,19 +111,19 @@ in garbled text.
 
 a list of pages and the extracted meta data of the file.
 
-<a name="indexing.file_converters.base"></a>
-# indexing.file\_converters.base
+<a name="base"></a>
+# base
 
-<a name="indexing.file_converters.base.BaseConverter"></a>
-## BaseConverter Objects
+<a name="base.BaseConverter"></a>
+## BaseConverter
 
 ```python
 class BaseConverter()
 ```
 
-Base class for implementing file converts to transform input documents to text format for indexing in database.
+Base class for implementing file converts to transform input documents to text format for ingestion in DocumentStore.
 
-<a name="indexing.file_converters.base.BaseConverter.__init__"></a>
+<a name="base.BaseConverter.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -158,7 +149,25 @@ This option can be used to add test for encoding errors. If the extracted text i
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
 
-<a name="indexing.file_converters.base.BaseConverter.validate_language"></a>
+<a name="base.BaseConverter.convert"></a>
+#### convert
+
+```python
+ | @abstractmethod
+ | convert(file_path: Path, meta: Optional[Dict[str, str]]) -> Dict[str, Any]
+```
+
+Convert a file to a dictionary containing the text and any associated meta data.
+
+File converters may extract file meta like name or size. In addition to it, user
+supplied meta data like author, url, external IDs can be supplied as a dictionary.
+
+**Arguments**:
+
+- `file_path`: path of the file to convert
+- `meta`: dictionary of meta data key-value pairs to append in the returned document.
+
+<a name="base.BaseConverter.validate_language"></a>
 #### validate\_language
 
 ```python
@@ -167,7 +176,7 @@ in garbled text.
 
 Validate if the language of the text is one of valid languages.
 
-<a name="indexing.file_converters.base.BaseConverter.find_and_remove_header_footer"></a>
+<a name="base.BaseConverter.find_and_remove_header_footer"></a>
 #### find\_and\_remove\_header\_footer
 
 ```python
@@ -190,17 +199,17 @@ but won't detect "Page 3 of 4" or similar.
 
 (cleaned pages, found_header_str, found_footer_str)
 
-<a name="indexing.file_converters.pdf"></a>
-# indexing.file\_converters.pdf
+<a name="pdf"></a>
+# pdf
 
-<a name="indexing.file_converters.pdf.PDFToTextConverter"></a>
-## PDFToTextConverter Objects
+<a name="pdf.PDFToTextConverter"></a>
+## PDFToTextConverter
 
 ```python
 class PDFToTextConverter(BaseConverter)
 ```
 
-<a name="indexing.file_converters.pdf.PDFToTextConverter.__init__"></a>
+<a name="pdf.PDFToTextConverter.__init__"></a>
 #### \_\_init\_\_
 
 ```python
