@@ -67,7 +67,6 @@ print(df.head())
 # Get embeddings for our questions from the FAQs
 questions = list(df["question"].values)
 df["question_emb"] = retriever.embed_queries(texts=questions)
-df["question_emb"] = df["question_emb"]
 df = df.rename(columns={"answer": "text"})
 
 # Convert Dataframe to list of dicts and index them in our DocumentStore
