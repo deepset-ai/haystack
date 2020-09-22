@@ -103,9 +103,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.refresh_type = refresh_type
 
     def _create_document_index(self, index_name):
+        """
+        Create a new index for storing documents. In case if an index with the name already exists, it ensures that
+        the embedding_field is present.
+        """
+        # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name):
             if self.embedding_field:
                 mapping = self.client.indices.get(index_name)[index_name]["mappings"]
+                if self.embedding_field in mapping["properties"] and mapping["properties"][self.embedding_field]["type"] != "dense_vector":
+                    raise Exception(f"The '{index_name}' index in Elasticsearch already has a field called '{self.embedding_field}'"
+                                    f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
+                                    f"document_store to use a different name for the embedding_field parameter.")
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
                 self.client.indices.put_mapping(index=index_name, body=mapping)
             return
