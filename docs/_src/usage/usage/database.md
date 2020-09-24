@@ -20,35 +20,55 @@ There are different DocumentStores in Haystack to fit different use cases and te
 
 Initialising a new Document Store is straight forward.
 
-<div class="filter">
-<a href="#elasticsearch">Elasticsearch</a> <a href="#faiss">FAISS</a> <a href="#inmemory">In Memory</a> <a href="#sql">SQL</a>
-</div>
-<div class="filter-elasticsearch table-wrapper" markdown="block">
+<div class="tabs tabsdsinstall">
+
+<div class="tab">
+<input type="radio" id="tab-1-1" name="tab-group-1" checked>
+<label class="labelouter" for="tab-1-1">Elasticsearch</label>
+<div class="tabcontent">
 
 ```python
 document_store = ElasticsearchDocumentStore()
 ```
 
 </div>
-<div class="filter-faiss table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-1-2" name="tab-group-1">
+<label class="labelouter" for="tab-1-2">FAISS</label>
+<div class="tabcontent">
 
 ```python
 document_store = FAISSDocumentStore()
 ```
 
 </div>
-<div class="filter-sql table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-1-3" name="tab-group-1">
+<label class="labelouter" for="tab-1-3">In Memory</label>
+<div class="tabcontent">
+
+```python
+document_store = InMemoryDocumentStore()
+```
+
+</div>
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-1-4" name="tab-group-1">
+<label class="labelouter" for="tab-1-4">SQL</label>
+<div class="tabcontent">
 
 ```python
 document_store = SQLDocumentStore()
 ```
 
 </div>
-<div class="filter-inmemory table-wrapper" markdown="block">
-
-```python
-document_store = InMemoryDocumentStore()
-```
+</div>
 
 </div>
 
@@ -123,11 +143,12 @@ Having GPU acceleration will significantly speed this up.
 
 The Document stores have different characteristics. You should choose one depending on the maturity of your project, the use case and technical environment: 
 
+<div class="tabs tabsdschoose">
 
-<div class="filter">
-<a href="#elasticsearch">Elasticsearch</a> <a href="#faiss">FAISS</a> <a href="#inmemory">In Memory</a> <a href="#sql">SQL</a>
-</div>
-<div class="filter-elasticsearch table-wrapper" markdown="block">
+<div class="tab">
+<input type="radio" id="tab-2-1" name="tab-group-2" checked>
+<label class="labelouter" for="tab-2-1">Elasticsearch</label>
+<div class="tabcontent">
 
 **Pros:** 
 - Fast & accurate sparse retrieval
@@ -139,7 +160,12 @@ The Document stores have different characteristics. You should choose one depend
 - Slow for dense retrieval with more than ~ 1 Mio documents
 
 </div>
-<div class="filter-faiss table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2-2" name="tab-group-2">
+<label class="labelouter" for="tab-2-2">FAISS</label>
+<div class="tabcontent">
 
 **Pros:** 
 - Fast & accurate dense retrieval
@@ -150,7 +176,12 @@ The Document stores have different characteristics. You should choose one depend
 - No efficient sparse retrieval
 
 </div>
-<div class="filter-sql table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2-3" name="tab-group-2">
+<label class="labelouter" for="tab-2-3">In Memory</label>
+<div class="tabcontent">
 
 **Pros:**
 - Simple
@@ -162,7 +193,12 @@ The Document stores have different characteristics. You should choose one depend
 - Not recommended for production
 
 </div>
-<div class="filter-inmemory table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2-4" name="tab-group-2">
+<label class="labelouter" for="tab-2-4">SQL</label>
+<div class="tabcontent">
 
 **Pros:**
 - Simple & fast to test
@@ -171,6 +207,9 @@ The Document stores have different characteristics. You should choose one depend
 **Cons:** 
 - Not scalable
 - Not persisting your data on disk
+
+</div>
+</div>
 
 </div>
 
