@@ -7,7 +7,7 @@ reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
 reader_types = ["farm"]
 data_dir = Path("../../data/squad20")
 filename = "dev-v2.0.json"
-n_passages = 12250
+n_passages = 12350
 
 doc_index = "eval_document"
 label_index = "label"
