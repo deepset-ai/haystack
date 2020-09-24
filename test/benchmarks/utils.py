@@ -63,13 +63,13 @@ def get_retriever(retriever_name, doc_store):
                                       use_gpu=True)
 
 
-def get_reader(reader_name, reader_type):
+def get_reader(reader_name, reader_type, max_seq_len=384):
     reader_class = None
     if reader_type == "farm":
         reader_class = FARMReader
     elif reader_type == "transformers":
         reader_class = TransformersReader
-    return reader_class(reader_name, top_k_per_candidate=4)
+    return reader_class(reader_name, top_k_per_candidate=4, max_seq_len=max_seq_len)
 
 
 def benchmark_indexing(doc_store, data_dir, filename, retriever, neg_psgs_file=None):
