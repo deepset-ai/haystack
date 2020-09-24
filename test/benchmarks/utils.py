@@ -93,7 +93,6 @@ def index_to_doc_store(doc_store, data_dir, filename, retriever, neg_psgs_file=N
 
 def squad_to_dicts(filename):
     data = json.load(open(filename))["data"]
-    print()
     return data
 
 def perform_reader_eval():
@@ -138,20 +137,4 @@ def perform_retriever_eval():
 
     retriever_df = pd.DataFrame.from_records(retriever_results)
     retriever_df.to_csv("retriever_results.csv")
-
-
-
-def main():
-    perform_retriever_eval()
-    # perform_reader_eval()
-
-
-
-
-
-
-
-
-if __name__ == "__main__":
-    main()
 
