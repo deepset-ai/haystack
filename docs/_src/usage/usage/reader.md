@@ -25,10 +25,12 @@ Haystack’s Readers are:
 
 * state-of-the-art in QA tasks like SQuAD and Natural Questions
 
-<div class="filter">
-<a href="#farm">FARM</a> <a href="#transformers">Transformers</a>
-</div>
-<div class="filter-farm table-wrapper" markdown="block">
+<div class="tabs tabsreaderreader">
+
+<div class="tab">
+<input type="radio" id="tab-0-1" name="tab-group-0" checked>
+<label class="labelouter" for="tab-0-1">FARM</label>
+<div class="tabcontent">
 
 ```python
 model = "deepset/roberta-base-squad2"
@@ -36,14 +38,22 @@ reader = FARMReader(model, use_gpu=True)
 finder = Finder(reader, retriever)
 ```
 
+</div> 
 </div>
-<div class="filter-transformers table-wrapper" markdown="block">
+
+<div class="tab">
+<input type="radio" id="tab-0-2" name="tab-group-0">
+<label class="labelouter" for="tab-0-2">Transformers</label>
+<div class="tabcontent">
 
 ```python
 model = "deepset/roberta-base-squad2"
 reader = TransformersReader(model, use_gpu=1)
 finder = Finder(reader, retriever)
 ```
+
+</div> 
+</div>
 
 </div>
 
@@ -58,12 +68,19 @@ and you have the option of using the QA pipeline from deepset FARM or HuggingFac
 Currently, there are a lot of different models out there and it can be rather overwhelming trying to pick the one that fits your use case.
 To get you started, we have a few recommendations for you to try out.
 
-**FARM**
+<div class="tabs tabsreader">
 
-<div class="filter">
-<a href="#roberta">RoBERTa (base)</a> <a href="#minilm">MiniLM</a> <a href="#albert">ALBERT (XXL)</a>
-</div>
-<div class="filter-roberta table-wrapper" markdown="block">
+<div class="tab">
+<input type="radio" id="tab-1" name="tab-group-1" checked>
+<label class="labelouter" for="tab-1">FARM</label>
+<div class="tabcontent">
+
+<div class="tabs innertabs">
+
+<div class="tab">
+<input type="radio" id="tab-1-1" name="tab-group-2" checked>
+<label class="labelinner" for="tab-1-1">RoBERTa (base)</label>
+<div class="tabcontentinner">
 
 **An optimised variant of BERT and a great starting point.**
 
@@ -71,14 +88,17 @@ To get you started, we have a few recommendations for you to try out.
 reader = FARMReader("deepset/roberta-base-squad2")
 ```
 
-
 * **Pro**: Strong all round model
-
 
 * **Con**: There are other models that are either faster or more accurate
 
 </div>
-<div class="filter-minilm table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-1-2" name="tab-group-2">
+<label class="labelinner" for="tab-1-2">MiniLM</label>
+<div class="tabcontentinner">
 
 **A cleverly distilled model that sacrifices a little accuracy for speed.**
 
@@ -86,14 +106,17 @@ reader = FARMReader("deepset/roberta-base-squad2")
 reader = FARMReader("deepset/minilm-uncased-squad2")
 ```
 
-
 * **Pro**: Inference speed up to 50% faster than BERT base
-
 
 * **Con**: Still doesn’t match the best base sized models in accuracy
 
 </div>
-<div class="filter-albert table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-1-3" name="tab-group-2">
+<label class="labelinner" for="tab-1-3">ALBERT (XXL)</label>
+<div class="tabcontentinner">
 
 **Large, powerful, SotA model.**
 
@@ -101,21 +124,29 @@ reader = FARMReader("deepset/minilm-uncased-squad2")
 reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
 ```
 
-
 * **Pro**: Better accuracy than any other open source model in QA
-
 
 * **Con**: The computational power needed make it impractical for most use cases
 
 </div>
-
-
-**Transformers**
-
-<div class="filter">
-<a href="#roberta_">RoBERTa (base)</a> <a href="#minilm_">MiniLM</a> <a href="#albert_">ALBERT (XXL)</a>
 </div>
-<div class="filter-roberta_ table-wrapper" markdown="block">
+
+</div>
+
+</div> 
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2" name="tab-group-1">
+<label class="labelouter" for="tab-2">Transformers</label>
+<div class="tabcontent">
+
+<div class="tabs innertabs">
+
+<div class="tab">
+<input type="radio" id="tab-2-1" name="tab-group-3" checked>
+<label class="labelinner" for="tab-2-1">RoBERTa (base)</label>
+<div class="tabcontentinner">
 
 **An optimised variant of BERT and a great starting point.**
 
@@ -123,14 +154,17 @@ reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
 reader = TransformersReader("deepset/roberta-base-squad2")
 ```
 
-
 * **Pro**: Strong all round model
-
 
 * **Con**: There are other models that are either faster or more accurate
 
 </div>
-<div class="filter-minilm_ table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2-2" name="tab-group-3">
+<label class="labelinner" for="tab-2-2">MiniLM</label>
+<div class="tabcontentinner">
 
 **A cleverly distilled model that sacrifices a little accuracy for speed.**
 
@@ -138,14 +172,17 @@ reader = TransformersReader("deepset/roberta-base-squad2")
 reader = TransformersReader("deepset/minilm-uncased-squad2")
 ```
 
-
 * **Pro**: Inference speed up to 50% faster than BERT base
-
 
 * **Con**: Still doesn’t match the best base sized models in accuracy
 
 </div>
-<div class="filter-albert_ table-wrapper" markdown="block">
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2-3" name="tab-group-3">
+<label class="labelinner" for="tab-2-3">ALBERT (XXL)</label>
+<div class="tabcontentinner">
 
 **Large, powerful, SotA model.**
 
@@ -153,11 +190,17 @@ reader = TransformersReader("deepset/minilm-uncased-squad2")
 reader = TransformersReader("ahotrod/albert_xxlargev1_squad2_512")
 ```
 
-
 * **Pro**: Better accuracy than any other open source model in QA
 
-
 * **Con**: The computational power needed make it impractical for most use cases
+
+</div>
+</div>
+
+</div>
+
+</div> 
+</div>
 
 </div>
 
@@ -183,58 +226,103 @@ While models are comparatively more performant on English,
 thanks to a wealth of available English training data,
 there are a couple QA models that are directly usable in Haystack.
 
-**FARM**
+<div class="tabs tabsreaderlanguage">
 
-<div class="filter">
-<a href="#french">French</a> <a href="#italian">Italian</a> <a href="#zeroshot">Zero-shot</a>
-</div>
-<div class="filter-french table-wrapper" markdown="block">
+<div class="tab">
+<input type="radio" id="tab-4-1" name="tab-group-4" checked>
+<label class="labelouter" for="tab-4-1">FARM</label>
+<div class="tabcontent">
+
+<div class="tabs innertabslanguage">
+
+<div class="tabinner">
+<input type="radio" id="tab-5-1" name="tab-group-5" checked>
+<label class="labelinner" for="tab-5-1">French</label>
+<div class="tabcontentinner">
 
 ```python
 reader = FARMReader("illuin/camembert-base-fquad")
 ```
 
 </div>
-<div class="filter-italian table-wrapper" markdown="block">
+</div>
+
+<div class="tabinner">
+<input type="radio" id="tab-5-2" name="tab-group-5">
+<label class="labelinner" for="tab-5-2">Italian</label>
+<div class="tabcontentinner">
 
 ```python
 reader = FARMReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 ```
 
 </div>
-<div class="filter-zeroshot table-wrapper" markdown="block">
+</div>
+
+<div class="tabinner">
+<input type="radio" id="tab-5-3" name="tab-group-5">
+<label class="labelinner" for="tab-5-3">Zero-shot</label>
+<div class="tabcontentinner">
 
 ```python
 reader = FARMReader("deepset/xlm-roberta-large-squad2")
 ```
 
 </div>
-
-
-**Transformers**
-
-<div class="filter">
-<a href="#french_">French</a> <a href="#italian_">Italian</a> <a href="#zeroshot_">Zero-shot</a>
 </div>
-<div class="filter-french_ table-wrapper" markdown="block">
+
+</div>
+
+</div> 
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-4-2" name="tab-group-4">
+<label class="labelouter" for="tab-4-2">Transformers</label>
+<div class="tabcontent">
+
+<div class="tabs innertabslanguage">
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-1" name="tab-group-6" checked>
+<label class="labelinner" for="tab-6-1">French</label>
+<div class="tabcontentinner">
 
 ```python
 reader = TransformersReader("illuin/camembert-base-fquad")
 ```
 
 </div>
-<div class="filter-italian_ table-wrapper" markdown="block">
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-2" name="tab-group-6">
+<label class="labelinner" for="tab-6-2">Italian</label>
+<div class="tabcontentinner">
 
 ```python
 reader = TransformersReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 ```
 
 </div>
-<div class="filter-zeroshot_ table-wrapper" markdown="block">
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Zero-shot</label>
+<div class="tabcontentinner">
 
 ```python
 reader = TransformersReader("deepset/xlm-roberta-large-squad2")
 ```
+
+</div>
+</div>
+
+</div>
+
+</div> 
+</div>
 
 </div>
 
@@ -317,21 +405,31 @@ This functions by slicing the document into overlapping passages of (approximate
 that are each offset by `doc_stride` number of tokens.
 These can be set when the Reader is initialized.
 
-<div class="filter">
-<a href="#farm">FARM</a> <a href="#transformers">Transformers</a>
-</div>
-<div class="filter-farm table-wrapper" markdown="block">
+<div class="tabs tabsreaderdeep">
+
+<div class="tab">
+<input type="radio" id="tab-7-1" name="tab-group-7" checked>
+<label class="labelouter" for="tab-7-1">FARM</label>
+<div class="tabcontent">
 
 ```python
 reader = FARMReader(... max_seq_len=384, doc_stride=128 ...)
 ```
 
+</div> 
 </div>
-<div class="filter-transformers table-wrapper" markdown="block">
+
+<div class="tab">
+<input type="radio" id="tab-7-2" name="tab-group-7">
+<label class="labelouter" for="tab-7-2">Transformers</label>
+<div class="tabcontent">
 
 ```python
 reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...
 ```
+
+</div> 
+</div>
 
 </div>
 
