@@ -14,6 +14,7 @@ from haystack.retriever.sparse import logger
 
 from transformers.modeling_dpr import DPRContextEncoder, DPRQuestionEncoder
 from transformers.tokenization_dpr import DPRContextEncoderTokenizer, DPRQuestionEncoderTokenizer
+from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
