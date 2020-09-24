@@ -11,7 +11,7 @@ elastic-apm
 tox
 coverage
 langdetect # for PDF conversions
-# optional: sentence-transformers
+sentence-transformers # for sentence_transformers retriever type
 #temporarily (used for DPR downloads)
 wget
 python-multipart
