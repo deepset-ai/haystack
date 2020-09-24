@@ -1,45 +1,14 @@
-<!---
-title: "Database"
-metaTitle: "Database"
-metaDescription: ""
-slug: "/docs/apidatabase"
-date: "2020-09-03"
-id: "apidatabasemd"
---->
+<a name="elasticsearch"></a>
+# elasticsearch
 
-Get Started
-===========
-Installation
---------------
-<div class="filter">
-<a href="#floating">Floating point embeddings</a> <a href="#binary">Binary embeddings</a>
-</div>
-<div class="filter-floating table-wrapper" markdown="block">
-    <div class="filter1">
-    <a href="#first">Floating point embeddings</a> <a href="#second">Binary embeddings</a>
-    </div>
-    <div class="filter1-first table-wrapper" markdown="block">
-    zzz
-    </div>
-    <div class="filter1-second table-wrapper" markdown="block">
-    lll
-    </div>
-</div>
-<div class="filter-binary table-wrapper" markdown="block">
-yyyyy
-</div>
-
-<a name="database.elasticsearch"></a>
-# database.elasticsearch
-
-<a name="database.elasticsearch.ElasticsearchDocumentStore"></a>
-## ElasticsearchDocumentStore Objects
+<a name="elasticsearch.ElasticsearchDocumentStore"></a>
+## ElasticsearchDocumentStore
 
 ```python
 class ElasticsearchDocumentStore(BaseDocumentStore)
 ```
 
-<a name="database.elasticsearch.ElasticsearchDocumentStore.__init__"></a>
+<a name="elasticsearch.ElasticsearchDocumentStore.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -79,10 +48,10 @@ added already exists.
 - `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
 Values:
 - 'wait_for' => continue only after changes are visible (slow, but safe)
-- 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after indexing)
+- 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
 More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
 
-<a name="database.elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
+<a name="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
@@ -108,7 +77,7 @@ should be changed to what you have set for self.text_field and self.name_field.
 
 None
 
-<a name="database.elasticsearch.ElasticsearchDocumentStore.update_embeddings"></a>
+<a name="elasticsearch.ElasticsearchDocumentStore.update_embeddings"></a>
 #### update\_embeddings
 
 ```python
@@ -127,7 +96,7 @@ This can be useful if want to add or change the embeddings for your documents (e
 
 None
 
-<a name="database.elasticsearch.ElasticsearchDocumentStore.add_eval_data"></a>
+<a name="elasticsearch.ElasticsearchDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
 
 ```python
@@ -145,7 +114,7 @@ Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform 
 - `label_index`: Elasticsearch index where labeled questions should be stored
 :type label_index: str
 
-<a name="database.elasticsearch.ElasticsearchDocumentStore.delete_all_documents"></a>
+<a name="elasticsearch.ElasticsearchDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
 
 ```python
@@ -162,11 +131,11 @@ Delete all documents in an index.
 
 None
 
-<a name="database.memory"></a>
-# database.memory
+<a name="memory"></a>
+# memory
 
-<a name="database.memory.InMemoryDocumentStore"></a>
-## InMemoryDocumentStore Objects
+<a name="memory.InMemoryDocumentStore"></a>
+## InMemoryDocumentStore
 
 ```python
 class InMemoryDocumentStore(BaseDocumentStore)
@@ -174,7 +143,7 @@ class InMemoryDocumentStore(BaseDocumentStore)
 
 In-memory document store
 
-<a name="database.memory.InMemoryDocumentStore.write_documents"></a>
+<a name="memory.InMemoryDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
@@ -198,7 +167,7 @@ separate index than the documents for search.
 
 None
 
-<a name="database.memory.InMemoryDocumentStore.update_embeddings"></a>
+<a name="memory.InMemoryDocumentStore.update_embeddings"></a>
 #### update\_embeddings
 
 ```python
@@ -217,7 +186,7 @@ This can be useful if want to add or change the embeddings for your documents (e
 
 None
 
-<a name="database.memory.InMemoryDocumentStore.add_eval_data"></a>
+<a name="memory.InMemoryDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
 
 ```python
@@ -235,7 +204,7 @@ Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform 
 - `label_index`: Elasticsearch index where labeled questions should be stored
 :type label_index: str
 
-<a name="database.memory.InMemoryDocumentStore.delete_all_documents"></a>
+<a name="memory.InMemoryDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
 
 ```python
@@ -252,17 +221,17 @@ Delete all documents in a index.
 
 None
 
-<a name="database.sql"></a>
-# database.sql
+<a name="sql"></a>
+# sql
 
-<a name="database.sql.SQLDocumentStore"></a>
-## SQLDocumentStore Objects
+<a name="sql.SQLDocumentStore"></a>
+## SQLDocumentStore
 
 ```python
 class SQLDocumentStore(BaseDocumentStore)
 ```
 
-<a name="database.sql.SQLDocumentStore.write_documents"></a>
+<a name="sql.SQLDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
@@ -285,7 +254,7 @@ documents for evaluation can be indexed in a separate index than the documents f
 
 None
 
-<a name="database.sql.SQLDocumentStore.add_eval_data"></a>
+<a name="sql.SQLDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
 
 ```python
@@ -303,7 +272,7 @@ Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform 
 - `label_index`: Elasticsearch index where labeled questions should be stored
 :type label_index: str
 
-<a name="database.sql.SQLDocumentStore.delete_all_documents"></a>
+<a name="sql.SQLDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
 
 ```python
@@ -320,103 +289,11 @@ Delete all documents in a index.
 
 None
 
-<a name="database.base"></a>
-# database.base
+<a name="base"></a>
+# base
 
-<a name="database.base.Document"></a>
-## Document Objects
-
-```python
-class Document()
-```
-
-<a name="database.base.Document.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(text: str, id: str = None, query_score: Optional[float] = None, question: Optional[str] = None, meta: Optional[Dict[str, Any]] = None, embedding: Optional[np.array] = None)
-```
-
-Object used to represent documents / passages in a standardized way within Haystack.
-For example, this is what the retriever will return from the DocumentStore,
-regardless if it's ElasticsearchDocumentStore or InMemoryDocumentStore.
-
-Note that there can be multiple Documents originating from one file (e.g. PDF),
-if you split the text into smaller passages. We'll have one Document per passage in this case.
-
-**Arguments**:
-
-- `id`: ID used within the DocumentStore
-- `text`: Text of the document
-- `query_score`: Retriever's query score for a retrieved document
-- `question`: Question text for FAQs.
-- `meta`: Meta fields for a document like name, url, or author.
-- `embedding`: Vector encoding of the text
-
-<a name="database.base.Label"></a>
-## Label Objects
-
-```python
-class Label()
-```
-
-<a name="database.base.Label.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(question: str, answer: str, is_correct_answer: bool, is_correct_document: bool, origin: str, document_id: Optional[str] = None, offset_start_in_doc: Optional[int] = None, no_answer: Optional[bool] = None, model_id: Optional[int] = None)
-```
-
-Object used to represent label/feedback in a standardized way within Haystack.
-This includes labels from dataset like SQuAD, annotations from labeling tools,
-or, user-feedback from the Haystack REST API.
-
-**Arguments**:
-
-- `question`: the question(or query) for finding answers.
-- `answer`: the answer string.
-- `is_correct_answer`: whether the sample is positive or negative.
-- `is_correct_document`: in case of negative sample(is_correct_answer is False), there could be two cases;
-incorrect answer but correct document & incorrect document. This flag denotes if
-the returned document was correct.
-- `origin`: the source for the labels. It can be used to later for filtering.
-- `document_id`: the document_store's ID for the returned answer document.
-- `offset_start_in_doc`: the answer start offset in the document.
-- `no_answer`: whether the question in unanswerable.
-- `model_id`: model_id used for prediction (in-case of user feedback).
-
-<a name="database.base.MultiLabel"></a>
-## MultiLabel Objects
-
-```python
-class MultiLabel()
-```
-
-<a name="database.base.MultiLabel.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(question: str, multiple_answers: List[str], is_correct_answer: bool, is_correct_document: bool, origin: str, multiple_document_ids: List[Any], multiple_offset_start_in_docs: List[Any], no_answer: Optional[bool] = None, model_id: Optional[int] = None)
-```
-
-Object used to aggregate multiple possible answers for the same question
-
-**Arguments**:
-
-- `question`: the question(or query) for finding answers.
-- `multiple_answers`: list of possible answer strings
-- `is_correct_answer`: whether the sample is positive or negative.
-- `is_correct_document`: in case of negative sample(is_correct_answer is False), there could be two cases;
-incorrect answer but correct document & incorrect document. This flag denotes if
-the returned document was correct.
-- `origin`: the source for the labels. It can be used to later for filtering.
-- `multiple_document_ids`: the document_store's IDs for the returned answer documents.
-- `multiple_offset_start_in_docs`: the answer start offsets in the document.
-- `no_answer`: whether the question in unanswerable.
-- `model_id`: model_id used for prediction (in-case of user feedback).
-
-<a name="database.base.BaseDocumentStore"></a>
-## BaseDocumentStore Objects
+<a name="base.BaseDocumentStore"></a>
+## BaseDocumentStore
 
 ```python
 class BaseDocumentStore(ABC)
@@ -424,7 +301,7 @@ class BaseDocumentStore(ABC)
 
 Base class for implementing Document Stores.
 
-<a name="database.base.BaseDocumentStore.write_documents"></a>
+<a name="base.BaseDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
@@ -447,4 +324,76 @@ If None, the DocumentStore's default index (self.index) will be used.
 **Returns**:
 
 None
+
+<a name="faiss"></a>
+# faiss
+
+<a name="faiss.FAISSDocumentStore"></a>
+## FAISSDocumentStore
+
+```python
+class FAISSDocumentStore(SQLDocumentStore)
+```
+
+Document store for very large scale embedding based dense retrievers like the DPR.
+
+It implements the FAISS library(https://github.com/facebookresearch/faiss)
+to perform similarity search on vectors.
+
+The document text and meta-data(for filtering) is stored using the SQLDocumentStore, while
+the vector embeddings are indexed in a FAISS Index.
+
+<a name="faiss.FAISSDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_size: int = 768, faiss_index: Optional[IndexHNSWFlat] = None)
+```
+
+**Arguments**:
+
+- `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
+deployment, Postgres is recommended.
+- `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
+smaller chunks to reduce memory footprint.
+- `vector_size`: the embedding vector size.
+- `faiss_index`: load an existing FAISS Index.
+
+<a name="faiss.FAISSDocumentStore.update_embeddings"></a>
+#### update\_embeddings
+
+```python
+ | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
+```
+
+Updates the embeddings in the the document store using the encoding model specified in the retriever.
+This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+
+**Arguments**:
+
+- `retriever`: Retriever to use to get embeddings for text
+- `index`: Index name to update
+
+**Returns**:
+
+None
+
+<a name="faiss.FAISSDocumentStore.save"></a>
+#### save
+
+```python
+ | save(file_path: Union[str, Path])
+```
+
+Save FAISS Index to the specified file.
+
+<a name="faiss.FAISSDocumentStore.load"></a>
+#### load
+
+```python
+ | @classmethod
+ | load(cls, faiss_file_path: Union[str, Path], sql_url: str, index_buffer_size: int = 10_000, vector_size: int = 768)
+```
+
+Load a saved FAISS index from a file and connect to the SQL database.
 
