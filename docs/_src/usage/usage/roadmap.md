@@ -23,7 +23,7 @@ Once you have installed the browser plugin below, you will see additional tabs a
 Zenhub Plugin: https://www.zenhub.com/extension 
 
 ### Roadmap
-_Zenhub Tab -> Roadmap (right menu)_
+_Zenhub Tab -> Roadmap (left menu)_
 
 Here you can find our most recent roadmap with the **high-level projects** that are planned for the upcoming quarters.
 We update it regularly and refine the projects as they come closer in time. 
@@ -31,7 +31,7 @@ We update it regularly and refine the projects as they come closer in time.
 ![image](../../img/zenhub_roadmap.png)
 
 ### Board
-_Zenhub Tab -> Board (right menu)_
+_Zenhub Tab -> Board (left menu)_
 
 If you are interested in the **operational tasks** and their status, you can find our agile board here. 
 
