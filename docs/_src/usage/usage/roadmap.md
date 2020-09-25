@@ -18,7 +18,7 @@ We hope this helps to clarify the direction of the open-source project and inspi
 
 ### Add Zenhub Plugin
 We decided for Zenhub, as it allows a close integration with GitHub and real-time sharing of roadmaps and sprints.
-Once you have installed the browser plugin from here, you will see additional tabs and infos on the Haystack GtiHub page.
+Once you have installed the browser plugin below, you will see additional tabs and infos on the Haystack GitHub page.
 
 Zenhub Plugin: https://www.zenhub.com/extension 
 
@@ -26,20 +26,20 @@ Zenhub Plugin: https://www.zenhub.com/extension
 _Zenhub Tab -> Roadmap (right menu)_
 
 Here you can find our most recent roadmap with the **high-level projects** that are planned for the upcoming quarters.
-We update it regularly and refine the projects as they come closer in the time line. 
+We update it regularly and refine the projects as they come closer in time. 
  
 ![image](../../img/zenhub_roadmap.png)
 
 ### Board
 _Zenhub Tab -> Board (right menu)_
 
-If you are interesting in the **operational tasks** and their status, you can find our agile board here. 
+If you are interested in the **operational tasks** and their status, you can find our agile board here. 
 
 ![image](../../img/zenhub_board.png)
 ### Additional issue details & Releases
 _Right panel in regular Github issues_
 
 With Zenhub you can also see some additional tags in every GitHub issue. 
-For those of you who wonder about the next release date: We aim for releases every ~ 4 weeks and will tag the issues that will need to be finished before we can release a bit in advance. 
+For those of you who wonder about the next release date: We aim for releases every ~ 4 weeks and will tag the issues that will need to be finished before a bit in advance. 
 
 ![image](../../img/zenhub_issue.png)
