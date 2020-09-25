@@ -10,6 +10,7 @@ RUN update-alternatives --set python3 /usr/bin/python3.7
 
 # copy code
 COPY haystack /home/user/haystack
+COPY rest_api /home/user/rest_api
 
 # install as a package
 COPY setup.py requirements.txt README.rst /home/user/
@@ -32,4 +33,4 @@ ENV LANG=C.UTF-8
 
 
 # cmd for running the API
-CMD ["gunicorn", "haystack.api.application:app", "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "2", "--timeout", "180"]
+CMD ["gunicorn", "rest_api.application:app", "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "2", "--timeout", "180"]
