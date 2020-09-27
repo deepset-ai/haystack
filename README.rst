@@ -67,6 +67,7 @@ Resources
 =========
 
 **Documentation:** https://haystack.deepset.ai
+**Roadmap**: https://haystack.deepset.ai/en/docs/roadmapmd
 
 **Tutorials**
 
