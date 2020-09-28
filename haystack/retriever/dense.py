@@ -298,8 +298,12 @@ class EmbeddingRetriever(BaseRetriever):
             )
 
         elif model_format == "sentence_transformers":
-            from sentence_transformers import SentenceTransformer
-
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError:
+                raise ImportError("Can't find package `sentence-transformers` \n"
+                                  "You can install it via `pip install sentece-transformers` \n"
+                                  "For details see https://github.com/UKPLab/sentence-transformers ")
             # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
             # e.g. 'roberta-base-nli-stsb-mean-tokens'
             if use_gpu:
