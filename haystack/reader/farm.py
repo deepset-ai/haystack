@@ -594,8 +594,7 @@ class FARMReader(BaseReader):
                                    inference is faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs,
                                    float32 could still be be more performant.
         :param quantize: convert floating point number to integers
-        :param task_type: Type of task for the model. Available options: "embeddings", "question_answering",
-                          "text_classification", "ner".
+        :param task_type: Type of task for the model. Available options: "question_answering" or "embeddings".
         :param opset_version: ONNX opset version
         """
         AdaptiveModel.convert_to_onnx(
