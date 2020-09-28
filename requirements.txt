@@ -12,11 +12,11 @@ tox
 coverage
 langdetect # for PDF conversions
 # optional: sentence-transformers
-#temporarily (used for DPR downloads)
-wget
 python-multipart
 python-docx
 sqlalchemy_utils
 # for using FAISS with GPUs, install faiss-gpu
 faiss-cpu
 tika
+uvloop
+httptools

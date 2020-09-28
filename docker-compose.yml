@@ -29,7 +29,7 @@ services:
     # This will start an empty elasticsearch instance (so you have to add your documents yourself)
     image: "elasticsearch:7.6.1"
     # If you want a demo image instead that is "ready-to-query" with some indexed Game of Thrones articles:
-    # image: "deepset/elasticsearch-game-of-thrones"
+    #image: "deepset/elasticsearch-game-of-thrones"
     ports:
       - 9200:9200
     environment:
