@@ -7,7 +7,7 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "FastAPI")
 # Resources / Computation
 USE_GPU = os.getenv("USE_GPU", "True").lower() == "true"
 GPU_NUMBER = int(os.getenv("GPU_NUMBER", 1))
-MAX_PROCESSES = int(os.getenv("MAX_PROCESSES", 4))
+MAX_PROCESSES = int(os.getenv("MAX_PROCESSES", 0))
 BATCHSIZE = int(os.getenv("BATCHSIZE", 50))
 CONCURRENT_REQUEST_PER_WORKER = int(os.getenv("CONCURRENT_REQUEST_PER_WORKER", 4))
 
@@ -39,7 +39,7 @@ MAX_SEQ_LEN = int(os.getenv("MAX_SEQ_LEN", 256))
 
 # Retriever
 RETRIEVER_TYPE = os.getenv("RETRIEVER_TYPE", "ElasticsearchRetriever") # alternatives: 'EmbeddingRetriever', 'ElasticsearchRetriever', 'ElasticsearchFilterOnlyRetriever', None
-DEFAULT_TOP_K_RETRIEVER = int(os.getenv("DEFAULT_TOP_K_RETRIEVER", 10))
+DEFAULT_TOP_K_RETRIEVER = int(os.getenv("DEFAULT_TOP_K_RETRIEVER", 5))
 EXCLUDE_META_DATA_FIELDS = os.getenv("EXCLUDE_META_DATA_FIELDS", f"['question_emb','embedding']")
 if EXCLUDE_META_DATA_FIELDS:
     EXCLUDE_META_DATA_FIELDS = ast.literal_eval(EXCLUDE_META_DATA_FIELDS)
