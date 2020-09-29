@@ -7,7 +7,7 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "FastAPI")
 # Resources / Computation
 USE_GPU = os.getenv("USE_GPU", "True").lower() == "true"
 GPU_NUMBER = int(os.getenv("GPU_NUMBER", 1))
-MAX_PROCESSES = int(os.getenv("MAX_PROCESSES", 4))
+MAX_PROCESSES = int(os.getenv("MAX_PROCESSES", 0))
 BATCHSIZE = int(os.getenv("BATCHSIZE", 50))
 CONCURRENT_REQUEST_PER_WORKER = int(os.getenv("CONCURRENT_REQUEST_PER_WORKER", 4))
 

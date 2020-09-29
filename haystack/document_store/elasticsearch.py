@@ -141,7 +141,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if self.embedding_field:
                 mapping["mappings"]["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
 
-        self.client.indices.create(index=index_name, body=mapping)
+        try:
+            self.client.indices.create(index=index_name, body=mapping)
+        except RequestError as e:
+            # With multiple workers we need to avoid race conditions, where:
+            # - there's no index in the beginning
+            # - both want to create one
+            # - one fails as the other one already created it
+            if not self.client.indices.exists(index=index_name):
+                raise e
 
     def _create_label_index(self, index_name):
         if self.client.indices.exists(index=index_name):
@@ -162,7 +170,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 }
             }
         }
-        self.client.indices.create(index=index_name, body=mapping)
+        try:
+            self.client.indices.create(index=index_name, body=mapping)
+        except RequestError as e:
+            # With multiple workers we need to avoid race conditions, where:
+            # - there's no index in the beginning
+            # - both want to create one
+            # - one fails as the other one already created it
+            if not self.client.indices.exists(index=index_name):
+                raise e
 
     # TODO: Add flexibility to define other non-meta and meta fields expected by the Document class
     def _create_document_field_map(self) -> Dict:
