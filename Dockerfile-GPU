@@ -33,5 +33,5 @@ COPY rest_api /home/user/rest_api
 
 EXPOSE 8000
 
-# cmd for running the API
-CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180", "--preload"]
+# cmd for running the API (note: "--preload" is not working with cuda)
+CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]
