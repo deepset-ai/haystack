@@ -264,7 +264,7 @@ You will find the Swagger API documentation at http://127.0.0.1:8000/docs
 
 6. Labeling Tool
 ---------------------
-* Use the `hosted version <https://annotate.deepset.ai/login>`_  (Beta) or deploy it yourself via Docker images (coming soon)
+* Use the `hosted version <https://annotate.deepset.ai/login>`_ (Beta) or deploy it yourself with the `Docker Images <https://github.com/deepset-ai/haystack/blob/master/annotation_tool>`_.
 * Create labels with different techniques: Come up with questions (+ answers) while reading passages (SQuAD style) or have a set of predefined questions and look for answers in the document (~ Natural Questions).
 * Structure your work via organizations, projects, users
 * Upload your documents or import labels from an existing SQuAD-style dataset
