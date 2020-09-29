@@ -56,7 +56,6 @@ def get_retriever(retriever_name, doc_store):
                                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
                                       use_gpu=True)
 
-
 def get_reader(reader_name, reader_type, max_seq_len=384):
     reader_class = None
     if reader_type == "farm":
@@ -65,22 +64,11 @@ def get_reader(reader_name, reader_type, max_seq_len=384):
         reader_class = TransformersReader
     return reader_class(reader_name, top_k_per_candidate=4, max_seq_len=max_seq_len)
 
-def perform_retriever_eval():
-    retriever_results = []
-    for retriever_name, doc_store_name in retriever_doc_stores:
-        # try:
-        doc_store = get_document_store(doc_store_name)
-        retriever = get_retriever(retriever_name, doc_store)
-        doc_store, indexing_time = benchmark_indexing(doc_store, data_dir_retriever, filename_retriever, retriever)
-        results = retriever.eval()
-        results["indexing_time"] = indexing_time
-        results["retriever"] = retriever_name
-        results["doc_store"] = doc_store_name
-        print(results)
-        retriever_results.append(results)
-        # except Exception as e:
-        #     retriever_results.append(str(e))
-
-    retriever_df = pd.DataFrame.from_records(retriever_results)
-    retriever_df.to_csv("retriever_results.csv")
-
+def index_to_doc_store(doc_store, docs, retriever, labels=None):
+    doc_store.delete_all_documents(index=doc_index)
+    doc_store.delete_all_documents(index=label_index)
+    doc_store.write_documents(docs, doc_index)
+    if labels:
+        doc_store.write_labels(labels, index=label_index)
+    elif callable(getattr(retriever, "embed_passages", None)) and docs[0].embedding is None:
+        doc_store.update_embeddings(retriever, index=doc_index)

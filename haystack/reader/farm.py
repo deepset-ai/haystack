@@ -454,6 +454,7 @@ class FARMReader(BaseReader):
 
         # Convert input format for FARM
         farm_input = [v for v in d.values()]
+        n_queries = len([y for x in farm_input for y in x["qas"]])
 
         # Create DataLoader that can be passed to the Evaluator
         tic = perf_counter()
@@ -465,11 +466,13 @@ class FARMReader(BaseReader):
 
         eval_results = evaluator.eval(self.inferencer.model)
         toc = perf_counter()
+        reader_time = toc - tic
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
             "top_n_accuracy": eval_results[0]["top_n_accuracy"],
-            "reader_time": toc - tic
+            "reader_time": reader_time,
+            "seconds_per_query": reader_time / n_queries
         }
         return results
 
