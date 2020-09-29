@@ -16,8 +16,8 @@ COPY haystack /home/user/haystack
 
 # install as a package
 COPY setup.py requirements.txt README.rst /home/user/
-RUN pip install -r requirements.txt
-RUN pip install -e .
+RUN pip3 install -r requirements.txt
+RUN pip3 install -e .
 
 # copy saved models
 COPY README.rst models* /home/user/models/
