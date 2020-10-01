@@ -22,7 +22,7 @@
     },
     "data": [
         {
-                "model": "BM24 (Elasticsearch)",
+                "model": "BM25 (Elasticsearch)",
                 "recall": 1.0,
                 "index_time": 3.868239733,
                 "query_time": 0.47588522500000074
