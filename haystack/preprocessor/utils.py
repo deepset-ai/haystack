@@ -91,33 +91,33 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
 
     file_paths = [p for p in Path(dir_path).glob("**/*")]
     allowed_suffixes = [".pdf", ".txt", ".docx"]
-    converter_dict: Dict[str, BaseConverter] = {}
+    suffix2converter: Dict[str, BaseConverter] = {}
 
-    file_ext_dict: Dict[str, List[Path]] = {}
+    suffix2paths: Dict[str, List[Path]] = {}
     for path in file_paths:
         file_suffix = path.suffix.lower()
         if file_suffix in allowed_suffixes:
-            if file_suffix not in file_ext_dict:
-                file_ext_dict[file_suffix] = []
-            file_ext_dict[file_suffix].append(path)
+            if file_suffix not in suffix2paths:
+                suffix2paths[file_suffix] = []
+            suffix2paths[file_suffix].append(path)
         elif not path.is_dir():
             logger.warning('Skipped file {0} as type {1} is not supported here. '
                            'See haystack.file_converter for support of more file types'.format(path, file_suffix))
 
     # No need to initialize converter if file type not present
-    for file_suffix in file_ext_dict.keys():
-        if file_suffix in ".pdf":
-            converter_dict[file_suffix] = PDFToTextConverter()
-        if file_suffix in ".txt":
-            converter_dict[file_suffix] = TextConverter()
-        if file_suffix in ".docx":
-            converter_dict[file_suffix] = DocxToTextConverter()
+    for file_suffix in suffix2paths.keys():
+        if file_suffix == ".pdf":
+            suffix2converter[file_suffix] = PDFToTextConverter()
+        if file_suffix == ".txt":
+            suffix2converter[file_suffix] = TextConverter()
+        if file_suffix == ".docx":
+            suffix2converter[file_suffix] = DocxToTextConverter()
 
     documents = []
-    for suffix, paths in file_ext_dict.items():
+    for suffix, paths in suffix2paths.items():
         for path in paths:
             logger.info('Converting {}'.format(path))
-            document = converter_dict[suffix].convert(file_path=path, meta=None)
+            document = suffix2converter[suffix].convert(file_path=path, meta=None)
             text = document["text"]
 
             if clean_func:
@@ -198,8 +198,7 @@ def tika_convert_files_to_dicts(
                         # merge this paragraph if less than 10 characters or 2 words
                         # or this paragraph starts with a lower case and last paragraph does not end with a punctuation
                         if merge_short and len(para) < 10 or len(re.findall('\s+', para)) < 2 \
-                                or merge_lowercase and para and para[0].islower() and last_para and last_para[
-                            -1] not in '.?!"\'\]\)':
+                            or merge_lowercase and para and para[0].islower() and last_para and last_para[-1] not in '.?!"\'\]\)':
                             last_para += ' ' + para
                         else:
                             if last_para:
