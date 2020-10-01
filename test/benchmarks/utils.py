@@ -70,5 +70,8 @@ def index_to_doc_store(doc_store, docs, retriever, labels=None):
     doc_store.write_documents(docs, doc_index)
     if labels:
         doc_store.write_labels(labels, index=label_index)
+    # these lines are not run if the docs.embedding field is already populated with precomputed embeddings
+    # See the prepare_data() fn in the retriever benchmark script
     elif callable(getattr(retriever, "embed_passages", None)) and docs[0].embedding is None:
         doc_store.update_embeddings(retriever, index=doc_index)
+

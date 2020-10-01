@@ -3,6 +3,7 @@ from typing import List
 import logging
 from time import perf_counter
 from functools import wraps
+from tqdm import tqdm
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
@@ -86,8 +87,9 @@ class BaseRetriever(ABC):
                 question_label_dict[label.question] = deduplicated_doc_ids
 
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
+        logger.info("Performing eval queries...")
         if open_domain:
-            for question, gold_answers in question_label_dict.items():
+            for question, gold_answers in tqdm(question_label_dict.items()):
                 retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
@@ -98,7 +100,7 @@ class BaseRetriever(ABC):
                             break
         # Option 2: Strict evaluation by document ids that are listed in the labels
         else:
-            for question, gold_ids in question_label_dict.items():
+            for question, gold_ids in tqdm(question_label_dict.items()):
                 retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
@@ -115,4 +117,4 @@ class BaseRetriever(ABC):
         logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
                      f" the top-{top_k} candidate passages selected by the retriever."))
 
-        return {"recall": recall, "map": mean_avg_precision, "retrieve_time": self.retrieve_time}
+        return {"recall": recall, "map": mean_avg_precision, "retrieve_time": self.retrieve_time, "n_questions": number_of_questions}

@@ -5,12 +5,17 @@ from typing import Union, List, Optional, Dict
 import faiss
 import numpy as np
 from faiss.swigfaiss import IndexHNSWFlat
+from tqdm import tqdm
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
+try:
+    res = faiss.StandardGpuResources()
+except:
+    pass
 
 
 class FAISSDocumentStore(SQLDocumentStore):
@@ -47,6 +52,10 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def _create_new_index(self, vector_size: int, index_factory: str = "HNSW4"):
         index = faiss.index_factory(vector_size + 1, index_factory)
+        try:
+            index = faiss.index_cpu_to_gpu(res, 0, index)
+        except:
+            pass
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
