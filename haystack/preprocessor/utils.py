@@ -91,7 +91,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
 
     file_paths = [p for p in Path(dir_path).glob("**/*")]
     allowed_suffixes = [".pdf", ".txt", ".docx"]
-    converter_dict: Dict[str, Optional[BaseConverter]] = {}
+    converter_dict: Dict[str, BaseConverter] = {}
 
     file_ext_dict: Dict[str, List[Path]] = {}
     for path in file_paths:
@@ -117,7 +117,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
     for suffix, paths in file_ext_dict.items():
         for path in paths:
             logger.info('Converting {}'.format(path))
-            document = converter_dict[suffix].convert(file_path=path)
+            document = converter_dict[suffix].convert(file_path=path, meta=None)
             text = document["text"]
 
             if clean_func:
