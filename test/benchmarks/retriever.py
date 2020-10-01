@@ -26,9 +26,8 @@ n_docs_options = [
     500000
 ]
 
-# Setting n_queries actually sets the number of docs' labels to keep. Some docs have multiple queries.
-# Currently, this means that setting n_queries to 100 could still result in a number of queries slightly greater than 100.
-n_queries = 100
+# If set to None, querying will be run on all queries
+n_queries = None
 
 data_dir = Path("../../data/retriever")
 filename_gold = "nq2squad-dev.json"            # Found at s3://ext-haystack-retriever-eval
@@ -39,10 +38,6 @@ embeddings_filenames = [f"wikipedia_passages_1m.pkl"]   # Found at s3://ext-hays
 doc_index = "eval_document"
 label_index = "label"
 
-
-def benchmark_speed():
-    # benchmark_indexing_speed()
-    benchmark_querying_speed()
 
 
 def prepare_data(data_dir, filename_gold, filename_negative, n_docs=None, n_queries=None, add_precomputed=False):
@@ -96,7 +91,7 @@ def prepare_negative_passages(data_dir, filename_negative, n_docs):
         docs.append(d)
     return docs
 
-def benchmark_indexing_speed():
+def benchmark_indexing():
 
     retriever_results = []
     for n_docs in n_docs_options:
@@ -119,20 +114,19 @@ def benchmark_indexing_speed():
                 "n_docs": n_docs,
                 "indexing_time": indexing_time,
                 "docs_per_second": n_docs / indexing_time,
-                "seconds_per_doc": indexing_time / n_docs,
                 "date_time": datetime.datetime.now()})
             retriever_df = pd.DataFrame.from_records(retriever_results)
+            retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
             retriever_df.to_csv("retriever_index_results.csv")
 
             del doc_store
             del retriever
 
-def benchmark_querying_speed():
+def benchmark_querying():
     """ Benchmark the time it takes to perform querying. Doc embeddings are loaded from file."""
     retriever_results = []
-    for retriever_name, doc_store_name in retriever_doc_stores:
-
-        for n_docs in n_docs_options:
+    for n_docs in n_docs_options:
+        for retriever_name, doc_store_name in retriever_doc_stores:
             doc_store = get_document_store(doc_store_name)
             retriever = get_retriever(retriever_name, doc_store)
             add_precomputed = retriever_name in ["dpr"]
@@ -152,11 +146,14 @@ def benchmark_querying_speed():
                 "n_queries": raw_results["n_questions"],
                 "retrieve_time": raw_results["retrieve_time"],
                 "queries_per_second": raw_results["n_questions"] / raw_results["retrieve_time"],
-                "seconds_per_query":  raw_results["retrieve_time"] / raw_results["n_questions"],
+                "recall": raw_results["recall"],
+                "map": raw_results["map"],
+                "top_k": raw_results["top_k"],
                 "date_time": datetime.datetime.now()
             }
             retriever_results.append(results)
             retriever_df = pd.DataFrame.from_records(retriever_results)
+            retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
             retriever_df.to_csv("retriever_query_results.csv")
 
             del doc_store
@@ -182,4 +179,5 @@ def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
 
 
 if __name__ == "__main__":
-    benchmark_speed()
+    # benchmark_indexing()
+    benchmark_querying()
