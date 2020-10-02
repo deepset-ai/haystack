@@ -118,7 +118,7 @@ class FaissIndexStore:
             vectors_to_add = np.ascontiguousarray([emb.tolist() for emb in embeddings], dtype=np.float32)
 
         if self.faiss_index.metric_type == faiss.METRIC_INNER_PRODUCT:
-            vectors_to_add = faiss.normalize_L2(vectors_to_add)
+            faiss.normalize_L2(vectors_to_add)
 
         if not self.faiss_index.is_trained and self.allow_training:
             self.faiss_index.train(vectors_to_add)
@@ -147,7 +147,7 @@ class FaissIndexStore:
             vectors = np.hstack((embeddings, aux_dim.reshape(-1, 1)))
 
         if self.faiss_index.metric_type == faiss.METRIC_INNER_PRODUCT:
-            vectors = faiss.normalize_L2(vectors)
+            faiss.normalize_L2(vectors)
 
         return self.faiss_index.search(vectors, top_k)
 
