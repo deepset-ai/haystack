@@ -271,24 +271,24 @@ def test_elasticsearch_update_meta(document_store):
     documents = [
         Document(
             text="Doc1",
-            meta={"vector_id": "1", "meta_key": "1"}
+            meta={"meta_key_1": "1", "meta_key_2": "1"}
         ),
         Document(
             text="Doc2",
-            meta={"vector_id": "2", "meta_key": "2"}
+            meta={"meta_key_1": "2", "meta_key_2": "2"}
         ),
         Document(
             text="Doc3",
-            meta={"vector_id": "3", "meta_key": "3"}
+            meta={"meta_key_1": "3", "meta_key_2": "3"}
         )
     ]
     document_store.write_documents(documents)
-    document_2 = document_store.get_all_documents(filters={"meta_key": ["2"]})[0]
-    document_store.update_document_meta(document_2.id, meta={"vector_id": "99", "meta_key": "2"})
+    document_2 = document_store.get_all_documents(filters={"meta_key_2": ["2"]})[0]
+    document_store.update_document_meta(document_2.id, meta={"meta_key_1": "99", "meta_key_2": "2"})
     updated_document = document_store.get_document_by_id(document_2.id)
     assert len(updated_document.meta.keys()) == 2
-    assert updated_document.meta["vector_id"] == "99"
-    assert updated_document.meta["meta_key"] == "2"
+    assert updated_document.meta["meta_key_1"] == "99"
+    assert updated_document.meta["meta_key_2"] == "2"
 
 
 def test_elasticsearch_custom_fields(elasticsearch_fixture):

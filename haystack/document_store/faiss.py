@@ -125,8 +125,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             doc.embedding = embeddings[i]
 
         phi = self._get_phi(documents)
-        doc_meta_to_update = []
 
+        vector_id_map = {}
         for i in range(0, len(documents), self.index_buffer_size):
             vector_id = faiss_index.ntotal
             embeddings = [doc.embedding for doc in documents[i: i + self.index_buffer_size]]
@@ -135,14 +135,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             faiss_index.add(hnsw_vectors)
 
             for doc in documents[i: i + self.index_buffer_size]:
-                meta = doc.meta or {}
-                meta["vector_id"] = vector_id
+                vector_id_map[doc.id] = vector_id
                 vector_id += 1
-                doc_meta_to_update.append((doc.id, meta))
 
-        for doc_id, meta in doc_meta_to_update:
-            super(FAISSDocumentStore, self).update_document_meta(id=doc_id, meta=meta)
-
+        self.update_vector_ids(vector_id_map, index=index)
         self.faiss_index = faiss_index
 
     def query_by_embedding(
@@ -159,9 +155,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         score_matrix, vector_id_matrix = self.faiss_index.search(hnsw_vectors, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
 
-        documents = self.get_all_documents(filters={"vector_id": vector_ids_for_query}, index=index)
-        # sort the documents as per query results
-        documents = sorted(documents, key=lambda doc: vector_ids_for_query.index(doc.meta["vector_id"]))  # type: ignore
+        documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
 
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
