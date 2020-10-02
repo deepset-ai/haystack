@@ -4,14 +4,17 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 import json
 
 from farm.data_handler.utils import http_get
 
+from haystack.file_converter.base import BaseConverter
+from haystack.file_converter.docx import DocxToTextConverter
 from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.tika import TikaConverter
 from haystack import Document, Label
+from haystack.file_converter.txt import TextConverter
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +59,7 @@ def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
                                 offset_start_in_doc=answer["answer_start"],
                                 no_answer=qa["is_impossible"],
                                 origin="gold_label",
-                                )
+                            )
                             labels.append(label)
                     else:
                         label = Label(
@@ -73,9 +76,10 @@ def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
         return docs, labels
 
 
-def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> List[dict]:
+def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> \
+        List[dict]:
     """
-    Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
+    Convert all files(.txt, .pdf, .docx) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
 
     :param dir_path: path for the documents to be written to the DocumentStore
@@ -86,32 +90,46 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
     """
 
     file_paths = [p for p in Path(dir_path).glob("**/*")]
-    if ".pdf" in [p.suffix.lower() for p in file_paths]:
-        pdf_converter = PDFToTextConverter()  # type: Optional[PDFToTextConverter]
-    else:
-        pdf_converter = None
+    allowed_suffixes = [".pdf", ".txt", ".docx"]
+    suffix2converter: Dict[str, BaseConverter] = {}
+
+    suffix2paths: Dict[str, List[Path]] = {}
+    for path in file_paths:
+        file_suffix = path.suffix.lower()
+        if file_suffix in allowed_suffixes:
+            if file_suffix not in suffix2paths:
+                suffix2paths[file_suffix] = []
+            suffix2paths[file_suffix].append(path)
+        elif not path.is_dir():
+            logger.warning('Skipped file {0} as type {1} is not supported here. '
+                           'See haystack.file_converter for support of more file types'.format(path, file_suffix))
+
+    # No need to initialize converter if file type not present
+    for file_suffix in suffix2paths.keys():
+        if file_suffix == ".pdf":
+            suffix2converter[file_suffix] = PDFToTextConverter()
+        if file_suffix == ".txt":
+            suffix2converter[file_suffix] = TextConverter()
+        if file_suffix == ".docx":
+            suffix2converter[file_suffix] = DocxToTextConverter()
 
     documents = []
-    for path in file_paths:
-        if path.suffix.lower() == ".txt":
-            with open(path) as doc:
-                text = doc.read()
-        elif path.suffix.lower() == ".pdf" and pdf_converter:
-            document = pdf_converter.convert(path)
+    for suffix, paths in suffix2paths.items():
+        for path in paths:
+            logger.info('Converting {}'.format(path))
+            document = suffix2converter[suffix].convert(file_path=path, meta=None)
             text = document["text"]
-        else:
-            raise Exception(f"Indexing of {path.suffix} files is not currently supported.")
 
-        if clean_func:
-            text = clean_func(text)
+            if clean_func:
+                text = clean_func(text)
 
-        if split_paragraphs:
-            for para in text.split("\n\n"):
-                if not para.strip():  # skip empty paragraphs
-                    continue
-                documents.append({"text": para, "meta": {"name": path.name}})
-        else:
-            documents.append({"text": text, "meta": {"name": path.name}})
+            if split_paragraphs:
+                for para in text.split("\n\n"):
+                    if not para.strip():  # skip empty paragraphs
+                        continue
+                    documents.append({"text": para, "meta": {"name": path.name}})
+            else:
+                documents.append({"text": text, "meta": {"name": path.name}})
 
     return documents
 
@@ -127,6 +145,8 @@ def tika_convert_files_to_dicts(
     Convert all files(.txt, .pdf) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
 
+    :param merge_lowercase: allow conversion of merged paragraph to lowercase
+    :param merge_short: allow merging of short paragraphs
     :param dir_path: path for the documents to be written to the DocumentStore
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
@@ -134,10 +154,21 @@ def tika_convert_files_to_dicts(
     :return: None
     """
     converter = TikaConverter(remove_header_footer=True)
-    file_paths = [p for p in Path(dir_path).glob("**/*")]
+    paths = [p for p in Path(dir_path).glob("**/*")]
+    allowed_suffixes = [".pdf", ".txt"]
+    file_paths: List[Path] = []
+
+    for path in paths:
+        file_suffix = path.suffix.lower()
+        if file_suffix in allowed_suffixes:
+            file_paths.append(path)
+        elif not path.is_dir():
+            logger.warning('Skipped file {0} as type {1} is not supported here. '
+                           'See haystack.file_converter for support of more file types'.format(path, file_suffix))
 
     documents = []
     for path in file_paths:
+        logger.info('Converting {}'.format(path))
         document = converter.convert(path)
         meta = document["meta"] or {}
         meta["name"] = path.name
@@ -222,6 +253,8 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
             elif url[-7:] == ".tar.gz":
                 tar_archive = tarfile.open(temp_file.name)
                 tar_archive.extractall(output_dir)
+            else:
+                logger.warning('Skipped url {0} as file type is not supported here. '
+                               'See haystack documentation for support of more file types'.format(url))
             # temp_file gets deleted here
         return True
-

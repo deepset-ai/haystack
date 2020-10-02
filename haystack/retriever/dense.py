@@ -50,7 +50,12 @@ class DensePassageRetriever(BaseRetriever):
         :param max_seq_len: Longest length of each sequence
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
-        :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding
+        :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
+                            This is the approach used in the original paper and is likely to improve performance if your
+                            titles contain meaningful information for retrieval (topic, entities etc.) .
+                            The title is expected to be present in doc.meta["name"] and can be supplied in the documents
+                            before writing them to the DocumentStore like this:
+                            {"text": "my text", "meta": {"name": "my title"}}.
         :param remove_sep_tok_from_untitled_passages: If embed_title is ``True``, there are different strategies to deal with documents that don't have a title.
         If this param is ``True`` => Embed passage as single text, similar to embed_title = False (i.e [CLS] passage_tok1 ... [SEP]).
         If this param is ``False`` => Embed passage as text pair with empty title (i.e. [CLS] [SEP] passage_tok1 ... [SEP])
@@ -298,8 +303,12 @@ class EmbeddingRetriever(BaseRetriever):
             )
 
         elif model_format == "sentence_transformers":
-            from sentence_transformers import SentenceTransformer
-
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError:
+                raise ImportError("Can't find package `sentence-transformers` \n"
+                                  "You can install it via `pip install sentece-transformers` \n"
+                                  "For details see https://github.com/UKPLab/sentence-transformers ")
             # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
             # e.g. 'roberta-base-nli-stsb-mean-tokens'
             if use_gpu:
