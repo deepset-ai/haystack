@@ -8,21 +8,23 @@ import pickle
 from tqdm import tqdm
 import logging
 import datetime
+import random
+
 
 logger = logging.getLogger(__name__)
 logging.getLogger("haystack.retriever.base").setLevel(logging.WARN)
 logging.getLogger("elasticsearch").setLevel(logging.WARN)
 
 retriever_doc_stores = [
-    ("elastic", "elasticsearch"),
+    # ("elastic", "elasticsearch"),
     ("dpr", "elasticsearch"),
     ("dpr", "faiss")
 ]
 
 n_docs_options = [
-    1000,
-    10000,
-    100000,
+    # 1000,
+    # 10000,
+    # 100000,
     500000
 ]
 
@@ -38,6 +40,9 @@ embeddings_filenames = [f"wikipedia_passages_1m.pkl"]   # Found at s3://ext-hays
 doc_index = "eval_document"
 label_index = "label"
 
+seed = 42
+
+random.seed(42)
 
 
 def prepare_data(data_dir, filename_gold, filename_negative, n_docs=None, n_queries=None, add_precomputed=False):
@@ -74,15 +79,12 @@ def prepare_negative_passages(data_dir, filename_negative, n_docs):
     if n_docs == 0:
         return []
     with open(data_dir / filename_negative) as f:
-        _ = f.readline()    # skip column titles line
-        if not n_docs:
-            lines = [l[:-1] for l in f][1:]
-        else:
-            lines = []
-            for _ in range(n_docs):
-                lines.append(f.readline()[:-1])
+        lines = [l[:-1] for l in f][1:]     # Skip column titles line
+
+    random.shuffle(lines)
+
     docs = []
-    for l in lines:
+    for l in lines[:n_docs]:
         id, text, title = l.split("\t")
         d = {"text": text,
              "meta": {"passage_id": int(id),
