@@ -24,12 +24,12 @@ services:
     restart: always
     depends_on:
       - elasticsearch
-    command: "/bin/bash -c 'sleep 15 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180'"
+    command: "/bin/bash -c 'sleep 15 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180 --preload'"
   elasticsearch:
     # This will start an empty elasticsearch instance (so you have to add your documents yourself)
     image: "elasticsearch:7.6.1"
     # If you want a demo image instead that is "ready-to-query" with some indexed Game of Thrones articles:
-    # image: "deepset/elasticsearch-game-of-thrones"
+    #image: "deepset/elasticsearch-game-of-thrones"
     ports:
       - 9200:9200
     environment:

@@ -4,6 +4,7 @@ from uuid import uuid4
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.sql import case
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
@@ -25,6 +26,7 @@ class DocumentORM(ORMBase):
 
     text = Column(String, nullable=False)
     index = Column(String, nullable=False)
+    vector_id = Column(String, unique=True, nullable=True)
 
     meta = relationship("MetaORM", backref="Document")
 
@@ -75,6 +77,16 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return documents
 
+    def get_documents_by_vector_ids(self, vector_ids: List[str], index: Optional[str] = None):
+        index = index or self.index
+        results = self.session.query(DocumentORM).filter(
+            DocumentORM.vector_id.in_(vector_ids),
+            DocumentORM.index == index
+        ).all()
+        sorted_results = sorted(results, key=lambda doc: vector_ids.index(doc.vector_id))  # type: ignore
+        documents = [self._convert_sql_row_to_document(row) for row in sorted_results]
+        return documents
+
     def get_all_documents(
         self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None
     ) -> List[Document]:
@@ -116,8 +128,9 @@ class SQLDocumentStore(BaseDocumentStore):
         index = index or self.index
         for doc in document_objects:
             meta_fields = doc.meta or {}
+            vector_id = meta_fields.get("vector_id")
             meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
-            doc_orm = DocumentORM(id=doc.id, text=doc.text, meta=meta_orms, index=index)
+            doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
             self.session.add(doc_orm)
         self.session.commit()
 
@@ -139,6 +152,25 @@ class SQLDocumentStore(BaseDocumentStore):
                 index=index,
             )
             self.session.add(label_orm)
+        self.session.commit()
+
+    def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None):
+        """
+        Update vector_ids for given document_ids.
+
+        :param vector_id_map: dict containing mapping of document_id -> vector_id.
+        :param index: filter documents by the optional index attribute for documents in database.
+        """
+        index = index or self.index
+        self.session.query(DocumentORM).filter(
+            DocumentORM.id.in_(vector_id_map),
+            DocumentORM.index == index
+        ).update({
+            DocumentORM.vector_id: case(
+                vector_id_map,
+                value=DocumentORM.id,
+            )
+        }, synchronize_session=False)
         self.session.commit()
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
@@ -178,6 +210,8 @@ class SQLDocumentStore(BaseDocumentStore):
             text=row.text,
             meta={meta.name: meta.value for meta in row.meta}
         )
+        if row.vector_id:
+            document.meta["vector_id"] = row.vector_id  # type: ignore
         return document
 
     def _convert_sql_row_to_label(self, row) -> Label:

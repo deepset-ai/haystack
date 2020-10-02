@@ -4,6 +4,9 @@ WORKDIR /home/user
 
 RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-distutils python3-pip curl git
 
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
 # Set default Python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
 RUN update-alternatives --set python3 /usr/bin/python3.7
@@ -16,20 +19,19 @@ COPY setup.py requirements.txt README.rst /home/user/
 RUN pip3 install -r requirements.txt
 RUN pip3 install -e .
 
-# copy saved FARM models
+# copy saved models
 COPY README.rst models* /home/user/models/
 
-# Optional: copy sqlite db if needed for testing
+# Copy REST API code
+COPY rest_api /home/user/rest_api
+
+# optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/
 
-# Optional: copy data directory containing docs for indexing
+# optional: copy data directory containing docs for ingestion
 #COPY data /home/user/data
 
 EXPOSE 8000
 
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-
-
-# cmd for running the API
-CMD ["gunicorn", "haystack.api.application:app", "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "2", "--timeout", "180"]
+# cmd for running the API (note: "--preload" is not working with cuda)
+CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]
