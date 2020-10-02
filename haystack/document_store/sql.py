@@ -155,6 +155,12 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session.commit()
 
     def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None):
+        """
+        Update vector_ids for given document_ids.
+
+        :param vector_id_map: dict containing mapping of document_id -> vector_id.
+        :param index: filter documents by the optional index attribute for documents in database.
+        """
         index = index or self.index
         self.session.query(DocumentORM).filter(
             DocumentORM.id.in_(vector_id_map),
@@ -205,7 +211,7 @@ class SQLDocumentStore(BaseDocumentStore):
             meta={meta.name: meta.value for meta in row.meta}
         )
         if row.vector_id:
-            document.meta["vector_id"] = row.vector_id
+            document.meta["vector_id"] = row.vector_id  # type: ignore
         return document
 
     def _convert_sql_row_to_label(self, row) -> Label:
