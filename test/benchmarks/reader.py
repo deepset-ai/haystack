@@ -37,6 +37,7 @@ def benchmark():
                 results = {'EM': 0.,
                            'f1': 0.,
                            'top_n_accuracy': 0.,
+                           'top_n': 0,
                            'reader_time': 0.,
                            "passages_per_second": 0.,
                            "seconds_per_query": 0.,

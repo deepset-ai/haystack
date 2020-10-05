@@ -471,6 +471,7 @@ class FARMReader(BaseReader):
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
             "top_n_accuracy": eval_results[0]["top_n_accuracy"],
+            "top_n": self.inferencer.model.prediction_heads[0].n_best,
             "reader_time": reader_time,
             "seconds_per_query": reader_time / n_queries
         }
