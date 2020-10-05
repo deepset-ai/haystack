@@ -118,7 +118,8 @@ class FARMReader(BaseReader):
         dev_split: float = 0,
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
-        num_processes: Optional[int] = None
+        num_processes: Optional[int] = None,
+        use_amp: str = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -145,6 +146,8 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
+        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
+                    "O1" is recommended in almost all cases.
         :return: None
         """
 
@@ -163,7 +166,7 @@ class FARMReader(BaseReader):
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
 
-        device, n_gpu = initialize_device_settings(use_cuda=use_gpu)
+        device, n_gpu = initialize_device_settings(use_cuda=use_gpu,use_amp=use_amp)
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -202,7 +205,8 @@ class FARMReader(BaseReader):
             schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
-            device=device
+            device=device,
+            use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         trainer = Trainer(
@@ -214,6 +218,7 @@ class FARMReader(BaseReader):
             lr_schedule=lr_schedule,
             evaluate_every=evaluate_every,
             device=device,
+            use_amp=use_amp,
         )
 
 
