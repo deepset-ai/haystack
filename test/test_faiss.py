@@ -71,8 +71,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         # we currently don't get the embeddings back when we call document_store.get_all_documents()
         original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
         stored_emb = document_store.get_faiss_index().reconstruct(int(doc.meta["vector_id"]))
-        # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(original_doc["embedding"], stored_emb[:-1], rtol=0.01)
+        assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
 
     # test document correctness
     check_data_correctness(documents_indexed, DOCUMENTS)
@@ -102,8 +101,7 @@ def test_faiss_update_docs(document_store, index_buffer_size):
         original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
         updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
         stored_emb = document_store.get_faiss_index().reconstruct(int(doc.meta["vector_id"]))
-        # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(updated_embedding, stored_emb[:-1], rtol=0.01)
+        assert np.allclose(updated_embedding, stored_emb, rtol=0.01)
 
     # test document correctness
     check_data_correctness(documents_indexed, DOCUMENTS)
@@ -133,22 +131,20 @@ def test_faiss_finding(document_store):
     assert len(prediction.get('answers', [])) == 1
 
 
-def test_faiss_passing_index_from_outside():
+@pytest.mark.parametrize("index_factory", ["IDMap,Flat"])
+@pytest.mark.parametrize("metric_type", [faiss.METRIC_L2])
+@pytest.mark.parametrize("dimension", [768])
+def test_faiss_passing_index_from_outside(dimension, index_factory, metric_type):
 
-    faiss_index = faiss.index_factory(768, 'IDMap,Flat', faiss.METRIC_L2)
-    index_store = FaissIndexStore(faiss_index=faiss_index, convert_l2_to_ip=False)
+    faiss_index = faiss.index_factory(dimension, index_factory, metric_type)
+    index_store = FaissIndexStore(faiss_index=faiss_index)
 
     document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", custom_index_store=index_store,
                                         index="index_from_outside")
+
     document_store.delete_all_documents()
     document_store.write_documents(DOCUMENTS)
     documents_indexed = document_store.get_all_documents()
 
-    # test if number of documents is correct
-    assert len(documents_indexed) == len(DOCUMENTS)
-
-    # test if two docs have same vector_is assigned
-    vector_ids = set()
-    for i, doc in enumerate(documents_indexed):
-        vector_ids.add(doc.meta["vector_id"])
-    assert len(vector_ids) == len(DOCUMENTS)
+    # test document correctness
+    check_data_correctness(documents_indexed, DOCUMENTS)

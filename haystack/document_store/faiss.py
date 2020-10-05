@@ -26,27 +26,25 @@ class FaissIndexStore:
             self,
             faiss_index: Optional[Index] = None,
             allow_training: bool = False,
-            convert_l2_to_ip: bool = True,
             index_factory: Optional[str] = "HNSW4",
             dimension: Optional[int] = 768,
-            metric_type: Optional[int] = None
+            metric_type: Optional[int] = None,
+            consign_similarity: bool = False,
     ):
         """
         :param faiss_index: Customized FAISS Index, useful if user want to customize index params like `nlists`,
                             `nbits`, `efSearch` etc instead of using default params.
         :param allow_training: Some IVF vector require training on GPU and some not as training is time consuming so
                                This flag determine whether to allow training even index's `is_trained` flag is `False`.
-        :param convert_l2_to_ip: Mostly indexes on FAISS only support L2 distance hence this flag allow transformation
-                                 to adds an additional dimension to obtain corresponding inner products.
-                                 For more details refer:
-        https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances#how-can-i-do-max-inner-product-search-on-indexes-that-support-only-l2
         :param index_factory: String name to produce composite FAISS index. For more details refer:
         https://github.com/facebookresearch/faiss/wiki/The-index-factory
         :param dimension: The embedding vector size.
         :param metric_type: FAISS support Lx (L1, L2, Lp, LInf) and Inner Product metric type for indexes.
+        :param consign_similarity: Index vectors for cosine similarity refer (for Inner Product metric type) :
+        https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances#how-can-i-index-vectors-for-cosine-similarity
         """
+        self.consign_similarity = consign_similarity
         self.allow_training = allow_training
-        self.convert_l2_to_ip = convert_l2_to_ip
 
         if faiss_index:
             self.faiss_index = faiss_index
@@ -61,50 +59,17 @@ class FaissIndexStore:
             self.dimension = dimension
             assert self.dimension is not None
 
-            # To adds an additional dimension to obtain corresponding inner products
-            if self.convert_l2_to_ip:
-                self.dimension += 1
-
             if metric_type is not None:
                 self.faiss_index = faiss.index_factory(self.dimension, self.index_factory, metric_type)
             else:
                 self.faiss_index = faiss.index_factory(self.dimension, self.index_factory)
 
-    @staticmethod
-    def _get_phi(embeddings: List[np.array]) -> int:
-        """
-        This will generate phi for vectors
-
-        :param embeddings: List of vectors
-        :return: phi value
-        """
-        phi = 0
-        for embedding in embeddings:
-            norms = (embedding ** 2).sum()  # type: ignore
-            phi = max(phi, norms)
-        return phi
-
-    @staticmethod
-    def _get_hnsw_vectors(embeddings: List[np.array], phi: int) -> np.array:
-        """
-        HNSW indices in FAISS only support L2 distance. This transformation adds an additional dimension to obtain
-        corresponding inner products.
-
-        You can read ore details here:
-        https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances#how-can-i-do-max-inner-product-search-on-indexes-that-support-only-l2
-        """
-        vectors = [np.reshape(emb, (1, -1)) for emb in embeddings]
-        norms = [(doc_vector ** 2).sum() for doc_vector in vectors]
-        aux_dims = [np.sqrt(phi - norm) for norm in norms]
-        hnsw_vectors = [np.hstack((doc_vector, aux_dims[i].reshape(-1, 1))) for i, doc_vector in enumerate(vectors)]
-        return np.concatenate(hnsw_vectors, axis=0).astype(np.float32)
-
     def add_vectors(self, embeddings: List[np.array]) -> np.ndarray:
         """
         This add embeddings to FAISS index. Before adding embeddings to the index it perform following task -
-         - L2 to IP transformation if `convert_l2_to_ip` flag is enabled.
          - Create contiguous array form embeddings.
-         - Normalize vector via `normalize_L2` if metric of index is inner product. For more details refer:
+         - Normalize vector via `normalize_L2` if metric of index is inner product and consign_similarity is set.
+           For more details refer:
          https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances#how-can-i-index-vectors-for-cosine-similarity
          - Train index if index need training and `allow_training` is set
          - Generate vector ids to return them to caller and also to pass to index if index is IndexIDMap type
@@ -112,12 +77,9 @@ class FaissIndexStore:
         :param embeddings: List of vectors
         :return: Vector ids
         """
-        if self.convert_l2_to_ip:
-            vectors_to_add = self._get_hnsw_vectors(embeddings, self._get_phi(embeddings))
-        else:
-            vectors_to_add = np.ascontiguousarray([emb.tolist() for emb in embeddings], dtype=np.float32)
+        vectors_to_add = np.ascontiguousarray([emb.tolist() for emb in embeddings], dtype=np.float32)
 
-        if self.faiss_index.metric_type == faiss.METRIC_INNER_PRODUCT:
+        if self.consign_similarity and self.faiss_index.metric_type == faiss.METRIC_INNER_PRODUCT:
             faiss.normalize_L2(vectors_to_add)
 
         if not self.faiss_index.is_trained and self.allow_training:
@@ -130,23 +92,20 @@ class FaissIndexStore:
             self.faiss_index.add_with_ids(vectors_to_add, ids)
         else:
             self.faiss_index.add(vectors_to_add)
+
         return ids
 
     def search_vectors(self, embeddings: List[np.array], top_k: int):
         """
-        This perform similarity search of given vectors and return vector_ids and corresponding score. If
-        `convert_l2_to_ip` flag is set then it perform transformation add an dimension.
+        This perform similarity search of given vectors and return vector_ids and corresponding score.
 
         :param embeddings: List of search vectors
         :param top_k: How many search result required
         :return: vector_ids and corresponding score
         """
-        vectors = embeddings
-        if self.convert_l2_to_ip:
-            aux_dim = np.zeros(len(embeddings), dtype="float32")
-            vectors = np.hstack((embeddings, aux_dim.reshape(-1, 1)))
+        vectors = embeddings.reshape(1, -1).astype(np.float32)
 
-        if self.faiss_index.metric_type == faiss.METRIC_INNER_PRODUCT:
+        if self.consign_similarity and self.faiss_index.metric_type == faiss.METRIC_INNER_PRODUCT:
             faiss.normalize_L2(vectors)
 
         return self.faiss_index.search(vectors, top_k)
@@ -287,7 +246,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         index = index or self.index
         faiss_index = self.get_or_create_index_store(index=index, **kwargs)
-        # Some FAISS indexes(like the default HNSWx) do not support removing vectors, so a new index is created.
+        # To clear out the FAISS index contents and frees all memory immediately that is in use by the index
         faiss_index.reset()
 
         documents = self.get_all_documents(index=index)
@@ -302,7 +261,6 @@ class FAISSDocumentStore(SQLDocumentStore):
 
             for idx, doc in enumerate(documents[i: i + self.index_buffer_size]):
                 vector_id_map[doc.id] = str(vector_ids[idx])
-                vector_id += 1
 
         self.update_vector_ids(vector_id_map, index=index)
 
@@ -319,7 +277,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
 
         faiss_index = self.index_dict[index]
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
         score_matrix, vector_id_matrix = faiss_index.search_vectors(embeddings=query_emb, top_k=top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
