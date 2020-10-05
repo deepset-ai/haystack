@@ -64,6 +64,8 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session = Session()
         self.index = index
         self.label_index = "label"
+        # To enable foreign key constraint
+        self.session.execute("PRAGMA foreign_keys = ON;")
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         documents = self.get_documents_by_id([id], index)
