@@ -30,6 +30,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         sql_url: str = "sqlite:///",
         index_buffer_size: int = 10_000,
         vector_size: int = 768,
+        faiss_index_factory_str: str = "Flat",
         faiss_index: Optional[IndexHNSWFlat] = None,
     ):
         """
@@ -41,32 +42,34 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param faiss_index: load an existing FAISS Index.
         """
         self.vector_size = vector_size
-        self.faiss_index = faiss_index
+
+        if not faiss_index:
+            self.faiss_index = self._create_new_index(vector_size=self.vector_size, index_factory=faiss_index_type)
+
         self.index_buffer_size = index_buffer_size
         super().__init__(url=sql_url)
 
-    def _create_new_index(self, vector_size: int, index_factory: str = "HNSW4"):
-        index = faiss.index_factory(vector_size + 1, index_factory)
+    def _create_new_index(self, vector_size: int, index_factory: str = "Flat", metric=faiss.METRIC_INNER_PRODUCT):
+        if index_factory is None:
+
+        index = faiss.index_factory(vector_size, index_factory, metric)
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
-
+        # vector index
         self.faiss_index = self.faiss_index or self._create_new_index(vector_size=self.vector_size)
+        # doc + metadata index
         index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
         add_vectors = False if document_objects[0].embedding is None else True
 
-        if add_vectors:
-            phi = self._get_phi(document_objects)
-
         for i in range(0, len(document_objects), self.index_buffer_size):
             vector_id = self.faiss_index.ntotal
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + self.index_buffer_size]]
-                hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
-                hnsw_vectors = hnsw_vectors.astype(np.float32)
-                self.faiss_index.add(hnsw_vectors)
+                embeddings = np.array(embeddings, dtype="float32")
+                self.faiss_index.add(embeddings)
 
             docs_to_write_in_sql = []
             for doc in document_objects[i : i + self.index_buffer_size]:
@@ -78,28 +81,6 @@ class FAISSDocumentStore(SQLDocumentStore):
 
             super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
 
-    def _get_hnsw_vectors(self, embeddings: List[np.array], phi: int) -> np.array:
-        """
-        HNSW indices in FAISS only support L2 distance. This transformation adds an additional dimension to obtain
-        corresponding inner products.
-
-        You can read ore details here:
-        https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances#how-can-i-do-max-inner-product-search-on-indexes-that-support-only-l2
-        """
-        vectors = [np.reshape(emb, (1, -1)) for emb in embeddings]
-        norms = [(doc_vector ** 2).sum() for doc_vector in vectors]
-        aux_dims = [np.sqrt(phi - norm) for norm in norms]
-        hnsw_vectors = [np.hstack((doc_vector, aux_dims[i].reshape(-1, 1))) for i, doc_vector in enumerate(vectors)]
-        hnsw_vectors = np.concatenate(hnsw_vectors, axis=0)
-        return hnsw_vectors
-
-    def _get_phi(self, documents: List[Document]) -> int:
-        phi = 0
-        for doc in documents:
-            norms = (doc.embedding ** 2).sum()  # type: ignore
-            phi = max(phi, norms)
-        return phi
-
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -109,7 +90,6 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Index name to update
         :return: None
         """
-        self.faiss_index = self.faiss_index or self._create_new_index(vector_size=self.vector_size)
         # To clear out the FAISS index contents and frees all memory immediately that is in use by the index
         self.faiss_index.reset()
 
@@ -122,15 +102,12 @@ class FAISSDocumentStore(SQLDocumentStore):
         for i, doc in enumerate(documents):
             doc.embedding = embeddings[i]
 
-        phi = self._get_phi(documents)
-
         vector_id_map = {}
         for i in range(0, len(documents), self.index_buffer_size):
             vector_id = self.faiss_index.ntotal
             embeddings = [doc.embedding for doc in documents[i: i + self.index_buffer_size]]
-            hnsw_vectors = self._get_hnsw_vectors(embeddings=embeddings, phi=phi)
-            hnsw_vectors = hnsw_vectors.astype(np.float32)
-            self.faiss_index.add(hnsw_vectors)
+            embeddings = np.array(embeddings, dtype="float32")
+            self.faiss_index.add(embeddings)
 
             for doc in documents[i: i + self.index_buffer_size]:
                 vector_id_map[doc.id] = vector_id
@@ -145,11 +122,9 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
         if not self.faiss_index:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
-        aux_dim = np.zeros(len(query_emb), dtype="float32")
-        hnsw_vectors = np.hstack((query_emb, aux_dim.reshape(-1, 1)))
-        score_matrix, vector_id_matrix = self.faiss_index.search(hnsw_vectors, top_k)
+        query_emb = query_emb.reshape(1, -1).astype(np.float32)
+        score_matrix, vector_id_matrix = self.faiss_index.search(query_emb, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
 
         documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
