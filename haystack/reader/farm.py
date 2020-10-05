@@ -146,8 +146,14 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
-        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
-                    "O1" is recommended in almost all cases.
+        :param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+                        Available options:
+                        None (Don't use AMP)
+                        "O0" (Normal FP32 training)
+                        "O1" (Mixed Precision => Recommended)
+                        "O2" (Almost FP16)
+                        "O3" (Pure FP16).
+                        See details on: https://nvidia.github.io/apex/amp.html
         :return: None
         """
 
