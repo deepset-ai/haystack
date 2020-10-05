@@ -42,16 +42,16 @@ def test_faiss_index_save_and_load(document_store):
     document_store.save("haystack_test_faiss")
 
     # clear existing faiss_index
-    document_store.faiss_index.reset()
+    document_store.get_faiss_index().reset()
 
     # test faiss index is cleared
-    assert document_store.faiss_index.ntotal == 0
+    assert document_store.get_faiss_index().ntotal == 0
 
     # test loading the index
     new_document_store = document_store.load(sql_url="sqlite:///haystack_test.db", faiss_file_path="haystack_test_faiss")
 
     # check faiss index is restored
-    assert new_document_store.faiss_index.ntotal == len(DOCUMENTS)
+    assert new_document_store.get_faiss_index().ntotal == len(DOCUMENTS)
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
@@ -142,9 +142,9 @@ def test_faiss_passing_index_from_outside(dimension, index_factory, metric_type)
     document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", custom_index_store=index_store,
                                         index="index_from_outside")
 
-    document_store.delete_all_documents()
-    document_store.write_documents(DOCUMENTS)
-    documents_indexed = document_store.get_all_documents()
+    document_store.delete_all_documents(index="index_from_outside")
+    document_store.write_documents(documents=DOCUMENTS, index="index_from_outside")
+    documents_indexed = document_store.get_all_documents(index="index_from_outside")
 
     # test document correctness
     check_data_correctness(documents_indexed, DOCUMENTS)
