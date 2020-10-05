@@ -28,7 +28,8 @@ class DocumentORM(ORMBase):
     index = Column(String, nullable=False)
     vector_id = Column(String, unique=True, nullable=True)
 
-    meta = relationship("MetaORM", backref="Document")
+    # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
+    meta = relationship("MetaORM", backref="Document", lazy="joined")
 
 
 class MetaORM(ORMBase):
@@ -36,7 +37,7 @@ class MetaORM(ORMBase):
 
     name = Column(String, index=True)
     value = Column(String, index=True)
-    document_id = Column(String, ForeignKey("document.id"), nullable=False)
+    document_id = Column(String, ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
 
     documents = relationship(DocumentORM, backref="Meta")
 
@@ -44,7 +45,7 @@ class MetaORM(ORMBase):
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
-    document_id = Column(String, ForeignKey("document.id"), nullable=False)
+    document_id = Column(String, ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
     index = Column(String, nullable=False)
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String, nullable=False)
