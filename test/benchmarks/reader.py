@@ -3,7 +3,9 @@ from haystack.preprocessor.utils import eval_data_from_file
 from pathlib import Path
 import pandas as pd
 
-reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2", "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2", "deepset/xlm-roberta-large-squad2"]
+reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
+                 "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
+                 "deepset/xlm-roberta-large-squad2", "distilbert-base-uncased-distilled-squad"]
 
 reader_types = ["farm"]
 data_dir = Path("../../data/squad20")
