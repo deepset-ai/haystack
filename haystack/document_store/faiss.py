@@ -4,7 +4,6 @@ from typing import Union, List, Optional, Dict
 
 import faiss
 import numpy as np
-from faiss.swigfaiss import IndexHNSWFlat
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
@@ -30,7 +29,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         index_buffer_size: int = 10_000,
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
-        faiss_index: Optional[IndexHNSWFlat] = None,
+        faiss_index: Optional[faiss.swigfaiss.Index] = None,
         **kwargs,
     ):
         """
