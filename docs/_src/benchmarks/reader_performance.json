@@ -1,0 +1,39 @@
+{
+    "chart_type": "BarChart",
+    "title": "Reader Performance",
+    "subtitle": "Time and Accuracy Benchmarks",
+    "description": "",
+    "bars": "horizontal",
+    "columns": [
+        "Model", 
+        "Top 10 Accuracy", 
+        "Time"
+    ],
+    "data": [
+        {
+            "model": "RoBERTa",
+            "accuracy": 72.22222222222222,
+            "time": 56.033346766999784
+        },
+        {
+            "model": "MiniLM",
+            "accuracy": 38.88888888888889,
+            "time": 49.28621050500078
+        },
+        {
+            "model": "BERT base",
+            "accuracy": 31.48148148148148,
+            "time": 42.67899718899935
+        },
+        {
+            "model": "BERT large",
+            "accuracy": 53.70370370370371,
+            "time": 74.21550956300052
+        },
+        {
+            "model": "XLMR large",
+            "accuracy": 72.22222222222222,
+            "time": 76.56486266000047
+        }
+    ]
+}
