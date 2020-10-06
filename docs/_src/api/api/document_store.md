@@ -254,6 +254,20 @@ documents for evaluation can be indexed in a separate index than the documents f
 
 None
 
+<a name="sql.SQLDocumentStore.update_vector_ids"></a>
+#### update\_vector\_ids
+
+```python
+ | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
+```
+
+Update vector_ids for given document_ids.
+
+**Arguments**:
+
+- `vector_id_map`: dict containing mapping of document_id -> vector_id.
+- `index`: filter documents by the optional index attribute for documents in database.
+
 <a name="sql.SQLDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
 
