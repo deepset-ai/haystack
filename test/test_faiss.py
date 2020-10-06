@@ -137,15 +137,14 @@ def test_faiss_passing_index_from_outside():
     quantizer = faiss.IndexFlatIP(d)
     faiss_index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_INNER_PRODUCT)
     faiss_index.nprobe = 2
-    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", faiss_index=faiss_index,
-                                        index="index_from_outside")
+    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", faiss_index=faiss_index)
 
-    document_store.delete_all_documents(index="index_from_outside")
+    document_store.delete_all_documents(index="document")
     # as it is a IVF index we need to train it before adding docs
     document_store.train_index(DOCUMENTS)
 
-    document_store.write_documents(documents=DOCUMENTS, index="index_from_outside")
-    documents_indexed = document_store.get_all_documents(index="index_from_outside")
+    document_store.write_documents(documents=DOCUMENTS, index="document")
+    documents_indexed = document_store.get_all_documents(index="document")
 
     # test document correctness
     check_data_correctness(documents_indexed, DOCUMENTS)
