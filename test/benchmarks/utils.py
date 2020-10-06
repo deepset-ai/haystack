@@ -54,6 +54,9 @@ def get_document_store(document_store_type):
             # Launch a postgres instance & create empty DB
             logger.info("Didn't find Postgres. Start a new instance...")
             status = subprocess.run(
+                ['docker rm haystack-postgres'],
+                shell=True)
+            status = subprocess.run(
                 ['docker run --name haystack-postgres -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres'],
                 shell=True)
             time.sleep(3)
