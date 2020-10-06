@@ -12,7 +12,6 @@ from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
-
 class FAISSDocumentStore(SQLDocumentStore):
     """
     Document store for very large scale embedding based dense retrievers like the DPR.
@@ -29,35 +28,42 @@ class FAISSDocumentStore(SQLDocumentStore):
         self,
         sql_url: str = "sqlite:///",
         index_buffer_size: int = 10_000,
-        vector_size: int = 768,
+        vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional[IndexHNSWFlat] = None,
+        **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
         :param index_buffer_size: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
                                   smaller chunks to reduce memory footprint.
-        :param vector_size: the embedding vector size.
+        :param vector_dim: the embedding vector size.
         :param faiss_index: load an existing FAISS Index.
         """
-        self.vector_size = vector_size
+        self.vector_dim = vector_dim
 
         if not faiss_index:
-            self.faiss_index = self._create_new_index(vector_size=self.vector_size, index_factory=faiss_index_type)
+            self.faiss_index = self._create_new_index(vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs)
 
         self.index_buffer_size = index_buffer_size
         super().__init__(url=sql_url)
 
-    def _create_new_index(self, vector_size: int, index_factory: str = "Flat", metric=faiss.METRIC_INNER_PRODUCT):
-        if index_factory is None:
-
-        index = faiss.index_factory(vector_size, index_factory, metric)
+    def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric=faiss.METRIC_INNER_PRODUCT, **kwargs):
+        if index_factory == "HNSW" and metric == faiss.METRIC_INNER_PRODUCT:
+            # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
+            # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
+            n_links = kwargs.get("n_links", 256)
+            index = faiss.IndexHNSWFlat(vector_dim, n_links, metric)
+            index.hnsw.efSearch = kwargs.get("efSearch", 128)
+            index.hnsw.efConstruction = kwargs.get("efConstruction", 200)
+        else:
+            index = faiss.index_factory(vector_dim, index_factory, metric)
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         # vector index
-        self.faiss_index = self.faiss_index or self._create_new_index(vector_size=self.vector_size)
+        self.faiss_index = self.faiss_index or self._create_new_index(vector_dim=self.vector_dim)
         # doc + metadata index
         index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
