@@ -17,14 +17,15 @@ logging.getLogger("elasticsearch").setLevel(logging.WARN)
 
 retriever_doc_stores = [
     # ("elastic", "elasticsearch"),
-    ("dpr", "elasticsearch"),
-    ("dpr", "faiss")
+    # ("dpr", "elasticsearch"),
+    # ("dpr", "faiss"),
+    ("dpr", "faiss_hnsw")
 ]
 
 n_docs_options = [
     1000,
-    10000,
-    100000,
+    # 10000,
+    # 100000,
 ]
 
 # If set to None, querying will be run on all queries

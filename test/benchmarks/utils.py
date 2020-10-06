@@ -39,15 +39,17 @@ def get_document_store(document_store_type):
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="eval_document")
-    elif document_store_type == "faiss":
-        if os.path.exists("haystack_test_faiss.db"):
-            os.remove("haystack_test_faiss.db")
-        # document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db")
-
+    elif document_store_type in("faiss_flat", "faiss_hnsw"):
         import subprocess
         import time
+
+        if document_store_type == "faiss":
+            index_type = "Flat"
+        elif document_store_type == "faiss_hnsw":
+            index_type = "HNSW"
         try:
-            document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack")
+            document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
+                                                faiss_index_factory_str=index_type)
         except:
             # Launch a postgres instance & create empty DB
             logger.info("Didn't find Postgres. Start a new instance...")
