@@ -165,6 +165,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             embeddings = np.array(embeddings, dtype="float32")
         self.faiss_index.train(embeddings)
 
+    def delete_all_documents(self, index=None):
+        self.faiss_index.reset()
+        super().delete_all_documents(index=index)
+
     def query_by_embedding(
         self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
     ) -> List[Document]:
