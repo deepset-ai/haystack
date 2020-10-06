@@ -66,16 +66,16 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.index_buffer_size = index_buffer_size
         super().__init__(url=sql_url)
 
-    def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric=faiss.METRIC_INNER_PRODUCT, **kwargs):
-        if index_factory == "HNSW" and metric == faiss.METRIC_INNER_PRODUCT:
+    def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric_type=faiss.METRIC_INNER_PRODUCT, **kwargs):
+        if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
             n_links = kwargs.get("n_links", 256)
-            index = faiss.IndexHNSWFlat(vector_dim, n_links, metric)
+            index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
             index.hnsw.efSearch = kwargs.get("efSearch", 256)
             index.hnsw.efConstruction = kwargs.get("efConstruction", 256)
         else:
-            index = faiss.index_factory(vector_dim, index_factory, metric)
+            index = faiss.index_factory(vector_dim, index_factory, metric_type)
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
