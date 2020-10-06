@@ -427,7 +427,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "script_score": {
                         "query": {"match_all": {}},
                         "script": {
-                            "source": f"cosineSimilarity(params.query_vector,doc['{self.embedding_field}']) + 1.0",
+                            "source": f"cosineSimilarity(params.query_vector,'{self.embedding_field}') + 1.0",
                             "params": {
                                 "query_vector": query_emb.tolist()
                             }
