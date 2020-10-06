@@ -131,8 +131,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.faiss_index = None
             return
 
-        # Some FAISS indexes(like the default HNSWx) do not support removing vectors, so a new index is created.
-        faiss_index = self._create_new_index(vector_size=self.vector_size)
         logger.info(f"Updating embeddings for {len(documents)} docs ...")
         embeddings = retriever.embed_passages(documents)  # type: ignore
         assert len(documents) == len(embeddings)
