@@ -31,7 +31,6 @@ class DocumentORM(ORMBase):
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaORM", backref="Document", lazy="joined")
 
-
 class MetaORM(ORMBase):
     __tablename__ = "meta"
 

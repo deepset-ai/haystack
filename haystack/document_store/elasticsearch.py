@@ -427,7 +427,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "script_score": {
                         "query": {"match_all": {}},
                         "script": {
-                            "source": f"cosineSimilarity(params.query_vector,doc['{self.embedding_field}']) + 1.0",
+                            "source": f"cosineSimilarity(params.query_vector,'{self.embedding_field}') + 1.0",
                             "params": {
                                 "query_vector": query_emb.tolist()
                             }
@@ -437,14 +437,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             }  # type: Dict[str,Any]
 
             if filters:
-                filter_clause = []
                 for key, values in filters.items():
-                    filter_clause.append(
-                        {
-                            "terms": {key: values}
-                        }
-                    )
-                body["query"]["bool"]["filter"] = filter_clause
+                    if type(values) != list:
+                        raise ValueError(f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                                         'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
+                body["query"]["script_score"]["query"] = {
+                    "terms": filters
+                }
 
             if self.excluded_meta_data:
                 body["_source"] = {"excludes": self.excluded_meta_data}
