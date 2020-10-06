@@ -155,7 +155,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             faiss_file_path: Union[str, Path],
             sql_url: str,
             index_buffer_size: int = 10_000,
-            vector_size: int = 768
+            vector_dim: int = 768
     ):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
@@ -165,6 +165,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             faiss_index=faiss_index,
             sql_url=sql_url,
             index_buffer_size=index_buffer_size,
-            vector_size=vector_size
+            vector_dim=vector_dim
         )
 
