@@ -43,7 +43,7 @@ def get_document_store(document_store_type):
         import subprocess
         import time
 
-        if document_store_type == "faiss":
+        if document_store_type == "faiss_flat":
             index_type = "Flat"
         elif document_store_type == "faiss_hnsw":
             index_type = "HNSW"
