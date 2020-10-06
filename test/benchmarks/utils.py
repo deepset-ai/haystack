@@ -11,8 +11,10 @@ from haystack.reader.transformers import TransformersReader
 from time import perf_counter
 import pandas as pd
 import json
+import logging
 
 from pathlib import Path
+logger = logging.getLogger(__name__)
 
 
 reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2", "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2", "deepset/xlm-roberta-large-squad2"]
@@ -40,7 +42,23 @@ def get_document_store(document_store_type):
     elif document_store_type == "faiss":
         if os.path.exists("haystack_test_faiss.db"):
             os.remove("haystack_test_faiss.db")
-        document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db")
+        # document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db")
+
+        import subprocess
+        import time
+        try:
+            document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack")
+        except:
+            # Launch a postgres instance & create empty DB
+            logger.info("Didn't find Postgres. Start a new instance...")
+            status = subprocess.run(
+                ['docker run --name haystack-postgres -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres'],
+                shell=True)
+            time.sleep(3)
+            status = subprocess.run(
+                ['docker exec -it haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
+            document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack")
+
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
     return document_store
