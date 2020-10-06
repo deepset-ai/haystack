@@ -43,7 +43,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         self.vector_dim = vector_dim
 
-        if not faiss_index:
+        if faiss_index:
+            self.faiss_index = faiss_index
+        else:
             self.faiss_index = self._create_new_index(vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs)
 
         self.index_buffer_size = index_buffer_size
