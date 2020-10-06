@@ -19,7 +19,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     It implements the FAISS library(https://github.com/facebookresearch/faiss)
     to perform similarity search on vectors.
 
-    The document text and meta-data(for filtering) is stored using the SQLDocumentStore, while
+    The document text and meta-data (for filtering) are stored using the SQLDocumentStore, while
     the vector embeddings are indexed in a FAISS Index.
 
     """
@@ -39,7 +39,23 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index_buffer_size: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
                                   smaller chunks to reduce memory footprint.
         :param vector_dim: the embedding vector size.
-        :param faiss_index: load an existing FAISS Index.
+        :param faiss_index_factory_str: Create a new FAISS index of the specified type.
+                                        The type is determined from the given string following the conventions
+                                        of the original FAISS index factory.
+                                        Recommended options:
+                                        - "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
+                                        - "HNSW": Graph-based heuristic. If not further specified,
+                                                  we use a RAM intense, but more accurate config:
+                                                  HNSW256, efConstruction=256 and efSearch=256
+                                        - "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
+                                                          Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
+                                        For more details see:
+                                        - Overview of indices https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
+                                        - Guideline for choosing an index https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+                                        - FAISS Index factory https://github.com/facebookresearch/faiss/wiki/The-index-factory
+                                        Benchmarks: XXX
+        :param faiss_index: Pass an existing FAISS Index, i.e. an empty one that you configured manually
+                            or one with docs that you used in Haystack before and want to load again.
         """
         self.vector_dim = vector_dim
 
@@ -57,13 +73,20 @@ class FAISSDocumentStore(SQLDocumentStore):
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
             n_links = kwargs.get("n_links", 256)
             index = faiss.IndexHNSWFlat(vector_dim, n_links, metric)
-            index.hnsw.efSearch = kwargs.get("efSearch", 128)
-            index.hnsw.efConstruction = kwargs.get("efConstruction", 200)
+            index.hnsw.efSearch = kwargs.get("efSearch", 256)
+            index.hnsw.efConstruction = kwargs.get("efConstruction", 256)
         else:
             index = faiss.index_factory(vector_dim, index_factory, metric)
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
+        """
+        Add new documents to the DocumentStore.
+        :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
+                          them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
+        :param index: (SQL) index name for storing the docs and metadata
+        :return:
+        """
         # vector index
         self.faiss_index = self.faiss_index or self._create_new_index(vector_dim=self.vector_dim)
         # doc + metadata index
@@ -95,7 +118,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
         :param retriever: Retriever to use to get embeddings for text
-        :param index: Index name to update
+        :param index: (SQL) index name for storing the docs and metadata
         :return: None
         """
         # To clear out the FAISS index contents and frees all memory immediately that is in use by the index
@@ -124,6 +147,16 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.update_vector_ids(vector_id_map, index=index)
 
     def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
+        """
+        Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
+        The train vectors should come from the same distribution as your final ones.
+        You can pass either documents (incl. embeddings) or just the plain embeddings that the index shall be trained on.
+
+        :param documents: Documents (incl. the embeddings)
+        :param embeddings: Plain embeddings
+        :return: None
+        """
+
         if embeddings and documents:
             raise ValueError("Either pass `documents` or `embeddings`. You passed both.")
         if documents:
@@ -135,6 +168,16 @@ class FAISSDocumentStore(SQLDocumentStore):
     def query_by_embedding(
         self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
     ) -> List[Document]:
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param top_k: How many documents to return
+        :param index: (SQL) index name for storing the docs and metadata
+        :return:
+        """
         if filters:
             raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
         if not self.faiss_index:
@@ -157,6 +200,9 @@ class FAISSDocumentStore(SQLDocumentStore):
     def save(self, file_path: Union[str, Path]):
         """
         Save FAISS Index to the specified file.
+
+        :param file_path: Path to save to.
+        :return: None
         """
         faiss.write_index(self.faiss_index, str(file_path))
 
@@ -166,16 +212,25 @@ class FAISSDocumentStore(SQLDocumentStore):
             faiss_file_path: Union[str, Path],
             sql_url: str,
             index_buffer_size: int = 10_000,
-            vector_dim: int = 768
     ):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
+        Note: In order to have a correct mapping from FAISS to SQL,
+              make sure to use the same SQL DB that you used when calling `save()`.
+
+        :param faiss_file_path: Stored FAISS index file. Can be created via calling `save()`
+        :param sql_url: Connection string to the SQL database that contains your docs and metadata.
+        :param index_buffer_size: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
+                                  smaller chunks to reduce memory footprint.
+        :return:
+        """
+        """
         """
         faiss_index = faiss.read_index(str(faiss_file_path))
         return cls(
             faiss_index=faiss_index,
             sql_url=sql_url,
             index_buffer_size=index_buffer_size,
-            vector_dim=vector_dim
+            vector_dim=faiss_index.d
         )
 
