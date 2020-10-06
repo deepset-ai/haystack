@@ -359,7 +359,7 @@ the vector embeddings are indexed in a FAISS Index.
 deployment, Postgres is recommended.
 - `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
 smaller chunks to reduce memory footprint.
-- `vector_size`: the embedding vector size.
+- `vector_dim`: the dimensionality of the embedding vector .
 - `faiss_index`: load an existing FAISS Index.
 
 <a name="faiss.FAISSDocumentStore.update_embeddings"></a>
