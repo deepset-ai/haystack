@@ -1,0 +1,37 @@
+{
+    "chart_type": "BarChart",
+    "title": "Retriever Performance",
+    "subtitle": "Time and Accuracy Benchmarks",
+    "description": "",
+    "bars": "horizontal",
+    "columns": [
+        "Model", 
+        "Recall", 
+        "Index Time",
+        "Query Time"
+    ],
+    "series": {
+        "s0": "recall",
+        "s1": "time",
+        "s2": "time"
+    },
+    "axes": {
+        "label": "recall",
+        "time_side": "top",
+        "time_label": "seconds"
+    },
+    "data": [
+        {
+                "model": "BM25 (Elasticsearch)",
+                "recall": 1.0,
+                "index_time": 3.868239733,
+                "query_time": 0.47588522500000074
+        },
+        {
+                "model": "DPR (FAISS)",
+                "recall": 0.9629629629629629,
+                "index_time": 18.181850872000723,
+                "query_time": 1.358759985992947
+        }
+    ]
+  }
