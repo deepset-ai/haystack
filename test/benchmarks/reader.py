@@ -17,7 +17,7 @@ n_passages = 12350
 doc_index = "eval_document"
 label_index = "label"
 
-def benchmark():
+def benchmark_reader():
     reader_results = []
     doc_store = get_document_store("elasticsearch")
     docs, labels = eval_data_from_file(data_dir/filename)
@@ -51,4 +51,4 @@ def benchmark():
 
 
 if __name__ == "__main__":
-    benchmark()
+    benchmark_reader()

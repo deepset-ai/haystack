@@ -12,6 +12,8 @@ from time import perf_counter
 import pandas as pd
 import json
 import logging
+import subprocess
+import time
 
 from pathlib import Path
 logger = logging.getLogger(__name__)
@@ -40,9 +42,6 @@ def get_document_store(document_store_type):
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="eval_document")
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
-        import subprocess
-        import time
-
         if document_store_type == "faiss_flat":
             index_type = "Flat"
         elif document_store_type == "faiss_hnsw":
