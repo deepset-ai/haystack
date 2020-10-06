@@ -123,6 +123,15 @@ class FAISSDocumentStore(SQLDocumentStore):
                 
         self.update_vector_ids(vector_id_map, index=index)
 
+    def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
+        if embeddings and documents:
+            raise ValueError("Either pass `documents` or `embeddings`. You passed both.")
+        if documents:
+            document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+            embeddings = [doc.embedding for doc in document_objects]
+            embeddings = np.array(embeddings, dtype="float32")
+        self.faiss_index.train(embeddings)
+
     def query_by_embedding(
         self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
     ) -> List[Document]:
