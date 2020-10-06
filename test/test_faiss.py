@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 from haystack import Document
+import faiss
 
+from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.dense import EmbeddingRetriever
 from haystack import Finder
@@ -69,7 +71,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
         stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(original_doc["embedding"], stored_emb[:-1], rtol=0.01)
+        assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
 
     # test document correctness
     check_data_correctness(documents_indexed, DOCUMENTS)
@@ -100,7 +102,7 @@ def test_faiss_update_docs(document_store, index_buffer_size):
         updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
         stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(updated_embedding, stored_emb[:-1], rtol=0.01)
+        assert np.allclose(updated_embedding, stored_emb, rtol=0.01)
 
     # test document correctness
     check_data_correctness(documents_indexed, DOCUMENTS)
@@ -128,3 +130,21 @@ def test_faiss_finding(document_store):
     prediction = finder.get_answers_via_similar_questions(question="How to test this?", top_k_retriever=1)
 
     assert len(prediction.get('answers', [])) == 1
+
+def test_faiss_passing_index_from_outside():
+    d = 768
+    nlist = 2
+    quantizer = faiss.IndexFlatIP(d)
+    faiss_index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_INNER_PRODUCT)
+    faiss_index.nprobe = 2
+    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", faiss_index=faiss_index)
+
+    document_store.delete_all_documents(index="document")
+    # as it is a IVF index we need to train it before adding docs
+    document_store.train_index(DOCUMENTS)
+
+    document_store.write_documents(documents=DOCUMENTS, index="document")
+    documents_indexed = document_store.get_all_documents(index="document")
+
+    # test document correctness
+    check_data_correctness(documents_indexed, DOCUMENTS)
