@@ -18,20 +18,21 @@ logging.getLogger("elasticsearch").setLevel(logging.WARN)
 retriever_doc_stores = [
     # ("elastic", "elasticsearch"),
     # ("dpr", "elasticsearch"),
-    # ("dpr", "faiss"),
-    ("dpr", "faiss_hnsw")
+    ("dpr", "faiss_flat"),
+    # ("dpr", "faiss_hnsw")
 ]
 
 n_docs_options = [
     1000,
-    # 10000,
-    # 100000,
+    10000,
+    100000,
+    500000
 ]
 
 # If set to None, querying will be run on all queries
 n_queries = 100
 # shuffling of neg. passages slows the runs down but makes accuracy benchmarks more reliable
-shuffle_negatives = False
+shuffle_negatives = True
 data_dir = Path("../../data/retriever")
 filename_gold = "nq2squad-dev.json"            # Found at s3://ext-haystack-retriever-eval
 filename_negative = "psgs_w100_minus_gold.tsv"      # Found at s3://ext-haystack-retriever-eval
@@ -170,9 +171,9 @@ def benchmark_querying():
             retriever_results.append(results)
             del doc_store
             del retriever
-    retriever_df = pd.DataFrame.from_records(retriever_results)
-    retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
-    retriever_df.to_csv("retriever_query_results.csv")
+            retriever_df = pd.DataFrame.from_records(retriever_results)
+            retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
+            retriever_df.to_csv("retriever_query_results.csv")
 
 
 
