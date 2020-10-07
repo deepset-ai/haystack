@@ -9,6 +9,7 @@ from tqdm import tqdm
 import logging
 import datetime
 import random
+import traceback
 
 
 logger = logging.getLogger(__name__)
@@ -166,6 +167,7 @@ def benchmark_querying():
                 del doc_store
                 del retriever
             except Exception as e:
+                tb = traceback.format_exc()
                 results = {
                     "retriever": retriever_name,
                     "doc_store": doc_store_name,
@@ -178,7 +180,7 @@ def benchmark_querying():
                     "map": 0.,
                     "top_k": 0,
                     "date_time": datetime.datetime.now(),
-                    "error": str(e)
+                    "error": str(tb)
                 }
             logger.info(results)
             retriever_results.append(results)
