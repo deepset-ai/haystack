@@ -16,8 +16,8 @@ logging.getLogger("haystack.retriever.base").setLevel(logging.WARN)
 logging.getLogger("elasticsearch").setLevel(logging.WARN)
 
 retriever_doc_stores = [
-    # ("elastic", "elasticsearch"),
-    # ("dpr", "elasticsearch"),
+    ("elastic", "elasticsearch"),
+    ("dpr", "elasticsearch"),
     ("dpr", "faiss_flat"),
     # ("dpr", "faiss_hnsw")
 ]
@@ -26,13 +26,11 @@ n_docs_options = [
     1000,
     10000,
     100000,
-    500000
+    500000,
 ]
 
 # If set to None, querying will be run on all queries
-n_queries = 100
-# shuffling of neg. passages slows the runs down but makes accuracy benchmarks more reliable
-shuffle_negatives = True
+n_queries = None
 data_dir = Path("../../data/retriever")
 filename_gold = "nq2squad-dev.json"            # Found at s3://ext-haystack-retriever-eval
 filename_negative = "psgs_w100_minus_gold.tsv"      # Found at s3://ext-haystack-retriever-eval
@@ -47,7 +45,7 @@ seed = 42
 random.seed(42)
 
 
-def prepare_data(data_dir, filename_gold, filename_negative, n_docs=None, n_queries=None, add_precomputed=False, shuffle_negatives=False):
+def prepare_data(data_dir, filename_gold, filename_negative, n_docs=None, n_queries=None, add_precomputed=False):
     """
     filename_gold points to a squad format file.
     filename_negative points to a csv file where the first column is doc_id and second is document text.
@@ -69,7 +67,7 @@ def prepare_data(data_dir, filename_gold, filename_negative, n_docs=None, n_quer
     labels = [x for x in labels if f"{x.document_id} | {x.question}" in selected_queries]
 
     n_neg_docs = max(0, n_docs - len(gold_docs))
-    neg_docs = prepare_negative_passages(data_dir, filename_negative, n_neg_docs, shuffle_negatives)
+    neg_docs = prepare_negative_passages(data_dir, filename_negative, n_neg_docs)
     docs = gold_docs + neg_docs
 
     if add_precomputed:
@@ -77,18 +75,14 @@ def prepare_data(data_dir, filename_gold, filename_negative, n_docs=None, n_quer
 
     return docs, labels
 
-def prepare_negative_passages(data_dir, filename_negative, n_docs, shuffle=False):
+def prepare_negative_passages(data_dir, filename_negative, n_docs):
     if n_docs == 0:
         return []
     with open(data_dir / filename_negative) as f:
-        if shuffle:
-            lines = [l[:-1] for l in f][1:]     # Skip column titles line
-            random.shuffle(lines)
-        else:
-            lines = []
-            _ = f.readline() # Skip column titles line
-            for _ in range(n_docs):
-                lines.append(f.readline()[:-1])
+        lines = []
+        _ = f.readline() # Skip column titles line
+        for _ in range(n_docs):
+            lines.append(f.readline()[:-1])
 
     docs = []
     for l in lines[:n_docs]:
@@ -108,8 +102,7 @@ def benchmark_indexing():
             doc_store = get_document_store(doc_store_name)
             retriever = get_retriever(retriever_name, doc_store)
 
-            docs, _ = prepare_data(data_dir, filename_gold, filename_negative, n_docs=n_docs,
-                                   shuffle_negatives=shuffle_negatives)
+            docs, _ = prepare_data(data_dir, filename_gold, filename_negative, n_docs=n_docs)
 
             tic = perf_counter()
             index_to_doc_store(doc_store, docs, retriever)
@@ -137,40 +130,57 @@ def benchmark_querying():
     retriever_results = []
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
-            logger.info(f"##### Start run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
-            doc_store = get_document_store(doc_store_name)
-            retriever = get_retriever(retriever_name, doc_store)
-            add_precomputed = retriever_name in ["dpr"]
-            # For DPR, precomputed embeddings are loaded from file
-            docs, labels = prepare_data(data_dir,
-                                        filename_gold,
-                                        filename_negative,
-                                        n_docs=n_docs,
-                                        n_queries=n_queries,
-                                        add_precomputed=add_precomputed,
-                                        shuffle_negatives=shuffle_negatives)
-            logger.info("Start indexing...")
-            index_to_doc_store(doc_store, docs, retriever, labels)
-            logger.info("Start queries...")
+            try:
+                logger.info(f"##### Start run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
+                doc_store = get_document_store(doc_store_name)
+                retriever = get_retriever(retriever_name, doc_store)
+                add_precomputed = retriever_name in ["dpr"]
+                # For DPR, precomputed embeddings are loaded from file
+                docs, labels = prepare_data(data_dir,
+                                            filename_gold,
+                                            filename_negative,
+                                            n_docs=n_docs,
+                                            n_queries=n_queries,
+                                            add_precomputed=add_precomputed)
+                logger.info("Start indexing...")
+                index_to_doc_store(doc_store, docs, retriever, labels)
+                logger.info("Start queries...")
 
-            raw_results = retriever.eval()
-            results = {
-                "retriever": retriever_name,
-                "doc_store": doc_store_name,
-                "n_docs": n_docs,
-                "n_queries": raw_results["n_questions"],
-                "retrieve_time": raw_results["retrieve_time"],
-                "queries_per_second": raw_results["n_questions"] / raw_results["retrieve_time"],
-                "seconds_per_query": raw_results["retrieve_time"]/ raw_results["n_questions"],
-                "recall": raw_results["recall"],
-                "map": raw_results["map"],
-                "top_k": raw_results["top_k"],
-                "date_time": datetime.datetime.now()
-            }
+                raw_results = retriever.eval()
+                results = {
+                    "retriever": retriever_name,
+                    "doc_store": doc_store_name,
+                    "n_docs": n_docs,
+                    "n_queries": raw_results["n_questions"],
+                    "retrieve_time": raw_results["retrieve_time"],
+                    "queries_per_second": raw_results["n_questions"] / raw_results["retrieve_time"],
+                    "seconds_per_query": raw_results["retrieve_time"]/ raw_results["n_questions"],
+                    "recall": raw_results["recall"],
+                    "map": raw_results["map"],
+                    "top_k": raw_results["top_k"],
+                    "date_time": datetime.datetime.now(),
+                    "error": None
+                }
+                del doc_store
+                del retriever
+            except Exception as e:
+                results = {
+                    "retriever": retriever_name,
+                    "doc_store": doc_store_name,
+                    "n_docs": n_docs,
+                    "n_queries": 0,
+                    "retrieve_time": 0.,
+                    "queries_per_second": 0.,
+                    "seconds_per_query": 0.,
+                    "recall": 0.,
+                    "map": 0.,
+                    "top_k": 0,
+                    "date_time": datetime.datetime.now(),
+                    "error": str(e)
+                }
             logger.info(results)
             retriever_results.append(results)
-            del doc_store
-            del retriever
+
             retriever_df = pd.DataFrame.from_records(retriever_results)
             retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
             retriever_df.to_csv("retriever_query_results.csv")
