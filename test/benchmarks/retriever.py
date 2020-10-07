@@ -15,10 +15,12 @@ logger = logging.getLogger(__name__)
 logging.getLogger("haystack.retriever.base").setLevel(logging.WARN)
 logging.getLogger("elasticsearch").setLevel(logging.WARN)
 
+es_similarity = "dot_product"
+
 retriever_doc_stores = [
-    ("elastic", "elasticsearch"),
+    # ("elastic", "elasticsearch"),
     ("dpr", "elasticsearch"),
-    ("dpr", "faiss_flat"),
+    # ("dpr", "faiss_flat"),
     # ("dpr", "faiss_hnsw")
 ]
 
@@ -99,7 +101,7 @@ def benchmark_indexing():
     retriever_results = []
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
-            doc_store = get_document_store(doc_store_name)
+            doc_store = get_document_store(doc_store_name, es_similarity=es_similarity)
             retriever = get_retriever(retriever_name, doc_store)
 
             docs, _ = prepare_data(data_dir, filename_gold, filename_negative, n_docs=n_docs)
@@ -132,7 +134,7 @@ def benchmark_querying():
         for retriever_name, doc_store_name in retriever_doc_stores:
             try:
                 logger.info(f"##### Start run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
-                doc_store = get_document_store(doc_store_name)
+                doc_store = get_document_store(doc_store_name, es_similarity=es_similarity)
                 retriever = get_retriever(retriever_name, doc_store)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
