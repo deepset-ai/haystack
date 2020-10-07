@@ -40,7 +40,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         create_index: bool = True,
         update_existing_documents: bool = False,
         refresh_type: str = "wait_for",
-        similarity="dot_product"
+        similarity="dot_product",
+        timeout=30,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -78,7 +79,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
-                                    scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
+                                    scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
 
         # configure mappings to ES fields that will be used for querying / displaying results
         if type(search_fields) == str:
