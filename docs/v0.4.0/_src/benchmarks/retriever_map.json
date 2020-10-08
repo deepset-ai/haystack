@@ -1,0 +1,28 @@
+{
+    "chart_type": "LineChart",
+    "title": "Line Chart 1",
+    "subtitle": "Subtitle Chart 1",
+    "description": "todo",
+    "columns": [
+        "n_docs",
+        "BM25 / ElasticSearch", 
+        "DPR / ElasticSearch",
+        "DPR / FAISS (flat)",
+        "DPR / FAISS (HSNW)"
+    ],
+    "data":
+    [
+        [
+            1000, 0.748, 0.914, 0.929, 0.929
+        ],
+        [
+            10000, 0.6609999999999999, 0.8809999999999999, 0.898, 0.898
+        ],
+        [
+            100000, 0.56, 0.821, 0.863, 0.862
+        ],
+        [
+            500000, 0.452, 0, 0.805, 0.8
+        ]
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "chart_type": "BarChart",
+    "title": "Reader Performance",
+    "subtitle": "Time and Accuracy Benchmarks",
+    "description": "",
+    "bars": "horizontal",
+    "columns": [
+        "Model", 
+        "F1",
+        "Speed"
+    ],
+    "data": [
+        {"F1": 0.8067985794671885, "Model": "RoBERTa", "Speed": 92.3039712094936},
+        {"F1": 0.7823306265318686, "Model": "MiniLM", "Speed": 98.62387044489223},
+        {"F1": 0.7490271600053505, "Model": "BERT base", "Speed": 99.92750782409666},
+        {"F1": 0.8264545708097472, "Model": "BERT large", "Speed": 39.529824033964466},
+        {"F1": 0.8526275190954586, "Model": "XLM-RoBERTa", "Speed": 39.29142006004379}
+    ]
+}
