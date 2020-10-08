@@ -46,14 +46,14 @@
       {
         "model": "DPR / FAISS (flat)",
         "n_docs": 100000,
-        "index_speed": NaN,
+        "index_speed": 0,
         "query_speed": 5.044,
         "map": 0.863
       },
       {
         "model": "DPR / FAISS (HSNW)",
         "n_docs": 100000,
-        "index_speed": NaN,
+        "index_speed": 0,
         "query_speed": 11.988,
         "map": 0.862
       }
