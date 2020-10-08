@@ -21,3 +21,4 @@ tika
 uvloop
 httptools
 nltk
+more_itertools
