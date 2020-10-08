@@ -153,7 +153,7 @@ def tika_convert_files_to_dicts(
 
     :return: None
     """
-    converter = TikaConverter(remove_header_footer=True)
+    converter = TikaConverter()
     paths = [p for p in Path(dir_path).glob("**/*")]
     allowed_suffixes = [".pdf", ".txt"]
     file_paths: List[Path] = []

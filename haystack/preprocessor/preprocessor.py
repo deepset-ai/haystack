@@ -74,6 +74,9 @@ class PreProcessor(BasePreProcessor):
         if not self.split_by:
             return [document]
 
+        if not self.split_size:
+            raise Exception("split_size needs be set when using split_by.")
+
         text = document["text"]
 
         if self.split_respect_sentence_boundary:  # split by words ensuring no sub sentence splits
