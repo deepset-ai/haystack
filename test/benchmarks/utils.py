@@ -87,8 +87,6 @@ def get_reader(reader_name, reader_type, max_seq_len=384):
     return reader_class(reader_name, top_k_per_candidate=4, max_seq_len=max_seq_len)
 
 def index_to_doc_store(doc_store, docs, retriever, labels=None):
-    doc_store.delete_all_documents(index=doc_index)
-    doc_store.delete_all_documents(index=label_index)
     doc_store.write_documents(docs, doc_index)
     if labels:
         doc_store.write_labels(labels, index=label_index)
