@@ -8,11 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class TextConverter(BaseConverter):
-    def __init__(
-            self,
-            remove_numeric_tables: Optional[bool] = False,
-            valid_languages: Optional[List[str]] = None,
-    ):
+    def __init__(self, remove_numeric_tables: Optional[bool] = False, valid_languages: Optional[List[str]] = None):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
@@ -29,7 +25,7 @@ class TextConverter(BaseConverter):
         super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-        with open(file_path) as f:
+        with open(file_path, errors="ignore") as f:
             text = f.read()
             pages = text.split("\f")
 
