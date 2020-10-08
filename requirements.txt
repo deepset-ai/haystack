@@ -20,3 +20,4 @@ faiss-cpu
 tika
 uvloop
 httptools
+nltk
