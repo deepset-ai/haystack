@@ -3,7 +3,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Tuple, Generator, Set
+from typing import List, Optional, Generator, Set
 
 import nltk
 from more_itertools import windowed
@@ -22,7 +22,7 @@ class PreProcessor(BasePreProcessor):
         split_by: Optional[str] = "passage",
         split_size: Optional[int] = 10,
         split_stride: Optional[int] = None,
-        split_mid_sentence: Optional[bool] = True,
+        split_respect_sentence_boundary: Optional[bool] = False,
     ):
         """
         :param clean_header_footer: use heuristic to remove footers and headers across different pages by searching
@@ -35,26 +35,25 @@ class PreProcessor(BasePreProcessor):
         :param split_size: n number of splits to merge as a single document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
         :param split_stride: overlap splits by "sliding window". Set to None to disable it.
-        :param split_mid_sentence: whether to split within sentence.
+        :param split_respect_sentence_boundary: whether to split within sentence.
         :param
         """
 
-        nltk.download('punkt')
+        nltk.download("punkt")
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
         self.split_by = split_by
         self.split_size = split_size
         self.split_stride = split_stride
-        self.split_mid_sentence = split_mid_sentence
+        self.split_respect_sentence_boundary = split_respect_sentence_boundary
 
     def clean(self, document: dict) -> dict:
         text = document["text"]
         if self.clean_header_footer:
-            cleaned_pages, header, footer = self._find_and_remove_header_footer(
-                document, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
+            text = self._find_and_remove_header_footer(
+                text, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
             )
-            logger.debug(f"Removed header '{header}' and footer {footer} in document")
 
         if self.clean_whitespace:
             lines = text.splitlines()
@@ -77,41 +76,49 @@ class PreProcessor(BasePreProcessor):
 
         text = document["text"]
 
-        if self.split_mid_sentence:
-            if self.split_by == "passage":
-                slices = text.split("\n\n")
-            elif self.split_by == "sentence":
-                slices = nltk.tokenize.sent_tokenize(text)
-            elif self.split_by == "word":
-                slices = text.split(" ")
-            else:
-                raise NotImplementedError("PreProcessor only supports 'passage' or 'sentence' split_by options.")
-
-            if self.split_stride:
-                segments = windowed(slices, n=self.split_size, step=self.split_size - self.split_stride)
-            else:
-                segments = windowed(slices, n=self.split_size, step=self.split_size)
-
-            text_splits = []
-            for seg in segments:
-                txt = " ".join([t for t in seg if t])
-                text_splits.append(txt)
-        else:
+        if self.split_respect_sentence_boundary:  # split by words ensuring no sub sentence splits
             if self.split_by == "word":
                 sentences = nltk.tokenize.sent_tokenize(text)
                 word_count = 0
                 text_splits = []
                 current_slice = ""
                 for sen in sentences:
-                    current_slice += sen
-                    word_count += len(sen.split(" "))
-                    if word_count > self.split_size:
+                    current_word_count = len(sen.split(" "))
+                    if word_count + current_word_count > self.split_size:
                         text_splits.append(current_slice)
                         current_slice = ""
                         word_count = 0
-            else:
-                raise NotImplementedError
+                    current_slice += sen
+                    word_count += len(sen.split(" "))
+                if current_slice:
+                    text_splits.append(current_slice)
 
+            else:
+                raise NotImplementedError(
+                    "'split_respect_sentence_boundary' parameter is only compatible with " "split_by='word'."
+                )
+        else:
+            # create individual "elements" of passage, sentence, or word
+            if self.split_by == "passage":
+                elements = text.split("\n\n")
+            elif self.split_by == "sentence":
+                elements = nltk.tokenize.sent_tokenize(text)
+            elif self.split_by == "word":
+                elements = text.split(" ")
+            else:
+                raise NotImplementedError("PreProcessor only supports 'passage' or 'sentence' split_by options.")
+
+            # concatenate individual elements based on split_size & split_stride
+            if self.split_stride:
+                segments = windowed(elements, n=self.split_size, step=self.split_size - self.split_stride)
+            else:
+                segments = windowed(elements, n=self.split_size, step=self.split_size)
+            text_splits = []
+            for seg in segments:
+                txt = " ".join([t for t in seg if t])
+                text_splits.append(txt)
+
+        # create new document dicts for each text split
         documents = []
         for i, txt in enumerate(text_splits):
             doc = deepcopy(document)
@@ -124,8 +131,8 @@ class PreProcessor(BasePreProcessor):
         return documents
 
     def _find_and_remove_header_footer(
-        self, document: dict, n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
-    ) -> Tuple[List[str], Optional[str], Optional[str]]:
+        self, text: str, n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
+    ) -> str:
         """
         Heuristic to find footers and headers across different pages by searching for the longest common string.
         For headers we only search in the first n_chars characters (for footer: last n_chars).
@@ -138,7 +145,7 @@ class PreProcessor(BasePreProcessor):
         :return: (cleaned pages, found_header_str, found_footer_str)
         """
 
-        pages = document["text"].split("\f")
+        pages = text.split("\f")
 
         # header
         start_of_pages = [p[:n_chars] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
@@ -151,7 +158,9 @@ class PreProcessor(BasePreProcessor):
         found_footer = self._find_longest_common_ngram(end_of_pages)
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
-        return pages, found_header, found_footer
+        logger.debug(f"Removed header '{found_header}' and footer {found_footer} in document")
+        text = "\f".join(pages)
+        return text
 
     def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
         """
