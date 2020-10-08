@@ -7,8 +7,8 @@
     "columns": [
         "Model", 
         "Recall", 
-        "Index Time",
-        "Query Time"
+        "Index Speed",
+        "Query Speed"
     ],
     "series": {
         "s0": "recall",
@@ -20,18 +20,42 @@
         "time_side": "top",
         "time_label": "seconds"
     },
-    "data": [
-        {
-                "model": "BM25 (Elasticsearch)",
-                "recall": 1.0,
-                "index_time": 3.868239733,
-                "query_time": 0.47588522500000074
-        },
-        {
-                "model": "DPR (FAISS)",
-                "recall": 0.9629629629629629,
-                "index_time": 18.181850872000723,
-                "query_time": 1.358759985992947
-        }
+    "data":
+    [
+      {
+        "model": "DPR / ElasticSearch",
+        "n_docs": 100000,
+        "index_speed": 80.47998463197479,
+        "query_speed": 6.444,
+        "map": 0.821
+      },
+      {
+        "model": "DPR / ElasticSearch",
+        "n_docs": 100000,
+        "index_speed": 80.47998463197479,
+        "query_speed": 6.5360000000000005,
+        "map": 0.863
+      },
+      {
+        "model": "BM25 / ElasticSearch",
+        "n_docs": 100000,
+        "index_speed": 481.050489498422,
+        "query_speed": 162.996,
+        "map": 0.56
+      },
+      {
+        "model": "DPR / FAISS (flat)",
+        "n_docs": 100000,
+        "index_speed": NaN,
+        "query_speed": 5.044,
+        "map": 0.863
+      },
+      {
+        "model": "DPR / FAISS (HSNW)",
+        "n_docs": 100000,
+        "index_speed": NaN,
+        "query_speed": 11.988,
+        "map": 0.862
+      }
     ]
   }

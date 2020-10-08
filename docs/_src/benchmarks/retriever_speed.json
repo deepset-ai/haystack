@@ -1,0 +1,104 @@
+{
+    "chart_type": "LineChart",
+    "title": "Line Chart 1",
+    "subtitle": "Subtitle Chart 1",
+    "description": "todo",
+    "data":
+    [
+        [
+            "model",
+            "n_docs",
+            "query_speed"
+        ],
+        [
+            "BM25 / ElasticSearch",
+            1000,
+            232.97799999999998
+        ],
+        [
+            "DPR / ElasticSearch",
+            1000,
+            41.093
+        ],
+        [
+            "DPR / ElasticSearch",
+            1000,
+            40.802
+        ],
+        [
+            "BM25 / ElasticSearch",
+            10000,
+            167.81
+        ],
+        [
+            "DPR / ElasticSearch",
+            10000,
+            26.801
+        ],
+        [
+            "DPR / ElasticSearch",
+            10000,
+            27.006999999999998
+        ],
+        [
+            "DPR / ElasticSearch",
+            100000,
+            6.444
+        ],
+        [
+            "DPR / ElasticSearch",
+            100000,
+            6.5360000000000005
+        ],
+        [
+            "BM25 / ElasticSearch",
+            100000,
+            162.996
+        ],
+        [
+            "DPR / FAISS (flat)",
+            1000,
+            40.048
+        ],
+        [
+            "DPR / FAISS (flat)",
+            10000,
+            23.976999999999997
+        ],
+        [
+            "DPR / FAISS (flat)",
+            100000,
+            5.044
+        ],
+        [
+            "DPR / FAISS (HSNW)",
+            1000,
+            36.049
+        ],
+        [
+            "DPR / FAISS (HSNW)",
+            10000,
+            28.487
+        ],
+        [
+            "DPR / FAISS (HSNW)",
+            100000,
+            11.988
+        ],
+        [
+            "DPR / FAISS (HSNW)",
+            500000,
+            1.1
+        ],
+        [
+            "BM25 / ElasticSearch",
+            500000,
+            95.491
+        ],
+        [
+            "DPR / ElasticSearch",
+            500000,
+            1.514
+        ]
+    ]
+}

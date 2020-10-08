@@ -19,9 +19,9 @@ logging.getLogger("elasticsearch").setLevel(logging.WARN)
 es_similarity = "dot_product"
 
 retriever_doc_stores = [
-    # ("elastic", "elasticsearch"),
+    ("elastic", "elasticsearch"),
     ("dpr", "elasticsearch"),
-    # ("dpr", "faiss_flat"),
+    ("dpr", "faiss_flat"),
     # ("dpr", "faiss_hnsw")
 ]
 
@@ -29,7 +29,7 @@ n_docs_options = [
     1000,
     10000,
     100000,
-    500000,
+    # 500000,
 ]
 
 # If set to None, querying will be run on all queries
@@ -102,7 +102,7 @@ def benchmark_indexing():
     retriever_results = []
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
-            doc_store = get_document_store(doc_store_name, es_similarity=es_similarity)
+            doc_store = get_document_store(doc_store_name)
             retriever = get_retriever(retriever_name, doc_store)
 
             docs, _ = prepare_data(data_dir, filename_gold, filename_negative, n_docs=n_docs)
@@ -212,5 +212,5 @@ def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
 
 
 if __name__ == "__main__":
-    # benchmark_indexing()
-    benchmark_querying()
+    benchmark_indexing()
+    # benchmark_querying()
