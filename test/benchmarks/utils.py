@@ -27,7 +27,7 @@ filename_reader = "dev-v2.0.json"
 doc_index = "eval_document"
 label_index = "label"
 
-def get_document_store(document_store_type):
+def get_document_store(document_store_type, es_similarity='cosine'):
     """ TODO This method is taken from test/conftest.py but maybe should be within Haystack.
     Perhaps a class method of DocStore that just takes string for type of DocStore"""
     if document_store_type == "sql":
@@ -40,7 +40,7 @@ def get_document_store(document_store_type):
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
-        document_store = ElasticsearchDocumentStore(index="eval_document")
+        document_store = ElasticsearchDocumentStore(index="eval_document", similarity=es_similarity)
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
             index_type = "Flat"
