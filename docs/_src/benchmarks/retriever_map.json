@@ -3,102 +3,26 @@
     "title": "Line Chart 1",
     "subtitle": "Subtitle Chart 1",
     "description": "todo",
+    "columns": [
+        "n_docs",
+        "BM25 / ElasticSearch", 
+        "DPR / ElasticSearch",
+        "DPR / FAISS (flat)",
+        "DPR / FAISS (HSNW)"
+    ],
     "data":
     [
         [
-            "model",
-            "n_docs",
-            "map"
+            1000, 0.748, 0.914, 0.929, 0.929
         ],
         [
-            "BM25 / ElasticSearch",
-            1000,
-            0.748
+            10000, 0.6609999999999999, 0.8809999999999999, 0.898, 0.898
         ],
         [
-            "DPR / ElasticSearch",
-            1000,
-            0.914
+            100000, 0.56, 0.821, 0.863, 0.862
         ],
         [
-            "DPR / ElasticSearch",
-            1000,
-            0.929
-        ],
-        [
-            "BM25 / ElasticSearch",
-            10000,
-            0.6609999999999999
-        ],
-        [
-            "DPR / ElasticSearch",
-            10000,
-            0.8809999999999999
-        ],
-        [
-            "DPR / ElasticSearch",
-            10000,
-            0.898
-        ],
-        [
-            "DPR / ElasticSearch",
-            100000,
-            0.821
-        ],
-        [
-            "DPR / ElasticSearch",
-            100000,
-            0.863
-        ],
-        [
-            "BM25 / ElasticSearch",
-            100000,
-            0.56
-        ],
-        [
-            "DPR / FAISS (flat)",
-            1000,
-            0.929
-        ],
-        [
-            "DPR / FAISS (flat)",
-            10000,
-            0.898
-        ],
-        [
-            "DPR / FAISS (flat)",
-            100000,
-            0.863
-        ],
-        [
-            "DPR / FAISS (HSNW)",
-            1000,
-            0.929
-        ],
-        [
-            "DPR / FAISS (HSNW)",
-            10000,
-            0.898
-        ],
-        [
-            "DPR / FAISS (HSNW)",
-            100000,
-            0.862
-        ],
-        [
-            "DPR / FAISS (HSNW)",
-            500000,
-            0.8
-        ],
-        [
-            "BM25 / ElasticSearch",
-            500000,
-            0.452
-        ],
-        [
-            "DPR / ElasticSearch",
-            500000,
-            0.805
+            500000, 0.452, 0, 0.805, 0.8
         ]
     ]
 }
