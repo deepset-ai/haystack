@@ -30,7 +30,7 @@ n_docs_options = [
     1000,
     10000,
     100000,
-    # 500000,
+    500000,
 ]
 
 # If set to None, querying will be run on all queries
@@ -141,8 +141,6 @@ def benchmark_querying():
             try:
                 logger.info(f"##### Start run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
                 doc_store = get_document_store(doc_store_name, es_similarity=es_similarity)
-                # doc_store.delete_all_documents(index=doc_index)
-                # doc_store.delete_all_documents(index=label_index)
                 retriever = get_retriever(retriever_name, doc_store)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
@@ -222,5 +220,5 @@ def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
 
 
 if __name__ == "__main__":
-    benchmark_indexing()
-    # benchmark_querying()
+    # benchmark_indexing()
+    benchmark_querying()

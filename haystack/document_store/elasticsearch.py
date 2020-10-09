@@ -77,6 +77,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              - 'wait_for' => continue only after changes are visible (slow, but safe)
                              - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param timeout: Number of seconds after which an ElasticSearch request times out.
+
+
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
                                     scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)

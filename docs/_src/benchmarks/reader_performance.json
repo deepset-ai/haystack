@@ -6,34 +6,14 @@
     "bars": "horizontal",
     "columns": [
         "Model", 
-        "Top 10 Accuracy", 
-        "Time"
+        "F1",
+        "Speed"
     ],
     "data": [
-        {
-            "model": "RoBERTa",
-            "accuracy": 72.22222222222222,
-            "time": 56.033346766999784
-        },
-        {
-            "model": "MiniLM",
-            "accuracy": 38.88888888888889,
-            "time": 49.28621050500078
-        },
-        {
-            "model": "BERT base",
-            "accuracy": 31.48148148148148,
-            "time": 42.67899718899935
-        },
-        {
-            "model": "BERT large",
-            "accuracy": 53.70370370370371,
-            "time": 74.21550956300052
-        },
-        {
-            "model": "XLMR large",
-            "accuracy": 72.22222222222222,
-            "time": 76.56486266000047
-        }
+        {"F1": 0.8067985794671885, "Model": "RoBERTa", "Speed": 92.3039712094936},
+        {"F1": 0.7823306265318686, "Model": "MiniLM", "Speed": 98.62387044489223},
+        {"F1": 0.7490271600053505, "Model": "BERT base", "Speed": 99.92750782409666},
+        {"F1": 0.8264545708097472, "Model": "BERT large", "Speed": 39.529824033964466},
+        {"F1": 0.8526275190954586, "Model": "XLM-RoBERTa", "Speed": 39.29142006004379}
     ]
 }
