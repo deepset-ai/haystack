@@ -175,7 +175,6 @@ class FAISSDocumentStore(SQLDocumentStore):
     def delete_all_documents(self, index=None):
         index = index or self.index
         self.faiss_index.reset()
-        del self.faiss_index
         super().delete_all_documents(index=index)
 
     def query_by_embedding(
