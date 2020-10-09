@@ -1,8 +1,8 @@
 {
   "chart_type": "LineChart",
-  "title": "Line Chart 1",
-  "subtitle": "Subtitle Chart 1",
-  "description": "todo",
+  "title": "Retriever Accuracy",
+  "subtitle": "mAP at different number of docs",
+  "description": "Here you can see how retriever performance decays as the number of documents increases. The set up is the same as the above querying benchmark except that a different number of negative documents are used to fill the document store.",
   "columns": [
     "n_docs",
     "BM25 / ElasticSearch",
