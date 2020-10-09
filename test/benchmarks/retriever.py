@@ -5,6 +5,7 @@ from utils import get_document_store, get_retriever, index_to_doc_store
 from haystack.preprocessor.utils import eval_data_from_file
 from haystack import Document
 import pickle
+import time
 from tqdm import tqdm
 import logging
 import datetime
@@ -20,16 +21,16 @@ es_similarity = "dot_product"
 
 retriever_doc_stores = [
     # ("elastic", "elasticsearch"),
-    ("dpr", "elasticsearch"),
+    # ("dpr", "elasticsearch"),
     # ("dpr", "faiss_flat"),
-    # ("dpr", "faiss_hnsw")
+    ("dpr", "faiss_hnsw")
 ]
 
 n_docs_options = [
     1000,
     10000,
     100000,
-    500000,
+    # 500000,
 ]
 
 # If set to None, querying will be run on all queries
@@ -103,6 +104,7 @@ def benchmark_indexing():
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
             doc_store = get_document_store(doc_store_name, es_similarity=es_similarity)
+
             retriever = get_retriever(retriever_name, doc_store)
 
             docs, _ = prepare_data(data_dir, filename_gold, filename_negative, n_docs=n_docs)
@@ -125,6 +127,9 @@ def benchmark_indexing():
             retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
             retriever_df.to_csv("retriever_index_results.csv")
 
+            doc_store.delete_all_documents(index=doc_index)
+            doc_store.delete_all_documents(index=label_index)
+            time.sleep(10)
             del doc_store
             del retriever
 
@@ -136,6 +141,8 @@ def benchmark_querying():
             try:
                 logger.info(f"##### Start run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
                 doc_store = get_document_store(doc_store_name, es_similarity=es_similarity)
+                # doc_store.delete_all_documents(index=doc_index)
+                # doc_store.delete_all_documents(index=label_index)
                 retriever = get_retriever(retriever_name, doc_store)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
@@ -164,6 +171,9 @@ def benchmark_querying():
                     "date_time": datetime.datetime.now(),
                     "error": None
                 }
+
+                doc_store.delete_all_documents()
+                time.sleep(5)
                 del doc_store
                 del retriever
             except Exception as e:
@@ -212,5 +222,5 @@ def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
 
 
 if __name__ == "__main__":
-    # benchmark_indexing()
-    benchmark_querying()
+    benchmark_indexing()
+    # benchmark_querying()
