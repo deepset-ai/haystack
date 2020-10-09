@@ -7,8 +7,8 @@
   "columns": [
     "Model",
     "Recall",
-    "Index Speed",
-    "Query Speed"
+    "Index Speed (docs/sec)",
+    "Query Speed (queries/sec)"
   ],
   "series": {
     "s0": "recall",

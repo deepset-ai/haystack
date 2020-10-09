@@ -7,7 +7,7 @@
     "columns": [
         "Model", 
         "F1",
-        "Speed"
+        "Speed (passages/sec)"
     ],
     "data": [
         {"F1": 80.67985794671885, "Model": "RoBERTa", "Speed": 92.3039712094936},
