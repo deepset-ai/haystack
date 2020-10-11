@@ -45,7 +45,7 @@ class TextConverter(BaseConverter):
         )
 
     def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-        with open(file_path) as f:
+        with open(file_path, encoding='utf-8') as f:
             text = f.read()
             pages = text.split("\f")
 
