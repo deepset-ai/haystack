@@ -1,23 +1,24 @@
 import json
 import logging
 import time
-from collections import abc
 from datetime import datetime
-from typing import Any, List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import elasticapm
-from fastapi import APIRouter, Body
+from fastapi import APIRouter
 from fastapi import HTTPException
-from pydantic import BaseModel
 
 from haystack import Finder
-from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, \
+from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DEFAULT_TOP_K_READER, ES_CONN_SCHEME, \
+    TEXT_FIELD_NAME, \
     SEARCH_FIELD_NAME, \
     EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, RETRIEVER_TYPE, EMBEDDING_MODEL_PATH, USE_GPU, \
     READER_MODEL_PATH, \
     BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
-    DEFAULT_TOP_K_READER, DEFAULT_TOP_K_RETRIEVER, CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
+    CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
     EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER, NAME_FIELD_NAME
+from rest_api.controller.request import Question
+from rest_api.controller.response import Answers, AnswersToIndividualQuestion
 from rest_api.controller.utils import RequestLimiter
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
@@ -98,80 +99,6 @@ else:
 FINDERS = {1: Finder(reader=reader, retriever=retriever)}
 
 
-# TODO: move to correct location or make staticmethod
-def _iterate_query_request(query_dict: Any, query_strings: List[str], filters: Dict[str, str]):
-    # For question: Only consider values of "query" key for "match" and "multi_match" request.
-    # For filter: Only consider Dict[str, str] value of "term" or "terms" key
-    for key, value in query_dict.items():
-        # "query" value should be "str" type
-        if key == 'query' and isinstance(value, str):
-            query_strings.append(value)
-        elif key in ["term", "terms"]:
-            if isinstance(value, abc.Mapping):
-                for filter_key, filter_value in value.items():
-                    # Currently only accepting Dict[str, str]
-                    if isinstance(filter_value, str):
-                        filters[filter_key] = filter_value
-        elif isinstance(value, abc.Mapping):
-            _iterate_query_request(value, query_strings, filters)
-        elif isinstance(value, abc.Collection):
-            for item in value:
-                if isinstance(item, abc.Mapping):
-                    _iterate_query_request(item, query_strings, filters)
-
-
-#############################################
-# Data schema for request & response
-#############################################
-class Question(BaseModel):
-    questions: List[str]
-    filters: Optional[Dict[str, str]] = None
-    top_k_reader: int = DEFAULT_TOP_K_READER
-    # TODO: How to get value for top_k_retriever from elasticsearch dsl
-    top_k_retriever: int = DEFAULT_TOP_K_RETRIEVER
-
-    @classmethod
-    def from_elastic_query_dsl(cls, query_request: Dict[str, Any]):
-        # Refer Query DSL
-        # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
-        # Currently do not support query matching with field parameter
-        query_strings: List[str] = []
-        filters: Dict[str, str] = {}
-        top_k_retriever: int = DEFAULT_TOP_K_RETRIEVER if "size" not in query_request else query_request["size"]
-
-        _iterate_query_request(query_request, query_strings, filters)
-
-        # TODO: Do need to raise Exception?
-        assert len(query_strings) > 0
-
-        return cls(questions=query_strings, filters=filters if len(filters) else None,
-                   top_k_retriever=top_k_retriever,
-                   top_k_reader=DEFAULT_TOP_K_READER)
-
-
-class Answer(BaseModel):
-    answer: Optional[str]
-    question: Optional[str]
-    score: Optional[float] = None
-    probability: Optional[float] = None
-    context: Optional[str]
-    offset_start: int
-    offset_end: int
-    offset_start_in_doc: Optional[int]
-    offset_end_in_doc: Optional[int]
-    document_id: Optional[str] = None
-    meta: Optional[Dict[str, str]]
-
-
-class AnswersToIndividualQuestion(BaseModel):
-    question: str
-    answers: List[Optional[Answer]]
-
-
-class Answers(BaseModel):
-    results: List[AnswersToIndividualQuestion]
-
-
 #############################################
 # Endpoints
 #############################################
@@ -221,9 +148,8 @@ def faq_qa(model_id: int, request: Question):
     return {"results": results}
 
 
-# TODO: Need to convert response object as well?
-@router.post("/models/{model_id}/query", response_model=Answers, response_model_exclude_unset=True)
-def doc_qa(model_id: int, query_request: Dict[str, Any] = Body({})):
+@router.post("/models/{model_id}/query", response_model=Dict[str, Any], response_model_exclude_unset=True)
+def query(model_id: int, query_request: Dict[str, Any], top_k_reader: int = DEFAULT_TOP_K_READER):
     with doc_qa_limiter.run():
         start_time = time.time()
         finder = FINDERS.get(model_id, None)
@@ -232,11 +158,14 @@ def doc_qa(model_id: int, query_request: Dict[str, Any] = Body({})):
                 status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
             )
 
-        question_request = Question.from_elastic_query_dsl(query_request)
+        question_request = Question.from_elastic_query_dsl(query_request, top_k_reader)
 
-        results = search_documents(finder, question_request, start_time)
+        answers = search_documents(finder, question_request, start_time)
+        response: Dict[str, Any] = {}
+        if answers and len(answers) > 0:
+            response = AnswersToIndividualQuestion.to_elastic_response_dsl(dict(answers[0]))
 
-        return {"results": results}
+        return response
 
 
 def search_documents(finder, question_request, start_time) -> List[AnswersToIndividualQuestion]:
