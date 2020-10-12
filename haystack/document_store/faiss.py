@@ -1,9 +1,10 @@
 import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict
-
+from tqdm import tqdm
 import faiss
 import numpy as np
+import random
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
@@ -70,10 +71,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
-            n_links = kwargs.get("n_links", 256)
+            n_links = kwargs.get("n_links", 128)
             index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
-            index.hnsw.efSearch = kwargs.get("efSearch", 256)
-            index.hnsw.efConstruction = kwargs.get("efConstruction", 256)
+            index.hnsw.efSearch = kwargs.get("efSearch", 20)#20
+            index.hnsw.efConstruction = kwargs.get("efConstruction", 80)#80
+            logger.info(f"HNSW params: n_links: {n_links}, efSearch: {index.hnsw.efSearch}, efConstruction: {index.hnsw.efConstruction}")
         else:
             index = faiss.index_factory(vector_dim, index_factory, metric_type)
         return index
@@ -87,7 +89,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         :return:
         """
         # vector index
-        self.faiss_index = self.faiss_index or self._create_new_index(vector_dim=self.vector_dim)
+        if not self.faiss_index:
+            raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
         # doc + metadata index
         index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
@@ -124,16 +127,22 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.faiss_index.reset()
 
         index = index or self.index
-
         documents = self.get_all_documents(index=index)
-        logger.info(f"Updating embeddings for {len(documents)} docs ...")
+
+        if len(documents) == 0:
+            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
+            self.faiss_index = None
+            return
+
+        logger.info(f"Updating embeddings for {len(documents)} docs...")
         embeddings = retriever.embed_passages(documents)  # type: ignore
         assert len(documents) == len(embeddings)
         for i, doc in enumerate(documents):
             doc.embedding = embeddings[i]
 
-        vector_id_map = {}
-        for i in range(0, len(documents), self.index_buffer_size):
+        logger.info("Indexing embeddings and updating vectors_ids...")
+        for i in tqdm(range(0, len(documents), self.index_buffer_size)):
+            vector_id_map = {}
             vector_id = self.faiss_index.ntotal
             embeddings = [doc.embedding for doc in documents[i: i + self.index_buffer_size]]
             embeddings = np.array(embeddings, dtype="float32")
@@ -142,8 +151,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             for doc in documents[i: i + self.index_buffer_size]:
                 vector_id_map[doc.id] = vector_id
                 vector_id += 1
-                
-        self.update_vector_ids(vector_id_map, index=index)
+            self.update_vector_ids(vector_id_map, index=index)
 
     def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
         """
@@ -193,12 +201,11 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
 
-        # assign query score to each document
+        #assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             doc.score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
             doc.probability = (doc.score + 1) / 2
-
         return documents
 
     def save(self, file_path: Union[str, Path]):
