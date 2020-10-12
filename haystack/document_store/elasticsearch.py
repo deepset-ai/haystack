@@ -40,6 +40,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         create_index: bool = True,
         update_existing_documents: bool = False,
         refresh_type: str = "wait_for",
+        similarity="dot_product",
+        timeout=30,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -75,9 +77,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              - 'wait_for' => continue only after changes are visible (slow, but safe)
                              - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param timeout: Number of seconds after which an ElasticSearch request times out.
+
+
         """
         self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
-                                    scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs)
+                                    scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
 
         # configure mappings to ES fields that will be used for querying / displaying results
         if type(search_fields) == str:
@@ -102,6 +109,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.label_index: str = label_index
         self.update_existing_documents = update_existing_documents
         self.refresh_type = refresh_type
+        if similarity == "cosine":
+            self.similarity_fn_name = "cosineSimilarity"
+        elif similarity == "dot_product":
+            self.similarity_fn_name = "dotProduct"
+        else:
+            raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
     def _create_document_index(self, index_name):
         """
@@ -420,14 +433,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
-            # +1 in cosine similarity to avoid negative numbers
+            # +1 in similarity to avoid negative numbers (for cosine sim)
             body= {
                 "size": top_k,
                 "query": {
                     "script_score": {
                         "query": {"match_all": {}},
                         "script": {
-                            "source": f"cosineSimilarity(params.query_vector,'{self.embedding_field}') + 1.0",
+                            "source": f"{self.similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1.0",
                             "params": {
                                 "query_vector": query_emb.tolist()
                             }

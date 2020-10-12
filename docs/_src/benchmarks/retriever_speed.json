@@ -1,0 +1,105 @@
+{
+    "chart_type": "LineChart",
+    "title": "Retriever Speed",
+    "subtitle": "Query Speed at different number of docs",
+    "description": "Here you can see how the query speed of different Retriever / DocumentStore combinations scale as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
+    "columns": [
+        "n_docs",
+        "BM25 / ElasticSearch", 
+        "DPR / ElasticSearch",
+        "DPR / FAISS (flat)",
+        "DPR / FAISS (HSNW)"
+    ],
+   "axis": [
+     { "x": "Number of docs", "y": "Docs/sec" }
+   ],
+    "data":
+  [
+    [
+        "model",
+        "n_docs",
+        "query_speed"
+    ],
+    [
+        "DPR / ElasticSearch",
+        1000,
+        40.802
+    ],
+    [
+        "BM25 / ElasticSearch",
+        1000,
+        232.97799999999998
+    ],
+    [
+        "BM25 / ElasticSearch",
+        10000,
+        167.81
+    ],
+    [
+        "DPR / ElasticSearch",
+        10000,
+        27.006999999999998
+    ],
+    [
+        "DPR / ElasticSearch",
+        100000,
+        6.5360000000000005
+    ],
+    [
+        "BM25 / ElasticSearch",
+        100000,
+        162.996
+    ],
+    [
+        "DPR / FAISS (flat)",
+        1000,
+        40.048
+    ],
+    [
+        "DPR / FAISS (flat)",
+        10000,
+        23.976999999999997
+    ],
+    [
+        "DPR / FAISS (flat)",
+        100000,
+        5.044
+    ],
+    [
+        "DPR / FAISS (HSNW)",
+        1000,
+        37.884
+    ],
+    [
+        "DPR / FAISS (HSNW)",
+        10000,
+        33.421
+    ],
+    [
+        "DPR / FAISS (HSNW)",
+        100000,
+        12.815
+    ],
+    [
+        "DPR / ElasticSearch",
+        500000,
+        1.514
+    ],
+    [
+        "DPR / FAISS (flat)",
+        500000,
+        1.091
+    ],
+    [
+        "BM25 / ElasticSearch",
+        500000,
+        95.491
+    ],
+    [
+        "DPR / FAISS (HSNW)",
+        500000,
+        3.259
+    ]
+]
+
+}
