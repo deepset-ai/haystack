@@ -30,13 +30,13 @@ class FAISSDocumentStore(SQLDocumentStore):
     """
 
     def __init__(
-            self,
-            sql_url: str = "sqlite:///",
-            index_buffer_size: int = 10_000,
-            vector_dim: int = 768,
-            faiss_index_factory_str: str = "Flat",
-            faiss_index: Optional[faiss.swigfaiss.Index] = None,
-            **kwargs,
+        self,
+        sql_url: str = "sqlite:///",
+        index_buffer_size: int = 10_000,
+        vector_dim: int = 768,
+        faiss_index_factory_str: str = "Flat",
+        faiss_index: Optional[faiss.swigfaiss.Index] = None,
+        **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
@@ -67,23 +67,20 @@ class FAISSDocumentStore(SQLDocumentStore):
         if faiss_index:
             self.faiss_index = faiss_index
         else:
-            self.faiss_index = self._create_new_index(vector_dim=self.vector_dim, index_factory=faiss_index_factory_str,
-                                                      **kwargs)
+            self.faiss_index = self._create_new_index(vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs)
 
         self.index_buffer_size = index_buffer_size
         super().__init__(url=sql_url)
 
-    def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric_type=faiss.METRIC_INNER_PRODUCT,
-                          **kwargs):
+    def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric_type=faiss.METRIC_INNER_PRODUCT, **kwargs):
         if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
             n_links = kwargs.get("n_links", 128)
             index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
-            index.hnsw.efSearch = kwargs.get("efSearch", 20)  # 20
-            index.hnsw.efConstruction = kwargs.get("efConstruction", 80)  # 80
-            logger.info(
-                f"HNSW params: n_links: {n_links}, efSearch: {index.hnsw.efSearch}, efConstruction: {index.hnsw.efConstruction}")
+            index.hnsw.efSearch = kwargs.get("efSearch", 20)#20
+            index.hnsw.efConstruction = kwargs.get("efConstruction", 80)#80
+            logger.info(f"HNSW params: n_links: {n_links}, efSearch: {index.hnsw.efSearch}, efConstruction: {index.hnsw.efConstruction}")
         else:
             index = faiss.index_factory(vector_dim, index_factory, metric_type)
         return index
@@ -113,7 +110,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 self.faiss_index.add(embeddings)
 
             docs_to_write_in_sql = []
-            for doc in document_objects[i: i + self.index_buffer_size]:
+            for doc in document_objects[i : i + self.index_buffer_size]:
                 meta = doc.meta
                 if add_vectors:
                     meta["vector_id"] = vector_id
@@ -161,8 +158,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 vector_id += 1
             self.update_vector_ids(vector_id_map, index=index)
 
-    def train_index(self, documents: Optional[Union[List[dict], List[Document]]],
-                    embeddings: Optional[np.array] = None):
+    def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
         """
         Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
         The train vectors should come from the same distribution as your final ones.
@@ -187,7 +183,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         super().delete_all_documents(index=index)
 
     def query_by_embedding(
-            self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
+        self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -210,9 +206,8 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
 
-        # assign query score to each document
-        scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in
-                                                   zip(vector_id_matrix[0], score_matrix[0])}
+        #assign query score to each document
+        scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             doc.score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
             doc.probability = (doc.score + 1) / 2
@@ -254,3 +249,4 @@ class FAISSDocumentStore(SQLDocumentStore):
             index_buffer_size=index_buffer_size,
             vector_dim=faiss_index.d
         )
+
