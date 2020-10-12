@@ -35,7 +35,6 @@ class TextConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
-
         super().__init__(
             remove_numeric_tables=remove_numeric_tables,
             remove_whitespace=remove_whitespace,
@@ -44,8 +43,21 @@ class TextConverter(BaseConverter):
             valid_languages=valid_languages,
         )
 
-    def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-        with open(file_path, encoding='utf-8') as f:
+    def convert(self,
+                file_path: Path,
+                meta: Optional[Dict[str, str]] = None,
+                encoding: str = "utf-8") -> Dict[str, Any]:
+        """
+        Reads text from a txt file and executes optional preprocessing steps.
+
+        :param file_path: Path of the file to convert
+        :param meta: Optional meta data that should be associated with the the document (e.g. name)
+        :param encoding: Encoding of the file
+
+        :return: Dict of format {"text": "The text from file", "meta": meta}}
+
+        """
+        with open(file_path, encoding=encoding) as f:
             text = f.read()
             pages = text.split("\f")
 
