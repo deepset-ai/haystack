@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List
 import logging
+from time import perf_counter
+from functools import wraps
+from tqdm import tqdm
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
@@ -23,6 +26,18 @@ class BaseRetriever(ABC):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         pass
+
+    def timing(self, fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if "retrieve_time" not in self.__dict__:
+                self.retrieve_time = 0
+            tic = perf_counter()
+            ret = fn(*args, **kwargs)
+            toc = perf_counter()
+            self.retrieve_time += toc - tic
+            return ret
+        return wrapper
 
     def eval(
         self,
@@ -55,6 +70,8 @@ class BaseRetriever(ABC):
         # Extract all questions for evaluation
         filters = {"origin": [label_origin]}
 
+        timed_retrieve = self.timing(self.retrieve)
+
         labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
 
         correct_retrievals = 0
@@ -70,9 +87,10 @@ class BaseRetriever(ABC):
                 question_label_dict[label.question] = deduplicated_doc_ids
 
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
+        logger.info("Performing eval queries...")
         if open_domain:
-            for question, gold_answers in question_label_dict.items():
-                retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
+            for question, gold_answers in tqdm(question_label_dict.items()):
+                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_answer in gold_answers:
@@ -82,8 +100,8 @@ class BaseRetriever(ABC):
                             break
         # Option 2: Strict evaluation by document ids that are listed in the labels
         else:
-            for question, gold_ids in question_label_dict.items():
-                retrieved_docs = self.retrieve(question, top_k=top_k, index=doc_index)
+            for question, gold_ids in tqdm(question_label_dict.items()):
+                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_id in gold_ids:
@@ -99,4 +117,4 @@ class BaseRetriever(ABC):
         logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
                      f" the top-{top_k} candidate passages selected by the retriever."))
 
-        return {"recall": recall, "map": mean_avg_precision}
+        return {"recall": recall, "map": mean_avg_precision, "retrieve_time": self.retrieve_time, "n_questions": number_of_questions, "top_k": top_k}
