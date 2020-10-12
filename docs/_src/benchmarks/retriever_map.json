@@ -2,7 +2,7 @@
   "chart_type": "LineChart",
   "title": "Retriever Accuracy",
   "subtitle": "mAP at different number of docs",
-  "description": "Here you can see how the mean avg. precision of the retriever decays as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
+  "description": "Here you can see how the mean avg. precision (mAP) of the retriever decays as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
   "columns": [
     "n_docs",
     "BM25 / ElasticSearch",
