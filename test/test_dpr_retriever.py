@@ -1,13 +1,13 @@
 import pytest
 import time
 
-from haystack.retriever.dense import DensePassageRetriever
 from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
-def test_dpr_inmemory_retrieval(document_store):
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+def test_dpr_inmemory_retrieval(document_store, retriever):
 
     documents = [
         Document(
@@ -33,11 +33,6 @@ def test_dpr_inmemory_retrieval(document_store):
 
     document_store.delete_all_documents(index="test_dpr")
     document_store.write_documents(documents, index="test_dpr")
-    retriever = DensePassageRetriever(document_store=document_store,
-                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-                                      use_gpu=True, embed_title=True,
-                                      remove_sep_tok_from_untitled_passages=True)
     document_store.update_embeddings(retriever=retriever, index="test_dpr")
     time.sleep(2)
 

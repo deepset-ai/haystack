@@ -123,16 +123,18 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: (SQL) index name for storing the docs and metadata
         :return: None
         """
-        # To clear out the FAISS index contents and frees all memory immediately that is in use by the index
-        self.faiss_index.reset()
+        if not self.faiss_index:
+            raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
 
         index = index or self.index
         documents = self.get_all_documents(index=index)
 
         if len(documents) == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
-            self.faiss_index = None
             return
+
+        # To clear out the FAISS index contents and frees all memory immediately that is in use by the index
+        self.faiss_index.reset()
 
         logger.info(f"Updating embeddings for {len(documents)} docs...")
         embeddings = retriever.embed_passages(documents)  # type: ignore

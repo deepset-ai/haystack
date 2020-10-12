@@ -1,11 +1,10 @@
 from haystack import Finder
-from haystack.retriever.sparse import TfidfRetriever
 import pytest
 
 
-def test_finder_get_answers(reader, document_store_with_docs):
-    retriever = TfidfRetriever(document_store=document_store_with_docs)
-    finder = Finder(reader, retriever)
+@pytest.mark.parametrize("retriever_with_docs", ["tfid"], indirect=True)
+def test_finder_get_answers(reader, retriever_with_docs, document_store_with_docs):
+    finder = Finder(reader, retriever_with_docs)
     prediction = finder.get_answers(question="Who lives in Berlin?", top_k_retriever=10,
                                     top_k_reader=3)
     assert prediction is not None
@@ -19,9 +18,9 @@ def test_finder_get_answers(reader, document_store_with_docs):
     assert len(prediction["answers"]) == 3
 
 
-def test_finder_offsets(reader, document_store_with_docs):
-    retriever = TfidfRetriever(document_store=document_store_with_docs)
-    finder = Finder(reader, retriever)
+@pytest.mark.parametrize("retriever_with_docs", ["tfid"], indirect=True)
+def test_finder_offsets(reader, retriever_with_docs, document_store_with_docs):
+    finder = Finder(reader, retriever_with_docs)
     prediction = finder.get_answers(question="Who lives in Berlin?", top_k_retriever=10,
                                     top_k_reader=5)
 
@@ -32,9 +31,9 @@ def test_finder_offsets(reader, document_store_with_docs):
     assert prediction["answers"][0]["context"][start:end] == prediction["answers"][0]["answer"]
 
 
-def test_finder_get_answers_single_result(reader, document_store_with_docs):
-    retriever = TfidfRetriever(document_store=document_store_with_docs)
-    finder = Finder(reader, retriever)
+@pytest.mark.parametrize("retriever_with_docs", ["tfid"], indirect=True)
+def test_finder_get_answers_single_result(reader, retriever_with_docs, document_store_with_docs):
+    finder = Finder(reader, retriever_with_docs)
     query = "testing finder"
     prediction = finder.get_answers(question=query, top_k_retriever=1,
                                     top_k_reader=1)
