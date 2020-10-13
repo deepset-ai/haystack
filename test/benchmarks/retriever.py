@@ -5,10 +5,7 @@ from utils import get_document_store, get_retriever, index_to_doc_store
 from haystack.preprocessor.utils import eval_data_from_file
 from haystack import Document
 import pickle
-<<<<<<< HEAD
-=======
 import time
->>>>>>> master
 from tqdm import tqdm
 import logging
 import datetime
@@ -23,28 +20,17 @@ logging.getLogger("elasticsearch").setLevel(logging.WARN)
 es_similarity = "dot_product"
 
 retriever_doc_stores = [
-<<<<<<< HEAD
-    ("elastic", "elasticsearch"),
-    ("dpr", "elasticsearch"),
-    ("dpr", "faiss_flat"),
-    # ("dpr", "faiss_hnsw")
-=======
     # ("elastic", "elasticsearch"),
     # ("dpr", "elasticsearch"),
     # ("dpr", "faiss_flat"),
     ("dpr", "faiss_hnsw")
->>>>>>> master
 ]
 
 n_docs_options = [
     1000,
     10000,
     100000,
-<<<<<<< HEAD
-    # 500000,
-=======
     500000,
->>>>>>> master
 ]
 
 # If set to None, querying will be run on all queries
@@ -117,12 +103,8 @@ def benchmark_indexing():
     retriever_results = []
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
-<<<<<<< HEAD
-            doc_store = get_document_store(doc_store_name)
-=======
             doc_store = get_document_store(doc_store_name, es_similarity=es_similarity)
 
->>>>>>> master
             retriever = get_retriever(retriever_name, doc_store)
 
             docs, _ = prepare_data(data_dir, filename_gold, filename_negative, n_docs=n_docs)
@@ -145,12 +127,9 @@ def benchmark_indexing():
             retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
             retriever_df.to_csv("retriever_index_results.csv")
 
-<<<<<<< HEAD
-=======
             doc_store.delete_all_documents(index=doc_index)
             doc_store.delete_all_documents(index=label_index)
             time.sleep(10)
->>>>>>> master
             del doc_store
             del retriever
 
@@ -190,12 +169,9 @@ def benchmark_querying():
                     "date_time": datetime.datetime.now(),
                     "error": None
                 }
-<<<<<<< HEAD
-=======
 
                 doc_store.delete_all_documents()
                 time.sleep(5)
->>>>>>> master
                 del doc_store
                 del retriever
             except Exception as e:
