@@ -117,7 +117,7 @@ def test_faiss_update_with_empty_store(document_store, retriever):
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("retriever", ["embedded"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_faiss_retrieving(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     result = retriever.retrieve(query="How to test this?")
@@ -126,7 +126,7 @@ def test_faiss_retrieving(document_store, retriever):
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("retriever", ["embedded"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_faiss_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     finder = Finder(reader=None, retriever=retriever)

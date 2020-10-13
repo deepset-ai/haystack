@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["tfid"], indirect=True)
+@pytest.mark.parametrize("retriever", ["tfidf"], indirect=True)
 def test_tfidf_retriever(document_store, retriever):
 
     test_docs = [

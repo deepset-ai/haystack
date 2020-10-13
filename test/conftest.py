@@ -160,12 +160,12 @@ def document_store(request, test_docs_xs, elasticsearch_fixture):
     return get_document_store(request.param)
 
 
-@pytest.fixture(params=["es_filter_only", "elsticsearch", "dpr", "embedded", "tfid"])
+@pytest.fixture(params=["es_filter_only", "elsticsearch", "dpr", "embedding", "tfidf"])
 def retriever(request, document_store):
     return get_retriever(request.param, document_store)
 
 
-@pytest.fixture(params=["es_filter_only", "elsticsearch", "dpr", "embedded", "tfid"])
+@pytest.fixture(params=["es_filter_only", "elsticsearch", "dpr", "embedding", "tfidf"])
 def retriever_with_docs(request, document_store_with_docs):
     return get_retriever(request.param, document_store_with_docs)
 
@@ -200,9 +200,9 @@ def get_retriever(retriever_type, document_store):
                                           passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
                                           use_gpu=False, embed_title=True,
                                           remove_sep_tok_from_untitled_passages=True)
-    elif retriever_type == "tfid":
+    elif retriever_type == "tfidf":
         return TfidfRetriever(document_store=document_store)
-    elif retriever_type == "embedded":
+    elif retriever_type == "embedding":
         retriever = EmbeddingRetriever(document_store=document_store,
                                        embedding_model="deepset/sentence_bert",
                                        use_gpu=False)
