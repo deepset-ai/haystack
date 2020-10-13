@@ -22,3 +22,5 @@ uvloop; sys_platform != 'win32' and sys_platform != 'cygwin'
 httptools
 nltk
 more_itertools
+# TODO: Adding for testing till FARM fix depedencies
+transformers==3.3.1

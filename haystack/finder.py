@@ -5,6 +5,7 @@ from statistics import mean
 from typing import Optional, Dict, Any, List
 from collections import defaultdict
 
+from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 from haystack import MultiLabel
@@ -21,19 +22,29 @@ class Finder:
     It provides an interface to predict top n answers for a given question.
     """
 
-    def __init__(self, reader: Optional[BaseReader], retriever: Optional[BaseRetriever]):
+    def __init__(self,
+                 reader: Optional[BaseReader],
+                 retriever: Optional[BaseRetriever],
+                 generator: Optional[BaseGenerator]):
         """
         Initialize a Finder instance.
 
         :param reader: Reader instance
         :param retriever: Retriever instance
+        :param generator: Generator instance
         """
         self.retriever = retriever
         self.reader = reader
+        self.generator = generator
         if self.reader is None and self.retriever is None:
             raise AttributeError("Finder: self.reader and self.retriever can not be both None")
+        if self.generator and self.retriever is None:
+            raise AttributeError("Finder: self.generator need self.retriever and it can not be None")
+        if self.reader and self.generator:
+            raise AttributeError("Finder: self.reader and self.generator can not work together")
 
-    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10, filters: Optional[dict] = None, index: str = None):
+    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10,
+                    filters: Optional[dict] = None, index: str = None):
         """
         Get top k answers for a given question.
 
@@ -74,7 +85,8 @@ class Finder:
 
         return results
 
-    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10, filters: Optional[dict] = None, index: str = None):
+    def get_answers_via_similar_questions(self, question: str, top_k_retriever: int = 10,
+                                          filters: Optional[dict] = None, index: str = None):
         """
         Get top k answers for a given question using only a retriever.
 
@@ -90,7 +102,6 @@ class Finder:
             raise AttributeError("Finder.get_answers_via_similar_questions requires self.retriever")
 
         results = {"question": question, "answers": []}  # type: Dict[str, Any]
-
 
         # 1) Apply retriever to match similar questions via cosine similarity of embeddings
         documents = self.retriever.retrieve(question, top_k=top_k_retriever, filters=filters, index=index)
@@ -113,6 +124,22 @@ class Finder:
             results["answers"].append(cur_answer)
 
         return results
+
+    def generate_answer(self, question: str, top_k_retriever: int = 10,
+                        filters: Optional[dict] = None, index: str = None):
+        if self.generator and self.retriever is None:
+            raise AttributeError("Finder: generate_answer requires self.generator and self.retriever")
+
+        documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever, index=index)
+
+        if len(documents) == 0:
+            logger.info("Retriever did not return any documents. Skipping reader ...")
+            empty_result = {"question": question, "answer": None}
+            return empty_result
+
+        answer = self.generator.predict(question=question, documents=documents)  # type: Dict[str, Any]
+
+        return {"question": question, "answer": answer}
 
     def eval(
         self,
@@ -158,6 +185,7 @@ class Finder:
             - ``"avg_reader_time"``: Average time needed to extract answer out of retrieved documents for one question
             - ``"total_finder_time"``: Total time for whole pipeline
 
+        :param label_origin: str
         :param label_index: Elasticsearch index where labeled questions are stored
         :type label_index: str
         :param doc_index: Elasticsearch index where documents that are used for evaluation are stored
