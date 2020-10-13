@@ -46,6 +46,7 @@ def get_document_store(document_store_type, es_similarity='cosine'):
             index_type = "Flat"
         elif document_store_type == "faiss_hnsw":
             index_type = "HNSW"
+<<<<<<< HEAD
         try:
             document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
                                                 faiss_index_factory_str=index_type)
@@ -62,6 +63,33 @@ def get_document_store(document_store_type, es_similarity='cosine'):
             status = subprocess.run(
                 ['docker exec -it haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
             document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack")
+=======
+
+        #TEMP FIX for issue with deleting docs
+        # status = subprocess.run(
+        #     ['docker rm -f haystack-postgres'],
+        #     shell=True)
+        # time.sleep(3)
+        # try:
+        #     document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
+        #                                         faiss_index_factory_str=index_type)
+        # except:
+        # Launch a postgres instance & create empty DB
+        # logger.info("Didn't find Postgres. Start a new instance...")
+        status = subprocess.run(
+            ['docker rm -f haystack-postgres'],
+            shell=True)
+        time.sleep(1)
+        status = subprocess.run(
+            ['docker run --name haystack-postgres -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres'],
+            shell=True)
+        time.sleep(3)
+        status = subprocess.run(
+            ['docker exec -it haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
+        time.sleep(1)
+        document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
+                                            faiss_index_factory_str=index_type)
+>>>>>>> master
 
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")

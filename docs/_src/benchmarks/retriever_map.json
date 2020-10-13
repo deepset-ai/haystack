@@ -1,28 +1,103 @@
 {
-    "chart_type": "LineChart",
-    "title": "Line Chart 1",
-    "subtitle": "Subtitle Chart 1",
-    "description": "todo",
-    "columns": [
-        "n_docs",
-        "BM25 / ElasticSearch", 
-        "DPR / ElasticSearch",
-        "DPR / FAISS (flat)",
-        "DPR / FAISS (HSNW)"
-    ],
-    "data":
+  "chart_type": "LineChart",
+  "title": "Retriever Accuracy",
+  "subtitle": "mAP at different number of docs",
+  "description": "Here you can see how the mean avg. precision (mAP) of the retriever decays as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
+  "columns": [
+    "n_docs",
+    "BM25 / ElasticSearch",
+    "DPR / ElasticSearch",
+    "DPR / FAISS (flat)",
+    "DPR / FAISS (HSNW)"
+  ],
+  "axis": [
+     { "x": "Number of docs", "y": "mAP" }
+   ],
+  "data": [
     [
-        [
-            1000, 0.748, 0.914, 0.929, 0.929
-        ],
-        [
-            10000, 0.6609999999999999, 0.8809999999999999, 0.898, 0.898
-        ],
-        [
-            100000, 0.56, 0.821, 0.863, 0.862
-        ],
-        [
-            500000, 0.452, 0, 0.805, 0.8
-        ]
+      "model",
+      "n_docs",
+      "map"
+    ],
+    [
+      "DPR / ElasticSearch",
+      1000,
+      0.929
+    ],
+    [
+      "BM25 / ElasticSearch",
+      1000,
+      0.748
+    ],
+    [
+      "BM25 / ElasticSearch",
+      10000,
+      0.6609999999999999
+    ],
+    [
+      "DPR / ElasticSearch",
+      10000,
+      0.898
+    ],
+    [
+      "DPR / ElasticSearch",
+      100000,
+      0.863
+    ],
+    [
+      "BM25 / ElasticSearch",
+      100000,
+      0.56
+    ],
+    [
+      "DPR / FAISS (flat)",
+      1000,
+      0.929
+    ],
+    [
+      "DPR / FAISS (flat)",
+      10000,
+      0.898
+    ],
+    [
+      "DPR / FAISS (flat)",
+      100000,
+      0.863
+    ],
+    [
+      "DPR / FAISS (HSNW)",
+      1000,
+      0.929
+    ],
+    [
+      "DPR / FAISS (HSNW)",
+      10000,
+      0.8959999999999999
+    ],
+    [
+      "DPR / FAISS (HSNW)",
+      100000,
+      0.8490000000000001
+    ],
+    [
+      "DPR / ElasticSearch",
+      500000,
+      0.805
+    ],
+    [
+      "DPR / FAISS (flat)",
+      500000,
+      0.805
+    ],
+    [
+      "BM25 / ElasticSearch",
+      500000,
+      0.452
+    ],
+    [
+      "DPR / FAISS (HSNW)",
+      500000,
+      0.7659999999999999
     ]
+  ]
 }
