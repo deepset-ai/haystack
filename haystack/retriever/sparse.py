@@ -167,6 +167,12 @@ class TfidfRetriever(BaseRetriever):
         return documents
 
     def fit(self):
+        if not self.paragraphs or len(self.paragraphs) == 0:
+            self.paragraphs = self._get_all_paragraphs()
+            if not self.paragraphs or len(self.paragraphs) == 0:
+                logger.warning("Fit method called with empty document store")
+                return
+
         self.df = pd.DataFrame.from_dict(self.paragraphs)
         self.df["text"] = self.df["text"].apply(lambda x: " ".join(x))
         self.tfidf_matrix = self.vectorizer.fit_transform(self.df["text"])
