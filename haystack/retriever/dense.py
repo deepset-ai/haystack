@@ -3,8 +3,6 @@ from typing import List, Union, Tuple, Optional
 import torch
 import numpy as np
 
-from farm.infer import Inferencer
-
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
@@ -14,6 +12,11 @@ from transformers.modeling_dpr import DPRContextEncoder, DPRQuestionEncoder
 from transformers.tokenization_dpr import DPRContextEncoderTokenizer, DPRQuestionEncoderTokenizer
 
 logger = logging.getLogger(__name__)
+
+try:
+    from farm.infer import Inferencer
+except (ImportError, AttributeError) as e:
+    logger.error("EmbeddingRetriever will not work without Farm Inferencer")
 
 
 class DensePassageRetriever(BaseRetriever):

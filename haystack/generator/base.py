@@ -7,5 +7,5 @@ from haystack import Document
 class BaseGenerator(ABC):
 
     @abstractmethod
-    def predict(self, question: str, documents: List[Document]):
+    def generate(self, question: str, documents: List[Document]):
         pass

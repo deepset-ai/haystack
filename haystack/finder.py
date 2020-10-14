@@ -137,7 +137,7 @@ class Finder:
             empty_result = {"question": question, "answer": None}
             return empty_result
 
-        answer = self.generator.predict(question=question, documents=documents)  # type: Dict[str, Any]
+        answer = self.generator.generate(question=question, documents=documents)  # type: Dict[str, Any]
 
         return {"question": question, "answer": answer}
 
