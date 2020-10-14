@@ -4,8 +4,6 @@ from haystack import Document
 import faiss
 
 from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.retriever.dense import DensePassageRetriever
-from haystack.retriever.dense import EmbeddingRetriever
 from haystack import Finder
 
 DOCUMENTS = [
@@ -47,7 +45,8 @@ def test_faiss_index_save_and_load(document_store):
     assert document_store.faiss_index.ntotal == 0
 
     # test loading the index
-    new_document_store = document_store.load(sql_url="sqlite:///haystack_test.db", faiss_file_path="haystack_test_faiss")
+    new_document_store = document_store.load(sql_url="sqlite:///haystack_test.db",
+                                             faiss_file_path="haystack_test_faiss")
 
     # check faiss index is restored
     assert new_document_store.faiss_index.ntotal == len(DOCUMENTS)
@@ -78,20 +77,14 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("index_buffer_size", [10_000, 2])
-def test_faiss_update_docs(document_store, index_buffer_size):
+def test_faiss_update_docs(document_store, index_buffer_size, retriever):
     # adjust buffer size
     document_store.index_buffer_size = index_buffer_size
 
     # initial write
     document_store.write_documents(DOCUMENTS)
-
-    # do the update
-    retriever = DensePassageRetriever(document_store=document_store,
-                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-                                      use_gpu=False, embed_title=True,
-                                      remove_sep_tok_from_untitled_passages=True)
 
     document_store.update_embeddings(retriever=retriever)
     documents_indexed = document_store.get_all_documents()
@@ -109,27 +102,39 @@ def test_faiss_update_docs(document_store, index_buffer_size):
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_retrieving(document_store):
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+def test_faiss_update_with_empty_store(document_store, retriever):
+    # Call update with empty doc store
+    document_store.update_embeddings(retriever=retriever)
+
+    # initial write
     document_store.write_documents(DOCUMENTS)
 
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert",
-                                   use_gpu=False)
+    documents_indexed = document_store.get_all_documents()
+
+    # test document correctness
+    check_data_correctness(documents_indexed, DOCUMENTS)
+
+
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
+def test_faiss_retrieving(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
     result = retriever.retrieve(query="How to test this?")
     assert len(result) == len(DOCUMENTS)
     assert type(result[0]) == Document
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_finding(document_store):
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
+def test_faiss_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
-
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert",
-                                   use_gpu=False)
     finder = Finder(reader=None, retriever=retriever)
 
     prediction = finder.get_answers_via_similar_questions(question="How to test this?", top_k_retriever=1)
 
     assert len(prediction.get('answers', [])) == 1
+
 
 def test_faiss_passing_index_from_outside():
     d = 768

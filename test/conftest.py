@@ -7,6 +7,9 @@ from sys import platform
 import pytest
 import requests
 from elasticsearch import Elasticsearch
+from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
+
+from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 
 from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
@@ -157,6 +160,16 @@ def document_store(request, test_docs_xs, elasticsearch_fixture):
     return get_document_store(request.param)
 
 
+@pytest.fixture(params=["es_filter_only", "elsticsearch", "dpr", "embedding", "tfidf"])
+def retriever(request, document_store):
+    return get_retriever(request.param, document_store)
+
+
+@pytest.fixture(params=["es_filter_only", "elsticsearch", "dpr", "embedding", "tfidf"])
+def retriever_with_docs(request, document_store_with_docs):
+    return get_retriever(request.param, document_store_with_docs)
+
+
 def get_document_store(document_store_type):
     if document_store_type == "sql":
         if os.path.exists("haystack_test.db"):
@@ -177,3 +190,27 @@ def get_document_store(document_store_type):
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
     return document_store
+
+
+def get_retriever(retriever_type, document_store):
+
+    if retriever_type == "dpr":
+        retriever = DensePassageRetriever(document_store=document_store,
+                                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                          use_gpu=False, embed_title=True,
+                                          remove_sep_tok_from_untitled_passages=True)
+    elif retriever_type == "tfidf":
+        return TfidfRetriever(document_store=document_store)
+    elif retriever_type == "embedding":
+        retriever = EmbeddingRetriever(document_store=document_store,
+                                       embedding_model="deepset/sentence_bert",
+                                       use_gpu=False)
+    elif retriever_type == "elsticsearch":
+        retriever = ElasticsearchRetriever(document_store=document_store)
+    elif retriever_type == "es_filter_only":
+        retriever = ElasticsearchFilterOnlyRetriever(document_store=document_store)
+    else:
+        raise Exception(f"No retriever fixture for '{retriever_type}'")
+
+    return retriever
