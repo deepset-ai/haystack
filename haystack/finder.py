@@ -1,5 +1,6 @@
 import logging
 import time
+from copy import deepcopy
 from statistics import mean
 from typing import Optional, Dict, Any, List
 from collections import defaultdict
@@ -69,7 +70,7 @@ class Finder:
             ans["meta"] = {}
             for doc in documents:
                 if doc.id == ans["document_id"]:
-                    ans["meta"] = doc.meta
+                    ans["meta"] = deepcopy(doc.meta)
 
         return results
 
