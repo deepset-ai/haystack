@@ -33,22 +33,25 @@ document_store.write_documents(documents)
 
 retriever = DensePassageRetriever(document_store=document_store,
                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                                  passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                  passage_embedding_model="facebook/bart-large",
                                   use_gpu=False, embed_title=True,
                                   remove_sep_tok_from_untitled_passages=True)
 
 document_store.update_embeddings(retriever=retriever)
 
-docs_with_emb = document_store.get_all_documents(index="test_dpr")
+docs_with_emb = document_store.get_all_documents()
 
-res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?", top_k=1)
+res = retriever.retrieve(query="Who created The Dothraki vocabulary?", top_k=1)
+
+stored_emb = document_store.faiss_index.reconstruct(int(res[0].meta["vector_id"]))
 
 # Generator part
 
 tokenizer = RagTokenizer.from_pretrained("facebook/rag-sequence-base")
 model = RagSequenceForGeneration.from_pretrained("facebook/rag-sequence-base")
 
-input_dict = tokenizer.prepare_seq2seq_batch("Which philosopher attacked Schopenhauer?", return_tensors="pt")
+input_dict = tokenizer.prepare_seq2seq_batch(["Who created The Dothraki vocabulary?"],
+                                             [res[0].text], return_tensors="pt")
 print("input_dict: ", input_dict)
 
 doc_dict = tokenizer.prepare_seq2seq_batch(res[0].text, return_tensors="pt")
@@ -56,15 +59,17 @@ doc_dict = tokenizer.prepare_seq2seq_batch(res[0].text, return_tensors="pt")
 question_hidden_states = model.question_encoder(input_dict["input_ids"])[0]
 
 #doc_scores = torch.bmm(question_hidden_states.unsqueeze(1),
-#                       res[0].embedding).squeeze(1)
+#                       stored_emb).squeeze(1)
 
 outputs = model(context_input_ids=doc_dict["input_ids"],
                 context_attention_mask=doc_dict["attention_mask"],
                 decoder_input_ids=input_dict["labels"],
                 doc_scores=res[0].score
                 )
+generated_string = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+print(generated_string)
 
-generated = model.generate(input_ids=input_dict["input_ids"])
-generated_string = tokenizer.batch_decode(generated, skip_special_tokens=True)
+#generated = model.generate(input_ids=input_dict["input_ids"])
+#generated_string = tokenizer.batch_decode(generated, skip_special_tokens=True)
 
 print(generated_string)
