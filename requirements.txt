@@ -5,6 +5,7 @@ uvicorn
 gunicorn
 pandas
 sklearn
+psycopg2-binary; sys_platform != 'win32' and sys_platform != 'cygwin'
 elasticsearch
 elastic-apm
 tox
