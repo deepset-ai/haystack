@@ -1,3 +1,4 @@
+import numpy
 from transformers import RagTokenizer, RagRetriever, RagTokenForGeneration, RagSequenceForGeneration
 import torch
 
@@ -31,6 +32,7 @@ document_store = FAISSDocumentStore(faiss_index_factory_str="HNSW")
 document_store.delete_all_documents()
 document_store.write_documents(documents)
 
+
 retriever = DensePassageRetriever(document_store=document_store,
                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
                                   passage_embedding_model="facebook/bart-large",
@@ -58,18 +60,20 @@ doc_dict = tokenizer.prepare_seq2seq_batch(res[0].text, return_tensors="pt")
 
 question_hidden_states = model.question_encoder(input_dict["input_ids"])[0]
 
-#doc_scores = torch.bmm(question_hidden_states.unsqueeze(1),
-#                       stored_emb).squeeze(1)
+# TODO: Fix this, I think this will solve the problem
+doc_scores = torch.bmm(question_hidden_states.unsqueeze(1),
+                       torch.from_numpy(numpy.array([stored_emb])).float().transpose(1, 2)).squeeze(1)
 
-outputs = model(context_input_ids=doc_dict["input_ids"],
-                context_attention_mask=doc_dict["attention_mask"],
-                decoder_input_ids=input_dict["labels"],
-                doc_scores=res[0].score
-                )
+outputs = model.generate(
+    input_ids=input_dict["input_ids"],
+    context_input_ids=doc_dict["input_ids"],
+    context_attention_mask=doc_dict["attention_mask"],
+    doc_scores=doc_scores
+)
 generated_string = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 print(generated_string)
 
-#generated = model.generate(input_ids=input_dict["input_ids"])
-#generated_string = tokenizer.batch_decode(generated, skip_special_tokens=True)
+# generated = model.generate(input_ids=input_dict["input_ids"])
+# generated_string = tokenizer.batch_decode(generated, skip_special_tokens=True)
 
 print(generated_string)
