@@ -1,6 +1,5 @@
 import pytest
 from haystack.document_store.base import BaseDocumentStore
-from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.finder import Finder
 
 
@@ -62,9 +61,8 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
-def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain):
-    retriever = ElasticsearchRetriever(document_store=document_store)
-
+@pytest.mark.parametrize("retriever", ["elsticsearch"], indirect=True)
+def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, retriever):
     # add eval data (SQUAD format)
     document_store.delete_all_documents(index="test_eval_document")
     document_store.delete_all_documents(index="test_feedback")
@@ -83,8 +81,8 @@ def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_eval_finder(document_store: BaseDocumentStore, reader):
-    retriever = ElasticsearchRetriever(document_store=document_store)
+@pytest.mark.parametrize("retriever", ["elsticsearch"], indirect=True)
+def test_eval_finder(document_store: BaseDocumentStore, reader, retriever):
     finder = Finder(reader=reader, retriever=retriever)
 
     # add eval data (SQUAD format)

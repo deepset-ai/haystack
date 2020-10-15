@@ -4,8 +4,8 @@ fastapi
 uvicorn
 gunicorn
 pandas
-psycopg2-binary
 sklearn
+psycopg2-binary; sys_platform != 'win32' and sys_platform != 'cygwin'
 elasticsearch
 elastic-apm
 tox
@@ -16,9 +16,9 @@ python-multipart
 python-docx
 sqlalchemy_utils
 # for using FAISS with GPUs, install faiss-gpu
-faiss-cpu
+faiss-cpu; sys_platform != 'win32' and sys_platform != 'cygwin'
 tika
-uvloop
+uvloop; sys_platform != 'win32' and sys_platform != 'cygwin'
 httptools
 nltk
 more_itertools
