@@ -24,7 +24,7 @@ from haystack.retriever.sparse import ElasticsearchRetriever
 
 logger = logging.getLogger(__name__)
 
-LAUNCH_ELASTICSEARCH = False
+LAUNCH_ELASTICSEARCH = True
 
 # ## Document Store
 #
