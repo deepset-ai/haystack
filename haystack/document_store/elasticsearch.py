@@ -101,12 +101,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.faq_question_field = faq_question_field
 
         self.custom_mapping = custom_mapping
+        self.index: str = index
+        self.label_index: str = label_index
         if create_index:
             self._create_document_index(index)
-        self.index: str = index
+            self._create_label_index(label_index)
 
-        self._create_label_index(label_index)
-        self.label_index: str = label_index
         self.update_existing_documents = update_existing_documents
         self.refresh_type = refresh_type
         if similarity == "cosine":
