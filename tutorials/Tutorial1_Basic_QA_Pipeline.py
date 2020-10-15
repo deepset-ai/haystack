@@ -24,7 +24,7 @@ from haystack.retriever.sparse import ElasticsearchRetriever
 
 logger = logging.getLogger(__name__)
 
-LAUNCH_ELASTICSEARCH = True
+LAUNCH_ELASTICSEARCH = False
 
 # ## Document Store
 #
@@ -85,7 +85,6 @@ if LAUNCH_ELASTICSEARCH:
 else:
     logger.warning("Since we already have a running ES instance we should not index the same documents again. \n"
                    "If you still want to do this call: document_store.write_documents(dicts) manually ")
-
 
 # ## Initalize Retriever, Reader,  & Finder
 #
