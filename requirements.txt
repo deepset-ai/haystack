@@ -20,3 +20,5 @@ faiss-cpu; sys_platform != 'win32' and sys_platform != 'cygwin'
 tika
 uvloop; sys_platform != 'win32' and sys_platform != 'cygwin'
 httptools
+nltk
+more_itertools
