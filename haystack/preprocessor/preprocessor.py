@@ -20,7 +20,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = False,
         clean_empty_lines: Optional[bool] = True,
         split_by: Optional[str] = "passage",
-        split_size: Optional[int] = 10,
+        split_length: Optional[int] = 10,
         split_stride: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = False,
     ):
@@ -32,19 +32,22 @@ class PreProcessor(BasePreProcessor):
         :param clean_whitespace: strip whitespaces before or after each line in the text.
         :param clean_empty_lines: remove more than two empty lines in the text.
         :param split_by: split the document by "word", "sentence", or "passage". Set to None to disable splitting.
-        :param split_size: n number of splits to merge as a single document. For instance, if n -> 10 & split_by ->
+        :param split_length: n number of splits to merge as a single document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
-        :param split_stride: overlap splits by "sliding window". Set to None to disable it.
-        :param split_respect_sentence_boundary: whether to split within sentence.
-        :param
+        :param split_stride: length of striding window over the splits. For example, if split_by -> `word`,
+                             split_length -> 5 & split_stride -> 2, then the splits would be like:
+                             [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
+                             Set the value to None to disable striding behaviour.
+        :param split_respect_sentence_boundary: whether to split in partial sentences when if split_by -> `word`. If set
+                                                to True, the individual split would always have complete sentence &
+                                                the number of words being less than or equal to the split_length.
         """
-
         nltk.download("punkt")
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
         self.split_by = split_by
-        self.split_size = split_size
+        self.split_length = split_length
         self.split_stride = split_stride
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
 
@@ -74,8 +77,8 @@ class PreProcessor(BasePreProcessor):
         if not self.split_by:
             return [document]
 
-        if not self.split_size:
-            raise Exception("split_size needs be set when using split_by.")
+        if not self.split_length:
+            raise Exception("split_length needs be set when using split_by.")
 
         text = document["text"]
 
@@ -87,7 +90,9 @@ class PreProcessor(BasePreProcessor):
                 current_slice = ""
                 for sen in sentences:
                     current_word_count = len(sen.split(" "))
-                    if word_count + current_word_count > self.split_size:
+                    if current_word_count > self.split_length:
+                        logger.warning(f"A sentence found with word count higher than the split length.")
+                    if word_count + current_word_count > self.split_length:
                         text_splits.append(current_slice)
                         current_slice = ""
                         word_count = 0
@@ -111,11 +116,11 @@ class PreProcessor(BasePreProcessor):
             else:
                 raise NotImplementedError("PreProcessor only supports 'passage' or 'sentence' split_by options.")
 
-            # concatenate individual elements based on split_size & split_stride
+            # concatenate individual elements based on split_length & split_stride
             if self.split_stride:
-                segments = windowed(elements, n=self.split_size, step=self.split_size - self.split_stride)
+                segments = windowed(elements, n=self.split_length, step=self.split_length - self.split_stride)
             else:
-                segments = windowed(elements, n=self.split_size, step=self.split_size)
+                segments = windowed(elements, n=self.split_length, step=self.split_length)
             text_splits = []
             for seg in segments:
                 txt = " ".join([t for t in seg if t])
