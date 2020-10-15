@@ -18,12 +18,12 @@ in the sentence.
 
 def test_preprocess_sentence_split():
     document = {"text": TEXT}
-    preprocessor = PreProcessor(split_size=1, split_stride=0, split_by="sentence")
+    preprocessor = PreProcessor(split_length=1, split_stride=0, split_by="sentence")
     documents = preprocessor.process(document)
     assert len(documents) == 15
 
     preprocessor = PreProcessor(
-        split_size=10, split_stride=0, split_by="sentence"
+        split_length=10, split_stride=0, split_by="sentence"
     )
     documents = preprocessor.process(document)
     assert len(documents) == 2
@@ -31,22 +31,24 @@ def test_preprocess_sentence_split():
 
 def test_preprocess_word_split():
     document = {"text": TEXT}
-    preprocessor = PreProcessor(split_size=10, split_stride=0, split_by="word", split_respect_sentence_boundary=False)
+    preprocessor = PreProcessor(split_length=10, split_stride=0, split_by="word", split_respect_sentence_boundary=False)
     documents = preprocessor.process(document)
     assert len(documents) == 11
 
-    preprocessor = PreProcessor(split_size=10, split_stride=0, split_by="word", split_respect_sentence_boundary=True)
+    preprocessor = PreProcessor(split_length=10, split_stride=0, split_by="word", split_respect_sentence_boundary=True)
     documents = preprocessor.process(document)
+    for doc in documents:
+        assert len(doc["text"].split(" ")) <= 10 or doc["text"].startswith("This is to trick")
     assert len(documents) == 15
 
 
 def test_preprocess_passage_split():
     document = {"text": TEXT}
-    preprocessor = PreProcessor(split_size=1, split_stride=0, split_by="passage")
+    preprocessor = PreProcessor(split_length=1, split_stride=0, split_by="passage")
     documents = preprocessor.process(document)
     assert len(documents) == 3
 
-    preprocessor = PreProcessor(split_size=2, split_stride=0, split_by="passage")
+    preprocessor = PreProcessor(split_length=2, split_stride=0, split_by="passage")
     documents = preprocessor.process(document)
     assert len(documents) == 2
 
