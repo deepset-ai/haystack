@@ -25,6 +25,8 @@ SEARCH_FIELD_NAME = os.getenv("SEARCH_FIELD_NAME", "text")
 FAQ_QUESTION_FIELD_NAME = os.getenv("FAQ_QUESTION_FIELD_NAME", "question")
 EMBEDDING_FIELD_NAME = os.getenv("EMBEDDING_FIELD_NAME", None)
 EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", None)
+VECTOR_SIMILARITY_METRIC = os.getenv("VECTOR_SIMILARITY_METRIC", "dot_product")
+CREATE_INDEX = os.getenv("CREATE_INDEX", "True").lower() == "true"
 
 # Reader
 READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", "deepset/roberta-base-squad2")
