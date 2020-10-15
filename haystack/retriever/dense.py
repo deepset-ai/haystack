@@ -13,6 +13,7 @@ from transformers.tokenization_dpr import DPRContextEncoderTokenizer, DPRQuestio
 
 logger = logging.getLogger(__name__)
 
+# TODO: Remove this after FARM upgrade
 try:
     from farm.infer import Inferencer
 except (ImportError, AttributeError) as e:

@@ -11,7 +11,7 @@ class RAGGenerator(BaseGenerator):
 
     def __init__(
             self,
-            model: str = "facebook/rag-token-nq",
+            model_name_or_path: str = "facebook/rag-token-nq",
             use_gpu: int = 0,
             return_no_answers: bool = True,
             max_seq_len: int = 100
