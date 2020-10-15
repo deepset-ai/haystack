@@ -1,6 +1,8 @@
 import logging
 import time
+import warnings
 from copy import deepcopy
+from enum import Enum
 from statistics import mean
 from typing import Optional, Dict, Any, List
 from collections import defaultdict
@@ -13,6 +15,12 @@ from haystack.eval import calculate_average_precision, eval_counts_reader_batch,
     eval_counts_reader
 
 logger = logging.getLogger(__name__)
+
+
+class FinderSource(Enum):
+    RETRIEVER = 1,
+    READER = 2,
+    GENERATOR = 3
 
 
 class Finder:
@@ -43,13 +51,14 @@ class Finder:
         if self.reader and self.generator:
             raise AttributeError("Finder: self.reader and self.generator can not work together")
 
-    def get_answers(self, question: str, top_k_reader: int = 1, top_k_retriever: int = 10,
-                    filters: Optional[dict] = None, index: str = None):
+    def get_answers(self, question: str, top_k_answers: int = 1, top_k_retriever: int = 10, index: str = None,
+                    filters: Optional[dict] = None, finder_source: FinderSource = FinderSource.READER):
         """
         Get top k answers for a given question.
 
+        :param finder_source: Source from which finder will get answers
         :param question: The question string
-        :param top_k_reader: Number of answers returned by the reader
+        :param top_k_answers: Number of answers returned by the reader or generator
         :param top_k_retriever: Number of text units to be retrieved
         :param filters: Limit scope to documents having the given meta data values.
             The format for the dict is `{"key-1": ["value-1", "value-2"], "key-2": ["value-3]" ...}``
@@ -57,31 +66,59 @@ class Finder:
         :return:
         """
 
-        if self.retriever is None or self.reader is None:
-            raise AttributeError("Finder.get_answers requires self.retriever AND self.reader")
+        if self.retriever is None:
+            raise AttributeError("Finder.get_answers requires self.retriever")
+        elif finder_source == FinderSource.READER and self.reader is None:
+            raise AttributeError("Finder.get_answers requires self.reader if finder_source source is READER")
+        elif finder_source == FinderSource.READER and self.generator is None:
+            raise AttributeError("Finder.get_answers requires self.generator if finder_source source is GENERATOR")
+
+        results = {"question": question, "answers": []}  # type: Dict[str, Any]
 
         # 1) Apply retriever(with optional filters) to get fast candidate documents
         documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever, index=index)
 
         if len(documents) == 0:
-            logger.info("Retriever did not return any documents. Skipping reader ...")
-            empty_result = {"question": question, "answers": []}
-            return empty_result
+            logger.info("Retriever did not return any documents ...")
+            return results
 
-        # 2) Apply reader to get granular answer(s)
-        len_chars = sum([len(d.text) for d in documents])
-        logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
-
-        results = self.reader.predict(question=question,
-                                      documents=documents,
-                                      top_k=top_k_reader)  # type: Dict[str, Any]
-
-        # Add corresponding document_name and more meta data, if an answer contains the document_id
-        for ans in results["answers"]:
-            ans["meta"] = {}
+        # 2) Check finder_source and perform desired operation
+        if finder_source == FinderSource.RETRIEVER:
+            # 2-a) Format response
             for doc in documents:
-                if doc.id == ans["document_id"]:
-                    ans["meta"] = deepcopy(doc.meta)
+                # TODO proper calibratation of pseudo probabilities
+                cur_answer = {
+                    "question": doc.question,
+                    "answer": doc.text,
+                    "document_id": doc.id,
+                    "context": doc.text,
+                    "score": doc.score,
+                    "probability": doc.probability,
+                    "offset_start": 0,
+                    "offset_end": len(doc.text),
+                    "meta": doc.meta
+                }
+
+                results["answers"].append(cur_answer)
+        elif finder_source == FinderSource.READER:
+            # 2-b) Apply reader to get granular answer(s)
+            len_chars = sum([len(d.text) for d in documents])
+            logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
+
+            results = self.reader.predict(question=question,
+                                          documents=documents,
+                                          top_k=top_k_answers)  # type: Dict[str, Any]
+
+            # Add corresponding document_name and more meta data, if an answer contains the document_id
+            for ans in results["answers"]:
+                ans["meta"] = {}
+                for doc in documents:
+                    if doc.id == ans["document_id"]:
+                        ans["meta"] = deepcopy(doc.meta)
+        elif finder_source == FinderSource.GENERATOR:
+            results["answers"] = self.generator.predict(question=question, documents=documents)  # type: Dict[str, Any]
+        else:
+            raise AttributeError("Finder.get_answers unknown finder_source")
 
         return results
 
@@ -97,6 +134,11 @@ class Finder:
         :param index: Index to retrieve documents from
         :return:
         """
+
+        warnings.warn(
+            "get_answers_via_similar_questions will be deprecated in next version, use get_answers instead",
+            PendingDeprecationWarning
+        )
 
         if self.retriever is None:
             raise AttributeError("Finder.get_answers_via_similar_questions requires self.retriever")
@@ -124,22 +166,6 @@ class Finder:
             results["answers"].append(cur_answer)
 
         return results
-
-    def generate_answer(self, question: str, top_k_retriever: int = 10,
-                        filters: Optional[dict] = None, index: str = None):
-        if self.generator and self.retriever is None:
-            raise AttributeError("Finder: generate_answer requires self.generator and self.retriever")
-
-        documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever, index=index)
-
-        if len(documents) == 0:
-            logger.info("Retriever did not return any documents. Skipping reader ...")
-            empty_result = {"question": question, "answer": None}
-            return empty_result
-
-        answer = self.generator.generate(question=question, documents=documents)  # type: Dict[str, Any]
-
-        return {"question": question, "answer": answer}
 
     def eval(
         self,

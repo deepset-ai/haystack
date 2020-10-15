@@ -6,6 +6,7 @@ import torch
 
 from haystack import Document
 from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.generator.transformers import RAGGenerator
 from haystack.retriever.dense import DensePassageRetriever
 
 
@@ -106,7 +107,7 @@ documents = [
     )
 ]
 
-document_store = FAISSDocumentStore(faiss_index_factory_str="HNSW")
+document_store = FAISSDocumentStore()
 document_store.delete_all_documents()
 document_store.write_documents(documents)
 
@@ -120,7 +121,7 @@ document_store.update_embeddings(retriever=retriever)
 
 docs_with_emb = document_store.get_all_documents()
 
-question = "Who is the brother of Moses?"
+question = "Dothraki vocabulary"
 retriever_results = retriever.retrieve(query=question, top_k=5)
 
 stored_emb = []
@@ -130,7 +131,8 @@ for retriever_result in retriever_results:
     retriever_texts.append(retriever_result.text)
     rag_format_doc['text'].append(retriever_result.text)
     rag_format_doc['title'].append("")
-    stored_emb.append(document_store.faiss_index.reconstruct(int(retriever_result.meta["vector_id"])))
+    retriever_result.embedding = document_store.faiss_index.reconstruct(int(retriever_result.meta["vector_id"]))
+    stored_emb.append(retriever_result.embedding)
 
 rag_format_docs = [rag_format_doc]
 
@@ -177,4 +179,10 @@ def generator_test_1():
     # print("====>2): ", generated_string)
 
 
-generator_test_1()
+def generator_test_2():
+    haystack_generator = RAGGenerator()
+    predicted_result = haystack_generator.predict(question=question, documents=retriever_results)
+    print(predicted_result)
+
+
+generator_test_2()
