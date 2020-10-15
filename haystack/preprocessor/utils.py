@@ -19,7 +19,7 @@ from haystack.file_converter.txt import TextConverter
 logger = logging.getLogger(__name__)
 
 
-def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
+def eval_data_from_file(filename: str, n_docs: Union[int, bool]=None) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
@@ -32,7 +32,7 @@ def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
 
     with open(filename, "r") as file:
         data = json.load(file)
-        for document in data["data"]:
+        for document in data["data"][:n_docs]:
             # get all extra fields from document level (e.g. title)
             meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
             for paragraph in document["paragraphs"]:
