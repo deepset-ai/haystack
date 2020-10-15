@@ -86,7 +86,6 @@ else:
     logger.warning("Since we already have a running ES instance we should not index the same documents again. \n"
                    "If you still want to do this call: document_store.write_documents(dicts) manually ")
 
-
 # ## Initalize Retriever, Reader,  & Finder
 #
 # ### Retriever

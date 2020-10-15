@@ -17,6 +17,8 @@ from rest_api.config import (
     EMBEDDING_FIELD_NAME,
     EXCLUDE_META_DATA_FIELDS,
     FAQ_QUESTION_FIELD_NAME,
+    CREATE_INDEX,
+    VECTOR_SIMILARITY_METRIC
 )
 from rest_api.config import DB_INDEX_FEEDBACK
 
@@ -37,6 +39,8 @@ document_store = ElasticsearchDocumentStore(
     embedding_dim=EMBEDDING_DIM,
     embedding_field=EMBEDDING_FIELD_NAME,
     excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
+    create_index=CREATE_INDEX,
+    similarity=VECTOR_SIMILARITY_METRIC
 )
 
 

@@ -40,21 +40,3 @@ def test_language_validation(Converter, xpdf_fixture, caplog):
     assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
-@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
-def test_header_footer_removal(Converter, xpdf_fixture):
-    converter = Converter(remove_header_footer=True)
-    converter_no_removal = Converter(remove_header_footer=False)
-
-    document1 = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))  # file contains no header/footer
-    document2 = converter_no_removal.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))  # file contains no header/footer
-    pages1 = document1["text"].split("\f")
-    pages2 = document2["text"].split("\f")
-    for p1, p2 in zip(pages1, pages2):
-        assert p2 == p2
-
-    document = converter.convert(file_path=Path("samples/pdf/sample_pdf_2.pdf"))  # file contains header and footer
-    pages = document["text"].split("\f")
-    assert len(pages) == 4
-    for page in pages:
-        assert "This is a header." not in page
-        assert "footer" not in page

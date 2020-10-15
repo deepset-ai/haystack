@@ -10,15 +10,15 @@ from fastapi import HTTPException
 
 from haystack import Finder
 from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DEFAULT_TOP_K_READER, ES_CONN_SCHEME, \
-    TEXT_FIELD_NAME, \
-    SEARCH_FIELD_NAME, \
-    EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, RETRIEVER_TYPE, EMBEDDING_MODEL_PATH, USE_GPU, \
-    READER_MODEL_PATH, \
-    BATCHSIZE, CONTEXT_WINDOW_SIZE, TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
-    CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, \
-    EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER, NAME_FIELD_NAME
+    TEXT_FIELD_NAME, SEARCH_FIELD_NAME, EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, \
+    RETRIEVER_TYPE, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, BATCHSIZE, CONTEXT_WINDOW_SIZE, \
+    TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, CONCURRENT_REQUEST_PER_WORKER, \
+    FAQ_QUESTION_FIELD_NAME, EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER, NAME_FIELD_NAME, \
+    VECTOR_SIMILARITY_METRIC, CREATE_INDEX
+
 from rest_api.controller.request import Question
 from rest_api.controller.response import Answers, AnswersToIndividualQuestion
+
 from rest_api.controller.utils import RequestLimiter
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.reader.farm import FARMReader
@@ -47,6 +47,8 @@ document_store = ElasticsearchDocumentStore(
     embedding_field=EMBEDDING_FIELD_NAME,
     excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
     faq_question_field=FAQ_QUESTION_FIELD_NAME,
+    create_index=CREATE_INDEX,
+    similarity=VECTOR_SIMILARITY_METRIC
 )
 
 if RETRIEVER_TYPE == "EmbeddingRetriever":

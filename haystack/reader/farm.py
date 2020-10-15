@@ -3,6 +3,7 @@ import multiprocessing
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
 from collections import defaultdict
+from time import perf_counter
 
 import numpy as np
 from farm.data_handler.data_silo import DataSilo
@@ -118,7 +119,8 @@ class FARMReader(BaseReader):
         dev_split: float = 0,
         evaluate_every: int = 300,
         save_dir: Optional[str] = None,
-        num_processes: Optional[int] = None
+        num_processes: Optional[int] = None,
+        use_amp: str = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -145,6 +147,14 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
+        :param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+                        Available options:
+                        None (Don't use AMP)
+                        "O0" (Normal FP32 training)
+                        "O1" (Mixed Precision => Recommended)
+                        "O2" (Almost FP16)
+                        "O3" (Pure FP16).
+                        See details on: https://nvidia.github.io/apex/amp.html
         :return: None
         """
 
@@ -163,7 +173,7 @@ class FARMReader(BaseReader):
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
 
-        device, n_gpu = initialize_device_settings(use_cuda=use_gpu)
+        device, n_gpu = initialize_device_settings(use_cuda=use_gpu,use_amp=use_amp)
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -202,7 +212,8 @@ class FARMReader(BaseReader):
             schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
-            device=device
+            device=device,
+            use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         trainer = Trainer(
@@ -214,6 +225,7 @@ class FARMReader(BaseReader):
             lr_schedule=lr_schedule,
             evaluate_every=evaluate_every,
             device=device,
+            use_amp=use_amp,
         )
 
 
@@ -453,8 +465,10 @@ class FARMReader(BaseReader):
 
         # Convert input format for FARM
         farm_input = [v for v in d.values()]
+        n_queries = len([y for x in farm_input for y in x["qas"]])
 
         # Create DataLoader that can be passed to the Evaluator
+        tic = perf_counter()
         indices = range(len(farm_input))
         dataset, tensor_names = self.inferencer.processor.dataset_from_dicts(farm_input, indices=indices)
         data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
@@ -462,10 +476,15 @@ class FARMReader(BaseReader):
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
 
         eval_results = evaluator.eval(self.inferencer.model)
+        toc = perf_counter()
+        reader_time = toc - tic
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"],
+            "top_n": self.inferencer.model.prediction_heads[0].n_best,
+            "reader_time": reader_time,
+            "seconds_per_query": reader_time / n_queries
         }
         return results
 
