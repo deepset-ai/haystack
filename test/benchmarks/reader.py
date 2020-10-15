@@ -3,9 +3,10 @@ from haystack.preprocessor.utils import eval_data_from_file
 from pathlib import Path
 import pandas as pd
 
-reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
+reader_models_full = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
                  "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
                  "deepset/xlm-roberta-large-squad2", "distilbert-base-uncased-distilled-squad"]
+reader_models_ci = ["deepset/minilm-uncased-squad2"]
 
 reader_types = ["farm"]
 data_dir = Path("../../data/squad20")
@@ -17,10 +18,17 @@ n_passages = 12350
 doc_index = "eval_document"
 label_index = "label"
 
-def benchmark_reader():
+def benchmark_reader(ci=False):
+    if ci:
+        reader_models = reader_models_ci
+        n_docs = 1
+    else:
+        reader_models = reader_models_full
+        n_docs = None
     reader_results = []
     doc_store = get_document_store("elasticsearch")
-    docs, labels = eval_data_from_file(data_dir/filename)
+    docs, labels = eval_data_from_file(data_dir/filename, n_docs)
+
     index_to_doc_store(doc_store, docs, None, labels)
     for reader_name in reader_models:
         for reader_type in reader_types:
@@ -51,4 +59,4 @@ def benchmark_reader():
 
 
 if __name__ == "__main__":
-    benchmark_reader()
+    benchmark_reader(True)
