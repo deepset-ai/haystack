@@ -131,7 +131,7 @@ class PreProcessor(BasePreProcessor):
         for i, txt in enumerate(text_splits):
             doc = deepcopy(document)
             doc["text"] = txt
-            if "meta" not in doc.keys():
+            if "meta" not in doc.keys() or doc["meta"] is None:
                 doc["meta"] = {}
             doc["meta"]["_split_id"] = i
             documents.append(doc)
@@ -166,7 +166,7 @@ class PreProcessor(BasePreProcessor):
         found_footer = self._find_longest_common_ngram(end_of_pages)
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
-        logger.debug(f"Removed header '{found_header}' and footer {found_footer} in document")
+        logger.debug(f"Removed header '{found_header}' and footer '{found_footer}' in document")
         text = "\f".join(pages)
         return text
 
