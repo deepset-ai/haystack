@@ -75,8 +75,8 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     "retriever": retriever_name,
                     "doc_store": doc_store_name,
                     "n_docs": n_docs,
-                    "indexing_time": indexing_time,
-                    "docs_per_second": n_docs / indexing_time,
+                    "indexing_time": 0,
+                    "docs_per_second": 0,
                     "date_time": datetime.datetime.now(),
                     "error": str(tb)})
                 doc_store.delete_all_documents(index=doc_index)
