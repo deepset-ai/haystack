@@ -13,12 +13,12 @@ from haystack.generator.base import BaseGenerator
 logger = logging.getLogger(__name__)
 
 
-class RAGGeneratorType(Enum):
+class RAGeneratorType(Enum):
     TOKEN = 1,
     SEQUENCE = 2
 
 
-class RAGGenerator(BaseGenerator):
+class RAGenerator(BaseGenerator):
     """
         Implementation of Facebook's Retrieval-Augmented Generator (https://arxiv.org/abs/2005.11401) based on
         HuggingFace's transformers (https://huggingface.co/transformers/model_doc/rag.html).
@@ -31,7 +31,7 @@ class RAGGenerator(BaseGenerator):
             self,
             model_name_or_path: str = "facebook/rag-token-nq",
             passage_embedding_model: str = "facebook/dpr-ctx_encoder-single-nq-base",
-            generator_type: RAGGeneratorType = RAGGeneratorType.TOKEN,
+            generator_type: RAGeneratorType = RAGeneratorType.TOKEN,
             top_k_answers: int = 2,
             max_length: int = 200,
             min_length: int = 2,
@@ -76,7 +76,7 @@ class RAGGenerator(BaseGenerator):
 
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
 
-        if self.generator_type == RAGGeneratorType.SEQUENCE:
+        if self.generator_type == RAGeneratorType.SEQUENCE:
             self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
         else:
             self.model = RagTokenForGeneration.from_pretrained(model_name_or_path)

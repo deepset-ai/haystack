@@ -2,7 +2,7 @@ from typing import List
 
 from haystack import Document
 from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.generator.transformers import RAGGenerator
+from haystack.generator.transformers import RAGenerator
 from haystack.retriever.dense import DensePassageRetriever
 
 # haystack part
@@ -48,6 +48,6 @@ docs_with_emb = document_store.get_all_documents()
 question = "Population of Germany?"
 retriever_results = retriever.retrieve(query=question, top_k=2)
 
-haystack_generator = RAGGenerator()
+haystack_generator = RAGenerator()
 predicted_result = haystack_generator.predict(question=question, documents=retriever_results, top_k=2)
 print(predicted_result)
