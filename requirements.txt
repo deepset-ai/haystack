@@ -23,4 +23,4 @@ httptools
 nltk
 more_itertools
 # TODO: Adding for testing till FARM fix depedencies
-transformers==3.3.1
+-e git+https://github.com/huggingface/transformers.git#egg=transformers
