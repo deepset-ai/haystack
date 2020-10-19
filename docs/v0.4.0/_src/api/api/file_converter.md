@@ -44,11 +44,11 @@ in garbled text.
 class DocxToTextConverter(BaseConverter)
 ```
 
-<a name="docx.DocxToTextConverter.extract_pages"></a>
-#### extract\_pages
+<a name="docx.DocxToTextConverter.convert"></a>
+#### convert
 
 ```python
- | extract_pages(file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]
 ```
 
 Extract text from a .docx file.
@@ -58,9 +58,6 @@ For compliance with other converters we nevertheless opted for keeping the metho
 **Arguments**:
 
 - `file_path`: Path to the .docx file you want to convert
-
-<a name="__init__"></a>
-# \_\_init\_\_
 
 <a name="tika"></a>
 # tika
@@ -99,11 +96,11 @@ This option can be used to add test for encoding errors. If the extracted text i
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
 
-<a name="tika.TikaConverter.extract_pages"></a>
-#### extract\_pages
+<a name="tika.TikaConverter.convert"></a>
+#### convert
 
 ```python
- | extract_pages(file_path: Path) -> Tuple[List[str], Optional[Dict[str, Any]]]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]
 ```
 
 **Arguments**:
@@ -151,6 +148,24 @@ or similar.
 This option can be used to add test for encoding errors. If the extracted text is
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
+
+<a name="base.BaseConverter.convert"></a>
+#### convert
+
+```python
+ | @abstractmethod
+ | convert(file_path: Path, meta: Optional[Dict[str, str]]) -> Dict[str, Any]
+```
+
+Convert a file to a dictionary containing the text and any associated meta data.
+
+File converters may extract file meta like name or size. In addition to it, user
+supplied meta data like author, url, external IDs can be supplied as a dictionary.
+
+**Arguments**:
+
+- `file_path`: path of the file to convert
+- `meta`: dictionary of meta data key-value pairs to append in the returned document.
 
 <a name="base.BaseConverter.validate_language"></a>
 #### validate\_language

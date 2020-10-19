@@ -220,5 +220,6 @@ def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
 
 
 if __name__ == "__main__":
-    # benchmark_indexing()
+    benchmark_indexing()
     benchmark_querying()
+
