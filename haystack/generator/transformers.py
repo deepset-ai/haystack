@@ -4,11 +4,11 @@ from typing import List, Optional, Union
 
 import numpy
 import torch
-from transformers import DPRContextEncoder, DPRContextEncoderTokenizerFast, DPRContextEncoderTokenizer, \
-    RagTokenizer, RagTokenForGeneration
+from transformers import RagTokenizer, RagTokenForGeneration
 
 from haystack import Document
 from haystack.generator.base import BaseGenerator
+from haystack.retriever.dense import DensePassageRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class RAGenerator(BaseGenerator):
     def __init__(
             self,
             model_name_or_path: str = "facebook/rag-token-nq",
-            passage_embedding_model: Optional[str] = None,
+            retriever: Optional[DensePassageRetriever] = None,
             generator_type: RAGeneratorType = RAGeneratorType.TOKEN,
             top_k_answers: int = 2,
             max_length: int = 200,
@@ -39,7 +39,7 @@ class RAGenerator(BaseGenerator):
             num_beams: int = 2,
             embed_title: bool = True,
             prefix: Optional[str] = None,
-            use_gpu: bool = True
+            use_gpu: bool = True,
     ):
         """
         Load a RAG model from Transformers along with passage_embedding_model.
@@ -48,9 +48,7 @@ class RAGenerator(BaseGenerator):
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
                                    'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                                    See https://huggingface.co/models for full list of available models.
-        :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
-                                        one used by hugging-face transformers' model hub models.
-                                        Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+        :param retriever: `DensePassageRetriever` used to embedded passage
         :param generator_type: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
         :param top_k_answers: Number of independently generated text to return
         :param max_length: Maximum length of generated text
@@ -69,6 +67,7 @@ class RAGenerator(BaseGenerator):
         self.num_beams = num_beams
         self.embed_title = embed_title
         self.prefix = prefix
+        self.retriever = retriever
 
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -83,18 +82,6 @@ class RAGenerator(BaseGenerator):
             # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
         else:
             self.model = RagTokenForGeneration.from_pretrained(model_name_or_path)
-
-        if passage_embedding_model is not None:
-            self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(passage_embedding_model)
-            self.passage_encoder = DPRContextEncoder.from_pretrained(passage_embedding_model).to(self.device)
-
-    def set_passage_tokenizer_and_encoder(
-            self,
-            tokenizer: Union[DPRContextEncoderTokenizer, DPRContextEncoderTokenizerFast],
-            encoder: DPRContextEncoder
-    ):
-        self.passage_tokenizer = tokenizer
-        self.passage_encoder = encoder
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
     # Refer section 2.3 of https://arxiv.org/abs/2005.11401
@@ -138,49 +125,18 @@ class RAGenerator(BaseGenerator):
         return contextualized_inputs["input_ids"].to(self.device), \
                contextualized_inputs["attention_mask"].to(self.device)
 
-    def _embed_passage(self, title: str, text: str) -> torch.Tensor:
-        if self.passage_tokenizer is None or self.passage_encoder is None:
-            raise AttributeError("_embed_passage need self.passage_tokenizer and self.passage_encoder")
-
-        """Compute the DPR embeddings of document passages"""
-        input_ids = self.passage_tokenizer(
-            title,
-            text,
-            truncation=True,
-            padding="longest",
-            return_tensors="pt"
-        )["input_ids"]
-
-        embeddings = self.passage_encoder(
-            input_ids.to(device=self.device),
-            return_dict=True
-        ).pooler_output
-
-        return embeddings.detach().to(self.device)
-
-    def embed_passage_in_tensor(
-        self,
-        titles: List[str],
-        texts: List[str],
-        embeddings: List[Optional[numpy.ndarray]],
-        batch_size: Optional[int] = 16
-    ) -> torch.Tensor:
-
-        embeddings_in_tensor: List[torch.Tensor] = []
+    def embed_passage_in_tensor(self, docs: List[Document], embeddings: List[Optional[numpy.ndarray]]) -> torch.Tensor:
 
         # If of document missing embedding, then need embedding for all the documents
-        is_embedding_required = embeddings.__contains__(None)
+        is_embedding_required = embeddings is None or embeddings.__contains__(None)
 
         if is_embedding_required:
-            for title, text in zip(titles, texts):
-                embeddings_in_tensor.append(
-                    self._embed_passage(
-                        title=title,
-                        text=text
-                    )
-                )
-        else:
-            embeddings_in_tensor = [torch.from_numpy(embedding) for embedding in embeddings]
+            if self.retriever is None:
+                raise AttributeError("embed_passage_in_tensor need self.dpr_retriever to embed document")
+
+            embeddings = self.retriever.embed_passages(docs)
+
+        embeddings_in_tensor = [torch.from_numpy(embedding) for embedding in embeddings]
 
         return torch.cat(embeddings_in_tensor, dim=0).to(self.device)
 
@@ -202,11 +158,7 @@ class RAGenerator(BaseGenerator):
         titles = [d.meta["name"] if d.meta and "name" in d.meta else "" for d in documents]
 
         # Raw document embedding and set device of question_embedding
-        passage_embeddings = self.embed_passage_in_tensor(
-            titles=titles,
-            texts=flat_docs_dict["text"],
-            embeddings=flat_docs_dict["embedding"]
-        )
+        passage_embeddings = self.embed_passage_in_tensor(docs=documents, embeddings=flat_docs_dict["embedding"])
 
         # Question tokenization
         input_dict = self.tokenizer.prepare_seq2seq_batch(

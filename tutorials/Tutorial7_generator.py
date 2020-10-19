@@ -48,6 +48,6 @@ docs_with_emb = document_store.get_all_documents()
 question = "Population of Germany?"
 retriever_results = retriever.retrieve(query=question, top_k=2)
 
-haystack_generator = RAGenerator()
+haystack_generator = RAGenerator(retriever=retriever)
 predicted_result = haystack_generator.predict(question=question, documents=retriever_results, top_k=2)
 print(predicted_result)
