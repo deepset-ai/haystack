@@ -19,28 +19,28 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: Optional[bool] = True,
         clean_header_footer: Optional[bool] = False,
         clean_empty_lines: Optional[bool] = True,
-        split_by: Optional[str] = "passage",
-        split_length: Optional[int] = 10,
+        split_by: Optional[str] = "word",
+        split_length: Optional[int] = 1000,
         split_stride: Optional[int] = None,
-        split_respect_sentence_boundary: Optional[bool] = False,
+        split_respect_sentence_boundary: Optional[bool] = True,
     ):
         """
-        :param clean_header_footer: use heuristic to remove footers and headers across different pages by searching
+        :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
                                      for the longest common string. This heuristic uses exact matches and therefore
                                      works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
                                      or similar.
-        :param clean_whitespace: strip whitespaces before or after each line in the text.
-        :param clean_empty_lines: remove more than two empty lines in the text.
-        :param split_by: split the document by "word", "sentence", or "passage". Set to None to disable splitting.
-        :param split_length: n number of splits to merge as a single document. For instance, if n -> 10 & split_by ->
+        :param clean_whitespace: Strip whitespaces before or after each line in the text.
+        :param clean_empty_lines: Remove more than two empty lines in the text.
+        :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
+        :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
-        :param split_stride: length of striding window over the splits. For example, if split_by -> `word`,
+        :param split_stride: Length of striding window over the splits. For example, if split_by -> `word`,
                              split_length -> 5 & split_stride -> 2, then the splits would be like:
                              [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
                              Set the value to None to disable striding behaviour.
-        :param split_respect_sentence_boundary: whether to split in partial sentences when if split_by -> `word`. If set
-                                                to True, the individual split would always have complete sentence &
-                                                the number of words being less than or equal to the split_length.
+        :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
+                                                to True, the individual split will always have complete sentences &
+                                                the number of words will be <= split_length.
         """
         nltk.download("punkt")
         self.clean_whitespace = clean_whitespace
