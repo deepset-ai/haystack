@@ -135,7 +135,8 @@ def benchmark_querying(n_docs_options,
                     "error": None
                 }
 
-                doc_store.delete_all_documents()
+                doc_store.delete_all_documents(index=doc_index)
+                doc_store.delete_all_documents(index=label_index)
                 time.sleep(5)
                 del doc_store
                 del retriever
@@ -155,7 +156,8 @@ def benchmark_querying(n_docs_options,
                     "date_time": datetime.datetime.now(),
                     "error": str(tb)
                 }
-                doc_store.delete_all_documents()
+                doc_store.delete_all_documents(index=doc_index)
+                doc_store.delete_all_documents(index=label_index)
                 time.sleep(5)
                 del doc_store
                 del retriever

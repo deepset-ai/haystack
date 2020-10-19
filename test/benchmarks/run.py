@@ -22,6 +22,6 @@ if args.retriever_index:
     benchmark_indexing(**params, **filenames, ci=args.ci)
 if args.retriever_query:
     benchmark_querying(**params, **filenames, ci=args.ci)
-if args.retriever_reader:
+if args.reader:
     benchmark_reader(**params, **filenames, ci=args.ci)
 
