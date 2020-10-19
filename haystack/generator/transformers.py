@@ -136,9 +136,12 @@ class RAGenerator(BaseGenerator):
 
             embeddings = self.retriever.embed_passages(docs)
 
-        embeddings_in_tensor = [torch.from_numpy(embedding) for embedding in embeddings]
+        embeddings_in_tensor = torch.cat(
+            [torch.from_numpy(embedding).unsqueeze(0) for embedding in embeddings],
+            dim=0
+        ).to(self.device)
 
-        return torch.cat(embeddings_in_tensor, dim=0).to(self.device)
+        return embeddings_in_tensor
 
     def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
         if len(documents) == 0:
