@@ -80,7 +80,7 @@ class PreProcessor(BasePreProcessor):
         if not self.split_length:
             raise Exception("split_length needs be set when using split_by.")
 
-        if self.split_respect_sentence_boundary and split_by not in("word","sentence"):
+        if self.split_respect_sentence_boundary and self.split_by not in("word","sentence"):
             raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with"
                                       " split_by='word' or split_by='sentence'.")
 
