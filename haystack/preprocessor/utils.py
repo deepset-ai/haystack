@@ -38,7 +38,7 @@ def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
             # get all extra fields from document level (e.g. title)
             meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
             for paragraph in document["paragraphs"]:
-                cur_meta = {"name": document.get("title","missing")}
+                cur_meta = {"name": document.get("title", None)}
                 # all other fields from paragraph level
                 meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
                 cur_meta.update(meta_paragraph)
