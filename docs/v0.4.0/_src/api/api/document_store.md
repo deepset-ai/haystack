@@ -221,9 +221,6 @@ Delete all documents in a index.
 
 None
 
-<a name="__init__"></a>
-# \_\_init\_\_
-
 <a name="sql"></a>
 # sql
 
@@ -256,6 +253,20 @@ documents for evaluation can be indexed in a separate index than the documents f
 **Returns**:
 
 None
+
+<a name="sql.SQLDocumentStore.update_vector_ids"></a>
+#### update\_vector\_ids
+
+```python
+ | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
+```
+
+Update vector_ids for given document_ids.
+
+**Arguments**:
+
+- `vector_id_map`: dict containing mapping of document_id -> vector_id.
+- `index`: filter documents by the optional index attribute for documents in database.
 
 <a name="sql.SQLDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
@@ -359,7 +370,7 @@ the vector embeddings are indexed in a FAISS Index.
 deployment, Postgres is recommended.
 - `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
 smaller chunks to reduce memory footprint.
-- `vector_dim`: the dimensionality of the embedding vector .
+- `vector_size`: the embedding vector size.
 - `faiss_index`: load an existing FAISS Index.
 
 <a name="faiss.FAISSDocumentStore.update_embeddings"></a>

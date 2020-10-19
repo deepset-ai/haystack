@@ -1,9 +1,6 @@
 <a name="cleaning"></a>
 # cleaning
 
-<a name="__init__"></a>
-# \_\_init\_\_
-
 <a name="utils"></a>
 # utils
 

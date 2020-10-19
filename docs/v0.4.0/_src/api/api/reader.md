@@ -352,9 +352,6 @@ Example:
 
 Dict containing question and answers
 
-<a name="__init__"></a>
-# \_\_init\_\_
-
 <a name="base"></a>
 # base
 
