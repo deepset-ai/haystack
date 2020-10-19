@@ -1,11 +1,11 @@
 import logging
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy
 import torch
-from transformers import DPRContextEncoder, DPRContextEncoderTokenizerFast, RagSequenceForGeneration, RagTokenizer, \
-    RagTokenForGeneration
+from transformers import DPRContextEncoder, DPRContextEncoderTokenizerFast, DPRContextEncoderTokenizer, \
+    RagSequenceForGeneration, RagTokenizer, RagTokenForGeneration
 
 from haystack import Document
 from haystack.generator.base import BaseGenerator
@@ -27,10 +27,11 @@ class RAGenerator(BaseGenerator):
 
             - directly get generate predictions via predict()
     """
+
     def __init__(
             self,
             model_name_or_path: str = "facebook/rag-token-nq",
-            passage_embedding_model: str = "facebook/dpr-ctx_encoder-single-nq-base",
+            passage_embedding_model: Optional[str] = None,
             generator_type: RAGeneratorType = RAGeneratorType.TOKEN,
             top_k_answers: int = 2,
             max_length: int = 200,
@@ -81,10 +82,20 @@ class RAGenerator(BaseGenerator):
         else:
             self.model = RagTokenForGeneration.from_pretrained(model_name_or_path)
 
-        self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(passage_embedding_model)
-        self.passage_encoder = DPRContextEncoder.from_pretrained(passage_embedding_model).to(self.device)
+        if passage_embedding_model is not None:
+            self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(passage_embedding_model)
+            self.passage_encoder = DPRContextEncoder.from_pretrained(passage_embedding_model).to(self.device)
+
+    def set_passage_tokenizer_and_encoder(
+            self,
+            tokenizer: Union[DPRContextEncoderTokenizer, DPRContextEncoderTokenizerFast],
+            encoder: DPRContextEncoder
+    ):
+        self.passage_tokenizer = tokenizer
+        self.passage_encoder = encoder
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
+    # Refer section 2.3 of https://arxiv.org/abs/2005.11401
     def _cat_input_and_doc(self, doc_title: str, doc_text: str, input_string: str, prefix: Optional[str]):
         if doc_title.startswith('"'):
             doc_title = doc_title[1:]
@@ -98,8 +109,8 @@ class RAGenerator(BaseGenerator):
         return out
 
     # Copied postprocess_docs method from transformers.RagRetriever and modified
-    def _get_contextualized_embedding(self, texts: List[str], question: str, titles: Optional[List[str]] = None,
-                                      return_tensors: str = "pt"):
+    def _get_contextualized_inputs(self, texts: List[str], question: str, titles: Optional[List[str]] = None,
+                                   return_tensors: str = "pt"):
 
         titles_list = titles if self.embed_title and titles is not None else [""] * len(texts)
         prefix = self.prefix if self.prefix is not None else self.model.config.generator.prefix
@@ -114,7 +125,7 @@ class RAGenerator(BaseGenerator):
             for i in range(len(texts))
         ]
 
-        contextualized_embedding = self.tokenizer.question_encoder.batch_encode_plus(
+        contextualized_inputs = self.tokenizer.question_encoder.batch_encode_plus(
             rag_input_strings,
             max_length=self.model.config.max_length,
             return_tensors=return_tensors,
@@ -122,10 +133,13 @@ class RAGenerator(BaseGenerator):
             truncation=True,
         )
 
-        return contextualized_embedding["input_ids"].to(self.device), \
-               contextualized_embedding["attention_mask"].to(self.device)
+        return contextualized_inputs["input_ids"].to(self.device), \
+               contextualized_inputs["attention_mask"].to(self.device)
 
     def _embed_passage(self, title: str, text: str) -> torch.Tensor:
+        if self.passage_tokenizer is None or self.passage_encoder is None:
+            raise AttributeError("_embed_passage need self.passage_tokenizer and self.passage_encoder")
+
         """Compute the DPR embeddings of document passages"""
         input_ids = self.passage_tokenizer(
             title,
@@ -142,8 +156,13 @@ class RAGenerator(BaseGenerator):
 
         return embeddings.detach().to(self.device)
 
-    def embed_passage_in_tensor(self, titles: List[str], texts: List[str],
-                                embeddings: List[Optional[numpy.ndarray]]) -> torch.Tensor:
+    def embed_passage_in_tensor(
+        self,
+        titles: List[str],
+        texts: List[str],
+        embeddings: List[Optional[numpy.ndarray]],
+        batch_size: Optional[int] = 16
+    ) -> torch.Tensor:
 
         embeddings_in_tensor: List[torch.Tensor] = []
 
@@ -181,7 +200,7 @@ class RAGenerator(BaseGenerator):
         titles = [d.meta["name"] if d.meta and "name" in d.meta else "" for d in documents]
 
         # Raw document embedding and set device of question_embedding
-        passage_embedding = self.embed_passage_in_tensor(
+        passage_embeddings = self.embed_passage_in_tensor(
             titles=titles,
             texts=flat_docs_dict["text"],
             embeddings=flat_docs_dict["embedding"]
@@ -197,8 +216,8 @@ class RAGenerator(BaseGenerator):
         question_embedding = self.model.question_encoder(input_dict["input_ids"])[0]
 
         # Prepare contextualized input_ids of documents
-        # (will be transformed into contextualized embedding inside generator)
-        context_input_ids, context_attention_mask = self._get_contextualized_embedding(
+        # (will be transformed into contextualized inputs inside generator)
+        context_input_ids, context_attention_mask = self._get_contextualized_inputs(
             texts=flat_docs_dict["text"],
             titles=titles,
             question=question
@@ -206,7 +225,7 @@ class RAGenerator(BaseGenerator):
 
         # Compute doc scores from docs_embedding
         doc_scores = torch.bmm(question_embedding.unsqueeze(1),
-                               passage_embedding.unsqueeze(0).transpose(1, 2)).squeeze(1)
+                               passage_embeddings.unsqueeze(0).transpose(1, 2)).squeeze(1)
 
         # TODO Bug in extend_enc_output function of generator
         # Refer https://github.com/huggingface/transformers/issues/7874
