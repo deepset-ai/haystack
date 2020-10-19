@@ -2,17 +2,32 @@
 # Haystack — Docstrings Generation
 *******************************************************
 
-Setup Pydoc-Markdown
-============
 
-Pydoc-Markdown is a tool and library to create Python API documentation in Markdown format based on lib2to3, allowing it to parse your Python code without executing it ([link](https://pydoc-markdown.readthedocs.io/en/latest/)).
+We use Pydoc-Markdown to create markdown files from the docstrings in our code.
 
-Pydoc-Markdown can be installed from PyPI ([Get Started](https://pydoc-markdown.readthedocs.io/en/latest/docs/getting-started/))
 
-``
-$ pipx install 'pydoc-markdown>=3.0.0,<4.0.0'
-$ pydoc-markdown --version
-``
+Update docs with all latest docstrings?
+=======================================
+Execute this in `/haystack/docs/_src/api/api`:
+```
+pip install 'pydoc-markdown>=3.0.0,<4.0.0'
+pydoc-markdown pydoc-markdown-document-store.yml
+pydoc-markdown pydoc-markdown-file-converters.yml
+pydoc-markdown pydoc-markdown-preprocessor.yml
+pydoc-markdown pydoc-markdown-reader.yml
+pydoc-markdown pydoc-markdown-retriever.yml
+```
+
+Update Docstrings of individual modules
+==========================================
+
+Every .yml file will generate a new markdown file. Run one of the following commands to generate the needed output:
+
+- **Document store**: `pydoc-markdown pydoc-markdown-document-store.yml`
+- **File converters**: `pydoc-markdown pydoc-markdown-file-converters.yml`
+- **Preprocessor**: `pydoc-markdown pydoc-markdown-preprocessor.yml`
+- **Reader**: `pydoc-markdown pydoc-markdown-reader.yml`
+- **Retriever**: `pydoc-markdown pydoc-markdown-retriever.yml`
 
 Configuration
 ============
@@ -32,14 +47,3 @@ Pydoc will read the configuration from a `.yml` file which is located in the cur
     - **type**: Define the renderer which you want to use. We are using the Markdown renderer as it can be configured in very detail.
     - **descriptive_class_title**: Remove the word "Object" from class titles. 
     - **filename**: file name of the generated file
-
-Geneate Docstrings
-============
-
-Every .yml file will generate a new markdown file. Run one of the following commands to generate the needed output:
-
-- **Document store**: `pydoc-markdown pydoc-markdown-document-store.yml`
-- **File converters**: `pydoc-markdown pydoc-markdown-file-converters.yml`
-- **Preprocessor**: `pydoc-markdown pydoc-markdown-preprocessor.yml`
-- **Reder**: `pydoc-markdown pydoc-markdown-reader.yml`
-- **Retriever**: `pydoc-markdown pydoc-markdown-retriever.yml`
