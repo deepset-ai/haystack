@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 import numpy
 import torch
 from transformers import DPRContextEncoder, DPRContextEncoderTokenizerFast, DPRContextEncoderTokenizer, \
-    RagSequenceForGeneration, RagTokenizer, RagTokenForGeneration
+    RagTokenizer, RagTokenForGeneration
 
 from haystack import Document
 from haystack.generator.base import BaseGenerator
@@ -78,7 +78,9 @@ class RAGenerator(BaseGenerator):
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
 
         if self.generator_type == RAGeneratorType.SEQUENCE:
-            self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
+            raise NotImplementedError("RagSequenceForGeneration is not implemented yet")
+            # TODO: Enable when transformers have it. Refer https://github.com/huggingface/transformers/issues/7905
+            # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
         else:
             self.model = RagTokenForGeneration.from_pretrained(model_name_or_path)
 
