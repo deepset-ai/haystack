@@ -1,13 +1,18 @@
-# Haystack Annotation Tool
+# Annotation Tool
 
-This document describes setting up the Haystack Annotation Tool with the publicly available Docker Images. Alternatively,
-a hosted version of the tool is available at https://annotate.deepset.ai/login.
+- Create labels with different techniques: Come up with questions (+ answers) while reading passages (SQuAD style) or have a set of predefined questions and look for answers in the document (~ Natural Questions).
+- Structure your work via organizations, projects, users
+- Upload your documents or import labels from an existing SQuAD-style dataset
+- Export your labels in SQuAD Format
 
+![image](../docs/_src//img/annotation_tool.png)
 
+# Hosted version
+ Signup here: [Haystack Annotation Tool](https://annotate.deepset.ai/login)
 
-# Setup Annotation Tool with Docker
+# Local version  (Docker)
 
-1. Configure credentials & database in the `docker-compose.yml` file:
+1. Configure credentials & database in the [`docker-compose.yml`](https://github.com/deepset-ai/haystack/blob/master/annotation_tool/docker-compose.yml):
 
 The credentials should match in database image and application configuration.
 
