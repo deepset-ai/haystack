@@ -1322,7 +1322,7 @@ retriever = DensePassageRetriever(document_store=document_store,
                                   remove_sep_tok_from_untitled_passages=True)
 
 
-def test_rag_token_generator(document_store, retriever):
+def rag_token_generator(document_store, retriever):
     document_store.delete_all_documents()
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever)
@@ -1334,7 +1334,8 @@ def test_rag_token_generator(document_store, retriever):
         retrieved_docs = retriever.retrieve(query=question, top_k=5)
         generated_docs = generator.predict(question=question, documents=retrieved_docs, top_k=1)
         answers = generated_docs["answers"]
-        print("question=", question, ", generated_answer=", answers[0]["answer"], ", expected_answer=", EXPECTED_TOKEN_OUTPUTS[idx])
+        for answer in answers:
+            print("question=", question, ", generated_answer=", answer["answer"], ", expected_answer=", EXPECTED_TOKEN_OUTPUTS[idx])
 
 
-test_rag_token_generator(document_store, retriever)
+rag_token_generator(document_store, retriever)
