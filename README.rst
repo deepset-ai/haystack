@@ -284,14 +284,14 @@ Example:
 .. code-block:: python
 
     #PDF
-    from haystack.indexing.file_converters.pdf import PDFToTextConverter
+    from haystack.file_converter.pdf import PDFToTextConverter
     converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
-    pages = converter.extract_pages(file_path=file)
+    pages = converter.convert(file_path=file)
     # => list of str, one per page
     #DOCX
-    from haystack.indexing.file_converters.docx import DocxToTextConverter
+    from haystack.file_converter.docx import DocxToTextConverter
     converter = DocxToTextConverter()
-    paragraphs = converter.extract_pages(file_path=file)
+    paragraphs = converter.convert(file_path=file)
     #  => list of str, one per paragraph (as docx has no direct notion of pages)
 
 Advanced document convertion is enabled by leveraging mature text extraction library `Apache Tika <https://tika.apache.org/>`_, which is mostly written in Java. Although it's possible to call Tika API from Python, the current :code:`TikaConverter` only supports RESTful call to a Tika server running at localhost. One may either run Tika as a REST service at port 9998 (default), or to start a `docker container for Tika <https://hub.docker.com/r/apache/tika/tags>`_. The latter is recommended, as it's easily scalable, and does not require setting up any Java runtime environment. What's more, future update is also taken care of by docker.
