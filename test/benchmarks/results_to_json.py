@@ -74,16 +74,14 @@ def retriever():
 def retriever_map(df):
     columns = ["model", "n_docs", "map"]
     df = df[columns]
-    ret = [list(row) for i, row in df.iterrows()]
-    ret = [columns] + ret
+    ret = df.to_dict(orient="records")
     return json.dumps(ret, indent=4)
 
 
 def retriever_speed(df):
     columns = ["model", "n_docs", "query_speed"]
     df = df[columns]
-    ret = [list(row) for i, row in df.iterrows()]
-    ret = [columns] + ret
+    ret = df.to_dict(orient="records")
     return json.dumps(ret, indent=4)
 
 
