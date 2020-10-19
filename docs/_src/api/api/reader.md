@@ -59,7 +59,7 @@ want to debug the Language Model, you might need to disable multiprocessing!
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None)
+ | train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None)
 ```
 
 Fine-tune a model on a QA dataset. Options:
@@ -88,6 +88,14 @@ Options for different schedules are available in FARM.
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
 Set to None to use all CPU cores minus one.
+- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+Available options:
+None (Don't use AMP)
+"O0" (Normal FP32 training)
+"O1" (Mixed Precision => Recommended)
+"O2" (Almost FP16)
+"O3" (Pure FP16).
+See details on: https://nvidia.github.io/apex/amp.html
 
 **Returns**:
 
@@ -245,7 +253,7 @@ Dict containing question and answers
 
 ```python
  | @classmethod
- | convert_to_onnx(cls, model_name_or_path, opset_version: int = 11, optimize_for: Optional[str] = None)
+ | convert_to_onnx(cls, model_name: str, output_path: Path, convert_to_float16: bool = False, quantize: bool = False, task_type: str = "question_answering", opset_version: int = 11)
 ```
 
 Convert a PyTorch BERT model to ONNX format and write to ./onnx-export dir. The converted ONNX model
@@ -254,16 +262,21 @@ can be loaded with in the `FARMReader` using the export path as `model_name_or_p
 Usage:
 
 `from haystack.reader.farm import FARMReader
-FARMReader.convert_to_onnx(model_name_or_path="deepset/bert-base-cased-squad2", optimize_for="gpu_tensor_core")
-FARMReader(model_name_or_path=Path("onnx-export"))`
-
+from pathlib import Path
+onnx_model_path = Path("roberta-onnx-model")
+FARMReader.convert_to_onnx(model_name="deepset/bert-base-cased-squad2", output_path=onnx_model_path)
+reader = FARMReader(onnx_model_path)`
 
 **Arguments**:
 
+- `model_name`: transformers model name
+- `output_path`: Path to output the converted model
+- `convert_to_float16`: Many models use float32 precision by default. With the half precision of float16,
+inference is faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs,
+float32 could still be be more performant.
+- `quantize`: convert floating point number to integers
+- `task_type`: Type of task for the model. Available options: "question_answering" or "embeddings".
 - `opset_version`: ONNX opset version
-- `optimize_for`: Optimize the exported model for a target device. Available options
-are "gpu_tensor_core" (GPUs with tensor core like V100 or T4),
-"gpu_without_tensor_core" (most other GPUs), and "cpu".
 
 <a name="transformers"></a>
 # transformers
