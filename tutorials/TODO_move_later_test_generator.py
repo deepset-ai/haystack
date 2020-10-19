@@ -1335,7 +1335,7 @@ def rag_token_generator(document_store, retriever):
         generated_docs = generator.predict(question=question, documents=retrieved_docs, top_k=1)
         answers = generated_docs["answers"]
         for answer in answers:
-            print("question=", question, ", generated_answer=", answer["answer"], ", expected_answer=", EXPECTED_TOKEN_OUTPUTS[idx])
+            print(idx, ": question=", question, ", generated_answer=", answer["answer"], ", expected_answer=", EXPECTED_TOKEN_OUTPUTS[idx])
 
 
 rag_token_generator(document_store, retriever)
