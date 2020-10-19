@@ -147,7 +147,7 @@ class RAGenerator(BaseGenerator):
         if len(documents) == 0:
             raise AttributeError("generator need documents to predict the answer")
 
-        top_k_answers = top_k if top_k is None else self.top_k_answers
+        top_k_answers = top_k if top_k is not None else self.top_k_answers
 
         # Flatten the documents so easy to reference
         flat_docs_dict = {}
