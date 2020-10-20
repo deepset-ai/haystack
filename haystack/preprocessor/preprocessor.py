@@ -80,31 +80,30 @@ class PreProcessor(BasePreProcessor):
         if not self.split_length:
             raise Exception("split_length needs be set when using split_by.")
 
+        if self.split_respect_sentence_boundary and self.split_by not in("word","sentence"):
+            raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with"
+                                      " split_by='word' or split_by='sentence'.")
+
         text = document["text"]
 
-        if self.split_respect_sentence_boundary:  # split by words ensuring no sub sentence splits
-            if self.split_by == "word":
-                sentences = nltk.tokenize.sent_tokenize(text)
-                word_count = 0
-                text_splits = []
-                current_slice = ""
-                for sen in sentences:
-                    current_word_count = len(sen.split(" "))
-                    if current_word_count > self.split_length:
-                        logger.warning(f"A sentence found with word count higher than the split length.")
-                    if word_count + current_word_count > self.split_length:
-                        text_splits.append(current_slice)
-                        current_slice = ""
-                        word_count = 0
-                    current_slice += sen
-                    word_count += len(sen.split(" "))
-                if current_slice:
+        if self.split_respect_sentence_boundary and self.split_by == "word":
+            # split by words ensuring no sub sentence splits
+            sentences = nltk.tokenize.sent_tokenize(text)
+            word_count = 0
+            text_splits = []
+            current_slice = ""
+            for sen in sentences:
+                current_word_count = len(sen.split(" "))
+                if current_word_count > self.split_length:
+                    logger.warning(f"A sentence found with word count higher than the split length.")
+                if word_count + current_word_count > self.split_length:
                     text_splits.append(current_slice)
-
-            else:
-                raise NotImplementedError(
-                    "'split_respect_sentence_boundary' parameter is only compatible with " "split_by='word'."
-                )
+                    current_slice = ""
+                    word_count = 0
+                current_slice += sen
+                word_count += len(sen.split(" "))
+            if current_slice:
+                text_splits.append(current_slice)
         else:
             # create individual "elements" of passage, sentence, or word
             if self.split_by == "passage":
