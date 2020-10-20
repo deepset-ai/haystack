@@ -1,5 +1,5 @@
 # TODO: Use FARM released version
--e git+https://github.com/deepset-ai/FARM.git#egg=farm
+# farm==0.4.9
 --find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn
