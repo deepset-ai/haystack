@@ -44,11 +44,11 @@ def test_preprocess_word_split():
 
 def test_preprocess_passage_split():
     document = {"text": TEXT}
-    preprocessor = PreProcessor(split_length=1, split_stride=0, split_by="passage")
+    preprocessor = PreProcessor(split_length=1, split_stride=0, split_by="passage", split_respect_sentence_boundary=False)
     documents = preprocessor.process(document)
     assert len(documents) == 3
 
-    preprocessor = PreProcessor(split_length=2, split_stride=0, split_by="passage")
+    preprocessor = PreProcessor(split_length=2, split_stride=0, split_by="passage", split_respect_sentence_boundary=False)
     documents = preprocessor.process(document)
     assert len(documents) == 2
 
