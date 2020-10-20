@@ -1,4 +1,5 @@
-farm==0.4.9
+# TODO: Use FARM released version
+-e git+https://github.com/deepset-ai/FARM.git#egg=farm
 --find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn
@@ -22,5 +23,3 @@ uvloop; sys_platform != 'win32' and sys_platform != 'cygwin'
 httptools
 nltk
 more_itertools
-# TODO: Adding for testing till FARM fix depedencies
--e git+https://github.com/huggingface/transformers.git#egg=transformers

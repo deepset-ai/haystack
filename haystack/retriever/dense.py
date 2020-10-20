@@ -1,10 +1,14 @@
 import logging
-from typing import List, Union, Tuple, Optional
+from typing import Type, List, Union, Tuple, Optional
 import torch
 import numpy as np
+from pathlib import Path
+
+from farm.infer import Inferencer
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
 
@@ -12,12 +16,6 @@ from transformers.modeling_dpr import DPRContextEncoder, DPRQuestionEncoder
 from transformers.tokenization_dpr import DPRContextEncoderTokenizer, DPRQuestionEncoderTokenizer
 
 logger = logging.getLogger(__name__)
-
-# TODO: Remove this after FARM upgrade
-try:
-    from farm.infer import Inferencer
-except (ImportError, AttributeError) as e:
-    logger.error("EmbeddingRetriever will not work without Farm Inferencer")
 
 
 class DensePassageRetriever(BaseRetriever):

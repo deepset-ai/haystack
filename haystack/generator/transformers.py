@@ -128,7 +128,7 @@ class RAGenerator(BaseGenerator):
     def embed_passage_in_tensor(self, docs: List[Document], embeddings: List[Optional[numpy.ndarray]]) -> torch.Tensor:
 
         # If of document missing embedding, then need embedding for all the documents
-        is_embedding_required = embeddings is None or embeddings.__contains__(None)
+        is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
 
         if is_embedding_required:
             if self.retriever is None:

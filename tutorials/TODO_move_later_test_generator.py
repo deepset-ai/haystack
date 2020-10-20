@@ -44,7 +44,7 @@ EXPECTED_TOKEN_OUTPUTS = [
 DOC_DICT_LIST = [
     {'embedding': None,
      'id': '277bd64c-70aa-4a6b-9884-8f09b5f705fb',
-     'meta': {'name': '"Albert Einstein"'},
+     'meta': {'name': 'Albert Einstein'},
      'probability': None,
      'question': None,
      'score': None,
@@ -78,7 +78,7 @@ DOC_DICT_LIST = [
     ,
     {'embedding': None,
      'id': 'ff18029d-38bf-41c8-a8e6-80003ea03ae2',
-     'meta': {'name': '"Albert Einstein"'},
+     'meta': {'name': 'Albert Einstein'},
      'probability': None,
      'question': None,
      'score': None,
@@ -1332,6 +1332,10 @@ def rag_token_generator(document_store, retriever):
 
     for idx, question in enumerate(QUESTIONS):
         retrieved_docs = retriever.retrieve(query=question, top_k=5)
+
+        for retrieved_doc in retrieved_docs:
+            retrieved_doc.embedding = document_store.faiss_index.reconstruct(int(retrieved_doc.meta["vector_id"]))
+
         generated_docs = generator.predict(question=question, documents=retrieved_docs, top_k=1)
         answers = generated_docs["answers"]
         for answer in answers:
