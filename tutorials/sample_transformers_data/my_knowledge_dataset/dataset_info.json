@@ -1,0 +1,57 @@
+{
+  "builder_name": "csv",
+  "citation": "",
+  "config_name": "default-d9e5fdd7f67daac0",
+  "dataset_size": 115,
+  "description": "",
+  "download_checksums": {
+    "/Users/lalitp/PycharmProjects/transformers/examples/rag/test_data/my_knowledge_dataset.csv": {
+      "checksum": "5bd6b153cdee8d7ccf6786a03e0ad27cf74e67133ed1707a43cea8e687eb2f3e",
+      "num_bytes": 107
+    }
+  },
+  "download_size": 107,
+  "features": {
+    "embeddings": {
+      "_type": "Sequence",
+      "feature": {
+        "_type": "Value",
+        "dtype": "float64",
+        "id": null
+      },
+      "id": null,
+      "length": -1
+    },
+    "text": {
+      "_type": "Value",
+      "dtype": "string",
+      "id": null
+    },
+    "title": {
+      "_type": "Value",
+      "dtype": "string",
+      "id": null
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "post_processed": null,
+  "post_processing_size": null,
+  "size_in_bytes": 222,
+  "splits": {
+    "train": {
+      "dataset_name": "csv",
+      "name": "train",
+      "num_bytes": 115,
+      "num_examples": 2
+    }
+  },
+  "supervised_keys": null,
+  "version": {
+    "description": null,
+    "major": 0,
+    "minor": 0,
+    "patch": 0,
+    "version_str": "0.0.0"
+  }
+}

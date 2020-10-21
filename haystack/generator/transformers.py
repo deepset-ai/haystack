@@ -191,6 +191,9 @@ class RAGenerator(BaseGenerator):
         # Get generated ids from generator
         # TODO: Handle RagSequenceForGeneration case refer https://github.com/huggingface/transformers/issues/7829
         generator_ids = self.model.generate(
+            # TODO: Remove this when transformers version upgraded
+            # Refer https://github.com/huggingface/transformers/issues/7871
+            input_ids=input_dict["input_ids"],
             context_input_ids=context_input_ids,
             context_attention_mask=context_attention_mask,
             doc_scores=doc_scores,
