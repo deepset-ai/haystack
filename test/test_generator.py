@@ -1332,7 +1332,7 @@ DOC_DICT_LIST = [
 
 DOCUMENTS = []
 for doc_dict in DOC_DICT_LIST:
-    DOCUMENTS.append(namedtuple('Document', ['id', 'text', 'meta']))
+    DOCUMENTS.append(namedtuple('Document', ['id', 'text', 'meta', 'embedding', 'score', 'probability', 'question']))
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
