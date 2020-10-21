@@ -15,8 +15,8 @@ import os
 import requests
 from farm.file_utils import download_from_s3
 import json
-
-
+from results_to_json import retriever as retriever_json
+from templates import RETRIEVER_TEMPLATE, RETRIEVER_MAP_TEMPLATE, RETRIEVER_SPEED_TEMPLATE
 
 logger = logging.getLogger(__name__)
 logging.getLogger("haystack.retriever.base").setLevel(logging.WARN)
@@ -25,10 +25,18 @@ logging.getLogger("elasticsearch").setLevel(logging.WARN)
 doc_index = "eval_document"
 label_index = "label"
 
+index_results_file = "retriever_index_results.csv"
+query_results_file = "retriever_query_results.csv"
+
+overview_json = "../../docs/_src/benchmarks/retriever_performance.json"
+map_json = "../../docs/_src/benchmarks/retriever_map.json"
+speed_json = "../../docs/_src/benchmarks/retriever_speed.json"
+
+
 seed = 42
 random.seed(42)
 
-def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, **kwargs):
+def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, update_json, **kwargs):
 
     retriever_results = []
     for n_docs in n_docs_options:
@@ -62,7 +70,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     "error": None})
                 retriever_df = pd.DataFrame.from_records(retriever_results)
                 retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
-                retriever_df.to_csv("retriever_index_results.csv")
+                retriever_df.to_csv(index_results_file)
                 doc_store.delete_all_documents(index=doc_index)
                 doc_store.delete_all_documents(index=label_index)
                 time.sleep(10)
@@ -84,6 +92,10 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                 time.sleep(10)
                 del doc_store
                 del retriever
+    if update_json:
+        populate_retriever_json()
+
+
 
 def benchmark_querying(n_docs_options,
                        retriever_doc_stores,
@@ -94,6 +106,7 @@ def benchmark_querying(n_docs_options,
                        n_queries,
                        embeddings_filenames,
                        embeddings_dir,
+                       update_json,
                        **kwargs):
     """ Benchmark the time it takes to perform querying. Doc embeddings are loaded from file."""
     retriever_results = []
@@ -166,9 +179,23 @@ def benchmark_querying(n_docs_options,
 
             retriever_df = pd.DataFrame.from_records(retriever_results)
             retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
-            retriever_df.to_csv("retriever_query_results.csv")
+            retriever_df.to_csv(query_results_file)
+    if update_json:
+        populate_retriever_json()
 
 
+def populate_retriever_json():
+    retriever_overview_data, retriever_map_data, retriever_speed_data = retriever_json(index_csv=index_results_file,
+                                                                                       query_csv=query_results_file)
+    overview = RETRIEVER_TEMPLATE
+    overview["data"] = retriever_overview_data
+    map = RETRIEVER_MAP_TEMPLATE
+    map["data"] = retriever_map_data
+    speed = RETRIEVER_SPEED_TEMPLATE
+    speed["data"] = retriever_speed_data
+    json.dump(overview, open(overview_json, "w"), indent=4)
+    json.dump(speed, open(speed_json, "w"), indent=4)
+    json.dump(map, open(map_json, "w"), indent=4)
 
 
 def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
@@ -252,3 +279,4 @@ if __name__ == "__main__":
     params, filenames = load_config(config_filename="config.json", ci=True)
     benchmark_indexing(**params, **filenames)
     benchmark_querying(**params, **filenames)
+

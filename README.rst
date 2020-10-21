@@ -238,7 +238,7 @@ Example
 
 .. code-block:: python
 
-    reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
+    reader = TransformersReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
                                 tokenizer="distilbert-base-uncased",
                                 context_window_size=500,
                                 use_gpu=-1)
@@ -284,15 +284,15 @@ Example:
 .. code-block:: python
 
     #PDF
-    from haystack.indexing.file_converters.pdf import PDFToTextConverter
-    converter = PDFToTextConverter(remove_header_footer=True, remove_numeric_tables=True, valid_languages=["de","en"])
-    pages = converter.extract_pages(file_path=file)
-    # => list of str, one per page
+    from haystack.file_converter.pdf import PDFToTextConverter
+    converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["de","en"])
+    doc = converter.convert(file_path=file, meta=None)
+    # => {"text": "text first page \f text second page ...", "meta": None}
     #DOCX
-    from haystack.indexing.file_converters.docx import DocxToTextConverter
-    converter = DocxToTextConverter()
-    paragraphs = converter.extract_pages(file_path=file)
-    #  => list of str, one per paragraph (as docx has no direct notion of pages)
+    from haystack.file_converter.docx import DocxToTextConverter
+    converter = DocxToTextConverter(remove_numeric_tables=True, valid_languages=["de","en"])
+    doc = converter.convert(file_path=file, meta=None)
+    # => {"text": "some text", "meta": None}
 
 Advanced document convertion is enabled by leveraging mature text extraction library `Apache Tika <https://tika.apache.org/>`_, which is mostly written in Java. Although it's possible to call Tika API from Python, the current :code:`TikaConverter` only supports RESTful call to a Tika server running at localhost. One may either run Tika as a REST service at port 9998 (default), or to start a `docker container for Tika <https://hub.docker.com/r/apache/tika/tags>`_. The latter is recommended, as it's easily scalable, and does not require setting up any Java runtime environment. What's more, future update is also taken care of by docker.
 Either way, TikaConverter makes RESTful calls to convert any document format supported by Tika. Example code can be found at :code:`indexing/file_converters/utils.py`'s :code:`tika_convert)_files_to_dicts` function:
@@ -312,9 +312,9 @@ If you feel adventurous, Tika even supports some image OCR with Tesseract, or ob
 
 .. code-block:: python
 
-    converter = TikaConverter(remove_header_footer=True)
-    pages = converter.extract_pages(file_path=path)
-    pages, meta = converter.extract_pages(file_path=path, return_meta=True)
+    converter = TikaConverter(tika_url: str = "http://localhost:9998/tika")
+    doc = converter.convert(file_path=path)
+    # => {"text": "text first page \f text second page ...", "meta": {"Content-Type": 'application/pdf', "Last-Modified":...}}
 
 Contributing
 =============

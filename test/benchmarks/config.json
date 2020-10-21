@@ -31,18 +31,6 @@
         [
           "elastic",
           "elasticsearch"
-        ],
-        [
-          "dpr",
-          "elasticsearch"
-        ],
-        [
-          "dpr",
-          "faiss_flat"
-        ],
-        [
-          "dpr",
-          "faiss_hnsw"
         ]
       ],
       "n_docs_options": [

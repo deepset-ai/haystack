@@ -86,7 +86,6 @@ else:
     logger.warning("Since we already have a running ES instance we should not index the same documents again. \n"
                    "If you still want to do this call: document_store.write_documents(dicts) manually ")
 
-
 # ## Initalize Retriever, Reader,  & Finder
 #
 # ### Retriever
@@ -135,7 +134,7 @@ reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=Fa
 
 # Alternative:
 # reader = TransformersReader(
-#    model="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
+#    model_name_or_path="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
 
 # ### Finder
 #
