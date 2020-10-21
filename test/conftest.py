@@ -116,7 +116,7 @@ def reader(request):
         return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
                           use_gpu=False, top_k_per_sample=5, num_processes=0)
     if request.param == "transformers":
-        return TransformersReader(model="distilbert-base-uncased-distilled-squad",
+        return TransformersReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
                                   tokenizer="distilbert-base-uncased",
                                   use_gpu=-1)
 
@@ -129,7 +129,7 @@ def no_answer_reader(request):
         return FARMReader(model_name_or_path="deepset/roberta-base-squad2",
                           use_gpu=False, top_k_per_sample=5, no_ans_boost=0, num_processes=0)
     if request.param == "transformers":
-        return TransformersReader(model="deepset/roberta-base-squad2",
+        return TransformersReader(model_name_or_path="deepset/roberta-base-squad2",
                                   tokenizer="deepset/roberta-base-squad2",
                                   use_gpu=-1, top_k_per_candidate=5)
 

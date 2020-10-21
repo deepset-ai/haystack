@@ -21,6 +21,7 @@ from rest_api.controller.response import Answers, AnswersToIndividualQuestion
 
 from rest_api.controller.utils import RequestLimiter
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.reader.base import BaseReader
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.retriever.base import BaseRetriever
@@ -73,11 +74,11 @@ if READER_MODEL_PATH:  # for extractive doc-qa
     if READER_TYPE == "TransformersReader":
         use_gpu = -1 if not USE_GPU else GPU_NUMBER
         reader = TransformersReader(
-            model=str(READER_MODEL_PATH),
+            model_name_or_path=str(READER_MODEL_PATH),
             use_gpu=use_gpu,
             context_window_size=CONTEXT_WINDOW_SIZE,
             tokenizer=str(READER_TOKENIZER)
-        )  # type: Optional[FARMReader]
+        )  # type: Optional[BaseReader]
     elif READER_TYPE == "FARMReader":
         reader = FARMReader(
             model_name_or_path=str(READER_MODEL_PATH),
@@ -89,7 +90,7 @@ if READER_MODEL_PATH:  # for extractive doc-qa
             num_processes=MAX_PROCESSES,
             max_seq_len=MAX_SEQ_LEN,
             doc_stride=DOC_STRIDE,
-        )  # type: Optional[FARMReader]
+        )  # type: Optional[BaseReader]
     else:
         raise ValueError(f"Could not load Reader of type '{READER_TYPE}'. "
                          f"Please adjust READER_TYPE to one of: "
