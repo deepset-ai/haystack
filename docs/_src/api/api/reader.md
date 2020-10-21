@@ -300,7 +300,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interfa
 #### \_\_init\_\_
 
 ```python
- | __init__(model: str = "distilbert-base-uncased-distilled-squad", tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+ | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
 ```
 
 Load a QA model from Transformers.
@@ -314,7 +314,7 @@ See https://huggingface.co/models for full list of available QA models
 
 **Arguments**:
 
-- `model`: Name of the model
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased', 'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'. See https://huggingface.co/models for full list of available models.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
 The context usually helps users to understand if the answer really makes sense.
