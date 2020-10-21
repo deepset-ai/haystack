@@ -1,14 +1,12 @@
 import logging
-from typing import Type, List, Union, Tuple, Optional
+from typing import List, Union, Tuple, Optional
 import torch
 import numpy as np
-from pathlib import Path
 
 from farm.infer import Inferencer
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import logger
 

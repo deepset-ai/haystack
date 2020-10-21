@@ -1,5 +1,4 @@
 import os
-from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore
@@ -8,9 +7,6 @@ from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
-from time import perf_counter
-import pandas as pd
-import json
 import logging
 import subprocess
 import time

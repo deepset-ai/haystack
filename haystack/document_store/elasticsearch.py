@@ -220,7 +220,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Indexes documents for later queries in Elasticsearch.
 
-        When using explicit document IDs, any existing document with the same ID gets updated.
+        Behaviour if a document with the same ID already exists in ElasticSearch:
+        a) (Default) Throw Elastic's standard error message for duplicate IDs.
+        b) If `self.update_existing_documents=True` for DocumentStore: Overwrite existing documents.
+        (This is only relevant if you pass your own ID when initializing a `Document`.
+        If don't set custom IDs for your Documents or just pass a list of dictionaries here,
+        they will automatically get UUIDs assigned. See the `Document` class for details)
 
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
