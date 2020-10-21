@@ -20,7 +20,7 @@ RETRIEVER_TEMPLATE = {
   "bars": "horizontal",
   "columns": [
     "Model",
-    "Recall",
+    "mAP",
     "Index Speed (docs/sec)",
     "Query Speed (queries/sec)"
   ],
