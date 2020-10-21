@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import json
 
+from farm.data_handler.utils import http_get
+
 from haystack.file_converter.base import BaseConverter
 from haystack.file_converter.docx import DocxToTextConverter
 from haystack.file_converter.pdf import PDFToTextConverter
@@ -244,10 +246,6 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
 
         # download & extract
         with tempfile.NamedTemporaryFile() as temp_file:
-            try:
-                from farm.data_handler.utils import http_get
-            except ImportError:
-                raise ImportError("Can't find package `farm` ")
             http_get(url, temp_file, proxies=proxies)
             temp_file.flush()
             temp_file.seek(0)  # making tempfile accessible
