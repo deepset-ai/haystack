@@ -59,7 +59,11 @@ setup(
     download_url="https://github.com/deepset-ai/haystack/archive/0.4.0.tar.gz",
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     dependency_links=dependency_links,
-    install_requires=parsed_requirements,
+    # TODO: Remove this after farm dependency update
+    install_requires=[
+        parsed_requirements,
+        'farm @ git+https://github.com/deepset-ai/FARM.git@master',
+    ],
     python_requires=">=3.6.0",
     tests_require=["pytest"],
     classifiers=[
