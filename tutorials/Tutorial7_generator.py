@@ -67,10 +67,17 @@ def fetch_from_transformer():
         indexed_dataset=dataset
     )
 
-    haystack_generator.model.set_retriever(rag_retriever)
     rag_model = haystack_generator.model
 
-    generated = rag_model.generate(input_dict["input_ids"])
+    question_hidden_states = haystack_generator.model.question_encoder(input_dict["input_ids"])[0]
+
+    docs_dict = rag_retriever(input_dict["input_ids"].numpy(), question_hidden_states.detach().numpy(), return_tensors="pt", n_docs=2)
+    doc_scores = torch.bmm(question_hidden_states.unsqueeze(1),
+                                docs_dict["retrieved_doc_embeds"].float().transpose(1, 2)).squeeze(1)
+
+    generated = rag_model.generate(input_ids=input_dict["input_ids"], context_input_ids=docs_dict["context_input_ids"],
+                                    context_attention_mask=docs_dict["context_attention_mask"], doc_scores=doc_scores, n_docs=2)
+
     generated_string = haystack_generator.tokenizer.batch_decode(generated, skip_special_tokens=True)[0]
     print("By Transformers=", generated_string)
 

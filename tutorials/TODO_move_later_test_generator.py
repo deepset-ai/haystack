@@ -23,7 +23,7 @@ QUESTIONS = [
     "what is the name of manchester united stadium",
 ]
 
-EXPECTED_TOKEN_OUTPUTS = [
+EXPECTED_SEQUENCE_OUTPUTS = [
     " albert einstein",
     " june 22, 2018",
     " amplitude modulation",
@@ -39,6 +39,24 @@ EXPECTED_TOKEN_OUTPUTS = [
     " grainger's compound",
     " japan",
     " old trafford stadium",
+]
+
+EXPECTED_TOKEN_OUTPUTS = [
+    " albert einstein",
+    " september 22, 2017",
+    " amplitude modulation",
+    " stefan persson",
+    " april 20, 2018",
+    " the 1970s",
+    " 7.1. 2",
+    " 13",
+    " step by step",
+    " stomach",
+    " spodumene",
+    " obama",
+    " northern new jersey",
+    " india",
+    " united stadium",
 ]
 
 DOC_DICT_LIST = [

@@ -114,9 +114,9 @@ class RAGenerator(BaseGenerator):
             for i in range(len(texts))
         ]
 
-        contextualized_inputs = self.tokenizer.question_encoder.batch_encode_plus(
+        contextualized_inputs = self.tokenizer.generator.batch_encode_plus(
             rag_input_strings,
-            max_length=self.model.config.max_length,
+            max_length=self.model.config.max_combined_length,
             return_tensors=return_tensors,
             padding="max_length",
             truncation=True,
@@ -215,7 +215,7 @@ class RAGenerator(BaseGenerator):
                     "doc_scores": flat_docs_dict["score"],
                     "doc_probabilities": flat_docs_dict["probability"],
                     "texts": flat_docs_dict["text"],
-                    "titles": titles
+                    "titles": titles,
                     # TODO: Meta as well?
                 }
             }
