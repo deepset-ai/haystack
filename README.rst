@@ -238,7 +238,7 @@ Example
 
 .. code-block:: python
 
-    reader = TransformersReader(model="distilbert-base-uncased-distilled-squad",
+    reader = TransformersReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
                                 tokenizer="distilbert-base-uncased",
                                 context_window_size=500,
                                 use_gpu=-1)
