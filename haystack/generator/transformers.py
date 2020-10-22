@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import numpy
 import torch
@@ -79,6 +79,7 @@ class RAGenerator(BaseGenerator):
         if self.generator_type == RAGeneratorType.SEQUENCE:
             raise NotImplementedError("RagSequenceForGeneration is not implemented yet")
             # TODO: Enable when transformers have it. Refer https://github.com/huggingface/transformers/issues/7905
+            # Also refer refer https://github.com/huggingface/transformers/issues/7829
             # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
         else:
             self.model = RagTokenForGeneration.from_pretrained(model_name_or_path)
@@ -184,14 +185,13 @@ class RAGenerator(BaseGenerator):
         doc_scores = torch.bmm(question_embedding.unsqueeze(1),
                                passage_embeddings.unsqueeze(0).transpose(1, 2)).squeeze(1)
 
-        # TODO Bug in extend_enc_output function of generator
+        # TODO Need transformers 3.4.0
         # Refer https://github.com/huggingface/transformers/issues/7874
         self.model.config.n_docs = len(flat_docs_dict["text"])
 
         # Get generated ids from generator
-        # TODO: Handle RagSequenceForGeneration case refer https://github.com/huggingface/transformers/issues/7829
         generator_ids = self.model.generate(
-            # TODO: Remove this when transformers version upgraded
+            # TODO: Need transformers 3.4.0
             # Refer https://github.com/huggingface/transformers/issues/7871
             input_ids=input_dict["input_ids"],
             context_input_ids=context_input_ids,
@@ -216,7 +216,6 @@ class RAGenerator(BaseGenerator):
                     "doc_probabilities": flat_docs_dict["probability"],
                     "texts": flat_docs_dict["text"],
                     "titles": titles,
-                    # TODO: Meta as well?
                 }
             }
             result["answers"].append(cur_answer)
