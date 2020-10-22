@@ -1,10 +1,3 @@
-import os
-import pathlib
-
-import torch
-from datasets import load_from_disk
-from transformers import RagRetriever
-
 from haystack import Document
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.generator.transformers import RAGenerator
@@ -42,44 +35,3 @@ haystack_generator = RAGenerator(retriever=retriever)
 predicted_result = haystack_generator.predict(question=question, documents=retriever_results, top_k=1)
 
 print("By Haystack=", predicted_result["answers"][0]["answer"])
-
-
-def fetch_from_transformer():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    passages_path = os.path.join(pathlib.Path().absolute(),
-                                 "sample_transformers_data/my_knowledge_dataset")
-    dataset = load_from_disk(passages_path)
-    index_path = os.path.join(pathlib.Path().absolute(),
-                              "sample_transformers_data/my_knowledge_dataset_hnsw_index.faiss")
-    dataset.load_faiss_index("embeddings", index_path)
-
-    # Adding transformers part to verify
-    # Question tokenization
-    input_dict = haystack_generator.tokenizer.prepare_seq2seq_batch(
-        src_texts=[question],
-        return_tensors="pt"
-    )
-
-    rag_retriever = RagRetriever.from_pretrained(
-        "facebook/rag-token-nq",
-        index_name="custom",
-        indexed_dataset=dataset
-    )
-
-    rag_model = haystack_generator.model
-
-    question_hidden_states = haystack_generator.model.question_encoder(input_dict["input_ids"])[0]
-
-    docs_dict = rag_retriever(input_dict["input_ids"].numpy(), question_hidden_states.detach().numpy(), return_tensors="pt", n_docs=2)
-    doc_scores = torch.bmm(question_hidden_states.unsqueeze(1),
-                                docs_dict["retrieved_doc_embeds"].float().transpose(1, 2)).squeeze(1)
-
-    generated = rag_model.generate(input_ids=input_dict["input_ids"], context_input_ids=docs_dict["context_input_ids"],
-                                    context_attention_mask=docs_dict["context_attention_mask"], doc_scores=doc_scores, n_docs=2)
-
-    generated_string = haystack_generator.tokenizer.batch_decode(generated, skip_special_tokens=True)[0]
-    print("By Transformers=", generated_string)
-
-
-fetch_from_transformer()
