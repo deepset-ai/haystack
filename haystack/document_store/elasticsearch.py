@@ -305,7 +305,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         index = index or self.index
 
-        body = {"query": {"bool": {}}}
+        body: dict = {"query": {"bool": {}}}
         if filters:
             filter_clause = []
             for key, values in filters.items():

@@ -101,7 +101,7 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_document_count(self, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         pass
 
     @abstractmethod
