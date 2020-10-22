@@ -122,9 +122,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for doc, emb in zip(docs, embeddings):
             self.indexes[index][doc.id].embedding = emb
 
-    def get_document_count(self, index: Optional[str] = None) -> int:
-        index = index or self.index
-        return len(self.indexes[index].items())
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        documents = self.get_all_documents(index=index, filters=filters)
+        return len(documents)
 
     def get_label_count(self, index: Optional[str] = None) -> int:
         index = index or self.label_index

@@ -302,10 +302,25 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         body = {"doc": meta}
         self.client.update(index=self.index, doc_type="_doc", id=id, body=body, refresh=self.refresh_type)
 
-    def get_document_count(self, index: Optional[str] = None) -> int:
-        if index is None:
-            index = self.index
-        result = self.client.count(index=index)
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        index = index or self.index
+
+        body: dict = {"query": {"bool": {}}}
+        if filters:
+            filter_clause = []
+            for key, values in filters.items():
+                if type(values) != list:
+                    raise ValueError(
+                        f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                        'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+            body["query"]["bool"]["filter"] = filter_clause
+
+        result = self.client.count(index=index, body=body)
         count = result["count"]
         return count
 
