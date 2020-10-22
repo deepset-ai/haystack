@@ -71,6 +71,7 @@ def get_document_store(document_store_type, es_similarity='cosine'):
 
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
+    assert document_store.get_document_count() == 0
     return document_store
 
 def get_retriever(retriever_name, doc_store):
