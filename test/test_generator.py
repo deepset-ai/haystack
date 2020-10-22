@@ -1,8 +1,10 @@
 import time
 from collections import namedtuple
+from typing import List
 
 import pytest
 
+from haystack import Document
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
 
 QUESTIONS = [
@@ -1330,9 +1332,15 @@ DOC_DICT_LIST = [
     ,
 ]
 
-DOCUMENTS = []
+DOCUMENTS: List[Document] = []
 for doc_dict in DOC_DICT_LIST:
-    DOCUMENTS.append(namedtuple('Document', ['id', 'text', 'meta', 'embedding', 'score', 'probability', 'question']))
+    DOCUMENTS.append(
+        Document(
+            text=doc_dict["text"],
+            id=doc_dict["id"],
+            meta=doc_dict["meta"],
+        )
+    )
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
