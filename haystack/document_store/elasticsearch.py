@@ -42,6 +42,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         refresh_type: str = "wait_for",
         similarity="dot_product",
         timeout=30,
+        return_embedding: Optional[bool] = True,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -80,6 +81,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         :param timeout: Number of seconds after which an ElasticSearch request times out.
+        :param return_embedding: To return document embedding
 
 
         """
@@ -99,6 +101,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
         self.faq_question_field = faq_question_field
+        self.return_embedding = return_embedding
 
         self.custom_mapping = custom_mapping
         self.index: str = index
@@ -446,9 +449,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                            query_emb: np.array,
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
-                           index: Optional[str] = None) -> List[Document]:
+                           index: Optional[str] = None,
+                           return_embedding: Optional[bool] = None) -> List[Document]:
         if index is None:
             index = self.index
+
+        return_embedding = return_embedding or self.return_embedding
 
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
@@ -478,6 +484,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 body["query"]["script_score"]["query"] = {
                     "terms": filters
                 }
+
+            if return_embedding is True and self.embedding_field in self.excluded_meta_data:
+                self.excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is not True and self.embedding_field not in self.excluded_meta_data:
+                self.excluded_meta_data.append(self.embedding_field)
 
             if self.excluded_meta_data:
                 body["_source"] = {"excludes": self.excluded_meta_data}
@@ -511,7 +522,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             score=score,
             probability=probability,
             question=hit["_source"].get(self.faq_question_field),
-            embedding=hit["_source"].get(self.embedding_field)
+            embedding=hit["_source"].get(self.embedding_field, None)
         )
         return document
 

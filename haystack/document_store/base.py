@@ -109,7 +109,8 @@ class BaseDocumentStore(ABC):
                            query_emb: List[float],
                            filters: Optional[Optional[Dict[str, List[str]]]] = None,
                            top_k: int = 10,
-                           index: Optional[str] = None) -> List[Document]:
+                           index: Optional[str] = None,
+                           return_embedding: Optional[bool] = None) -> List[Document]:
         pass
 
     @abstractmethod

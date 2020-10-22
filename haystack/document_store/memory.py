@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional, Union
+from copy import deepcopy
+from typing import Dict, List, Optional, Union
 from uuid import uuid4
 from collections import defaultdict
 
@@ -10,17 +11,19 @@ from haystack.retriever.base import BaseRetriever
 import logging
 logger = logging.getLogger(__name__)
 
+
 class InMemoryDocumentStore(BaseDocumentStore):
     """
         In-memory document store
     """
 
-    def __init__(self, embedding_field: Optional[str] = None):
+    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: Optional[bool] = True):
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
         self.label_index: str = "label"
-        self.embedding_field: str = "embedding"
-        self.embedding_dim : int = 768
+        self.embedding_field: str = embedding_field if embedding_field is not None else "embedding"
+        self.embedding_dim: int = 768
+        self.return_embedding: bool = return_embedding
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
@@ -68,7 +71,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
                            query_emb: List[float],
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
-                           index: Optional[str] = None) -> List[Document]:
+                           index: Optional[str] = None,
+                           return_embedding: Optional[bool] = None) -> List[Document]:
 
         from numpy import dot
         from numpy.linalg import norm
@@ -79,17 +83,24 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                       "use a different DocumentStore (e.g. ElasticsearchDocumentStore).")
 
         index = index or self.index
+        return_embedding = return_embedding or self.return_embedding
 
         if query_emb is None:
             return []
 
         candidate_docs = []
         for idx, doc in self.indexes[index].items():
-            doc.score = dot(query_emb, doc.embedding) / (
+            new_document = Document(
+                id=doc.id,
+                text=doc.text,
+                meta=deepcopy(doc.meta)
+            )
+            new_document.embedding = doc.embedding if return_embedding is True else None
+            new_document.score = dot(query_emb, doc.embedding) / (
                 norm(query_emb) * norm(doc.embedding)
             )
-            doc.probability = (doc.score + 1) / 2
-            candidate_docs.append(doc)
+            new_document.probability = (new_document.score + 1) / 2
+            candidate_docs.append(new_document)
 
         return sorted(candidate_docs, key=lambda x: x.score, reverse=True)[0:top_k]
 
