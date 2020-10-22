@@ -3,8 +3,6 @@ from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.generator.transformers import RAGenerator
 from haystack.retriever.dense import DensePassageRetriever
 
-# haystack part
-
 documents = [
     Document(
         text="""Berlin is Germany capital"""
@@ -25,8 +23,6 @@ retriever = DensePassageRetriever(document_store=document_store,
                                   remove_sep_tok_from_untitled_passages=True)
 
 document_store.update_embeddings(retriever=retriever)
-
-docs_with_emb = document_store.get_all_documents()
 
 question = "What is capital of the Germany?"
 retriever_results = retriever.retrieve(query=question, top_k=2)
