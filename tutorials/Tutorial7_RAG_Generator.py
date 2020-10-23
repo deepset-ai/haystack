@@ -6,7 +6,7 @@ from haystack.retriever.dense import DensePassageRetriever
 # Add documents from which you want generate answers
 documents = [
     Document(
-        text="""Berlin is Germany capital"""
+        text="""The capital of Germany is the city state of Berlin."""
     ),
     Document(
         text="""Berlin is the capital and largest city of Germany by both area and population.""",
@@ -28,7 +28,14 @@ retriever = DensePassageRetriever(
 
 # Initialize RAG Generator
 generator = RAGenerator(
-    retriever=retriever
+    model_name_or_path="facebook/rag-token-nq",
+    retriever=retriever,
+    use_gpu=False,
+    top_k_answers=1,
+    max_length=200,
+    min_length=2,
+    embed_title=True,
+    num_beams=2,
 )
 
 # Delete existing documents in documents store
@@ -56,4 +63,4 @@ predicted_result = generator.predict(
 # Print you answer
 answers = predicted_result["answers"]
 for idx, answer in enumerate(answers):
-    print(f'Generated answer# {idx + 1} is {answer["answer"]}')
+    print(f'Generated answer#{idx + 1} is{answer["answer"]}')

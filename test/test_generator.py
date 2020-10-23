@@ -57,7 +57,7 @@ EXPECTED_TOKEN_OUTPUTS = [
     " obama",
     " northern new jersey",
     " india",
-    " , england",
+    ", england",
     # TODO: From RAG Token generator out is below one
     # " united stadium",
 ]

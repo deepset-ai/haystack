@@ -126,14 +126,14 @@ class RAGenerator(BaseGenerator):
         return contextualized_inputs["input_ids"].to(self.device), \
                contextualized_inputs["attention_mask"].to(self.device)
 
-    def embed_passage_in_tensor(self, docs: List[Document], embeddings: List[Optional[numpy.ndarray]]) -> torch.Tensor:
+    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: List[Optional[numpy.ndarray]]) -> torch.Tensor:
 
-        # If of document missing embedding, then need embedding for all the documents
+        # If document missing embedding, then need embedding for all the documents
         is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
 
         if is_embedding_required:
             if self.retriever is None:
-                raise AttributeError("embed_passage_in_tensor need self.dpr_retriever to embed document")
+                raise AttributeError("_prepare_passage_embeddings need self.dpr_retriever to embed document")
 
             embeddings = self.retriever.embed_passages(docs)
 
@@ -162,7 +162,7 @@ class RAGenerator(BaseGenerator):
         titles = [d.meta["name"] if d.meta and "name" in d.meta else "" for d in documents]
 
         # Raw document embedding and set device of question_embedding
-        passage_embeddings = self.embed_passage_in_tensor(docs=documents, embeddings=flat_docs_dict["embedding"])
+        passage_embeddings = self._prepare_passage_embeddings(docs=documents, embeddings=flat_docs_dict["embedding"])
 
         # Question tokenization
         input_dict = self.tokenizer.prepare_seq2seq_batch(
@@ -187,12 +187,15 @@ class RAGenerator(BaseGenerator):
 
         # TODO Need transformers 3.4.0
         # Refer https://github.com/huggingface/transformers/issues/7874
+        # Pass it as parameter to generate function as follows -
+        # n_docs=len(flat_docs_dict["text"])
         self.model.config.n_docs = len(flat_docs_dict["text"])
 
         # Get generated ids from generator
         generator_ids = self.model.generate(
             # TODO: Need transformers 3.4.0
             # Refer https://github.com/huggingface/transformers/issues/7871
+            # Remove input_ids parameter once upgraded to 3.4.0
             input_ids=input_dict["input_ids"],
             context_input_ids=context_input_ids,
             context_attention_mask=context_attention_mask,
@@ -200,7 +203,7 @@ class RAGenerator(BaseGenerator):
             num_return_sequences=top_k_answers,
             num_beams=self.num_beams,
             max_length=self.max_length,
-            min_length=self.min_length
+            min_length=self.min_length,
         )
 
         result = {"question": question, "answers": []}
