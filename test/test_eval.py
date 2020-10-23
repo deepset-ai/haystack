@@ -61,7 +61,7 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
-@pytest.mark.parametrize("retriever", ["elsticsearch"], indirect=True)
+@pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
 def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, retriever):
     # add eval data (SQUAD format)
     document_store.delete_all_documents(index="test_eval_document")
@@ -81,7 +81,7 @@ def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-@pytest.mark.parametrize("retriever", ["elsticsearch"], indirect=True)
+@pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
 def test_eval_finder(document_store: BaseDocumentStore, reader, retriever):
     finder = Finder(reader=reader, retriever=retriever)
 
