@@ -13,6 +13,7 @@ jobs:
           repo_token: ${{ secrets.REPO_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
+          VPC: ${{ secrets.VPC }}
         run: |
           echo "Deploying..."
           RUNNER_LABELS="cml,aws"
@@ -21,7 +22,7 @@ jobs:
           docker-machine create \
             --driver amazonec2 \
             --amazonec2-instance-type t3.medium \
-            --amazonec2-vpc-id vpc-0d4ea1fbb071d8430 \
+            --amazonec2-vpc-id $VPC \
             --amazonec2-region us-east-1 \
             --amazonec2-zone a \
             --amazonec2-ssh-user ubuntu \
