@@ -1,0 +1,70 @@
+name: benchmarks
+
+on: [push]
+
+jobs:
+  deploy-cloud-runner:
+    runs-on: [ubuntu-latest]
+    container: docker://dvcorg/cml
+
+    steps:
+      - name: deploy
+        env:
+          repo_token: ${{ secrets.REPO_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
+        run: |
+          echo "Deploying..."
+          RUNNER_LABELS="cml,aws"
+          RUNNER_REPO="https://github.com/${GITHUB_REPOSITORY}"
+          MACHINE="cml$(date +%s)"
+          docker-machine create \
+            --driver amazonec2 \
+            --amazonec2-instance-type t3.medium \
+            --amazonec2-vpc-id vpc-0d4ea1fbb071d8430 \
+            --amazonec2-region us-east-1 \
+            --amazonec2-zone a \
+            --amazonec2-ssh-user ubuntu \
+            --amazonec2-ami ami-07b11e59bc74961b5 \
+            --amazonec2-root-size 64 \
+            $MACHINE
+          eval "$(docker-machine env --shell sh $MACHINE)"
+
+          (
+          docker-machine ssh $MACHINE "sudo mkdir -p \
+            /docker_machine && \
+          sudo chmod 777 /docker_machine" && \
+          docker-machine scp -r -q ~/.docker/machine/ \
+            $MACHINE:/docker_machine && \
+          docker run --name runner --gpus all -d \
+            -v /docker_machine/machine:/root/.docker/machine \
+            -e DOCKER_MACHINE=$MACHINE \
+            -e repo_token=$repo_token \
+            -e RUNNER_LABELS=$RUNNER_LABELS \
+            -e RUNNER_REPO=$RUNNER_REPO \
+            -e RUNNER_IDLE_TIMEOUT=240 \
+            dvcorg/cml-py3:latest && \
+          sleep 20 && echo "Deployed $MACHINE"
+          ) || (docker-machine rm -y -f $MACHINE && exit 1)
+  train:
+    needs: deploy-cloud-runner
+    runs-on: [self-hosted,cml]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cml_run
+        env:
+          repo_token: ${{ secrets.REPO_TOKEN}}
+        run: |
+          apt-get update -y
+          apt-get install python3-dev -y
+          apt install imagemagick -y
+          pip install -r requirements.txt
+
+          echo "# CML Test" >> report.md
+
+          # Report GPU details
+          echo "## GPU info" >> report.md
+          cat gpu_info.txt >> report.md
+
+          cml-send-comment report.md
+
