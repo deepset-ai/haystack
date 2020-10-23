@@ -460,7 +460,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "script_score": {
                         "query": {"match_all": {}},
                         "script": {
-                            "source": f"{self.similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1.0",
+                            # offset score to ensure a positive range as required by Elasticsearch
+                            "source": f"{self.similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
                             "params": {
                                 "query_vector": query_emb.tolist()
                             }
@@ -497,7 +498,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         score = hit["_score"] if hit["_score"] else None
         if score:
             if adapt_score_for_embedding:
-                score -= 1
+                score -= 1000
                 probability = (score + 1) / 2  # scaling probability from cosine similarity
             else:
                 probability = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
