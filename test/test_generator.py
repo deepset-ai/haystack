@@ -1350,7 +1350,11 @@ def test_rag_token_generator(document_store, retriever):
     document_store.update_embeddings(retriever=retriever)
     time.sleep(2)
 
-    generator = RAGenerator(retriever=retriever, generator_type=RAGeneratorType.TOKEN)
+    generator = RAGenerator(
+        model_name_or_path="facebook/rag-token-nq",
+        retriever=retriever,
+        generator_type=RAGeneratorType.TOKEN
+    )
 
     for idx, question in enumerate(QUESTIONS):
         retrieved_docs = retriever.retrieve(query=question, top_k=5)
