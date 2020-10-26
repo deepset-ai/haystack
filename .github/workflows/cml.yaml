@@ -10,10 +10,10 @@ jobs:
     steps:
       - name: deploy
         env:
-          repo_token: ${{ secrets.REPO_TOKEN }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
-          VPC: ${{ secrets.VPC }}
+          repo_token: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
+          VPC: ${{ secrets.AWS_CI_VPC }}
         run: |
           echo "Deploying..."
           RUNNER_LABELS="cml,aws"
@@ -58,7 +58,6 @@ jobs:
         run: |
           apt-get update -y
           apt-get install python3-dev -y
-          apt install imagemagick -y
           pip install -r requirements.txt
 
           echo "# CML Test" >> report.md
