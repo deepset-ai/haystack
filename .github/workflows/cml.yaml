@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: deploy
         env:
-          repo_token: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
           VPC: ${{ secrets.AWS_CI_VPC }}
@@ -38,6 +38,14 @@ jobs:
           docker-machine scp -r -q ~/.docker/machine/ \
             $MACHINE:/docker_machine && \
           docker run --name runner -d \
+                      -v /docker_machine/machine:/root/.docker/machine \
+                      -e DOCKER_MACHINE=$MACHINE \
+                      -e repo_token=$repo_token \
+                      -e RUNNER_LABELS=$RUNNER_LABELS \
+                      -e RUNNER_REPO=$RUNNER_REPO \
+                      -e RUNNER_IDLE_TIMEOUT=240 \
+                      dvcorg/cml-py3:latest && \
+          docker run --name runner -d \
             -v /docker_machine/machine:/root/.docker/machine \
             -e DOCKER_MACHINE=$MACHINE \
             -e repo_token=$repo_token \
@@ -48,14 +56,14 @@ jobs:
           sleep 20 && echo "Deployed $MACHINE"
           ) || (docker-machine rm -y -f $MACHINE && exit 1)
 
-  train:
+  benchmark:
     needs: deploy-cloud-runner
     runs-on: [self-hosted,cml]
     steps:
       - uses: actions/checkout@v2
       - name: cml_run
         env:
-          repo_token: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN}}
+          repo_token: ${{ secrets.GITHUB_TOKEN}}
         run: |
           apt-get update -y
           apt-get install python3-dev -y
