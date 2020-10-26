@@ -76,6 +76,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
     check_data_correctness(documents_indexed, DOCUMENTS)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("index_buffer_size", [10_000, 2])
