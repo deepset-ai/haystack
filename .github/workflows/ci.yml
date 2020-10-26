@@ -26,9 +26,6 @@ jobs:
       with:
         stack-version: 7.9.2
 
-    - name: Run Apache Tika
-      run: docker run -d -p 9998:9998 apache/tika:1.24.1
-
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
       with:
@@ -44,11 +41,17 @@ jobs:
     - name: Test with pytest
       run: cd test && pytest
 
-    - name: Stop containers
+    - name: Stop ES and Run Apache Tika
+      run: docker rm -f `docker ps -a -q` && docker run -d -p 9998:9998 apache/tika:1.24.1
+
+    - name: Test Doc Conversion
+      run: cd test-doc-conversion && pytest
+
+    - name: Stop All Containers
       run: docker rm -f `docker ps -a -q`
 
     - name: Test generator
-      run: cd test-generator && pytest
+      run: cd test-non-containers && pytest
 
     - name: Test with mypy
       run: |

@@ -55,7 +55,7 @@ def test_preprocess_passage_split():
 
 def test_clean_header_footer():
     converter = PDFToTextConverter()
-    document = converter.convert(file_path=Path("samples/pdf/sample_pdf_2.pdf"))  # file contains header/footer
+    document = converter.convert(file_path=Path("../test/samples/pdf/sample_pdf_2.pdf"))  # file contains header/footer
 
     preprocessor = PreProcessor(clean_header_footer=True, split_by=None)
     documents = preprocessor.process(document)
