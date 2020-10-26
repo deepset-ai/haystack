@@ -43,6 +43,7 @@ jobs:
                       -v /docker_machine/machine:/root/.docker/machine \
                       -e DOCKER_MACHINE=$MACHINE \
                       postgres && \
+          sleep 4 && \
           docker exec -i postgres psql -U postgres -c "CREATE DATABASE haystack;" && \
           docker run --name runner -d \
             -v /docker_machine/machine:/root/.docker/machine \
