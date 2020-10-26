@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: cml_run
         env:
-          repo_token: ${{ secrets.REPO_TOKEN}}
+          repo_token: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN}}
         run: |
           apt-get update -y
           apt-get install python3-dev -y
