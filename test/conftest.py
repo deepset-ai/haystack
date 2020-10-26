@@ -7,6 +7,8 @@ from sys import platform
 import pytest
 import requests
 from elasticsearch import Elasticsearch
+
+from haystack.generator.transformers import RAGenerator, RAGeneratorType
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
@@ -91,6 +93,15 @@ def xpdf_fixture(tika_fixture):
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                  You can download for your OS from here: https://www.xpdfreader.com/download.html."""
             )
+
+
+@pytest.fixture(scope="session")
+def rag_generator():
+    return RAGenerator(
+        model_name_or_path="facebook/rag-token-nq",
+        retriever=retriever,
+        generator_type=RAGeneratorType.TOKEN
+    )
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
