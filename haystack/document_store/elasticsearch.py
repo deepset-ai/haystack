@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from copy import deepcopy
 from string import Template
 from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
@@ -485,13 +486,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "terms": filters
                 }
 
-            if return_embedding is True and self.embedding_field in self.excluded_meta_data:
-                self.excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is not True and self.embedding_field not in self.excluded_meta_data:
-                self.excluded_meta_data.append(self.embedding_field)
+            excluded_meta_data: Optional[list] = None
 
             if self.excluded_meta_data:
-                body["_source"] = {"excludes": self.excluded_meta_data}
+                excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+                if return_embedding is True and self.embedding_field in excluded_meta_data:
+                    excluded_meta_data.remove(self.embedding_field)
+                elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                    excluded_meta_data.append(self.embedding_field)
+            elif return_embedding is False:
+                excluded_meta_data = [self.embedding_field]
+
+            if excluded_meta_data:
+                body["_source"] = {"excludes": excluded_meta_data}
 
             logger.debug(f"Retriever query: {body}")
             result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
