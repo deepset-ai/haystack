@@ -5,6 +5,7 @@ from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_inmemory_retrieval(document_store, retriever):
@@ -31,7 +32,6 @@ def test_dpr_inmemory_retrieval(document_store, retriever):
         )
     ]
 
-    document_store.delete_all_documents(index="test_dpr")
     document_store.write_documents(documents, index="test_dpr")
     document_store.update_embeddings(retriever=retriever, index="test_dpr")
     time.sleep(2)
@@ -49,5 +49,3 @@ def test_dpr_inmemory_retrieval(document_store, retriever):
     res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?", index="test_dpr")
     assert res[0].meta["name"] == "1"
 
-    # clean up
-    document_store.delete_all_documents(index="test_dpr")
