@@ -37,7 +37,7 @@ jobs:
           sudo chmod 777 /docker_machine" && \
           docker-machine scp -r -q ~/.docker/machine/ \
             $MACHINE:/docker_machine && \
-          docker run --name runner --gpus all -d \
+          docker run --name runner -d \
             -v /docker_machine/machine:/root/.docker/machine \
             -e DOCKER_MACHINE=$MACHINE \
             -e repo_token=$repo_token \
