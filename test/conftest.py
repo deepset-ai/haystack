@@ -41,20 +41,6 @@ def elasticsearch_fixture():
         time.sleep(30)
 
 
-@pytest.fixture(scope="session")
-def rag_generator():
-    return RAGenerator(
-        model_name_or_path="facebook/rag-token-nq",
-        retriever=retriever,
-        generator_type=RAGeneratorType.TOKEN
-    )
-
-
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store(request, test_docs_xs, elasticsearch_fixture):
-    return get_document_store(request.param)
-
-
 @pytest.fixture()
 def test_docs_xs():
     return [
