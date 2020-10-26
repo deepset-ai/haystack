@@ -5,7 +5,6 @@ import time
 import pytest
 from elasticsearch import Elasticsearch
 
-from haystack.generator.transformers import RAGenerator, RAGeneratorType
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
@@ -41,6 +40,46 @@ def elasticsearch_fixture():
         time.sleep(30)
 
 
+@pytest.fixture(scope="session")
+def farm_distilbert():
+    return FARMReader(
+        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        use_gpu=False,
+        top_k_per_sample=5,
+        num_processes=0
+    )
+
+
+@pytest.fixture(scope="session")
+def farm_roberta():
+    return FARMReader(
+        model_name_or_path="deepset/roberta-base-squad2",
+        use_gpu=False,
+        top_k_per_sample=5,
+        no_ans_boost=0,
+        num_processes=0
+    )
+
+
+@pytest.fixture(scope="session")
+def transformers_distilbert():
+    return TransformersReader(
+        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        tokenizer="distilbert-base-uncased",
+        use_gpu=-1
+    )
+
+
+@pytest.fixture(scope="session")
+def transformers_roberta():
+    return TransformersReader(
+        model_name_or_path="deepset/roberta-base-squad2",
+        tokenizer="deepset/roberta-base-squad2",
+        use_gpu=-1,
+        top_k_per_candidate=5
+    )
+
+
 @pytest.fixture()
 def test_docs_xs():
     return [
@@ -54,27 +93,21 @@ def test_docs_xs():
 
 
 @pytest.fixture(params=["farm", "transformers"])
-def reader(request):
+def reader(request, transformers_distilbert, farm_distilbert):
     if request.param == "farm":
-        return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
-                          use_gpu=False, top_k_per_sample=5, num_processes=0)
+        return farm_distilbert
     if request.param == "transformers":
-        return TransformersReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
-                                  tokenizer="distilbert-base-uncased",
-                                  use_gpu=-1)
+        return transformers_distilbert
 
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
 @pytest.fixture(params=["farm"])
-def no_answer_reader(request):
+def no_answer_reader(request, transformers_roberta, farm_roberta):
     if request.param == "farm":
-        return FARMReader(model_name_or_path="deepset/roberta-base-squad2",
-                          use_gpu=False, top_k_per_sample=5, no_ans_boost=0, num_processes=0)
+        return farm_roberta
     if request.param == "transformers":
-        return TransformersReader(model_name_or_path="deepset/roberta-base-squad2",
-                                  tokenizer="deepset/roberta-base-squad2",
-                                  use_gpu=-1, top_k_per_candidate=5)
+        return transformers_roberta
 
 
 @pytest.fixture()
