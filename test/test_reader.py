@@ -91,8 +91,9 @@ def test_context_window_size(reader, test_docs_xs, window_size):
 def test_top_k(reader, test_docs_xs, top_k):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
 
+    reader.top_k_per_candidate = 4
     if isinstance(reader, FARMReader):
-        reader.inferencer.model.prediction_heads[0].n_best = 5  # including possible no_answer
+        reader.inferencer.model.prediction_heads[0].n_best = reader.top_k_per_candidate + 1
         try:
             reader.inferencer.model.prediction_heads[0].n_best_per_sample = 4
         except:
