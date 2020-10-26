@@ -16,9 +16,13 @@ parser.add_argument('--ci', default=False, action="store_true",
 args = parser.parse_args()
 
 if args.retriever_index:
-    benchmark_indexing(ci)
+    # test DB connection
+    from haystack.document_store.faiss import FAISSDocumentStore
+    document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack")
+    document_store.get_all_documents()
+    #benchmark_indexing(args.cici)
 if args.retriever_query:
-    benchmark_querying(ci)
+    benchmark_querying(args.ci)
 if args.retriever_reader:
-    benchmark_reader(ci)
+    benchmark_reader(args.cici)
 
