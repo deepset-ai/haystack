@@ -38,7 +38,7 @@ jobs:
             $MACHINE:/docker_machine && \
           docker run --name postgres -d \
                       -p 5432:5432 \
-                      --net host
+                      --net host \
                       -e POSTGRES_PASSWORD=password \
                       -v /docker_machine/machine:/root/.docker/machine \
                       -e DOCKER_MACHINE=$MACHINE \
