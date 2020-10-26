@@ -47,6 +47,7 @@ jobs:
             dvcorg/cml-py3:latest && \
           sleep 20 && echo "Deployed $MACHINE"
           ) || (docker-machine rm -y -f $MACHINE && exit 1)
+
   train:
     needs: deploy-cloud-runner
     runs-on: [self-hosted,cml]
@@ -62,9 +63,9 @@ jobs:
 
           echo "# CML Test" >> report.md
 
-          # Report GPU details
-          echo "## GPU info" >> report.md
-          cat gpu_info.txt >> report.md
+#           Report GPU details
+#          echo "## GPU info" >> report.md
+#          cat gpu_info.txt >> report.md
 
           cml-send-comment report.md
 
