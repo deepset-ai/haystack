@@ -33,10 +33,10 @@ def test_table_removal(Converter, xpdf_fixture):
 def test_language_validation(Converter, xpdf_fixture, caplog):
     converter = Converter(valid_languages=["en"])
     converter.convert(file_path=Path("../test/samples/pdf/sample_pdf_1.pdf"))
-    assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['en']." not in caplog.text
+    assert "The language for ../test/samples/pdf/sample_pdf_1.pdf is not one of ['en']." not in caplog.text
 
     converter = Converter(valid_languages=["de"])
     converter.convert(file_path=Path("../test/samples/pdf/sample_pdf_1.pdf"))
-    assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
+    assert "The language for ../test/samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
