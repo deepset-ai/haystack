@@ -37,14 +37,12 @@ jobs:
           sudo chmod 777 /docker_machine" && \
           docker-machine scp -r -q ~/.docker/machine/ \
             $MACHINE:/docker_machine && \
-          docker run --name runner -d \
+          docker run --name postgres -d \
+                      -p 5432:5432 \
+                      -e POSTGRES_PASSWORD=password
                       -v /docker_machine/machine:/root/.docker/machine \
                       -e DOCKER_MACHINE=$MACHINE \
-                      -e repo_token=$repo_token \
-                      -e RUNNER_LABELS=$RUNNER_LABELS \
-                      -e RUNNER_REPO=$RUNNER_REPO \
-                      -e RUNNER_IDLE_TIMEOUT=240 \
-                      dvcorg/cml-py3:latest && \
+                      postgres && \
           docker run --name runner -d \
             -v /docker_machine/machine:/root/.docker/machine \
             -e DOCKER_MACHINE=$MACHINE \
@@ -55,7 +53,6 @@ jobs:
             dvcorg/cml-py3:latest && \
           sleep 20 && echo "Deployed $MACHINE"
           ) || (docker-machine rm -y -f $MACHINE && exit 1)
-
   benchmark:
     needs: deploy-cloud-runner
     runs-on: [self-hosted,cml]
