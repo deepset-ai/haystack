@@ -60,12 +60,5 @@ jobs:
           apt-get update -y
           apt-get install python3-dev -y
           pip install -r requirements.txt
-
           echo "# CML Test" >> report.md
-
-#           Report GPU details
-#          echo "## GPU info" >> report.md
-#          cat gpu_info.txt >> report.md
-
           cml-send-comment report.md
-
