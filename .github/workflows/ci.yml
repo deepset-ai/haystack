@@ -44,6 +44,12 @@ jobs:
     - name: Test with pytest
       run: cd test && pytest
 
+    - name: Stop containers
+      run: docker rm -f `docker ps -a -q`
+
+    - name: Test generator
+      run: cd test-generator && pytest
+
     - name: Test with mypy
       run: |
         pip install mypy

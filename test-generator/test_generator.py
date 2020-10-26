@@ -4,7 +4,6 @@ from typing import List
 import pytest
 
 from haystack import Document
-from haystack.generator.transformers import RAGenerator, RAGeneratorType
 
 QUESTIONS = [
     "who got the first nobel prize in physics",
@@ -1343,15 +1342,13 @@ for doc_dict in DOC_DICT_LIST:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_rag_token_generator(rag_generator, document_store, retriever):
-    document_store.write_documents(DOCUMENTS)
-    document_store.update_embeddings(retriever=retriever)
+def test_rag_token_generator(rag_generator, faiss_document_store, dpr_retriever):
+    faiss_document_store.write_documents(DOCUMENTS)
+    faiss_document_store.update_embeddings(retriever=dpr_retriever)
     time.sleep(1)
 
     for idx, question in enumerate(QUESTIONS):
-        retrieved_docs = retriever.retrieve(query=question, top_k=5)
+        retrieved_docs = dpr_retriever.retrieve(query=question, top_k=5)
         generated_docs = rag_generator.predict(question=question, documents=retrieved_docs, top_k=1)
         answers = generated_docs["answers"]
         assert len(answers) == 1
