@@ -17,7 +17,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         In-memory document store
     """
 
-    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: Optional[bool] = True):
+    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = True):
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
         self.label_index: str = "label"
@@ -96,13 +96,15 @@ class InMemoryDocumentStore(BaseDocumentStore):
                 meta=deepcopy(doc.meta)
             )
             new_document.embedding = doc.embedding if return_embedding is True else None
-            new_document.score = dot(query_emb, doc.embedding) / (
+            score = dot(query_emb, doc.embedding) / (
                 norm(query_emb) * norm(doc.embedding)
             )
-            new_document.probability = (new_document.score + 1) / 2
+            new_document.score = score
+            new_document.probability = (score + 1) / 2
+
             candidate_docs.append(new_document)
 
-        return sorted(candidate_docs, key=lambda x: x.score, reverse=True)[0:top_k]
+        return sorted(candidate_docs, key=lambda x: x.score if x.score is not None else 0.0, reverse=True)[0:top_k]
 
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
         """
