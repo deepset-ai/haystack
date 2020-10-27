@@ -35,7 +35,7 @@ def eval_data_from_file(filename: str, max_docs: Union[int, bool]=None) -> Tuple
         data = json.load(file)
         if "title" not in data["data"][0]:
             logger.warning(f"No title information found for documents in QA file: {filename}")
-        for document in data["data"][:n_docs]:
+        for document in data["data"][:max_docs]:
             # get all extra fields from document level (e.g. title)
             meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
             for paragraph in document["paragraphs"]:
