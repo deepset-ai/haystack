@@ -21,7 +21,7 @@ jobs:
           MACHINE="cml$(date +%s)"
           docker-machine create \
             --driver amazonec2 \
-            --amazonec2-instance-type t3.medium \
+            --amazonec2-instance-type p3.2xlarge \
             --amazonec2-vpc-id $VPC \
             --amazonec2-region us-east-1 \
             --amazonec2-zone a \
@@ -51,6 +51,7 @@ jobs:
           sleep 4 && \
           docker exec -i postgres psql -U postgres -c "CREATE DATABASE haystack;" && \
           docker run --name runner -d \
+            --gpus all \
             -v /docker_machine/machine:/root/.docker/machine \
             --net host \
             -e DOCKER_MACHINE=$MACHINE \
