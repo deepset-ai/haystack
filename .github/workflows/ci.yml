@@ -22,7 +22,7 @@ jobs:
         sudo sysctl -w vm.max_map_count=262144
       
     - name: Run Elasticsearch
-      run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e 'ES_JAVA_OPTS=-Xms500m -Xmx500m' elasticsearch:7.9.2
+      run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e 'ES_JAVA_OPTS=-Xms750m -Xmx750m' elasticsearch:7.9.2
 
     - name: Run Apache Tika
       run: docker run -d -p 9998:9998 apache/tika:1.24.1
