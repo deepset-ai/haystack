@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: deploy
         env:
-          repo_token: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
           VPC: ${{ secrets.AWS_CI_VPC }}
@@ -46,7 +46,7 @@ jobs:
             -e RUNNER_IDLE_TIMEOUT=240 \
             dvcorg/cml-py3:latest && \
           sleep 20 && echo "Deployed $MACHINE"
-          ) || (docker-machine rm -y -f $MACHINE && exit 1)
+          ) || (echo "Shut down machine" && docker-machine rm -y -f $MACHINE && exit 1)
 
   train:
     needs: deploy-cloud-runner
@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: cml_run
         env:
-          repo_token: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN}}
+          repo_token: ${{ secrets.GITHUB_TOKEN}}
         run: |
           apt-get update -y
           apt-get install python3-dev -y
