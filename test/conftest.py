@@ -1,9 +1,13 @@
 import os
 import subprocess
 import time
+from subprocess import run
+from sys import platform
 
 import pytest
+import requests
 from elasticsearch import Elasticsearch
+from haystack.generator.transformers import RAGenerator, RAGeneratorType
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
@@ -16,6 +20,57 @@ from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
+
+
+@pytest.fixture(scope="session")
+def tika_fixture():
+    try:
+        tika_url = "http://localhost:9998/tika"
+        ping = requests.get(tika_url)
+        if ping.status_code != 200:
+            raise Exception(
+                "Unable to connect Tika. Please check tika endpoint {0}.".format(tika_url))
+    except:
+        print("Starting Tika ...")
+        status = subprocess.run(
+            ['docker run -d --name tika -p 9998:9998 apache/tika:1.24.1'],
+            shell=True
+        )
+        if status.returncode:
+            raise Exception(
+                "Failed to launch Tika. Please check docker container logs.")
+        time.sleep(30)
+
+
+@pytest.fixture(scope="session")
+def xpdf_fixture(tika_fixture):
+    verify_installation = run(["pdftotext"], shell=True)
+    if verify_installation.returncode == 127:
+        if platform.startswith("linux"):
+            platform_id = "linux"
+            sudo_prefix = "sudo"
+        elif platform.startswith("darwin"):
+            platform_id = "mac"
+            # For Mac, generally sudo need password in interactive console.
+            # But most of the cases current user already have permission to copy to /user/local/bin.
+            # Hence removing sudo requirement for Mac.
+            sudo_prefix = ""
+        else:
+            raise Exception(
+                """Currently auto installation of pdftotext is not supported on {0} platform """.format(platform)
+            )
+
+        commands = """ wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-{0}-4.02.tar.gz &&
+                       tar -xvf xpdf-tools-{0}-4.02.tar.gz &&
+                       {1} cp xpdf-tools-{0}-4.02/bin64/pdftotext /usr/local/bin""".format(platform_id, sudo_prefix)
+        run([commands], shell=True)
+
+        verify_installation = run(["pdftotext -v"], shell=True)
+        if verify_installation.returncode == 127:
+            raise Exception(
+                """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
+                 You can download for your OS from here: https://www.xpdfreader.com/download.html."""
+            )
 
 
 @pytest.fixture(scope="session")
@@ -81,6 +136,55 @@ def transformers_roberta():
 
 
 @pytest.fixture()
+def rag_generator(dpr_retriever):
+    return RAGenerator(
+        model_name_or_path="facebook/rag-token-nq",
+        retriever=dpr_retriever,
+        generator_type=RAGeneratorType.TOKEN
+    )
+
+
+@pytest.fixture()
+def faiss_document_store():
+    if os.path.exists("haystack_test_faiss.db"):
+        os.remove("haystack_test_faiss.db")
+    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db")
+    yield document_store
+    document_store.faiss_index.reset()
+
+
+@pytest.fixture()
+def inmemory_document_store():
+    return InMemoryDocumentStore()
+
+
+@pytest.fixture()
+def dpr_retriever(faiss_document_store):
+    return DensePassageRetriever(
+        document_store=faiss_document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+        embed_title=True,
+        remove_sep_tok_from_untitled_passages=True
+    )
+
+
+@pytest.fixture()
+def embedding_retriever(faiss_document_store):
+    return EmbeddingRetriever(
+        document_store=faiss_document_store,
+        embedding_model="deepset/sentence_bert",
+        use_gpu=False
+    )
+
+
+@pytest.fixture()
+def tfidf_retriever(inmemory_document_store):
+    return TfidfRetriever(document_store=inmemory_document_store)
+
+
+@pytest.fixture()
 def test_docs_xs():
     return [
         # current "dict" format for a document
@@ -125,20 +229,16 @@ def no_answer_prediction(no_answer_reader, test_docs_xs):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store_with_docs(request, test_docs_xs, elasticsearch_fixture):
-    document_store = get_document_store(request.param)
+def document_store_with_docs(
+        request, test_docs_xs, elasticsearch_fixture, faiss_document_store, inmemory_document_store):
+    document_store = get_document_store(request.param, faiss_document_store, inmemory_document_store)
     document_store.write_documents(test_docs_xs)
-    yield document_store
-    if isinstance(document_store, FAISSDocumentStore):
-        document_store.faiss_index.reset()
+    return document_store
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store(request, test_docs_xs, elasticsearch_fixture):
-    document_store = get_document_store(request.param)
-    yield document_store
-    if isinstance(document_store, FAISSDocumentStore):
-        document_store.faiss_index.reset()
+def document_store(request, test_docs_xs, elasticsearch_fixture, faiss_document_store, inmemory_document_store):
+    return get_document_store(request.param, faiss_document_store, inmemory_document_store)
 
 
 @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
@@ -151,13 +251,13 @@ def retriever_with_docs(request, document_store_with_docs):
     return get_retriever(request.param, document_store_with_docs)
 
 
-def get_document_store(document_store_type):
+def get_document_store(document_store_type, faiss_document_store, inmemory_document_store):
     if document_store_type == "sql":
         if os.path.exists("haystack_test.db"):
             os.remove("haystack_test.db")
         document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
     elif document_store_type == "memory":
-        document_store = InMemoryDocumentStore(return_embedding=False)
+        document_store = inmemory_document_store
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
@@ -166,7 +266,7 @@ def get_document_store(document_store_type):
     elif document_store_type == "faiss":
         if os.path.exists("haystack_test_faiss.db"):
             os.remove("haystack_test_faiss.db")
-        document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", return_embedding=False)
+        document_store = faiss_document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
 

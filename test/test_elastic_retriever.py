@@ -1,6 +1,7 @@
 import pytest
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", [("elasticsearch")], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_retrieval(retriever_with_docs, document_store_with_docs):
@@ -10,6 +11,7 @@ def test_elasticsearch_retrieval(retriever_with_docs, document_store_with_docs):
     assert res[0].meta["name"] == "filename1"
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", [("elasticsearch")], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_retrieval_filters(retriever_with_docs, document_store_with_docs):
