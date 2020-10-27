@@ -48,6 +48,7 @@ jobs:
           docker exec -i postgres psql -U postgres -c "CREATE DATABASE haystack;" && \
           docker run --name runner -d \
             -v /docker_machine/machine:/root/.docker/machine \
+            --net host \
             -e DOCKER_MACHINE=$MACHINE \
             -e repo_token=$repo_token \
             -e RUNNER_LABELS=$RUNNER_LABELS \
@@ -70,7 +71,7 @@ jobs:
           apt-get install python3-dev -y
           pip install -r requirements.txt
           pip install .
-          python test/benchmarks/run.py --retriever_index
+          python test/benchmarks/run.py --retriever_index --ci
           echo "## Benchmarks" >> report.md
           #cat test/benchmarks/retriever_index_results.csv >> report.md
           cml-send-comment report.md
