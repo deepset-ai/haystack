@@ -80,4 +80,8 @@ jobs:
           cd test/benchmarks && python run.py --retriever_index --retriever_query --ci
           echo "## Benchmarks: Retriever Indexing" >> report.md
           cat retriever_index_results.csv >> report.md
+          echo "## Benchmarks: Retriever Querying" >> report.md
+          cat retriever_query_results.csv >> report.md
+          echo "## Benchmarks: Reader" >> report.md
+          cat reader_results.csv >> report.md
           cml-send-comment report.md

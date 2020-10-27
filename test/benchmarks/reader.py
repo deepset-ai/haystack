@@ -5,7 +5,9 @@ import pandas as pd
 from results_to_json import reader as reader_json
 from templates import READER_TEMPLATE
 import json
+import logging
 
+logger = logging.getLogger(__name__)
 
 reader_models_full = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
                  "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
@@ -26,7 +28,7 @@ reader_json_file = "../../docs/_src/benchmarks/reader_performance.json"
 doc_index = "eval_document"
 label_index = "label"
 
-def benchmark_reader(ci=False, update_json=False, **kwargs):
+def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs):
     if ci:
         reader_models = reader_models_ci
         n_docs = 1
@@ -65,8 +67,13 @@ def benchmark_reader(ci=False, update_json=False, **kwargs):
                 reader_results.append(results)
             reader_df = pd.DataFrame.from_records(reader_results)
             reader_df.to_csv(results_file)
+            if save_markdown:
+                md_file = results_file.replace(".csv", ".md")
+                with open(md_file, "w") as f:
+                    f.write(str(reader_df.to_markdown()))
     if update_json:
         populate_reader_json()
+
 
 
 def populate_reader_json():
@@ -77,4 +84,4 @@ def populate_reader_json():
 
 
 if __name__ == "__main__":
-    benchmark_reader(True, update_json=True)
+    benchmark_reader(True, update_json=True, save_markdown=False)

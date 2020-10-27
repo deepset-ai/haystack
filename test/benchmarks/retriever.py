@@ -36,7 +36,7 @@ speed_json = "../../docs/_src/benchmarks/retriever_speed.json"
 seed = 42
 random.seed(42)
 
-def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, update_json, **kwargs):
+def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, update_json, save_markdown, **kwargs):
 
     retriever_results = []
     for n_docs in n_docs_options:
@@ -73,6 +73,10 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                 retriever_df.to_csv(index_results_file)
                 doc_store.delete_all_documents(index=doc_index)
                 doc_store.delete_all_documents(index=label_index)
+                if save_markdown:
+                    md_file = index_results_file.replace(".csv", ".md")
+                    with open(md_file, "w") as f:
+                        f.write(str(retriever_df.to_markdown()))
                 time.sleep(10)
                 del doc_store
                 del retriever
@@ -109,6 +113,7 @@ def benchmark_querying(n_docs_options,
                        embeddings_filenames,
                        embeddings_dir,
                        update_json,
+                       save_markdown,
                        **kwargs):
     """ Benchmark the time it takes to perform querying. Doc embeddings are loaded from file."""
     retriever_results = []
@@ -184,6 +189,10 @@ def benchmark_querying(n_docs_options,
             retriever_df = pd.DataFrame.from_records(retriever_results)
             retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
             retriever_df.to_csv(query_results_file)
+            if save_markdown:
+                md_file = query_results_file.replace(".csv", ".md")
+                with open(md_file, "w") as f:
+                    f.write(str(retriever_df.to_markdown()))
     if update_json:
         populate_retriever_json()
 
@@ -281,6 +290,6 @@ def prepare_negative_passages(data_dir, filename_negative, n_docs):
 
 if __name__ == "__main__":
     params, filenames = load_config(config_filename="config.json", ci=True)
-    benchmark_indexing(**params, **filenames)
-    benchmark_querying(**params, **filenames)
+    benchmark_indexing(**params, **filenames, update_json=True, save_markdown=False)
+    benchmark_querying(**params, **filenames, update_json=True, save_markdown=False)
 
