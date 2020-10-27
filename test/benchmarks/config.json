@@ -31,12 +31,16 @@
         [
           "elastic",
           "elasticsearch"
+        ],
+        [
+          "dpr",
+          "faiss_flat"
         ]
       ],
       "n_docs_options": [
         1000
       ],
-      "n_queries": 10
+      "n_queries": 100
     }
   },
   "filenames": {
