@@ -1,20 +1,47 @@
+from typing import List
+import requests
+import pandas as pd
 from haystack import Document
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.generator.transformers import RAGenerator
 from haystack.retriever.dense import DensePassageRetriever
 
+
 # Add documents from which you want generate answers
-documents = [
-    Document(
-        text="""The capital of Germany is the city state of Berlin."""
-    ),
-    Document(
-        text="""Berlin is the capital and largest city of Germany by both area and population.""",
+# Download a csv containing some sample documents data
+# Here some sample documents data
+temp = requests.get("https://raw.githubusercontent.com/deepset-ai/haystack/master/tutorials/small_generator_dataset.csv")
+open('small_generator_dataset.csv', 'wb').write(temp.content)
+
+# Get dataframe with columns "title", and "text"
+df = pd.read_csv("small_generator_dataset.csv", sep=',')
+# Minimal cleaning
+df.fillna(value="", inplace=True)
+
+print(df.head())
+
+titles = list(df["title"].values)
+texts = list(df["text"].values)
+
+# Create to haystack document format
+documents: List[Document] = []
+for title, text in zip(titles, texts):
+    documents.append(
+        Document(
+            text=text,
+            meta={
+                "name": title or ""
+            }
+        )
     )
-]
+
 
 # Initialize FAISS document store to documents and corresponding index for embeddings
-document_store = FAISSDocumentStore()
+# Set `return_embedding` to `True`, so generator doesn't have to perform re-embedding
+document_store = FAISSDocumentStore(
+    faiss_index_factory_str="Flat",
+    return_embedding=True
+)
 
 # Initialize DPR Retriever to encode documents, encode question and query documents
 retriever = DensePassageRetriever(
@@ -23,13 +50,12 @@ retriever = DensePassageRetriever(
     passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
     use_gpu=False,
     embed_title=True,
-    remove_sep_tok_from_untitled_passages=True
+    remove_sep_tok_from_untitled_passages=True,
 )
 
 # Initialize RAG Generator
 generator = RAGenerator(
     model_name_or_path="facebook/rag-token-nq",
-    retriever=retriever,
     use_gpu=False,
     top_k_answers=1,
     max_length=200,
@@ -47,20 +73,40 @@ document_store.update_embeddings(
     retriever=retriever
 )
 
-# Now ask your question and retrieve related documents from retriever
-question = "What is capital of the Germany?"
-retriever_results = retriever.retrieve(
-    query=question
-)
+# Now ask your questions
+# We have some sample questions
+QUESTIONS = [
+    "who got the first nobel prize in physics",
+    "when is the next deadpool movie being released",
+    "which mode is used for short wave broadcast service",
+    "who is the owner of reading football club",
+    "when is the next scandal episode coming out",
+    "when is the last time the philadelphia won the superbowl",
+    "what is the most current adobe flash player version",
+    "how many episodes are there in dragon ball z",
+    "what is the first step in the evolution of the eye",
+    "where is gall bladder situated in human body",
+    "what is the main mineral in lithium batteries",
+    "who is the president of usa right now",
+    "where do the greasers live in the outsiders",
+    "panda is a national animal of which country",
+    "what is the name of manchester united stadium",
+]
 
-# Now generate answer from question and retrieved documents
-predicted_result = generator.predict(
-    question=question,
-    documents=retriever_results,
-    top_k=1
-)
+# Now generate answer for question
+for question in QUESTIONS:
+    # Retrieve related documents from retriever
+    retriever_results = retriever.retrieve(
+        query=question
+    )
 
-# Print you answer
-answers = predicted_result["answers"]
-for idx, answer in enumerate(answers):
-    print(f'Generated answer#{idx + 1} is{answer["answer"]}')
+    # Now generate answer from question and retrieved documents
+    predicted_result = generator.predict(
+        question=question,
+        documents=retriever_results,
+        top_k=1
+    )
+
+    # Print you answer
+    answers = predicted_result["answers"]
+    print(f'Generated answer is \'{answers[0]["answer"]}\' for the question = \'{question}\'')
