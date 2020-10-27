@@ -136,10 +136,9 @@ def transformers_roberta():
 
 
 @pytest.fixture()
-def rag_generator(dpr_retriever):
+def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
-        retriever=dpr_retriever,
         generator_type=RAGeneratorType.TOKEN
     )
 
@@ -148,14 +147,17 @@ def rag_generator(dpr_retriever):
 def faiss_document_store():
     if os.path.exists("haystack_test_faiss.db"):
         os.remove("haystack_test_faiss.db")
-    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db")
+    document_store = FAISSDocumentStore(
+        sql_url="sqlite:///haystack_test_faiss.db",
+        return_embedding=False
+    )
     yield document_store
     document_store.faiss_index.reset()
 
 
 @pytest.fixture()
 def inmemory_document_store():
-    return InMemoryDocumentStore()
+    return InMemoryDocumentStore(return_embedding=False)
 
 
 @pytest.fixture()
