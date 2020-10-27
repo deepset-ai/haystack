@@ -79,8 +79,8 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
 
             except Exception as e:
                 tb = traceback.format_exc()
-                logging.ERROR(f"##### The following Error was raised while running indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
-                logging.Error(tb)
+                logging.error(f"##### The following Error was raised while running indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
+                logging.error(tb)
                 retriever_results.append({
                     "retriever": retriever_name,
                     "doc_store": doc_store_name,

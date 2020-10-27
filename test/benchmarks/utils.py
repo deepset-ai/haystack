@@ -43,18 +43,6 @@ def get_document_store(document_store_type, es_similarity='cosine'):
             index_type = "Flat"
         elif document_store_type == "faiss_hnsw":
             index_type = "HNSW"
-
-        #TEMP FIX for issue with deleting docs
-        # status = subprocess.run(
-        #     ['docker rm -f haystack-postgres'],
-        #     shell=True)
-        # time.sleep(3)
-        # try:
-        #     document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
-        #                                         faiss_index_factory_str=index_type)
-        # except:
-        # Launch a postgres instance & create empty DB
-        # logger.info("Didn't find Postgres. Start a new instance...")
         status = subprocess.run(
             ['docker rm -f haystack-postgres'],
             shell=True)

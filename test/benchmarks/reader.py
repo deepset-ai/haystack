@@ -40,6 +40,7 @@ def benchmark_reader(ci=False, update_json=False, **kwargs):
     index_to_doc_store(doc_store, docs, None, labels)
     for reader_name in reader_models:
         for reader_type in reader_types:
+            logger.info(f"##### Start reader run - model:{reader_name}, type: {reader_type} ##### ")
             try:
                 reader = get_reader(reader_name, reader_type)
                 results = reader.eval(document_store=doc_store,
