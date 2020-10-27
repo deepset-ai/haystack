@@ -36,6 +36,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional[faiss.swigfaiss.Index] = None,
+        return_embedding: Optional[bool] = True,
         **kwargs,
     ):
         """
@@ -61,6 +62,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                                         Benchmarks: XXX
         :param faiss_index: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                             or one with docs that you used in Haystack before and want to load again.
+        :param return_embedding: To return document embedding
         """
         self.vector_dim = vector_dim
 
@@ -70,6 +72,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.faiss_index = self._create_new_index(vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs)
 
         self.index_buffer_size = index_buffer_size
+        self.return_embedding = return_embedding
         super().__init__(url=sql_url)
 
     def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric_type=faiss.METRIC_INNER_PRODUCT, **kwargs):
@@ -184,9 +187,12 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.faiss_index.reset()
         super().delete_all_documents(index=index)
 
-    def query_by_embedding(
-        self, query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None
-    ) -> List[Document]:
+    def query_by_embedding(self,
+                           query_emb: np.array,
+                           filters: Optional[dict] = None,
+                           top_k: int = 10,
+                           index: Optional[str] = None,
+                           return_embedding: Optional[bool] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -195,12 +201,16 @@ class FAISSDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
         :return:
         """
         if filters:
             raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
         if not self.faiss_index:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
+
+        return_embedding = return_embedding or self.return_embedding
+        index = index or self.index
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
         score_matrix, vector_id_matrix = self.faiss_index.search(query_emb, top_k)
@@ -213,6 +223,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         for doc in documents:
             doc.score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
             doc.probability = (doc.score + 1) / 2
+            if return_embedding is True:
+                doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+
         return documents
 
     def save(self, file_path: Union[str, Path]):
