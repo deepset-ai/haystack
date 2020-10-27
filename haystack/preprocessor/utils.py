@@ -32,11 +32,13 @@ def eval_data_from_file(filename: str, n_docs: Union[int, bool]=None) -> Tuple[L
 
     with open(filename, "r") as file:
         data = json.load(file)
+        if "title" not in data["data"][0]:
+            logger.warning(f"No title information found for documents in QA file: {filename}")
         for document in data["data"][:n_docs]:
             # get all extra fields from document level (e.g. title)
             meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
             for paragraph in document["paragraphs"]:
-                cur_meta = {"name": document["title"]}
+                cur_meta = {"name": document.get("title", None)}
                 # all other fields from paragraph level
                 meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
                 cur_meta.update(meta_paragraph)
