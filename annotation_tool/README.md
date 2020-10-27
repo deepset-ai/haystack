@@ -28,3 +28,6 @@ The credentials should match in database image and application configuration.
 
 
 3. The UI should be available at `localhost:7001`.
+
+# Usage
+The manual can be found [here](https://drive.google.com/file/d/1Wv3OIC0Z7ibHIzOm9Xw_r0gjTFmpl-33/view).
