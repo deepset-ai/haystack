@@ -30,6 +30,7 @@ jobs:
             --amazonec2-root-size 64 \
             $MACHINE
           eval "$(docker-machine env --shell sh $MACHINE)"
+
           (
           docker-machine ssh $MACHINE "sudo mkdir -p \
             /docker_machine && \
@@ -51,10 +52,11 @@ jobs:
             -e repo_token=$repo_token \
             -e RUNNER_LABELS=$RUNNER_LABELS \
             -e RUNNER_REPO=$RUNNER_REPO \
-            -e RUNNER_IDLE_TIMEOUT=240 \
+            -e RUNNER_IDLE_TIMEOUT=420 \
             dvcorg/cml-py3:latest && \
           sleep 20 && echo "Deployed $MACHINE"
           ) || (docker-machine rm -y -f $MACHINE && exit 1)
+
   benchmark:
     needs: deploy-cloud-runner
     runs-on: [self-hosted,cml]
