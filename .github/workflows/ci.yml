@@ -22,12 +22,7 @@ jobs:
         sudo sysctl -w vm.max_map_count=262144
       
     - name: Run Elasticsearch
-      run: docker run --rm --env node.name=es1 --env cluster.name=docker-elasticsearch \
-      --env cluster.initial_master_nodes=es1 --env discovery.seed_hosts=es1 \
-      --env cluster.routing.allocation.disk.threshold_enabled=false --env bootstrap.memory_lock=true \
-      --env 'ES_JAVA_OPTS=-Xms500m -Xmx500m' --env xpack.security.enabled=false --env xpack.license.self_generated.type=basic \
-      --ulimit nofile=65536:65536 --ulimit memlock=-1:-1 --publish 9200:9200 --detach --network=elastic --name=es1 \
-      docker.elastic.co/elasticsearch/elasticsearch:7.9.2
+      run: docker run --rm --env node.name=es1 --env cluster.name=docker-elasticsearch --env cluster.initial_master_nodes=es1 --env discovery.seed_hosts=es1 --env cluster.routing.allocation.disk.threshold_enabled=false --env bootstrap.memory_lock=true --env 'ES_JAVA_OPTS=-Xms500m -Xmx500m' --env xpack.security.enabled=false --env xpack.license.self_generated.type=basic --ulimit nofile=65536:65536 --ulimit memlock=-1:-1 --publish 9200:9200 --detach --network=elastic --name=es1 docker.elastic.co/elasticsearch/elasticsearch:7.9.2
 
     - name: Run Apache Tika
       run: docker run -d -p 9998:9998 apache/tika:1.24.1
