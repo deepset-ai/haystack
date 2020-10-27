@@ -37,15 +37,6 @@ jobs:
           sudo chmod 777 /docker_machine" && \
           docker-machine scp -r -q ~/.docker/machine/ \
             $MACHINE:/docker_machine && \
-          docker run --name postgres -d \
-                      -p 5432:5432 \
-                      --net host \
-                      -e POSTGRES_PASSWORD=password \
-                      -v /docker_machine/machine:/root/.docker/machine \
-                      -e DOCKER_MACHINE=$MACHINE \
-                      postgres && \
-          sleep 4 && \
-          docker exec -i postgres psql -U postgres -c "CREATE DATABASE haystack;" && \
           docker run --name runner -d \
             -v /docker_machine/machine:/root/.docker/machine \
             -e DOCKER_MACHINE=$MACHINE \
@@ -54,12 +45,12 @@ jobs:
             -e RUNNER_REPO=$RUNNER_REPO \
             -e RUNNER_IDLE_TIMEOUT=420 \
             dvcorg/cml-py3:latest && \
-          sleep 20 && echo "Deployed $MACHINE"
+          sleep 40 && echo "Deployed $MACHINE"
           ) || (docker-machine rm -y -f $MACHINE && exit 1)
 
   benchmark:
     needs: deploy-cloud-runner
-    runs-on: [self-hosted,cml]
+    runs-on: [self-hosted, cml]
     steps:
       - uses: actions/checkout@v2
       - name: cml_run
