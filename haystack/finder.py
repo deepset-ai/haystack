@@ -380,8 +380,8 @@ class Finder:
 
 
     @staticmethod
-    def print_eval_results(finder_eval_results: Dict, contains_preds: bool = False):
-        if contains_preds:
+    def print_eval_results(finder_eval_results: Dict):
+        if "predictions" in finder_eval_results.keys():
             finder_eval_results = finder_eval_results["metrics"]
 
         print("\n___Retriever Metrics in Finder___")
