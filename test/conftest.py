@@ -22,6 +22,18 @@ from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 
 
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if "generator" in item.nodeid:
+            item.add_marker(pytest.mark.generator)
+        elif "tika" in item.nodeid:
+            item.add_marker(pytest.mark.tika)
+        elif "elasticsearch" in item.nodeid:
+            item.add_marker(pytest.mark.elasticsearch)
+        elif "slow" in item.nodeid:
+            item.add_marker(pytest.mark.slow)
+
+
 @pytest.fixture(scope="session")
 def elasticsearch_fixture():
     # test if a ES cluster is already running. If not, download and start an ES instance locally.

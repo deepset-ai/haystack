@@ -41,8 +41,14 @@ jobs:
         pip install -r requirements.txt
         pip install -e .
     
-    - name: Test with pytest
-      run: cd test && pytest
+    - name: Pytest with elasticsearch and tika marker
+      run: cd test && pytest -m "elasticsearch or tika"
+
+    - name: Stop Containers
+      run: docker rm -f `docker ps -a -q`
+
+    - name: Pytest without elasticsearch and tika marker
+      run: cd test && pytest -m "not (elasticsearch or tika)"
 
     - name: Test with mypy
       run: |
