@@ -65,6 +65,19 @@ def test_get_documents_by_id(document_store_with_docs):
     assert doc.text == documents[0].text
 
 
+def test_get_document_count(document_store):
+    documents = [
+        {"text": "text1", "id": "1", "meta_field_for_count": "a"},
+        {"text": "text2", "id": "2", "meta_field_for_count": "b"},
+        {"text": "text3", "id": "3", "meta_field_for_count": "b"},
+        {"text": "text4", "id": "4", "meta_field_for_count": "b"},
+    ]
+    document_store.write_documents(documents)
+    assert document_store.get_document_count() == 4
+    assert document_store.get_document_count(filters={"meta_field_for_count": ["a"]}) == 1
+    assert document_store.get_document_count(filters={"meta_field_for_count": ["b"]}) == 3
+
+
 def test_write_document_meta(document_store):
     documents = [
         {"text": "dict_without_meta", "id": "1"},

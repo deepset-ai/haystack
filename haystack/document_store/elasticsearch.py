@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from copy import deepcopy
 from string import Template
 from typing import List, Optional, Union, Dict, Any
 from elasticsearch import Elasticsearch
@@ -42,6 +43,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         refresh_type: str = "wait_for",
         similarity="dot_product",
         timeout=30,
+        return_embedding: Optional[bool] = True,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -80,6 +82,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         :param timeout: Number of seconds after which an ElasticSearch request times out.
+        :param return_embedding: To return document embedding
 
 
         """
@@ -99,6 +102,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
         self.faq_question_field = faq_question_field
+        self.return_embedding = return_embedding
 
         self.custom_mapping = custom_mapping
         self.index: str = index
@@ -302,10 +306,25 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         body = {"doc": meta}
         self.client.update(index=self.index, doc_type="_doc", id=id, body=body, refresh=self.refresh_type)
 
-    def get_document_count(self, index: Optional[str] = None) -> int:
-        if index is None:
-            index = self.index
-        result = self.client.count(index=index)
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        index = index or self.index
+
+        body: dict = {"query": {"bool": {}}}
+        if filters:
+            filter_clause = []
+            for key, values in filters.items():
+                if type(values) != list:
+                    raise ValueError(
+                        f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                        'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+            body["query"]["bool"]["filter"] = filter_clause
+
+        result = self.client.count(index=index, body=body)
         count = result["count"]
         return count
 
@@ -431,9 +450,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                            query_emb: np.array,
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
-                           index: Optional[str] = None) -> List[Document]:
+                           index: Optional[str] = None,
+                           return_embedding: Optional[bool] = None) -> List[Document]:
         if index is None:
             index = self.index
+
+        return_embedding = return_embedding or self.return_embedding
 
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
@@ -445,7 +467,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "script_score": {
                         "query": {"match_all": {}},
                         "script": {
-                            "source": f"{self.similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1.0",
+                            # offset score to ensure a positive range as required by Elasticsearch
+                            "source": f"{self.similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
                             "params": {
                                 "query_vector": query_emb.tolist()
                             }
@@ -463,8 +486,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "terms": filters
                 }
 
+            excluded_meta_data: Optional[list] = None
+
             if self.excluded_meta_data:
-                body["_source"] = {"excludes": self.excluded_meta_data}
+                excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+                if return_embedding is True and self.embedding_field in excluded_meta_data:
+                    excluded_meta_data.remove(self.embedding_field)
+                elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                    excluded_meta_data.append(self.embedding_field)
+            elif return_embedding is False:
+                excluded_meta_data = [self.embedding_field]
+
+            if excluded_meta_data:
+                body["_source"] = {"excludes": excluded_meta_data}
 
             logger.debug(f"Retriever query: {body}")
             result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
@@ -482,7 +517,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         score = hit["_score"] if hit["_score"] else None
         if score:
             if adapt_score_for_embedding:
-                score -= 1
+                score -= 1000
                 probability = (score + 1) / 2  # scaling probability from cosine similarity
             else:
                 probability = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
@@ -495,7 +530,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             score=score,
             probability=probability,
             question=hit["_source"].get(self.faq_question_field),
-            embedding=hit["_source"].get(self.embedding_field)
+            embedding=hit["_source"].get(self.embedding_field, None)
         )
         return document
 

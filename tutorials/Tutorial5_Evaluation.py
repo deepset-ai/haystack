@@ -34,7 +34,7 @@ device, n_gpu = initialize_device_settings(use_cuda=True)
 if LAUNCH_ELASTICSEARCH:
     logging.info("Starting Elasticsearch ...")
     status = subprocess.run(
-        ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2'], shell=True
+        ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
     )
     if status.returncode:
         raise Exception("Failed to launch Elasticsearch. If you want to connect to an existing Elasticsearch instance"
