@@ -15,6 +15,7 @@ DOCUMENTS = [
 
 
 @pytest.mark.slow
+@pytest.mark.generator
 def test_rag_token_generator(rag_generator, faiss_document_store, dpr_retriever):
     faiss_document_store.return_embedding = True
     faiss_document_store.write_documents(DOCUMENTS)
