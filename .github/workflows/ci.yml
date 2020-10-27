@@ -50,7 +50,7 @@ jobs:
     - name: Stop All Containers
       run: docker rm -f `docker ps -a -q`
 
-    - name: Test generator
+    - name: Test non containers tests
       run: cd test-non-containers && pytest
 
     - name: Test with mypy
