@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy
 import torch
@@ -151,7 +151,7 @@ class RAGenerator(BaseGenerator):
         top_k_answers = top_k if top_k is not None else self.top_k_answers
 
         # Flatten the documents so easy to reference
-        flat_docs_dict = {}
+        flat_docs_dict: Dict[str, Any] = {}
         for document in documents:
             for k, v in document.__dict__.items():
                 if k not in flat_docs_dict:
@@ -206,13 +206,13 @@ class RAGenerator(BaseGenerator):
             min_length=self.min_length,
         )
 
-        result = {"question": question, "answers": []}
-        answers = self.tokenizer.batch_decode(generator_ids, skip_special_tokens=True)
+        generated_answers = self.tokenizer.batch_decode(generator_ids, skip_special_tokens=True)
+        answers: List[Any] = []
 
-        for answer in answers:
+        for generated_answer in generated_answers:
             cur_answer = {
                 "question": question,
-                "answer": answer,
+                "answer": generated_answer,
                 "meta": {
                     "doc_ids": flat_docs_dict["id"],
                     "doc_scores": flat_docs_dict["score"],
@@ -221,6 +221,8 @@ class RAGenerator(BaseGenerator):
                     "titles": titles,
                 }
             }
-            result["answers"].append(cur_answer)
+            answers.append(cur_answer)
+
+        result = {"question": question, "answers": answers}
 
         return result
