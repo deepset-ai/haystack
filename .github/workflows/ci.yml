@@ -41,14 +41,14 @@ jobs:
         pip install -r requirements.txt
         pip install -e .
     
-    - name: Pytest with elasticsearch and tika marker
-      run: cd test && pytest -m "elasticsearch or tika"
+    - name: Run Pytest without generator marker
+      run: cd test && pytest -m "not generator"
 
     - name: Stop Containers
       run: docker rm -f `docker ps -a -q`
 
-    - name: Pytest without elasticsearch and tika marker
-      run: cd test && pytest -m "not (elasticsearch or tika)"
+    - name: Run pytest with generator marker
+      run: cd test && pytest -m generator
 
     - name: Test with mypy
       run: |
