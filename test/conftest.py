@@ -23,6 +23,28 @@ from haystack.reader.transformers import TransformersReader
 
 
 @pytest.fixture(scope="session")
+def elasticsearch_fixture():
+    # test if a ES cluster is already running. If not, download and start an ES instance locally.
+    try:
+        client = Elasticsearch(hosts=[{"host": "localhost", "port": "9200"}])
+        client.info()
+    except:
+        print("Starting Elasticsearch ...")
+        status = subprocess.run(
+            ['docker rm haystack_test_elastic'],
+            shell=True
+        )
+        status = subprocess.run(
+            ['docker run -d --name haystack_test_elastic -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'],
+            shell=True
+        )
+        if status.returncode:
+            raise Exception(
+                "Failed to launch Elasticsearch. Please check docker container logs.")
+        time.sleep(30)
+
+
+@pytest.fixture(scope="session")
 def tika_fixture():
     try:
         tika_url = "http://localhost:9998/tika"
@@ -71,28 +93,6 @@ def xpdf_fixture(tika_fixture):
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                  You can download for your OS from here: https://www.xpdfreader.com/download.html."""
             )
-
-
-@pytest.fixture(scope="session")
-def elasticsearch_fixture():
-    # test if a ES cluster is already running. If not, download and start an ES instance locally.
-    try:
-        client = Elasticsearch(hosts=[{"host": "localhost", "port": "9200"}])
-        client.info()
-    except:
-        print("Starting Elasticsearch ...")
-        status = subprocess.run(
-            ['docker rm haystack_test_elastic'],
-            shell=True
-        )
-        status = subprocess.run(
-            ['docker run -d --name haystack_test_elastic -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'],
-            shell=True
-        )
-        if status.returncode:
-            raise Exception(
-                "Failed to launch Elasticsearch. Please check docker container logs.")
-        time.sleep(30)
 
 
 @pytest.fixture(scope="session")
