@@ -264,8 +264,6 @@ def get_document_store(document_store_type, faiss_document_store, inmemory_docum
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="haystack_test", return_embedding=False)
     elif document_store_type == "faiss":
-        if os.path.exists("haystack_test_faiss.db"):
-            os.remove("haystack_test_faiss.db")
         document_store = faiss_document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
