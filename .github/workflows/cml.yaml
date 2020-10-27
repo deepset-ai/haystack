@@ -26,7 +26,7 @@ jobs:
             --amazonec2-region us-east-1 \
             --amazonec2-zone c \
             --amazonec2-ssh-user ubuntu \
-            --amazonec2-ami ami-0817d428a6fb68645 \
+            --amazonec2-ami ami-06a25ee8966373068 \
             --amazonec2-root-size 64 \
             $MACHINE
           eval "$(docker-machine env --shell sh $MACHINE)"
