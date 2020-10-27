@@ -70,6 +70,8 @@ jobs:
       - name: cml_run
         env:
           repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
         run: |
           apt-get update -y
           apt-get install python3-dev -y
