@@ -78,7 +78,7 @@ jobs:
           apt-get install python3-dev -y
           pip install -r requirements.txt
           pip install .
-          cd test/benchmarks && python run.py --retriever_index --retriever_query --ci
+          cd test/benchmarks && python run.py --retriever_index --retriever_query --ci --save_markdown
           echo "## Benchmarks: Retriever Indexing" >> report.md
           cat retriever_index_results.md >> report.md
           echo "## Benchmarks: Retriever Querying" >> report.md
