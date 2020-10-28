@@ -45,7 +45,8 @@ class BaseRetriever(ABC):
         doc_index: str = "eval_document",
         label_origin: str = "gold_label",
         top_k: int = 10,
-        open_domain: bool = False
+        open_domain: bool = False,
+        return_preds: bool = False,
     ) -> dict:
         """
         Performs evaluation on the Retriever.
@@ -65,6 +66,8 @@ class BaseRetriever(ABC):
                             contained in the retrieved docs (common approach in open-domain QA).
                             If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
                             are within ids explicitly stated in the labels.
+        :param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
+                             contains the keys "predictions" and "metrics".
         """
 
         # Extract all questions for evaluation
@@ -86,11 +89,15 @@ class BaseRetriever(ABC):
                 deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
                 question_label_dict[label.question] = deduplicated_doc_ids
 
+        predictions = []
+
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
         logger.info("Performing eval queries...")
         if open_domain:
             for question, gold_answers in tqdm(question_label_dict.items()):
                 retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
+                if return_preds:
+                    predictions.append({"question": question, "retrieved_docs": retrieved_docs})
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_answer in gold_answers:
@@ -102,6 +109,8 @@ class BaseRetriever(ABC):
         else:
             for question, gold_ids in tqdm(question_label_dict.items()):
                 retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
+                if return_preds:
+                    predictions.append({"question": question, "retrieved_docs": retrieved_docs})
                 # check if correct doc in retrieved docs
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_id in gold_ids:
@@ -117,4 +126,15 @@ class BaseRetriever(ABC):
         logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
                      f" the top-{top_k} candidate passages selected by the retriever."))
 
-        return {"recall": recall, "map": mean_avg_precision, "retrieve_time": self.retrieve_time, "n_questions": number_of_questions, "top_k": top_k}
+        metrics =  {
+            "recall": recall,
+            "map": mean_avg_precision,
+            "retrieve_time": self.retrieve_time,
+            "n_questions": number_of_questions,
+            "top_k": top_k
+        }
+
+        if return_preds:
+            return {"metrics": metrics, "predictions": predictions}
+        else:
+            return metrics
