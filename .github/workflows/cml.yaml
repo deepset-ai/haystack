@@ -81,8 +81,8 @@ jobs:
           cd test/benchmarks && python run.py --retriever_index --retriever_query --reader --ci --save_markdown
           echo "## Benchmarks: Retriever Indexing" >> report.md
           cat retriever_index_results.md >> report.md
-          echo "## Benchmarks: Retriever Querying" >> report.md
+          echo "\n\n## Benchmarks: Retriever Querying" >> report.md
           cat retriever_query_results.md >> report.md
-          echo "## Benchmarks: Reader" >> report.md
+          echo "\n\n## Benchmarks: Reader" >> report.md
           cat reader_results.md >> report.md
           cml-send-comment report.md
