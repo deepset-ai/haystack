@@ -81,7 +81,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                 del doc_store
                 del retriever
 
-            except Exception as e:
+            except Exception:
                 tb = traceback.format_exc()
                 logging.error(f"##### The following Error was raised while running indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
                 logging.error(tb)
@@ -160,10 +160,10 @@ def benchmark_querying(n_docs_options,
                 time.sleep(5)
                 del doc_store
                 del retriever
-            except Exception as e:
+            except Exception:
                 tb = traceback.format_exc()
-                logging.ERROR(f"##### The following Error was raised while running querying run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
-                logging.Error(tb)
+                logging.error(f"##### The following Error was raised while running querying run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
+                logging.error(tb)
                 results = {
                     "retriever": retriever_name,
                     "doc_store": doc_store_name,
