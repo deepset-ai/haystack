@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2", "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2", "deepset/xlm-roberta-large-squad2"]
 reader_types = ["farm"]
-data_dir_reader = Path("../../data/squad20")
-filename_reader = "dev-v2.0.json"
 
 doc_index = "eval_document"
 label_index = "label"

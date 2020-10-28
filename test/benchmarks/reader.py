@@ -1,5 +1,7 @@
 from utils import get_document_store, index_to_doc_store, get_reader
 from haystack.preprocessor.utils import eval_data_from_file
+from farm.data_handler.utils import _download_extract_downstream_data
+
 from pathlib import Path
 import pandas as pd
 from results_to_json import reader as reader_json
@@ -37,6 +39,8 @@ def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs)
         n_docs = None
     reader_results = []
     doc_store = get_document_store("elasticsearch")
+    # download squad data
+    _download_extract_downstream_data(input_file=data_dir/filename)
     docs, labels = eval_data_from_file(data_dir/filename, n_docs)
 
     index_to_doc_store(doc_store, docs, None, labels)
