@@ -11,7 +11,7 @@
         "DPR / FAISS (HSNW)"
     ],
    "axis": [
-     { "x": "Number of docs", "y": "Docs/sec" }
+     { "x": "Number of docs", "y": "Queries/sec" }
    ],
     "data":
     [
