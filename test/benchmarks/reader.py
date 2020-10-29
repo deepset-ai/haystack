@@ -2,10 +2,15 @@ from utils import get_document_store, index_to_doc_store, get_reader
 from haystack.preprocessor.utils import eval_data_from_file
 from pathlib import Path
 import pandas as pd
+from results_to_json import reader as reader_json
+from templates import READER_TEMPLATE
+import json
 
-reader_models = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
+
+reader_models_full = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
                  "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
                  "deepset/xlm-roberta-large-squad2", "distilbert-base-uncased-distilled-squad"]
+reader_models_ci = ["deepset/minilm-uncased-squad2"]
 
 reader_types = ["farm"]
 data_dir = Path("../../data/squad20")
@@ -14,13 +19,24 @@ filename = "dev-v2.0.json"
 # This number could vary when using a different tokenizer
 n_passages = 12350
 
+results_file = "reader_results.csv"
+
+reader_json_file = "../../docs/_src/benchmarks/reader_performance.json"
+
 doc_index = "eval_document"
 label_index = "label"
 
-def benchmark_reader():
+def benchmark_reader(ci=False, update_json=False, **kwargs):
+    if ci:
+        reader_models = reader_models_ci
+        n_docs = 1
+    else:
+        reader_models = reader_models_full
+        n_docs = None
     reader_results = []
     doc_store = get_document_store("elasticsearch")
-    docs, labels = eval_data_from_file(data_dir/filename)
+    docs, labels = eval_data_from_file(data_dir/filename, n_docs)
+
     index_to_doc_store(doc_store, docs, None, labels)
     for reader_name in reader_models:
         for reader_type in reader_types:
@@ -47,8 +63,17 @@ def benchmark_reader():
                            "error": e}
                 reader_results.append(results)
             reader_df = pd.DataFrame.from_records(reader_results)
-            reader_df.to_csv("reader_results.csv")
+            reader_df.to_csv(results_file)
+    if update_json:
+        populate_reader_json()
+
+
+def populate_reader_json():
+    reader_results = reader_json()
+    template = READER_TEMPLATE
+    template["data"] = reader_results
+    json.dump(template, open(reader_json_file, "w"), indent=4)
 
 
 if __name__ == "__main__":
-    benchmark_reader()
+    benchmark_reader(True, update_json=True)

@@ -121,6 +121,7 @@ class Finder:
         label_origin: str = "gold_label",
         top_k_retriever: int = 10,
         top_k_reader: int = 10,
+        return_preds: bool = False,
     ):
         """
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
@@ -165,6 +166,9 @@ class Finder:
         :type top_k_retriever: int
         :param top_k_reader: How many answers to return per question
         :type top_k_reader: int
+        :param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
+                             contains the keys "predictions" and "metrics".
+        :type return_preds: bool
         """
 
         if not self.reader or not self.retriever:
@@ -205,6 +209,7 @@ class Finder:
         previous_return_no_answers = self.reader.return_no_answers
         self.reader.return_no_answers = True
 
+        predictions = []
         # extract answers
         reader_start_time = time.time()
         for q_idx, question_docs in enumerate(questions_with_docs):
@@ -215,8 +220,10 @@ class Finder:
             question_string = question.question
             docs = question_docs["docs"]  # type: ignore
             single_reader_start = time.time()
-            predicted_answers = self.reader.predict(question_string, docs, top_k=top_k_reader)  # type: ignore
+            predicted_answers = self.reader.predict(question_string, docs, top_k=top_k_reader) # type: ignore
             read_times.append(time.time() - single_reader_start)
+            if return_preds:
+                predictions.append(predicted_answers)
             counts = eval_counts_reader(question, predicted_answers, counts)
 
         counts["number_of_has_answer"] = counts["correct_retrievals"] - counts["number_of_no_answer"]
@@ -240,7 +247,10 @@ class Finder:
         eval_results["avg_reader_time"] = mean(read_times)
         eval_results["total_finder_time"] = finder_total_time
 
-        return eval_results
+        if return_preds:
+            return {"metrics": eval_results, "predictions": predictions}
+        else:
+            return eval_results
 
     def eval_batch(
         self,
@@ -249,7 +259,8 @@ class Finder:
         label_origin: str = "gold_label",
         top_k_retriever: int = 10,
         top_k_reader: int = 10,
-        batch_size: int = 50
+        batch_size: int = 50,
+        return_preds: bool = False,
     ):
         """
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
@@ -296,10 +307,13 @@ class Finder:
         :type top_k_reader: int
         :param batch_size: Number of samples per batch computed at once
         :type batch_size: int
+        :param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
+                             contains the keys "predictions" and "metrics".
+        :type return_preds: bool
         """
 
         if not self.reader or not self.retriever:
-            raise Exception("Finder needs to have a reader and retriever for the evalutaion.")
+            raise Exception("Finder needs to have a reader and retriever for the evaluation.")
 
         counts = defaultdict(float)  # type: Dict[str, float]
         finder_start_time = time.time()
@@ -344,7 +358,10 @@ class Finder:
         logger.info(f"{number_of_questions - correct_retrievals} questions could not be answered due to the retriever.")
         logger.info(f"{correct_retrievals - counts['correct_readings_topk']} questions could not be answered due to the reader.")
 
-        return results
+        if return_preds:
+            return {"metrics": results, "predictions": predictions}
+        else:
+            return results
 
 
     def _retrieve_docs(self, questions: List[MultiLabel], top_k: int, doc_index: str):
@@ -364,6 +381,9 @@ class Finder:
 
     @staticmethod
     def print_eval_results(finder_eval_results: Dict):
+        if "predictions" in finder_eval_results.keys():
+            finder_eval_results = finder_eval_results["metrics"]
+
         print("\n___Retriever Metrics in Finder___")
         print(f"Retriever Recall            : {finder_eval_results['retriever_recall']:.3f}")
         print(f"Retriever Mean Avg Precision: {finder_eval_results['retriever_map']:.3f}")
