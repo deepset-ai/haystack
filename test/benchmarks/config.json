@@ -1,0 +1,57 @@
+{
+  "params": {
+    "full": {
+      "retriever_doc_stores": [
+        [
+          "elastic",
+          "elasticsearch"
+        ],
+        [
+          "dpr",
+          "elasticsearch"
+        ],
+        [
+          "dpr",
+          "faiss_flat"
+        ],
+        [
+          "dpr",
+          "faiss_hnsw"
+        ]
+      ],
+      "n_docs_options": [
+        10000,
+        100000,
+        500000
+      ],
+      "n_queries": null
+    },
+    "ci": {
+      "retriever_doc_stores": [
+        [
+          "elastic",
+          "elasticsearch"
+        ]
+      ],
+      "n_docs_options": [
+        1000
+      ],
+      "n_queries": 10
+    }
+  },
+  "filenames": {
+    "data_s3_url": "s3://ext-haystack-retriever-eval/",
+    "data_dir": "../../data/retriever/",
+    "filename_gold": "nq2squad-dev.json",
+    "filenames_negative": {
+      "10000": "psgs_w100_minus_gold_10k.tsv",
+      "100000": "psgs_w100_minus_gold_100k.tsv",
+      "1000000": "psgs_w100_minus_gold_1m.tsv"
+    },
+    "embeddings_dir": "embeddings/",
+    "embeddings_filenames": {
+      "10000": "wikipedia_passages_10k.pkl",
+      "100000": "wikipedia_passages_100k.pkl",
+      "1000000":  "wikipedia_passages_1m.pkl"}
+  }
+}

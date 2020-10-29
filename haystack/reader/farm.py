@@ -291,7 +291,7 @@ class FARMReader(BaseReader):
         result = []
         for idx, group in enumerate(grouped_predictions):
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k_per_question)
-            question = group[0]
+            question = group[0].question
             cur_label = labels[idx]
             result.append({
                 "question": question,
