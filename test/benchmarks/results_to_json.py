@@ -2,8 +2,8 @@ import json
 import pandas as pd
 from pprint import pprint
 
-def reader():
 
+def reader(reader_csv="reader_results.csv"):
     model_rename_map = {
         'deepset/roberta-base-squad2': "RoBERTa",
         'deepset/minilm-uncased-squad2': "MiniLM",
@@ -18,18 +18,18 @@ def reader():
         "reader": "Model"
     }
 
-    df = pd.read_csv("reader_results.csv")
+    df = pd.read_csv(reader_csv)
     df = df[["f1", "passages_per_second", "reader"]]
     df["reader"] = df["reader"].map(model_rename_map)
     df = df[list(column_name_map)]
     df = df.rename(columns=column_name_map)
     ret = [dict(row) for i, row in df.iterrows()]
     print("Reader overview")
-    print(json.dumps(ret, indent=2))
+    print(json.dumps(ret, indent=4))
+    return ret
 
-def retriever():
 
-
+def retriever(index_csv="retriever_index_results.csv", query_csv="retriever_query_results.csv"):
     column_name_map = {
         "model": "model",
         "n_docs": "n_docs",
@@ -47,8 +47,8 @@ def retriever():
         "faiss_hnsw": "FAISS (HSNW)"
     }
 
-    index = pd.read_csv("retriever_index_results.csv")
-    query = pd.read_csv("retriever_query_results.csv")
+    index = pd.read_csv(index_csv)
+    query = pd.read_csv(query_csv)
     df = pd.merge(index, query,
                   how="right",
                   left_on=["retriever", "doc_store", "n_docs"],
@@ -62,36 +62,38 @@ def retriever():
     df = df.rename(columns=column_name_map)
 
     print("Retriever overview")
-    print(retriever_overview(df))
+    retriever_overview_data = retriever_overview(df)
+    print(json.dumps(retriever_overview_data, indent=4))
 
     print("Retriever MAP")
-    print(retriever_map(df))
+    retriever_map_data = retriever_map(df)
+    print(json.dumps(retriever_map_data, indent=4))
 
     print("Retriever Speed")
-    print(retriever_speed(df))
+    retriever_speed_data = retriever_speed(df)
+    print(json.dumps(retriever_speed_data, indent=4))
+
+    return retriever_overview_data, retriever_map_data, retriever_speed_data
 
 
 def retriever_map(df):
     columns = ["model", "n_docs", "map"]
     df = df[columns]
     ret = df.to_dict(orient="records")
-    return json.dumps(ret, indent=4)
+    return ret
 
 
 def retriever_speed(df):
     columns = ["model", "n_docs", "query_speed"]
     df = df[columns]
     ret = df.to_dict(orient="records")
-    return json.dumps(ret, indent=4)
-
+    return ret
 
 
 def retriever_overview(df, chosen_n_docs=100_000):
-
     df = df[df["n_docs"] == chosen_n_docs]
     ret = [dict(row) for i, row in df.iterrows()]
-
-    return json.dumps(ret, indent=2)
+    return ret
 
 
 if __name__ == "__main__":
