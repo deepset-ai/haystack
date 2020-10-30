@@ -146,16 +146,13 @@ class DensePassageRetriever(BaseRetriever):
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
-        samples = [s for b in baskets for s in b.samples]
-
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings = {"query": torch.tensor([]), "passages": torch.tensor([])}
+        all_embeddings = {"query": torch.tensor([]).to(self.device), "passages": torch.tensor([]).to(self.device)}
         self.model.eval()
         for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=False)):
             batch = {key: batch[key].to(self.device) for key in batch}
-            batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
 
             # get logits
             with torch.no_grad():
@@ -164,8 +161,10 @@ class DensePassageRetriever(BaseRetriever):
                                                      if isinstance(query_embeddings, torch.Tensor) else None
                 all_embeddings["passages"] = torch.cat((all_embeddings["passages"], passage_embeddings), dim=0) \
                                                     if isinstance(passage_embeddings, torch.Tensor) else None
+
+        # convert embeddings to numpy array
         for k, v in all_embeddings.items():
-            all_embeddings[k] = v.numpy() if v != None else None
+            all_embeddings[k] = v.cpu().numpy() if v!=None else None
         return all_embeddings
 
     def embed_queries(self, texts: List[str]) -> List[np.array]:
@@ -216,6 +215,8 @@ class DensePassageRetriever(BaseRetriever):
               optimizer_name: str = "TransformersAdamW",
               optimizer_correct_bias: bool = True,
               save_dir: str = "../saved_models/dpr-tutorial",
+              query_encoder_save_dir: str = "lm1",
+              passage_encoder_save_dir: str = "lm2"
               ):
         """
         train a DensePassageRetrieval model
@@ -238,6 +239,8 @@ class DensePassageRetriever(BaseRetriever):
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
         :param save_dir: directory where models are saved
+        :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
+        :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
         """
 
         self.embed_title = embed_title
@@ -288,7 +291,7 @@ class DensePassageRetriever(BaseRetriever):
         trainer.train()
 
         save_dir = Path(save_dir)
-        self.model.save(save_dir)
+        self.model.save(save_dir, lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
         self.processor.save(save_dir)
 
 
