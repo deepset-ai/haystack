@@ -3,6 +3,7 @@ import pytest
 
 
 @pytest.mark.slow
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_finder_get_answers(reader, retriever_with_docs, document_store_with_docs):
     finder = Finder(reader, retriever_with_docs)
@@ -19,6 +20,7 @@ def test_finder_get_answers(reader, retriever_with_docs, document_store_with_doc
     assert len(prediction["answers"]) == 3
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_finder_offsets(reader, retriever_with_docs, document_store_with_docs):
     finder = Finder(reader, retriever_with_docs)
@@ -33,6 +35,7 @@ def test_finder_offsets(reader, retriever_with_docs, document_store_with_docs):
 
 
 @pytest.mark.slow
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_finder_get_answers_single_result(reader, retriever_with_docs, document_store_with_docs):
     finder = Finder(reader, retriever_with_docs)

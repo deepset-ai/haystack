@@ -2,6 +2,7 @@ from haystack import Document
 import pytest
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", [("elasticsearch")], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["es_filter_only"], indirect=True)
 def test_dummy_retriever(retriever_with_docs, document_store_with_docs):
