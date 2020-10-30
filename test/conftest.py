@@ -180,7 +180,7 @@ def dpr_retriever(faiss_document_store):
         passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
         use_gpu=False,
         embed_title=True,
-        remove_sep_tok_from_untitled_passages=True
+        use_fast_tokenizers=True
     )
 
 
