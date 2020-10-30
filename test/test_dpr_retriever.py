@@ -6,6 +6,7 @@ from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 
 @pytest.mark.slow
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("return_embedding", [True, False])
