@@ -69,7 +69,7 @@ RETRIEVER_SPEED_TEMPLATE = {
     ],
    "axis": [
      { "x": "Number of docs",
-       "y": "Docs/sec"}
+       "y": "Queries/sec"}
    ],
     "data": None
 }

@@ -68,8 +68,10 @@ def test_answer_attributes(prediction):
 def test_context_window_size(reader, test_docs_xs, window_size):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
 
-    if isinstance(reader, FARMReader):
-        reader.inferencer.model.prediction_heads[0].context_window_size = window_size
+    assert isinstance(reader, FARMReader)
+
+    old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
+    reader.inferencer.model.prediction_heads[0].context_window_size = window_size
 
     prediction = reader.predict(question="Who lives in Berlin?", documents=docs, top_k=5)
     for answer in prediction["answers"]:
@@ -82,6 +84,8 @@ def test_context_window_size(reader, test_docs_xs, window_size):
         else:
             assert len(answer["answer"]) == len(answer["context"])
 
+    reader.inferencer.model.prediction_heads[0].context_window_size = old_window_size
+
     # TODO Need to test transformers reader
     # TODO Currently the behaviour of context_window_size in FARMReader and TransformerReader is different
 
@@ -91,13 +95,23 @@ def test_context_window_size(reader, test_docs_xs, window_size):
 def test_top_k(reader, test_docs_xs, top_k):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
 
+    assert isinstance(reader, FARMReader)
+
+    old_top_k_per_candidate = reader.top_k_per_candidate
     reader.top_k_per_candidate = 4
-    if isinstance(reader, FARMReader):
-        reader.inferencer.model.prediction_heads[0].n_best = reader.top_k_per_candidate + 1
-        try:
-            reader.inferencer.model.prediction_heads[0].n_best_per_sample = 4
-        except:
-            print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
+    reader.inferencer.model.prediction_heads[0].n_best = reader.top_k_per_candidate + 1
+    try:
+        old_top_k_per_sample = reader.inferencer.model.prediction_heads[0].n_best_per_sample
+        reader.inferencer.model.prediction_heads[0].n_best_per_sample = 4
+    except:
+        print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
 
     prediction = reader.predict(question="Who lives in Berlin?", documents=docs, top_k=top_k)
     assert len(prediction["answers"]) == top_k
+
+    reader.top_k_per_candidate = old_top_k_per_candidate
+    reader.inferencer.model.prediction_heads[0].n_best = reader.top_k_per_candidate + 1
+    try:
+        reader.inferencer.model.prediction_heads[0].n_best_per_sample = old_top_k_per_sample
+    except:
+        print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")

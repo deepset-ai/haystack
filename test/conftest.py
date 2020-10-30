@@ -7,6 +7,8 @@ from sys import platform
 import pytest
 import requests
 from elasticsearch import Elasticsearch
+from haystack.generator.transformers import RAGenerator, RAGeneratorType
+
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
@@ -18,6 +20,18 @@ from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if "generator" in item.nodeid:
+            item.add_marker(pytest.mark.generator)
+        elif "tika" in item.nodeid:
+            item.add_marker(pytest.mark.tika)
+        elif "elasticsearch" in item.nodeid:
+            item.add_marker(pytest.mark.elasticsearch)
+        elif "slow" in item.nodeid:
+            item.add_marker(pytest.mark.slow)
 
 
 @pytest.fixture(scope="session")
@@ -93,9 +107,95 @@ def xpdf_fixture(tika_fixture):
             )
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store(request, test_docs_xs, elasticsearch_fixture):
-    return get_document_store(request.param)
+@pytest.fixture(scope="session")
+def farm_distilbert():
+    return FARMReader(
+        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        use_gpu=False,
+        top_k_per_sample=5,
+        num_processes=0
+    )
+
+
+@pytest.fixture(scope="session")
+def farm_roberta():
+    return FARMReader(
+        model_name_or_path="deepset/roberta-base-squad2",
+        use_gpu=False,
+        top_k_per_sample=5,
+        no_ans_boost=0,
+        num_processes=0
+    )
+
+
+@pytest.fixture(scope="session")
+def transformers_distilbert():
+    return TransformersReader(
+        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        tokenizer="distilbert-base-uncased",
+        use_gpu=-1
+    )
+
+
+@pytest.fixture(scope="session")
+def transformers_roberta():
+    return TransformersReader(
+        model_name_or_path="deepset/roberta-base-squad2",
+        tokenizer="deepset/roberta-base-squad2",
+        use_gpu=-1,
+        top_k_per_candidate=5
+    )
+
+
+@pytest.fixture()
+def rag_generator():
+    return RAGenerator(
+        model_name_or_path="facebook/rag-token-nq",
+        generator_type=RAGeneratorType.TOKEN
+    )
+
+
+@pytest.fixture()
+def faiss_document_store():
+    if os.path.exists("haystack_test_faiss.db"):
+        os.remove("haystack_test_faiss.db")
+    document_store = FAISSDocumentStore(
+        sql_url="sqlite:///haystack_test_faiss.db",
+        return_embedding=False
+    )
+    yield document_store
+    document_store.faiss_index.reset()
+
+
+@pytest.fixture()
+def inmemory_document_store():
+    return InMemoryDocumentStore(return_embedding=False)
+
+
+@pytest.fixture()
+def dpr_retriever(faiss_document_store):
+    return DensePassageRetriever(
+        document_store=faiss_document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+        embed_title=True,
+        remove_sep_tok_from_untitled_passages=True
+    )
+
+
+@pytest.fixture()
+def embedding_retriever(faiss_document_store):
+    return EmbeddingRetriever(
+        document_store=faiss_document_store,
+        embedding_model="deepset/sentence_bert",
+        use_gpu=False
+    )
+
+
+@pytest.fixture()
+def tfidf_retriever(inmemory_document_store):
+    return TfidfRetriever(document_store=inmemory_document_store)
 
 
 @pytest.fixture()
@@ -111,27 +211,21 @@ def test_docs_xs():
 
 
 @pytest.fixture(params=["farm", "transformers"])
-def reader(request):
+def reader(request, transformers_distilbert, farm_distilbert):
     if request.param == "farm":
-        return FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
-                          use_gpu=False, top_k_per_sample=5, num_processes=0)
+        return farm_distilbert
     if request.param == "transformers":
-        return TransformersReader(model_name_or_path="distilbert-base-uncased-distilled-squad",
-                                  tokenizer="distilbert-base-uncased",
-                                  use_gpu=-1)
+        return transformers_distilbert
 
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
 @pytest.fixture(params=["farm"])
-def no_answer_reader(request):
+def no_answer_reader(request, transformers_roberta, farm_roberta):
     if request.param == "farm":
-        return FARMReader(model_name_or_path="deepset/roberta-base-squad2",
-                          use_gpu=False, top_k_per_sample=5, no_ans_boost=0, num_processes=0)
+        return farm_roberta
     if request.param == "transformers":
-        return TransformersReader(model_name_or_path="deepset/roberta-base-squad2",
-                                  tokenizer="deepset/roberta-base-squad2",
-                                  use_gpu=-1, top_k_per_candidate=5)
+        return transformers_roberta
 
 
 @pytest.fixture()
@@ -149,20 +243,16 @@ def no_answer_prediction(no_answer_reader, test_docs_xs):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store_with_docs(request, test_docs_xs, elasticsearch_fixture):
-    document_store = get_document_store(request.param)
+def document_store_with_docs(
+        request, test_docs_xs, elasticsearch_fixture, faiss_document_store, inmemory_document_store):
+    document_store = get_document_store(request.param, faiss_document_store, inmemory_document_store)
     document_store.write_documents(test_docs_xs)
-    yield document_store
-    if isinstance(document_store, FAISSDocumentStore):
-        document_store.faiss_index.reset()
+    return document_store
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store(request, test_docs_xs, elasticsearch_fixture):
-    document_store = get_document_store(request.param)
-    yield document_store
-    if isinstance(document_store, FAISSDocumentStore):
-        document_store.faiss_index.reset()
+def document_store(request, test_docs_xs, elasticsearch_fixture, faiss_document_store, inmemory_document_store):
+    return get_document_store(request.param, faiss_document_store, inmemory_document_store)
 
 
 @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
@@ -175,22 +265,20 @@ def retriever_with_docs(request, document_store_with_docs):
     return get_retriever(request.param, document_store_with_docs)
 
 
-def get_document_store(document_store_type):
+def get_document_store(document_store_type, faiss_document_store, inmemory_document_store):
     if document_store_type == "sql":
         if os.path.exists("haystack_test.db"):
             os.remove("haystack_test.db")
         document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
     elif document_store_type == "memory":
-        document_store = InMemoryDocumentStore(return_embedding=False)
+        document_store = inmemory_document_store
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="haystack_test", return_embedding=False)
     elif document_store_type == "faiss":
-        if os.path.exists("haystack_test_faiss.db"):
-            os.remove("haystack_test_faiss.db")
-        document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", return_embedding=False)
+        document_store = faiss_document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
@@ -207,9 +295,11 @@ def get_retriever(retriever_type, document_store):
     elif retriever_type == "tfidf":
         return TfidfRetriever(document_store=document_store)
     elif retriever_type == "embedding":
-        retriever = EmbeddingRetriever(document_store=document_store,
-                                       embedding_model="deepset/sentence_bert",
-                                       use_gpu=False)
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="deepset/sentence_bert",
+            use_gpu=False
+        )
     elif retriever_type == "elasticsearch":
         retriever = ElasticsearchRetriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
