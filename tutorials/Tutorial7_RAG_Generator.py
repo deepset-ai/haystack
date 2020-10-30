@@ -50,7 +50,6 @@ retriever = DensePassageRetriever(
     passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
     use_gpu=False,
     embed_title=True,
-    remove_sep_tok_from_untitled_passages=True,
 )
 
 # Initialize RAG Generator
