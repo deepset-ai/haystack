@@ -475,12 +475,6 @@ class FARMReader(BaseReader):
                                 "is_impossible": False
                             }
 
-            # for k, dictionary in aggregated_per_question.items():
-            #     if len(dictionary["answers"]) == 0:
-            #         dictionary["is_impossible"] = True
-            #     else:
-            #         dictionary["is_impossible"] = False
-
             # Get rid of the question key again (after we aggregated we don't need it anymore)
             d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
 
