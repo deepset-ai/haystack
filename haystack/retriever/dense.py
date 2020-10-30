@@ -22,7 +22,6 @@ from farm.data_handler.processor import TextSimilarityProcessor
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.dataloader import NamedDataLoader
 from farm.modeling.optimization import initialize_optimizer
-from farm.eval import Evaluator
 from farm.train import Trainer
 from torch.utils.data.sampler import SequentialSampler
 
@@ -290,9 +289,8 @@ class DensePassageRetriever(BaseRetriever):
         # 7. Let it grow! Watch the tracked metrics live on the public mlflow server: https://public-mlflow.deepset.ai
         trainer.train()
 
-        save_dir = Path(save_dir)
-        self.model.save(save_dir, lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
-        self.processor.save(save_dir)
+        self.model.save(Path(save_dir), lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
+        self.processor.save(Path(save_dir))
 
 
 class EmbeddingRetriever(BaseRetriever):
