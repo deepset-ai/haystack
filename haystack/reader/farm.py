@@ -445,23 +445,47 @@ class FARMReader(BaseReader):
                 for label in aggregated_per_doc[doc_id]:
                     # add to existing answers
                     if label.question in aggregated_per_question.keys():
-                        # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
-                        if len(aggregated_per_question[label.question]["answers"]) >= 6:
+                        if label.offset_start_in_doc == 0 and label.answer == "":
                             continue
-                        aggregated_per_question[label.question]["answers"].append({
-                                    "text": label.answer,
-                                    "answer_start": label.offset_start_in_doc})
+                        else:
+                            # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
+                            if len(aggregated_per_question[label.question]["answers"]) >= 6:
+                                continue
+                            aggregated_per_question[label.question]["answers"].append({
+                                        "text": label.answer,
+                                        "answer_start": label.offset_start_in_doc})
+                            aggregated_per_question[label.question]["is_impossible"] = False
                     # create new one
                     else:
-                        aggregated_per_question[label.question] = {
-                            "id": str(hash(str(doc_id)+label.question)),
-                            "question": label.question,
-                            "answers": [{
-                                    "text": label.answer,
-                                    "answer_start": label.offset_start_in_doc}]
-                        }
+                        # We don't need to create an answer dict if is_impossible / no_answer
+                        if label.offset_start_in_doc == 0 and label.answer == "":
+                            aggregated_per_question[label.question] = {
+                                "id": str(hash(str(doc_id) + label.question)),
+                                "question": label.question,
+                                "answers": [],
+                                "is_impossible": True
+                            }
+                        else:
+                            aggregated_per_question[label.question] = {
+                                "id": str(hash(str(doc_id)+label.question)),
+                                "question": label.question,
+                                "answers": [{
+                                        "text": label.answer,
+                                        "answer_start": label.offset_start_in_doc}],
+                                "is_impossible": False
+                            }
+
+            # for k, dictionary in aggregated_per_question.items():
+            #     if len(dictionary["answers"]) == 0:
+            #         dictionary["is_impossible"] = True
+            #     else:
+            #         dictionary["is_impossible"] = False
+
             # Get rid of the question key again (after we aggregated we don't need it anymore)
             d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
+
+
+
 
         # Convert input format for FARM
         farm_input = [v for v in d.values()]
