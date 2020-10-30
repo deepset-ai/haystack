@@ -45,11 +45,11 @@ def test_dpr_retrieval(document_store, retriever, return_embedding):
     # FAISSDocumentStore doesn't return embeddings, so these tests only work with ElasticsearchDocumentStore
     if isinstance(document_store, ElasticsearchDocumentStore):
         assert (len(docs_with_emb[0].embedding) == 768)
-        assert (abs(docs_with_emb[0].embedding[0] - (-0.30634)) < 0.001)
-        assert (abs(docs_with_emb[1].embedding[0] - (-0.37449)) < 0.001)
-        assert (abs(docs_with_emb[2].embedding[0] - (-0.24695)) < 0.001)
-        assert (abs(docs_with_emb[3].embedding[0] - (-0.08017)) < 0.001)
-        assert (abs(docs_with_emb[4].embedding[0] - (-0.01534)) < 0.001)
+        assert (abs(docs_with_emb[0].embedding[0] - (-0.3063)) < 0.001)
+        assert (abs(docs_with_emb[1].embedding[0] - (-0.3914)) < 0.001)
+        assert (abs(docs_with_emb[2].embedding[0] - (-0.2470)) < 0.001)
+        assert (abs(docs_with_emb[3].embedding[0] - (-0.0802)) < 0.001)
+        assert (abs(docs_with_emb[4].embedding[0] - (-0.0551)) < 0.001)
 
     res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?")
 

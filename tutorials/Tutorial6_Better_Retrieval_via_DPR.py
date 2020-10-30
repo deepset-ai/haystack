@@ -29,9 +29,13 @@ document_store.write_documents(dicts)
 retriever = DensePassageRetriever(document_store=document_store,
                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
                                   passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                  max_seq_len_query=64,
+                                  max_seq_len_passage=256,
+                                  batch_size=2,
                                   use_gpu=True,
                                   embed_title=True,
-                                  remove_sep_tok_from_untitled_passages=True)
+                                  use_fast_tokenizers=True
+                                  )
 
 # Important:
 # Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all

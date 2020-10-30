@@ -180,7 +180,7 @@ def dpr_retriever(faiss_document_store):
         passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
         use_gpu=False,
         embed_title=True,
-        remove_sep_tok_from_untitled_passages=True
+        use_fast_tokenizers=True
     )
 
 
@@ -288,14 +288,10 @@ def get_document_store(document_store_type, faiss_document_store, inmemory_docum
 def get_retriever(retriever_type, document_store):
 
     if retriever_type == "dpr":
-        retriever = DensePassageRetriever(
-            document_store=document_store,
-            query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-            passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-            use_gpu=False,
-            embed_title=True,
-            remove_sep_tok_from_untitled_passages=True
-        )
+        retriever = DensePassageRetriever(document_store=document_store,
+                                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                          use_gpu=False, embed_title=True)
     elif retriever_type == "tfidf":
         return TfidfRetriever(document_store=document_store)
     elif retriever_type == "embedding":
