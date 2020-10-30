@@ -47,7 +47,8 @@ class DensePassageRetriever(BaseRetriever):
                  use_gpu: bool = True,
                  batch_size: int = 16,
                  embed_title: bool = True,
-                 use_fast_tokenizers: bool = True
+                 use_fast_tokenizers: bool = True,
+                 similarity_function: str = "dot_product"
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -96,16 +97,16 @@ class DensePassageRetriever(BaseRetriever):
                                                   language_model_class="DPRContextEncoder")
 
         self.processor = TextSimilarityProcessor(tokenizer=self.query_tokenizer,
-                                            passage_tokenizer=self.passage_tokenizer,
-                                            max_seq_len_passage=self.max_seq_len_passage,
-                                            max_seq_len_query=self.max_seq_len_query,
-                                            label_list=["hard_negative", "positive"],
-                                            metric="text_similarity_metric",
-                                            embed_title=self.embed_title,
-                                            num_hard_negatives=0,
-                                            num_negatives=0)
+                                                 passage_tokenizer=self.passage_tokenizer,
+                                                 max_seq_len_passage=self.max_seq_len_passage,
+                                                 max_seq_len_query=self.max_seq_len_query,
+                                                 label_list=["hard_negative", "positive"],
+                                                 metric="text_similarity_metric",
+                                                 embed_title=self.embed_title,
+                                                 num_hard_negatives=0,
+                                                 num_negatives=0)
 
-        prediction_head = TextSimilarityHead(similarity_function="text_similarity_function")
+        prediction_head = TextSimilarityHead(similarity_function=similarity_function)
         self.model = BiAdaptiveModel(
             language_model1=self.query_encoder,
             language_model2=self.passage_encoder,
@@ -150,7 +151,6 @@ class DensePassageRetriever(BaseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        #preds_all = []
         all_embeddings = {"query": torch.tensor([]), "passages": torch.tensor([])}
         self.model.eval()
         for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=False)):
@@ -199,25 +199,46 @@ class DensePassageRetriever(BaseRetriever):
     def train(self,
               data_dir: str,
               train_filename: str,
-              dev_filename=None ,
-              test_filename=None,
-              batch_size=2,
-              embed_title=True,
-              num_hard_negatives=1,
-              num_negatives=0,
-              n_epochs=3,
-              evaluate_every=1000,
-              n_gpu=1,
-              similarity_function="dot_product",
-              learning_rate=1e-5,
-              epsillon=1e-08,
-              weight_decay=0.0,
-              num_warmup_steps=100,
-              grad_acc_steps=1,
-              optimizer_name="TransformersAdamW",
-              optimizer_correct_bias=True,
-              save_dir="../saved_models/dpr-tutorial",
+              dev_filename: str = None,
+              test_filename: str = None,
+              batch_size: int = 2,
+              embed_title: bool = True,
+              num_hard_negatives: int = 1,
+              num_negatives: int = 0,
+              n_epochs: int = 3,
+              evaluate_every: int = 1000,
+              n_gpu: int = 1,
+              learning_rate: float = 1e-5,
+              epsilon: float = 1e-08,
+              weight_decay: float = 0.0,
+              num_warmup_steps: int = 100,
+              grad_acc_steps: int = 1,
+              optimizer_name: str = "TransformersAdamW",
+              optimizer_correct_bias: bool = True,
+              save_dir: str = "../saved_models/dpr-tutorial",
               ):
+        """
+        train a DensePassageRetrieval model
+        :param data_dir: Directory where training file, dev file and test file are present
+        :param train_filename: training filename
+        :param dev_filename: development set filename, file to be used by model in eval step of training
+        :param test_filename: test set filename, file to be used by model in test step after training
+        :param batch_size: total number of samples in 1 batch of data
+        :param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
+        :param num_hard_negatives: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
+        :param num_negatives: number of negative passages(any random passage from dataset which do not contain answer to query)
+        :param n_epochs: number of epochs to train the model on
+        :param evaluate_every: number of training steps after evaluation is run
+        :param n_gpu: number of gpus to train on
+        :param learning_rate: learning rate of optimizer
+        :param epsilon: epsilon parameter of optimizer
+        :param weight_decay: weight decay parameter of optimizer
+        :param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
+        :param optimizer_name: what optimizer to use (default: TransformersAdamW)
+        :param num_warmup_steps: number of warmup steps
+        :param optimizer_correct_bias: Whether to correct bias in optimizer
+        :param save_dir: directory where models are saved
+        """
 
         self.embed_title = embed_title
         self.processor = TextSimilarityProcessor(tokenizer=self.query_tokenizer,
@@ -229,13 +250,12 @@ class DensePassageRetriever(BaseRetriever):
                                                  data_dir=data_dir,
                                                  train_filename=train_filename,
                                                  dev_filename=dev_filename,
-                                                 test_filename=dev_filename,
+                                                 test_filename=test_filename,
                                                  embed_title=self.embed_title,
                                                  num_hard_negatives=num_hard_negatives,
                                                  num_negatives=num_negatives)
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
-        self.model.prediction_head[0].similarity_function = similarity_function
 
         data_silo = DataSilo(processor=self.processor, batch_size=batch_size, distributed=False)
 
@@ -244,7 +264,7 @@ class DensePassageRetriever(BaseRetriever):
             model=self.model,
             learning_rate=learning_rate,
             optimizer_opts={"name": optimizer_name, "correct_bias": optimizer_correct_bias,
-                            "weight_decay": weight_decay, "eps": epsillon},
+                            "weight_decay": weight_decay, "eps": epsilon},
             schedule_opts={"name": "LinearWarmup", "num_warmup_steps": num_warmup_steps},
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
@@ -381,4 +401,3 @@ class EmbeddingRetriever(BaseRetriever):
         texts = [d.text for d in docs]
 
         return self.embed(texts)
-
