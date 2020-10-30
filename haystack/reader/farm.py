@@ -338,6 +338,7 @@ class FARMReader(BaseReader):
             inputs.append(cur)
 
         # get answers from QA model
+        # TODO: Need fix in FARM's `to_dict` function of `QAInput` class
         predictions = self.inferencer.inference_from_objects(
             objects=inputs, return_json=False, multiprocessing_chunksize=1
         )
