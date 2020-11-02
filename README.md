@@ -25,7 +25,7 @@
     </a>
 </p>
 
-Haystack is an end-to-end framework for Question Answering & Neural search enabling you to ...
+Haystack is an end-to-end framework for Question Answering & Neural search that enables you to ...
 
 ... **ask questions** in natural language and find granular answers in your own documents.  
 ... **do semantic document search** and retrieve more relevant documents for your search queries.  
@@ -42,15 +42,15 @@ Haystack is an end-to-end framework for Question Answering & Neural search enabl
 | :art: [Key components](https://github.com/deepset-ai/haystack/#key-components) | Overview of core concepts |
 | :eyes: [Quick Tour](https://github.com/deepset-ai/haystack/#quick-tour) | Basic explanation of concepts, options and usage |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
-| :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers ... |
+| :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers and DocumentStores |
 | :telescope: [Roadmap](https://haystack.deepset.ai/en/docs/roadmapmd) | Public roadmap of Haystack |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
 
 ## Core Features
 
--   **Latest models**: Utilize all latest transformer based models (BERT, RoBERTa, MiniLM ...) for extractive QA, generative QA and document retrieval.
+-   **Latest models**: Utilize all latest transformer based models (e.g. BERT, RoBERTa, MiniLM) for extractive QA, generative QA and document retrieval.
 -   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter or modeling framwework.
--   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (Transformers, FARM, sentence-transformers ...)
+-   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g. Transformers, FARM, sentence-transformers)
 -   **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS and a fastAPI REST API
 -   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling ...    
 -   **Developer friendly**: Easy to debug, extend and modify.
