@@ -39,7 +39,7 @@ Haystack is an end-to-end framework for Question Answering & Neural search enabl
 |-|-|
 | :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
 | :computer: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install |
-| :art: [Key components](https://github.com/deepset-ai/haystack/#installation) | Overview of core concepts |
+| :art: [Key components](https://github.com/deepset-ai/haystack/#key-components) | Overview of core concepts |
 | :eyes: [Quick Tour](https://github.com/deepset-ai/haystack/#quick-tour) | Basic explanation of concepts, options and usage |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers ... |
@@ -316,7 +316,7 @@ You will find the Swagger API documentation at
 ![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/annotation_tool.png)
 
 
-## Contributing
+## :heart: Contributing
 
 We are very open to contributions from the community - be it the fix of a small typo or a completely new feature! You don't need to be an
 Haystack expert for providing meaningful improvements. To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
