@@ -44,7 +44,7 @@ Haystack is an end-to-end framework for Question Answering & Neural search enabl
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers ... |
 | :telescope: [Roadmap](https://haystack.deepset.ai/en/docs/roadmapmd) | Public roadmap of Haystack |
-| :heart: [Contributing](https://github.com/deepset-ai/haystack/#contributing) | We welcome contributions! |
+| :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
 
 ## Core Features
 
