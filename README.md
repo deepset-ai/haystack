@@ -1,9 +1,9 @@
 <p align="center">
     <br>
-    <img src="https://github.com/deepset-ai/haystack/blob/master/docs/_src/img/haystack_logo_blue_banner.png?raw=true" width="600"/>
+    <img src="https://github.com/deepset-ai/haystack/blob/master/docs/_src/img/haystack_logo_blue_banner.png?raw=true" />
     <br>
 <p>
-<p align="center">
+<p>
     <a href="https://github.com/deepset-ai/haystack/actions">
         <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
     </a>
@@ -25,15 +25,26 @@
     </a>
 </p>
 
-Haystack is an end-to-end framework for Question Answering & Neural search. With Haystack you can ...
+Haystack is an end-to-end framework for Question Answering & Neural search enabling you to ...
 
-... ask questions in natural language and find granular answers in your own documents.  
-... do semantic search and retrieve more relevant documents for your search queries.  
-... search at scale through millions of documents.  
-... use off-the-shelf models or fine-tune them to your own domain.  
-... evaluate, benchmark and continuously improve your models via user feedback.  
-... leverage existing knowledge bases for the long-tail of chat bot queries.  
-... automate processes by automatically applying a list of questions to new documents and using the extracted answers.  
+... **ask questions** in natural language and find granular answers in your own documents.  
+... **do semantic document search** and retrieve more relevant documents for your search queries.  
+... **search at scale** through millions of documents.  
+... **use off-the-shelf models or fine-tune** them to your own domain.  
+... **evaluate, benchmark and continuously improve** your models via user feedback.  
+... **improve chat bots** by leveraging existing knowledge bases for the long tail of queries.  
+... **automate processes** by automatically applying a list of questions to new documents and using the extracted answers.  
+
+|  |  |
+|-|-|
+| :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
+| :computer: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install |
+| :art: [Key components](https://github.com/deepset-ai/haystack/#installation) | Overview of core concepts |
+| :eyes: [Quick Tour](https://github.com/deepset-ai/haystack/#quick-tour) | Basic explanation of concepts, options and usage |
+| :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
+| :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers ... |
+| :telescope: [Roadmap](https://haystack.deepset.ai/en/docs/roadmapmd) | Public roadmap of Haystack |
+| :heart: [Contributing](https://github.com/deepset-ai/haystack/#contributing) | We welcome contributions! |
 
 ## Core Features
 
@@ -46,17 +57,6 @@ Haystack is an end-to-end framework for Question Answering & Neural search. With
 -   **Customizable**: Fine-tune models to your own domain or implement your custom DocumentStore.
 -   **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
 
-## Overview
-|  |  |
-|-|-|
-| :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
-| :computer: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install |
-| :art: [Key components](https://github.com/deepset-ai/haystack/#installation) | Overview of core concepts |
-| :eyes: [Quick Tour](https://github.com/deepset-ai/haystack/#quick-tour) | Basic explanation of concepts, options and usage |
-| :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
-| :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers ... |
-| :telescope: [Roadmap](https://haystack.deepset.ai/en/docs/roadmapmd) | Public roadmap of Haystack |
-| :heart: [Contributing](https://github.com/deepset-ai/haystack/#contributing) | We welcome contributions! |
 
 ## Installation
 
