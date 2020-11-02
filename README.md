@@ -1,14 +1,30 @@
-![image](https://github.com/deepset-ai/haystack/blob/master/docs/_src/img/haystack_logo_blue_banner.png?raw=true%0A%20:align:%20center%0A%20:alt:%20Haystack%20Logo)
+<p align="center">
+    <br>
+    <img src="https://github.com/deepset-ai/haystack/blob/master/docs/_src/img/haystack_logo_blue_banner.png?raw=true" width="600"/>
+    <br>
+<p>
+<p align="center">
+    <a href="https://github.com/deepset-ai/haystack/actions">
+        <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
+    </a>
+    <a href="http://mypy-lang.org/">
+        <img alt="Checked with MyPy" src="https://camo.githubusercontent.com/34b3a249cd6502d0a521ab2f42c8830b7cfd03fa/687474703a2f2f7777772e6d7970792d6c616e672e6f72672f7374617469632f6d7970795f62616467652e737667">
+    </a>
+    <a href="https://haystack.deepset.ai/docs/intromd">
+        <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
+    </a>
+    <a href="https://github.com/deepset-ai/haystack/releases">
+        <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
+    </a>
+    <a href="https://github.com/deepset-ai/haystack/blob/master/LICENSE">
+        <img alt="License" src="https://img.shields.io/github/license/deepset-ai/haystack.svg?color=blue">
+    </a>
+        </a>
+    <a href="https://github.com/deepset-ai/haystack/commits/master">
+        <img alt="Last commit" src="https://img.shields.io/github/last-commit/deepset-ai/haystack">
+    </a>
+</p>
 
-![image](https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master%0A%20:target:%20https://github.com/deepset-ai/haystack/actions%0A%20:alt:%20Build)
-
-![image](https://camo.githubusercontent.com/34b3a249cd6502d0a521ab2f42c8830b7cfd03fa/687474703a2f2f7777772e6d7970792d6c616e672e6f72672f7374617469632f6d7970795f62616467652e737667%0A%20:target:%20http://mypy-lang.org/%0A%20:alt:%20Checked%20with%20mypy)
-
-![image](https://img.shields.io/github/release/deepset-ai/haystack%0A%20:target:%20https://github.com/deepset-ai/haystack/releases%0A%20:alt:%20Release)
-
-![image](https://img.shields.io/github/license/deepset-ai/haystack%0A%20:target:%20https://github.com/deepset-ai/haystack/blob/master/LICENSE%0A%20:alt:%20License)
-
-![image](https://img.shields.io/github/last-commit/deepset-ai/haystack%0A%20:target:%20https://github.com/deepset-ai/haystack/commits/master%0A%20:alt:%20Last%20Commit)
 
 ## End-to-End Framework for Question Answering & Neural Search at Scale 
 
@@ -19,7 +35,7 @@ With Haystack you can ...
 ... search at scale through millions of documents.  
 ... use off-the-shelf models or fine-tune them to your own domain.  
 ... evaluate, benchmark and continuously improve your models via user feedback.  
-... leverage existing knowledge bases for the long-tail of chat bot queries. 
+... leverage existing knowledge bases for the long-tail of chat bot queries.  
 ... automate processes by automatically applying a list of questions to new documents and using the extracted answers.  
 
 ## Core Features
@@ -63,7 +79,7 @@ will update changes immediately.
 
 On Windows you might need:
 ```
-pip install farm-haystack -f pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
+pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
 ## Key Components
@@ -80,11 +96,17 @@ We recommend Elasticsearch or FAISS, but have also more light-weight options for
     and state of the are dense methods (e.g. sentence-transformers and Dense Passage Retrieval)
 5.  **Reader**: Neural network (e.g. BERT or RoBERTA) that reads through texts in detail
     to find an answer. The Reader takes multiple passages of text as input and returns top-n answers. Models are trained via [FARM](https://github.com/deepset-ai/FARM) or [Transformers](https://github.com/huggingface/transformers) on SQuAD like tasks.  You can just load a pretrained model from [Hugging Face's model hub](https://huggingface.co/models) or fine-tune it on your own domain data.
-6.  **Generator**: Neural network (e.g. RAG) that **generates** an answer for a given question conditioned on the retrieved documents from the retriever.
+6.  **Generator**: Neural network (e.g. RAG) that *generates* an answer for a given question conditioned on the retrieved documents from the retriever.
 6.  **Finder**: Glues together a Retriever + Reader/Generator as a pipeline to provide an easy-to-use question answering interface.
 7.  **REST API**: Exposes a simple API based on fastAPI for running QA search, uploading files and collecting user feedback for continuous learning.
 8.  **Haystack Annotate**: Create custom QA labels to improve performance of your domain-specific models. [Hosted version](https://annotate.deepset.ai/login) or [Docker images](https://github.com/deepset-ai/haystack/tree/master/annotation_tool). 
 
+
+
+Usage
+-----
+
+![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/code_snippet_usage.png)
 
 Tutorials
 =========
@@ -109,25 +131,20 @@ Tutorials
     or
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb)
 
-Usage
------
-
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/code_snippet_usage.png)
-
-##Quick Tour
+## Quick Tour
 ### 1) File Conversion
-**What**
+**What**  
 Different converters to extract text from your original files (PDF, Docx, txt, html).
 While it's almost impossible to cover all types, layouts and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta information (e.g. page splits).
 The converters are easily extendable, so that you can customize them for your files if needed.
 
-**Available options**
+**Available options**  
 - Txt
 - PDF 
 - Docx
 - Apache Tika (Supports > 340 file formats)
 
-**Example**
+**Example**  
 
 ```python
 #PDF
@@ -145,42 +162,42 @@ doc = converter.convert(file_path=file, meta=None)
 
 
 ### 2) Preprocessing
-**What**
+**What**  
 
-**Available Options**
+**Available Options**  
 
-**Example**
+**Example**  
 
 ### 3) DocumentStores
 
-**What** 
+**What**  
 -  Store your texts, meta data and optionally embeddings
 -  Documents should be chunked into smaller units (e.g. paragraphs)
     before indexing to make the results returned by the Retriever more
     granular and accurate.
     
-**Available Options**
+**Available Options**  
 
 - Elasticsearch
 - InMemory
 - FAISS
 - SQL
 
-**Example**
+**Example**  
 
 -> Detailed docs
 
-## 2) Retrievers
+## 4) Retrievers
 
-**What**
+**What**  
 
-**Available Options**
+**Available Options**  
 - DensePassageRetriever
 - ElasticsearchRetriever
 - EmbeddingRetriever
 - TfidfRetriever
 
-**Example**
+**Example**  
 
 ```python
 retriever = DensePassageRetriever(document_store=document_store,
@@ -194,9 +211,9 @@ retriever.retrieve(query="Why did the revenue increase?")
 ```
 
 
-## 3) Readers
+## 5) Readers
 
-**What**
+**What**  
 Neural networks (i.e. mostly Transformer-based) that read through texts
 in detail to find an answer. Use diverse models like BERT, RoBERTa or
 XLNet trained via [FARM](https://github.com/deepset-ai/FARM) or on
@@ -205,12 +222,12 @@ and returns top-n answers with corresponding confidence scores. Both
 readers can load either a local model or any public model from [Hugging
 Face's model hub](https://huggingface.co/models)
 
-**Available Options**
+**Available Options**   
 - FARMReader: Reader based on [FARM](https://github.com/deepset-ai/FARM) incl. extensive configuration options and speed optimizations
 - TransformersReader: Reader based on the `pipeline` class of HuggingFace's [Transformers](https://github.com/huggingface/transformers).
 **Both** Readers can load models directly from HuggingFace's model hub.
 
-**Example**
+**Example**  
 
 ```python
 reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2",
@@ -226,8 +243,8 @@ reader.eval(...)
 reader.predict(question="Who is the father of Arya Starck?", documents=documents, top_k=3)
 ```
 
-## 5. REST API
-**What**
+## 6. REST API
+**What**  
 A simple REST API based on [FastAPI](https://fastapi.tiangolo.com/) is
 provided to:
 
@@ -239,7 +256,7 @@ provided to:
     ([feedback](https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/feedback.py))
 -   allow basic monitoring of requests (currently via APM in Kibana)
 
-**Example** 
+**Example**  
 To serve the API, adjust the values in `rest_api/config.py` and run:
 
     gunicorn rest_api.application:app -b 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker -t 300
@@ -247,7 +264,7 @@ To serve the API, adjust the values in `rest_api/config.py` and run:
 You will find the Swagger API documentation at
 <http://127.0.0.1:8000/docs>
 
-## 6. Labeling Tool
+## 7. Labeling Tool
 
 -   Use the [hosted version](https://annotate.deepset.ai/login) (Beta)
     or deploy it yourself with the [Docker Images](https://github.com/deepset-ai/haystack/blob/master/annotation_tool).
@@ -273,10 +290,9 @@ Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md)
 first.
 
 Tests will automatically run for every commit you push to your PR. You
-can also run them locally by executing
-[pytest](https://docs.pytest.org/en/stable/) in your terminal from the
+can also run them locally by executing [pytest](https://docs.pytest.org/en/stable/) in your terminal from the
 root folder of this repository:
 
-``` {.sourceCode .bash}
+``` bash
 pytest test/
 ```
