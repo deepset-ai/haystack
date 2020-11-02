@@ -25,10 +25,7 @@
     </a>
 </p>
 
-
-## End-to-End Framework for Question Answering & Neural Search at Scale 
-
-With Haystack you can ...
+Haystack is an end-to-end framework for Question Answering & Neural search. With Haystack you can ...
 
 ... ask questions in natural language and find granular answers in your own documents.  
 ... do semantic search and retrieve more relevant documents for your search queries.  
@@ -50,19 +47,18 @@ With Haystack you can ...
 -   **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
 
 ## Overview
-
-| What | Description |
+|  |  |
 |-|-|
 | :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
+| :computer: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install |
+| :art: [Key components](https://github.com/deepset-ai/haystack/#installation) | Overview of core concepts |
+| :eyes: [Quick Tour](https://github.com/deepset-ai/haystack/#quick-tour) | Basic explanation of concepts, options and usage |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers ... |
 | :telescope: [Roadmap](https://haystack.deepset.ai/en/docs/roadmapmd) | Public roadmap of Haystack |
+| :heart: [Contributing](https://github.com/deepset-ai/haystack/#contributing) | We welcome contributions! |
 
-Quick Start
-===========
-
-Installation
-------------
+## Installation
 
 PyPi:
 
@@ -103,13 +99,11 @@ We recommend Elasticsearch or FAISS, but have also more light-weight options for
 
 
 
-Usage
------
+## Usage
 
 ![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/code_snippet_usage.png)
 
-Tutorials
-=========
+## Tutorials
 
 -   Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
     or
@@ -134,9 +128,8 @@ Tutorials
 ## Quick Tour
 ### 1) File Conversion
 **What**  
-Different converters to extract text from your original files (PDF, Docx, txt, html).
-While it's almost impossible to cover all types, layouts and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta information (e.g. page splits).
-The converters are easily extendable, so that you can customize them for your files if needed.
+Different converters to extract text from your original files (pdf, docx, txt, html).
+While it's almost impossible to cover all types, layouts and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta information (e.g. page splits). The converters are easily extendable, so that you can customize them for your files if needed.
 
 **Available options**  
 - Txt
@@ -163,10 +156,44 @@ doc = converter.convert(file_path=file, meta=None)
 
 ### 2) Preprocessing
 **What**  
+Cleaning and splitting of your texts are crucial steps that will directly impact the speed and accuracy of your search.
+Especially the splitting of larger texts is key to achieve fast query speed. The longer the texts that the retriever passes to the reader, the slower your queries. 
 
 **Available Options**  
+We provide a basic `PreProcessor` class that allows: 
+- clean whitespace, headers, footers, empty lines ...
+- split by words, sentences or passages
+- option for "overlapping" splits 
+- option to never split within a sentence
+
+You can easily extend this class to your own custom requirements. 
 
 **Example**  
+```python 
+converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
+
+processor = PreProcessor(clean_empty_lines=True,
+                         clean_whitespace=True,
+                         clean_header_footer=True,
+                         split_by="word",
+                         split_length=200,
+                         split_respect_sentence_boundary=True)
+docs = []
+for f_name, f_path in zip(filenames, filepaths):
+    # Optional: Supply any meta data here
+    # the "name" field will be used by DPR if embed_title=True, rest is custom and can be named arbitrarily
+    cur_meta = {"name": f_name, "category": "a" ...}
+    
+    # Run the conversion on each file (PDF -> 1x doc)
+    d = converter.convert(f_path, meta=cur_meta)
+    
+    # clean and split each dict (1x doc -> multiple docs)
+    d = processor.process(d)
+    docs.extend(d)
+
+# at this point docs will be [{"text": "some", "meta":{"name": "myfilename", "category":"a"}},...]
+document_store.write_documents(docs)
+```
 
 ### 3) DocumentStores
 
@@ -179,15 +206,31 @@ doc = converter.convert(file_path=file, meta=None)
 **Available Options**  
 
 - Elasticsearch
-- InMemory
 - FAISS
 - SQL
+- InMemory
 
 **Example**  
 
--> Detailed docs
+```python 
 
-## 4) Retrievers
+# Run elasticsearch, e.g. via docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2
+
+# Connect 
+document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
+
+# Get all documents
+document_store.get_all_documents()
+
+# Query
+document_store.query(query="What is the meaning of life?", filters=None, top_k=5)
+document_store.query_by_embedding(query_emb, filters=None, top_k=5)
+
+``` 
+-> See [docs](https://haystack.deepset.ai/docs/latest/databasemd) for details
+
+
+### 4) Retrievers
 
 **What**  
 
@@ -210,16 +253,15 @@ retriever.retrieve(query="Why did the revenue increase?")
 # returns: [Document, Document]
 ```
 
+-> See [docs](https://haystack.deepset.ai/docs/latest/retrievermd) for details
 
-## 5) Readers
+
+### 5) Readers
 
 **What**  
-Neural networks (i.e. mostly Transformer-based) that read through texts
-in detail to find an answer. Use diverse models like BERT, RoBERTa or
-XLNet trained via [FARM](https://github.com/deepset-ai/FARM) or on
-SQuAD-like datasets. The Reader takes multiple passages of text as input
-and returns top-n answers with corresponding confidence scores. Both
-readers can load either a local model or any public model from [Hugging
+Neural networks (i.e. mostly Transformer-based) that read through texts in detail to find an answer. Use diverse models like BERT, RoBERTa or
+XLNet trained via [FARM](https://github.com/deepset-ai/FARM) or on SQuAD-like datasets. The Reader takes multiple passages of text as input
+and returns top-n answers with corresponding confidence scores. Both readers can load either a local model or any public model from [Hugging
 Face's model hub](https://huggingface.co/models)
 
 **Available Options**   
@@ -242,11 +284,11 @@ reader.eval(...)
 # Predict
 reader.predict(question="Who is the father of Arya Starck?", documents=documents, top_k=3)
 ```
+-> See [docs](https://haystack.deepset.ai/docs/latest/readermd) for details
 
-## 6. REST API
+### 6) REST API
 **What**  
-A simple REST API based on [FastAPI](https://fastapi.tiangolo.com/) is
-provided to:
+A simple REST API based on [FastAPI](https://fastapi.tiangolo.com/) is provided to:
 
 -   search answers in texts ([extractive QA](https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/search.py))
 -   search answers by comparing user question to existing questions
@@ -264,35 +306,36 @@ To serve the API, adjust the values in `rest_api/config.py` and run:
 You will find the Swagger API documentation at
 <http://127.0.0.1:8000/docs>
 
-## 7. Labeling Tool
+### 7) Labeling Tool
 
--   Use the [hosted version](https://annotate.deepset.ai/login) (Beta)
-    or deploy it yourself with the [Docker Images](https://github.com/deepset-ai/haystack/blob/master/annotation_tool).
--   Create labels with different techniques: Come up with questions (+
-    answers) while reading passages (SQuAD style) or have a set of
-    predefined questions and look for answers in the document (\~
-    Natural Questions).
+-   Use the [hosted version](https://annotate.deepset.ai/login) (Beta) or deploy it yourself with the [Docker Images](https://github.com/deepset-ai/haystack/blob/master/annotation_tool).
+-   Create labels with different techniques: Come up with questions (+ answers) while reading passages (SQuAD style) or have a set of predefined questions and look for answers in the document (~ Natural Questions).
 -   Structure your work via organizations, projects, users
--   Upload your documents or import labels from an existing SQuAD-style
-    dataset
+-   Upload your documents or import labels from an existing SQuAD-style dataset
 
 ![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/annotation_tool.png)
 
 
-Contributing
-============
+## Contributing
 
-We are very open to contributions from the community - be it the fix of
-a small typo or a completely new feature! You don't need to be an
-Haystack expert for providing meaningful improvements. To avoid any
-extra work on either side, please check our [Contributor
-Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md)
-first.
+We are very open to contributions from the community - be it the fix of a small typo or a completely new feature! You don't need to be an
+Haystack expert for providing meaningful improvements. To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
 
-Tests will automatically run for every commit you push to your PR. You
-can also run them locally by executing [pytest](https://docs.pytest.org/en/stable/) in your terminal from the
-root folder of this repository:
+Tests will automatically run for every commit you push to your PR. You can also run them locally by executing [pytest](https://docs.pytest.org/en/stable/) in your terminal from the root folder of this repository:
 
+All tests:
 ``` bash
-pytest test/
+cd test
+pytest
+```
+
+You can also only run a subset of tests by specifying a marker and the optional "not" keyword: 
+``` bash
+cd test
+pytest -m not elasticsearch
+pytest -m elasticsearch
+pytest -m generator
+pytest -m tika
+pytest -m not slow
+...
 ```
