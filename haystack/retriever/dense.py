@@ -5,13 +5,9 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 
-from farm.infer import Inferencer
-
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.base import BaseRetriever
-from haystack.retriever.sparse import logger
 
 from farm.infer import Inferencer
 from farm.modeling.tokenization import Tokenizer
@@ -374,6 +370,8 @@ class EmbeddingRetriever(BaseRetriever):
         assert type(texts) == list, "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
 
         if self.model_format == "farm" or self.model_format == "transformers":
+            # TODO: FARM's `sample_to_features_text` need to fix following warning -
+            # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
             emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])  # type: ignore
             emb = [(r["vec"]) for r in emb]
         elif self.model_format == "sentence_transformers":
