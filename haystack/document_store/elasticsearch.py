@@ -304,7 +304,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
         body = {"doc": meta}
-        self.client.update(index=self.index, doc_type="_doc", id=id, body=body, refresh=self.refresh_type)
+        self.client.update(index=self.index, id=id, body=body, refresh=self.refresh_type)
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         index = index or self.index
