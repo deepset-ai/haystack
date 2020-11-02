@@ -26,28 +26,28 @@
       "n_docs": 100000,
       "index_speed": 79.54165185,
       "query_speed": 6.5360000000000005,
-      "map": 0.863
+      "map": 86.3
     },
     {
       "model": "DPR / FAISS (flat)",
       "n_docs": 100000,
       "index_speed": 107.8662479,
       "query_speed": 5.044,
-      "map": 0.863
+      "map": 86.3
     },
     {
       "model": "BM25 / ElasticSearch",
       "n_docs": 100000,
       "index_speed": 476.9143596,
       "query_speed": 162.996,
-      "map": 0.56
+      "map": 56.0
     },
     {
       "model": "DPR / FAISS (HSNW)",
       "n_docs": 100000,
       "index_speed": 92.24548333,
       "query_speed": 12.815,
-      "map": 0.8490000000000001
+      "map": 84.9
     }
   ]
   
