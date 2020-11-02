@@ -159,8 +159,11 @@ Example
 .. code-block:: python
 
     retriever = DensePassageRetriever(document_store=document_store,
-                                      embedding_model="dpr-bert-base-nq",
-                                      do_lower_case=True, use_gpu=True)
+                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                      use_gpu=True,
+                                      batch_size=16,
+                                      embed_title=True)
     retriever.retrieve(query="Why did the revenue increase?")
     # returns: [Document, Document]
 
