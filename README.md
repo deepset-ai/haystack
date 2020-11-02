@@ -235,6 +235,7 @@ document_store.query_by_embedding(query_emb, filters=None, top_k=5)
 ### 4) Retrievers
 
 **What**  
+The Retriever is a fast "filter" that can quickly go through the full document store and pass a set of candidate documents to the Reader. It is an tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process. There are two fundamentally different categories of retrievers: sparse (e.g. TF-IDF, BM25) and dense (e.g. DPR, sentence-transformers).
 
 **Available Options**  
 - DensePassageRetriever
