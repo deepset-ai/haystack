@@ -28,3 +28,6 @@ The credentials should match in database image and application configuration.
 
 
 3. The UI should be available at `localhost:7001`.
+
+# Usage
+The manual (of a slightly earlier version) can be found [here](https://drive.google.com/file/d/1Wv3OIC0Z7ibHIzOm9Xw_r0gjTFmpl-33/view). While it doesn't include all latest features, the basic workflow and tips for label quality are still the same.
