@@ -126,6 +126,8 @@ We recommend Elasticsearch or FAISS, but have also more light-weight options for
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb)
 
 ## Quick Tour
+[File Conversion](https://github.com/deepset-ai/haystack/blob/markdown_readme/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/markdown_readme/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/markdown_readme/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/markdown_readme/README.md#5-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/markdown_readme/README.md#5-readers) | [REST API](https://github.com/deepset-ai/haystack/blob/markdown_readme/README.md#6-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/markdown_readme/README.md#7-labeling-tool) 
+
 ### 1) File Conversion
 **What**  
 Different converters to extract text from your original files (pdf, docx, txt, html).
