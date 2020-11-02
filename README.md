@@ -82,14 +82,14 @@ pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
 
 ![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/sketched_concepts_white.png)
 
-1.  **FileConverter**: Extracts pure text from files (pdf, docx, pptx, html ...) 
-2.  **PreProcessor**: Cleans and splits texts into smaller chunks
+1.  **FileConverter**: Extracts pure text from files (pdf, docx, pptx, html and many more). 
+2.  **PreProcessor**: Cleans and splits texts into smaller chunks.
 3.  **DocumentStore**: Database storing the documents, metadata and vectors for our search. 
 We recommend Elasticsearch or FAISS, but have also more light-weight options for fast prototyping (SQL or In-Memory).
 4.  **Retriever**: Fast algorithms that identify candidate documents for a given query from a large collection of documents. 
     Retrievers narrow down the search space significantly and are therefore key for scalable QA.
-    Haystack supports sparse methods (TF-IDF, BM25, custom elasticsearch queries)
-    and state of the are dense methods (e.g. sentence-transformers and Dense Passage Retrieval)
+    Haystack supports sparse methods (TF-IDF, BM25, custom Elasticsearch queries)
+    and state of the art dense methods (e.g. sentence-transformers and Dense Passage Retrieval)
 5.  **Reader**: Neural network (e.g. BERT or RoBERTA) that reads through texts in detail
     to find an answer. The Reader takes multiple passages of text as input and returns top-n answers. Models are trained via [FARM](https://github.com/deepset-ai/FARM) or [Transformers](https://github.com/huggingface/transformers) on SQuAD like tasks.  You can just load a pretrained model from [Hugging Face's model hub](https://huggingface.co/models) or fine-tune it on your own domain data.
 6.  **Generator**: Neural network (e.g. RAG) that *generates* an answer for a given question conditioned on the retrieved documents from the retriever.
@@ -159,11 +159,11 @@ doc = converter.convert(file_path=file, meta=None)
 ### 2) Preprocessing
 **What**  
 Cleaning and splitting of your texts are crucial steps that will directly impact the speed and accuracy of your search.
-Especially the splitting of larger texts is key to achieve fast query speed. The longer the texts that the retriever passes to the reader, the slower your queries. 
+The splitting of larger texts is especially important for achieving fast query speed. The longer the texts that the retriever passes to the reader, the slower your queries. 
 
 **Available Options**  
 We provide a basic `PreProcessor` class that allows: 
-- clean whitespace, headers, footers, empty lines ...
+- clean whitespace, headers, footer and empty lines
 - split by words, sentences or passages
 - option for "overlapping" splits 
 - option to never split within a sentence
