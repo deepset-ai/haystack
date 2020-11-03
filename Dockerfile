@@ -11,7 +11,7 @@ RUN pip install -r requirements.txt
 RUN pip install -e .
 
 # copy saved models
-COPY README.rst models* /home/user/models/
+COPY README.md models* /home/user/models/
 
 # Copy REST API code
 COPY rest_api /home/user/rest_api
