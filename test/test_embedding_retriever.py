@@ -2,6 +2,8 @@ import pytest
 from haystack import Finder
 
 
+@pytest.mark.slow
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_embedding_retriever(retriever, document_store):

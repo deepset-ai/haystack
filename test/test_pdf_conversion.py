@@ -6,6 +6,7 @@ from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.tika import TikaConverter
 
 
+@pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_convert(Converter, xpdf_fixture):
     converter = Converter()
@@ -16,6 +17,7 @@ def test_convert(Converter, xpdf_fixture):
     assert pages[2] == ""  # the page 3 of PDF file is empty.
 
 
+@pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter, xpdf_fixture):
     converter = Converter(remove_numeric_tables=True)
@@ -29,6 +31,7 @@ def test_table_removal(Converter, xpdf_fixture):
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in pages[0].replace("\n", "")
 
 
+@pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_language_validation(Converter, xpdf_fixture, caplog):
     converter = Converter(valid_languages=["en"])

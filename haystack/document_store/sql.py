@@ -196,9 +196,17 @@ class SQLDocumentStore(BaseDocumentStore):
         self.write_documents(docs, index=doc_index)
         self.write_labels(labels, index=label_index)
 
-    def get_document_count(self, index=None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         index = index or self.index
-        return self.session.query(DocumentORM).filter_by(index=index).count()
+        query = self.session.query(DocumentORM).filter_by(index=index)
+
+        if filters:
+            query = query.join(MetaORM)
+            for key, values in filters.items():
+                query = query.filter(MetaORM.name == key, MetaORM.value.in_(values))
+
+        count = query.count()
+        return count
 
     def get_label_count(self, index: Optional[str] = None) -> int:
         index = index or self.index
@@ -232,7 +240,8 @@ class SQLDocumentStore(BaseDocumentStore):
                            query_emb: List[float],
                            filters: Optional[dict] = None,
                            top_k: int = 10,
-                           index: Optional[str] = None) -> List[Document]:
+                           index: Optional[str] = None,
+                           return_embedding: Optional[bool] = None) -> List[Document]:
 
         raise NotImplementedError("SQLDocumentStore is currently not supporting embedding queries. "
                                   "Change the query type (e.g. by choosing a different retriever) "

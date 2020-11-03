@@ -101,7 +101,7 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_document_count(self, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         pass
 
     @abstractmethod
@@ -109,7 +109,8 @@ class BaseDocumentStore(ABC):
                            query_emb: List[float],
                            filters: Optional[Optional[Dict[str, List[str]]]] = None,
                            top_k: int = 10,
-                           index: Optional[str] = None) -> List[Document]:
+                           index: Optional[str] = None,
+                           return_embedding: Optional[bool] = None) -> List[Document]:
         pass
 
     @abstractmethod

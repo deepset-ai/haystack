@@ -1,5 +1,4 @@
 import os
-from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore
@@ -8,12 +7,10 @@ from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
-from time import perf_counter
-import pandas as pd
-import json
 import logging
 import subprocess
 import time
+import json
 
 from pathlib import Path
 logger = logging.getLogger(__name__)
@@ -74,6 +71,7 @@ def get_document_store(document_store_type, es_similarity='cosine'):
 
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
+    assert document_store.get_document_count() == 0
     return document_store
 
 def get_retriever(retriever_name, doc_store):
@@ -103,4 +101,21 @@ def index_to_doc_store(doc_store, docs, retriever, labels=None):
     # See the prepare_data() fn in the retriever benchmark script
     elif callable(getattr(retriever, "embed_passages", None)) and docs[0].embedding is None:
         doc_store.update_embeddings(retriever, index=doc_index)
+
+def load_config(config_filename, ci):
+    conf = json.load(open(config_filename))
+    if ci:
+        params = conf["params"]["ci"]
+    else:
+        params = conf["params"]["full"]
+    filenames = conf["filenames"]
+    max_docs = max(params["n_docs_options"])
+    n_docs_keys = sorted([int(x) for x in list(filenames["embeddings_filenames"])])
+    for k in n_docs_keys:
+        if max_docs <= k:
+            filenames["embeddings_filenames"] = [filenames["embeddings_filenames"][str(k)]]
+            filenames["filename_negative"] = filenames["filenames_negative"][str(k)]
+            break
+    return params, filenames
+
 

@@ -19,12 +19,13 @@ from haystack.file_converter.txt import TextConverter
 logger = logging.getLogger(__name__)
 
 
-def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
+def eval_data_from_file(filename: str, max_docs: Union[int, bool]=None) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
 
     :param filename: Path to file in SQuAD format
+    :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents. 
     :return: (List of Documents, List of Labels)
     """
     docs = []
@@ -32,11 +33,13 @@ def eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]:
 
     with open(filename, "r") as file:
         data = json.load(file)
-        for document in data["data"]:
+        if "title" not in data["data"][0]:
+            logger.warning(f"No title information found for documents in QA file: {filename}")
+        for document in data["data"][:max_docs]:
             # get all extra fields from document level (e.g. title)
             meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
             for paragraph in document["paragraphs"]:
-                cur_meta = {"name": document["title"]}
+                cur_meta = {"name": document.get("title", None)}
                 # all other fields from paragraph level
                 meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
                 cur_meta.update(meta_paragraph)
@@ -193,12 +196,14 @@ def tika_convert_files_to_dicts(
                     last_para = ''
                     for para in paras:
                         para = para.strip()
-                        if not para: continue
+                        if not para:
+                            continue
                         # merge paragraphs to improve qa
                         # merge this paragraph if less than 10 characters or 2 words
                         # or this paragraph starts with a lower case and last paragraph does not end with a punctuation
-                        if merge_short and len(para) < 10 or len(re.findall('\s+', para)) < 2 \
-                            or merge_lowercase and para and para[0].islower() and last_para and last_para[-1] not in '.?!"\'\]\)':
+                        if merge_short and len(para) < 10 or len(re.findall(r'\s+', para)) < 2 \
+                                or merge_lowercase and para and para[0].islower() and last_para \
+                                and last_para[-1] not in r'.?!"\'\]\)':
                             last_para += ' ' + para
                         else:
                             if last_para:

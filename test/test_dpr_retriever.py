@@ -5,9 +5,12 @@ from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 
+@pytest.mark.slow
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_dpr_inmemory_retrieval(document_store, retriever):
+@pytest.mark.parametrize("return_embedding", [True, False])
+def test_dpr_retrieval(document_store, retriever, return_embedding):
 
     documents = [
         Document(
@@ -31,23 +34,29 @@ def test_dpr_inmemory_retrieval(document_store, retriever):
         )
     ]
 
-    document_store.delete_all_documents(index="test_dpr")
-    document_store.write_documents(documents, index="test_dpr")
-    document_store.update_embeddings(retriever=retriever, index="test_dpr")
-    time.sleep(2)
+    document_store.return_embedding = return_embedding
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever=retriever)
 
-    docs_with_emb = document_store.get_all_documents(index="test_dpr")
+    time.sleep(1)
+
+    docs_with_emb = document_store.get_all_documents()
 
     # FAISSDocumentStore doesn't return embeddings, so these tests only work with ElasticsearchDocumentStore
     if isinstance(document_store, ElasticsearchDocumentStore):
         assert (len(docs_with_emb[0].embedding) == 768)
-        assert (abs(docs_with_emb[0].embedding[0] - (-0.30634)) < 0.001)
-        assert (abs(docs_with_emb[1].embedding[0] - (-0.37449)) < 0.001)
-        assert (abs(docs_with_emb[2].embedding[0] - (-0.24695)) < 0.001)
-        assert (abs(docs_with_emb[3].embedding[0] - (-0.08017)) < 0.001)
-        assert (abs(docs_with_emb[4].embedding[0] - (-0.01534)) < 0.001)
-    res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?", index="test_dpr")
+        assert (abs(docs_with_emb[0].embedding[0] - (-0.3063)) < 0.001)
+        assert (abs(docs_with_emb[1].embedding[0] - (-0.3914)) < 0.001)
+        assert (abs(docs_with_emb[2].embedding[0] - (-0.2470)) < 0.001)
+        assert (abs(docs_with_emb[3].embedding[0] - (-0.0802)) < 0.001)
+        assert (abs(docs_with_emb[4].embedding[0] - (-0.0551)) < 0.001)
+
+    res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?")
+
     assert res[0].meta["name"] == "1"
 
-    # clean up
-    document_store.delete_all_documents(index="test_dpr")
+    # test embedding
+    if return_embedding is True:
+        assert res[0].embedding is not None
+    else:
+        assert res[0].embedding is None

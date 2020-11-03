@@ -31,44 +31,42 @@ def check_data_correctness(documents_indexed, documents_inserted):
     assert len(vector_ids) == len(documents_inserted)
 
 
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_index_save_and_load(document_store):
-    document_store.write_documents(DOCUMENTS)
+def test_faiss_index_save_and_load(faiss_document_store):
+    faiss_document_store.write_documents(DOCUMENTS)
 
     # test saving the index
-    document_store.save("haystack_test_faiss")
+    faiss_document_store.save("haystack_test_faiss")
 
     # clear existing faiss_index
-    document_store.faiss_index.reset()
+    faiss_document_store.faiss_index.reset()
 
     # test faiss index is cleared
-    assert document_store.faiss_index.ntotal == 0
+    assert faiss_document_store.faiss_index.ntotal == 0
 
     # test loading the index
-    new_document_store = document_store.load(sql_url="sqlite:///haystack_test.db",
+    new_document_store = faiss_document_store.load(sql_url="sqlite:///haystack_test.db",
                                              faiss_file_path="haystack_test_faiss")
 
     # check faiss index is restored
     assert new_document_store.faiss_index.ntotal == len(DOCUMENTS)
 
 
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 @pytest.mark.parametrize("index_buffer_size", [10_000, 2])
 @pytest.mark.parametrize("batch_size", [2])
-def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
-    document_store.index_buffer_size = index_buffer_size
+def test_faiss_write_docs(faiss_document_store, index_buffer_size, batch_size):
+    faiss_document_store.index_buffer_size = index_buffer_size
 
     # Write in small batches
     for i in range(0, len(DOCUMENTS), batch_size):
-        document_store.write_documents(DOCUMENTS[i: i + batch_size])
+        faiss_document_store.write_documents(DOCUMENTS[i: i + batch_size])
 
-    documents_indexed = document_store.get_all_documents()
+    documents_indexed = faiss_document_store.get_all_documents()
 
     # test if correct vectors are associated with docs
     for i, doc in enumerate(documents_indexed):
         # we currently don't get the embeddings back when we call document_store.get_all_documents()
         original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
-        stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+        stored_emb = faiss_document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
 
@@ -76,24 +74,23 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
     check_data_correctness(documents_indexed, DOCUMENTS)
 
 
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.slow
 @pytest.mark.parametrize("index_buffer_size", [10_000, 2])
-def test_faiss_update_docs(document_store, index_buffer_size, retriever):
+def test_faiss_update_docs(faiss_document_store, index_buffer_size, dpr_retriever):
     # adjust buffer size
-    document_store.index_buffer_size = index_buffer_size
+    faiss_document_store.index_buffer_size = index_buffer_size
 
     # initial write
-    document_store.write_documents(DOCUMENTS)
+    faiss_document_store.write_documents(DOCUMENTS)
 
-    document_store.update_embeddings(retriever=retriever)
-    documents_indexed = document_store.get_all_documents()
+    faiss_document_store.update_embeddings(retriever=dpr_retriever)
+    documents_indexed = faiss_document_store.get_all_documents()
 
     # test if correct vectors are associated with docs
     for i, doc in enumerate(documents_indexed):
         original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
-        updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
-        stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+        updated_embedding = dpr_retriever.embed_passages([Document.from_dict(original_doc)])
+        stored_emb = faiss_document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(updated_embedding, stored_emb, rtol=0.01)
 
@@ -101,35 +98,29 @@ def test_faiss_update_docs(document_store, index_buffer_size, retriever):
     check_data_correctness(documents_indexed, DOCUMENTS)
 
 
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_faiss_update_with_empty_store(document_store, retriever):
+def test_faiss_update_with_empty_store(faiss_document_store, dpr_retriever):
     # Call update with empty doc store
-    document_store.update_embeddings(retriever=retriever)
+    faiss_document_store.update_embeddings(retriever=dpr_retriever)
 
     # initial write
-    document_store.write_documents(DOCUMENTS)
+    faiss_document_store.write_documents(DOCUMENTS)
 
-    documents_indexed = document_store.get_all_documents()
+    documents_indexed = faiss_document_store.get_all_documents()
 
     # test document correctness
     check_data_correctness(documents_indexed, DOCUMENTS)
 
 
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-def test_faiss_retrieving(document_store, retriever):
-    document_store.write_documents(DOCUMENTS)
-    result = retriever.retrieve(query="How to test this?")
+def test_faiss_retrieving(faiss_document_store, embedding_retriever):
+    faiss_document_store.write_documents(DOCUMENTS)
+    result = embedding_retriever.retrieve(query="How to test this?")
     assert len(result) == len(DOCUMENTS)
     assert type(result[0]) == Document
 
 
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-def test_faiss_finding(document_store, retriever):
-    document_store.write_documents(DOCUMENTS)
-    finder = Finder(reader=None, retriever=retriever)
+def test_faiss_finding(faiss_document_store, embedding_retriever):
+    faiss_document_store.write_documents(DOCUMENTS)
+    finder = Finder(reader=None, retriever=embedding_retriever)
 
     prediction = finder.get_answers_via_similar_questions(question="How to test this?", top_k_retriever=1)
 

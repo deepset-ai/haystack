@@ -18,6 +18,8 @@ def get_test_client_and_override_dependencies(reader, document_store_with_docs):
     return TestClient(app)
 
 
+@pytest.mark.slow
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_query_api(reader, document_store_with_docs):
