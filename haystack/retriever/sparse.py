@@ -57,8 +57,6 @@ class ElasticsearchRetriever(BaseRetriever):
             index = self.document_store.index
 
         documents = self.document_store.query(query, filters, top_k, self.custom_query, index)
-        logger.info(f"Got {len(documents)} candidates from retriever")
-
         return documents
 
 
@@ -73,8 +71,6 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
             index = self.document_store.index
         documents = self.document_store.query(query=None, filters=filters, top_k=top_k,
                                               custom_query=self.custom_query, index=index)
-        logger.info(f"Got {len(documents)} candidates from retriever")
-
         return documents
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit

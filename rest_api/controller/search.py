@@ -14,7 +14,7 @@ from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DEFAULT_
     RETRIEVER_TYPE, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, BATCHSIZE, CONTEXT_WINDOW_SIZE, \
     TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, CONCURRENT_REQUEST_PER_WORKER, \
     FAQ_QUESTION_FIELD_NAME, EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER, NAME_FIELD_NAME, \
-    VECTOR_SIMILARITY_METRIC, CREATE_INDEX
+    VECTOR_SIMILARITY_METRIC, CREATE_INDEX, LOG_LEVEL
 
 from rest_api.controller.request import Question
 from rest_api.controller.response import Answers, AnswersToIndividualQuestion
@@ -28,7 +28,9 @@ from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever
 from haystack.retriever.dense import EmbeddingRetriever
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('haystack')
+logger.setLevel(LOG_LEVEL)
+
 router = APIRouter()
 
 # Init global components: DocumentStore, Retriever, Reader, Finder
