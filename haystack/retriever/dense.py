@@ -35,8 +35,8 @@ class DensePassageRetriever(BaseRetriever):
 
     def __init__(self,
                  document_store: BaseDocumentStore,
-                 query_embedding_model: str = "facebook/dpr-question_encoder-single-nq-base",
-                 passage_embedding_model: str = "facebook/dpr-ctx_encoder-single-nq-base",
+                 query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
+                 passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
                  max_seq_len_query: int = 64,
                  max_seq_len_passage: int = 256,
                  use_gpu: bool = True,
@@ -287,6 +287,42 @@ class DensePassageRetriever(BaseRetriever):
 
         self.model.save(Path(save_dir), lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
         self.processor.save(Path(save_dir))
+
+    def save_models(self, save_dir: Union[Path, str]):
+        save_dir = Path(save_dir)
+        self.model.save(save_dir, lm1_name="query_encoder", lm2_name="passage_encoder")
+        save_dir = str(save_dir)
+        self.query_tokenizer.save_pretrained(save_dir + "/query_encoder")
+        self.passage_tokenizer.save_pretrained(save_dir + "/passage_encoder")
+
+    @classmethod
+    def load_models(cls,
+                    load_dir: Union[Path, str],
+                    document_store: BaseDocumentStore,
+                    max_seq_len_query: int = 64,
+                    max_seq_len_passage: int = 256,
+                    use_gpu: bool = True,
+                    batch_size: int = 16,
+                    embed_title: bool = True,
+                    use_fast_tokenizers: bool = True,
+                    similarity_function: str = "dot_product",
+                    ):
+
+        load_dir = Path(load_dir)
+        dpr = cls(
+            document_store=document_store,
+            query_embedding_model=Path(load_dir) / "query_encoder",
+            passage_embedding_model=Path(load_dir) / "passage_encoder",
+            max_seq_len_query=max_seq_len_query,
+            max_seq_len_passage=max_seq_len_passage,
+            use_gpu=use_gpu,
+            batch_size=batch_size,
+            embed_title=embed_title,
+            use_fast_tokenizers=use_fast_tokenizers,
+            similarity_function=similarity_function
+        )
+
+        return dpr
 
 
 class EmbeddingRetriever(BaseRetriever):

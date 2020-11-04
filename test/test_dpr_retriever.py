@@ -3,6 +3,7 @@ import time
 
 from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.retriever.dense import DensePassageRetriever
 
 
 @pytest.mark.slow
@@ -60,3 +61,16 @@ def test_dpr_retrieval(document_store, retriever, return_embedding):
         assert res[0].embedding is not None
     else:
         assert res[0].embedding is None
+
+
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+def test_dpr_saving_and_loading(retriever, document_store):
+    retriever.save_models("test_dpr_save")
+
+    loaded_retriever = DensePassageRetriever.load_models("test_dpr_save", document_store)
+    # compare weights
+    for p1, p2 in zip(retriever.query_encoder.parameters(), loaded_retriever.query_encoder.parameters()):
+        assert (p1.data.ne(p2.data).sum() == 0)
+    for p1, p2 in zip(retriever.passage_encoder.parameters(), loaded_retriever.passage_encoder.parameters()):
+        assert (p1.data.ne(p2.data).sum() == 0)
