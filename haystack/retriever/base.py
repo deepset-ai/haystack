@@ -80,8 +80,8 @@ class BaseRetriever(ABC):
         labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
 
         correct_retrievals = 0
-        summed_avg_precision = 0
-        summed_reciprocal_rank = 0
+        summed_avg_precision = 0.0
+        summed_reciprocal_rank = 0.0
 
         # Collect questions and corresponding answers/document_ids in a dict
         question_label_dict = {}
@@ -131,7 +131,7 @@ class BaseRetriever(ABC):
                                 summed_reciprocal_rank += 1 / (doc_idx + 1)
                             found_relevant_doc = True
                             relevant_docs_found += 1
-                            summed_avg_precision += (1 / len(gold_ids)) * (relevant_docs_found / (doc_idx + 1))  # type: ignore
+                            summed_avg_precision += (1 / len(gold_ids)) * (relevant_docs_found / (doc_idx + 1))
                             break
         # Metrics
         number_of_questions = len(question_label_dict)
