@@ -59,5 +59,6 @@ if VALID_LANGUAGES:
     VALID_LANGUAGES = ast.literal_eval(VALID_LANGUAGES)
 
 # Monitoring
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 APM_SERVER = os.getenv("APM_SERVER", None)
 APM_SERVICE_NAME = os.getenv("APM_SERVICE_NAME", "haystack-backend")

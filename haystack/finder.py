@@ -51,6 +51,8 @@ class Finder:
 
         # 1) Apply retriever(with optional filters) to get fast candidate documents
         documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever, index=index)
+        logger.info(f"Got {len(documents)} candidates from retriever")
+        logger.debug(f"Retrieved document IDs: {[doc.id for doc in documents]}")
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
