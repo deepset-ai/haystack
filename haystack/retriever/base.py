@@ -56,8 +56,10 @@ class BaseRetriever(ABC):
         |  Returns a dict containing the following metrics:
 
             - "recall": Proportion of questions for which correct document is among retrieved documents
-            - "mean avg precision": Mean of average precision for each question. Rewards retrievers that give relevant
-              documents a higher rank.
+            - "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.
+              Only considers the highest ranked relevant document.
+            - "map": Mean of average precision for each question. Rewards retrievers that give relevant
+              documents a higher rank. Considers all retrieved relevant documents. (only with ``open_domain=False``)
 
         :param label_index: Index/Table in DocumentStore where labeled questions are stored
         :param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
@@ -79,6 +81,7 @@ class BaseRetriever(ABC):
 
         correct_retrievals = 0
         summed_avg_precision = 0
+        summed_reciprocal_rank = 0
 
         # Collect questions and corresponding answers/document_ids in a dict
         question_label_dict = {}
@@ -99,12 +102,18 @@ class BaseRetriever(ABC):
                 if return_preds:
                     predictions.append({"question": question, "retrieved_docs": retrieved_docs})
                 # check if correct doc in retrieved docs
+                found_relevant_doc = False
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_answer in gold_answers:
                         if gold_answer in doc.text:
-                            correct_retrievals += 1
-                            summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
+                            if not found_relevant_doc:
+                                correct_retrievals += 1
+                                summed_reciprocal_rank += 1 / (doc_idx + 1)
+                            found_relevant_doc = True
                             break
+                    # For the metrics in the open-domain case we are only considering the highest ranked relevant doc
+                    if found_relevant_doc:
+                        break
         # Option 2: Strict evaluation by document ids that are listed in the labels
         else:
             for question, gold_ids in tqdm(question_label_dict.items()):
@@ -112,27 +121,37 @@ class BaseRetriever(ABC):
                 if return_preds:
                     predictions.append({"question": question, "retrieved_docs": retrieved_docs})
                 # check if correct doc in retrieved docs
+                relevant_docs_found = 0
+                found_relevant_doc = False
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_id in gold_ids:
                         if str(doc.id) == gold_id:
-                            correct_retrievals += 1
-                            summed_avg_precision += 1 / (doc_idx + 1)  # type: ignore
+                            if not found_relevant_doc:
+                                correct_retrievals += 1
+                                summed_reciprocal_rank += 1 / (doc_idx + 1)
+                            found_relevant_doc = True
+                            relevant_docs_found += 1
+                            summed_avg_precision += (1 / len(gold_ids)) * (relevant_docs_found / (doc_idx + 1))  # type: ignore
                             break
         # Metrics
         number_of_questions = len(question_label_dict)
         recall = correct_retrievals / number_of_questions
-        mean_avg_precision = summed_avg_precision / number_of_questions
+        mean_reciprocal_rank = summed_reciprocal_rank / number_of_questions
 
         logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
                      f" the top-{top_k} candidate passages selected by the retriever."))
 
         metrics =  {
             "recall": recall,
-            "map": mean_avg_precision,
+            "mrr": mean_reciprocal_rank,
             "retrieve_time": self.retrieve_time,
             "n_questions": number_of_questions,
             "top_k": top_k
         }
+
+        if not open_domain:
+            mean_avg_precision = summed_avg_precision / number_of_questions
+            metrics["map"] = mean_avg_precision
 
         if return_preds:
             return {"metrics": metrics, "predictions": predictions}
