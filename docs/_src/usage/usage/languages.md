@@ -21,7 +21,9 @@ The ElasticsearchDocumentStore relies on an analyzer to impose word boundaries,
 but also to handle punctuation, casing and stop words.
 
 The default analyzer is an English analyzer. 
-For optimal performance, you will want to switch it out for the right analyzer in your language.
+While it can still work decently for a large range of langauges,
+you will want to set it to your language's analyzer for optimal performace.
+In some cases, such as with Thai, the default analyzer is completely incompatible.
 See [this page](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html) 
 for the full list of language specific analyzers.
 
