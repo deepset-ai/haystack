@@ -5,7 +5,6 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, F
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case
-from sqlalchemy_utils import UUIDType
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
@@ -17,7 +16,7 @@ Base = declarative_base()  # type: Any
 class ORMBase(Base):
     __abstract__ = True
 
-    id = Column(UUIDType(binary=False), default=lambda: uuid4(), primary_key=True)
+    id = Column(String(100), default=lambda: str(uuid4()), primary_key=True)
     created = Column(DateTime, server_default=func.now())
     updated = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
@@ -26,8 +25,8 @@ class DocumentORM(ORMBase):
     __tablename__ = "document"
 
     text = Column(Text, nullable=False)
-    index = Column(String(50), nullable=False)
-    vector_id = Column(String(50), unique=True, nullable=True)
+    index = Column(String(100), nullable=False)
+    vector_id = Column(String(100), unique=True, nullable=True)
 
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaORM", backref="Document", lazy="joined")
@@ -36,9 +35,9 @@ class DocumentORM(ORMBase):
 class MetaORM(ORMBase):
     __tablename__ = "meta"
 
-    name = Column(String(50), index=True)
-    value = Column(String(50), index=True)
-    document_id = Column(UUIDType(binary=False), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), index=True)
+    value = Column(String(100), index=True)
+    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
 
     documents = relationship(DocumentORM, backref="Meta")
 
@@ -46,10 +45,10 @@ class MetaORM(ORMBase):
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
-    document_id = Column(UUIDType(binary=False), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
-    index = Column(String(50), nullable=False)
+    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
+    index = Column(String(100), nullable=False)
     no_answer = Column(Boolean, nullable=False)
-    origin = Column(String(50), nullable=False)
+    origin = Column(String(100), nullable=False)
     question = Column(Text, nullable=False)
     is_correct_answer = Column(Boolean, nullable=False)
     is_correct_document = Column(Boolean, nullable=False)
