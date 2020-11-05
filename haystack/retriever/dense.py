@@ -288,7 +288,7 @@ class DensePassageRetriever(BaseRetriever):
         self.model.save(Path(save_dir), lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
         self.processor.save(Path(save_dir))
 
-    def save_models(self, save_dir: Union[Path, str]):
+    def save(self, save_dir: Union[Path, str]):
         save_dir = Path(save_dir)
         self.model.save(save_dir, lm1_name="query_encoder", lm2_name="passage_encoder")
         save_dir = str(save_dir)
@@ -296,17 +296,17 @@ class DensePassageRetriever(BaseRetriever):
         self.passage_tokenizer.save_pretrained(save_dir + "/passage_encoder")
 
     @classmethod
-    def load_models(cls,
-                    load_dir: Union[Path, str],
-                    document_store: BaseDocumentStore,
-                    max_seq_len_query: int = 64,
-                    max_seq_len_passage: int = 256,
-                    use_gpu: bool = True,
-                    batch_size: int = 16,
-                    embed_title: bool = True,
-                    use_fast_tokenizers: bool = True,
-                    similarity_function: str = "dot_product",
-                    ):
+    def load(cls,
+             load_dir: Union[Path, str],
+             document_store: BaseDocumentStore,
+             max_seq_len_query: int = 64,
+             max_seq_len_passage: int = 256,
+             use_gpu: bool = True,
+             batch_size: int = 16,
+             embed_title: bool = True,
+             use_fast_tokenizers: bool = True,
+             similarity_function: str = "dot_product",
+             ):
 
         load_dir = Path(load_dir)
         dpr = cls(
