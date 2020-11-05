@@ -1,11 +1,12 @@
 import pytest
 import time
+import numpy as np
 
 from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.dense import DensePassageRetriever
 
-from transformers import DPRContextEncoderTokenizerFast
+from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 @pytest.mark.slow
 @pytest.mark.elasticsearch
@@ -68,7 +69,6 @@ def test_dpr_retrieval(document_store, retriever, return_embedding):
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_dpr_saving_and_loading(retriever, document_store):
     retriever.save("test_dpr_save")
-    import numpy as np
     def sum_params(model):
         s = []
         for p in model.parameters():
@@ -98,10 +98,15 @@ def test_dpr_saving_and_loading(retriever, document_store):
     assert loaded_retriever.embed_title == True
     assert loaded_retriever.batch_size == 16
     assert loaded_retriever.max_seq_len_passage == 256
+    assert loaded_retriever.max_seq_len_query == 64
 
     # Tokenizer
     assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
     assert loaded_retriever.passage_tokenizer.do_lower_case == True
+    assert loaded_retriever.query_tokenizer.do_lower_case == True
     assert loaded_retriever.passage_tokenizer.vocab_size == 30522
+    assert loaded_retriever.query_tokenizer.vocab_size == 30522
     assert loaded_retriever.passage_tokenizer.max_len == 512
+    assert loaded_retriever.query_tokenizer.max_len == 512
 
