@@ -35,6 +35,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
         faq_question_field: Optional[str] = None,
+        analyzer: str = "standard",
         scheme: str = "http",
         ca_certs: bool = False,
         verify_certs: bool = True,
@@ -64,6 +65,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+        :param analyzer: specify a default standard analyzer from one of the built-ins when creating a new Elasticsearch Index.
+                         Elasticsearch also has built-in analyzers for different languages. More info at:
+                         https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
         :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
                                    Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
         :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
@@ -102,6 +106,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
         self.faq_question_field = faq_question_field
+        self.analyzer = analyzer
         self.return_embedding = return_embedding
 
         self.custom_mapping = custom_mapping
@@ -153,6 +158,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                 "match_mapping_type": "string",
                                 "mapping": {"type": "keyword"}}}
                     ],
+                },
+                "settings": {
+                    "analysis": {
+                        "analyzer": {
+                            "default": {
+                                "type": self.analyzer,
+                            }
+                        }
+                    }
                 }
             }
             if self.embedding_field:
