@@ -75,7 +75,9 @@ def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, 
     # eval retriever
     results = retriever.eval(top_k=1, label_index="test_feedback", doc_index="test_eval_document", open_domain=open_domain)
     assert results["recall"] == 1.0
-    assert results["map"] == 1.0
+    assert results["mrr"] == 1.0
+    if not open_domain:
+        assert results["map"] == 1.0
 
     # clean up
     document_store.delete_all_documents(index="test_eval_document")
