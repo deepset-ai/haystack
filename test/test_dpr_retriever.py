@@ -1,9 +1,12 @@
 import pytest
 import time
+import numpy as np
 
 from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.retriever.dense import DensePassageRetriever
 
+from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 @pytest.mark.slow
 @pytest.mark.elasticsearch
@@ -60,3 +63,50 @@ def test_dpr_retrieval(document_store, retriever, return_embedding):
         assert res[0].embedding is not None
     else:
         assert res[0].embedding is None
+
+
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+def test_dpr_saving_and_loading(retriever, document_store):
+    retriever.save("test_dpr_save")
+    def sum_params(model):
+        s = []
+        for p in model.parameters():
+            n = p.cpu().data.numpy()
+            s.append(np.sum(n))
+        return sum(s)
+    original_sum_query = sum_params(retriever.query_encoder)
+    original_sum_passage = sum_params(retriever.passage_encoder)
+    del retriever
+
+    loaded_retriever = DensePassageRetriever.load("test_dpr_save", document_store)
+
+    loaded_sum_query = sum_params(loaded_retriever.query_encoder)
+    loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)
+
+    assert abs(original_sum_query - loaded_sum_query) < 0.1
+    assert abs(original_sum_passage - loaded_sum_passage) < 0.1
+
+    # comparison of weights (RAM intense!)
+    # for p1, p2 in zip(retriever.query_encoder.parameters(), loaded_retriever.query_encoder.parameters()):
+    #     assert (p1.data.ne(p2.data).sum() == 0)
+    #
+    # for p1, p2 in zip(retriever.passage_encoder.parameters(), loaded_retriever.passage_encoder.parameters()):
+    #     assert (p1.data.ne(p2.data).sum() == 0)
+
+    # attributes
+    assert loaded_retriever.embed_title == True
+    assert loaded_retriever.batch_size == 16
+    assert loaded_retriever.max_seq_len_passage == 256
+    assert loaded_retriever.max_seq_len_query == 64
+
+    # Tokenizer
+    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert loaded_retriever.passage_tokenizer.do_lower_case == True
+    assert loaded_retriever.query_tokenizer.do_lower_case == True
+    assert loaded_retriever.passage_tokenizer.vocab_size == 30522
+    assert loaded_retriever.query_tokenizer.vocab_size == 30522
+    assert loaded_retriever.passage_tokenizer.max_len == 512
+    assert loaded_retriever.query_tokenizer.max_len == 512
+
