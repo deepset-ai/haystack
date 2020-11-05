@@ -1,10 +1,10 @@
 <!---
-title: "Database"
+title: "Document Store"
 metaTitle: "Document Store"
 metaDescription: ""
-slug: "/docs/database"
+slug: "/docs/documentstore"
 date: "2020-09-03"
-id: "databasemd"
+id: "documentstoremd"
 --->
 
 
@@ -14,7 +14,7 @@ You can think of the Document Store as a "database" that:
 - stores your texts and meta data  
 - provides them to the retriever at query time 
 
-There are different DocumentStores in Haystack to fit different use cases and tech stacks. 
+There are different Document Stores in Haystack to fit different use cases and tech stacks. 
 
 ## Initialisation
 
@@ -75,10 +75,13 @@ document_store = SQLDocumentStore()
 Each DocumentStore constructor allows for arguments specifying how to connect to existing databases and the names of indexes.
 See API documentation for more info.
 
-## Preparing Documents
+## Input Format
 
 DocumentStores expect Documents in dictionary form, like that below.
 They are loaded using the `DocumentStore.write_documents()` method.
+See [Preprocessing](/docs/latest/preprocessingmd) for more information on how to best prepare your data.
+
+[//]: # (Add link to preprocessing section)
 
 ```python
 document_store = ElasticsearchDocumentStore()
@@ -91,28 +94,9 @@ dicts = [
 document_store.write_documents(dicts)
 ```
 
-## File Conversion
-
-There are a range of different file converters in Haystack that can help get your data into the right format.
-Haystack features support for txt, pdf and docx formats and there is even a converted that leverages Apache Tika.
-See the File Converters section in the API docs for more information.
-
-<!-- _comment: !! Code snippets for each type !! -->
-Haystack also has a `convert_files_to_dicts()` utility function that will convert
-all txt or pdf files in a given folder into this dictionary format.
-
-```python
-document_store = ElasticsearchDocumentStore()
-dicts = convert_files_to_dicts(dir_path=doc_dir)
-document_store.write_documents(dicts)
-```
-
-## Writing Documents
+## Writing Documents (Sparse Retrievers)
 
 Haystack allows for you to write store documents in an optimised fashion so that query times can be kept low.
-
-### For Sparse Retrievers
-
 For **sparse**, keyword based retrievers such as BM25 and TF-IDF,
 you simply have to call `DocumentStore.write_documents()`.
 The creation of the inverted index which optimises querying speed is handled automatically.
@@ -121,7 +105,7 @@ The creation of the inverted index which optimises querying speed is handled aut
 document_store.write_documents(dicts)
 ```
 
-### For Dense Retrievers
+## Writing Documents (Dense Retrievers)
 
 For **dense** neural network based retrievers like Dense Passage Retrieval, or Embedding Retrieval,
 indexing involves computing the Document embeddings which will be compared against the Query embedding.
@@ -139,9 +123,9 @@ Having GPU acceleration will significantly speed this up.
 
 <!-- _comment: !! Diagrams of inverted index / document embeds !! -->
 <!-- _comment: !! Make this a tab element to show how different datastores are initialized !! -->
-## Choosing the right document store
+## Choosing the Right Document Store
 
-The Document stores have different characteristics. You should choose one depending on the maturity of your project, the use case and technical environment: 
+The Document Stores have different characteristics. You should choose one depending on the maturity of your project, the use case and technical environment: 
 
 <div class="tabs tabsdschoose">
 
@@ -213,7 +197,7 @@ The Document stores have different characteristics. You should choose one depend
 
 </div>
 
-#### Our recommendations
+#### Our Recommendations
 
 **Restricted environment:** Use the `InMemoryDocumentStore`, if you are just giving Haystack a quick try on a small sample and are working in a restricted environment that complicates running Elasticsearch or other databases  
 
