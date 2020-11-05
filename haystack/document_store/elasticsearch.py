@@ -65,8 +65,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
-        :param analyzer: specify a default standard analyzer from one of the built-ins when creating a new Elasticsearch Index.
-                         Elasticsearch also has built-in analyzers for different languages. More info at:
+        :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+                         Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
                          https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
         :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
                                    Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
