@@ -36,7 +36,7 @@ class MetaORM(ORMBase):
     __tablename__ = "meta"
 
     name = Column(String(100), index=True)
-    value = Column(Text, index=True)
+    value = Column(String(1000), index=True)
     document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
 
     documents = relationship(DocumentORM, backref="Meta")
