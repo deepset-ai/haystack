@@ -2,7 +2,7 @@ FROM  nvidia/cuda:10.1-runtime
 
 WORKDIR /home/user
 
-RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-distutils python3-pip curl git
+RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-distutils python3-pip curl git pkg-config cmake
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8

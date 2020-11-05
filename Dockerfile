@@ -2,6 +2,8 @@ FROM python:3.7.4-stretch
 
 WORKDIR /home/user
 
+RUN apt-get update && apt-get install -y curl git pkg-config cmake
+
 # copy code
 COPY haystack /home/user/haystack
 
