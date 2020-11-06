@@ -5,7 +5,7 @@
 #### eval\_data\_from\_file
 
 ```python
-eval_data_from_file(filename: str) -> Tuple[List[Document], List[Label]]
+eval_data_from_file(filename: str, max_docs: Union[int, bool] = None) -> Tuple[List[Document], List[Label]]
 ```
 
 Read Documents + Labels from a SQuAD-style file.
@@ -14,6 +14,7 @@ Document and Labels can then be indexed to the DocumentStore and be used for eva
 **Arguments**:
 
 - `filename`: Path to file in SQuAD format
+- `max_docs`: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
 
 **Returns**:
 
@@ -97,27 +98,27 @@ class PreProcessor(BasePreProcessor)
 #### \_\_init\_\_
 
 ```python
- | __init__(clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "passage", split_length: Optional[int] = 10, split_stride: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = False)
+ | __init__(clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_stride: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True)
 ```
 
 **Arguments**:
 
-- `clean_header_footer`: use heuristic to remove footers and headers across different pages by searching
+- `clean_header_footer`: Use heuristic to remove footers and headers across different pages by searching
 for the longest common string. This heuristic uses exact matches and therefore
 works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
 or similar.
-- `clean_whitespace`: strip whitespaces before or after each line in the text.
-- `clean_empty_lines`: remove more than two empty lines in the text.
-- `split_by`: split the document by "word", "sentence", or "passage". Set to None to disable splitting.
-- `split_length`: n number of splits to merge as a single document. For instance, if n -> 10 & split_by ->
+- `clean_whitespace`: Strip whitespaces before or after each line in the text.
+- `clean_empty_lines`: Remove more than two empty lines in the text.
+- `split_by`: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
+- `split_length`: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
 "sentence", then each output document will have 10 sentences.
-- `split_stride`: length of striding window over the splits. For example, if split_by -> `word`,
+- `split_stride`: Length of striding window over the splits. For example, if split_by -> `word`,
 split_length -> 5 & split_stride -> 2, then the splits would be like:
 [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
 Set the value to None to disable striding behaviour.
-- `split_respect_sentence_boundary`: whether to split in partial sentences when if split_by -> `word`. If set
-to True, the individual split would always have complete sentence &
-the number of words being less than or equal to the split_length.
+- `split_respect_sentence_boundary`: Whether to split in partial sentences if split_by -> `word`. If set
+to True, the individual split will always have complete sentences &
+the number of words will be <= split_length.
 
 <a name="base"></a>
 # base
