@@ -40,8 +40,8 @@ Please refer to [the API docs](/docs/latest/pdf) to see which converter best sui
 <div class="tabs tabsconverters">
 
 <div class="tab">
-<input type="radio" id="tab-1-1" name="tab-group-1" checked>
-<label class="labelouter" for="tab-1-1">PDF</label>
+<input type="radio" id="tab-1" name="tab-group-1" checked>
+<label class="labelouter" for="tab-1">PDF</label>
 <div class="tabcontent">
 
 ```python
@@ -53,8 +53,8 @@ doc = converter.convert(file_path=file, meta=None)
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-1-2" name="tab-group-1">
-<label class="labelouter" for="tab-1-2">DOCX</label>
+<input type="radio" id="tab-2" name="tab-group-1">
+<label class="labelouter" for="tab-2">DOCX</label>
 <div class="tabcontent">
 
 ```python
@@ -66,8 +66,8 @@ doc = converter.convert(file_path=file, meta=None)
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-1-3" name="tab-group-1">
-<label class="labelouter" for="tab-1-3">From a Directory</label>
+<input type="radio" id="tab-3" name="tab-group-1">
+<label class="labelouter" for="tab-3">From a Directory</label>
 <div class="tabcontent">
 
 

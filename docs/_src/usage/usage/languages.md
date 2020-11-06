@@ -37,7 +37,7 @@ The default model that is loaded in the DensePassageRetriever is for English.
 We are currently working on training a German DensePassageRetriever model and know other teams who work on further languages.
 If you have a language model and a question answering dataset in your own language, you can also train a DPR model using Haystack!
 Below is a simplified example.
-See the [API reference](docs/latest/apiretrievermd#train) for `DensePassageRetriever.train()` for more details.
+See the [API reference](/docs/latest/apiretrievermd#train) for `DensePassageRetriever.train()` for more details.
 
 ```python
 dense_passage_retriever.train(self,
