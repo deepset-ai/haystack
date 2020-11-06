@@ -35,7 +35,7 @@ docs = [
 There are a range of different file converters in Haystack that 
 can extract text from files and cast them into the unified dictionary format shown above.
 Haystack features support for txt, pdf and docx files and there is even a converter that leverages Apache Tika.
-Please refer to [the API docs](/docs/latest/file_convertersmd) to see which converter best suits you.
+Please refer to [the API docs](/docs/v0.5.0/file_convertersmd) to see which converter best suits you.
 
 <div class="tabs tabsconverters">
 
