@@ -1,13 +1,19 @@
-*******************************************************
-# Haystack — Docstrings Generation
-*******************************************************
+# :ledger: Looking for the docs?
+You find them here here: 
+#### https://haystack.deepset.ai/docs/intromd
 
+
+# :computer: How to update docs?
+
+## Usage / Guides etc.
+
+Will be automatically deployed with every commit to the master branch
+
+## API Reference 
 
 We use Pydoc-Markdown to create markdown files from the docstrings in our code.
 
-
-Update docs with all latest docstrings?
-=======================================
+### Update docstrings
 Execute this in `/haystack/docs/_src/api/api`:
 ```
 pip install 'pydoc-markdown>=3.0.0,<4.0.0'
@@ -15,22 +21,13 @@ pydoc-markdown pydoc-markdown-document-store.yml
 pydoc-markdown pydoc-markdown-file-converters.yml
 pydoc-markdown pydoc-markdown-preprocessor.yml
 pydoc-markdown pydoc-markdown-reader.yml
+pydoc-markdown pydoc-markdown-generator.yml
 pydoc-markdown pydoc-markdown-retriever.yml
 ```
 
-Update Docstrings of individual modules
-==========================================
+(Or run one of the commands above to update the docstrings only for a single module)
 
-Every .yml file will generate a new markdown file. Run one of the following commands to generate the needed output:
-
-- **Document store**: `pydoc-markdown pydoc-markdown-document-store.yml`
-- **File converters**: `pydoc-markdown pydoc-markdown-file-converters.yml`
-- **Preprocessor**: `pydoc-markdown pydoc-markdown-preprocessor.yml`
-- **Reader**: `pydoc-markdown pydoc-markdown-reader.yml`
-- **Retriever**: `pydoc-markdown pydoc-markdown-retriever.yml`
-
-Configuration
-============
+### Configuration
 
 Pydoc will read the configuration from a `.yml` file which is located in the current working directory. Our files contains three main sections:
 
