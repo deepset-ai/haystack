@@ -110,7 +110,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: Optional[bool] = True, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -137,6 +137,7 @@ For more details see:
 Benchmarks: XXX
 - `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
 or one with docs that you used in Haystack before and want to load again.
+- `return_embedding`: To return document embedding
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -200,7 +201,7 @@ None
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -212,6 +213,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: (SQL) index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
 
 **Returns**:
 
@@ -271,7 +273,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: str = "localhost", port: int = 9200, username: str = "", password: str = "", index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, scheme: str = "http", ca_certs: bool = False, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30)
+ | __init__(host: str = "localhost", port: int = 9200, username: str = "", password: str = "", index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: bool = False, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: Optional[bool] = True)
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -294,6 +296,9 @@ If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will
 - `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
 - `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
 - `custom_mapping`: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+- `analyzer`: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
 - `excluded_meta_data`: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
 Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
 - `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
@@ -312,6 +317,7 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-re
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `timeout`: Number of seconds after which an ElasticSearch request times out.
+- `return_embedding`: To return document embedding
 
 <a name="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
 #### write\_documents
