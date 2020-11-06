@@ -13,7 +13,7 @@ Haystack includes a suite of tools to:
  
 * extract text from different file types, 
 * normalize white space
-* split text into smaller pieces so that they can be stored effectively
+* split text into smaller pieces to optimize retrieval
 
 These data preprocessing steps can have a big impact on the systems performance
 and effective handling of data is key to getting the most out of Haystack.

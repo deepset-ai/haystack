@@ -8,17 +8,17 @@ id: "documentstoremd"
 --->
 
 
-# Document Stores
+# DocumentStores
 
-You can think of the Document Store as a "database" that:
+You can think of the DocumentStore as a "database" that:
 - stores your texts and meta data  
 - provides them to the retriever at query time 
 
-There are different Document Stores in Haystack to fit different use cases and tech stacks. 
+There are different DocumentStores in Haystack to fit different use cases and tech stacks. 
 
 ## Initialisation
 
-Initialising a new Document Store is straight forward.
+Initialising a new DocumentStore is straight forward.
 
 <div class="tabs tabsdsinstall">
 

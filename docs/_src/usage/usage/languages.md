@@ -21,8 +21,8 @@ The ElasticsearchDocumentStore relies on an analyzer to impose word boundaries,
 but also to handle punctuation, casing and stop words.
 
 The default analyzer is an English analyzer. 
-While it can still work decently for a large range of langauges,
-you will want to set it to your language's analyzer for optimal performace.
+While it can still work decently for a large range of languages,
+you will want to set it to your language's analyzer for optimal performance.
 In some cases, such as with Thai, the default analyzer is completely incompatible.
 See [this page](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html) 
 for the full list of language specific analyzers.
@@ -32,14 +32,12 @@ document_store = ElasticsearchDocumentStore(analyzer="thai")
 ```
 
 The models used in dense retrievers are language specific. 
-Be sure to check language of the model used in your EmbeddingRetriever.
+Be sure to check language of the model used in your EmbeddingRetriever. 
 The default model that is loaded in the DensePassageRetriever is for English.
-We are currently working on training a German DensePassageRetriever model.
-
-If you have a language model and a question answering dataset in your own language,
-you can also train a DPR model using Haystack!
+We are currently working on training a German DensePassageRetriever model and know other teams who work on further languages.
+If you have a language model and a question answering dataset in your own language, you can also train a DPR model using Haystack!
 Below is a simplified example.
-See the API reference for `DensePassageRetriever.train()` for more details.
+See the [API reference](https://haystack.deepset.ai/docs/latest/apiretrievermd#train) for `DensePassageRetriever.train()` for more details.
 
 ```python
 dense_passage_retriever.train(self,
@@ -52,8 +50,6 @@ dense_passage_retriever.train(self,
                               num_hard_negatives: int = 1,
                               n_epochs: int = 3)
 ```
-
-[//]: # (Add link to DPR training, create section in retriever.md on training DPR)
 
 ##Readers
 
