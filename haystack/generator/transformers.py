@@ -34,29 +34,27 @@ class RAGenerator(BaseGenerator):
         **Example**
 
         ```python
-        question = "who got the first nobel prize in physics?"
+        > question = "who got the first nobel prize in physics?"
 
         # Retrieve related documents from retriever
-        retrieved_docs = retriever.retrieve(query=question)
+        > retrieved_docs = retriever.retrieve(query=question)
 
-        # Now generate answer from question and retrieved documents
-        answers = generator.predict(
-            question=question,
-            documents=retrieved_docs,
-            top_k=1
-        )
-        # format of answers:
-        #
-        # {'question': 'who got the first nobel prize in physics',
-        #     'answers':
-        #         [{'question': 'who got the first nobel prize in physics',
-        #           'answer': ' albert einstein',
-        #           'meta': { 'doc_ids': [...],
-        #                     'doc_scores': [80.42758 ...],
-        #                     'doc_probabilities': [40.71379089355469, ...
-        #                     'texts': ['Albert Einstein was a ...]
-        #                     'titles': ['"Albert Einstein"', ...]
-        #     }}]}
+        > # Now generate answer from question and retrieved documents
+        > generator.predict(
+        >    question=question,
+        >    documents=retrieved_docs,
+        >    top_k=1
+        > )
+        {'question': 'who got the first nobel prize in physics',
+             'answers':
+                 [{'question': 'who got the first nobel prize in physics',
+                   'answer': ' albert einstein',
+                   'meta': { 'doc_ids': [...],
+                             'doc_scores': [80.42758 ...],
+                             'doc_probabilities': [40.71379089355469, ...
+                             'texts': ['Albert Einstein was a ...]
+                             'titles': ['"Albert Einstein"', ...]
+             }}]}
         ```
     """
 
@@ -187,16 +185,16 @@ class RAGenerator(BaseGenerator):
         :return: Generated answers plus additional infos in a dict like this:
 
         ```python
-            {'question': 'who got the first nobel prize in physics',
-            'answers':
-                [{'question': 'who got the first nobel prize in physics',
-                  'answer': ' albert einstein',
-                  'meta': { 'doc_ids': [...],
-                            'doc_scores': [80.42758 ...],
-                            'doc_probabilities': [40.71379089355469, ...
-                            'texts': ['Albert Einstein was a ...]
-                            'titles': ['"Albert Einstein"', ...]
-            }}]}
+        > {'question': 'who got the first nobel prize in physics',
+        >    'answers':
+        >        [{'question': 'who got the first nobel prize in physics',
+        >          'answer': ' albert einstein',
+        >          'meta': { 'doc_ids': [...],
+        >                    'doc_scores': [80.42758 ...],
+        >                    'doc_probabilities': [40.71379089355469, ...
+        >                    'texts': ['Albert Einstein was a ...]
+        >                    'titles': ['"Albert Einstein"', ...]
+        >    }}]}
         ```
         """
         if len(documents) == 0:
