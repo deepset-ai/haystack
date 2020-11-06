@@ -314,7 +314,9 @@ See https://huggingface.co/models for full list of available QA models
 
 **Arguments**:
 
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased', 'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'. See https://huggingface.co/models for full list of available models.
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
+See https://huggingface.co/models for full list of available models.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
 The context usually helps users to understand if the answer really makes sense.
