@@ -22,7 +22,45 @@ def get_test_client_and_override_dependencies(reader, document_store_with_docs):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_query_api(reader, document_store_with_docs):
+def test_qa_api_filters(reader, document_store_with_docs):
+    client = get_test_client_and_override_dependencies(reader, document_store_with_docs)
+
+    query_with_no_filter_value = {"questions": ["Where does Carla lives?"]}
+    response = client.post(url="/models/1/doc-qa", json=query_with_no_filter_value)
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert response_json["results"][0]["answers"][0]["answer"] == "Berlin"
+
+    query_with_single_filter_value = {"questions": ["Where does Carla lives?"], "filters": {"name": "filename1"}}
+    response = client.post(url="/models/1/doc-qa", json=query_with_single_filter_value)
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert response_json["results"][0]["answers"][0]["answer"] == "Berlin"
+
+    query_with_a_list_of_filter_values = {
+        "questions": ["Where does Carla lives?"],
+        "filters": {"name": ["filename1", "filename2"]},
+    }
+    response = client.post(url="/models/1/doc-qa", json=query_with_a_list_of_filter_values)
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert response_json["results"][0]["answers"][0]["answer"] == "Berlin"
+
+    query_with_non_existing_filter_value = {
+        "questions": ["Where does Carla lives?"],
+        "filters": {"name": ["invalid-name"]},
+    }
+    response = client.post(url="/models/1/doc-qa", json=query_with_non_existing_filter_value)
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert len(response_json["results"][0]["answers"]) == 0
+
+
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_query_api_filters(reader, document_store_with_docs):
     client = get_test_client_and_override_dependencies(reader, document_store_with_docs)
 
     query = {
