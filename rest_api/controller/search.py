@@ -117,7 +117,7 @@ def doc_qa(model_id: int, question_request: Question):
         finder = FINDERS.get(model_id, None)
         if not finder:
             raise HTTPException(
-                status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+                status_code=404, detail=f"Could not get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
             )
 
         results = search_documents(finder, question_request, start_time)
@@ -130,14 +130,20 @@ def faq_qa(model_id: int, request: Question):
     finder = FINDERS.get(model_id, None)
     if not finder:
         raise HTTPException(
-            status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+            status_code=404, detail=f"Could not get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
         )
 
     results = []
     for question in request.questions:
         if request.filters:
             # put filter values into a list and remove filters with null value
-            filters = {key: [value] for key, value in request.filters.items() if value is not None}
+            filters = {}
+            for key, values in request.filters.items():
+                if values is None:
+                    continue
+                if not isinstance(values, list):
+                    values = [values]
+                filters[key] = values
             logger.info(f" [{datetime.now()}] Request: {request}")
         else:
             filters = {}
@@ -160,7 +166,7 @@ def query(model_id: int, query_request: Dict[str, Any], top_k_reader: int = DEFA
         finder = FINDERS.get(model_id, None)
         if not finder:
             raise HTTPException(
-                status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+                status_code=404, detail=f"Could not get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
             )
 
         question_request = Question.from_elastic_query_dsl(query_request, top_k_reader)
@@ -178,7 +184,13 @@ def search_documents(finder, question_request, start_time) -> List[AnswersToIndi
     for question in question_request.questions:
         if question_request.filters:
             # put filter values into a list and remove filters with null value
-            filters = {key: [value] for key, value in question_request.filters.items() if value is not None}
+            filters = {}
+            for key, values in question_request.filters.items():
+                if values is None:
+                    continue
+                if not isinstance(values, list):
+                    values = [values]
+                filters[key] = values
             logger.info(f" [{datetime.now()}] Request: {question_request}")
         else:
             filters = {}
