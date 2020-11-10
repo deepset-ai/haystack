@@ -200,17 +200,20 @@ class Finder:
             # check if correct doc among retrieved docs
             found_relevant_doc = False
             relevant_docs_found = 0
+            current_avg_precision = 0.0
             for doc_idx, doc in enumerate(retrieved_docs):
                 if doc.id in question.multiple_document_ids:
                     relevant_docs_found += 1
                     if not found_relevant_doc:
                         counts["correct_retrievals"] += 1
                         counts["summed_reciprocal_rank_retriever"] += 1 / (doc_idx + 1)
-                    counts["summed_avg_precision_retriever"] += (1 / number_relevant_docs) \
-                                                                * (relevant_docs_found / (doc_idx + 1))
+                    current_avg_precision += relevant_docs_found / (doc_idx + 1)
+
                     found_relevant_doc = True
                     if relevant_docs_found == number_relevant_docs:
                         break
+            if found_relevant_doc:
+                counts["summed_avg_precision_retriever"] += current_avg_precision / relevant_docs_found
 
             if found_relevant_doc:
                 questions_with_docs.append({
