@@ -90,14 +90,14 @@ class PreProcessor(BasePreProcessor):
             # split by words ensuring no sub sentence splits
             sentences = nltk.tokenize.sent_tokenize(text)
             word_count = 0
-            text_splits = []
-            current_slice = []
+            list_splits = []
+            current_slice: List[str] = []
             for sen in sentences:
                 current_word_count = len(sen.split(" "))
                 if current_word_count > self.split_length:
                     logger.warning(f"A sentence found with word count higher than the split length.")
                 if word_count + current_word_count > self.split_length:
-                    text_splits.append(current_slice)
+                    list_splits.append(current_slice)
                     #Enable split_stride with split_by='word' while respecting sentence boundaries. Minimum one sentence overlap up to the least
                     #amount of sentences with combined word length greater than split_stride.
                     if self.split_stride:
@@ -119,8 +119,8 @@ class PreProcessor(BasePreProcessor):
                 current_slice.append(sen)
                 word_count += len(sen.split(" "))
             if current_slice:
-                text_splits.append(current_slice)
-            text_splits = [' '.join(sl) for sl in text_splits]
+                list_splits.append(current_slice)
+            text_splits = [' '.join(sl) for sl in list_splits]
         else:
             # create individual "elements" of passage, sentence, or word
             if self.split_by == "passage":
