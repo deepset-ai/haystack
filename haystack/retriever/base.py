@@ -59,7 +59,10 @@ class BaseRetriever(ABC):
             - "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.
               Only considers the highest ranked relevant document.
             - "map": Mean of average precision for each question. Rewards retrievers that give relevant
-              documents a higher rank. Considers all retrieved relevant documents.
+              documents a higher rank. Considers all retrieved relevant documents. If ``open_domain=True``,
+              average precision is normalized by the number of retrieved relevant documents per query.
+              If ``open_domain=False``, average precision is normalized by the number of all relevant documents
+              per query.
 
         :param label_index: Index/Table in DocumentStore where labeled questions are stored
         :param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
@@ -138,7 +141,8 @@ class BaseRetriever(ABC):
                             found_relevant_doc = True
                             break
                 if found_relevant_doc:
-                    summed_avg_precision += current_avg_precision / relevant_docs_found
+                    all_relevant_docs = len(set(gold_ids))
+                    summed_avg_precision += current_avg_precision / all_relevant_docs
         # Metrics
         number_of_questions = len(question_label_dict)
         recall = correct_retrievals / number_of_questions

@@ -131,7 +131,8 @@ class Finder:
         Returns a dict containing the following metrics:
             - ``"retriever_recall"``: Proportion of questions for which correct document is among retrieved documents
             - ``"retriever_map"``: Mean of average precision for each question. Rewards retrievers that give relevant
-              documents a higher rank. Considers all retrieved relevant documents.
+              documents a higher rank. Considers all retrieved relevant documents. Average precision is normalized by
+              the number of all relevant documents per query.
             - ``"retriever_mrr"``: Mean of reciprocal rank for each question. Rewards retrievers that give relevant
               documents a higher rank. Only considers the highest ranked relevant document.
             - ``"reader_top1_accuracy"``: Proportion of highest ranked predicted answers that overlap with corresponding correct answer
@@ -213,7 +214,8 @@ class Finder:
                     if relevant_docs_found == number_relevant_docs:
                         break
             if found_relevant_doc:
-                counts["summed_avg_precision_retriever"] += current_avg_precision / relevant_docs_found
+                all_relevant_docs = len(set(question.multiple_document_ids))
+                counts["summed_avg_precision_retriever"] += current_avg_precision / all_relevant_docs
 
             if found_relevant_doc:
                 questions_with_docs.append({
@@ -286,7 +288,8 @@ class Finder:
         Returns a dict containing the following metrics:
             - ``"retriever_recall"``: Proportion of questions for which correct document is among retrieved documents
             - ``"retriever_map"``: Mean of average precision for each question. Rewards retrievers that give relevant
-              documents a higher rank. Considers all retrieved relevant documents.
+              documents a higher rank. Considers all retrieved relevant documents. Average precision is normalized by
+              the number of all relevant documents per query.
             - ``"retriever_mrr"``: Mean of reciprocal rank for each question. Rewards retrievers that give relevant
               documents a higher rank. Only considers the highest ranked relevant document.
             - ``"reader_top1_accuracy"``: Proportion of highest ranked predicted answers that overlap with corresponding correct answer

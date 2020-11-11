@@ -54,7 +54,8 @@ def calculate_average_precision_and_reciprocal_rank(questions_with_docs: List[di
                 if relevant_docs_found == number_relevant_docs:
                     break
         if found_relevant_doc:
-            summed_avg_precision_retriever += current_avg_precision / relevant_docs_found
+            all_relevant_docs = len(set(question["question"].multiple_document_ids))
+            summed_avg_precision_retriever += current_avg_precision / all_relevant_docs
 
         if found_relevant_doc:
             questions_with_correct_doc.append({
