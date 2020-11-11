@@ -1,3 +1,7 @@
+from whatthelang import WhatTheLang
+import spacy
+
+
 class QueryExpander:
   def __init__(num_keyword_repeats = 3, num_synonyms_per_word = 3):
     self.num_keyword_repeats = num_keyword_repeats
