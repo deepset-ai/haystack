@@ -44,7 +44,6 @@ In question answering models (and hence in Haystack Readers), this is usually a 
 **Question Answering (QA)** - A popular task in the world of NLP where systems have to find answers to questions.
 The term is generally used to refer to extractive question answering,
 where a system has to find the minimal text span in a given document that contains the answer to the question.
-Note however, that it may also refer to abstractive question answering or FAQ matching.
 
 **Reader** - The component in Haystack that does the closest reading of a document to extract
 the exact text which answers a question.
