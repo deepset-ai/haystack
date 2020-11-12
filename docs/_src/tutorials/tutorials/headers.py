@@ -46,6 +46,13 @@ metaDescription: ""
 slug: "/docs/tutorial6"
 date: "2020-09-03"
 id: "tutorial6md"
+--->""",
+    7: """<!---
+title: "Tutorial 7"
+metaTitle: "Generative QA"
+metaDescription: ""
+slug: "/docs/tutorial7"
+date: "2020-11-12"
+id: "tutorial7md"
 --->"""
-
 }
