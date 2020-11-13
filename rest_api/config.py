@@ -23,8 +23,8 @@ TEXT_FIELD_NAME = os.getenv("TEXT_FIELD_NAME", "text")
 NAME_FIELD_NAME = os.getenv("NAME_FIELD_NAME", "name")
 SEARCH_FIELD_NAME = os.getenv("SEARCH_FIELD_NAME", "text")
 FAQ_QUESTION_FIELD_NAME = os.getenv("FAQ_QUESTION_FIELD_NAME", "question")
-EMBEDDING_FIELD_NAME = os.getenv("EMBEDDING_FIELD_NAME", None)
-EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", None)
+EMBEDDING_FIELD_NAME = os.getenv("EMBEDDING_FIELD_NAME", "embedding")
+EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", 768)
 VECTOR_SIMILARITY_METRIC = os.getenv("VECTOR_SIMILARITY_METRIC", "dot_product")
 CREATE_INDEX = os.getenv("CREATE_INDEX", "True").lower() == "true"
 
@@ -45,7 +45,7 @@ DEFAULT_TOP_K_RETRIEVER = int(os.getenv("DEFAULT_TOP_K_RETRIEVER", 5))
 EXCLUDE_META_DATA_FIELDS = os.getenv("EXCLUDE_META_DATA_FIELDS", f"['question_emb','embedding']")
 if EXCLUDE_META_DATA_FIELDS:
     EXCLUDE_META_DATA_FIELDS = ast.literal_eval(EXCLUDE_META_DATA_FIELDS)
-EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", None)
+EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", "deepset/sentence_bert")
 EMBEDDING_MODEL_FORMAT = os.getenv("EMBEDDING_MODEL_FORMAT", "farm")
 
 # File uploads
@@ -54,7 +54,7 @@ REMOVE_NUMERIC_TABLES = os.getenv("REMOVE_NUMERIC_TABLES", "True").lower() == "t
 REMOVE_WHITESPACE = os.getenv("REMOVE_WHITESPACE", "True").lower() == "true"
 REMOVE_EMPTY_LINES = os.getenv("REMOVE_EMPTY_LINES", "True").lower() == "true"
 REMOVE_HEADER_FOOTER = os.getenv("REMOVE_HEADER_FOOTER", "True").lower() == "true"
-VALID_LANGUAGES = os.getenv("VALID_LANGUAGES", None)
+VALID_LANGUAGES = os.getenv("VALID_LANGUAGES", ["en"])
 if VALID_LANGUAGES:
     VALID_LANGUAGES = ast.literal_eval(VALID_LANGUAGES)
 

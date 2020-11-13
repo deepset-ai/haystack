@@ -76,14 +76,14 @@ if READER_MODEL_PATH:  # for extractive doc-qa
     if READER_TYPE == "TransformersReader":
         use_gpu = -1 if not USE_GPU else GPU_NUMBER
         reader = TransformersReader(
-            model_name_or_path=str(READER_MODEL_PATH),
+            model_name_or_path=READER_MODEL_PATH,
             use_gpu=use_gpu,
             context_window_size=CONTEXT_WINDOW_SIZE,
-            tokenizer=str(READER_TOKENIZER)
+            tokenizer=READER_TOKENIZER
         )  # type: Optional[BaseReader]
     elif READER_TYPE == "FARMReader":
         reader = FARMReader(
-            model_name_or_path=str(READER_MODEL_PATH),
+            model_name_or_path=READER_MODEL_PATH,
             batch_size=BATCHSIZE,
             use_gpu=USE_GPU,
             context_window_size=CONTEXT_WINDOW_SIZE,
