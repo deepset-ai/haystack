@@ -54,7 +54,7 @@ REMOVE_NUMERIC_TABLES = os.getenv("REMOVE_NUMERIC_TABLES", "True").lower() == "t
 REMOVE_WHITESPACE = os.getenv("REMOVE_WHITESPACE", "True").lower() == "true"
 REMOVE_EMPTY_LINES = os.getenv("REMOVE_EMPTY_LINES", "True").lower() == "true"
 REMOVE_HEADER_FOOTER = os.getenv("REMOVE_HEADER_FOOTER", "True").lower() == "true"
-VALID_LANGUAGES = os.getenv("VALID_LANGUAGES", ["en"])
+VALID_LANGUAGES = os.getenv("VALID_LANGUAGES", None)
 if VALID_LANGUAGES:
     VALID_LANGUAGES = ast.literal_eval(VALID_LANGUAGES)
 
