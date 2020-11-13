@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, Union, List, Optional
 from uuid import uuid4
 
@@ -9,6 +10,10 @@ from sqlalchemy.sql import case
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
 from haystack.preprocessor.utils import eval_data_from_file
+
+
+logger = logging.getLogger(__name__)
+
 
 Base = declarative_base()  # type: Any
 
@@ -140,10 +145,18 @@ class SQLDocumentStore(BaseDocumentStore):
             meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
             doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
             if self.update_existing_documents:
+                # First old meta data cleaning is required
+                self.session.query(MetaORM).filter_by(document_id=doc.id).delete()
                 self.session.merge(doc_orm)
             else:
                 self.session.add(doc_orm)
-        self.session.commit()
+        try:
+            self.session.commit()
+        except Exception as ex:
+            logger.error(f"Transaction rollback: {ex.__cause__}")
+            # Rollback is important here otherwise self.session will be in inconsistent state and next call will fail
+            self.session.rollback()
+            raise ex
 
     def write_labels(self, labels, index=None):
 
