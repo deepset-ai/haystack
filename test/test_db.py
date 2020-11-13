@@ -85,6 +85,7 @@ def test_get_document_count(document_store):
 
 
 @pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch", "sql", "faiss"], indirect=True)
 @pytest.mark.parametrize("update_existing_documents", [True, False])
 def test_update_existing_documents(document_store, update_existing_documents):
     original_docs = [
