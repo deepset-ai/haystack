@@ -28,7 +28,7 @@ def test_output(prediction):
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None
     assert no_answer_prediction["question"] == "What is the meaning of life?"
-    assert math.isclose(no_answer_prediction["no_ans_gap"], -14.4729533, rel_tol=0.0001)
+    assert math.isclose(no_answer_prediction["no_ans_gap"], -13.048564434051514, rel_tol=0.0001)
     assert no_answer_prediction["answers"][0]["answer"] is None
     assert no_answer_prediction["answers"][0]["offset_start"] == 0
     assert no_answer_prediction["answers"][0]["offset_end"] == 0
