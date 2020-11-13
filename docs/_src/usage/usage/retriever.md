@@ -32,6 +32,8 @@ Here are the combinations which are supported:
 | Embedding | Y | Y | N | Y |
 | DPR | Y | Y | N | Y |
 
+See [Optimization](/docs/latest/optimizationmd) for suggestions on how to choose top-k values.
+
 ## TF-IDF
 
 ### Description
