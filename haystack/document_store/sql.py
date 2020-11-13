@@ -42,7 +42,7 @@ class MetaORM(ORMBase):
 
     name = Column(String(100), index=True)
     value = Column(String(1000), index=True)
-    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
+    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
     documents = relationship(DocumentORM, backref="Meta")
 
@@ -50,7 +50,7 @@ class MetaORM(ORMBase):
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
-    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
+    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     index = Column(String(100), nullable=False)
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String(100), nullable=False)
