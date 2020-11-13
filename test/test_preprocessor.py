@@ -39,11 +39,13 @@ def test_preprocess_word_split():
     documents = preprocessor.process(document)
     assert len(documents) == 11
 
-    preprocessor = PreProcessor(split_length=10, split_stride=0, split_by="word", split_respect_sentence_boundary=True)
+    preprocessor = PreProcessor(split_length=15, split_stride=0, split_by="word", split_respect_sentence_boundary=True)
     documents = preprocessor.process(document)
-    for doc in documents:
-        assert len(doc["text"].split(" ")) <= 10 or doc["text"].startswith("This is to trick")
-    assert len(documents) == 15
+    for i,doc in enumerate(documents):
+        if i == 0:
+            assert len(doc["text"].split(" ")) == 14
+        assert len(doc["text"].split(" ")) <= 15 or doc["text"].startswith("This is to trick")
+    assert len(documents) == 8
 
 
 @pytest.mark.tika
@@ -70,3 +72,5 @@ def test_clean_header_footer():
 
     assert "This is a header." not in documents[0]["text"]
     assert "footer" not in documents[0]["text"]
+
+test_preprocess_word_split()
