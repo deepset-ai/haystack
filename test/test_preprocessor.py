@@ -72,5 +72,4 @@ def test_clean_header_footer():
 
     assert "This is a header." not in documents[0]["text"]
     assert "footer" not in documents[0]["text"]
-
-test_preprocess_word_split()
+    
