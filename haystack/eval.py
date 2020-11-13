@@ -42,6 +42,7 @@ def calculate_average_precision_and_reciprocal_rank(questions_with_docs: List[di
         number_relevant_docs = len(set(question["question"].multiple_document_ids))
         found_relevant_doc = False
         relevant_docs_found = 0
+        current_avg_precision = 0.0
         for doc_idx, doc in enumerate(question["docs"]):
             # check if correct doc among retrieved docs
             if doc.id in question["question"].multiple_document_ids:
@@ -49,9 +50,12 @@ def calculate_average_precision_and_reciprocal_rank(questions_with_docs: List[di
                     summed_reciprocal_rank_retriever += 1 / (doc_idx + 1)
                 relevant_docs_found += 1
                 found_relevant_doc = True
-                summed_avg_precision_retriever += (1 / number_relevant_docs) * (relevant_docs_found / (doc_idx + 1))
+                current_avg_precision += relevant_docs_found / (doc_idx + 1)
                 if relevant_docs_found == number_relevant_docs:
                     break
+        if found_relevant_doc:
+            all_relevant_docs = len(set(question["question"].multiple_document_ids))
+            summed_avg_precision_retriever += current_avg_precision / all_relevant_docs
 
         if found_relevant_doc:
             questions_with_correct_doc.append({
