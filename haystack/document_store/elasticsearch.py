@@ -380,7 +380,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     }
                 )
             body["query"]["bool"]["filter"] = filter_clause
-        result = scan(self.client, query=body, index=index)
+        result = list(scan(self.client, query=body, index=index))
 
         return result
 
