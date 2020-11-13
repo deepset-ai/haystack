@@ -58,13 +58,20 @@ class LabelORM(ORMBase):
 
 
 class SQLDocumentStore(BaseDocumentStore):
-    def __init__(self, url: str = "sqlite://", index="document"):
+    def __init__(
+        self,
+        url: str = "sqlite://",
+        index: str = "document",
+        label_index: str = "label",
+        update_existing_documents: bool = False,
+    ):
         engine = create_engine(url)
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
         self.index = index
-        self.label_index = "label"
+        self.label_index = label_index
+        self.update_existing_documents = update_existing_documents
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         documents = self.get_documents_by_id([id], index)
@@ -132,7 +139,10 @@ class SQLDocumentStore(BaseDocumentStore):
             vector_id = meta_fields.get("vector_id")
             meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
             doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
-            self.session.add(doc_orm)
+            if self.update_existing_documents:
+                self.session.merge(doc_orm)
+            else:
+                self.session.add(doc_orm)
         self.session.commit()
 
     def write_labels(self, labels, index=None):

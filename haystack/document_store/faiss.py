@@ -37,6 +37,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional[faiss.swigfaiss.Index] = None,
         return_embedding: Optional[bool] = True,
+        update_existing_documents: bool = False,
+        index: str = "document",
         **kwargs,
     ):
         """
@@ -63,6 +65,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param faiss_index: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                             or one with docs that you used in Haystack before and want to load again.
         :param return_embedding: To return document embedding
+        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
+                                          documents. When set as True, any document with an existing ID gets updated.
+                                          If set to False, an error is raised if the document ID of the document being
+                                          added already exists.
+        :param index: Name of index in document store to use.
         """
         self.vector_dim = vector_dim
 
@@ -73,7 +80,11 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         self.index_buffer_size = index_buffer_size
         self.return_embedding = return_embedding
-        super().__init__(url=sql_url)
+        super().__init__(
+            url=sql_url,
+            update_existing_documents=update_existing_documents,
+            index=index
+        )
 
     def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric_type=faiss.METRIC_INNER_PRODUCT, **kwargs):
         if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
@@ -133,6 +144,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         if not self.faiss_index:
             raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
+
+        # Faiss does not support update in existing index data so clear all existing data in it
+        self.faiss_index.reset()
 
         index = index or self.index
         documents = self.get_all_documents(index=index)

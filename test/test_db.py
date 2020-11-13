@@ -4,7 +4,6 @@ from elasticsearch import Elasticsearch
 
 from haystack import Document, Label
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_store.faiss import FAISSDocumentStore
 
 
 @pytest.mark.elasticsearch
@@ -86,6 +85,35 @@ def test_get_document_count(document_store):
 
 
 @pytest.mark.elasticsearch
+@pytest.mark.parametrize("update_existing_documents", [True, False])
+def test_update_existing_documents(document_store, update_existing_documents):
+    original_docs = [
+        {"text": "text1_orig", "id": "1", "meta_field_for_count": "a"},
+    ]
+
+    updated_docs = [
+        {"text": "text1_new", "id": "1", "meta_field_for_count": "a"},
+    ]
+
+    document_store.update_existing_documents = update_existing_documents
+    document_store.write_documents(original_docs)
+    assert document_store.get_document_count() == 1
+
+    if update_existing_documents:
+        document_store.write_documents(updated_docs)
+    else:
+        with pytest.raises(Exception):
+            document_store.write_documents(updated_docs)
+
+    stored_docs = document_store.get_all_documents()
+    assert len(stored_docs) == 1
+    if update_existing_documents:
+        assert stored_docs[0].text == updated_docs[0]["text"]
+    else:
+        assert stored_docs[0].text == original_docs[0]["text"]
+
+
+@pytest.mark.elasticsearch
 def test_write_document_meta(document_store):
     documents = [
         {"text": "dict_without_meta", "id": "1"},
@@ -112,9 +140,8 @@ def test_write_document_index(document_store):
     document_store.write_documents([documents[0]], index="haystack_test_1")
     assert len(document_store.get_all_documents(index="haystack_test_1")) == 1
 
-    if not isinstance(document_store, FAISSDocumentStore):  # addition of more documents is not supported in FAISS
-        document_store.write_documents([documents[1]], index="haystack_test_2")
-        assert len(document_store.get_all_documents(index="haystack_test_2")) == 1
+    document_store.write_documents([documents[1]], index="haystack_test_2")
+    assert len(document_store.get_all_documents(index="haystack_test_2")) == 1
 
     assert len(document_store.get_all_documents(index="haystack_test_1")) == 1
     assert len(document_store.get_all_documents()) == 0
