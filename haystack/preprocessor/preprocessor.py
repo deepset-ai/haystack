@@ -100,8 +100,10 @@ class PreProcessor(BasePreProcessor):
                     text_splits.append(current_slice)
                     current_slice = ""
                     word_count = 0
+                if len(current_slice) != 0:
+                    sen = " " + sen
                 current_slice += sen
-                word_count += len(sen.split(" "))
+                word_count += current_word_count
             if current_slice:
                 text_splits.append(current_slice)
         else:
