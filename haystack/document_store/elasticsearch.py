@@ -621,7 +621,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param index: index name
         :return: None
         """
-        query = {"query": {}}
+        query: Dict[str, Any] = {"query": {}}
         if filters:
             filter_clause = []
             for key, values in filters.items():
