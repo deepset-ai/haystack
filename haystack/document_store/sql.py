@@ -248,14 +248,17 @@ class SQLDocumentStore(BaseDocumentStore):
                                   "Change the query type (e.g. by choosing a different retriever) "
                                   "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")
 
-    def delete_all_documents(self, index=None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents in a index.
+        Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: index name
+        :param index: Index name to delete the document from.
+        :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
 
+        if filters:
+            raise NotImplementedError("Delete by filters is not implemented for SQLDocumentStore.")
         index = index or self.index
         documents = self.session.query(DocumentORM).filter_by(index=index)
         documents.delete(synchronize_session=False)
