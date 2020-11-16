@@ -1,5 +1,7 @@
 from langdetect import detect
 import spacy
+from spacy_wordnet.wordnet_annotator import WordnetAnnotator 
+
 
 
 class QueryExpander:
@@ -9,6 +11,8 @@ class QueryExpander:
         self.spacy_models = {}
         self.spacy_models["multi"] = spacy.load("xx_ent_wiki_sm")
         self.spacy_models["en"] = spacy.load("en_core_web_sm")
+        # TODO: Classify automatically
+        self.economy_domains = ['finance', 'banking']
 
     def remove_stop(query, lang=None):
         if lang == None:
@@ -39,3 +43,36 @@ class QueryExpander:
                 result += x + " "
 
         return result
+
+
+    def enhance_query(query, lang=None):
+        if lang == None:
+            lang = detect(query)
+        
+        if lang in ["de", "en"]:
+            try:
+                keyword_model = self.spacy_models[lang]
+                keyword_model.add_pipe(WordnetAnnotator(keyword_model.lang), after='tagger')
+            except:
+                try:
+                    self.spacy_models[lang] = spacy.load(lang + "_core_news_sm")
+                    keyword_model = self.spacy_models[lang]
+                except:
+                    print('Please install the "' + lang + '_core_news_sm" spacy model')
+        else:
+            print("The language " + lang + " is actually not supported")
+        
+        enhanced_query = query
+        enriched_sentence = []
+        # For each token in the sentence
+        for token in sentence:
+            # We get those synsets within the desired domains
+            synsets = token._.wordnet.wordnet_synsets_for_domain(self.economy_domains)
+            if not synsets:
+                enriched_sentence.append(token.text)
+            else:
+                lemmas_for_synset = [lemma for s in synsets for lemma in s.lemma_names()]
+                # If we found a synset in the economy domains
+                # we get the variants and add them to the enriched sentence
+                enriched_sentence.append('{}'.format(' '.join(set(lemmas_for_synset))))
+        return ' '.join(enriched_sentence)
