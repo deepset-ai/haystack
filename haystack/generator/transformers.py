@@ -23,9 +23,39 @@ class RAGenerator(BaseGenerator):
         Implementation of Facebook's Retrieval-Augmented Generator (https://arxiv.org/abs/2005.11401) based on
         HuggingFace's transformers (https://huggingface.co/transformers/model_doc/rag.html).
 
-        |  With the generator, you can:
+        Instead of "finding" the answer within a document, these models **generate** the answer.
+        In that sense, RAG follows a similar approach as GPT-3 but it comes with two huge advantages
+        for real-world applications:
+        a) it has a manageable model size
+        b) the answer generation is conditioned on retrieved documents,
+        i.e. the model can easily adjust to domain documents even after training has finished
+        (in contrast: GPT-3 relies on the web data seen during training)
 
-            - directly get generate predictions via predict()
+        **Example**
+
+        ```python
+        > question = "who got the first nobel prize in physics?"
+
+        # Retrieve related documents from retriever
+        > retrieved_docs = retriever.retrieve(query=question)
+
+        > # Now generate answer from question and retrieved documents
+        > generator.predict(
+        >    question=question,
+        >    documents=retrieved_docs,
+        >    top_k=1
+        > )
+        {'question': 'who got the first nobel prize in physics',
+             'answers':
+                 [{'question': 'who got the first nobel prize in physics',
+                   'answer': ' albert einstein',
+                   'meta': { 'doc_ids': [...],
+                             'doc_scores': [80.42758 ...],
+                             'doc_probabilities': [40.71379089355469, ...
+                             'texts': ['Albert Einstein was a ...]
+                             'titles': ['"Albert Einstein"', ...]
+             }}]}
+        ```
     """
 
     def __init__(
@@ -60,7 +90,6 @@ class RAGenerator(BaseGenerator):
         """
 
         self.model_name_or_path = model_name_or_path
-        self.top_k_answers = top_k_answers
         self.max_length = max_length
         self.min_length = min_length
         self.generator_type = generator_type
@@ -69,8 +98,15 @@ class RAGenerator(BaseGenerator):
         self.prefix = prefix
         self.retriever = retriever
 
+        if top_k_answers > self.num_beams:
+            top_k_answers = self.num_beams
+            logger.warning(f'top_k_answers value should not be greater than num_beams, hence setting it to {num_beams}')
+
+        self.top_k_answers = top_k_answers
+
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
+            raise AttributeError("Currently RAGenerator does not support GPU, try with use_gpu=False")
         else:
             self.device = torch.device("cpu")
 
@@ -144,11 +180,38 @@ class RAGenerator(BaseGenerator):
 
         return embeddings_in_tensor
 
-    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        """
+        Generate the answer to the input question. The generation will be conditioned on the supplied documents.
+        These document can for example be retrieved via the Retriever.
+
+        :param question: Question
+        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+        :param top_k: Number of returned answers
+        :return: Generated answers plus additional infos in a dict like this:
+
+        ```python
+        > {'question': 'who got the first nobel prize in physics',
+        >    'answers':
+        >        [{'question': 'who got the first nobel prize in physics',
+        >          'answer': ' albert einstein',
+        >          'meta': { 'doc_ids': [...],
+        >                    'doc_scores': [80.42758 ...],
+        >                    'doc_probabilities': [40.71379089355469, ...
+        >                    'texts': ['Albert Einstein was a ...]
+        >                    'titles': ['"Albert Einstein"', ...]
+        >    }}]}
+        ```
+        """
         if len(documents) == 0:
             raise AttributeError("generator need documents to predict the answer")
 
         top_k_answers = top_k if top_k is not None else self.top_k_answers
+
+        if top_k_answers > self.num_beams:
+            top_k_answers = self.num_beams
+            logger.warning(f'top_k_answers value should not be greater than num_beams, '
+                           f'hence setting it to {top_k_answers}')
 
         # Flatten the documents so easy to reference
         flat_docs_dict: Dict[str, Any] = {}

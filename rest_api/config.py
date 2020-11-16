@@ -23,8 +23,8 @@ TEXT_FIELD_NAME = os.getenv("TEXT_FIELD_NAME", "text")
 NAME_FIELD_NAME = os.getenv("NAME_FIELD_NAME", "name")
 SEARCH_FIELD_NAME = os.getenv("SEARCH_FIELD_NAME", "text")
 FAQ_QUESTION_FIELD_NAME = os.getenv("FAQ_QUESTION_FIELD_NAME", "question")
-EMBEDDING_FIELD_NAME = os.getenv("EMBEDDING_FIELD_NAME", None)
-EMBEDDING_DIM = os.getenv("EMBEDDING_DIM", None)
+EMBEDDING_FIELD_NAME = os.getenv("EMBEDDING_FIELD_NAME", "embedding")
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", 768))
 VECTOR_SIMILARITY_METRIC = os.getenv("VECTOR_SIMILARITY_METRIC", "dot_product")
 CREATE_INDEX = os.getenv("CREATE_INDEX", "True").lower() == "true"
 
@@ -45,7 +45,7 @@ DEFAULT_TOP_K_RETRIEVER = int(os.getenv("DEFAULT_TOP_K_RETRIEVER", 5))
 EXCLUDE_META_DATA_FIELDS = os.getenv("EXCLUDE_META_DATA_FIELDS", f"['question_emb','embedding']")
 if EXCLUDE_META_DATA_FIELDS:
     EXCLUDE_META_DATA_FIELDS = ast.literal_eval(EXCLUDE_META_DATA_FIELDS)
-EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", None)
+EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", "deepset/sentence_bert")
 EMBEDDING_MODEL_FORMAT = os.getenv("EMBEDDING_MODEL_FORMAT", "farm")
 
 # File uploads
@@ -59,5 +59,6 @@ if VALID_LANGUAGES:
     VALID_LANGUAGES = ast.literal_eval(VALID_LANGUAGES)
 
 # Monitoring
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 APM_SERVER = os.getenv("APM_SERVER", None)
 APM_SERVICE_NAME = os.getenv("APM_SERVICE_NAME", "haystack-backend")

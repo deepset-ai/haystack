@@ -35,6 +35,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
         faq_question_field: Optional[str] = None,
+        analyzer: str = "standard",
         scheme: str = "http",
         ca_certs: bool = False,
         verify_certs: bool = True,
@@ -64,6 +65,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+        :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+                         Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+                         https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
         :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
                                    Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
         :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
@@ -102,6 +106,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
         self.faq_question_field = faq_question_field
+        self.analyzer = analyzer
         self.return_embedding = return_embedding
 
         self.custom_mapping = custom_mapping
@@ -153,6 +158,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                 "match_mapping_type": "string",
                                 "mapping": {"type": "keyword"}}}
                     ],
+                },
+                "settings": {
+                    "analysis": {
+                        "analyzer": {
+                            "default": {
+                                "type": self.analyzer,
+                            }
+                        }
+                    }
                 }
             }
             if self.embedding_field:
@@ -304,7 +318,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
         body = {"doc": meta}
-        self.client.update(index=self.index, doc_type="_doc", id=id, body=body, refresh=self.refresh_type)
+        self.client.update(index=self.index, id=id, body=body, refresh=self.refresh_type)
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         index = index or self.index
@@ -366,7 +380,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     }
                 )
             body["query"]["bool"]["filter"] = filter_clause
-        result = scan(self.client, query=body, index=index)
+        result = list(scan(self.client, query=body, index=index))
 
         return result
 
@@ -600,14 +614,27 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.write_documents(docs, index=doc_index)
         self.write_labels(labels, index=label_index)
 
-    def delete_all_documents(self, index: str):
+    def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents in an index.
+        Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: index name
+        :param index: Index name to delete the document from.
+        :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
-        self.client.delete_by_query(index=index, body={"query": {"match_all": {}}}, ignore=[404])
+        query: Dict[str, Any] = {"query": {}}
+        if filters:
+            filter_clause = []
+            for key, values in filters.items():
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+                query["query"]["bool"] = {"filter": filter_clause}
+        else:
+            query["query"] = {"match_all": {}}
+        self.client.delete_by_query(index=index, body=query, ignore=[404])
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         time.sleep(1)
 

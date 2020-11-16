@@ -33,22 +33,37 @@ def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals
     return metrics
 
 
-def calculate_average_precision(questions_with_docs: List[dict]):
+def calculate_average_precision_and_reciprocal_rank(questions_with_docs: List[dict]):
     questions_with_correct_doc = []
     summed_avg_precision_retriever = 0.0
+    summed_reciprocal_rank_retriever = 0.0
 
     for question in questions_with_docs:
+        number_relevant_docs = len(set(question["question"].multiple_document_ids))
+        found_relevant_doc = False
+        relevant_docs_found = 0
+        current_avg_precision = 0.0
         for doc_idx, doc in enumerate(question["docs"]):
             # check if correct doc among retrieved docs
             if doc.id in question["question"].multiple_document_ids:
-                summed_avg_precision_retriever += 1 / (doc_idx + 1)
-                questions_with_correct_doc.append({
-                    "question": question["question"],
-                    "docs": question["docs"]
-                })
-                break
+                if not found_relevant_doc:
+                    summed_reciprocal_rank_retriever += 1 / (doc_idx + 1)
+                relevant_docs_found += 1
+                found_relevant_doc = True
+                current_avg_precision += relevant_docs_found / (doc_idx + 1)
+                if relevant_docs_found == number_relevant_docs:
+                    break
+        if found_relevant_doc:
+            all_relevant_docs = len(set(question["question"].multiple_document_ids))
+            summed_avg_precision_retriever += current_avg_precision / all_relevant_docs
 
-    return questions_with_correct_doc, summed_avg_precision_retriever
+        if found_relevant_doc:
+            questions_with_correct_doc.append({
+                "question": question["question"],
+                "docs": question["docs"]
+            })
+
+    return questions_with_correct_doc, summed_avg_precision_retriever, summed_reciprocal_rank_retriever
 
 
 def eval_counts_reader(question: MultiLabel, predicted_answers: Dict[str, Any], metric_counts: Dict[str, float]):

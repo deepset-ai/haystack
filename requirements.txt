@@ -6,7 +6,7 @@ gunicorn
 pandas
 sklearn
 psycopg2-binary; sys_platform != 'win32' and sys_platform != 'cygwin'
-elasticsearch
+elasticsearch>=7.7,<=7.10
 elastic-apm
 tox
 coverage
@@ -16,7 +16,7 @@ python-multipart
 python-docx
 sqlalchemy_utils
 # for using FAISS with GPUs, install faiss-gpu
-faiss-cpu; sys_platform != 'win32' and sys_platform != 'cygwin'
+faiss-cpu==1.6.3; sys_platform != 'win32' and sys_platform != 'cygwin'
 tika
 uvloop; sys_platform != 'win32' and sys_platform != 'cygwin'
 httptools

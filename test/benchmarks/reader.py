@@ -83,7 +83,6 @@ def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs)
         populate_reader_json()
 
 
-
 def populate_reader_json():
     reader_results = reader_json()
     template = READER_TEMPLATE

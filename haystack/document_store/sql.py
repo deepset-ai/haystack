@@ -1,7 +1,7 @@
 from typing import Any, Dict, Union, List, Optional
 from uuid import uuid4
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, Boolean, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case
@@ -16,7 +16,7 @@ Base = declarative_base()  # type: Any
 class ORMBase(Base):
     __abstract__ = True
 
-    id = Column(String, default=lambda: str(uuid4()), primary_key=True)
+    id = Column(String(100), default=lambda: str(uuid4()), primary_key=True)
     created = Column(DateTime, server_default=func.now())
     updated = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
@@ -24,19 +24,20 @@ class ORMBase(Base):
 class DocumentORM(ORMBase):
     __tablename__ = "document"
 
-    text = Column(String, nullable=False)
-    index = Column(String, nullable=False)
-    vector_id = Column(String, unique=True, nullable=True)
+    text = Column(Text, nullable=False)
+    index = Column(String(100), nullable=False)
+    vector_id = Column(String(100), unique=True, nullable=True)
 
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaORM", backref="Document", lazy="joined")
 
+
 class MetaORM(ORMBase):
     __tablename__ = "meta"
 
-    name = Column(String, index=True)
-    value = Column(String, index=True)
-    document_id = Column(String, ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), index=True)
+    value = Column(String(1000), index=True)
+    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
 
     documents = relationship(DocumentORM, backref="Meta")
 
@@ -44,14 +45,14 @@ class MetaORM(ORMBase):
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
-    document_id = Column(String, ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
-    index = Column(String, nullable=False)
+    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
+    index = Column(String(100), nullable=False)
     no_answer = Column(Boolean, nullable=False)
-    origin = Column(String, nullable=False)
-    question = Column(String, nullable=False)
+    origin = Column(String(100), nullable=False)
+    question = Column(Text, nullable=False)
     is_correct_answer = Column(Boolean, nullable=False)
     is_correct_document = Column(Boolean, nullable=False)
-    answer = Column(String, nullable=False)
+    answer = Column(Text, nullable=False)
     offset_start_in_doc = Column(Integer, nullable=False)
     model_id = Column(Integer, nullable=True)
 
@@ -247,14 +248,17 @@ class SQLDocumentStore(BaseDocumentStore):
                                   "Change the query type (e.g. by choosing a different retriever) "
                                   "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")
 
-    def delete_all_documents(self, index=None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents in a index.
+        Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: index name
+        :param index: Index name to delete the document from.
+        :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
 
+        if filters:
+            raise NotImplementedError("Delete by filters is not implemented for SQLDocumentStore.")
         index = index or self.index
         documents = self.session.query(DocumentORM).filter_by(index=index)
         documents.delete(synchronize_session=False)

@@ -14,7 +14,7 @@ from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DEFAULT_
     RETRIEVER_TYPE, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, BATCHSIZE, CONTEXT_WINDOW_SIZE, \
     TOP_K_PER_CANDIDATE, NO_ANS_BOOST, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, CONCURRENT_REQUEST_PER_WORKER, \
     FAQ_QUESTION_FIELD_NAME, EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, GPU_NUMBER, NAME_FIELD_NAME, \
-    VECTOR_SIMILARITY_METRIC, CREATE_INDEX
+    VECTOR_SIMILARITY_METRIC, CREATE_INDEX, LOG_LEVEL
 
 from rest_api.controller.request import Question
 from rest_api.controller.response import Answers, AnswersToIndividualQuestion
@@ -28,7 +28,9 @@ from haystack.retriever.base import BaseRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever
 from haystack.retriever.dense import EmbeddingRetriever
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('haystack')
+logger.setLevel(LOG_LEVEL)
+
 router = APIRouter()
 
 # Init global components: DocumentStore, Retriever, Reader, Finder
@@ -74,14 +76,14 @@ if READER_MODEL_PATH:  # for extractive doc-qa
     if READER_TYPE == "TransformersReader":
         use_gpu = -1 if not USE_GPU else GPU_NUMBER
         reader = TransformersReader(
-            model_name_or_path=str(READER_MODEL_PATH),
+            model_name_or_path=READER_MODEL_PATH,
             use_gpu=use_gpu,
             context_window_size=CONTEXT_WINDOW_SIZE,
-            tokenizer=str(READER_TOKENIZER)
+            tokenizer=READER_TOKENIZER
         )  # type: Optional[BaseReader]
     elif READER_TYPE == "FARMReader":
         reader = FARMReader(
-            model_name_or_path=str(READER_MODEL_PATH),
+            model_name_or_path=READER_MODEL_PATH,
             batch_size=BATCHSIZE,
             use_gpu=USE_GPU,
             context_window_size=CONTEXT_WINDOW_SIZE,
@@ -115,7 +117,7 @@ def doc_qa(model_id: int, question_request: Question):
         finder = FINDERS.get(model_id, None)
         if not finder:
             raise HTTPException(
-                status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+                status_code=404, detail=f"Could not get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
             )
 
         results = search_documents(finder, question_request, start_time)
@@ -128,14 +130,20 @@ def faq_qa(model_id: int, request: Question):
     finder = FINDERS.get(model_id, None)
     if not finder:
         raise HTTPException(
-            status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+            status_code=404, detail=f"Could not get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
         )
 
     results = []
     for question in request.questions:
         if request.filters:
             # put filter values into a list and remove filters with null value
-            filters = {key: [value] for key, value in request.filters.items() if value is not None}
+            filters = {}
+            for key, values in request.filters.items():
+                if values is None:
+                    continue
+                if not isinstance(values, list):
+                    values = [values]
+                filters[key] = values
             logger.info(f" [{datetime.now()}] Request: {request}")
         else:
             filters = {}
@@ -158,7 +166,7 @@ def query(model_id: int, query_request: Dict[str, Any], top_k_reader: int = DEFA
         finder = FINDERS.get(model_id, None)
         if not finder:
             raise HTTPException(
-                status_code=404, detail=f"Couldn't get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+                status_code=404, detail=f"Could not get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
             )
 
         question_request = Question.from_elastic_query_dsl(query_request, top_k_reader)
@@ -176,7 +184,13 @@ def search_documents(finder, question_request, start_time) -> List[AnswersToIndi
     for question in question_request.questions:
         if question_request.filters:
             # put filter values into a list and remove filters with null value
-            filters = {key: [value] for key, value in question_request.filters.items() if value is not None}
+            filters = {}
+            for key, values in question_request.filters.items():
+                if values is None:
+                    continue
+                if not isinstance(values, list):
+                    values = [values]
+                filters[key] = values
             logger.info(f" [{datetime.now()}] Request: {question_request}")
         else:
             filters = {}

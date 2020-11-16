@@ -121,6 +121,7 @@ class BaseDocumentStore(ABC):
     def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "label"):
         pass
 
-    def delete_all_documents(self, index: str):
+    @abstractmethod
+    def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
         pass
 

@@ -8,8 +8,8 @@ from collections import defaultdict
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 from haystack import MultiLabel
-from haystack.eval import calculate_average_precision, eval_counts_reader_batch, calculate_reader_metrics, \
-    eval_counts_reader
+from haystack.eval import calculate_average_precision_and_reciprocal_rank, eval_counts_reader_batch, \
+    calculate_reader_metrics, eval_counts_reader
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,8 @@ class Finder:
 
         # 1) Apply retriever(with optional filters) to get fast candidate documents
         documents = self.retriever.retrieve(question, filters=filters, top_k=top_k_retriever, index=index)
+        logger.info(f"Got {len(documents)} candidates from retriever")
+        logger.debug(f"Retrieved document IDs: {[doc.id for doc in documents]}")
 
         if len(documents) == 0:
             logger.info("Retriever did not return any documents. Skipping reader ...")
@@ -129,7 +131,10 @@ class Finder:
         Returns a dict containing the following metrics:
             - ``"retriever_recall"``: Proportion of questions for which correct document is among retrieved documents
             - ``"retriever_map"``: Mean of average precision for each question. Rewards retrievers that give relevant
-              documents a higher rank.
+              documents a higher rank. Considers all retrieved relevant documents. Average precision is normalized by
+              the number of all relevant documents per query.
+            - ``"retriever_mrr"``: Mean of reciprocal rank for each question. Rewards retrievers that give relevant
+              documents a higher rank. Only considers the highest ranked relevant document.
             - ``"reader_top1_accuracy"``: Proportion of highest ranked predicted answers that overlap with corresponding correct answer
             - ``"reader_top1_accuracy_has_answer"``: Proportion of highest ranked predicted answers that overlap
               with corresponding correct answer for answerable questions
@@ -191,17 +196,32 @@ class Finder:
             single_retrieve_start = time.time()
             retrieved_docs = self.retriever.retrieve(question_string, top_k=top_k_retriever, index=doc_index)
             retrieve_times.append(time.time() - single_retrieve_start)
+            number_relevant_docs = len(set(question.multiple_document_ids))
 
             # check if correct doc among retrieved docs
+            found_relevant_doc = False
+            relevant_docs_found = 0
+            current_avg_precision = 0.0
             for doc_idx, doc in enumerate(retrieved_docs):
                 if doc.id in question.multiple_document_ids:
-                    counts["correct_retrievals"] += 1
-                    counts["summed_avg_precision_retriever"] += 1 / (doc_idx + 1)
-                    questions_with_docs.append({
-                        "question": question,
-                        "docs": retrieved_docs
-                    })
-                    break
+                    relevant_docs_found += 1
+                    if not found_relevant_doc:
+                        counts["correct_retrievals"] += 1
+                        counts["summed_reciprocal_rank_retriever"] += 1 / (doc_idx + 1)
+                    current_avg_precision += relevant_docs_found / (doc_idx + 1)
+
+                    found_relevant_doc = True
+                    if relevant_docs_found == number_relevant_docs:
+                        break
+            if found_relevant_doc:
+                all_relevant_docs = len(set(question.multiple_document_ids))
+                counts["summed_avg_precision_retriever"] += current_avg_precision / all_relevant_docs
+
+            if found_relevant_doc:
+                questions_with_docs.append({
+                    "question": question,
+                    "docs": retrieved_docs
+                })
 
         retriever_total_time = time.time() - retriever_start_time
         counts["number_of_questions"] = q_idx + 1
@@ -268,7 +288,10 @@ class Finder:
         Returns a dict containing the following metrics:
             - ``"retriever_recall"``: Proportion of questions for which correct document is among retrieved documents
             - ``"retriever_map"``: Mean of average precision for each question. Rewards retrievers that give relevant
-              documents a higher rank.
+              documents a higher rank. Considers all retrieved relevant documents. Average precision is normalized by
+              the number of all relevant documents per query.
+            - ``"retriever_mrr"``: Mean of reciprocal rank for each question. Rewards retrievers that give relevant
+              documents a higher rank. Only considers the highest ranked relevant document.
             - ``"reader_top1_accuracy"``: Proportion of highest ranked predicted answers that overlap with corresponding correct answer
             - ``"reader_top1_accuracy_has_answer"``: Proportion of highest ranked predicted answers that overlap
               with corresponding correct answer for answerable questions
@@ -328,7 +351,10 @@ class Finder:
         questions_with_docs = self._retrieve_docs(questions, top_k=top_k_retriever, doc_index=doc_index)
         retriever_total_time = time.time() - retriever_start_time
 
-        questions_with_correct_doc, summed_avg_precision_retriever = calculate_average_precision(questions_with_docs)
+        questions_with_correct_doc, \
+        summed_avg_precision_retriever, \
+        summed_reciprocal_rank_retriever = calculate_average_precision_and_reciprocal_rank(questions_with_docs)
+
         correct_retrievals = len(questions_with_correct_doc)
 
         # extract answers
@@ -347,6 +373,7 @@ class Finder:
         results = calculate_reader_metrics(counts, correct_retrievals)
         results["retriever_recall"] = correct_retrievals / number_of_questions
         results["retriever_map"] = summed_avg_precision_retriever / number_of_questions
+        results["retriever_mrr"] = summed_reciprocal_rank_retriever / number_of_questions
         results["total_retrieve_time"] = retriever_total_time
         results["avg_retrieve_time"] = retriever_total_time / number_of_questions
         results["total_reader_time"] = reader_total_time
@@ -387,6 +414,7 @@ class Finder:
         print("\n___Retriever Metrics in Finder___")
         print(f"Retriever Recall            : {finder_eval_results['retriever_recall']:.3f}")
         print(f"Retriever Mean Avg Precision: {finder_eval_results['retriever_map']:.3f}")
+        print(f"Retriever Mean Reciprocal Rank: {finder_eval_results['retriever_mrr']:.3f}")
 
         # Reader is only evaluated with those questions, where the correct document is among the retrieved ones
         print("\n___Reader Metrics in Finder___")
@@ -428,6 +456,7 @@ class Finder:
 
         eval_results["retriever_recall"] = eval_counts["correct_retrievals"] / number_of_questions
         eval_results["retriever_map"] = eval_counts["summed_avg_precision_retriever"] / number_of_questions
+        eval_results["retriever_mrr"] = eval_counts["summed_reciprocal_rank_retriever"] / number_of_questions
 
         eval_results["reader_top1_accuracy"] = eval_counts["correct_readings_top1"] / correct_retrievals
         eval_results["reader_top1_accuracy_has_answer"] = eval_counts["correct_readings_top1_has_answer"] / number_of_has_answer
