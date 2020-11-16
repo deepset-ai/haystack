@@ -134,6 +134,21 @@ def test_write_document_with_embeddings(document_store):
 
 
 @pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_delete_documents(document_store_with_docs):
+    assert len(document_store_with_docs.get_all_documents()) == 3
+
+    document_store_with_docs.delete_all_documents(index="haystack-test", filters={"meta_field": ["test1", "test2"]})
+    documents = document_store_with_docs.get_all_documents()
+    assert len(documents) == 1
+    assert documents[0].meta["meta_field"] == "test3"
+
+    document_store_with_docs.delete_all_documents(index="haystack-test")
+    documents = document_store_with_docs.get_all_documents()
+    assert len(documents) == 0
+
+
+@pytest.mark.elasticsearch
 def test_labels(document_store):
     label = Label(
         question="question",

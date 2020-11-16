@@ -614,14 +614,26 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.write_documents(docs, index=doc_index)
         self.write_labels(labels, index=label_index)
 
-    def delete_all_documents(self, index: str):
+    def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents in an index.
+        Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: index name
         :return: None
         """
-        self.client.delete_by_query(index=index, body={"query": {"match_all": {}}}, ignore=[404])
+        query = {"query": {}}
+        if filters:
+            filter_clause = []
+            for key, values in filters.items():
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+                query["query"]["bool"] = {"filter": filter_clause}
+        else:
+            query["query"] = {"match_all": {}}
+        self.client.delete_by_query(index=index, body=query, ignore=[404])
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         time.sleep(1)
 

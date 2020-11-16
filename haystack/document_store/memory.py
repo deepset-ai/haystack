@@ -201,7 +201,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.write_documents(docs, index=doc_index)
         self.write_labels(labels, index=label_index)
 
-    def delete_all_documents(self, index: Optional[str] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete all documents in a index.
 
@@ -209,5 +209,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :return: None
         """
 
+        if filters:
+            raise NotImplementedError("Delete by filters is not implemented for InMemoryDocumentStore.")
         index = index or self.index
         self.indexes[index] = {}
