@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, Union, List, Optional
 from uuid import uuid4
 
@@ -9,6 +10,10 @@ from sqlalchemy.sql import case
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
 from haystack.preprocessor.utils import eval_data_from_file
+
+
+logger = logging.getLogger(__name__)
+
 
 Base = declarative_base()  # type: Any
 
@@ -37,7 +42,7 @@ class MetaORM(ORMBase):
 
     name = Column(String(100), index=True)
     value = Column(String(1000), index=True)
-    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
+    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
     documents = relationship(DocumentORM, backref="Meta")
 
@@ -45,7 +50,7 @@ class MetaORM(ORMBase):
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
-    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE"), nullable=False)
+    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     index = Column(String(100), nullable=False)
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String(100), nullable=False)
@@ -58,13 +63,30 @@ class LabelORM(ORMBase):
 
 
 class SQLDocumentStore(BaseDocumentStore):
-    def __init__(self, url: str = "sqlite://", index="document"):
+    def __init__(
+        self,
+        url: str = "sqlite://",
+        index: str = "document",
+        label_index: str = "label",
+        update_existing_documents: bool = False,
+    ):
+        """
+        :param url: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
+        :param index: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents. 
+                      This parameter sets the default value for document index.
+        :param label_index: The default value of index attribute for the labels.
+        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
+                                          documents. When set as True, any document with an existing ID gets updated.
+                                          If set to False, an error is raised if the document ID of the document being
+                                          added already exists. Using this parameter coud cause performance degradation for document insertion. 
+        """
         engine = create_engine(url)
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
         self.index = index
-        self.label_index = "label"
+        self.label_index = label_index
+        self.update_existing_documents = update_existing_documents
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         documents = self.get_documents_by_id([id], index)
@@ -132,8 +154,19 @@ class SQLDocumentStore(BaseDocumentStore):
             vector_id = meta_fields.get("vector_id")
             meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
             doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
-            self.session.add(doc_orm)
-        self.session.commit()
+            if self.update_existing_documents:
+                # First old meta data cleaning is required
+                self.session.query(MetaORM).filter_by(document_id=doc.id).delete()
+                self.session.merge(doc_orm)
+            else:
+                self.session.add(doc_orm)
+        try:
+            self.session.commit()
+        except Exception as ex:
+            logger.error(f"Transaction rollback: {ex.__cause__}")
+            # Rollback is important here otherwise self.session will be in inconsistent state and next call will fail
+            self.session.rollback()
+            raise ex
 
     def write_labels(self, labels, index=None):
 
