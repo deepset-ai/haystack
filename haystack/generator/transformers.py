@@ -90,7 +90,6 @@ class RAGenerator(BaseGenerator):
         """
 
         self.model_name_or_path = model_name_or_path
-        self.top_k_answers = top_k_answers
         self.max_length = max_length
         self.min_length = min_length
         self.generator_type = generator_type
@@ -99,8 +98,15 @@ class RAGenerator(BaseGenerator):
         self.prefix = prefix
         self.retriever = retriever
 
+        if top_k_answers > self.num_beams:
+            top_k_answers = self.num_beams
+            logger.warning(f'top_k_answers value should not be greater than num_beams, hence setting it to {num_beams}')
+
+        self.top_k_answers = top_k_answers
+
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
+            raise AttributeError("Currently RAGenerator does not support GPU, try with use_gpu=False")
         else:
             self.device = torch.device("cpu")
 
@@ -201,6 +207,11 @@ class RAGenerator(BaseGenerator):
             raise AttributeError("generator need documents to predict the answer")
 
         top_k_answers = top_k if top_k is not None else self.top_k_answers
+
+        if top_k_answers > self.num_beams:
+            top_k_answers = self.num_beams
+            logger.warning(f'top_k_answers value should not be greater than num_beams, '
+                           f'hence setting it to {top_k_answers}')
 
         # Flatten the documents so easy to reference
         flat_docs_dict: Dict[str, Any] = {}
