@@ -110,11 +110,17 @@ class FAISSDocumentStore(SQLDocumentStore):
         # vector index
         if not self.faiss_index:
             raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
+
         # doc + metadata index
         index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
         add_vectors = False if document_objects[0].embedding is None else True
+
+        if self.update_existing_documents and add_vectors:
+            logger.warning("You have enabled `update_existing_documents` feature and "
+                           "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
+                           "Please call `update_embeddings` method to repopulate `faiss_index`")
 
         for i in range(0, len(document_objects), self.index_buffer_size):
             vector_id = self.faiss_index.ntotal
