@@ -203,9 +203,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents in a index.
+        Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: index name
+        :param index: Index name to delete the document from.
+        :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
 

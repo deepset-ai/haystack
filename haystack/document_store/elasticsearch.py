@@ -618,7 +618,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: index name
+        :param index: Index name to delete the document from.
+        :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
         query: Dict[str, Any] = {"query": {}}
