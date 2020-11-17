@@ -165,3 +165,12 @@ class BaseRetriever(ABC):
             return {"metrics": metrics, "predictions": predictions}
         else:
             return metrics
+
+    def run(self, **kwargs):
+        query = kwargs["question"]
+        documents = self.retrieve(query)
+        output = {
+            "question": query,
+            "documents": documents
+        }
+        return output, 1

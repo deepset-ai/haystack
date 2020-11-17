@@ -44,3 +44,7 @@ class BaseReader(ABC):
                "document_id": None,
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
+
+    def run(self, **kwargs):
+        result = self.predict(**kwargs)
+        return result, 1
