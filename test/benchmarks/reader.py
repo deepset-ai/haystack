@@ -11,9 +11,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-reader_models_full = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
-                 "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
-                 "deepset/xlm-roberta-large-squad2", "distilbert-base-uncased-distilled-squad"]
+# reader_models_full = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
+#                  "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
+#                  "deepset/xlm-roberta-large-squad2", "distilbert-base-uncased-distilled-squad"]
+reader_models_full = ["deepset/minilm-uncased-squad2"]
 reader_models_ci = ["deepset/minilm-uncased-squad2"]
 
 reader_types = ["farm"]
@@ -34,18 +35,13 @@ label_index = "label"
 def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs):
     if ci:
         reader_models = reader_models_ci
-        max_docs = 100
-        # heuristic to estimate num of passages for the reduced num of docs
-        n_passages = n_total_passages * (max_docs / n_total_docs)
     else:
         reader_models = reader_models_full
-        max_docs = None
-        n_passages = n_total_passages
     reader_results = []
     doc_store = get_document_store("elasticsearch")
     # download squad data
     _download_extract_downstream_data(input_file=data_dir/filename)
-    docs, labels = eval_data_from_file(data_dir/filename, max_docs)
+    docs, labels = eval_data_from_file(data_dir/filename, max_docs=None)
 
     index_to_doc_store(doc_store, docs, None, labels)
     for reader_name in reader_models:
@@ -58,7 +54,7 @@ def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs)
                                       label_index=label_index,
                                       device="cuda")
                 # print(results)
-                results["passages_per_second"] = n_passages / results["reader_time"]
+                results["passages_per_second"] = n_total_passages / results["reader_time"]
                 results["reader"] = reader_name
                 results["error"] = ""
                 reader_results.append(results)
@@ -79,6 +75,8 @@ def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs)
                 md_file = results_file.replace(".csv", ".md")
                 with open(md_file, "w") as f:
                     f.write(str(reader_df.to_markdown()))
+    doc_store.delete_all_documents(label_index)
+    doc_store.delete_all_documents(doc_index)
     if update_json:
         populate_reader_json()
 
@@ -91,4 +89,4 @@ def populate_reader_json():
 
 
 if __name__ == "__main__":
-    benchmark_reader(ci=True, update_json=True, save_markdown=False)
+    benchmark_reader(ci=True, update_json=True, save_markdown=True)
