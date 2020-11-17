@@ -36,6 +36,18 @@ jobs:
           sudo chmod 777 /docker_machine" && \
           docker-machine scp -r -q ~/.docker/machine/ \
           $MACHINE:/docker_machine && \
+          docker run --name elasticsearch -d \
+                              -p 9200:9200 \
+                              -e "discovery.type=single-node" \
+                             elasticsearch:7.9.2 && \
+                   docker run --name postgres -d \
+                               -p 5432:5432 \
+                               --net host \
+                               -e POSTGRES_PASSWORD=password \
+                               -v /docker_machine/machine:/root/.docker/machine \
+                               -e DOCKER_MACHINE=$MACHINE \
+                               postgres && \
+                   sleep 4 && \
           docker run --name runner \
             --gpus all \
             -v /docker_machine/machine:/root/.docker/machine \
