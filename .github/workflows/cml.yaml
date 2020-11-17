@@ -1,6 +1,6 @@
 name: benchmarks
 
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   deploy-cloud-runner:
@@ -58,11 +58,10 @@ jobs:
             -e repo_token=$repo_token \
             -e RUNNER_LABELS=$RUNNER_LABELS \
             -e RUNNER_REPO=$RUNNER_REPO \
-            -e RUNNER_IDLE_TIMEOUT=240 \
+            -e RUNNER_IDLE_TIMEOUT=120 \
             dvcorg/cml-py3:latest && \
           sleep 20 && echo "Deployed $MACHINE"
           ) || (echo "Shut down machine" && docker-machine rm -y -f $MACHINE && exit 1)
-
   train:
     needs: deploy-cloud-runner
     runs-on: [self-hosted,cml]

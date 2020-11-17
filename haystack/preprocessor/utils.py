@@ -28,7 +28,8 @@ def eval_data_from_file(filename: str, max_docs: Union[int, bool]=None) -> Tuple
     :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents. 
     :return: (List of Documents, List of Labels)
     """
-    docs = []
+
+    docs: List[Document] = []
     labels = []
 
     with open(filename, "r") as file:
