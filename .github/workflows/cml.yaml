@@ -4,7 +4,7 @@ on: [workflow_dispatch, labeled]
 
 jobs:
   deploy-cloud-runner:
-    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'bug') || github.event.action == 'workflow_dispatch' }}
+    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'benchmark') || github.event.action == 'workflow_dispatch' }}
     runs-on: [ubuntu-latest]
     container: docker://dvcorg/cml
 
