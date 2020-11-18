@@ -308,20 +308,21 @@ class FARMReader(BaseReader):
 
         Returns dictionaries containing answers sorted by (desc.) probability.
         Example:
-
-            {'question': 'Who is the father of Arya Stark?',
-            'answers': [
-                         {'answer': 'Eddard,',
-                         'context': " She travels with her father, Eddard, to King's Landing when he is ",
-                         'offset_answer_start': 147,
-                         'offset_answer_end': 154,
-                         'probability': 0.9787139466668613,
-                         'score': None,
-                         'document_id': '1337'
-                         },
-                        ...
-                       ]
-            }
+         ```python
+            |{
+            |    'question': 'Who is the father of Arya Stark?',
+            |    'answers':[
+            |                 {'answer': 'Eddard,',
+            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
+            |                 'offset_answer_start': 147,
+            |                 'offset_answer_end': 154,
+            |                 'probability': 0.9787139466668613,
+            |                 'score': None,
+            |                 'document_id': '1337'
+            |                 },...
+            |              ]
+            |}
+         ```
 
         :param question: Question string
         :param documents: List of Document in which to search for the answer
@@ -571,20 +572,21 @@ class FARMReader(BaseReader):
         Use loaded QA model to find answers for a question in the supplied list of Document.
         Returns dictionaries containing answers sorted by (desc.) probability.
         Example:
-
-            {
-                'question': 'Who is the father of Arya Stark?',
-                'answers':[
-                             {'answer': 'Eddard,',
-                             'context': " She travels with her father, Eddard, to King's Landing when he is ",
-                             'offset_answer_start': 147,
-                             'offset_answer_end': 154,
-                             'probability': 0.9787139466668613,
-                             'score': None,
-                             'document_id': '1337'
-                             },...
-                          ]
-            }
+         ```python
+            |{
+            |    'question': 'Who is the father of Arya Stark?',
+            |    'answers':[
+            |                 {'answer': 'Eddard,',
+            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
+            |                 'offset_answer_start': 147,
+            |                 'offset_answer_end': 154,
+            |                 'probability': 0.9787139466668613,
+            |                 'score': None,
+            |                 'document_id': '1337'
+            |                 },...
+            |              ]
+            |}
+         ```
 
         :param question: Question string
         :param documents: List of documents as string type
