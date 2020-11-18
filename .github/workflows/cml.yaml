@@ -1,9 +1,12 @@
 name: benchmarks
 
-on: [push]
-
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
 jobs:
   deploy-cloud-runner:
+    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'benchmark') || github.event.action == 'workflow_dispatch' }}
     runs-on: [ubuntu-latest]
     container: docker://dvcorg/cml
 
@@ -30,13 +33,27 @@ jobs:
             --amazonec2-root-size 150 \
             $MACHINE
           eval "$(docker-machine env --shell sh $MACHINE)"
+
           (
           docker-machine ssh $MACHINE "sudo mkdir -p \
             /docker_machine && \
           sudo chmod 777 /docker_machine" && \
           docker-machine scp -r -q ~/.docker/machine/ \
-          $MACHINE:/docker_machine && \
-          docker run --name runner \
+            $MACHINE:/docker_machine && \
+          docker run --name elasticsearch -d \
+                     -p 9200:9200 \
+                     -e "discovery.type=single-node" \
+                    elasticsearch:7.9.2 && \
+          docker run --name postgres -d \
+                      -p 5432:5432 \
+                      --net host \
+                      -e POSTGRES_PASSWORD=password \
+                      -v /docker_machine/machine:/root/.docker/machine \
+                      -e DOCKER_MACHINE=$MACHINE \
+                      postgres && \
+          sleep 4 && \
+          docker exec -i postgres psql -U postgres -c "CREATE DATABASE haystack;" && \
+          docker run --name runner -d \
             --gpus all \
             -v /docker_machine/machine:/root/.docker/machine \
             --net host \
@@ -44,7 +61,31 @@ jobs:
             -e repo_token=$repo_token \
             -e RUNNER_LABELS=$RUNNER_LABELS \
             -e RUNNER_REPO=$RUNNER_REPO \
-            -e RUNNER_IDLE_TIMEOUT=10 \
+            -e RUNNER_IDLE_TIMEOUT=120 \
             dvcorg/cml-py3:latest && \
           sleep 20 && echo "Deployed $MACHINE"
           ) || (echo "Shut down machine" && docker-machine rm -y -f $MACHINE && exit 1)
+  train:
+    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'bug') || github.event.action == 'workflow_dispatch' }}
+    needs: deploy-cloud-runner
+    runs-on: [self-hosted,cml]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cml_run
+        env:
+          repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
+        run: |
+          apt-get update -y
+          apt-get install python3-dev -y
+          pip install -r requirements.txt
+          pip install .
+          cd test/benchmarks && python run.py --retriever_index --retriever_query --reader --ci --save_markdown
+          echo -en "## Benchmarks: Retriever Indexing\n" >> report.md
+          cat retriever_index_results.md >> report.md
+          echo -en "\n\n## Benchmarks: Retriever Querying\n" >> report.md
+          cat retriever_query_results.md >> report.md
+          echo -en "\n\n## Benchmarks: Reader\n" >> report.md
+          cat reader_results.md >> report.md
+          cml-send-comment report.md
