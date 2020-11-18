@@ -28,17 +28,24 @@ def eval_data_from_file(filename: str, max_docs: Union[int, bool]=None) -> Tuple
     :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents. 
     :return: (List of Documents, List of Labels)
     """
-    docs = []
+
+    docs: List[Document] = []
     labels = []
 
     with open(filename, "r") as file:
         data = json.load(file)
         if "title" not in data["data"][0]:
             logger.warning(f"No title information found for documents in QA file: {filename}")
-        for document in data["data"][:max_docs]:
+        for document in data["data"]:
+            if max_docs:
+                if len(docs) > max_docs:
+                    break
             # get all extra fields from document level (e.g. title)
             meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
             for paragraph in document["paragraphs"]:
+                if max_docs:
+                    if len(docs) > max_docs:
+                        break
                 cur_meta = {"name": document.get("title", None)}
                 # all other fields from paragraph level
                 meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
