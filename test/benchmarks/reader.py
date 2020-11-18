@@ -11,10 +11,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# reader_models_full = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
-#                  "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
-#                  "deepset/xlm-roberta-large-squad2", "distilbert-base-uncased-distilled-squad"]
-reader_models_full = ["deepset/minilm-uncased-squad2"]
+reader_models_full = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
+                 "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
+                 "deepset/xlm-roberta-large-squad2", "distilbert-base-uncased-distilled-squad"]
 reader_models_ci = ["deepset/minilm-uncased-squad2"]
 
 reader_types = ["farm"]
