@@ -76,3 +76,11 @@ class QueryExpander:
                 # we get the variants and add them to the enriched sentence
                 enriched_sentence.append('{}'.format(' '.join(set(lemmas_for_synset))))
         return ' '.join(enriched_sentence)
+
+
+        def convert_query(query, lang = None):
+            new_query = self.enhance_query(query, lang)
+
+            new_query = self.remove_stop(query, lang)
+
+            return new_query
