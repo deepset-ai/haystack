@@ -79,7 +79,7 @@ See API documentation for more info.
 
 DocumentStores expect Documents in dictionary form, like that below.
 They are loaded using the `DocumentStore.write_documents()` method.
-See [Preprocessing](/docs/latest/preprocessingmd) for more information on how to best prepare your data.
+See [Preprocessing](/docs/latest/preprocessingmd) for more information on the cleaning and splitting steps that will help you maximize Haystack's performance.
 
 [//]: # (Add link to preprocessing section)
 
