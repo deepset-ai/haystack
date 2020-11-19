@@ -6,8 +6,7 @@
   "columns": [
     "n_docs",
     "BM25 / ElasticSearch",
-    "DPR / ElasticSearch",
-    "DPR / FAISS (flat)",
+    "DPR / ElasticSearch or FAISS (flat)",
     "DPR / FAISS (HSNW)"
   ],
   "axis": [
