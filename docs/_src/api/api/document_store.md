@@ -1,16 +1,68 @@
-<a name="memory"></a>
-# memory
+<a name="base"></a>
+# base
 
-<a name="memory.InMemoryDocumentStore"></a>
-## InMemoryDocumentStore
+<a name="base.BaseDocumentStore"></a>
+## BaseDocumentStore
 
 ```python
-class InMemoryDocumentStore(BaseDocumentStore)
+class BaseDocumentStore(ABC)
 ```
 
-In-memory document store
+Base class for implementing Document Stores.
 
-<a name="memory.InMemoryDocumentStore.write_documents"></a>
+<a name="base.BaseDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | @abstractmethod
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+```
+
+Indexes documents for later queries.
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+Optionally: Include meta data via {"text": "<the-actual-text>",
+"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: Optional name of index where the documents shall be written to.
+If None, the DocumentStore's default index (self.index) will be used.
+
+**Returns**:
+
+None
+
+<a name="sql"></a>
+# sql
+
+<a name="sql.SQLDocumentStore"></a>
+## SQLDocumentStore
+
+```python
+class SQLDocumentStore(BaseDocumentStore)
+```
+
+<a name="sql.SQLDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
+```
+
+**Arguments**:
+
+- `url`: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
+- `index`: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
+This parameter sets the default value for document index.
+- `label_index`: The default value of index attribute for the labels.
+- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
+documents. When set as True, any document with an existing ID gets updated.
+If set to False, an error is raised if the document ID of the document being
+added already exists. Using this parameter coud cause performance degradation for document insertion.
+
+<a name="sql.SQLDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
@@ -19,45 +71,39 @@ In-memory document store
 
 Indexes documents for later queries.
 
-
 **Arguments**:
 
 - `documents`: a list of Python dictionaries or a list of Haystack Document objects.
 For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
 Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta": {"name": "<some-document-name>, "author": "somebody", ...}}
+"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
 It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
-separate index than the documents for search.
+- `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
+documents for evaluation can be indexed in a separate index than the documents for search.
 
 **Returns**:
 
 None
 
-<a name="memory.InMemoryDocumentStore.update_embeddings"></a>
-#### update\_embeddings
+<a name="sql.SQLDocumentStore.update_vector_ids"></a>
+#### update\_vector\_ids
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
+ | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
 ```
 
-Updates the embeddings in the the document store using the encoding model specified in the retriever.
-This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+Update vector_ids for given document_ids.
 
 **Arguments**:
 
-- `retriever`: Retriever
-- `index`: Index name to update
+- `vector_id_map`: dict containing mapping of document_id -> vector_id.
+- `index`: filter documents by the optional index attribute for documents in database.
 
-**Returns**:
-
-None
-
-<a name="memory.InMemoryDocumentStore.add_eval_data"></a>
+<a name="sql.SQLDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
 
 ```python
- | add_eval_data(filename: str, doc_index: Optional[str] = None, label_index: Optional[str] = None)
+ | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label")
 ```
 
 Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
@@ -71,193 +117,23 @@ Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform 
 - `label_index`: Elasticsearch index where labeled questions should be stored
 :type label_index: str
 
-<a name="memory.InMemoryDocumentStore.delete_all_documents"></a>
+<a name="sql.SQLDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index: Optional[str] = None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
-Delete all documents in a index.
+Delete documents in an index. All documents are deleted if no filters are passed.
 
 **Arguments**:
 
-- `index`: index name
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
 
 **Returns**:
 
 None
-
-<a name="faiss"></a>
-# faiss
-
-<a name="faiss.FAISSDocumentStore"></a>
-## FAISSDocumentStore
-
-```python
-class FAISSDocumentStore(SQLDocumentStore)
-```
-
-Document store for very large scale embedding based dense retrievers like the DPR.
-
-It implements the FAISS library(https://github.com/facebookresearch/faiss)
-to perform similarity search on vectors.
-
-The document text and meta-data (for filtering) are stored using the SQLDocumentStore, while
-the vector embeddings are indexed in a FAISS Index.
-
-<a name="faiss.FAISSDocumentStore.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: Optional[bool] = True, **kwargs, ,)
-```
-
-**Arguments**:
-
-- `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
-deployment, Postgres is recommended.
-- `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
-smaller chunks to reduce memory footprint.
-- `vector_dim`: the embedding vector size.
-- `faiss_index_factory_str`: Create a new FAISS index of the specified type.
-The type is determined from the given string following the conventions
-of the original FAISS index factory.
-Recommended options:
-- "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
-- "HNSW": Graph-based heuristic. If not further specified,
-we use a RAM intense, but more accurate config:
-HNSW256, efConstruction=256 and efSearch=256
-- "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
-Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
-For more details see:
-- Overview of indices https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
-- Guideline for choosing an index https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
-- FAISS Index factory https://github.com/facebookresearch/faiss/wiki/The-index-factory
-Benchmarks: XXX
-- `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
-or one with docs that you used in Haystack before and want to load again.
-- `return_embedding`: To return document embedding
-
-<a name="faiss.FAISSDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
-```
-
-Add new documents to the DocumentStore.
-
-**Arguments**:
-
-- `documents`: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
-them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
-- `index`: (SQL) index name for storing the docs and metadata
-
-**Returns**:
-
-
-
-<a name="faiss.FAISSDocumentStore.update_embeddings"></a>
-#### update\_embeddings
-
-```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
-```
-
-Updates the embeddings in the the document store using the encoding model specified in the retriever.
-This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
-
-**Arguments**:
-
-- `retriever`: Retriever to use to get embeddings for text
-- `index`: (SQL) index name for storing the docs and metadata
-
-**Returns**:
-
-None
-
-<a name="faiss.FAISSDocumentStore.train_index"></a>
-#### train\_index
-
-```python
- | train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None)
-```
-
-Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
-The train vectors should come from the same distribution as your final ones.
-You can pass either documents (incl. embeddings) or just the plain embeddings that the index shall be trained on.
-
-**Arguments**:
-
-- `documents`: Documents (incl. the embeddings)
-- `embeddings`: Plain embeddings
-
-**Returns**:
-
-None
-
-<a name="faiss.FAISSDocumentStore.query_by_embedding"></a>
-#### query\_by\_embedding
-
-```python
- | query_by_embedding(query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
-```
-
-Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
-
-**Arguments**:
-
-- `query_emb`: Embedding of the query (e.g. gathered from DPR)
-- `filters`: Optional filters to narrow down the search space.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `top_k`: How many documents to return
-- `index`: (SQL) index name for storing the docs and metadata
-- `return_embedding`: To return document embedding
-
-**Returns**:
-
-
-
-<a name="faiss.FAISSDocumentStore.save"></a>
-#### save
-
-```python
- | save(file_path: Union[str, Path])
-```
-
-Save FAISS Index to the specified file.
-
-**Arguments**:
-
-- `file_path`: Path to save to.
-
-**Returns**:
-
-None
-
-<a name="faiss.FAISSDocumentStore.load"></a>
-#### load
-
-```python
- | @classmethod
- | load(cls, faiss_file_path: Union[str, Path], sql_url: str, index_buffer_size: int = 10_000)
-```
-
-Load a saved FAISS index from a file and connect to the SQL database.
-Note: In order to have a correct mapping from FAISS to SQL,
-make sure to use the same SQL DB that you used when calling `save()`.
-
-**Arguments**:
-
-- `faiss_file_path`: Stored FAISS index file. Can be created via calling `save()`
-- `sql_url`: Connection string to the SQL database that contains your docs and metadata.
-- `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
-smaller chunks to reduce memory footprint.
-
-**Returns**:
-
-
 
 <a name="elasticsearch"></a>
 # elasticsearch
@@ -391,30 +267,209 @@ Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform 
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index: str)
+ | delete_all_documents(index: str, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
-Delete all documents in an index.
+Delete documents in an index. All documents are deleted if no filters are passed.
 
 **Arguments**:
 
-- `index`: index name
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
 
 **Returns**:
 
 None
 
-<a name="sql"></a>
-# sql
+<a name="faiss"></a>
+# faiss
 
-<a name="sql.SQLDocumentStore"></a>
-## SQLDocumentStore
+<a name="faiss.FAISSDocumentStore"></a>
+## FAISSDocumentStore
 
 ```python
-class SQLDocumentStore(BaseDocumentStore)
+class FAISSDocumentStore(SQLDocumentStore)
 ```
 
-<a name="sql.SQLDocumentStore.write_documents"></a>
+Document store for very large scale embedding based dense retrievers like the DPR.
+
+It implements the FAISS library(https://github.com/facebookresearch/faiss)
+to perform similarity search on vectors.
+
+The document text and meta-data (for filtering) are stored using the SQLDocumentStore, while
+the vector embeddings are indexed in a FAISS Index.
+
+<a name="faiss.FAISSDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: Optional[bool] = True, update_existing_documents: bool = False, index: str = "document", **kwargs, ,)
+```
+
+**Arguments**:
+
+- `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
+deployment, Postgres is recommended.
+- `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
+smaller chunks to reduce memory footprint.
+- `vector_dim`: the embedding vector size.
+- `faiss_index_factory_str`: Create a new FAISS index of the specified type.
+The type is determined from the given string following the conventions
+of the original FAISS index factory.
+Recommended options:
+- "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
+- "HNSW": Graph-based heuristic. If not further specified,
+we use a RAM intense, but more accurate config:
+HNSW256, efConstruction=256 and efSearch=256
+- "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
+Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
+For more details see:
+- Overview of indices https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
+- Guideline for choosing an index https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+- FAISS Index factory https://github.com/facebookresearch/faiss/wiki/The-index-factory
+Benchmarks: XXX
+- `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
+or one with docs that you used in Haystack before and want to load again.
+- `return_embedding`: To return document embedding
+- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
+documents. When set as True, any document with an existing ID gets updated.
+If set to False, an error is raised if the document ID of the document being
+added already exists.
+- `index`: Name of index in document store to use.
+
+<a name="faiss.FAISSDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+```
+
+Add new documents to the DocumentStore.
+
+**Arguments**:
+
+- `documents`: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
+them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
+- `index`: (SQL) index name for storing the docs and metadata
+
+**Returns**:
+
+
+
+<a name="faiss.FAISSDocumentStore.update_embeddings"></a>
+#### update\_embeddings
+
+```python
+ | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
+```
+
+Updates the embeddings in the the document store using the encoding model specified in the retriever.
+This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+
+**Arguments**:
+
+- `retriever`: Retriever to use to get embeddings for text
+- `index`: (SQL) index name for storing the docs and metadata
+
+**Returns**:
+
+None
+
+<a name="faiss.FAISSDocumentStore.train_index"></a>
+#### train\_index
+
+```python
+ | train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None)
+```
+
+Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
+The train vectors should come from the same distribution as your final ones.
+You can pass either documents (incl. embeddings) or just the plain embeddings that the index shall be trained on.
+
+**Arguments**:
+
+- `documents`: Documents (incl. the embeddings)
+- `embeddings`: Plain embeddings
+
+**Returns**:
+
+None
+
+<a name="faiss.FAISSDocumentStore.query_by_embedding"></a>
+#### query\_by\_embedding
+
+```python
+ | query_by_embedding(query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `filters`: Optional filters to narrow down the search space.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `top_k`: How many documents to return
+- `index`: (SQL) index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
+
+**Returns**:
+
+
+
+<a name="faiss.FAISSDocumentStore.save"></a>
+#### save
+
+```python
+ | save(file_path: Union[str, Path])
+```
+
+Save FAISS Index to the specified file.
+
+**Arguments**:
+
+- `file_path`: Path to save to.
+
+**Returns**:
+
+None
+
+<a name="faiss.FAISSDocumentStore.load"></a>
+#### load
+
+```python
+ | @classmethod
+ | load(cls, faiss_file_path: Union[str, Path], sql_url: str, index_buffer_size: int = 10_000)
+```
+
+Load a saved FAISS index from a file and connect to the SQL database.
+Note: In order to have a correct mapping from FAISS to SQL,
+make sure to use the same SQL DB that you used when calling `save()`.
+
+**Arguments**:
+
+- `faiss_file_path`: Stored FAISS index file. Can be created via calling `save()`
+- `sql_url`: Connection string to the SQL database that contains your docs and metadata.
+- `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
+smaller chunks to reduce memory footprint.
+
+**Returns**:
+
+
+
+<a name="memory"></a>
+# memory
+
+<a name="memory.InMemoryDocumentStore"></a>
+## InMemoryDocumentStore
+
+```python
+class InMemoryDocumentStore(BaseDocumentStore)
+```
+
+In-memory document store
+
+<a name="memory.InMemoryDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
@@ -423,39 +478,45 @@ class SQLDocumentStore(BaseDocumentStore)
 
 Indexes documents for later queries.
 
+
 **Arguments**:
 
 - `documents`: a list of Python dictionaries or a list of Haystack Document objects.
 For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
 Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+"meta": {"name": "<some-document-name>, "author": "somebody", ...}}
 It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
-documents for evaluation can be indexed in a separate index than the documents for search.
+- `index`: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
+separate index than the documents for search.
 
 **Returns**:
 
 None
 
-<a name="sql.SQLDocumentStore.update_vector_ids"></a>
-#### update\_vector\_ids
+<a name="memory.InMemoryDocumentStore.update_embeddings"></a>
+#### update\_embeddings
 
 ```python
- | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
+ | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
 ```
 
-Update vector_ids for given document_ids.
+Updates the embeddings in the the document store using the encoding model specified in the retriever.
+This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
 **Arguments**:
 
-- `vector_id_map`: dict containing mapping of document_id -> vector_id.
-- `index`: filter documents by the optional index attribute for documents in database.
+- `retriever`: Retriever
+- `index`: Index name to update
 
-<a name="sql.SQLDocumentStore.add_eval_data"></a>
+**Returns**:
+
+None
+
+<a name="memory.InMemoryDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
 
 ```python
- | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label")
+ | add_eval_data(filename: str, doc_index: Optional[str] = None, label_index: Optional[str] = None)
 ```
 
 Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
@@ -469,54 +530,19 @@ Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform 
 - `label_index`: Elasticsearch index where labeled questions should be stored
 :type label_index: str
 
-<a name="sql.SQLDocumentStore.delete_all_documents"></a>
+<a name="memory.InMemoryDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index=None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
-Delete all documents in a index.
+Delete documents in an index. All documents are deleted if no filters are passed.
 
 **Arguments**:
 
-- `index`: index name
-
-**Returns**:
-
-None
-
-<a name="base"></a>
-# base
-
-<a name="base.BaseDocumentStore"></a>
-## BaseDocumentStore
-
-```python
-class BaseDocumentStore(ABC)
-```
-
-Base class for implementing Document Stores.
-
-<a name="base.BaseDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | @abstractmethod
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
-```
-
-Indexes documents for later queries.
-
-**Arguments**:
-
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: Optional name of index where the documents shall be written to.
-If None, the DocumentStore's default index (self.index) will be used.
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
 
 **Returns**:
 

@@ -1,93 +1,5 @@
-<a name="transformers"></a>
-# transformers
-
-<a name="transformers.TransformersReader"></a>
-## TransformersReader
-
-```python
-class TransformersReader(BaseReader)
-```
-
-Transformer based model for extractive Question Answering using the HuggingFace's transformers framework
-(https://github.com/huggingface/transformers).
-While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
-
-|  With the reader, you can:
-
-    - directly get predictions via predict()
-
-<a name="transformers.TransformersReader.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
-```
-
-Load a QA model from Transformers.
-Available models include:
-
-- ``'distilbert-base-uncased-distilled-squad`'``
-- ``'bert-large-cased-whole-word-masking-finetuned-squad``'
-- ``'bert-large-uncased-whole-word-masking-finetuned-squad``'
-
-See https://huggingface.co/models for full list of available QA models
-
-**Arguments**:
-
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
-'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
-See https://huggingface.co/models for full list of available models.
-- `tokenizer`: Name of the tokenizer (usually the same as model)
-- `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
-The context usually helps users to understand if the answer really makes sense.
-- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
-- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
-Note that this is not the number of "final answers" you will receive
-(see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
-and that no_answer can be included in the sorted list of predictions.
-- `return_no_answers`: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
-If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
-If you would like to set no_answer_boost, use a `FARMReader`.
-- `max_seq_len`: max sequence length of one input text for the model
-- `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
-
-<a name="transformers.TransformersReader.predict"></a>
-#### predict
-
-```python
- | predict(question: str, documents: List[Document], top_k: Optional[int] = None)
-```
-
-Use loaded QA model to find answers for a question in the supplied list of Document.
-
-Returns dictionaries containing answers sorted by (desc.) probability.
-Example:
-
-```python
-|{
-|    'question': 'Who is the father of Arya Stark?',
-|    'answers':[
-|                 {'answer': 'Eddard,',
-|                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-|                 'offset_answer_start': 147,
-|                 'offset_answer_end': 154,
-|                 'probability': 0.9787139466668613,
-|                 'score': None,
-|                 'document_id': '1337'
-|                 },...
-|              ]
-|}
-```
-
-**Arguments**:
-
-- `question`: Question string
-- `documents`: List of Document in which to search for the answer
-- `top_k`: The maximum number of answers to return
-
-**Returns**:
-
-Dict containing question and answers
+<a name="base"></a>
+# base
 
 <a name="farm"></a>
 # farm
@@ -371,6 +283,94 @@ float32 could still be be more performant.
 - `task_type`: Type of task for the model. Available options: "question_answering" or "embeddings".
 - `opset_version`: ONNX opset version
 
-<a name="base"></a>
-# base
+<a name="transformers"></a>
+# transformers
+
+<a name="transformers.TransformersReader"></a>
+## TransformersReader
+
+```python
+class TransformersReader(BaseReader)
+```
+
+Transformer based model for extractive Question Answering using the HuggingFace's transformers framework
+(https://github.com/huggingface/transformers).
+While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
+
+|  With the reader, you can:
+
+    - directly get predictions via predict()
+
+<a name="transformers.TransformersReader.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+```
+
+Load a QA model from Transformers.
+Available models include:
+
+- ``'distilbert-base-uncased-distilled-squad`'``
+- ``'bert-large-cased-whole-word-masking-finetuned-squad``'
+- ``'bert-large-uncased-whole-word-masking-finetuned-squad``'
+
+See https://huggingface.co/models for full list of available QA models
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
+See https://huggingface.co/models for full list of available models.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
+The context usually helps users to understand if the answer really makes sense.
+- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+Note that this is not the number of "final answers" you will receive
+(see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
+and that no_answer can be included in the sorted list of predictions.
+- `return_no_answers`: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
+If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
+If you would like to set no_answer_boost, use a `FARMReader`.
+- `max_seq_len`: max sequence length of one input text for the model
+- `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
+
+<a name="transformers.TransformersReader.predict"></a>
+#### predict
+
+```python
+ | predict(question: str, documents: List[Document], top_k: Optional[int] = None)
+```
+
+Use loaded QA model to find answers for a question in the supplied list of Document.
+
+Returns dictionaries containing answers sorted by (desc.) probability.
+Example:
+
+```python
+|{
+|    'question': 'Who is the father of Arya Stark?',
+|    'answers':[
+|                 {'answer': 'Eddard,',
+|                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
+|                 'offset_answer_start': 147,
+|                 'offset_answer_end': 154,
+|                 'probability': 0.9787139466668613,
+|                 'score': None,
+|                 'document_id': '1337'
+|                 },...
+|              ]
+|}
+```
+
+**Arguments**:
+
+- `question`: Question string
+- `documents`: List of Document in which to search for the answer
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing question and answers
 
