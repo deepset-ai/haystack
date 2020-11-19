@@ -27,28 +27,28 @@ class ElasticsearchRetriever(BaseRetriever):
 
                                  **An example custom_query:**
                                  ```python
-                                |{
-                                |    "size": 10,
-                                |    "query": {
-                                |        "bool": {
-                                |            "should": [{"multi_match": {
-                                |                "query": "${question}",                 // mandatory $question placeholder
-                                |                "type": "most_fields",
-                                |                "fields": ["text", "title"]}}],
-                                |            "filter": [                                 // optional custom filters
-                                |                {"terms": {"year": "${years}"}},
-                                |                {"terms": {"quarter": "${quarters}"}},
-                                |                {"range": {"date": {"gte": "${date}"}}}
-                                |                ],
-                                |        }
-                                |    },
-                                |}
+                                |    {
+                                |        "size": 10,
+                                |        "query": {
+                                |            "bool": {
+                                |                "should": [{"multi_match": {
+                                |                    "query": "${question}",                 // mandatory $question placeholder
+                                |                    "type": "most_fields",
+                                |                    "fields": ["text", "title"]}}],
+                                |                "filter": [                                 // optional custom filters
+                                |                    {"terms": {"year": "${years}"}},
+                                |                    {"terms": {"quarter": "${quarters}"}},
+                                |                    {"range": {"date": {"gte": "${date}"}}}
+                                |                    ],
+                                |            }
+                                |        },
+                                |    }
                                  ```
 
                              **For this custom_query, a sample retrieve() could be:**
                              ```python
-                            self.retrieve(query="Why did the revenue increase?",
-                                >          filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                            |    self.retrieve(query="Why did the revenue increase?",
+                            |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                             ```
         """
         self.document_store: ElasticsearchDocumentStore = document_store
