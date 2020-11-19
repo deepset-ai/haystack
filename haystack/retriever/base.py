@@ -168,10 +168,11 @@ class BaseRetriever(ABC):
             return metrics
 
     def run(self, **kwargs):
-        query = kwargs["question"]
-        documents = self.retrieve(query)
+        question = kwargs["question"]
+        filters = kwargs["filters"]
+        documents = self.retrieve(query=question, filters=filters)
         output = {
-            "question": query,
+            "question": question,
             "documents": documents
         }
         return output, 1
