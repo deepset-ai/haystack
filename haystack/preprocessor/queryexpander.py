@@ -81,6 +81,6 @@ class QueryExpander:
         def convert_query(query, lang = None):
             new_query = self.enhance_query(query, lang)
 
-            new_query = self.remove_stop(query, lang)
+            new_query =  new_query + " " + self.remove_stop(query, lang)
 
             return new_query
