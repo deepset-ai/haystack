@@ -169,12 +169,19 @@ class BaseRetriever(ABC):
 
     def run(self, **kwargs):
         question = kwargs["question"]
-        filters = kwargs["filters"]
-        documents = self.retrieve(query=question, filters=filters)
+        filters = kwargs.get("filters")
+        top_k_retriever = kwargs.get("top_k_retriever")
+        top_k_reader = kwargs.get("top_k_reader")
+        if top_k_retriever:
+            documents = self.retrieve(query=question, filters=filters, top_k=top_k_retriever)
+        else:
+            documents = self.retrieve(query=question, filters=filters)
         output = {
             "question": question,
-            "documents": documents
+            "documents": documents,
+            "top_k": top_k_reader
         }
+
         return output, 1
 
 
