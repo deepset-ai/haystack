@@ -90,6 +90,8 @@ it is recommended that they are further processed in order to ensure optimal Ret
 The `PreProcessor` takes one of the documents created by the converter as input,
 performs various cleaning steps and splits them into multiple smaller documents.
 
+For suggestions on how best to split your documents, see [Optimization](/docs/latest/optimizationmd)
+
 ```python
 doc = converter.convert(file_path=file, meta=None)
 processor = PreProcessor(clean_empty_lines=True,
@@ -107,29 +109,3 @@ docs = processor.process(d)
 * `split_by` determines what unit the document is split by: `'word'`, `'sentence'` or `'passage'`
 * `split_length` sets a maximum number of `'word'`, `'sentence'` or `'passage'` units per output document
 * `split_respect_sentence_boundary` ensures that document boundaries do not fall in the middle of sentences
-
-## Impact of Document Splitting
-
-The File Converters will treat each file as a single document regardless of length.
-This is not always ideal as long documents can have negative impacts on both speed and accuracy.
-
-Document length has a very direct impact on the speed of the Reader.
-**If you halve the length of your documents, you can expect that the Reader will double in speed.**
-
-It is generally not a good idea to let document boundaries fall in the middle of sentences. 
-Doing so means that each document will contain incomplete sentence fragments 
-which maybe be hard for both retriever and reader to interpret.
-
-For **sparse retrievers**, very long documents pose a challenge since the signal of the relevant section of text
-can get washed out by the rest of the document.
-We would recommend making sure that **documents are no longer than 10,000 words**.
-
-**Dense retrievers** are limited in the length of text that they can read in one pass.
-As such, it is important that documents are not longer than the dense retriever's maximum input length.
-By default, Haystack's DensePassageRetriever model has a maximum length of 256 tokens.
-As such, we recommend that documents contain significantly less words.
-We have found decent performance with **documents around 100 words long**.
-
-
-
-
