@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class BaseRetriever(ABC):
     document_store: BaseDocumentStore
+    outgoing_edges = 1
 
     @abstractmethod
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
@@ -171,6 +172,25 @@ class BaseRetriever(ABC):
         documents = self.retrieve(query)
         output = {
             "question": query,
+            "documents": documents
+        }
+        return output, 1
+
+
+class JoinRetrievers:
+    outgoing_edges = 1
+
+    def __init__(self, join_mode="concatenate"):
+        pass
+
+    def run(self, **kwargs):
+        inputs = kwargs["inputs"]
+
+        documents = []
+        for i, _ in inputs:
+            documents.extend(i["documents"])
+        output = {
+            "question": inputs[0][0]["question"],
             "documents": documents
         }
         return output, 1

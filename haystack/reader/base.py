@@ -8,6 +8,7 @@ from haystack import Document
 
 class BaseReader(ABC):
     return_no_answers: bool
+    outgoing_edges = 1
 
     @abstractmethod
     def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
