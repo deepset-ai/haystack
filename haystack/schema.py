@@ -71,6 +71,11 @@ class Document:
 
         return cls(**_new_doc)
 
+    def __repr__(self):
+        return str(self.to_dict())
+
+    def __str__(self):
+        return str(self.to_dict())
 
 class Label:
     def __init__(self, question: str,
@@ -140,6 +145,11 @@ class Label:
                     str(self.no_answer) +
                     str(self.model_id))
 
+    def __repr__(self):
+        return str(self.to_dict())
+
+    def __str__(self):
+        return str(self.to_dict())
 
 class MultiLabel:
     def __init__(self, question: str,
@@ -182,3 +192,9 @@ class MultiLabel:
 
     def to_dict(self):
         return self.__dict__
+
+    def __repr__(self):
+        return str(self.to_dict())
+
+    def __str__(self):
+        return str(self.to_dict())
