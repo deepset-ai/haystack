@@ -133,6 +133,12 @@ class ExtractiveQAPipeline:
                                    top_k_reader=top_k_reader)
         return output
 
+    def add_node(self, component, name: str, inputs: List[str]):
+        self.pipeline.add_node(component=component, name=name, inputs=inputs)
+
+    def draw(self, path: Path = Path("pipeline.png")):
+        self.pipeline.draw(path)
+
 
 class DocumentSearchPipeline:
     def __init__(self, retriever: BaseRetriever):
@@ -149,6 +155,12 @@ class DocumentSearchPipeline:
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
+
+    def add_node(self, component, name: str, inputs: List[str]):
+        self.pipeline.add_node(component=component, name=name, inputs=inputs)
+
+    def draw(self, path: Path = Path("pipeline.png")):
+        self.pipeline.draw(path)
 
 
 class QueryNode:
