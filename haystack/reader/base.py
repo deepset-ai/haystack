@@ -48,4 +48,4 @@ class BaseReader(ABC):
 
     def run(self, **kwargs):
         result = self.predict(**kwargs)
-        return result, 1
+        return result, "output_1"

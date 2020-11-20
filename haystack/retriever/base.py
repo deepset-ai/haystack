@@ -182,7 +182,7 @@ class BaseRetriever(ABC):
             "top_k": top_k_reader
         }
 
-        return output, 1
+        return output, "output_1"
 
 
 class JoinRetrievers:
@@ -201,4 +201,4 @@ class JoinRetrievers:
             "question": inputs[0][0]["question"],
             "documents": documents
         }
-        return output, 1
+        return output, "output_1"
