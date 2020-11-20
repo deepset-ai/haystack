@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.special import expit
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from typing import List, Optional, Sequence
 
 from haystack import Document
@@ -8,6 +9,7 @@ from haystack import Document
 
 class BaseReader(ABC):
     return_no_answers: bool
+    outgoing_edges = 1
 
     @abstractmethod
     def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
@@ -44,3 +46,18 @@ class BaseReader(ABC):
                "document_id": None,
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
+
+    def run(self, question: str, documents: List[Document], top_k: Optional[int] = None):
+        if documents:
+            results = self.predict(question=question, documents=documents, top_k=top_k)
+        else:
+            results = {"answers": []}
+
+        # Add corresponding document_name and more meta data, if an answer contains the document_id
+        for ans in results["answers"]:
+            ans["meta"] = {}
+            for doc in documents:
+                if doc.id == ans["document_id"]:
+                    ans["meta"] = deepcopy(doc.meta)
+
+        return results, "output_1"
