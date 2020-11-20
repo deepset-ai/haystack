@@ -183,22 +183,3 @@ class BaseRetriever(ABC):
         }
 
         return output, "output_1"
-
-
-class JoinRetrievers:
-    outgoing_edges = 1
-
-    def __init__(self, join_mode="concatenate"):
-        pass
-
-    def run(self, **kwargs):
-        inputs = kwargs["inputs"]
-
-        documents = []
-        for i, _ in inputs:
-            documents.extend(i["documents"])
-        output = {
-            "question": inputs[0][0]["question"],
-            "documents": documents
-        }
-        return output, "output_1"
