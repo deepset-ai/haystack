@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 import logging
 from time import perf_counter
 from functools import wraps
@@ -167,11 +167,13 @@ class BaseRetriever(ABC):
         else:
             return metrics
 
-    def run(self, **kwargs):
-        question = kwargs["question"]
-        filters = kwargs.get("filters")
-        top_k_retriever = kwargs.get("top_k_retriever")
-        top_k_reader = kwargs.get("top_k_reader")
+    def run(
+            self,
+            question: str,
+            filters: Optional[dict] = None,
+            top_k_retriever: Optional[int] = None,
+            top_k_reader: Optional[int] = None,
+    ):
         if top_k_retriever:
             documents = self.retrieve(query=question, filters=filters, top_k=top_k_retriever)
         else:

@@ -46,6 +46,6 @@ class BaseReader(ABC):
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, **kwargs):
-        result = self.predict(**kwargs)
+    def run(self, question: str, documents: List[Document], top_k: Optional[int] = None):
+        result = self.predict(question=question, documents=documents, top_k=top_k)
         return result, "output_1"
