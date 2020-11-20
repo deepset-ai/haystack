@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 import logging
 from time import perf_counter
 from functools import wraps
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class BaseRetriever(ABC):
     document_store: BaseDocumentStore
+    outgoing_edges = 1
 
     @abstractmethod
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
@@ -165,3 +166,22 @@ class BaseRetriever(ABC):
             return {"metrics": metrics, "predictions": predictions}
         else:
             return metrics
+
+    def run(
+            self,
+            question: str,
+            filters: Optional[dict] = None,
+            top_k_retriever: Optional[int] = None,
+            top_k_reader: Optional[int] = None,
+    ):
+        if top_k_retriever:
+            documents = self.retrieve(query=question, filters=filters, top_k=top_k_retriever)
+        else:
+            documents = self.retrieve(query=question, filters=filters)
+        output = {
+            "question": question,
+            "documents": documents,
+            "top_k": top_k_reader
+        }
+
+        return output, "output_1"

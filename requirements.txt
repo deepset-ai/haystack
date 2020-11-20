@@ -22,3 +22,4 @@ uvloop; sys_platform != 'win32' and sys_platform != 'cygwin'
 httptools
 nltk
 more_itertools
+networkx
