@@ -81,6 +81,13 @@ class Pipeline:
         return next_nodes
 
     def draw(self):
+        try:
+            import pygraphviz
+        except ImportError:
+            raise ImportError(f"Could not import `pygraphviz`. Please install via: \n"
+                              f"pip install pygraphviz\n"
+                              f"(You might need to run this first: apt install libgraphviz-dev graphviz )")
+
         graphviz = to_agraph(self.graph)
         graphviz.layout("dot")
         graphviz.draw("pipeline.png")
@@ -98,8 +105,10 @@ class ExtractiveQAPipeline:
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
-    def run(self, **kwargs):
-        output = self.pipeline.run(**kwargs)
+    def run(self, question, top_k_retriever=5, top_k_reader=5):
+        output = self.pipeline.run(question=question,
+                                   top_k_retriever=top_k_retriever,
+                                   top_k_reader=top_k_reader)
         return output
 
 
@@ -113,8 +122,8 @@ class DocumentSearchPipeline:
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, **kwargs):
-        output = self.pipeline.run(**kwargs)
+    def run(self, question, top_k_retriever=5):
+        output = self.pipeline.run(question=question, top_k_retriever=top_k_retriever)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
