@@ -1,25 +1,42 @@
 import networkx as nx
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-
+from typing import List
+from pathlib import Path
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 
 
-class QueryNode:
-    outgoing_edges = 1
-
-    def run(self, **kwargs):
-        return kwargs, 1
-
-
 class Pipeline:
+    """
+    Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
+
+    Under-the-hood, a pipeline is represented as a directed acyclic graph of component nodes. It enables custom query
+    flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
+    Reader from multiple Retrievers, or re-ranking of candidate documents.
+    """
     def __init__(self):
         self.graph = DiGraph()
         self.root_node_id = "Query"
         self.graph.add_node("Query", component=QueryNode())
 
-    def add_node(self, component, name, inputs):
+    def add_node(self, component, name: str, inputs: List[str]):
+        """
+        Add a new node to the pipeline.
+
+        :param component: The object to be called when the data is passed to the node. It can be a Haystack component
+                          (like Retriever, Reader, or Generator) or a user-defined object that implements a run()
+                          method to process incoming data from predecessor node.
+        :param name: The name for the node. It must not contain any dots.
+        :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+
+                       In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
+                       must be specified explicitly as "QueryClassifier.output_2".
+
+
+        """
         self.graph.add_node(name, component=component)
 
         for i in inputs:
@@ -71,19 +88,24 @@ class Pipeline:
 
         return output_dict
 
-    def _get_next_nodes(self, node_id, stream_id):
+    def _get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
         next_nodes = [
             next_node
             for _, next_node, data in current_node_edges
-            if not stream_id or data["label"] == f"output_{stream_id}"
+            if not stream_id or data["label"] == stream_id
         ]
         return next_nodes
 
-    def draw(self):
+    def draw(self, path: Path = Path("pipeline.png")):
+        """
+        Create a Graphviz visualization of the pipeline.
+
+        :param path: the path to save the image.
+        """
         graphviz = to_agraph(self.graph)
         graphviz.layout("dot")
-        graphviz.draw("pipeline.png")
+        graphviz.draw(path)
 
 
 class ExtractiveQAPipeline:
@@ -104,7 +126,7 @@ class ExtractiveQAPipeline:
 
 
 class DocumentSearchPipeline:
-    def __init__(self, retriever):
+    def __init__(self, retriever: BaseRetriever):
         """
         Initialize a Pipeline for semantic document search.
 
@@ -118,3 +140,10 @@ class DocumentSearchPipeline:
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
+
+
+class QueryNode:
+    outgoing_edges = 1
+
+    def run(self, **kwargs):
+        return kwargs, "output_1"
