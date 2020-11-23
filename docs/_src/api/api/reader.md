@@ -1,8 +1,8 @@
 <a name="farm"></a>
-# farm
+# Module farm
 
 <a name="farm.FARMReader"></a>
-## FARMReader
+## FARMReader Objects
 
 ```python
 class FARMReader(BaseReader)
@@ -279,10 +279,10 @@ float32 could still be be more performant.
 - `opset_version`: ONNX opset version
 
 <a name="transformers"></a>
-# transformers
+# Module transformers
 
 <a name="transformers.TransformersReader"></a>
-## TransformersReader
+## TransformersReader Objects
 
 ```python
 class TransformersReader(BaseReader)
@@ -368,5 +368,5 @@ Example:
 Dict containing question and answers
 
 <a name="base"></a>
-# base
+# Module base
 
