@@ -111,7 +111,10 @@ class SQLDocumentStore(BaseDocumentStore):
         return documents
 
     def get_all_documents(
-        self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None
+            self,
+            index: Optional[str] = None,
+            filters: Optional[Dict[str, List[str]]] = None,
+            return_embedding: Optional[bool] = None
     ) -> List[Document]:
         index = index or self.index
         query = self.session.query(DocumentORM).filter_by(index=index)
