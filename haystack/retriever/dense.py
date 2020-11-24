@@ -157,7 +157,7 @@ class DensePassageRetriever(BaseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings = {"query": torch.tensor([]).to(self.device), "passages": torch.tensor([]).to(self.device)}
+        all_embeddings = {"query": [], "passages": []}
         self.model.eval()
         for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=False)):
             batch = {key: batch[key].to(self.device) for key in batch}
