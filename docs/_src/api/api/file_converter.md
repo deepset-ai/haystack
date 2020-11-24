@@ -1,38 +1,8 @@
-<a name="pdf"></a>
-# pdf
-
-<a name="pdf.PDFToTextConverter"></a>
-## PDFToTextConverter
-
-```python
-class PDFToTextConverter(BaseConverter)
-```
-
-<a name="pdf.PDFToTextConverter.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(remove_numeric_tables: Optional[bool] = False, valid_languages: Optional[List[str]] = None)
-```
-
-**Arguments**:
-
-- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-The tabular structures in documents might be noise for the reader model if it
-does not have table parsing capability for finding answers. However, tables
-may also have long strings that could possible candidate for searching answers.
-The rows containing strings are thus retained in this option.
-- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-(https://en.wikipedia.org/wiki/ISO_639-1) format.
-This option can be used to add test for encoding errors. If the extracted text is
-not one of the valid languages, then it might likely be encoding error resulting
-in garbled text.
-
 <a name="txt"></a>
-# txt
+# Module txt
 
 <a name="txt.TextConverter"></a>
-## TextConverter
+## TextConverter Objects
 
 ```python
 class TextConverter(BaseConverter)
@@ -77,11 +47,36 @@ Reads text from a txt file and executes optional preprocessing steps.
 
 Dict of format {"text": "The text from file", "meta": meta}}
 
+<a name="docx"></a>
+# Module docx
+
+<a name="docx.DocxToTextConverter"></a>
+## DocxToTextConverter Objects
+
+```python
+class DocxToTextConverter(BaseConverter)
+```
+
+<a name="docx.DocxToTextConverter.convert"></a>
+#### convert
+
+```python
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]
+```
+
+Extract text from a .docx file.
+Note: As docx doesn't contain "page" information, we actually extract and return a list of paragraphs here.
+For compliance with other converters we nevertheless opted for keeping the methods name.
+
+**Arguments**:
+
+- `file_path`: Path to the .docx file you want to convert
+
 <a name="tika"></a>
-# tika
+# Module tika
 
 <a name="tika.TikaConverter"></a>
-## TikaConverter
+## TikaConverter Objects
 
 ```python
 class TikaConverter(BaseConverter)
@@ -123,36 +118,11 @@ in garbled text.
 
 a list of pages and the extracted meta data of the file.
 
-<a name="docx"></a>
-# docx
-
-<a name="docx.DocxToTextConverter"></a>
-## DocxToTextConverter
-
-```python
-class DocxToTextConverter(BaseConverter)
-```
-
-<a name="docx.DocxToTextConverter.convert"></a>
-#### convert
-
-```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]
-```
-
-Extract text from a .docx file.
-Note: As docx doesn't contain "page" information, we actually extract and return a list of paragraphs here.
-For compliance with other converters we nevertheless opted for keeping the methods name.
-
-**Arguments**:
-
-- `file_path`: Path to the .docx file you want to convert
-
 <a name="base"></a>
-# base
+# Module base
 
 <a name="base.BaseConverter"></a>
-## BaseConverter
+## BaseConverter Objects
 
 ```python
 class BaseConverter()
@@ -206,4 +176,34 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
 ```
 
 Validate if the language of the text is one of valid languages.
+
+<a name="pdf"></a>
+# Module pdf
+
+<a name="pdf.PDFToTextConverter"></a>
+## PDFToTextConverter Objects
+
+```python
+class PDFToTextConverter(BaseConverter)
+```
+
+<a name="pdf.PDFToTextConverter.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(remove_numeric_tables: Optional[bool] = False, valid_languages: Optional[List[str]] = None)
+```
+
+**Arguments**:
+
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
+(https://en.wikipedia.org/wiki/ISO_639-1) format.
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
 
