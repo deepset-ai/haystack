@@ -65,16 +65,16 @@ class TransformersReader(BaseReader):
 
         # TODO context_window_size behaviour different from behavior in FARMReader
 
-    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
-        Use loaded QA model to find answers for a question in the supplied list of Document.
+        Use loaded QA model to find answers for a query in the supplied list of Document.
 
         Returns dictionaries containing answers sorted by (desc.) probability.
         Example:
-        
+
          ```python
             |{
-            |    'question': 'Who is the father of Arya Stark?',
+            |    'query': 'Who is the father of Arya Stark?',
             |    'answers':[
             |                 {'answer': 'Eddard,',
             |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
@@ -88,10 +88,10 @@ class TransformersReader(BaseReader):
             |}
          ```
 
-        :param question: Question string
+        :param query: Query string
         :param documents: List of Document in which to search for the answer
         :param top_k: The maximum number of answers to return
-        :return: Dict containing question and answers
+        :return: Dict containing query and answers
 
         """
         # get top-answers for each candidate passage
@@ -99,8 +99,8 @@ class TransformersReader(BaseReader):
         no_ans_gaps = []
         best_overall_score = 0
         for doc in documents:
-            query = {"context": doc.text, "question": question}
-            predictions = self.model(query,
+            transformers_query = {"context": doc.text, "question": query}
+            predictions = self.model(transformers_query,
                                      topk=self.top_k_per_candidate,
                                      handle_impossible_answer=self.return_no_answers,
                                      max_seq_len=self.max_seq_len,
@@ -149,12 +149,12 @@ class TransformersReader(BaseReader):
         )
         answers = answers[:top_k]
 
-        results = {"question": question,
+        results = {"query": query,
                    "answers": answers}
 
         return results
 
-    def predict_batch(self, question_doc_list: List[dict], top_k_per_question: Optional[int] = None,
+    def predict_batch(self, query_doc_list: List[dict], top_k_per_query: Optional[int] = None,
                       batch_size: Optional[int] = None):
 
         raise NotImplementedError("Batch prediction not yet available in TransformersReader.")

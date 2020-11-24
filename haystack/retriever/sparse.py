@@ -18,7 +18,7 @@ class ElasticsearchRetriever(BaseRetriever):
     def __init__(self, document_store: ElasticsearchDocumentStore, custom_query: str = None):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
-        :param custom_query: query string as per Elasticsearch DSL with a mandatory question placeholder($question).
+        :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
                              Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
                              that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
@@ -32,7 +32,7 @@ class ElasticsearchRetriever(BaseRetriever):
                                 |        "query": {
                                 |            "bool": {
                                 |                "should": [{"multi_match": {
-                                |                    "query": "${question}",                 // mandatory $question placeholder
+                                |                    "query": "${query}",                 // mandatory query placeholder
                                 |                    "type": "most_fields",
                                 |                    "fields": ["text", "title"]}}],
                                 |                "filter": [                                 // optional custom filters

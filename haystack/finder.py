@@ -65,7 +65,7 @@ class Finder:
         len_chars = sum([len(d.text) for d in documents])
         logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
 
-        results = self.reader.predict(question=question,
+        results = self.reader.predict(query=question,
                                       documents=documents,
                                       top_k=top_k_reader)  # type: Dict[str, Any]
 
@@ -364,7 +364,7 @@ class Finder:
         self.reader.return_no_answers = True
         reader_start_time = time.time()
         predictions = self.reader.predict_batch(questions_with_correct_doc,
-                                                top_k_per_question=top_k_reader, batch_size=batch_size)
+                                                top_k_per_query=top_k_reader, batch_size=batch_size)
         reader_total_time = time.time() - reader_start_time
 
         for pred in predictions:

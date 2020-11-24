@@ -12,11 +12,11 @@ class BaseReader(ABC):
     outgoing_edges = 1
 
     @abstractmethod
-    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         pass
 
     @abstractmethod
-    def predict_batch(self, question_doc_list: List[dict], top_k_per_question: Optional[int] = None,
+    def predict_batch(self, query_doc_list: List[dict], top_k_per_query: Optional[int] = None,
                       batch_size: Optional[int] = None):
         pass
 
@@ -47,9 +47,9 @@ class BaseReader(ABC):
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, question: str, documents: List[Document], top_k: Optional[int] = None):
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         if documents:
-            results = self.predict(question=question, documents=documents, top_k=top_k)
+            results = self.predict(query=query, documents=documents, top_k=top_k)
         else:
             results = {"answers": []}
 

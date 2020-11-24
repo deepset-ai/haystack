@@ -51,7 +51,7 @@ class BaseRetriever(ABC):
     ) -> dict:
         """
         Performs evaluation on the Retriever.
-        Retriever is evaluated based on whether it finds the correct document given the question string and at which
+        Retriever is evaluated based on whether it finds the correct document given the query string and at which
         position in the ranking of documents the correct document is.
 
         |  Returns a dict containing the following metrics:
@@ -67,7 +67,7 @@ class BaseRetriever(ABC):
 
         :param label_index: Index/Table in DocumentStore where labeled questions are stored
         :param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
-        :param top_k: How many documents to return per question
+        :param top_k: How many documents to return per query
         :param open_domain: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
                             contained in the retrieved docs (common approach in open-domain QA).
                             If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
@@ -169,17 +169,17 @@ class BaseRetriever(ABC):
 
     def run(
             self,
-            question: str,
+            query: str,
             filters: Optional[dict] = None,
             top_k_retriever: Optional[int] = None,
             top_k_reader: Optional[int] = None,
     ):
         if top_k_retriever:
-            documents = self.retrieve(query=question, filters=filters, top_k=top_k_retriever)
+            documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever)
         else:
-            documents = self.retrieve(query=question, filters=filters)
+            documents = self.retrieve(query=query, filters=filters)
         output = {
-            "question": question,
+            "query": query,
             "documents": documents,
             "top_k": top_k_reader
         }
