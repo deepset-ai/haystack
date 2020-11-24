@@ -31,7 +31,12 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
+    def get_all_documents(
+            self,
+            index: Optional[str] = None,
+            filters: Optional[Dict[str, List[str]]] = None,
+            return_embedding: Optional[bool] = None
+    ) -> List[Document]:
         pass
 
     @abstractmethod

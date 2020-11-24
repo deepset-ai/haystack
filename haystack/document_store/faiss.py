@@ -243,7 +243,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         if not self.faiss_index:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
 
-        return_embedding = return_embedding or self.return_embedding
+        if return_embedding is None:
+            return_embedding = self.return_embedding
         index = index or self.index
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
