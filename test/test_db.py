@@ -149,7 +149,7 @@ def test_write_document_index(document_store):
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
 def test_document_with_embeddings(document_store):
     documents = [
         {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -382,5 +382,3 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
     assert len(documents) == 1
     assert documents[0].text == "test"
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
-
-
