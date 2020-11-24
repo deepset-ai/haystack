@@ -234,7 +234,7 @@ document_store.query(query="What is the meaning of life?", filters=None, top_k=5
 document_store.query_by_embedding(query_emb, filters=None, top_k=5)
 
 ``` 
--> See [docs](https://haystack.deepset.ai/docs/latest/databasemd) for details
+-> See [docs](https://haystack.deepset.ai/docs/latest/documentstoremd) for details
 
 
 ### 4) Retrievers
