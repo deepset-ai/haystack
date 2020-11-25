@@ -203,7 +203,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
         if return_embedding:
             for doc in documents:
-                doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+                if doc.meta and doc.meta.get("vector_id") is not None:
+                    doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         return documents
 
     def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
