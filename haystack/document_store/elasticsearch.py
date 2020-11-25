@@ -79,9 +79,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                           If set to False, an error is raised if the document ID of the document being
                                           added already exists.
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
-                             Values:
-                             - 'wait_for' => continue only after changes are visible (slow, but safe)
-                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
+                             If set to 'wait_for', continue only after changes are visible (slow, but safe).
+                             If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
