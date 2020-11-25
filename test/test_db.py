@@ -154,7 +154,7 @@ def test_document_with_embeddings(document_store):
     documents = [
         {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
         {"text": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
-        {"text": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32)},
+        {"text": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
         {"text": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
     ]
     document_store.write_documents(documents, index="haystack_test_1")
