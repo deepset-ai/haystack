@@ -127,6 +127,15 @@ class DensePassageRetriever(BaseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
         if index is None:
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])
@@ -400,6 +409,15 @@ class EmbeddingRetriever(BaseRetriever):
             raise NotImplementedError
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
         if index is None:
             index = self.document_store.index
         query_emb = self.embed(texts=[query])

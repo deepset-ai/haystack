@@ -55,6 +55,15 @@ class ElasticsearchRetriever(BaseRetriever):
         self.custom_query = custom_query
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
         if index is None:
             index = self.document_store.index
 
@@ -69,6 +78,15 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
     """
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
         if index is None:
             index = self.document_store.index
         documents = self.document_store.query(query=None, filters=filters, top_k=top_k,
@@ -132,6 +150,15 @@ class TfidfRetriever(BaseRetriever):
         return indices_and_scores
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
         if filters:
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
         if index:
