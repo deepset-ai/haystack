@@ -116,6 +116,16 @@ class SQLDocumentStore(BaseDocumentStore):
             filters: Optional[Dict[str, List[str]]] = None,
             return_embedding: Optional[bool] = None
     ) -> List[Document]:
+        """
+        Get documents from the document store.
+
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param return_embedding: Whether to return the document embeddings.
+        """
+
         index = index or self.index
         query = self.session.query(DocumentORM).filter_by(index=index)
 
