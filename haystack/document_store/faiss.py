@@ -77,6 +77,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.faiss_index = faiss_index
         else:
             self.faiss_index = self._create_new_index(vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs)
+            if "ivf" in faiss_index_factory_str.lower():  # enable reconstruction of vectors for inverted index
+                self.faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
 
         self.index_buffer_size = index_buffer_size
         self.return_embedding = return_embedding
