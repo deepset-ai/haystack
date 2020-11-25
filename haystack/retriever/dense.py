@@ -52,14 +52,14 @@ class DensePassageRetriever(BaseRetriever):
         **Example:**
 
                 ```python
-                # remote model from FAIR
-                DensePassageRetriever(document_store=your_doc_store,	
-                >                    query_embedding_model="facebook/dpr-question_encoder-single-nq-base",	
-                >                    passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")	
-                # or from local path
-                DensePassageRetriever(document_store=your_doc_store,	
-                >                    query_embedding_model="model_directory/question-encoder",	
-                >                   passage_embedding_model="model_directory/context-encoder")
+                |    # remote model from FAIR
+                |    DensePassageRetriever(document_store=your_doc_store,
+                |                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                |                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
+                |    # or from local path
+                |    DensePassageRetriever(document_store=your_doc_store,
+                |                          query_embedding_model="model_directory/question-encoder",
+                |                          passage_embedding_model="model_directory/context-encoder")
                 ```
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -150,6 +150,8 @@ class DensePassageRetriever(BaseRetriever):
                     "external_id": '19930582'}, ...]
         :return: dictionary of embeddings for "passages" and "query"
         """
+
+
         dataset, tensor_names, baskets = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )

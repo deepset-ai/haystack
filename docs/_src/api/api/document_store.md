@@ -62,6 +62,7 @@ more performant with DPR embeddings. 'cosine' is recommended if you are using a 
 #### write\_documents
 
 ```python
+ | @abstractmethod
  | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
 ```
 
@@ -277,7 +278,7 @@ Indexes documents for later queries.
 - `documents`: a list of Python dictionaries or a list of Haystack Document objects.
 For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
 Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+"meta": {"name": "<some-document-name>, "author": "somebody", ...}}
 It can be used for filtering and is accessible in the responses of the Finder.
 - `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
 documents for evaluation can be indexed in a separate index than the documents for search.

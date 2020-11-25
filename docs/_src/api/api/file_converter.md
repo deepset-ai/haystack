@@ -5,14 +5,16 @@
 ## TextConverter Objects
 
 ```python
-class TextConverter(BaseConverter)
+class BaseConverter()
 ```
 
-<a name="txt.TextConverter.__init__"></a>
+Base class for implementing file converts to transform input documents to text format for ingestion in DocumentStore.
+
+<a name="base.BaseConverter.__init__"></a>
 #### \_\_init\_\_
 
 ```python
- | __init__(remove_numeric_tables: Optional[bool] = False, valid_languages: Optional[List[str]] = None)
+ | __init__(remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None)
 ```
 
 **Arguments**:
@@ -28,24 +30,57 @@ This option can be used to add test for encoding errors. If the extracted text i
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
 
-<a name="txt.TextConverter.convert"></a>
+<a name="base.BaseConverter.convert"></a>
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, encoding: str = "utf-8") -> Dict[str, Any]
+ | @abstractmethod
+ | convert(file_path: Path, meta: Optional[Dict[str, str]]) -> Dict[str, Any]
 ```
 
-Reads text from a txt file and executes optional preprocessing steps.
+Convert a file to a dictionary containing the text and any associated meta data.
+
+File converters may extract file meta like name or size. In addition to it, user
+supplied meta data like author, url, external IDs can be supplied as a dictionary.
 
 **Arguments**:
 
-- `file_path`: Path of the file to convert
-- `meta`: Optional meta data that should be associated with the the document (e.g. name)
-- `encoding`: Encoding of the file
+- `file_path`: path of the file to convert
+- `meta`: dictionary of meta data key-value pairs to append in the returned document.
 
-**Returns**:
+<a name="base.BaseConverter.validate_language"></a>
+#### validate\_language
 
-Dict of format {"text": "The text from file", "meta": meta}}
+```python
+ | validate_language(text: str) -> bool
+```
+
+Validate if the language of the text is one of valid languages.
+
+<a name="docx"></a>
+# docx
+
+<a name="docx.DocxToTextConverter"></a>
+## DocxToTextConverter
+
+```python
+class DocxToTextConverter(BaseConverter)
+```
+
+<a name="docx.DocxToTextConverter.convert"></a>
+#### convert
+
+```python
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]
+```
+
+Extract text from a .docx file.
+Note: As docx doesn't contain "page" information, we actually extract and return a list of paragraphs here.
+For compliance with other converters we nevertheless opted for keeping the methods name.
+
+**Arguments**:
+
+- `file_path`: Path to the .docx file you want to convert
 
 <a name="docx"></a>
 # Module docx
@@ -125,16 +160,14 @@ a list of pages and the extracted meta data of the file.
 ## BaseConverter Objects
 
 ```python
-class BaseConverter()
+class TextConverter(BaseConverter)
 ```
 
-Base class for implementing file converts to transform input documents to text format for ingestion in DocumentStore.
-
-<a name="base.BaseConverter.__init__"></a>
+<a name="txt.TextConverter.__init__"></a>
 #### \_\_init\_\_
 
 ```python
- | __init__(remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None)
+ | __init__(remove_numeric_tables: Optional[bool] = False, valid_languages: Optional[List[str]] = None)
 ```
 
 **Arguments**:
@@ -150,32 +183,24 @@ This option can be used to add test for encoding errors. If the extracted text i
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
 
-<a name="base.BaseConverter.convert"></a>
+<a name="txt.TextConverter.convert"></a>
 #### convert
 
 ```python
- | @abstractmethod
- | convert(file_path: Path, meta: Optional[Dict[str, str]]) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, encoding: str = "utf-8") -> Dict[str, Any]
 ```
 
-Convert a file to a dictionary containing the text and any associated meta data.
-
-File converters may extract file meta like name or size. In addition to it, user
-supplied meta data like author, url, external IDs can be supplied as a dictionary.
+Reads text from a txt file and executes optional preprocessing steps.
 
 **Arguments**:
 
-- `file_path`: path of the file to convert
-- `meta`: dictionary of meta data key-value pairs to append in the returned document.
+- `file_path`: Path of the file to convert
+- `meta`: Optional meta data that should be associated with the the document (e.g. name)
+- `encoding`: Encoding of the file
 
-<a name="base.BaseConverter.validate_language"></a>
-#### validate\_language
+**Returns**:
 
-```python
- | validate_language(text: str) -> bool
-```
-
-Validate if the language of the text is one of valid languages.
+Dict of format {"text": "The text from file", "meta": meta}}
 
 <a name="pdf"></a>
 # Module pdf
