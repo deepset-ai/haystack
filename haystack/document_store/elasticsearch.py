@@ -44,7 +44,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         refresh_type: str = "wait_for",
         similarity="dot_product",
         timeout=30,
-        return_embedding: Optional[bool] = True,
+        return_embedding: bool = True,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.

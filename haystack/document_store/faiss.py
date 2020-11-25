@@ -36,7 +36,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional[faiss.swigfaiss.Index] = None,
-        return_embedding: Optional[bool] = True,
+        return_embedding: bool = True,
         update_existing_documents: bool = False,
         index: str = "document",
         **kwargs,
