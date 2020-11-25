@@ -313,6 +313,12 @@ class DensePassageRetriever(BaseRetriever):
         self.processor.save(Path(save_dir))
 
     def save(self, save_dir: Union[Path, str]):
+        """
+        Save DensePassageRetriever to the specified directory.
+
+        :param save_dir: Directory to save to.
+        :return: None
+        """
         save_dir = Path(save_dir)
         self.model.save(save_dir, lm1_name="query_encoder", lm2_name="passage_encoder")
         save_dir = str(save_dir)
@@ -331,6 +337,9 @@ class DensePassageRetriever(BaseRetriever):
              use_fast_tokenizers: bool = True,
              similarity_function: str = "dot_product",
              ):
+        """
+        Load DensePassageRetriever from the specified directory.
+        """
 
         load_dir = Path(load_dir)
         dpr = cls(

@@ -192,6 +192,9 @@ class TfidfRetriever(BaseRetriever):
         return documents
 
     def fit(self):
+        """
+        Performing training on this class according to the TF-IDF algorithm.
+        """
         if not self.paragraphs or len(self.paragraphs) == 0:
             self.paragraphs = self._get_all_paragraphs()
             if not self.paragraphs or len(self.paragraphs) == 0:
