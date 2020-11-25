@@ -5,16 +5,16 @@ from spacy_wordnet.wordnet_annotator import WordnetAnnotator
 
 
 class QueryExpander:
-    def __init__(num_keyword_repeats=3, num_synonyms_per_word=3):
+    def __init__(self, num_keyword_repeats=3, num_synonyms_per_word=3):
         self.num_keyword_repeats = num_keyword_repeats
         self.num_synonyms_per_word = num_synonyms_per_word
         self.spacy_models = {}
         self.spacy_models["multi"] = spacy.load("xx_ent_wiki_sm")
         self.spacy_models["en"] = spacy.load("en_core_web_sm")
         # TODO: Classify automatically
-        self.economy_domains = ['finance', 'banking']
+        self.economy_domains = []
 
-    def remove_stop(query, lang=None):
+    def remove_stop(self, query, lang=None):
         if lang == None:
             lang = detect(query)
         if lang in ["en"]:
@@ -45,7 +45,7 @@ class QueryExpander:
         return result
 
 
-    def enhance_query(query, lang=None):
+    def enhance_query(self, query, lang=None):
         if lang == None:
             lang = detect(query)
         
@@ -62,12 +62,16 @@ class QueryExpander:
         else:
             print("The language " + lang + " is actually not supported")
         
-        enhanced_query = query
+        sentence = keyword_model(query)
         enriched_sentence = []
+
         # For each token in the sentence
         for token in sentence:
             # We get those synsets within the desired domains
-            synsets = token._.wordnet.wordnet_synsets_for_domain(self.economy_domains)
+            if(len(self.economy_domains) == 0):
+                synsets = token._.wordnet.synsets()
+            else:
+                synsets = token._.wordnet.wordnet_synsets_for_domain(self.economy_domains)
             if not synsets:
                 enriched_sentence.append(token.text)
             else:
@@ -78,7 +82,7 @@ class QueryExpander:
         return ' '.join(enriched_sentence)
 
 
-        def convert_query(query, lang = None):
+        def convert_query(self, query, lang = None):
             new_query = self.enhance_query(query, lang)
 
             new_query =  new_query + " " + self.remove_stop(query, lang)
