@@ -165,14 +165,15 @@ class DensePassageRetriever(BaseRetriever):
             # get logits
             with torch.no_grad():
                 query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
-                all_embeddings["query"] = torch.cat((all_embeddings["query"], query_embeddings), dim=0) \
-                                                     if isinstance(query_embeddings, torch.Tensor) else None
-                all_embeddings["passages"] = torch.cat((all_embeddings["passages"], passage_embeddings), dim=0) \
-                                                    if isinstance(passage_embeddings, torch.Tensor) else None
+                if query_embeddings is not None:
+                    all_embeddings["query"].append(query_embeddings.cpu().numpy())
+                if passage_embeddings is not None:
+                    all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
 
-        # convert embeddings to numpy array
-        for k, v in all_embeddings.items():
-            all_embeddings[k] = v.cpu().numpy() if v!=None else None
+        if all_embeddings["passages"]:
+            all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])
+        if all_embeddings["query"]:
+            all_embeddings["query"] = np.concatenate(all_embeddings["query"])
         return all_embeddings
 
     def embed_queries(self, texts: List[str]) -> List[np.array]:
