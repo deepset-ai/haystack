@@ -1,145 +1,8 @@
-<a name="base"></a>
-# base
-
-<a name="base.BaseDocumentStore"></a>
-## BaseDocumentStore
-
-```python
-class BaseDocumentStore(ABC)
-```
-
-Base class for implementing Document Stores.
-
-<a name="base.BaseDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | @abstractmethod
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
-```
-
-Indexes documents for later queries.
-
-**Arguments**:
-
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: Optional name of index where the documents shall be written to.
-If None, the DocumentStore's default index (self.index) will be used.
-
-**Returns**:
-
-None
-
-<a name="sql"></a>
-# sql
-
-<a name="sql.SQLDocumentStore"></a>
-## SQLDocumentStore
-
-```python
-class SQLDocumentStore(BaseDocumentStore)
-```
-
-<a name="sql.SQLDocumentStore.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
-```
-
-**Arguments**:
-
-- `url`: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
-- `index`: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
-This parameter sets the default value for document index.
-- `label_index`: The default value of index attribute for the labels.
-- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-documents. When set as True, any document with an existing ID gets updated.
-If set to False, an error is raised if the document ID of the document being
-added already exists. Using this parameter coud cause performance degradation for document insertion.
-
-<a name="sql.SQLDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
-```
-
-Indexes documents for later queries.
-
-**Arguments**:
-
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
-documents for evaluation can be indexed in a separate index than the documents for search.
-
-**Returns**:
-
-None
-
-<a name="sql.SQLDocumentStore.update_vector_ids"></a>
-#### update\_vector\_ids
-
-```python
- | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
-```
-
-Update vector_ids for given document_ids.
-
-**Arguments**:
-
-- `vector_id_map`: dict containing mapping of document_id -> vector_id.
-- `index`: filter documents by the optional index attribute for documents in database.
-
-<a name="sql.SQLDocumentStore.add_eval_data"></a>
-#### add\_eval\_data
-
-```python
- | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label")
-```
-
-Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-**Arguments**:
-
-- `filename`: Name of the file containing evaluation data
-:type filename: str
-- `doc_index`: Elasticsearch index where evaluation documents should be stored
-:type doc_index: str
-- `label_index`: Elasticsearch index where labeled questions should be stored
-:type label_index: str
-
-<a name="sql.SQLDocumentStore.delete_all_documents"></a>
-#### delete\_all\_documents
-
-```python
- | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
-```
-
-Delete documents in an index. All documents are deleted if no filters are passed.
-
-**Arguments**:
-
-- `index`: Index name to delete the document from.
-- `filters`: Optional filters to narrow down the documents to be deleted.
-
-**Returns**:
-
-None
-
 <a name="elasticsearch"></a>
-# elasticsearch
+# Module elasticsearch
 
 <a name="elasticsearch.ElasticsearchDocumentStore"></a>
-## ElasticsearchDocumentStore
+## ElasticsearchDocumentStore Objects
 
 ```python
 class ElasticsearchDocumentStore(BaseDocumentStore)
@@ -199,6 +62,7 @@ more performant with DPR embeddings. 'cosine' is recommended if you are using a 
 #### write\_documents
 
 ```python
+ | @abstractmethod
  | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
 ```
 
@@ -281,11 +145,239 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 None
 
+<a name="memory"></a>
+# Module memory
+
+<a name="memory.InMemoryDocumentStore"></a>
+## InMemoryDocumentStore Objects
+
+```python
+class InMemoryDocumentStore(BaseDocumentStore)
+```
+
+In-memory document store
+
+<a name="memory.InMemoryDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+```
+
+Indexes documents for later queries.
+
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+Optionally: Include meta data via {"text": "<the-actual-text>",
+"meta": {"name": "<some-document-name>, "author": "somebody", ...}}
+It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
+separate index than the documents for search.
+
+**Returns**:
+
+None
+
+<a name="memory.InMemoryDocumentStore.update_embeddings"></a>
+#### update\_embeddings
+
+```python
+ | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
+```
+
+Updates the embeddings in the the document store using the encoding model specified in the retriever.
+This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+
+**Arguments**:
+
+- `retriever`: Retriever
+- `index`: Index name to update
+
+**Returns**:
+
+None
+
+<a name="memory.InMemoryDocumentStore.add_eval_data"></a>
+#### add\_eval\_data
+
+```python
+ | add_eval_data(filename: str, doc_index: Optional[str] = None, label_index: Optional[str] = None)
+```
+
+Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
+
+**Arguments**:
+
+- `filename`: Name of the file containing evaluation data
+:type filename: str
+- `doc_index`: Elasticsearch index where evaluation documents should be stored
+:type doc_index: str
+- `label_index`: Elasticsearch index where labeled questions should be stored
+:type label_index: str
+
+<a name="memory.InMemoryDocumentStore.delete_all_documents"></a>
+#### delete\_all\_documents
+
+```python
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete documents in an index. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
+
+<a name="sql"></a>
+# Module sql
+
+<a name="sql.SQLDocumentStore"></a>
+## SQLDocumentStore Objects
+
+```python
+class SQLDocumentStore(BaseDocumentStore)
+```
+
+<a name="sql.SQLDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
+```
+
+**Arguments**:
+
+- `url`: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
+- `index`: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
+This parameter sets the default value for document index.
+- `label_index`: The default value of index attribute for the labels.
+- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
+documents. When set as True, any document with an existing ID gets updated.
+If set to False, an error is raised if the document ID of the document being
+added already exists. Using this parameter coud cause performance degradation for document insertion.
+
+<a name="sql.SQLDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+```
+
+Indexes documents for later queries.
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+Optionally: Include meta data via {"text": "<the-actual-text>",
+"meta": {"name": "<some-document-name>, "author": "somebody", ...}}
+It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
+documents for evaluation can be indexed in a separate index than the documents for search.
+
+**Returns**:
+
+None
+
+<a name="sql.SQLDocumentStore.update_vector_ids"></a>
+#### update\_vector\_ids
+
+```python
+ | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
+```
+
+Update vector_ids for given document_ids.
+
+**Arguments**:
+
+- `vector_id_map`: dict containing mapping of document_id -> vector_id.
+- `index`: filter documents by the optional index attribute for documents in database.
+
+<a name="sql.SQLDocumentStore.add_eval_data"></a>
+#### add\_eval\_data
+
+```python
+ | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label")
+```
+
+Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
+
+**Arguments**:
+
+- `filename`: Name of the file containing evaluation data
+:type filename: str
+- `doc_index`: Elasticsearch index where evaluation documents should be stored
+:type doc_index: str
+- `label_index`: Elasticsearch index where labeled questions should be stored
+:type label_index: str
+
+<a name="sql.SQLDocumentStore.delete_all_documents"></a>
+#### delete\_all\_documents
+
+```python
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete documents in an index. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
+
+<a name="base"></a>
+# Module base
+
+<a name="base.BaseDocumentStore"></a>
+## BaseDocumentStore Objects
+
+```python
+class BaseDocumentStore(ABC)
+```
+
+Base class for implementing Document Stores.
+
+<a name="base.BaseDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | @abstractmethod
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+```
+
+Indexes documents for later queries.
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+Optionally: Include meta data via {"text": "<the-actual-text>",
+"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: Optional name of index where the documents shall be written to.
+If None, the DocumentStore's default index (self.index) will be used.
+
+**Returns**:
+
+None
+
 <a name="faiss"></a>
-# faiss
+# Module faiss
 
 <a name="faiss.FAISSDocumentStore"></a>
-## FAISSDocumentStore
+## FAISSDocumentStore Objects
 
 ```python
 class FAISSDocumentStore(SQLDocumentStore)
@@ -456,95 +548,4 @@ smaller chunks to reduce memory footprint.
 **Returns**:
 
 
-
-<a name="memory"></a>
-# memory
-
-<a name="memory.InMemoryDocumentStore"></a>
-## InMemoryDocumentStore
-
-```python
-class InMemoryDocumentStore(BaseDocumentStore)
-```
-
-In-memory document store
-
-<a name="memory.InMemoryDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
-```
-
-Indexes documents for later queries.
-
-
-**Arguments**:
-
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta": {"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
-separate index than the documents for search.
-
-**Returns**:
-
-None
-
-<a name="memory.InMemoryDocumentStore.update_embeddings"></a>
-#### update\_embeddings
-
-```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
-```
-
-Updates the embeddings in the the document store using the encoding model specified in the retriever.
-This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
-
-**Arguments**:
-
-- `retriever`: Retriever
-- `index`: Index name to update
-
-**Returns**:
-
-None
-
-<a name="memory.InMemoryDocumentStore.add_eval_data"></a>
-#### add\_eval\_data
-
-```python
- | add_eval_data(filename: str, doc_index: Optional[str] = None, label_index: Optional[str] = None)
-```
-
-Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-**Arguments**:
-
-- `filename`: Name of the file containing evaluation data
-:type filename: str
-- `doc_index`: Elasticsearch index where evaluation documents should be stored
-:type doc_index: str
-- `label_index`: Elasticsearch index where labeled questions should be stored
-:type label_index: str
-
-<a name="memory.InMemoryDocumentStore.delete_all_documents"></a>
-#### delete\_all\_documents
-
-```python
- | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
-```
-
-Delete documents in an index. All documents are deleted if no filters are passed.
-
-**Arguments**:
-
-- `index`: Index name to delete the document from.
-- `filters`: Optional filters to narrow down the documents to be deleted.
-
-**Returns**:
-
-None
 

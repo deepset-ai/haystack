@@ -1,11 +1,8 @@
-<a name="base"></a>
-# base
-
 <a name="preprocessor"></a>
-# preprocessor
+# Module preprocessor
 
 <a name="preprocessor.PreProcessor"></a>
-## PreProcessor
+## PreProcessor Objects
 
 ```python
 class PreProcessor(BasePreProcessor)
@@ -37,8 +34,11 @@ Set the value to None to disable striding behaviour.
 to True, the individual split will always have complete sentences &
 the number of words will be <= split_length.
 
+<a name="cleaning"></a>
+# Module cleaning
+
 <a name="utils"></a>
-# utils
+# Module utils
 
 <a name="utils.eval_data_from_file"></a>
 #### eval\_data\_from\_file
@@ -123,6 +123,6 @@ Fetch an archive (zip or tar.gz) from a url via http and extract content to an o
 
 bool if anything got fetched
 
-<a name="cleaning"></a>
-# cleaning
+<a name="base"></a>
+# Module base
 

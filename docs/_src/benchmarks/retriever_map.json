@@ -6,8 +6,7 @@
   "columns": [
     "n_docs",
     "BM25 / ElasticSearch",
-    "DPR / ElasticSearch",
-    "DPR / FAISS (flat)",
+    "DPR / ElasticSearch or FAISS (flat)",
     "DPR / FAISS (HSNW)"
   ],
   "axis": [
@@ -15,42 +14,22 @@
    ],
   "data": [
     {
-        "model": "DPR / ElasticSearch",
+        "model": "DPR / ElasticSearch or FAISS (flat)",
         "n_docs": 1000,
         "map": 0.929
     },
     {
-        "model": "DPR / ElasticSearch",
+        "model": "DPR / ElasticSearch or FAISS (flat)",
         "n_docs": 10000,
         "map": 0.898
     },
     {
-        "model": "DPR / ElasticSearch",
+        "model": "DPR / ElasticSearch or FAISS (flat)",
         "n_docs": 100000,
         "map": 0.863
     },
     {
-        "model": "DPR / ElasticSearch",
-        "n_docs": 500000,
-        "map": 0.805
-    },
-    {
-        "model": "DPR / FAISS (flat)",
-        "n_docs": 1000,
-        "map": 0.929
-    },
-    {
-        "model": "DPR / FAISS (flat)",
-        "n_docs": 10000,
-        "map": 0.898
-    },
-    {
-        "model": "DPR / FAISS (flat)",
-        "n_docs": 100000,
-        "map": 0.863
-    },
-    {
-        "model": "DPR / FAISS (flat)",
+        "model": "DPR / ElasticSearch or FAISS (flat)",
         "n_docs": 500000,
         "map": 0.805
     },

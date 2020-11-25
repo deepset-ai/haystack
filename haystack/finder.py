@@ -28,6 +28,8 @@ class Finder:
         :param reader: Reader instance
         :param retriever: Retriever instance
         """
+        logger.warning("The 'Finder' class will be deprecated in the next Haystack release in favour of the new"
+                       "`Pipeline` class.")
         self.retriever = retriever
         self.reader = reader
         if self.reader is None and self.retriever is None:
@@ -478,4 +480,3 @@ class Finder:
             eval_results["reader_topk_no_answer_accuracy"] = None
 
         return eval_results
-
