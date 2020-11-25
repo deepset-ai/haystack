@@ -134,7 +134,14 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         index = index or self.index
-        query = self.session.query(DocumentORM).filter_by(index=index)
+        # Generally ORM objects kept in memory cause performance issue
+        # Hence using directly column name improve memory and performance.
+        # Refer https://stackoverflow.com/questions/23185319/why-is-loading-sqlalchemy-objects-via-the-orm-5-8x-slower-than-rows-via-a-raw-my
+        query = self.session.query(
+            DocumentORM.id,
+            DocumentORM.text,
+            DocumentORM.meta
+        ).filter_by(index=index)
 
         if filters:
             query = query.join(MetaORM)
