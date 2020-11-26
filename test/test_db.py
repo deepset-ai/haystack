@@ -149,16 +149,22 @@ def test_write_document_index(document_store):
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_write_document_with_embeddings(document_store):
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+def test_document_with_embeddings(document_store):
     documents = [
         {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
         {"text": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
         {"text": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
-        {"text": "text4", "id": "4", "embedding": None},
+        {"text": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
     ]
     document_store.write_documents(documents, index="haystack_test_1")
     assert len(document_store.get_all_documents(index="haystack_test_1")) == 4
+
+    documents_without_embedding = document_store.get_all_documents(index="haystack_test_1", return_embedding=False)
+    assert documents_without_embedding[0].embedding is None
+
+    documents_with_embedding = document_store.get_all_documents(index="haystack_test_1", return_embedding=True)
+    assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
 
 
 @pytest.mark.elasticsearch
@@ -372,7 +378,7 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
 
     doc_to_write = {"custom_text_field": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
     document_store.write_documents([doc_to_write])
-    documents = document_store.get_all_documents()
+    documents = document_store.get_all_documents(return_embedding=True)
     assert len(documents) == 1
     assert documents[0].text == "test"
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
