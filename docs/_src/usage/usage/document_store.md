@@ -197,6 +197,8 @@ The Document Stores have different characteristics. You should choose one depend
 
 </div>
 
+<div class="recommendation">
+
 #### Our Recommendations
 
 **Restricted environment:** Use the `InMemoryDocumentStore`, if you are just giving Haystack a quick try on a small sample and are working in a restricted environment that complicates running Elasticsearch or other databases  
@@ -204,3 +206,5 @@ The Document Stores have different characteristics. You should choose one depend
 **Allrounder:** Use the `ElasticSearchDocumentStore`, if you want to evaluate the performance of different retrieval options (dense vs. sparse) and are aiming for a smooth transition from PoC to production
 
 **Vector Specialist:** Use the `FAISSDocumentStore`, if you want to focus on dense retrieval and possibly deal with larger datasets
+
+</div>
