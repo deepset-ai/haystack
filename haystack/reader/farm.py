@@ -263,7 +263,7 @@ class FARMReader(BaseReader):
         # build input objects for inference_from_objects
         for query_with_docs in query_doc_list:
             documents = query_with_docs["docs"]
-            query = query_with_docs["query"]
+            query = query_with_docs["question"]
             labels.append(query)
             number_of_docs.append(len(documents))
 

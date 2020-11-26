@@ -59,7 +59,7 @@ def calculate_average_precision_and_reciprocal_rank(questions_with_docs: List[di
 
         if found_relevant_doc:
             questions_with_correct_doc.append({
-                "query": question["question"],
+                "question": question["question"],
                 "docs": question["docs"]
             })
 
