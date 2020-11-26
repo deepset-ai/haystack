@@ -17,7 +17,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         In-memory document store
     """
 
-    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = True):
+    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = False):
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
         self.label_index: str = "label"
@@ -83,7 +83,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                       "use a different DocumentStore (e.g. ElasticsearchDocumentStore).")
 
         index = index or self.index
-        return_embedding = return_embedding or self.return_embedding
+        if return_embedding is None:
+            return_embedding = self.return_embedding
 
         if query_emb is None:
             return []
@@ -143,10 +144,31 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.label_index
         return len(self.indexes[index].items())
 
-    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
+    def get_all_documents(
+            self,
+            index: Optional[str] = None,
+            filters: Optional[Dict[str, List[str]]] = None,
+            return_embedding: Optional[bool] = None
+    ) -> List[Document]:
+        """
+        Get documents from the document store.
+
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param return_embedding: Whether to return the document embeddings.
+        """
         index = index or self.index
-        documents = list(self.indexes[index].values())
+        documents = deepcopy(list(self.indexes[index].values()))
+
         filtered_documents = []
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+        if return_embedding is False:
+            for doc in documents:
+                doc.embedding = None
 
         if filters:
             for doc in documents:

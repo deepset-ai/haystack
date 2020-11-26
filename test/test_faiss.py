@@ -1,10 +1,10 @@
+import faiss
 import numpy as np
 import pytest
 from haystack import Document
-import faiss
-
-from haystack.document_store.faiss import FAISSDocumentStore
 from haystack import Finder
+from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.retriever.dense import EmbeddingRetriever
 
 DOCUMENTS = [
     {"name": "name_1", "text": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -111,9 +111,15 @@ def test_faiss_update_with_empty_store(faiss_document_store, dpr_retriever):
     check_data_correctness(documents_indexed, DOCUMENTS)
 
 
-def test_faiss_retrieving(faiss_document_store, embedding_retriever):
-    faiss_document_store.write_documents(DOCUMENTS)
-    result = embedding_retriever.retrieve(query="How to test this?")
+@pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
+def test_faiss_retrieving(index_factory):
+    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", faiss_index_factory_str=index_factory)
+    document_store.delete_all_documents(index="document")
+    if "ivf" in index_factory.lower():
+        document_store.train_index(DOCUMENTS)
+    document_store.write_documents(DOCUMENTS)
+    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False)
+    result = retriever.retrieve(query="How to test this?")
     assert len(result) == len(DOCUMENTS)
     assert type(result[0]) == Document
 
@@ -132,6 +138,7 @@ def test_faiss_passing_index_from_outside():
     nlist = 2
     quantizer = faiss.IndexFlatIP(d)
     faiss_index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_INNER_PRODUCT)
+    faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
     faiss_index.nprobe = 2
     document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", faiss_index=faiss_index)
 

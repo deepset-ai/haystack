@@ -3,7 +3,6 @@ import time
 import numpy as np
 
 from haystack import Document
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.retriever.dense import DensePassageRetriever
 
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
@@ -45,8 +44,7 @@ def test_dpr_retrieval(document_store, retriever, return_embedding):
 
     docs_with_emb = document_store.get_all_documents()
 
-    # FAISSDocumentStore doesn't return embeddings, so these tests only work with ElasticsearchDocumentStore
-    if isinstance(document_store, ElasticsearchDocumentStore):
+    if return_embedding is True:
         assert (len(docs_with_emb[0].embedding) == 768)
         assert (abs(docs_with_emb[0].embedding[0] - (-0.3063)) < 0.001)
         assert (abs(docs_with_emb[1].embedding[0] - (-0.3914)) < 0.001)

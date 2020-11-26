@@ -44,7 +44,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         refresh_type: str = "wait_for",
         similarity="dot_product",
         timeout=30,
-        return_embedding: Optional[bool] = True,
+        return_embedding: bool = False,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -345,12 +345,29 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_label_count(self, index: Optional[str] = None) -> int:
         return self.get_document_count(index=index)
 
-    def get_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Document]:
+    def get_all_documents(
+            self,
+            index: Optional[str] = None,
+            filters: Optional[Dict[str, List[str]]] = None,
+            return_embedding: Optional[bool] = None
+    ) -> List[Document]:
+        """
+        Get documents from the document store.
+
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param return_embedding: Whether to return the document embeddings.
+        """
+
         if index is None:
             index = self.index
 
         result = self.get_all_documents_in_index(index=index, filters=filters)
-        documents = [self._convert_es_hit_to_document(hit) for hit in result]
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+        documents = [self._convert_es_hit_to_document(hit, return_embedding=return_embedding) for hit in result]
 
         return documents
 
@@ -469,7 +486,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if index is None:
             index = self.index
 
-        return_embedding = return_embedding or self.return_embedding
+        if return_embedding is None:
+            return_embedding = self.return_embedding
 
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
@@ -521,7 +539,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             documents = [self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True) for hit in result]
             return documents
 
-    def _convert_es_hit_to_document(self, hit: dict, adapt_score_for_embedding: bool = False) -> Document:
+    def _convert_es_hit_to_document(
+            self,
+            hit: dict,
+            adapt_score_for_embedding: bool = False,
+            return_embedding: bool = True
+    ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
         name = meta_data.pop(self.name_field, None)
@@ -544,7 +567,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             score=score,
             probability=probability,
             question=hit["_source"].get(self.faq_question_field),
-            embedding=hit["_source"].get(self.embedding_field, None)
+            embedding=hit["_source"].get(self.embedding_field, None) if return_embedding else None,
         )
         return document
 
