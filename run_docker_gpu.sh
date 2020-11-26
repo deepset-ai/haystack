@@ -1,3 +1,4 @@
+#!/usr/bin/env sh
 # Run Haystack API(on GPU) and Elasticsearch using Docker.
 #
 # docker-compose doesn't support GPUs in the current version. As a workaround,
