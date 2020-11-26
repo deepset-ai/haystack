@@ -137,19 +137,42 @@ class SQLDocumentStore(BaseDocumentStore):
         # Generally ORM objects kept in memory cause performance issue
         # Hence using directly column name improve memory and performance.
         # Refer https://stackoverflow.com/questions/23185319/why-is-loading-sqlalchemy-objects-via-the-orm-5-8x-slower-than-rows-via-a-raw-my
-        query = self.session.query(
+        documents_query = self.session.query(
             DocumentORM.id,
             DocumentORM.text,
-            DocumentORM.meta
+            DocumentORM.vector_id
         ).filter_by(index=index)
 
         if filters:
-            query = query.join(MetaORM)
+            documents_query = documents_query.join(MetaORM)
             for key, values in filters.items():
-                query = query.filter(MetaORM.name == key, MetaORM.value.in_(values))
+                documents_query = documents_query.filter(
+                    MetaORM.name == key,
+                    MetaORM.value.in_(values),
+                    DocumentORM.id == MetaORM.document_id
+                )
 
-        documents = [self._convert_sql_row_to_document(row) for row in query.all()]
-        return documents
+        documents_map = {}
+        for row in documents_query.all():
+            documents_map[row.id] = Document(
+                id=row.id,
+                text=row.text,
+                meta=None if row.vector_id is None else {"vector_id": row.vector_id}
+            )
+
+        if len(documents_map) > 0:
+            meta_query = self.session.query(
+                MetaORM.document_id,
+                MetaORM.name,
+                MetaORM.value
+            ).filter(MetaORM.document_id.in_(documents_map.keys()))
+
+            for row in meta_query.all():
+                if documents_map[row.document_id].meta is None:
+                    documents_map[row.document_id].meta = {}
+                documents_map[row.document_id].meta[row.name] = row.value
+
+        return list(documents_map.values())
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None):
         """
