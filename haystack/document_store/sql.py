@@ -157,7 +157,7 @@ class SQLDocumentStore(BaseDocumentStore):
             documents_map[row.id] = Document(
                 id=row.id,
                 text=row.text,
-                meta=None if row.vector_id is None else {"vector_id": row.vector_id}
+                meta=None if row.vector_id is None else {"vector_id": row.vector_id} # type: ignore
             )
 
         if len(documents_map) > 0:
@@ -170,7 +170,7 @@ class SQLDocumentStore(BaseDocumentStore):
             for row in meta_query.all():
                 if documents_map[row.document_id].meta is None:
                     documents_map[row.document_id].meta = {}
-                documents_map[row.document_id].meta[row.name] = row.value
+                documents_map[row.document_id].meta[row.name] = row.value # type: ignore
 
         return list(documents_map.values())
 
