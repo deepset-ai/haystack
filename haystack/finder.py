@@ -28,8 +28,14 @@ class Finder:
         :param reader: Reader instance
         :param retriever: Retriever instance
         """
-        logger.warning("The 'Finder' class will be deprecated in the next Haystack release in favour of the new"
-                       "`Pipeline` class.")
+        logger.warning(
+            """DEPRECATION WARNINGS: 
+            1. The 'Finder' class will be deprecated in the next Haystack release in 
+            favour of a new `Pipeline` class that supports building custom search pipelines using Haystack components
+            including Retriever, Readers, and Generators.
+            For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/544
+            2. The `question` parameter in search requests & results is renamed to `query`."""
+        )
         self.retriever = retriever
         self.reader = reader
         if self.reader is None and self.retriever is None:
@@ -48,6 +54,14 @@ class Finder:
         :return:
         """
 
+        logger.warning(
+            """DEPRECATION WARNINGS: 
+            1. The 'Finder' class will be deprecated in the next Haystack release in 
+            favour of a new `Pipeline` class that supports building custom search pipelines using Haystack components
+            including Retriever, Readers, and Generators.
+            For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/544
+            2. The `question` parameter in search requests & results is renamed to `query`."""
+        )
         if self.retriever is None or self.reader is None:
             raise AttributeError("Finder.get_answers requires self.retriever AND self.reader")
 
@@ -68,6 +82,7 @@ class Finder:
         results = self.reader.predict(query=question,
                                       documents=documents,
                                       top_k=top_k_reader)  # type: Dict[str, Any]
+        results["question"] = results["query"]
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
