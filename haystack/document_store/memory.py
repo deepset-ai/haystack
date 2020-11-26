@@ -17,7 +17,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         In-memory document store
     """
 
-    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = True):
+    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = False):
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
         self.label_index: str = "label"

@@ -378,7 +378,7 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
 
     doc_to_write = {"custom_text_field": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
     document_store.write_documents([doc_to_write])
-    documents = document_store.get_all_documents()
+    documents = document_store.get_all_documents(return_embedding=True)
     assert len(documents) == 1
     assert documents[0].text == "test"
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
