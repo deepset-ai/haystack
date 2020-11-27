@@ -379,7 +379,7 @@ class Finder:
         self.reader.return_no_answers = True
         reader_start_time = time.time()
         predictions = self.reader.predict_batch(questions_with_correct_doc,
-                                                top_k_per_query=top_k_reader, batch_size=batch_size)
+                                                top_k=top_k_reader, batch_size=batch_size)
         reader_total_time = time.time() - reader_start_time
 
         for pred in predictions:

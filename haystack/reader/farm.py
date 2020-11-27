@@ -243,14 +243,14 @@ class FARMReader(BaseReader):
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict_batch(self, query_doc_list: List[dict], top_k_per_query: int = None, batch_size: int = None):
+    def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
         """
         Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
 
         Returns list of dictionaries containing answers sorted by (desc.) probability
 
         :param query_doc_list: List of dictionaries containing queries with their retrieved documents
-        :param top_k_per_query: The maximum number of answers to return for each query
+        :param top_k: The maximum number of answers to return for each query
         :param batch_size: Number of samples the model receives in one batch for inference
         :return: List of dictionaries containing query and answers
         """
@@ -290,7 +290,7 @@ class FARMReader(BaseReader):
 
         result = []
         for idx, group in enumerate(grouped_predictions):
-            answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k_per_query)
+            answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k)
             query = group[0].question
             cur_label = labels[idx]
             result.append({

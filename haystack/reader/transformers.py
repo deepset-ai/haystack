@@ -154,7 +154,6 @@ class TransformersReader(BaseReader):
 
         return results
 
-    def predict_batch(self, query_doc_list: List[dict], top_k_per_query: Optional[int] = None,
-                      batch_size: Optional[int] = None):
+    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None,  batch_size: Optional[int] = None):
 
         raise NotImplementedError("Batch prediction not yet available in TransformersReader.")
