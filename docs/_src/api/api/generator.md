@@ -22,27 +22,30 @@ i.e. the model can easily adjust to domain documents even after training has fin
 **Example**
 
 ```python
-> question = "who got the first nobel prize in physics?"
-
-# Retrieve related documents from retriever
-> retrieved_docs = retriever.retrieve(query=question)
-
-> # Now generate answer from question and retrieved documents
-> generator.predict(
->    question=question,
->    documents=retrieved_docs,
->    top_k=1
-> )
-{'question': 'who got the first nobel prize in physics',
-     'answers':
-         [{'question': 'who got the first nobel prize in physics',
-           'answer': ' albert einstein',
-           'meta': { 'doc_ids': [...],
-                     'doc_scores': [80.42758 ...],
-                     'doc_probabilities': [40.71379089355469, ...
-                     'texts': ['Albert Einstein was a ...]
-                     'titles': ['"Albert Einstein"', ...]
-     }}]}
+|     question = "who got the first nobel prize in physics?"
+|
+|     # Retrieve related documents from retriever
+|     retrieved_docs = retriever.retrieve(query=question)
+|
+|     # Now generate answer from question and retrieved documents
+|     generator.predict(
+|        question=question,
+|        documents=retrieved_docs,
+|        top_k=1
+|     )
+|
+|     # Answer
+|
+|     {'question': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'question': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'texts': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
 ```
 
 <a name="transformers.RAGenerator.__init__"></a>
@@ -91,16 +94,16 @@ These document can for example be retrieved via the Retriever.
 Generated answers plus additional infos in a dict like this:
 
 ```python
-> {'question': 'who got the first nobel prize in physics',
->    'answers':
->        [{'question': 'who got the first nobel prize in physics',
->          'answer': ' albert einstein',
->          'meta': { 'doc_ids': [...],
->                    'doc_scores': [80.42758 ...],
->                    'doc_probabilities': [40.71379089355469, ...
->                    'texts': ['Albert Einstein was a ...]
->                    'titles': ['"Albert Einstein"', ...]
->    }}]}
+|     {'question': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'question': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'texts': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
 ```
 
 <a name="base"></a>
