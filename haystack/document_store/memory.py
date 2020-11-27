@@ -47,6 +47,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][document.id] = document
 
     def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None):
+        """Write annotation labels into document store."""
         index = index or self.label_index
         label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
 
@@ -55,6 +56,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][label_id] = label
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+        """Fetch a document by specifying its text id string"""
         index = index or self.index
         documents = self.get_documents_by_id([id], index=index)
         if documents:
@@ -63,6 +65,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             return None
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+        """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
@@ -73,6 +76,18 @@ class InMemoryDocumentStore(BaseDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None) -> List[Document]:
+
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param top_k: How many documents to return
+        :param index: Index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :return:
+        """
 
         from numpy import dot
         from numpy.linalg import norm
@@ -137,13 +152,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][doc.id].embedding = emb
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the number of documents in the document store.
+        """
         documents = self.get_all_documents(index=index, filters=filters)
         return len(documents)
 
     def get_label_count(self, index: Optional[str] = None) -> int:
+        """
+        Return the number of labels in the document store
+        """
         index = index or self.label_index
         return len(self.indexes[index].items())
-
+      
     def get_all_documents(
             self,
             index: Optional[str] = None,
@@ -187,6 +208,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return filtered_documents
 
     def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+        """
+        Return all labels in the document store
+        """
         index = index or self.label_index
 
         if filters:
