@@ -99,8 +99,12 @@ When we talk about Documents in Haystack, we are referring specifically to the i
 You might want to use all the text in one file as a Document, or split it into multiple Documents.
 This splitting can have a big impact on speed and performance.
 
-**General Guide**: If Haystack is running very slowly, you might want to try splitting your text into smaller Documents.
+<div class="recommendation">
+
+**Tip:** If Haystack is running very slowly, you might want to try splitting your text into smaller Documents.
 If you want an improvement to performance, you might want to try concatenating text to make larger Documents.
+
+</div>
 
 ## Running Queries
 

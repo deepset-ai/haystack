@@ -17,10 +17,17 @@ Though SQuAD is composed entirely of Wikipedia articles, these models are flexib
 Before trying to adapt these models to your domain, we’d recommend trying one of the off the shelf models.
 We’ve found that these models are often flexible enough for a wide range of use cases.
 
-**Intuition**: Most people probably don’t know what an HP Valve is.
+<div class="recommendation">
+
+**Intuition**
+
+Most people probably don’t know what an HP Valve is.
 But you don’t always need to know what a HP Valve is to answer “What is connected to a HP Valve?”
 The answer might be there in plain language.
 In the same way, many QA models have a good enough grasp of language to answer questions about concepts in an unseen domain.
+
+</div>
+
 
 ## Finetuning
 
@@ -35,9 +42,16 @@ reader.train(data_dir=train_data,
 ```
 
 At the end of training, the finetuned model will be saved in the specified `save_dir` and can be loaded as a `Reader`.
+
+<div class="recommendation">
+
+**Recommendation**
+
 See Tutorial 2 for a runnable example of this process.
 If you’re interested in measuring how much your model has improved,
 please also check out Tutorial 5 which walks through the steps needed to perform evaluation.
+
+</div>
 
 ## Generating Labels
 

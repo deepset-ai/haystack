@@ -36,7 +36,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional[faiss.swigfaiss.Index] = None,
-        return_embedding: Optional[bool] = True,
+        return_embedding: bool = False,
         update_existing_documents: bool = False,
         index: str = "document",
         **kwargs,
@@ -77,6 +77,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.faiss_index = faiss_index
         else:
             self.faiss_index = self._create_new_index(vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs)
+            if "ivf" in faiss_index_factory_str.lower():  # enable reconstruction of vectors for inverted index
+                self.faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
 
         self.index_buffer_size = index_buffer_size
         self.return_embedding = return_embedding
@@ -184,6 +186,30 @@ class FAISSDocumentStore(SQLDocumentStore):
                 vector_id += 1
             self.update_vector_ids(vector_id_map, index=index)
 
+    def get_all_documents(
+            self,
+            index: Optional[str] = None,
+            filters: Optional[Dict[str, List[str]]] = None,
+            return_embedding: Optional[bool] = None
+    ) -> List[Document]:
+        """
+        Get documents from the document store.
+
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param return_embedding: Whether to return the document embeddings.
+        """
+        documents = super(FAISSDocumentStore, self).get_all_documents(index=index, filters=filters)
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+        if return_embedding:
+            for doc in documents:
+                if doc.meta and doc.meta.get("vector_id") is not None:
+                    doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+        return documents
+
     def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
         """
         Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
@@ -233,7 +259,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         if not self.faiss_index:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
 
-        return_embedding = return_embedding or self.return_embedding
+        if return_embedding is None:
+            return_embedding = self.return_embedding
         index = index or self.index
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
