@@ -12,7 +12,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: str = "localhost", port: int = 9200, username: str = "", password: str = "", index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: bool = False, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: Optional[bool] = True)
+ | __init__(host: str = "localhost", port: int = 9200, username: str = "", password: str = "", index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: bool = False, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False)
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -49,20 +49,36 @@ documents. When set as True, any document with an existing ID gets updated.
 If set to False, an error is raised if the document ID of the document being
 added already exists.
 - `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
-Values:
-- 'wait_for' => continue only after changes are visible (slow, but safe)
-- 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
+If set to 'wait_for', continue only after changes are visible (slow, but safe).
+If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
 More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `timeout`: Number of seconds after which an ElasticSearch request times out.
 - `return_embedding`: To return document embedding
 
+<a name="elasticsearch.ElasticsearchDocumentStore.get_document_by_id"></a>
+#### get\_document\_by\_id
+
+```python
+ | get_document_by_id(id: str, index=None) -> Optional[Document]
+```
+
+Fetch a document by specifying its text id string
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_documents_by_id"></a>
+#### get\_documents\_by\_id
+
+```python
+ | get_documents_by_id(ids: List[str], index=None) -> List[Document]
+```
+
+Fetch documents by specifying a list of text id strings
+
 <a name="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
- | @abstractmethod
  | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
 ```
 
@@ -89,6 +105,125 @@ should be changed to what you have set for self.text_field and self.name_field.
 **Returns**:
 
 None
+
+<a name="elasticsearch.ElasticsearchDocumentStore.write_labels"></a>
+#### write\_labels
+
+```python
+ | write_labels(labels: Union[List[Label], List[dict]], index: Optional[str] = None)
+```
+
+Write annotation labels into document store.
+
+<a name="elasticsearch.ElasticsearchDocumentStore.update_document_meta"></a>
+#### update\_document\_meta
+
+```python
+ | update_document_meta(id: str, meta: Dict[str, str])
+```
+
+Update the metadata dictionary of a document by specifying its string id
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_document_count"></a>
+#### get\_document\_count
+
+```python
+ | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int
+```
+
+Return the number of documents in the document store.
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_label_count"></a>
+#### get\_label\_count
+
+```python
+ | get_label_count(index: Optional[str] = None) -> int
+```
+
+Return the number of labels in the document store
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_all_labels"></a>
+#### get\_all\_labels
+
+```python
+ | get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]
+```
+
+Return all labels in the document store
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_all_documents_in_index"></a>
+#### get\_all\_documents\_in\_index
+
+```python
+ | get_all_documents_in_index(index: str, filters: Optional[Dict[str, List[str]]] = None) -> List[dict]
+```
+
+Return all documents in a specific index in the document store
+
+<a name="elasticsearch.ElasticsearchDocumentStore.query"></a>
+#### query
+
+```python
+ | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query as defined by the BM25 algorithm.
+
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+
+<a name="elasticsearch.ElasticsearchDocumentStore.query_by_embedding"></a>
+#### query\_by\_embedding
+
+```python
+ | query_by_embedding(query_emb: np.array, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `filters`: Optional filters to narrow down the search space.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `top_k`: How many documents to return
+- `index`: Index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
+
+**Returns**:
+
+
+
+<a name="elasticsearch.ElasticsearchDocumentStore.describe_documents"></a>
+#### describe\_documents
+
+```python
+ | describe_documents(index=None)
+```
+
+Return a summary of the documents in the document store
 
 <a name="elasticsearch.ElasticsearchDocumentStore.update_embeddings"></a>
 #### update\_embeddings
@@ -181,6 +316,55 @@ separate index than the documents for search.
 
 None
 
+<a name="memory.InMemoryDocumentStore.write_labels"></a>
+#### write\_labels
+
+```python
+ | write_labels(labels: Union[List[dict], List[Label]], index: Optional[str] = None)
+```
+
+Write annotation labels into document store.
+
+<a name="memory.InMemoryDocumentStore.get_document_by_id"></a>
+#### get\_document\_by\_id
+
+```python
+ | get_document_by_id(id: str, index: Optional[str] = None) -> Optional[Document]
+```
+
+Fetch a document by specifying its text id string
+
+<a name="memory.InMemoryDocumentStore.get_documents_by_id"></a>
+#### get\_documents\_by\_id
+
+```python
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
+```
+
+Fetch documents by specifying a list of text id strings
+
+<a name="memory.InMemoryDocumentStore.query_by_embedding"></a>
+#### query\_by\_embedding
+
+```python
+ | query_by_embedding(query_emb: List[float], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `filters`: Optional filters to narrow down the search space.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `top_k`: How many documents to return
+- `index`: Index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
+
+**Returns**:
+
+
+
 <a name="memory.InMemoryDocumentStore.update_embeddings"></a>
 #### update\_embeddings
 
@@ -199,6 +383,50 @@ This can be useful if want to add or change the embeddings for your documents (e
 **Returns**:
 
 None
+
+<a name="memory.InMemoryDocumentStore.get_document_count"></a>
+#### get\_document\_count
+
+```python
+ | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int
+```
+
+Return the number of documents in the document store.
+
+<a name="memory.InMemoryDocumentStore.get_label_count"></a>
+#### get\_label\_count
+
+```python
+ | get_label_count(index: Optional[str] = None) -> int
+```
+
+Return the number of labels in the document store
+
+<a name="memory.InMemoryDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+
+<a name="memory.InMemoryDocumentStore.get_all_labels"></a>
+#### get\_all\_labels
+
+```python
+ | get_all_labels(index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]
+```
+
+Return all labels in the document store
 
 <a name="memory.InMemoryDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
@@ -236,143 +464,6 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 None
 
-<a name="sql"></a>
-# Module sql
-
-<a name="sql.SQLDocumentStore"></a>
-## SQLDocumentStore Objects
-
-```python
-class SQLDocumentStore(BaseDocumentStore)
-```
-
-<a name="sql.SQLDocumentStore.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
-```
-
-**Arguments**:
-
-- `url`: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
-- `index`: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
-This parameter sets the default value for document index.
-- `label_index`: The default value of index attribute for the labels.
-- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-documents. When set as True, any document with an existing ID gets updated.
-If set to False, an error is raised if the document ID of the document being
-added already exists. Using this parameter coud cause performance degradation for document insertion.
-
-<a name="sql.SQLDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
-```
-
-Indexes documents for later queries.
-
-**Arguments**:
-
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta": {"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
-documents for evaluation can be indexed in a separate index than the documents for search.
-
-**Returns**:
-
-None
-
-<a name="sql.SQLDocumentStore.update_vector_ids"></a>
-#### update\_vector\_ids
-
-```python
- | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
-```
-
-Update vector_ids for given document_ids.
-
-**Arguments**:
-
-- `vector_id_map`: dict containing mapping of document_id -> vector_id.
-- `index`: filter documents by the optional index attribute for documents in database.
-
-<a name="sql.SQLDocumentStore.add_eval_data"></a>
-#### add\_eval\_data
-
-```python
- | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label")
-```
-
-Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-**Arguments**:
-
-- `filename`: Name of the file containing evaluation data
-:type filename: str
-- `doc_index`: Elasticsearch index where evaluation documents should be stored
-:type doc_index: str
-- `label_index`: Elasticsearch index where labeled questions should be stored
-:type label_index: str
-
-<a name="sql.SQLDocumentStore.delete_all_documents"></a>
-#### delete\_all\_documents
-
-```python
- | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
-```
-
-Delete documents in an index. All documents are deleted if no filters are passed.
-
-**Arguments**:
-
-- `index`: Index name to delete the document from.
-- `filters`: Optional filters to narrow down the documents to be deleted.
-
-**Returns**:
-
-None
-
-<a name="base"></a>
-# Module base
-
-<a name="base.BaseDocumentStore"></a>
-## BaseDocumentStore Objects
-
-```python
-class BaseDocumentStore(ABC)
-```
-
-Base class for implementing Document Stores.
-
-<a name="base.BaseDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | @abstractmethod
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
-```
-
-Indexes documents for later queries.
-
-**Arguments**:
-
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: Optional name of index where the documents shall be written to.
-If None, the DocumentStore's default index (self.index) will be used.
-
-**Returns**:
-
-None
-
 <a name="faiss"></a>
 # Module faiss
 
@@ -395,7 +486,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: Optional[bool] = True, update_existing_documents: bool = False, index: str = "document", **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", **kwargs, ,)
 ```
 
 **Arguments**:
@@ -467,6 +558,23 @@ This can be useful if want to add or change the embeddings for your documents (e
 
 None
 
+<a name="faiss.FAISSDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+
 <a name="faiss.FAISSDocumentStore.train_index"></a>
 #### train\_index
 
@@ -486,6 +594,15 @@ You can pass either documents (incl. embeddings) or just the plain embeddings th
 **Returns**:
 
 None
+
+<a name="faiss.FAISSDocumentStore.delete_all_documents"></a>
+#### delete\_all\_documents
+
+```python
+ | delete_all_documents(index=None)
+```
+
+Delete all documents from the document store.
 
 <a name="faiss.FAISSDocumentStore.query_by_embedding"></a>
 #### query\_by\_embedding
@@ -548,4 +665,248 @@ smaller chunks to reduce memory footprint.
 **Returns**:
 
 
+
+<a name="sql"></a>
+# Module sql
+
+<a name="sql.SQLDocumentStore"></a>
+## SQLDocumentStore Objects
+
+```python
+class SQLDocumentStore(BaseDocumentStore)
+```
+
+<a name="sql.SQLDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
+```
+
+**Arguments**:
+
+- `url`: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
+- `index`: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
+This parameter sets the default value for document index.
+- `label_index`: The default value of index attribute for the labels.
+- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
+documents. When set as True, any document with an existing ID gets updated.
+If set to False, an error is raised if the document ID of the document being
+added already exists. Using this parameter coud cause performance degradation for document insertion.
+
+<a name="sql.SQLDocumentStore.get_document_by_id"></a>
+#### get\_document\_by\_id
+
+```python
+ | get_document_by_id(id: str, index: Optional[str] = None) -> Optional[Document]
+```
+
+Fetch a document by specifying its text id string
+
+<a name="sql.SQLDocumentStore.get_documents_by_id"></a>
+#### get\_documents\_by\_id
+
+```python
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
+```
+
+Fetch documents by specifying a list of text id strings
+
+<a name="sql.SQLDocumentStore.get_documents_by_vector_ids"></a>
+#### get\_documents\_by\_vector\_ids
+
+```python
+ | get_documents_by_vector_ids(vector_ids: List[str], index: Optional[str] = None)
+```
+
+Fetch documents by specifying a list of text vector id strings
+
+<a name="sql.SQLDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+
+<a name="sql.SQLDocumentStore.get_all_labels"></a>
+#### get\_all\_labels
+
+```python
+ | get_all_labels(index=None, filters: Optional[dict] = None)
+```
+
+Return all labels in the document store
+
+<a name="sql.SQLDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+```
+
+Indexes documents for later queries.
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+Optionally: Include meta data via {"text": "<the-actual-text>",
+"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
+documents for evaluation can be indexed in a separate index than the documents for search.
+
+**Returns**:
+
+None
+
+<a name="sql.SQLDocumentStore.write_labels"></a>
+#### write\_labels
+
+```python
+ | write_labels(labels, index=None)
+```
+
+Write annotation labels into document store.
+
+<a name="sql.SQLDocumentStore.update_vector_ids"></a>
+#### update\_vector\_ids
+
+```python
+ | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
+```
+
+Update vector_ids for given document_ids.
+
+**Arguments**:
+
+- `vector_id_map`: dict containing mapping of document_id -> vector_id.
+- `index`: filter documents by the optional index attribute for documents in database.
+
+<a name="sql.SQLDocumentStore.update_document_meta"></a>
+#### update\_document\_meta
+
+```python
+ | update_document_meta(id: str, meta: Dict[str, str])
+```
+
+Update the metadata dictionary of a document by specifying its string id
+
+<a name="sql.SQLDocumentStore.add_eval_data"></a>
+#### add\_eval\_data
+
+```python
+ | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label")
+```
+
+Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
+
+**Arguments**:
+
+- `filename`: Name of the file containing evaluation data
+:type filename: str
+- `doc_index`: Elasticsearch index where evaluation documents should be stored
+:type doc_index: str
+- `label_index`: Elasticsearch index where labeled questions should be stored
+:type label_index: str
+
+<a name="sql.SQLDocumentStore.get_document_count"></a>
+#### get\_document\_count
+
+```python
+ | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int
+```
+
+Return the number of documents in the document store.
+
+<a name="sql.SQLDocumentStore.get_label_count"></a>
+#### get\_label\_count
+
+```python
+ | get_label_count(index: Optional[str] = None) -> int
+```
+
+Return the number of labels in the document store
+
+<a name="sql.SQLDocumentStore.delete_all_documents"></a>
+#### delete\_all\_documents
+
+```python
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete documents in an index. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
+
+<a name="base"></a>
+# Module base
+
+<a name="base.BaseDocumentStore"></a>
+## BaseDocumentStore Objects
+
+```python
+class BaseDocumentStore(ABC)
+```
+
+Base class for implementing Document Stores.
+
+<a name="base.BaseDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | @abstractmethod
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+```
+
+Indexes documents for later queries.
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+Optionally: Include meta data via {"text": "<the-actual-text>",
+"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: Optional name of index where the documents shall be written to.
+If None, the DocumentStore's default index (self.index) will be used.
+
+**Returns**:
+
+None
+
+<a name="base.BaseDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | @abstractmethod
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
 
