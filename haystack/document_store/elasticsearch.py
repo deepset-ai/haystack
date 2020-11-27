@@ -619,7 +619,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                       }
             doc_updates.append(update)
 
-        bulk(self.client, doc_updates, request_timeout=300)
+        bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label"):
         """
