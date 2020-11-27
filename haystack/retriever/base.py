@@ -29,6 +29,7 @@ class BaseRetriever(ABC):
         pass
 
     def timing(self, fn):
+        """Wrapper method used to time functions. """
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if "retrieve_time" not in self.__dict__:

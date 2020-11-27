@@ -2,6 +2,10 @@ import re
 
 
 def clean_wiki_text(text: str) -> str:
+    """
+    Clean wikipedia text by removing multiple new lines, removing extremely short lines,
+    adding paragraph breaks and removing empty paragraphs
+    """
     # get rid of multiple new lines
     while "\n\n" in text:
         text = text.replace("\n\n", "\n")

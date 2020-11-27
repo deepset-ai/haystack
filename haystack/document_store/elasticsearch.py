@@ -79,9 +79,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                           If set to False, an error is raised if the document ID of the document being
                                           added already exists.
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
-                             Values:
-                             - 'wait_for' => continue only after changes are visible (slow, but safe)
-                             - 'false' => continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion)
+                             If set to 'wait_for', continue only after changes are visible (slow, but safe).
+                             If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
@@ -220,6 +219,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         }
 
     def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
+        """Fetch a document by specifying its text id string"""
         index = index or self.index
         documents = self.get_documents_by_id([id], index=index)
         if documents:
@@ -228,6 +228,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             return None
 
     def get_documents_by_id(self, ids: List[str], index=None) -> List[Document]:
+        """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         query = {"query": {"ids": {"values": ids}}}
         result = self.client.search(index=index, body=query)["hits"]["hits"]
@@ -298,6 +299,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
 
     def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None):
+        """Write annotation labels into document store."""
         index = index or self.label_index
         if index and not self.client.indices.exists(index=index):
             self._create_label_index(index)
@@ -317,10 +319,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
+        """
+        Update the metadata dictionary of a document by specifying its string id
+        """
         body = {"doc": meta}
         self.client.update(index=self.index, id=id, body=body, refresh=self.refresh_type)
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the number of documents in the document store.
+        """
         index = index or self.index
 
         body: dict = {"query": {"bool": {}}}
@@ -343,6 +351,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return count
 
     def get_label_count(self, index: Optional[str] = None) -> int:
+        """
+        Return the number of labels in the document store
+        """
         return self.get_document_count(index=index)
 
     def get_all_documents(
@@ -372,12 +383,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return documents
 
     def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+        """
+        Return all labels in the document store
+        """
         index = index or self.label_index
         result = self.get_all_documents_in_index(index=index, filters=filters)
         labels = [Label.from_dict(hit["_source"]) for hit in result]
         return labels
 
     def get_all_documents_in_index(self, index: str, filters: Optional[Dict[str, List[str]]] = None) -> List[dict]:
+        """
+        Return all documents in a specific index in the document store
+        """
         body = {
             "query": {
                 "bool": {
@@ -409,6 +426,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
     ) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query as defined by the BM25 algorithm.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
 
         if index is None:
             index = self.index
@@ -483,6 +509,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None) -> List[Document]:
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param top_k: How many documents to return
+        :param index: Index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :return:
+        """
         if index is None:
             index = self.index
 
@@ -572,6 +609,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return document
 
     def describe_documents(self, index=None):
+        """
+        Return a summary of the documents in the document store
+        """
         if index is None:
             index = self.index
         docs = self.get_all_documents(index)

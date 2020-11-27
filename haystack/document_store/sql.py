@@ -89,11 +89,13 @@ class SQLDocumentStore(BaseDocumentStore):
         self.update_existing_documents = update_existing_documents
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+        """Fetch a document by specifying its text id string"""
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
         return document
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+        """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         results = self.session.query(DocumentORM).filter(DocumentORM.id.in_(ids), DocumentORM.index == index).all()
         documents = [self._convert_sql_row_to_document(row) for row in results]
@@ -101,6 +103,7 @@ class SQLDocumentStore(BaseDocumentStore):
         return documents
 
     def get_documents_by_vector_ids(self, vector_ids: List[str], index: Optional[str] = None):
+        """Fetch documents by specifying a list of text vector id strings"""
         index = index or self.index
         results = self.session.query(DocumentORM).filter(
             DocumentORM.vector_id.in_(vector_ids),
@@ -138,6 +141,9 @@ class SQLDocumentStore(BaseDocumentStore):
         return documents
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None):
+        """
+        Return all labels in the document store
+        """
         index = index or self.label_index
         label_rows = self.session.query(LabelORM).filter_by(index=index).all()
         labels = [self._convert_sql_row_to_label(row) for row in label_rows]
@@ -182,6 +188,7 @@ class SQLDocumentStore(BaseDocumentStore):
             raise ex
 
     def write_labels(self, labels, index=None):
+        """Write annotation labels into document store."""
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
         index = index or self.label_index
@@ -221,6 +228,9 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session.commit()
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
+        """
+        Update the metadata dictionary of a document by specifying its string id
+        """
         self.session.query(MetaORM).filter_by(document_id=id).delete()
         meta_orms = [MetaORM(name=key, value=value, document_id=id) for key, value in meta.items()]
         for m in meta_orms:
@@ -244,6 +254,9 @@ class SQLDocumentStore(BaseDocumentStore):
         self.write_labels(labels, index=label_index)
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the number of documents in the document store.
+        """
         index = index or self.index
         query = self.session.query(DocumentORM).filter_by(index=index)
 
@@ -256,6 +269,9 @@ class SQLDocumentStore(BaseDocumentStore):
         return count
 
     def get_label_count(self, index: Optional[str] = None) -> int:
+        """
+        Return the number of labels in the document store
+        """
         index = index or self.index
         return self.session.query(LabelORM).filter_by(index=index).count()
 

@@ -11,10 +11,7 @@ class TransformersReader(BaseReader):
     Transformer based model for extractive Question Answering using the HuggingFace's transformers framework
     (https://github.com/huggingface/transformers).
     While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
-
-    |  With the reader, you can:
-
-        - directly get predictions via predict()
+    With this reader, you can directly get predictions via predict()
     """
 
     def __init__(
