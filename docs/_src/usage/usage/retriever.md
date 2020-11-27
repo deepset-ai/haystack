@@ -14,7 +14,7 @@ It is an tool for sifting out the obvious negative cases, saving the Reader from
 
 <div class="recommendation">
 
-** Recommendations**
+**Recommendations**
 
 * BM25 (sparse)
 
