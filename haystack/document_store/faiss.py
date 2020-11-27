@@ -104,6 +104,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
         Add new documents to the DocumentStore.
+
         :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
                           them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
         :param index: (SQL) index name for storing the docs and metadata
@@ -229,6 +230,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.faiss_index.train(embeddings)
 
     def delete_all_documents(self, index=None):
+        """
+        Delete all documents from the document store.
+        """
         index = index or self.index
         self.faiss_index.reset()
         super().delete_all_documents(index=index)
