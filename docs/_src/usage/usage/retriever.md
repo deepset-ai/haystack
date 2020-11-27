@@ -12,13 +12,15 @@ id: "retrievermd"
 The Retriever is a lightweight filter that can quickly go through the full document store and pass a set of candidate documents to the Reader.
 It is an tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process.
 
-Recommendations:
+<div class="recommendation">
 
+** Recommendations**
 
 * BM25 (sparse)
 
-
 * Dense Passage Retrieval (dense)
+
+</div>
 
 <!-- _comment: !! Example speedup from slides !! -->
 <!-- _comment: !! Benchmarks !! -->

@@ -9,7 +9,13 @@ id: "generatormd"
 
 # Generator
 
+<div class="recommendation">
+
+**Example**
+
 See [Tutorial 7](/docs/latest/tutorial7md) for a guide on how to build your own generative QA system.
+
+</div>
 
 While extractive QA highlights the span of text that answers a query,
 generative QA can return a novel text answer that it has composed.

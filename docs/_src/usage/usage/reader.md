@@ -204,6 +204,10 @@ reader = TransformersReader("ahotrod/albert_xxlargev1_squad2_512")
 
 </div>
 
+<div class="recommendation">
+
+**Recommendations:**
+
 **All-rounder**: In the class of base sized models trained on SQuAD, **RoBERTa** has shown better performance than BERT
 and can be capably handled by any machine equipped with a single NVidia V100 GPU.
 We recommend this as the starting point for anyone wanting to create a performant and computationally reasonable instance of Haystack.
@@ -219,6 +223,8 @@ But if performance is your sole concern, and you have the computational resource
 you might like to try ALBERT XXL which has set SoTA performance on SQuAD 2.0.
 
 <!-- _comment: !! How good is it? How much computation resource do you need to run it? !! -->
+
+</div>
 
 <!-- farm-vs-trans: -->
 ## Deeper Dive: FARM vs Transformers
