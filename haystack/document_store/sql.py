@@ -259,7 +259,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param index: filter documents by the optional index attribute for documents in database.
         """
         index = index or self.index
-        for chunk_map in self.chunked_iterable(vector_id_map.items(), size=self.batch_size):
+        for chunk_map in self.chunked_dict(vector_id_map, size=self.batch_size):
             self.session.query(DocumentORM).filter(
                 DocumentORM.id.in_(chunk_map),
                 DocumentORM.index == index
@@ -383,3 +383,8 @@ class SQLDocumentStore(BaseDocumentStore):
             if not chunk:
                 break
             yield chunk
+
+    def chunked_dict(self, dictionary, size):
+        it = iter(dictionary)
+        for i in range(0, len(dictionary), size):
+            yield {k: dictionary[k] for k in itertools.islice(it, size)}
