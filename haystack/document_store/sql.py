@@ -375,7 +375,7 @@ class SQLDocumentStore(BaseDocumentStore):
             session.commit()
             return instance
 
-    # Refer https://alexwlchan.net/2018/12/iterating-in-fixed-size-chunks/
+    # Refer: https://alexwlchan.net/2018/12/iterating-in-fixed-size-chunks/
     def chunked_iterable(self, iterable, size):
         it = iter(iterable)
         while True:
