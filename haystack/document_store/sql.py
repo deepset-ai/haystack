@@ -42,7 +42,12 @@ class MetaORM(ORMBase):
 
     name = Column(String(100), index=True)
     value = Column(String(1000), index=True)
-    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    document_id = Column(
+        String(100),
+        ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+        index=True
+    )
 
     documents = relationship(DocumentORM, backref="Meta")
 
@@ -69,6 +74,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index: str = "document",
         label_index: str = "label",
         update_existing_documents: bool = False,
+        max_variable_number: int = 999,
     ):
         """
         :param url: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
@@ -78,7 +84,11 @@ class SQLDocumentStore(BaseDocumentStore):
         :param update_existing_documents: Whether to update any existing documents with the same ID when adding
                                           documents. When set as True, any document with an existing ID gets updated.
                                           If set to False, an error is raised if the document ID of the document being
-                                          added already exists. Using this parameter coud cause performance degradation for document insertion. 
+                                          added already exists. Using this parameter could cause performance degradation
+                                          for document insertion.
+        :param max_variable_number: Maximum number of host parameters in a single SQL statement.
+                                    To help in excessive memory allocations.
+                                    More info refer: https://www.sqlite.org/limits.html
         """
         engine = create_engine(url)
         ORMBase.metadata.create_all(engine)
@@ -87,6 +97,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self.index = index
         self.label_index = label_index
         self.update_existing_documents = update_existing_documents
+        self.max_variable_number = max_variable_number
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         documents = self.get_documents_by_id([id], index)
@@ -140,12 +151,12 @@ class SQLDocumentStore(BaseDocumentStore):
                 meta=None if row.vector_id is None else {"vector_id": row.vector_id} # type: ignore
             )
 
-        if len(documents_map) > 0:
+        for i in range(0, len(documents_map), self.max_variable_number):
             meta_query = self.session.query(
                 MetaORM.document_id,
                 MetaORM.name,
                 MetaORM.value
-            ).filter(MetaORM.document_id.in_(documents_map.keys()))
+            ).filter(MetaORM.document_id.in_(documents_map.keys()[i: i + self.max_variable_number]))
 
             for row in meta_query.all():
                 if documents_map[row.document_id].meta is None:
