@@ -144,8 +144,7 @@ class SQLDocumentStore(BaseDocumentStore):
         documents_query = self.session.query(
             DocumentORM.id,
             DocumentORM.text,
-            DocumentORM.vector_id,
-            DocumentORM.meta
+            DocumentORM.vector_id
         ).filter_by(index=index)
 
         if filters:
@@ -158,28 +157,23 @@ class SQLDocumentStore(BaseDocumentStore):
                 )
 
         documents_map = {}
-        doc_ids_with_meta = []
         for row in documents_query.all():
             documents_map[row.id] = Document(
                 id=row.id,
                 text=row.text,
-                # Initialise meta if row.meta exist so we don't have to do it in other places
-                meta=None if row.vector_id is None and not row.meta else {}
+                meta=None if row.vector_id is None else {"vector_id": row.vector_id} # type: ignore
             )
-            if row.vector_id is not None:
-                documents_map[row.id].meta["vector_id"] = row.vector_id # type: ignore
 
-            if row.meta:
-                doc_ids_with_meta.append(row.id)
-
-        for i in range(0, len(doc_ids_with_meta), self.batch_size):
+        for doc_ids in self.chunked_iterable(documents_map.keys(), size=self.batch_size):
             meta_query = self.session.query(
                 MetaORM.document_id,
                 MetaORM.name,
                 MetaORM.value
-            ).filter(MetaORM.document_id.in_(doc_ids_with_meta[i: i + self.batch_size]))
+            ).filter(MetaORM.document_id.in_(doc_ids))
 
             for row in meta_query.all():
+                if documents_map[row.document_id].meta is None:
+                    documents_map[row.document_id].meta = {}
                 documents_map[row.document_id].meta[row.name] = row.value # type: ignore
 
         return list(documents_map.values())
