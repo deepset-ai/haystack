@@ -212,8 +212,7 @@ def no_answer_prediction(no_answer_reader, test_docs_xs):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store_with_docs(
-        request, test_docs_xs, elasticsearch_fixture):
+def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
     return document_store
