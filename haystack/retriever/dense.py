@@ -127,6 +127,15 @@ class DensePassageRetriever(BaseRetriever):
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
         if index is None:
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])
@@ -305,6 +314,12 @@ class DensePassageRetriever(BaseRetriever):
         self.processor.save(Path(save_dir))
 
     def save(self, save_dir: Union[Path, str]):
+        """
+        Save DensePassageRetriever to the specified directory.
+
+        :param save_dir: Directory to save to.
+        :return: None
+        """
         save_dir = Path(save_dir)
         self.model.save(save_dir, lm1_name="query_encoder", lm2_name="passage_encoder")
         save_dir = str(save_dir)
@@ -323,6 +338,9 @@ class DensePassageRetriever(BaseRetriever):
              use_fast_tokenizers: bool = True,
              similarity_function: str = "dot_product",
              ):
+        """
+        Load DensePassageRetriever from the specified directory.
+        """
 
         load_dir = Path(load_dir)
         dpr = cls(
@@ -401,6 +419,15 @@ class EmbeddingRetriever(BaseRetriever):
             raise NotImplementedError
 
     def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
         if index is None:
             index = self.document_store.index
         query_emb = self.embed(texts=[query])

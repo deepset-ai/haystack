@@ -41,6 +41,11 @@ class PDFToTextConverter(BaseConverter):
         super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        """
+        Extract text from a .pdf file.
+
+        :param file_path: Path to the .pdf file you want to convert
+        """
 
         pages = self._read_pdf(file_path, layout=False)
 

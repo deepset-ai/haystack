@@ -52,6 +52,10 @@ class PreProcessor(BasePreProcessor):
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
 
     def clean(self, document: dict) -> dict:
+        """
+        Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
+        and empty lines. Its exact functionality is defined by the parameters passed into PreProcessor.__init__().
+        """
         text = document["text"]
         if self.clean_header_footer:
             text = self._find_and_remove_header_footer(
@@ -74,6 +78,10 @@ class PreProcessor(BasePreProcessor):
         return document
 
     def split(self, document: dict) -> List[dict]:
+        """Perform document splitting on a single document. This method can split on different units, at different lengths,
+        with different strides. It can also respect sectence boundaries. Its exact functionality is defined by
+        the parameters passed into PreProcessor.__init__(). Takes a single document as input and returns a list of documents. """
+
         if not self.split_by:
             return [document]
 
