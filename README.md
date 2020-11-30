@@ -132,7 +132,7 @@ We recommend Elasticsearch or FAISS, but have also more light-weight options for
 
 
 ## Quick Tour
-[File Conversion](https://github.com/deepset-ai/haystack/blob/master/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/master/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/master/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-readers) | [REST API](https://github.com/deepset-ai/haystack/blob/master/README.md#6-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/master/README.md#7-labeling-tool) 
+[File Conversion](https://github.com/deepset-ai/haystack/blob/master/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/master/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/master/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/master/README.md#4-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-readers) | [REST API](https://github.com/deepset-ai/haystack/blob/master/README.md#6-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/master/README.md#7-labeling-tool) 
 
 ### 1) File Conversion
 **What**  
