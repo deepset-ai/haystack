@@ -127,8 +127,8 @@ class ExtractiveQAPipeline:
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
-    def run(self, question, top_k_retriever=5, top_k_reader=5):
-        output = self.pipeline.run(question=question,
+    def run(self, query, top_k_retriever=5, top_k_reader=5):
+        output = self.pipeline.run(query=query,
                                    top_k_retriever=top_k_retriever,
                                    top_k_reader=top_k_reader)
         return output
@@ -150,8 +150,8 @@ class DocumentSearchPipeline:
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, question, top_k_retriever=5):
-        output = self.pipeline.run(question=question, top_k_retriever=top_k_retriever)
+    def run(self, query, top_k_retriever=5):
+        output = self.pipeline.run(query=query, top_k_retriever=top_k_retriever)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
@@ -183,7 +183,7 @@ class JoinDocuments:
         for i, _ in inputs:
             documents.extend(i["documents"])
         output = {
-            "question": inputs[0][0]["question"],
+            "query": inputs[0][0]["query"],
             "documents": documents
         }
         return output, "output_1"
