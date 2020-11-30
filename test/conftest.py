@@ -220,7 +220,7 @@ def document_store_with_docs(
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store(request, test_docs_xs, elasticsearch_fixture):
+def document_store(request, test_docs_xs):
     return get_document_store(request.param)
 
 
