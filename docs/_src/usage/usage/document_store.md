@@ -154,7 +154,7 @@ The Document Stores have different characteristics. You should choose one depend
 **Pros:** 
 - Fast & accurate dense retrieval
 - Highly scalable due to approximate nearest neighbour algorithms (ANN)
-- Many options to tune dense retrieval via different index types ([link](https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index))
+- Many options to tune dense retrieval via different index types (more info [here](https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index))
 
 **Cons:**
 - No efficient sparse retrieval
