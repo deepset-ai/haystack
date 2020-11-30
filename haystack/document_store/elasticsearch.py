@@ -455,10 +455,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 body["query"]["bool"]["filter"] = filter_clause
 
         # Retrieval via custom query
-        elif custom_query:  # substitute placeholder for question and filters for the custom_query template string
+        elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
             template = Template(custom_query)
-            # replace all "${question}" placeholder(s) with query
-            substitutions = {"question": query}
+            # replace all "${query}" placeholder(s) with query
+            substitutions = {"query": query}
             # For each filter we got passed, we'll try to find & replace the corresponding placeholder in the template
             # Example: filters={"years":[2018]} => replaces {$years} in custom_query with '[2018]'
             if filters:

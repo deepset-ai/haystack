@@ -28,8 +28,14 @@ class Finder:
         :param reader: Reader instance
         :param retriever: Retriever instance
         """
-        logger.warning("The 'Finder' class will be deprecated in the next Haystack release in favour of the new"
-                       "`Pipeline` class.")
+        logger.warning(
+            """DEPRECATION WARNINGS: 
+            1. The 'Finder' class will be deprecated in the next Haystack release in 
+            favour of a new `Pipeline` class that supports building custom search pipelines using Haystack components
+            including Retriever, Readers, and Generators.
+            For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/544
+            2. The `question` parameter in search requests & results is renamed to `query`."""
+        )
         self.retriever = retriever
         self.reader = reader
         if self.reader is None and self.retriever is None:
@@ -48,6 +54,14 @@ class Finder:
         :return:
         """
 
+        logger.warning(
+            """DEPRECATION WARNINGS: 
+            1. The 'Finder' class will be deprecated in the next Haystack release in 
+            favour of a new `Pipeline` class that supports building custom search pipelines using Haystack components
+            including Retriever, Readers, and Generators.
+            For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/544
+            2. The `question` parameter in search requests & results is renamed to `query`."""
+        )
         if self.retriever is None or self.reader is None:
             raise AttributeError("Finder.get_answers requires self.retriever AND self.reader")
 
@@ -65,9 +79,10 @@ class Finder:
         len_chars = sum([len(d.text) for d in documents])
         logger.info(f"Reader is looking for detailed answer in {len_chars} chars ...")
 
-        results = self.reader.predict(question=question,
+        results = self.reader.predict(query=question,
                                       documents=documents,
                                       top_k=top_k_reader)  # type: Dict[str, Any]
+        results["question"] = results["query"]
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
@@ -364,7 +379,7 @@ class Finder:
         self.reader.return_no_answers = True
         reader_start_time = time.time()
         predictions = self.reader.predict_batch(questions_with_correct_doc,
-                                                top_k_per_question=top_k_reader, batch_size=batch_size)
+                                                top_k=top_k_reader, batch_size=batch_size)
         reader_total_time = time.time() - reader_start_time
 
         for pred in predictions:

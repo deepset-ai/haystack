@@ -14,7 +14,7 @@ def test_reader_basic(reader):
 
 def test_output(prediction):
     assert prediction is not None
-    assert prediction["question"] == "Who lives in Berlin?"
+    assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0]["answer"] == "Carla"
     assert prediction["answers"][0]["offset_start"] == 11
     assert prediction["answers"][0]["offset_end"] == 16
@@ -27,7 +27,7 @@ def test_output(prediction):
 @pytest.mark.slow
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None
-    assert no_answer_prediction["question"] == "What is the meaning of life?"
+    assert no_answer_prediction["query"] == "What is the meaning of life?"
     assert math.isclose(no_answer_prediction["no_ans_gap"], -13.048564434051514, rel_tol=0.0001)
     assert no_answer_prediction["answers"][0]["answer"] is None
     assert no_answer_prediction["answers"][0]["offset_start"] == 0
@@ -48,7 +48,7 @@ def test_no_answer_output(no_answer_prediction):
 @pytest.mark.slow
 def test_prediction_attributes(prediction):
     # TODO FARM's prediction also has no_ans_gap
-    attributes_gold = ["question", "answers"]
+    attributes_gold = ["query", "answers"]
     for ag in attributes_gold:
         assert ag in prediction
 
@@ -73,7 +73,7 @@ def test_context_window_size(reader, test_docs_xs, window_size):
     old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
     reader.inferencer.model.prediction_heads[0].context_window_size = window_size
 
-    prediction = reader.predict(question="Who lives in Berlin?", documents=docs, top_k=5)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     for answer in prediction["answers"]:
         # If the extracted answer is larger than the context window, the context window is expanded.
         # If the extracted answer is odd in length, the resulting context window is one less than context_window_size
@@ -106,7 +106,7 @@ def test_top_k(reader, test_docs_xs, top_k):
     except:
         print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
 
-    prediction = reader.predict(question="Who lives in Berlin?", documents=docs, top_k=top_k)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=top_k)
     assert len(prediction["answers"]) == top_k
 
     reader.top_k_per_candidate = old_top_k_per_candidate
