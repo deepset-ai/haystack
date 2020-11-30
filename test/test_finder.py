@@ -10,7 +10,7 @@ def test_finder_get_answers(reader, retriever_with_docs, document_store_with_doc
     prediction = finder.get_answers(question="Who lives in Berlin?", top_k_retriever=10,
                                     top_k_reader=3)
     assert prediction is not None
-    assert prediction["question"] == "Who lives in Berlin?"
+    assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0]["answer"] == "Carla"
     assert prediction["answers"][0]["probability"] <= 1
     assert prediction["answers"][0]["probability"] >= 0

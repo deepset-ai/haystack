@@ -40,11 +40,11 @@ def export_answers_to_csv(agg_results: list, output_file):
     if isinstance(agg_results, dict):
         agg_results = [agg_results]
 
-    assert "question" in agg_results[0], f"Wrong format used for {agg_results[0]}"
+    assert "query" in agg_results[0], f"Wrong format used for {agg_results[0]}"
     assert "answers" in agg_results[0], f"Wrong format used for {agg_results[0]}"
 
     data = {} # type: Dict[str, List[Any]]
-    data["question"] = []
+    data["query"] = []
     data["prediction"] = []
     data["prediction_rank"] = []
     data["prediction_context"] = []
@@ -52,7 +52,7 @@ def export_answers_to_csv(agg_results: list, output_file):
     for res in agg_results:
         for i in range(len(res["answers"])):
             temp = res["answers"][i]
-            data["question"].append(res["question"])
+            data["query"].append(res["query"])
             data["prediction"].append(temp["answer"])
             data["prediction_rank"].append(i + 1)
             data["prediction_context"].append(temp["context"])

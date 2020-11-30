@@ -243,16 +243,16 @@ class FARMReader(BaseReader):
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict_batch(self, question_doc_list: List[dict], top_k_per_question: int = None, batch_size: int = None):
+    def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
         """
-        Use loaded QA model to find answers for a list of questions in each question's supplied list of Document.
+        Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
 
         Returns list of dictionaries containing answers sorted by (desc.) probability
 
-        :param question_doc_list: List of dictionaries containing questions with their retrieved documents
-        :param top_k_per_question: The maximum number of answers to return for each question
+        :param query_doc_list: List of dictionaries containing queries with their retrieved documents
+        :param top_k: The maximum number of answers to return for each query
         :param batch_size: Number of samples the model receives in one batch for inference
-        :return: List of dictionaries containing question and answers
+        :return: List of dictionaries containing query and answers
         """
 
         # convert input to FARM format
@@ -261,20 +261,20 @@ class FARMReader(BaseReader):
         labels = []
 
         # build input objects for inference_from_objects
-        for question_with_docs in question_doc_list:
-            documents = question_with_docs["docs"]
-            question = question_with_docs["question"]
-            labels.append(question)
+        for query_with_docs in query_doc_list:
+            documents = query_with_docs["docs"]
+            query = query_with_docs["question"]
+            labels.append(query)
             number_of_docs.append(len(documents))
 
             for doc in documents:
                 cur = QAInput(doc_text=doc.text,
-                              questions=Question(text=question.question,
+                              questions=Question(text=query.question,
                                                  uid=doc.id))
                 inputs.append(cur)
 
         self.inferencer.batch_size = batch_size
-        # make predictions on all document-question pairs
+        # make predictions on all document-query pairs
         predictions = self.inferencer.inference_from_objects(
             objects=inputs, return_json=False, multiprocessing_chunksize=1
         )
@@ -290,11 +290,11 @@ class FARMReader(BaseReader):
 
         result = []
         for idx, group in enumerate(grouped_predictions):
-            answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k_per_question)
-            question = group[0].question
+            answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k)
+            query = group[0].question
             cur_label = labels[idx]
             result.append({
-                "question": question,
+                "query": query,
                 "no_ans_gap": max_no_ans_gap,
                 "answers": answers,
                 "label": cur_label
@@ -302,15 +302,15 @@ class FARMReader(BaseReader):
 
         return result
 
-    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
-        Use loaded QA model to find answers for a question in the supplied list of Document.
+        Use loaded QA model to find answers for a query in the supplied list of Document.
 
         Returns dictionaries containing answers sorted by (desc.) probability.
         Example:
          ```python
             |{
-            |    'question': 'Who is the father of Arya Stark?',
+            |    'query': 'Who is the father of Arya Stark?',
             |    'answers':[
             |                 {'answer': 'Eddard,',
             |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
@@ -324,17 +324,17 @@ class FARMReader(BaseReader):
             |}
          ```
 
-        :param question: Question string
+        :param query: Query string
         :param documents: List of Document in which to search for the answer
         :param top_k: The maximum number of answers to return
-        :return: Dict containing question and answers
+        :return: Dict containing query and answers
         """
 
         # convert input to FARM format
         inputs = []
         for doc in documents:
             cur = QAInput(doc_text=doc.text,
-                          questions=Question(text=question,
+                          questions=Question(text=query,
                                              uid=doc.id))
             inputs.append(cur)
 
@@ -345,7 +345,7 @@ class FARMReader(BaseReader):
         )
         # assemble answers from all the different documents & format them.
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
-        result = {"question": question,
+        result = {"query": query,
                   "no_ans_gap": max_no_ans_gap,
                   "answers": answers}
 

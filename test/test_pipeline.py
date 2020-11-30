@@ -25,9 +25,9 @@ def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    prediction = pipeline.run(question="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3)
+    prediction = pipeline.run(query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3)
     assert prediction is not None
-    assert prediction["question"] == "Who lives in Berlin?"
+    assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0]["answer"] == "Carla"
     assert prediction["answers"][0]["probability"] <= 1
     assert prediction["answers"][0]["probability"] >= 0
@@ -41,7 +41,7 @@ def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_offsets(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    prediction = pipeline.run(question="Who lives in Berlin?", top_k_retriever=10, top_k_reader=5)
+    prediction = pipeline.run(query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=5)
 
     assert prediction["answers"][0]["offset_start"] == 11
     assert prediction["answers"][0]["offset_end"] == 16
@@ -56,7 +56,7 @@ def test_extractive_qa_offsets(reader, retriever_with_docs, document_store_with_
 def test_extractive_qa_answers_single_result(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     query = "testing finder"
-    prediction = pipeline.run(question=query, top_k_retriever=1, top_k_reader=1)
+    prediction = pipeline.run(query=query, top_k_retriever=1, top_k_reader=1)
     assert prediction is not None
     assert len(prediction["answers"]) == 1
 
