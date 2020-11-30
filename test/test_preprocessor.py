@@ -47,6 +47,10 @@ def test_preprocess_word_split():
         assert len(doc["text"].split(" ")) <= 15 or doc["text"].startswith("This is to trick")
     assert len(documents) == 8
 
+    preprocessor = PreProcessor(split_length=40, split_stride=10, split_by="word", split_respect_sentence_boundary=True)
+    documents = preprocessor.process(document)
+    assert len(documents) == 5
+
 
 @pytest.mark.tika
 def test_preprocess_passage_split():
@@ -72,4 +76,3 @@ def test_clean_header_footer():
 
     assert "This is a header." not in documents[0]["text"]
     assert "footer" not in documents[0]["text"]
-    

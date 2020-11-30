@@ -106,13 +106,11 @@ class PreProcessor(BasePreProcessor):
                     logger.warning(f"A sentence found with word count higher than the split length.")
                 if word_count + current_word_count > self.split_length:
                     list_splits.append(current_slice)
-                    #Enable split_stride with split_by='word' while respecting sentence boundaries. Minimum one sentence overlap up to the least
-                    #amount of sentences with combined word length greater than split_stride.
+                    #Enable split_stride with split_by='word' while respecting sentence boundaries.
                     if self.split_stride:
-                        overlap = [current_slice[-1]]
-                        w_count = len(current_slice[-1].split(" "))
-                        reversed_slice = list(reversed(current_slice[:-1]))
-                        for s in reversed_slice:
+                        overlap = []
+                        w_count = 0
+                        for s in current_slice[::-1]:
                             sen_len = len(s.split(" "))
                             if w_count < self.split_stride:
                                 overlap.append(s)
