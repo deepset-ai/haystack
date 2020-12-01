@@ -403,8 +403,8 @@ DOCS_WITH_EMBEDDINGS = [
 @pytest.mark.slow
 @pytest.mark.generator
 def test_rag_token_generator(rag_generator):
-    question = "What is capital of the Germany?"
-    generated_docs = rag_generator.predict(question=question, documents=DOCS_WITH_EMBEDDINGS, top_k=1)
+    query = "What is capital of the Germany?"
+    generated_docs = rag_generator.predict(query=query, documents=DOCS_WITH_EMBEDDINGS, top_k=1)
     answers = generated_docs["answers"]
     assert len(answers) == 1
     assert "berlin" in answers[0]["answer"]
@@ -420,9 +420,9 @@ def test_rag_token_generator(rag_generator):
 )
 def test_generator_pipeline(document_store, retriever, rag_generator):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
-    question = "What is capital of the Germany?"
+    query = "What is capital of the Germany?"
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    output = pipeline.run(question=question, top_k_generator=2, top_k_retriever=1)
+    output = pipeline.run(query=query, top_k_generator=2, top_k_retriever=1)
     answers = output["answers"]
     assert len(answers) == 2
     assert "berlin" in answers[0]["answer"]
