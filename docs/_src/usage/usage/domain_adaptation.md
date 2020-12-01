@@ -121,28 +121,28 @@ To fill out all these values, you can use the response from an executed search r
 ``` python
 # SQUAD format
 {
-  "data": [
-    {
-      "title": "Normans",
-      "paragraphs": [
+    "data": [
         {
-          "context": "The Normans (Norman: Nourmands; French: Normands; Latin: Normanni) were the...",
-          "qas": [
-            {
-              "question": "In what country is Normandy located?",
-              "id": "56ddde6b9a695914005b9628",
-              "answers": [
+            "title": "Normans",
+            "paragraphs": [
                 {
-                  "text": "France",
-                  "answer_start": 159
+                    "context": "The Normans (Norman: Nourmands; French: Normands; Latin: Normanni) were the...",
+                    "qas": [
+                        {
+                            "question": "In what country is Normandy located?",
+                            "id": "56ddde6b9a695914005b9628",
+                            "answers": [
+                                {
+                                    "text": "France",
+                                    "answer_start": 159
+                                }
+                            ]
+                        }
+                    ]
                 }
-              ]
-            }
-          ]
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
 ```
 
