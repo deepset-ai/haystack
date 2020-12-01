@@ -120,9 +120,6 @@ class Pipeline:
 
 
 class BaseStandardPipeline:
-    def run(self, **kwargs):
-        raise NotImplementedError
-
     def add_node(self, component, name: str, inputs: List[str]):
         self.pipeline.add_node(component=component, name=name, inputs=inputs)  # type: ignore
 
@@ -199,7 +196,7 @@ class FAQPipeline(BaseStandardPipeline):
         output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
         documents = output["documents"]
 
-        results = {"query": query, "answers": []}
+        results: Dict = {"query": query, "answers": []}
         for doc in documents:
             # TODO proper calibratation of pseudo probabilities
             cur_answer = {
