@@ -48,7 +48,7 @@ class BaseReader(ABC):
 
     def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, **kwargs):
         if documents:
-            results = self.predict(question=query, documents=documents, top_k=top_k_reader)
+            results = self.predict(query=query, documents=documents, top_k=top_k_reader)
         else:
             results = {"answers": []}
 
