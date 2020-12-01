@@ -1,4 +1,4 @@
-from typing import Any, Optional, Dict, List, Union
+from typing import Any, Optional, Dict, List
 from uuid import uuid4
 
 import numpy as np
@@ -6,11 +6,11 @@ import numpy as np
 
 class Document:
     def __init__(self, text: str,
-                 id: str = None,
+                 id: Optional[str] = None,
                  score: Optional[float] = None,
                  probability: Optional[float] = None,
                  question: Optional[str] = None,
-                 meta: Optional[Dict[str, Any]] = None,
+                 meta: Dict[str, Any] = None,
                  embedding: Optional[np.array] = None):
         """
         Object used to represent documents / passages in a standardized way within Haystack.
@@ -23,7 +23,7 @@ class Document:
         :param id: ID used within the DocumentStore
         :param text: Text of the document
         :param score: Retriever's query score for a retrieved document
-        :param probability: a psuedo probability by scaling score in the range 0 to 1
+        :param probability: a pseudo probability by scaling score in the range 0 to 1
         :param question: Question text for FAQs.
         :param meta: Meta fields for a document like name, url, or author.
         :param embedding: Vector encoding of the text
@@ -39,7 +39,7 @@ class Document:
         self.score = score
         self.probability = probability
         self.question = question
-        self.meta = meta
+        self.meta = meta or {}
         self.embedding = embedding
 
     def to_dict(self, field_map={}):

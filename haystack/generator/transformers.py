@@ -172,7 +172,7 @@ class RAGenerator(BaseGenerator):
 
         if is_embedding_required:
             if self.retriever is None:
-                raise AttributeError("_prepare_passage_embeddings need self.dpr_retriever to embed document")
+                raise AttributeError("_prepare_passage_embeddings need a DPR instance as self.retriever to embed document")
 
             embeddings = self.retriever.embed_passages(docs)
 

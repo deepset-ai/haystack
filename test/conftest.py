@@ -161,7 +161,7 @@ def faiss_document_store():
         os.remove("haystack_test_faiss.db")
     document_store = FAISSDocumentStore(
         sql_url="sqlite:///haystack_test_faiss.db",
-        return_embedding=False
+        return_embedding=True
     )
     yield document_store
     document_store.faiss_index.reset()
@@ -169,7 +169,7 @@ def faiss_document_store():
 
 @pytest.fixture()
 def inmemory_document_store():
-    return InMemoryDocumentStore(return_embedding=False)
+    return InMemoryDocumentStore(return_embedding=True)
 
 
 @pytest.fixture()
@@ -276,7 +276,7 @@ def get_document_store(document_store_type, faiss_document_store, inmemory_docum
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
-        document_store = ElasticsearchDocumentStore(index="haystack_test", return_embedding=False)
+        document_store = ElasticsearchDocumentStore(index="haystack_test", return_embedding=True)
     elif document_store_type == "faiss":
         document_store = faiss_document_store
     else:

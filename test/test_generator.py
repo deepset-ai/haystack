@@ -1,7 +1,8 @@
+import numpy as np
 import pytest
 
 from haystack import Document
-import numpy as np
+from haystack.pipeline import GenerativeQAPipeline
 
 DOCS_WITH_EMBEDDINGS = [
     Document(
@@ -406,4 +407,22 @@ def test_rag_token_generator(rag_generator):
     generated_docs = rag_generator.predict(question=question, documents=DOCS_WITH_EMBEDDINGS, top_k=1)
     answers = generated_docs["answers"]
     assert len(answers) == 1
+    assert "berlin" in answers[0]["answer"]
+
+
+@pytest.mark.slow
+@pytest.mark.generator
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize(
+    "retriever,document_store",
+    [("embedding", "memory"), ("embedding", "faiss"), ("elasticsearch", "elasticsearch")],
+    indirect=True,
+)
+def test_generator_pipeline(document_store, retriever, rag_generator):
+    document_store.write_documents(DOCS_WITH_EMBEDDINGS)
+    question = "What is capital of the Germany?"
+    pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
+    output = pipeline.run(question=question, top_k_generator=2, top_k_retriever=1)
+    answers = output["answers"]
+    assert len(answers) == 2
     assert "berlin" in answers[0]["answer"]

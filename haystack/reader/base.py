@@ -46,11 +46,14 @@ class BaseReader(ABC):
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, **kwargs):
         if documents:
-            results = self.predict(query=query, documents=documents, top_k=top_k)
+            results = self.predict(question=query, documents=documents, top_k=top_k_reader)
         else:
             results = {"answers": []}
+
+        results["query"] = results["question"]
+        results.pop("question")
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
@@ -59,4 +62,5 @@ class BaseReader(ABC):
                 if doc.id == ans["document_id"]:
                     ans["meta"] = deepcopy(doc.meta)
 
+        results.update(**kwargs)
         return results, "output_1"
