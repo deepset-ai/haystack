@@ -52,9 +52,6 @@ class BaseReader(ABC):
         else:
             results = {"answers": []}
 
-        results["query"] = results["question"]
-        results.pop("question")
-
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
             ans["meta"] = {}

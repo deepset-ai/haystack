@@ -34,23 +34,23 @@ class RAGenerator(BaseGenerator):
         **Example**
 
         ```python
-        |     question = "who got the first nobel prize in physics?"
+        |     query = "who got the first nobel prize in physics?"
         |
         |     # Retrieve related documents from retriever
-        |     retrieved_docs = retriever.retrieve(query=question)
+        |     retrieved_docs = retriever.retrieve(query=query)
         |
-        |     # Now generate answer from question and retrieved documents
+        |     # Now generate answer from query and retrieved documents
         |     generator.predict(
-        |        question=question,
+        |        query=query,
         |        documents=retrieved_docs,
         |        top_k=1
         |     )
         |
         |     # Answer
         |
-        |     {'question': 'who got the first nobel prize in physics',
+        |     {'query': 'who got the first nobel prize in physics',
         |      'answers':
-        |          [{'question': 'who got the first nobel prize in physics',
+        |          [{'query': 'who got the first nobel prize in physics',
         |            'answer': ' albert einstein',
         |            'meta': { 'doc_ids': [...],
         |                      'doc_scores': [80.42758 ...],
@@ -138,7 +138,7 @@ class RAGenerator(BaseGenerator):
         return out
 
     # Copied postprocess_docs method from transformers.RagRetriever and modified
-    def _get_contextualized_inputs(self, texts: List[str], question: str, titles: Optional[List[str]] = None,
+    def _get_contextualized_inputs(self, texts: List[str], query: str, titles: Optional[List[str]] = None,
                                    return_tensors: str = "pt"):
 
         titles_list = titles if self.embed_title and titles is not None else [""] * len(texts)
@@ -148,7 +148,7 @@ class RAGenerator(BaseGenerator):
             self._cat_input_and_doc(
                 doc_title=titles_list[i],
                 doc_text=texts[i],
-                input_string=question,
+                input_string=query,
                 prefix=prefix
             )
             for i in range(len(texts))
@@ -183,20 +183,20 @@ class RAGenerator(BaseGenerator):
 
         return embeddings_in_tensor
 
-    def predict(self, question: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
-        Generate the answer to the input question. The generation will be conditioned on the supplied documents.
+        Generate the answer to the input query. The generation will be conditioned on the supplied documents.
         These document can for example be retrieved via the Retriever.
 
-        :param question: Question
+        :param query: Query
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
         :param top_k: Number of returned answers
         :return: Generated answers plus additional infos in a dict like this:
 
         ```python
-        |     {'question': 'who got the first nobel prize in physics',
+        |     {'query': 'who got the first nobel prize in physics',
         |      'answers':
-        |          [{'question': 'who got the first nobel prize in physics',
+        |          [{'query': 'who got the first nobel prize in physics',
         |            'answer': ' albert einstein',
         |            'meta': { 'doc_ids': [...],
         |                      'doc_scores': [80.42758 ...],
@@ -227,28 +227,28 @@ class RAGenerator(BaseGenerator):
         # Extract title
         titles = [d.meta["name"] if d.meta and "name" in d.meta else "" for d in documents]
 
-        # Raw document embedding and set device of question_embedding
+        # Raw document embedding and set device of query_embedding
         passage_embeddings = self._prepare_passage_embeddings(docs=documents, embeddings=flat_docs_dict["embedding"])
 
-        # Question tokenization
+        # Query tokenization
         input_dict = self.tokenizer.prepare_seq2seq_batch(
-            src_texts=[question],
+            src_texts=[query],
             return_tensors="pt"
         )
 
-        # Question embedding
-        question_embedding = self.model.question_encoder(input_dict["input_ids"])[0]
+        # Query embedding
+        query_embedding = self.model.question_encoder(input_dict["input_ids"])[0]
 
         # Prepare contextualized input_ids of documents
         # (will be transformed into contextualized inputs inside generator)
         context_input_ids, context_attention_mask = self._get_contextualized_inputs(
             texts=flat_docs_dict["text"],
             titles=titles,
-            question=question
+            query=query
         )
 
         # Compute doc scores from docs_embedding
-        doc_scores = torch.bmm(question_embedding.unsqueeze(1),
+        doc_scores = torch.bmm(query_embedding.unsqueeze(1),
                                passage_embeddings.unsqueeze(0).transpose(1, 2)).squeeze(1)
 
         # TODO Need transformers 3.4.0
@@ -277,7 +277,7 @@ class RAGenerator(BaseGenerator):
 
         for generated_answer in generated_answers:
             cur_answer = {
-                "question": question,
+                "query": query,
                 "answer": generated_answer,
                 "meta": {
                     "doc_ids": flat_docs_dict["id"],
@@ -289,6 +289,6 @@ class RAGenerator(BaseGenerator):
             }
             answers.append(cur_answer)
 
-        result = {"question": question, "answers": answers}
+        result = {"query": query, "answers": answers}
 
         return result
