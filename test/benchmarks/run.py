@@ -3,7 +3,6 @@ from reader import benchmark_reader
 from utils import load_config
 import argparse
 
-params, filenames = load_config(config_filename="config.json", ci=True)
 
 parser = argparse.ArgumentParser()
 
@@ -20,6 +19,9 @@ parser.add_argument('--update_json', default=False, action="store_true",
 parser.add_argument('--save_markdown', default=False, action="store_true",
                     help='Update the json file with the results of this run so that the website can be updated')
 args = parser.parse_args()
+
+# load config
+params, filenames = load_config(config_filename="config.json", ci=args.ci)
 
 if args.retriever_index:
     benchmark_indexing(**params, **filenames, ci=args.ci, update_json=args.update_json, save_markdown=args.save_markdown)
