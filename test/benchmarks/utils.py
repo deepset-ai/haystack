@@ -35,7 +35,7 @@ def get_document_store(document_store_type, es_similarity='cosine'):
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
-        document_store = ElasticsearchDocumentStore(index="eval_document", similarity=es_similarity)
+        document_store = ElasticsearchDocumentStore(index="eval_document", similarity=es_similarity, timeout=3000)
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
             index_type = "Flat"
@@ -69,7 +69,8 @@ def get_retriever(retriever_name, doc_store):
         return DensePassageRetriever(document_store=doc_store,
                                       query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
                                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-                                      use_gpu=True)
+                                      use_gpu=True,
+                                      use_fast_tokenizers=False)
 
 def get_reader(reader_name, reader_type, max_seq_len=384):
     reader_class = None
