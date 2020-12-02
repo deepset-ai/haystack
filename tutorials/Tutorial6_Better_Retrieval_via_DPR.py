@@ -11,7 +11,10 @@ from haystack.retriever.dense import DensePassageRetriever
 # The FAISSDocumentStore uses a SQL(SQLite in-memory be default) document store under-the-hood
 # to store the document text and other meta data. The vector embeddings of the text are
 # indexed on a FAISS Index that later is queried for searching answers.
-document_store = FAISSDocumentStore()
+# The default flavour of FAISSDocumentStore is "Flat" but can also be set to "HNSW" for
+# faster search at the expense of some accuracy. Just set the faiss_index_factor_str argument in the constructor.
+# For more info on which suits your use case: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 
 # ## Preprocessing of documents
 # Let's first get some documents that we want to query
