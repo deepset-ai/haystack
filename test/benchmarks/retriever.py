@@ -3,6 +3,8 @@ from pathlib import Path
 from time import perf_counter
 from utils import get_document_store, get_retriever, index_to_doc_store, load_config
 from haystack.preprocessor.utils import eval_data_from_file
+from haystack.document_store.faiss import FAISSDocumentStore
+
 from haystack import Document
 import pickle
 import time
@@ -71,8 +73,14 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                 retriever_df = pd.DataFrame.from_records(retriever_results)
                 retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
                 retriever_df.to_csv(index_results_file)
-                doc_store.delete_all_documents(index=doc_index)
-                doc_store.delete_all_documents(index=label_index)
+                logger.info("Deleting all docs from this run ...")
+
+                if isinstance(doc_store, FAISSDocumentStore):
+                    doc_store.session.close()
+                else:
+                    doc_store.delete_all_documents(index=doc_index)
+                    doc_store.delete_all_documents(index=label_index)
+
                 if save_markdown:
                     md_file = index_results_file.replace(".csv", ".md")
                     with open(md_file, "w") as f:
@@ -93,8 +101,12 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     "docs_per_second": 0,
                     "date_time": datetime.datetime.now(),
                     "error": str(tb)})
-                doc_store.delete_all_documents(index=doc_index)
-                doc_store.delete_all_documents(index=label_index)
+                logger.info("Deleting all docs from this run ...")
+                if isinstance(doc_store, FAISSDocumentStore):
+                    doc_store.session.close()
+                else:
+                    doc_store.delete_all_documents(index=doc_index)
+                    doc_store.delete_all_documents(index=label_index)
                 time.sleep(10)
                 del doc_store
                 del retriever
