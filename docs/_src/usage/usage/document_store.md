@@ -40,7 +40,7 @@ document_store = ElasticsearchDocumentStore()
 <div class="tabcontent">
 
 ```python
-document_store = FAISSDocumentStore()
+document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 ```
 
 </div>
@@ -154,7 +154,7 @@ The Document Stores have different characteristics. You should choose one depend
 **Pros:** 
 - Fast & accurate dense retrieval
 - Highly scalable due to approximate nearest neighbour algorithms (ANN)
-- Many options to tune dense retrieval via different index types 
+- Many options to tune dense retrieval via different index types (more info [here](https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index))
 
 **Cons:**
 - No efficient sparse retrieval
