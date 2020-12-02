@@ -74,11 +74,12 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                 retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
                 retriever_df.to_csv(index_results_file)
                 logger.info("Deleting all docs from this run ...")
-                doc_store.delete_all_documents(index=doc_index)
-                doc_store.delete_all_documents(index=label_index)
 
                 if isinstance(doc_store, FAISSDocumentStore):
                     doc_store.session.close()
+                else:
+                    doc_store.delete_all_documents(index=doc_index)
+                    doc_store.delete_all_documents(index=label_index)
 
                 if save_markdown:
                     md_file = index_results_file.replace(".csv", ".md")
@@ -101,10 +102,11 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     "date_time": datetime.datetime.now(),
                     "error": str(tb)})
                 logger.info("Deleting all docs from this run ...")
-                doc_store.delete_all_documents(index=doc_index)
-                doc_store.delete_all_documents(index=label_index)
                 if isinstance(doc_store, FAISSDocumentStore):
                     doc_store.session.close()
+                else:
+                    doc_store.delete_all_documents(index=doc_index)
+                    doc_store.delete_all_documents(index=label_index)
                 time.sleep(10)
                 del doc_store
                 del retriever
