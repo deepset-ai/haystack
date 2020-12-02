@@ -39,14 +39,14 @@ jobs:
         pip install -r requirements.txt
         pip install -e .
     
-    - name: Run Pytest without generator marker
-      run: cd test && pytest -m "not generator"
+    - name: Run Pytest without pipeline marker
+      run: cd test && pytest -m "not pipeline"
 
 #    - name: Stop Containers
 #      run: docker rm -f `docker ps -a -q`
 
-    - name: Run pytest with generator marker
-      run: cd test && pytest -m generator
+    - name: Run pytest with pipeline marker
+      run: cd test && pytest -m pipeline
 
     - name: Test with mypy
       run: |

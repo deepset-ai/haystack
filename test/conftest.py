@@ -30,6 +30,8 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.tika)
         elif "elasticsearch" in item.nodeid:
             item.add_marker(pytest.mark.elasticsearch)
+        elif "pipeline" in item.nodeid:
+            item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
             item.add_marker(pytest.mark.slow)
 
