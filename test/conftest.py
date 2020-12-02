@@ -107,47 +107,7 @@ def xpdf_fixture(tika_fixture):
             )
 
 
-@pytest.fixture(scope="session")
-def farm_distilbert():
-    return FARMReader(
-        model_name_or_path="distilbert-base-uncased-distilled-squad",
-        use_gpu=False,
-        top_k_per_sample=5,
-        num_processes=0
-    )
-
-
-@pytest.fixture(scope="session")
-def farm_roberta():
-    return FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2",
-        use_gpu=False,
-        top_k_per_sample=5,
-        no_ans_boost=0,
-        num_processes=0
-    )
-
-
-@pytest.fixture(scope="session")
-def transformers_distilbert():
-    return TransformersReader(
-        model_name_or_path="distilbert-base-uncased-distilled-squad",
-        tokenizer="distilbert-base-uncased",
-        use_gpu=-1
-    )
-
-
-@pytest.fixture(scope="session")
-def transformers_roberta():
-    return TransformersReader(
-        model_name_or_path="deepset/roberta-base-squad2",
-        tokenizer="deepset/roberta-base-squad2",
-        use_gpu=-1,
-        top_k_per_candidate=5
-    )
-
-
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
@@ -198,7 +158,7 @@ def tfidf_retriever(inmemory_document_store):
     return TfidfRetriever(document_store=inmemory_document_store)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def test_docs_xs():
     return [
         # current "dict" format for a document
@@ -210,32 +170,52 @@ def test_docs_xs():
     ]
 
 
-@pytest.fixture(params=["farm", "transformers"])
-def reader(request, transformers_distilbert, farm_distilbert):
+@pytest.fixture(params=["farm", "transformers"], scope="module")
+def reader(request):
     if request.param == "farm":
-        return farm_distilbert
+        return FARMReader(
+            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            use_gpu=False,
+            top_k_per_sample=5,
+            num_processes=0
+        )
     if request.param == "transformers":
-        return transformers_distilbert
+        return TransformersReader(
+            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            tokenizer="distilbert-base-uncased",
+            use_gpu=-1
+        )
 
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
-@pytest.fixture(params=["farm"])
-def no_answer_reader(request, transformers_roberta, farm_roberta):
+@pytest.fixture(params=["farm"], scope="module")
+def no_answer_reader(request):
     if request.param == "farm":
-        return farm_roberta
+        return FARMReader(
+            model_name_or_path="deepset/roberta-base-squad2",
+            use_gpu=False,
+            top_k_per_sample=5,
+            no_ans_boost=0,
+            num_processes=0
+        )
     if request.param == "transformers":
-        return transformers_roberta
+        return TransformersReader(
+            model_name_or_path="deepset/roberta-base-squad2",
+            tokenizer="deepset/roberta-base-squad2",
+            use_gpu=-1,
+            top_k_per_candidate=5
+        )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def prediction(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     return prediction
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def no_answer_prediction(no_answer_reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
