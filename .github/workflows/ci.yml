@@ -42,8 +42,8 @@ jobs:
     - name: Run Pytest without generator marker
       run: cd test && pytest -m "not generator"
 
-    - name: Stop Containers
-      run: docker rm -f `docker ps -a -q`
+#    - name: Stop Containers
+#      run: docker rm -f `docker ps -a -q`
 
     - name: Run pytest with generator marker
       run: cd test && pytest -m generator
