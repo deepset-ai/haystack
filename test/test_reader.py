@@ -115,3 +115,47 @@ def test_top_k(reader, test_docs_xs, top_k):
         reader.inferencer.model.prediction_heads[0].n_best_per_sample = old_top_k_per_sample
     except:
         print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
+
+
+def test_farm_reader_update_params(test_docs_xs):
+    reader = FARMReader(
+        model_name_or_path="deepset/roberta-base-squad2",
+        use_gpu=False,
+        no_ans_boost=None,
+        num_processes=0
+    )
+
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+
+    # original reader
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    assert len(prediction["answers"]) == 3
+    assert prediction["answers"][0]["answer"] == "Carla"
+
+    # update no_ans_boost
+    reader.update_parameters(context_window_size=100, no_ans_boost=100, max_seq_len=384, doc_stride=128)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    assert len(prediction["answers"]) == 3
+    assert prediction["answers"][0]["answer"] is None
+
+    # update no_ans_boost
+    reader.update_parameters(context_window_size=100, no_ans_boost=0, max_seq_len=384, doc_stride=128)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    assert len(prediction["answers"]) == 3
+    assert None not in [ans["answer"] for ans in prediction["answers"]]
+
+    # update context_window_size
+    reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=384, doc_stride=128)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    assert len(prediction["answers"]) == 3
+    assert len(prediction["answers"][0]["context"]) == 6
+
+    # update doc_stride with invalid value
+    with pytest.raises(Exception):
+        reader.update_parameters(context_window_size=100, no_ans_boost=-10, max_seq_len=384, doc_stride=999)
+        reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+
+    # update max_seq_len with invalid value
+    with pytest.raises(Exception):
+        reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=99, doc_stride=128)
+        reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)

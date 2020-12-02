@@ -233,6 +233,31 @@ class FARMReader(BaseReader):
         self.inferencer.model = trainer.train()
         self.save(Path(save_dir))
 
+    def update_parameters(
+        self,
+        context_window_size: Optional[int] = None,
+        no_ans_boost: Optional[float] = None,
+        max_seq_len: Optional[int] = None,
+        doc_stride: Optional[int] = None,
+    ):
+        """
+        Hot update parameters of a loaded Reader. It may not to be safe when processing concurrent requests.
+        """
+        if no_ans_boost is not None:
+            self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
+            if no_ans_boost == 0:
+                self.return_no_answers = False
+            else:
+                self.return_no_answers = True
+
+        if doc_stride is not None:
+            self.inferencer.processor.doc_stride = doc_stride
+        if context_window_size is not None:
+            self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
+        if max_seq_len is not None:
+            self.inferencer.processor.max_seq_len = max_seq_len
+            self.max_seq_len = max_seq_len
+
     def save(self, directory: Path):
         """
         Saves the Reader model so that it can be reused at a later point in time.
