@@ -24,7 +24,7 @@ def test_get_all_document_filter_duplicate_value(document_store):
         ),
         Document(
             text="Doc1",
-            meta={"f1": "1", "vector_id": "0"}
+            meta={"f1": "1", "meta_id": "0"}
         ),
         Document(
             text="Doc2",
@@ -35,7 +35,7 @@ def test_get_all_document_filter_duplicate_value(document_store):
     documents = document_store.get_all_documents(filters={"f1": ["1"]})
     assert documents[0].text == "Doc1"
     assert len(documents) == 1
-    assert {d.meta["vector_id"] for d in documents} == {"0"}
+    assert {d.meta["meta_id"] for d in documents} == {"0"}
 
 
 @pytest.mark.elasticsearch

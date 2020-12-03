@@ -159,6 +159,9 @@ class TfidfRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
+        if self.df is None:
+            raise Exception("fit() needs to called before retrieve()")
+
         if filters:
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
         if index:
@@ -168,7 +171,7 @@ class TfidfRetriever(BaseRetriever):
         indices_and_scores = self._calc_scores(query)
 
         # rank paragraphs
-        df_sliced = self.df.loc[indices_and_scores.keys()]  # type: ignore
+        df_sliced = self.df.loc[indices_and_scores.keys()]
         df_sliced = df_sliced[:top_k]
 
         logger.debug(

@@ -232,7 +232,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         index = index or self.index
         query = {"query": {"ids": {"values": ids}}}
         result = self.client.search(index=index, body=query)["hits"]["hits"]
-        documents = [self._convert_es_hit_to_document(hit) for hit in result]
+        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
@@ -500,7 +500,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         logger.debug(f"Retriever query: {body}")
         result = self.client.search(index=index, body=body)["hits"]["hits"]
 
-        documents = [self._convert_es_hit_to_document(hit) for hit in result]
+        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
 
     def query_by_embedding(self,
@@ -573,14 +573,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             logger.debug(f"Retriever query: {body}")
             result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
 
-            documents = [self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True) for hit in result]
+            documents = [
+                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+                for hit in result
+            ]
             return documents
 
     def _convert_es_hit_to_document(
             self,
             hit: dict,
+            return_embedding: bool,
             adapt_score_for_embedding: bool = False,
-            return_embedding: bool = True
+
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
@@ -597,6 +601,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 probability = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
         else:
             probability = None
+
+        embedding = None
+        if return_embedding:
+            embedding_list = hit["_source"].get(self.embedding_field)
+            if embedding_list:
+                embedding = np.asarray(embedding_list, dtype=np.float32)
+
         document = Document(
             id=hit["_id"],
             text=hit["_source"].get(self.text_field),
@@ -604,7 +615,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             score=score,
             probability=probability,
             question=hit["_source"].get(self.faq_question_field),
-            embedding=hit["_source"].get(self.embedding_field, None) if return_embedding else None,
+            embedding=embedding,
         )
         return document
 

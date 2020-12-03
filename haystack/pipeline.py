@@ -1,8 +1,11 @@
+from pathlib import Path
+from typing import List, Optional, Dict
+
 import networkx as nx
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-from typing import List
-from pathlib import Path
+
+from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 
@@ -15,6 +18,7 @@ class Pipeline:
     flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
     Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
+
     def __init__(self):
         self.graph = DiGraph()
         self.root_node_id = "Query"
@@ -115,7 +119,15 @@ class Pipeline:
         graphviz.draw(path)
 
 
-class ExtractiveQAPipeline:
+class BaseStandardPipeline:
+    def add_node(self, component, name: str, inputs: List[str]):
+        self.pipeline.add_node(component=component, name=name, inputs=inputs)  # type: ignore
+
+    def draw(self, path: Path = Path("pipeline.png")):
+        self.pipeline.draw(path)  # type: ignore
+
+
+class ExtractiveQAPipeline(BaseStandardPipeline):
     def __init__(self, reader: BaseReader, retriever: BaseRetriever):
         """
         Initialize a Pipeline for Extractive Question Answering.
@@ -127,20 +139,14 @@ class ExtractiveQAPipeline:
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
-    def run(self, query, top_k_retriever=5, top_k_reader=5):
-        output = self.pipeline.run(query=query,
-                                   top_k_retriever=top_k_retriever,
-                                   top_k_reader=top_k_reader)
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_reader: int = 10):
+        output = self.pipeline.run(
+            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_reader=top_k_reader
+        )
         return output
 
-    def add_node(self, component, name: str, inputs: List[str]):
-        self.pipeline.add_node(component=component, name=name, inputs=inputs)
 
-    def draw(self, path: Path = Path("pipeline.png")):
-        self.pipeline.draw(path)
-
-
-class DocumentSearchPipeline:
+class DocumentSearchPipeline(BaseStandardPipeline):
     def __init__(self, retriever: BaseRetriever):
         """
         Initialize a Pipeline for semantic document search.
@@ -150,17 +156,64 @@ class DocumentSearchPipeline:
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query, top_k_retriever=5):
-        output = self.pipeline.run(query=query, top_k_retriever=top_k_retriever)
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10):
+        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
 
-    def add_node(self, component, name: str, inputs: List[str]):
-        self.pipeline.add_node(component=component, name=name, inputs=inputs)
 
-    def draw(self, path: Path = Path("pipeline.png")):
-        self.pipeline.draw(path)
+class GenerativeQAPipeline(BaseStandardPipeline):
+    def __init__(self, generator: BaseGenerator, retriever: BaseRetriever):
+        """
+        Initialize a Pipeline for Generative Question Answering.
+
+        :param generator: Generator instance
+        :param retriever: Retriever instance
+        """
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
+
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_generator: int = 10):
+        output = self.pipeline.run(
+            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_generator=top_k_generator
+        )
+        return output
+
+
+class FAQPipeline(BaseStandardPipeline):
+    def __init__(self, retriever: BaseRetriever):
+        """
+        Initialize a Pipeline for finding similar FAQs using semantic document search.
+
+        :param retriever: Retriever instance
+        """
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10):
+        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
+        documents = output["documents"]
+
+        results: Dict = {"query": query, "answers": []}
+        for doc in documents:
+            # TODO proper calibratation of pseudo probabilities
+            cur_answer = {
+                "query": doc.text,
+                "answer": doc.meta["answer"],
+                "document_id": doc.id,
+                "context": doc.meta["answer"],
+                "score": doc.score,
+                "probability": doc.probability,
+                "offset_start": 0,
+                "offset_end": len(doc.meta["answer"]),
+                "meta": doc.meta,
+            }
+
+            results["answers"].append(cur_answer)
+
+        return results
 
 
 class QueryNode:
