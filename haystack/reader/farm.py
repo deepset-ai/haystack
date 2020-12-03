@@ -235,6 +235,7 @@ class FARMReader(BaseReader):
         self,
         context_window_size: Optional[int] = None,
         no_ans_boost: Optional[float] = None,
+        return_no_answer: Optional[bool] = None,
         max_seq_len: Optional[int] = None,
         doc_stride: Optional[int] = None,
     ):
@@ -243,11 +244,8 @@ class FARMReader(BaseReader):
         """
         if no_ans_boost is not None:
             self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
-            if no_ans_boost == 0:
-                self.return_no_answers = False
-            else:
-                self.return_no_answers = True
-
+        if return_no_answer is not None:
+            self.return_no_answers = return_no_answer
         if doc_stride is not None:
             self.inferencer.processor.doc_stride = doc_stride
         if context_window_size is not None:
