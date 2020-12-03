@@ -44,7 +44,7 @@ class FARMReader(BaseReader):
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
-        no_ans_boost: Optional[float] = None,
+        no_ans_boost: float = 0.0,
         top_k_per_candidate: int = 3,
         top_k_per_sample: int = 1,
         num_processes: Optional[int] = None,
@@ -63,7 +63,7 @@ class FARMReader(BaseReader):
                            to a value so only a single batch is used.
         :param use_gpu: Whether to use GPU (if available)
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
-        If set to None (default), disables returning "no answer" predictions.
+        If set to 0 (default), disables returning "no answer" predictions.
         If a negative number, there is a lower chance of "no_answer" being predicted.
         If a positive number, there is an increased chance of "no_answer"
         :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
@@ -85,8 +85,7 @@ class FARMReader(BaseReader):
 
         """
 
-        if no_ans_boost is None:
-            no_ans_boost = 0
+        if no_ans_boost == 0:
             self.return_no_answers = False
         else:
             self.return_no_answers = True
