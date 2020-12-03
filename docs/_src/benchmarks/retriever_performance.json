@@ -11,12 +11,12 @@
         "Query Speed (queries/sec)"
     ],
     "series": {
-        "s0": "recall",
+        "s0": "map",
         "s1": "time",
         "s2": "time"
     },
     "axes": {
-        "label": "recall",
+        "label": "map",
         "time_side": "top",
         "time_label": "seconds"
     },
