@@ -173,16 +173,17 @@ class BaseRetriever(ABC):
             query: str,
             filters: Optional[dict] = None,
             top_k_retriever: Optional[int] = None,
-            top_k_reader: Optional[int] = None,
+            **kwargs,
     ):
         if top_k_retriever:
             documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever)
         else:
             documents = self.retrieve(query=query, filters=filters)
+
         output = {
             "query": query,
             "documents": documents,
-            "top_k": top_k_reader
+            **kwargs
         }
 
         return output, "output_1"

@@ -272,7 +272,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         #assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
-            doc.score = scores_for_vector_ids[doc.meta["vector_id"]]  # type: ignore
+            doc.score = scores_for_vector_ids[doc.meta["vector_id"]]
             doc.probability = (doc.score + 1) / 2
             if return_embedding is True:
                 doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
