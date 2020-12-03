@@ -4,6 +4,7 @@ import pytest
 from haystack import Document
 from haystack import Finder
 from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.pipeline import Pipeline
 from haystack.retriever.dense import EmbeddingRetriever
 
 DOCUMENTS = [
@@ -131,6 +132,20 @@ def test_faiss_finding(faiss_document_store, embedding_retriever):
     prediction = finder.get_answers_via_similar_questions(question="How to test this?", top_k_retriever=1)
 
     assert len(prediction.get('answers', [])) == 1
+
+
+def test_faiss_pipeline(faiss_document_store, embedding_retriever):
+    documents = [
+        {"name": "name_1", "text": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
+        {"name": "name_2", "text": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
+        {"name": "name_3", "text": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
+        {"name": "name_4", "text": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
+    ]
+    faiss_document_store.write_documents(documents)
+    pipeline = Pipeline()
+    pipeline.add_node(component=embedding_retriever, name="FAISS", inputs=["Query"])
+    output = pipeline.run(query="How to test this?", top_k_retriever=3)
+    assert len(output["documents"]) == 3
 
 
 def test_faiss_passing_index_from_outside():

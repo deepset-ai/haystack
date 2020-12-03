@@ -390,7 +390,6 @@ class EmbeddingRetriever(BaseRetriever):
         """
         self.document_store = document_store
         self.model_format = model_format
-        self.embedding_model = embedding_model
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
 
@@ -444,19 +443,19 @@ class EmbeddingRetriever(BaseRetriever):
         """
 
         # for backward compatibility: cast pure str input
-        if type(texts) == str:
-            texts = [texts]  # type: ignore
-        assert type(texts) == list, "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
+        if isinstance(texts, str):
+            texts = [texts]
+        assert isinstance(texts, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
 
         if self.model_format == "farm" or self.model_format == "transformers":
             # TODO: FARM's `sample_to_features_text` need to fix following warning -
             # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
-            emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])  # type: ignore
+            emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
             emb = [(r["vec"]) for r in emb]
         elif self.model_format == "sentence_transformers":
             # text is single string, sentence-transformers needs a list of strings
             # get back list of numpy embedding vectors
-            emb = self.embedding_model.encode(texts)  # type: ignore
+            emb = self.embedding_model.encode(texts)
             emb = [r for r in emb]
         return emb
 

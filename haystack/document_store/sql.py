@@ -109,7 +109,7 @@ class SQLDocumentStore(BaseDocumentStore):
             DocumentORM.vector_id.in_(vector_ids),
             DocumentORM.index == index
         ).all()
-        sorted_results = sorted(results, key=lambda doc: vector_ids.index(doc.vector_id))  # type: ignore
+        sorted_results = sorted(results, key=lambda doc: vector_ids.index(doc.vector_id))
         documents = [self._convert_sql_row_to_document(row) for row in sorted_results]
         return documents
 
@@ -282,7 +282,7 @@ class SQLDocumentStore(BaseDocumentStore):
             meta={meta.name: meta.value for meta in row.meta}
         )
         if row.vector_id:
-            document.meta["vector_id"] = row.vector_id  # type: ignore
+            document.meta["vector_id"] = row.vector_id
         return document
 
     def _convert_sql_row_to_label(self, row) -> Label:
