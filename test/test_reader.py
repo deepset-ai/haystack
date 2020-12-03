@@ -121,7 +121,7 @@ def test_farm_reader_update_params(test_docs_xs):
     reader = FARMReader(
         model_name_or_path="deepset/roberta-base-squad2",
         use_gpu=False,
-        no_ans_boost=None,
+        no_ans_boost=0,
         num_processes=0
     )
 
@@ -133,13 +133,17 @@ def test_farm_reader_update_params(test_docs_xs):
     assert prediction["answers"][0]["answer"] == "Carla"
 
     # update no_ans_boost
-    reader.update_parameters(context_window_size=100, no_ans_boost=100, max_seq_len=384, doc_stride=128)
+    reader.update_parameters(
+        context_window_size=100, no_ans_boost=100, return_no_answer=True, max_seq_len=384, doc_stride=128
+    )
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
     assert prediction["answers"][0]["answer"] is None
 
     # update no_ans_boost
-    reader.update_parameters(context_window_size=100, no_ans_boost=0, max_seq_len=384, doc_stride=128)
+    reader.update_parameters(
+        context_window_size=100, no_ans_boost=0, return_no_answer=False, max_seq_len=384, doc_stride=128
+    )
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
     assert None not in [ans["answer"] for ans in prediction["answers"]]
