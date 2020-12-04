@@ -64,7 +64,7 @@ class FARMReader(BaseReader):
                            to a value so only a single batch is used.
         :param use_gpu: Whether to use GPU (if available)
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
-        If set to 0 (default), disables adjusting the no_answer logit.
+        If set to 0 (default), the no_answer logit is not changed.
         If a negative number, there is a lower chance of "no_answer" being predicted.
         If a positive number, there is an increased chance of "no_answer"
         :param return_no_answer: Whether to include no_answer predictions in the results.
