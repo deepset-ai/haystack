@@ -62,6 +62,10 @@ class Pipeline:
                 input_edge_name = "output_1"
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
 
+    def get_node(self, name: str):
+        component = self.graph.nodes[name]["component"]
+        return component
+
     def run(self, **kwargs):
         has_next_node = True
         current_node_id = self.root_node_id
@@ -120,11 +124,17 @@ class Pipeline:
 
 
 class BaseStandardPipeline:
+    pipeline: Pipeline
+
     def add_node(self, component, name: str, inputs: List[str]):
-        self.pipeline.add_node(component=component, name=name, inputs=inputs)  # type: ignore
+        self.pipeline.add_node(component=component, name=name, inputs=inputs)
+
+    def get_node(self, name: str):
+        component = self.pipeline.get_node(name)
+        return component
 
     def draw(self, path: Path = Path("pipeline.png")):
-        self.pipeline.draw(path)  # type: ignore
+        self.pipeline.draw(path)
 
 
 class ExtractiveQAPipeline(BaseStandardPipeline):
