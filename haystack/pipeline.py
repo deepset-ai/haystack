@@ -38,8 +38,6 @@ class Pipeline:
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
-
-
         """
         self.graph.add_node(name, component=component)
 
@@ -63,10 +61,21 @@ class Pipeline:
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
 
     def get_node(self, name: str):
+        """
+        Get a node from the Pipeline.
+
+        :param name: The name of the node.
+        """
         component = self.graph.nodes[name]["component"]
         return component
 
-    def update_node(self, name: str, component):
+    def set_node(self, name: str, component):
+        """
+        Set the component for a node in the Pipeline.
+
+        :param name: The name of the node.
+        :param component: The component object to be set at the node.
+        """
         self.graph.nodes[name]["component"] = component
 
     def run(self, **kwargs):
@@ -130,16 +139,47 @@ class BaseStandardPipeline:
     pipeline: Pipeline
 
     def add_node(self, component, name: str, inputs: List[str]):
+        """
+        Add a new node to the pipeline.
+
+        :param component: The object to be called when the data is passed to the node. It can be a Haystack component
+                          (like Retriever, Reader, or Generator) or a user-defined object that implements a run()
+                          method to process incoming data from predecessor node.
+        :param name: The name for the node. It must not contain any dots.
+        :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+
+                       In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
+                       must be specified explicitly as "QueryClassifier.output_2".
+        """
+
         self.pipeline.add_node(component=component, name=name, inputs=inputs)
 
     def get_node(self, name: str):
+        """
+        Get a node from the Pipeline.
+
+        :param name: The name of the node.
+        """
         component = self.pipeline.get_node(name)
         return component
 
-    def update_node(self, name: str, component):
-        self.pipeline.update_node(name, component)
+    def set_node(self, name: str, component):
+        """
+        Set the component for a node in the Pipeline.
+
+        :param name: The name of the node.
+        :param component: The component object to be set at the node.
+        """
+        self.pipeline.set_node(name, component)
 
     def draw(self, path: Path = Path("pipeline.png")):
+        """
+        Create a Graphviz visualization of the pipeline.
+
+        :param path: the path to save the image.
+        """
         self.pipeline.draw(path)
 
 
