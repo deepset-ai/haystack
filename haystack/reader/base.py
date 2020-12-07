@@ -50,7 +50,7 @@ class BaseReader(ABC):
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k_reader)
         else:
-            results = {"answers": []}
+            results = {"answers": [], "query": query}
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
