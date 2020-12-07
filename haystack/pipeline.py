@@ -66,6 +66,9 @@ class Pipeline:
         component = self.graph.nodes[name]["component"]
         return component
 
+    def update_node(self, name: str, component):
+        self.graph.nodes[name]["component"] = component
+
     def run(self, **kwargs):
         has_next_node = True
         current_node_id = self.root_node_id
@@ -132,6 +135,9 @@ class BaseStandardPipeline:
     def get_node(self, name: str):
         component = self.pipeline.get_node(name)
         return component
+
+    def update_node(self, name: str, component):
+        self.pipeline.update_node(name, component)
 
     def draw(self, path: Path = Path("pipeline.png")):
         self.pipeline.draw(path)
