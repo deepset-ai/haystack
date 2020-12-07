@@ -199,6 +199,7 @@ def no_answer_reader(request):
             use_gpu=False,
             top_k_per_sample=5,
             no_ans_boost=0,
+            return_no_answer=True,
             num_processes=0
         )
     if request.param == "transformers":
