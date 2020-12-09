@@ -213,7 +213,7 @@ class RAGenerator(BaseGenerator):
 
         if top_k_answers > self.num_beams:
             top_k_answers = self.num_beams
-            logger.warning(f'top_k_answers value should not be greater than num_beams, '
+            logger.warning(f'top_k value should not be greater than num_beams, '
                            f'hence setting it to {top_k_answers}')
 
         # Flatten the documents so easy to reference
