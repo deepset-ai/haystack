@@ -6,6 +6,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 from haystack.document_store.base import BaseDocumentStore
+from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
 
@@ -85,6 +86,11 @@ class DensePassageRetriever(BaseRetriever):
         self.batch_size = batch_size
         self.max_seq_len_passage = max_seq_len_passage
         self.max_seq_len_query = max_seq_len_query
+
+        if type(document_store) == ElasticsearchDocumentStore:
+            if document_store.similarity_fn_name != "dotProduct":
+                logger.warning(f"You are using a Dense Passage Retriever model with the {document_store.similarity_fn_name} function. "
+                               "We recommend you use dotProduct instead")
 
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -399,6 +405,17 @@ class EmbeddingRetriever(BaseRetriever):
                 embedding_model, task_type="embeddings", extraction_strategy=self.pooling_strategy,
                 extraction_layer=self.emb_extraction_layer, gpu=use_gpu, batch_size=4, max_seq_len=512, num_processes=0
             )
+            # Check that document_store has the right similarity function
+            if type(document_store) == ElasticsearchDocumentStore:
+                similarity_fn = document_store.similarity_fn_name
+                # If we are using a sentence transformer model
+                if "sentence" in embedding_model.lower() and similarity_fn != "cosineSimilarity":
+                    logger.warning(f"You seem to be using a Sentence Transformer with the {document_store.similarity_fn_name} function. "
+                                   f"We recommend using cosineSimilarity instead")
+                elif "dpr" in embedding_model.lower() and similarity_fn != "dotProduct":
+                    logger.warning(f"You seem to be using a DPR model with the {similarity_fn} function. "
+                                   f"We recommend using dotProduct instead")
+
 
         elif model_format == "sentence_transformers":
             try:
@@ -414,6 +431,11 @@ class EmbeddingRetriever(BaseRetriever):
             else:
                 device = "cpu"
             self.embedding_model = SentenceTransformer(embedding_model, device=device)
+            if type(document_store) == ElasticsearchDocumentStore:
+                if document_store.similarity_fn_name != "cosineSimilarity":
+                    logger.warning(
+                        f"You are using a Sentence Transformer with the {self.document_store.similarity_fn_name} function. "
+                        f"We recommend using cosineSimilarity instead")
         else:
             raise NotImplementedError
 

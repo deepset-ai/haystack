@@ -596,7 +596,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if score:
             if adapt_score_for_embedding:
                 score -= 1000
-                probability = (score + 1) / 2  # scaling probability from cosine similarity
+                if self.similarity_fn_name == "cosineSimilarity":
+                    probability = (score + 1) / 2  # scaling probability from cosine similarity
+                elif self.similarity_fn_name == "dotProduct":
+                    probability = float(expit(np.asarray(score / 100)))  # scaling probability from dot product
             else:
                 probability = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
         else:
