@@ -121,7 +121,14 @@ Key features:
 Indexing using DPR is comparatively expensive in terms of required computation since all documents in the database need to be processed through the transformer.
 The embeddings that are created in this step can be stored in FAISS, a database optimized for vector similarity.
 DPR can also work with the ElasticsearchDocumentStore or the InMemoryDocumentStore.
+
+<div class="recommendation">
+
+**Tip**
+
 When using DPR, it is recommended that you use the dot product similarity function since that is how it is trained.
+
+</div>
 
 There are two design decisions that have made DPR particularly performant.
 
@@ -161,7 +168,14 @@ These models are trained in Siamese Networks and use triplet loss such that they
 They are particular suited to cases where your query input is similar in style to that of the documents in your database
 i.e. when you are searching for most similar documents.
 This is not inherently suited to query based search where the length, language and format of the query usually significantly differs from the searched for text.
-When using them, we recommend that you use a cosine similarity function.
+
+<div class="recommendation">
+
+**Tip**
+
+When using Sentence Transformer models, we recommend that you use a cosine similarity function.
+
+</div>
 
 ### Initialisation
 
