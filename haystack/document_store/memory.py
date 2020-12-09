@@ -17,13 +17,14 @@ class InMemoryDocumentStore(BaseDocumentStore):
         In-memory document store
     """
 
-    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = False):
+    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = False, similarity="dot_product"):
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
         self.label_index: str = "label"
         self.embedding_field: str = embedding_field if embedding_field is not None else "embedding"
         self.embedding_dim: int = 768
         self.return_embedding: bool = return_embedding
+        self.similarity: str = similarity
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
@@ -115,6 +116,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             score = dot(query_emb, doc.embedding) / (
                 norm(query_emb) * norm(doc.embedding)
             )
+
             new_document.score = score
             new_document.probability = (score + 1) / 2
 

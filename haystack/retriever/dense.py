@@ -406,15 +406,14 @@ class EmbeddingRetriever(BaseRetriever):
                 extraction_layer=self.emb_extraction_layer, gpu=use_gpu, batch_size=4, max_seq_len=512, num_processes=0
             )
             # Check that document_store has the right similarity function
-            if type(document_store) == ElasticsearchDocumentStore:
-                similarity_fn = document_store.similarity_fn_name
-                # If we are using a sentence transformer model
-                if "sentence" in embedding_model.lower() and similarity_fn != "cosineSimilarity":
-                    logger.warning(f"You seem to be using a Sentence Transformer with the {document_store.similarity_fn_name} function. "
-                                   f"We recommend using cosineSimilarity instead")
-                elif "dpr" in embedding_model.lower() and similarity_fn != "dotProduct":
-                    logger.warning(f"You seem to be using a DPR model with the {similarity_fn} function. "
-                                   f"We recommend using dotProduct instead")
+            similarity = document_store.similarity
+            # If we are using a sentence transformer model
+            if "sentence" in embedding_model.lower() and similarity != "cosineSimilarity":
+                logger.warning(f"You seem to be using a Sentence Transformer with the {similarity} function. "
+                               f"We recommend using cosineSimilarity instead")
+            elif "dpr" in embedding_model.lower() and similarity != "dotProduct":
+                logger.warning(f"You seem to be using a DPR model with the {similarity} function. "
+                               f"We recommend using dotProduct instead")
 
 
         elif model_format == "sentence_transformers":
@@ -431,11 +430,10 @@ class EmbeddingRetriever(BaseRetriever):
             else:
                 device = "cpu"
             self.embedding_model = SentenceTransformer(embedding_model, device=device)
-            if type(document_store) == ElasticsearchDocumentStore:
-                if document_store.similarity_fn_name != "cosineSimilarity":
-                    logger.warning(
-                        f"You are using a Sentence Transformer with the {self.document_store.similarity_fn_name} function. "
-                        f"We recommend using cosineSimilarity instead")
+            if document_store.similarity != "cosineSimilarity":
+                logger.warning(
+                    f"You are using a Sentence Transformer with the {document_store.similarity} function. "
+                    f"We recommend using cosineSimilarity instead")
         else:
             raise NotImplementedError
 
