@@ -98,22 +98,35 @@ class PreProcessor(BasePreProcessor):
             # split by words ensuring no sub sentence splits
             sentences = nltk.tokenize.sent_tokenize(text)
             word_count = 0
-            text_splits = []
-            current_slice = ""
+            list_splits = []
+            current_slice: List[str] = []
             for sen in sentences:
                 current_word_count = len(sen.split(" "))
                 if current_word_count > self.split_length:
                     logger.warning(f"A sentence found with word count higher than the split length.")
                 if word_count + current_word_count > self.split_length:
-                    text_splits.append(current_slice)
-                    current_slice = ""
-                    word_count = 0
-                if len(current_slice) != 0:
-                    sen = " " + sen
-                current_slice += sen
-                word_count += current_word_count
+                    list_splits.append(current_slice)
+                    #Enable split_stride with split_by='word' while respecting sentence boundaries.
+                    if self.split_stride:
+                        overlap = []
+                        w_count = 0
+                        for s in current_slice[::-1]:
+                            sen_len = len(s.split(" "))
+                            if w_count < self.split_stride:
+                                overlap.append(s)
+                                w_count += sen_len
+                            else:
+                                break
+                        current_slice = list(reversed(overlap))
+                        word_count = w_count
+                    else:
+                        current_slice = []
+                        word_count = 0
+                current_slice.append(sen)
+                word_count += len(sen.split(" "))
             if current_slice:
-                text_splits.append(current_slice)
+                list_splits.append(current_slice)
+            text_splits = [' '.join(sl) for sl in list_splits]
         else:
             # create individual "elements" of passage, sentence, or word
             if self.split_by == "passage":
