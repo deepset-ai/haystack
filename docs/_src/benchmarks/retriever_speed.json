@@ -5,16 +5,18 @@
     "description": "Here you can see how the query speed of different Retriever / DocumentStore combinations scale as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
     "columns": [
         "n_docs",
-        "BM25 / ElasticSearch", 
+        "BM25 / ElasticSearch",
         "DPR / ElasticSearch",
         "DPR / FAISS (flat)",
         "DPR / FAISS (HSNW)"
     ],
-   "axis": [
-     { "x": "Number of docs", "y": "Queries/sec" }
-   ],
-    "data":
-    [
+    "axis": [
+        {
+            "x": "Number of docs",
+            "y": "Queries/sec"
+        }
+    ],
+    "data": [
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 1000,
@@ -23,17 +25,17 @@
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 10000,
-            "query_speed": 27.006999999999998
+            "query_speed": 24.8
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 100000,
-            "query_speed": 6.5360000000000005
+            "query_speed": 6.23
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 500000,
-            "query_speed": 1.514
+            "query_speed": 1.45
         },
         {
             "model": "DPR / FAISS (flat)",
@@ -43,17 +45,17 @@
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 10000,
-            "query_speed": 23.976999999999997
+            "query_speed": 22.47
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 100000,
-            "query_speed": 5.044
+            "query_speed": 4.90
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 500000,
-            "query_speed": 1.091
+            "query_speed": 1.08
         },
         {
             "model": "BM25 / ElasticSearch",
@@ -63,17 +65,17 @@
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 10000,
-            "query_speed": 167.81
+            "query_speed": 248.97
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "query_speed": 162.996
+            "query_speed": 162.59
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 500000,
-            "query_speed": 95.491
+            "query_speed": 91.39
         },
         {
             "model": "DPR / FAISS (HSNW)",
@@ -83,17 +85,17 @@
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 10000,
-            "query_speed": 33.421
+            "query_speed": 31.34
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 100000,
-            "query_speed": 12.815
+            "query_speed": 12.85
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 500000,
-            "query_speed": 3.259
+            "query_speed": 3.32
         }
     ]
 }
