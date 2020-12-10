@@ -78,22 +78,23 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 @pytest.mark.parametrize("index_buffer_size", [10_000, 2])
-def test_faiss_update_docs(document_store, index_buffer_size, dpr_retriever):
+def test_faiss_update_docs(document_store, index_buffer_size, retriever):
     # adjust buffer size
     document_store.index_buffer_size = index_buffer_size
 
     # initial write
     document_store.write_documents(DOCUMENTS)
 
-    document_store.update_embeddings(retriever=dpr_retriever)
+    document_store.update_embeddings(retriever=retriever)
     documents_indexed = document_store.get_all_documents()
 
     # test if correct vectors are associated with docs
     for i, doc in enumerate(documents_indexed):
         original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
-        updated_embedding = dpr_retriever.embed_passages([Document.from_dict(original_doc)])
+        updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
         stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(updated_embedding, stored_emb, rtol=0.01)
@@ -129,18 +130,20 @@ def test_faiss_retrieving(index_factory):
     assert type(result[0]) == Document
 
 
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_finding(document_store, embedding_retriever):
+def test_faiss_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
-    finder = Finder(reader=None, retriever=embedding_retriever)
+    finder = Finder(reader=None, retriever=retriever)
 
     prediction = finder.get_answers_via_similar_questions(question="How to test this?", top_k_retriever=1)
 
     assert len(prediction.get('answers', [])) == 1
 
 
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_pipeline(document_store, embedding_retriever):
+def test_faiss_pipeline(document_store, retriever):
     documents = [
         {"name": "name_1", "text": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
         {"name": "name_2", "text": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
@@ -149,7 +152,7 @@ def test_faiss_pipeline(document_store, embedding_retriever):
     ]
     document_store.write_documents(documents)
     pipeline = Pipeline()
-    pipeline.add_node(component=embedding_retriever, name="FAISS", inputs=["Query"])
+    pipeline.add_node(component=retriever, name="FAISS", inputs=["Query"])
     output = pipeline.run(query="How to test this?", top_k_retriever=3)
     assert len(output["documents"]) == 3
 

@@ -117,35 +117,6 @@ def rag_generator():
     )
 
 
-@pytest.fixture()
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def dpr_retriever(document_store):
-    return DensePassageRetriever(
-        document_store=document_store,
-        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-        use_gpu=False,
-        embed_title=True,
-        use_fast_tokenizers=True
-    )
-
-
-@pytest.fixture()
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def embedding_retriever(document_store):
-    return EmbeddingRetriever(
-        document_store=document_store,
-        embedding_model="deepset/sentence_bert",
-        use_gpu=False
-    )
-
-
-@pytest.fixture()
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def tfidf_retriever(document_store):
-    return TfidfRetriever(document_store=document_store)
-
-
 @pytest.fixture(scope="module")
 def test_docs_xs():
     return [
