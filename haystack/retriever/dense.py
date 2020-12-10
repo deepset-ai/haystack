@@ -408,12 +408,12 @@ class EmbeddingRetriever(BaseRetriever):
             # Check that document_store has the right similarity function
             similarity = document_store.similarity
             # If we are using a sentence transformer model
-            if "sentence" in embedding_model.lower() and similarity != "cosineSimilarity":
+            if "sentence" in embedding_model.lower() and similarity != "cosine":
                 logger.warning(f"You seem to be using a Sentence Transformer with the {similarity} function. "
-                               f"We recommend using cosineSimilarity instead")
-            elif "dpr" in embedding_model.lower() and similarity != "dotProduct":
+                               f"We recommend using cosine instead")
+            elif "dpr" in embedding_model.lower() and similarity != "dot_product":
                 logger.warning(f"You seem to be using a DPR model with the {similarity} function. "
-                               f"We recommend using dotProduct instead")
+                               f"We recommend using dot_product instead")
 
 
         elif model_format == "sentence_transformers":
@@ -430,10 +430,10 @@ class EmbeddingRetriever(BaseRetriever):
             else:
                 device = "cpu"
             self.embedding_model = SentenceTransformer(embedding_model, device=device)
-            if document_store.similarity != "cosineSimilarity":
+            if document_store.similarity != "cosine":
                 logger.warning(
                     f"You are using a Sentence Transformer with the {document_store.similarity} function. "
-                    f"We recommend using cosineSimilarity instead")
+                    f"We recommend using cosine instead")
         else:
             raise NotImplementedError
 
