@@ -127,6 +127,8 @@ DPR can also work with the ElasticsearchDocumentStore or the InMemoryDocumentSto
 **Tip**
 
 When using DPR, it is recommended that you use the dot product similarity function since that is how it is trained.
+To do so, simply provide `similarity="dot_product"` when initializing the DocumentStore 
+as is done in the code example below.
 
 </div>
 
@@ -144,7 +146,7 @@ If you’d like to learn how to set up a DPR based system, have a look at our tu
 ### Initialisation
 
 ```python
-document_store = FAISSDocumentStore()
+document_store = FAISSDocumentStore(similarity="dot_product")
 ...
 retriever = DensePassageRetriever(
     document_store=document_store,
@@ -173,7 +175,9 @@ This is not inherently suited to query based search where the length, language a
 
 **Tip**
 
-When using Sentence Transformer models, we recommend that you use a cosine similarity function.
+When using Sentence Transformer models, we recommend that you use a cosine similarity function. 
+To do so, simply provide `similarity="cosine"` when initializing the DocumentStore 
+as is done in the code example below.
 
 </div>
 
