@@ -87,10 +87,10 @@ class DensePassageRetriever(BaseRetriever):
         self.max_seq_len_passage = max_seq_len_passage
         self.max_seq_len_query = max_seq_len_query
 
-        if type(document_store) == ElasticsearchDocumentStore:
-            if document_store.similarity_fn_name != "dotProduct":
-                logger.warning(f"You are using a Dense Passage Retriever model with the {document_store.similarity_fn_name} function. "
-                               "We recommend you use dotProduct instead")
+        if document_store.similarity != "dot_product":
+            logger.warning(f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
+                           "We recommend you use dot_product instead. "
+                           "This can be set when initializing the DocumentStore")
 
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -410,10 +410,12 @@ class EmbeddingRetriever(BaseRetriever):
             # If we are using a sentence transformer model
             if "sentence" in embedding_model.lower() and similarity != "cosine":
                 logger.warning(f"You seem to be using a Sentence Transformer with the {similarity} function. "
-                               f"We recommend using cosine instead")
+                               f"We recommend using cosine instead. "
+                               f"This can be set when initializing the DocumentStore")
             elif "dpr" in embedding_model.lower() and similarity != "dot_product":
                 logger.warning(f"You seem to be using a DPR model with the {similarity} function. "
-                               f"We recommend using dot_product instead")
+                               f"We recommend using dot_product instead. "
+                               f"This can be set when initializing the DocumentStore")
 
 
         elif model_format == "sentence_transformers":
@@ -433,7 +435,8 @@ class EmbeddingRetriever(BaseRetriever):
             if document_store.similarity != "cosine":
                 logger.warning(
                     f"You are using a Sentence Transformer with the {document_store.similarity} function. "
-                    f"We recommend using cosine instead")
+                    f"We recommend using cosine instead. "
+                    f"This can be set when initializing the DocumentStore")
         else:
             raise NotImplementedError
 

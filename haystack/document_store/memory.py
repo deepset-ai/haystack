@@ -47,11 +47,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         documents_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
         def move_embeds(do, embedding_field):
-            try:
+            if embedding_field in do.meta:
                 do.embedding = do.meta[embedding_field]
                 del do.meta[embedding_field]
-            except:
-                pass
             return do
 
         documents_objects = [move_embeds(do, self.embedding_field) for do in documents_objects]
