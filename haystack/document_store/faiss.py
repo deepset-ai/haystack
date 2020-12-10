@@ -9,6 +9,8 @@ from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 
+from scipy.special import expit
+
 if platform != 'win32' and platform != 'cygwin':
     import faiss
 else:
@@ -39,6 +41,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         return_embedding: bool = False,
         update_existing_documents: bool = False,
         index: str = "document",
+        similarity: str = "dot_product",
         **kwargs,
     ):
         """
@@ -82,6 +85,11 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         self.index_buffer_size = index_buffer_size
         self.return_embedding = return_embedding
+        if similarity == "dot_product":
+            self.similarity = similarity
+        else:
+            raise ValueError("The FAISS document store can currently only support dot_product similarity. "
+                             "Please set similarity=\"dot_product\"")
         super().__init__(
             url=sql_url,
             update_existing_documents=update_existing_documents,
@@ -117,6 +125,16 @@ class FAISSDocumentStore(SQLDocumentStore):
         # doc + metadata index
         index = index or self.index
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+
+        def move_embeds(do, embedding_field):
+            try:
+                do.embedding = do.meta[embedding_field]
+                del do.meta[embedding_field]
+            except:
+                pass
+            return do
+
+        document_objects = [move_embeds(do, self.index) for do in document_objects]
 
         add_vectors = False if document_objects[0].embedding is None else True
 
@@ -273,7 +291,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             doc.score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.probability = (doc.score + 1) / 2
+            doc.probability = float(expit(np.asarray(doc.score / 100)))
             if return_embedding is True:
                 doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
 
