@@ -103,10 +103,11 @@ def test_faiss_update_docs(document_store, index_buffer_size, retriever):
     check_data_correctness(documents_indexed, DOCUMENTS)
 
 
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_update_with_empty_store(document_store, dpr_retriever):
+def test_faiss_update_with_empty_store(document_store, retriever):
     # Call update with empty doc store
-    document_store.update_embeddings(retriever=dpr_retriever)
+    document_store.update_embeddings(retriever=retriever)
 
     # initial write
     document_store.write_documents(DOCUMENTS)
