@@ -12,6 +12,7 @@ class BaseDocumentStore(ABC):
     """
     index: Optional[str]
     label_index: Optional[str]
+    similarity: Optional[str]
 
     @abstractmethod
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
