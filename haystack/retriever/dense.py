@@ -229,7 +229,7 @@ class DensePassageRetriever(BaseRetriever):
               batch_size: int = 2,
               embed_title: bool = True,
               num_hard_negatives: int = 1,
-              num_positives: int = 0,
+              num_positives: int = 1,
               n_epochs: int = 3,
               evaluate_every: int = 1000,
               n_gpu: int = 1,
