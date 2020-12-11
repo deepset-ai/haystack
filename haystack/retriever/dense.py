@@ -118,7 +118,7 @@ class DensePassageRetriever(BaseRetriever):
                                                  metric="text_similarity_metric",
                                                  embed_title=self.embed_title,
                                                  num_hard_negatives=0,
-                                                 num_negatives=0)
+                                                 num_positives=0)
 
         prediction_head = TextSimilarityHead(similarity_function=similarity_function)
         self.model = BiAdaptiveModel(
@@ -229,7 +229,7 @@ class DensePassageRetriever(BaseRetriever):
               batch_size: int = 2,
               embed_title: bool = True,
               num_hard_negatives: int = 1,
-              num_negatives: int = 0,
+              num_positives: int = 0,
               n_epochs: int = 3,
               evaluate_every: int = 1000,
               n_gpu: int = 1,
@@ -253,7 +253,7 @@ class DensePassageRetriever(BaseRetriever):
         :param batch_size: total number of samples in 1 batch of data
         :param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
         :param num_hard_negatives: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
-        :param num_negatives: number of negative passages(any random passage from dataset which do not contain answer to query)
+        :param num_positives: number of positive passages
         :param n_epochs: number of epochs to train the model on
         :param evaluate_every: number of training steps after evaluation is run
         :param n_gpu: number of gpus to train on
@@ -282,7 +282,7 @@ class DensePassageRetriever(BaseRetriever):
                                                  test_filename=test_filename,
                                                  embed_title=self.embed_title,
                                                  num_hard_negatives=num_hard_negatives,
-                                                 num_negatives=num_negatives)
+                                                 num_positives=num_positives)
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
