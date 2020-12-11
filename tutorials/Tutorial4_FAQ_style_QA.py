@@ -44,7 +44,8 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
                                             index="document",
                                             embedding_field="question_emb",
                                             embedding_dim=768,
-                                            excluded_meta_data=["question_emb"])
+                                            excluded_meta_data=["question_emb"],
+                                            similarity="cosine")
 
 ### Create a Retriever using embeddings
 # Instead of retrieving via Elasticsearch's plain BM25, we want to use vector similarity of the questions (user question vs. FAQ ones).

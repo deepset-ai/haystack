@@ -8,6 +8,8 @@ from haystack import Document, Label
 from haystack.preprocessor.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
+from scipy.spatial.distance import cosine
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -17,13 +19,14 @@ class InMemoryDocumentStore(BaseDocumentStore):
         In-memory document store
     """
 
-    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = False):
+    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = False, similarity="dot_product"):
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
         self.label_index: str = "label"
         self.embedding_field: str = embedding_field if embedding_field is not None else "embedding"
         self.embedding_dim: int = 768
         self.return_embedding: bool = return_embedding
+        self.similarity: str = similarity
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
@@ -41,10 +44,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         index = index or self.index
 
-        documents_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+        field_map = self._create_document_field_map()
+        documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         for document in documents_objects:
             self.indexes[index][document.id] = document
+
+    def _create_document_field_map(self):
+        return {
+            self.embedding_field: "embedding",
+        }
 
     def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None):
         """Write annotation labels into document store."""
@@ -106,18 +115,24 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         candidate_docs = []
         for idx, doc in self.indexes[index].items():
+            curr_meta = deepcopy(doc.meta)
             new_document = Document(
                 id=doc.id,
                 text=doc.text,
-                meta=deepcopy(doc.meta)
+                meta=curr_meta,
+                embedding=doc.embedding
             )
             new_document.embedding = doc.embedding if return_embedding is True else None
-            score = dot(query_emb, doc.embedding) / (
-                norm(query_emb) * norm(doc.embedding)
-            )
+
+            if self.similarity == "dot_product":
+                score = dot(query_emb, doc.embedding) / (
+                    norm(query_emb) * norm(doc.embedding)
+                )
+            elif self.similarity == "cosine":
+                # cosine similarity score = 1 - cosine distance
+                score = 1 - cosine(query_emb, doc.embedding)
             new_document.score = score
             new_document.probability = (score + 1) / 2
-
             candidate_docs.append(new_document)
 
         return sorted(candidate_docs, key=lambda x: x.score if x.score is not None else 0.0, reverse=True)[0:top_k]

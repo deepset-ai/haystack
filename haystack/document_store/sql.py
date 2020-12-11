@@ -87,6 +87,8 @@ class SQLDocumentStore(BaseDocumentStore):
         self.index = index
         self.label_index = label_index
         self.update_existing_documents = update_existing_documents
+        if getattr(self, "similarity", None) is None:
+            self.similarity = None
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
