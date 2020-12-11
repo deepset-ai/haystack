@@ -118,7 +118,7 @@ class DensePassageRetriever(BaseRetriever):
                                                  metric="text_similarity_metric",
                                                  embed_title=self.embed_title,
                                                  num_hard_negatives=0,
-                                                 num_positives=0)
+                                                 num_positives=1)
 
         prediction_head = TextSimilarityHead(similarity_function=similarity_function)
         self.model = BiAdaptiveModel(
