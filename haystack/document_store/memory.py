@@ -44,18 +44,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         index = index or self.index
 
-        documents_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
-
-        def move_embeds(do, embedding_field):
-            if embedding_field in do.meta:
-                do.embedding = do.meta[embedding_field]
-                del do.meta[embedding_field]
-            return do
-
-        documents_objects = [move_embeds(do, self.embedding_field) for do in documents_objects]
+        field_map = self._create_document_field_map()
+        documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         for document in documents_objects:
             self.indexes[index][document.id] = document
+
+    def _create_document_field_map(self):
+        return {
+            self.embedding_field: "embedding",
+        }
 
     def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None):
         """Write annotation labels into document store."""

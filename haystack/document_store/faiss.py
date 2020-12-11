@@ -124,15 +124,8 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         # doc + metadata index
         index = index or self.index
-        document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
-
-        def move_embeds(do, embedding_field):
-            if embedding_field in do.meta:
-                do.embedding = do.meta[embedding_field]
-                del do.meta[embedding_field]
-            return do
-
-        document_objects = [move_embeds(do, self.index) for do in document_objects]
+        field_map = self._create_document_field_map()
+        document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         add_vectors = False if document_objects[0].embedding is None else True
 
@@ -157,6 +150,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                 docs_to_write_in_sql.append(doc)
 
             super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
+
+    def _create_document_field_map(self) -> Dict:
+        return {
+            self.index: "embedding",
+        }
 
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
         """
