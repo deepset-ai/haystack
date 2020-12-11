@@ -604,7 +604,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         score = hit["_score"] if hit["_score"] else None
         if score:
             if adapt_score_for_embedding:
-                score -= 1000
+                score = self._scale_embedding_score(score)
                 if self.similarity == "cosine":
                     probability = (score + 1) / 2  # scaling probability from cosine similarity
                 elif self.similarity == "dot_product":
@@ -630,6 +630,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             embedding=embedding,
         )
         return document
+
+    def _scale_embedding_score(self, score):
+        return score - 1000
 
     def describe_documents(self, index=None):
         """
@@ -797,3 +800,6 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
         """
         query = {"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
         return query
+
+    def _scale_embedding_score(self, score):
+        return score
