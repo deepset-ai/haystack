@@ -24,7 +24,7 @@ def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
 @pytest.mark.slow
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_docs):
+def test_extractive_qa_answers(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     prediction = pipeline.run(query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3)
     assert prediction is not None
@@ -40,7 +40,7 @@ def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-def test_extractive_qa_offsets(reader, retriever_with_docs, document_store_with_docs):
+def test_extractive_qa_offsets(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     prediction = pipeline.run(query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=5)
 
@@ -54,7 +54,7 @@ def test_extractive_qa_offsets(reader, retriever_with_docs, document_store_with_
 @pytest.mark.slow
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-def test_extractive_qa_answers_single_result(reader, retriever_with_docs, document_store_with_docs):
+def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     query = "testing finder"
     prediction = pipeline.run(query=query, top_k_retriever=1, top_k_reader=1)

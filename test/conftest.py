@@ -117,49 +117,6 @@ def rag_generator():
     )
 
 
-@pytest.fixture()
-def faiss_document_store():
-    if os.path.exists("haystack_test_faiss.db"):
-        os.remove("haystack_test_faiss.db")
-    document_store = FAISSDocumentStore(
-        sql_url="sqlite:///haystack_test_faiss.db",
-        return_embedding=True
-    )
-    yield document_store
-    document_store.faiss_index.reset()
-
-
-@pytest.fixture()
-def inmemory_document_store():
-    return InMemoryDocumentStore(return_embedding=True)
-
-
-@pytest.fixture()
-def dpr_retriever(faiss_document_store):
-    return DensePassageRetriever(
-        document_store=faiss_document_store,
-        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-        use_gpu=False,
-        embed_title=True,
-        use_fast_tokenizers=True
-    )
-
-
-@pytest.fixture()
-def embedding_retriever(faiss_document_store):
-    return EmbeddingRetriever(
-        document_store=faiss_document_store,
-        embedding_model="deepset/sentence_bert",
-        use_gpu=False
-    )
-
-
-@pytest.fixture()
-def tfidf_retriever(inmemory_document_store):
-    return TfidfRetriever(document_store=inmemory_document_store)
-
-
 @pytest.fixture(scope="module")
 def test_docs_xs():
     return [
@@ -225,19 +182,6 @@ def no_answer_prediction(no_answer_reader, test_docs_xs):
     return prediction
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store_with_docs(
-        request, test_docs_xs, elasticsearch_fixture, faiss_document_store, inmemory_document_store):
-    document_store = get_document_store(request.param, faiss_document_store, inmemory_document_store)
-    document_store.write_documents(test_docs_xs)
-    return document_store
-
-
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
-def document_store(request, test_docs_xs, elasticsearch_fixture, faiss_document_store, inmemory_document_store):
-    return get_document_store(request.param, faiss_document_store, inmemory_document_store)
-
-
 @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
 def retriever(request, document_store):
     return get_retriever(request.param, document_store)
@@ -246,26 +190,6 @@ def retriever(request, document_store):
 @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
 def retriever_with_docs(request, document_store_with_docs):
     return get_retriever(request.param, document_store_with_docs)
-
-
-def get_document_store(document_store_type, faiss_document_store, inmemory_document_store):
-    if document_store_type == "sql":
-        if os.path.exists("haystack_test.db"):
-            os.remove("haystack_test.db")
-        document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
-    elif document_store_type == "memory":
-        document_store = inmemory_document_store
-    elif document_store_type == "elasticsearch":
-        # make sure we start from a fresh index
-        client = Elasticsearch()
-        client.indices.delete(index='haystack_test*', ignore=[404])
-        document_store = ElasticsearchDocumentStore(index="haystack_test", return_embedding=True)
-    elif document_store_type == "faiss":
-        document_store = faiss_document_store
-    else:
-        raise Exception(f"No document store fixture for '{document_store_type}'")
-
-    return document_store
 
 
 def get_retriever(retriever_type, document_store):
@@ -291,3 +215,46 @@ def get_retriever(retriever_type, document_store):
         raise Exception(f"No retriever fixture for '{retriever_type}'")
 
     return retriever
+
+
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
+def document_store_with_docs(request, test_docs_xs):
+    document_store = get_document_store(request.param)
+    document_store.write_documents(test_docs_xs)
+    yield document_store
+    if request.param == "faiss":
+        document_store.faiss_index.reset()
+
+
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
+def document_store(request, test_docs_xs):
+    document_store = get_document_store(request.param)
+    yield document_store
+    if request.param == "faiss":
+        document_store.faiss_index.reset()
+
+
+def get_document_store(document_store_type):
+    if document_store_type == "sql":
+        if os.path.exists("haystack_test.db"):
+            os.remove("haystack_test.db")
+        document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
+    elif document_store_type == "memory":
+        document_store = InMemoryDocumentStore(return_embedding=True)
+    elif document_store_type == "elasticsearch":
+        # make sure we start from a fresh index
+        client = Elasticsearch()
+        client.indices.delete(index='haystack_test*', ignore=[404])
+        document_store = ElasticsearchDocumentStore(index="haystack_test", return_embedding=True)
+    elif document_store_type == "faiss":
+        if os.path.exists("haystack_test_faiss.db"):
+            os.remove("haystack_test_faiss.db")
+        document_store = FAISSDocumentStore(
+            sql_url="sqlite:///haystack_test_faiss.db",
+            return_embedding=True
+        )
+        return document_store
+    else:
+        raise Exception(f"No document store fixture for '{document_store_type}'")
+
+    return document_store
