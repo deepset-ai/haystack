@@ -1,5 +1,6 @@
 import streamlit as st
-from utils import retrieve_doc,retrieve_faq
+from utils import retrieve_doc
+from annotated_text import annotated_text
 
 def _max_width_():
     max_width_str = f"max-width: 2000px;"
@@ -13,20 +14,30 @@ def _max_width_():
     """,
         unsafe_allow_html=True,
     )
+
+def annotate_answer(answer,context):
+    start_idx = context.find(answer)
+    end_idx = start_idx+len(answer)
+    return annotated_text(context[:start_idx],(answer,"ANSWER","#8ef"),context[end_idx:],)
     
 _max_width_()   
 st.write("# Haystack Q&A Demo")
 st.sidebar.header("Options")
-qtype = st.sidebar.radio("Question Type",options=["Document","FAQ"])
-top_k_reader = st.sidebar.slider("How many answers ?",min_value=1,max_value=10,value=5,step=1)
-filters = st.sidebar.selectbox("Filters",options=["","Option1","Option2"])
-if filters == "":
-    filters = None
+top_k_reader = st.sidebar.slider("Number of answers",min_value=1,max_value=10,value=5,step=1)
+top_k_retriever = st.sidebar.slider("Number of documents from retriever",min_value=1,max_value=15,value=5,step=1)
 question = st.text_input("Please provide your query:",value="Who is the father of Arya Starck?")
-if question != "":
-    if qtype == "Document":
+if top_k_reader > top_k_retriever:
+    st.error("'Number of answers' cannot be greater than 'Number of documents'")
+else:
+    run_query = st.button("Answer")
+    debug = st.sidebar.checkbox("Show debug info")
+    if run_query:
+        with st.spinner("Performing neural search on documents... 🧠"):
+            results,raw_json = retrieve_doc(question,top_k_reader=top_k_reader,top_k_retriever=top_k_retriever)
         st.write("## Retrieved answers:")
-        st.write(retrieve_doc(question,filters,top_k_reader=top_k_reader),unsafe_allow_html=True)
-    if qtype == "FAQ":
-        st.write("## Retrieved FAQ:")
-        st.write(retrieve_faq(question,filters,top_k_reader=top_k_reader),unsafe_allow_html=True)
+        for result in results:
+            annotate_answer(result['answer'],result['context'])
+            '**Relevance:** ', result['relevance'] , '**source:** ' , result['source']
+        if debug:
+            st.subheader('REST API JSON response')
+            st.write(raw_json)
