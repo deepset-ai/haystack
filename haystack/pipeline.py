@@ -298,9 +298,9 @@ class JoinDocuments:
         """
         :param join_mode: `concatenate` to combine documents from multiple retrievers or `merge` to aggregate scores of
                           individual documents.
-        :param weights: A list of weights for adjusting document scores when using the `merge` join_mode. By default,
-                        equal weight is given to each retriever score. This param is not compatible with `concatenate`
-                        join_mode.
+        :param weights: A node-wise list(length of list must be equal to the number of input nodes) of weights for
+                        adjusting document scores when using the `merge` join_mode. By default, equal weight is given
+                        to each retriever score. This param is not compatible with the `concatenate` join_mode.
         :param top_k_join: Limit documents to top_k based on the resulting scores of the join.
         """
         assert join_mode in ["concatenate", "merge"], f"JoinDocuments node does not support '{join_mode}' join_mode."
