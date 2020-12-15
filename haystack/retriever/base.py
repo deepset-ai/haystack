@@ -179,7 +179,8 @@ class BaseRetriever(ABC):
             documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever)
         else:
             documents = self.retrieve(query=query, filters=filters)
-
+        document_ids = [doc.id for doc in documents]
+        logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {
             "query": query,
             "documents": documents,
