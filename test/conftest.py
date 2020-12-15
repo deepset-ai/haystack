@@ -234,24 +234,25 @@ def document_store(request, test_docs_xs):
         document_store.faiss_index.reset()
 
 
-def get_document_store(document_store_type):
+def get_document_store(document_store_type, embedding_field="embedding"):
     if document_store_type == "sql":
         if os.path.exists("haystack_test.db"):
             os.remove("haystack_test.db")
         document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
     elif document_store_type == "memory":
-        document_store = InMemoryDocumentStore(return_embedding=True)
+        document_store = InMemoryDocumentStore(return_embedding=True, embedding_field=embedding_field)
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
-        document_store = ElasticsearchDocumentStore(index="haystack_test", return_embedding=True)
+        document_store = ElasticsearchDocumentStore(
+            index="haystack_test", return_embedding=True, embedding_field=embedding_field
+        )
     elif document_store_type == "faiss":
         if os.path.exists("haystack_test_faiss.db"):
             os.remove("haystack_test_faiss.db")
         document_store = FAISSDocumentStore(
-            sql_url="sqlite:///haystack_test_faiss.db",
-            return_embedding=True
+            sql_url="sqlite:///haystack_test_faiss.db", return_embedding=True, embedding_field=embedding_field
         )
         return document_store
     else:
