@@ -325,7 +325,7 @@ class JoinDocuments:
             if self.weights:
                 weights = self.weights
             else:
-                weights = [1] * len(inputs)
+                weights = [1/len(inputs)] * len(inputs)
             for (input_from_node, _), weight in zip(inputs, weights):
                 for doc in input_from_node["documents"]:
                     if document_map.get(doc.id):  # document already exists; update score
