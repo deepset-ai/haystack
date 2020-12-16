@@ -5,14 +5,14 @@ from spacy_wordnet.wordnet_annotator import WordnetAnnotator
 
 
 class QueryExpander:
-    def __init__(self, num_keyword_repeats=3, num_synonyms_per_word=3):
+    def __init__(self, num_keyword_repeats=3, num_synonyms_per_word=3, economy_domains = []):
         self.num_keyword_repeats = num_keyword_repeats
         self.num_synonyms_per_word = num_synonyms_per_word
         self.spacy_models = {}
         self.spacy_models["multi"] = spacy.load("xx_ent_wiki_sm")
         self.spacy_models["en"] = spacy.load("en_core_web_sm")
         # TODO: Classify automatically
-        self.economy_domains = []
+        self.economy_domains = economy_domains
 
     def remove_stop(self, query, lang=None):
         if lang == None:
