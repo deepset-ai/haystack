@@ -1,7 +1,9 @@
 import pytest
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.pipeline import ExtractiveQAPipeline, Pipeline, FAQPipeline, DocumentSearchPipeline
+from haystack.pipeline import JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, DocumentSearchPipeline
+from haystack.retriever.dense import DensePassageRetriever
+from haystack.retriever.sparse import ElasticsearchRetriever
 
 
 @pytest.mark.slow
@@ -117,3 +119,56 @@ def test_document_search_pipeline(retriever, document_store):
     if isinstance(document_store, ElasticsearchDocumentStore):
         output = pipeline.run(query="How to test this?", filters={"source": ["wiki2"]}, top_k_retriever=5)
         assert len(output["documents"]) == 1
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_join_document_pipeline(document_store_with_docs, reader):
+    es = ElasticsearchRetriever(document_store=document_store_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla lives?"
+
+    # test merge without weights
+    join_node = JoinDocuments(join_mode="merge")
+    p = Pipeline()
+    p.add_node(component=es, name="R1", inputs=["Query"])
+    p.add_node(component=dpr, name="R2", inputs=["Query"])
+    p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
+    results = p.run(query=query)
+    assert len(results["documents"]) == 3
+
+    # test merge with weights
+    join_node = JoinDocuments(join_mode="merge", weights=[1000, 1], top_k_join=2)
+    p = Pipeline()
+    p.add_node(component=es, name="R1", inputs=["Query"])
+    p.add_node(component=dpr, name="R2", inputs=["Query"])
+    p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
+    results = p.run(query=query)
+    assert results["documents"][0].score > 1000
+    assert len(results["documents"]) == 2
+
+    # test concatenate
+    join_node = JoinDocuments(join_mode="concatenate")
+    p = Pipeline()
+    p.add_node(component=es, name="R1", inputs=["Query"])
+    p.add_node(component=dpr, name="R2", inputs=["Query"])
+    p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
+    results = p.run(query=query)
+    assert len(results["documents"]) == 3
+
+    # test join_node with reader
+    join_node = JoinDocuments()
+    p = Pipeline()
+    p.add_node(component=es, name="R1", inputs=["Query"])
+    p.add_node(component=dpr, name="R2", inputs=["Query"])
+    p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
+    p.add_node(component=reader, name="Reader", inputs=["Join"])
+    results = p.run(query=query)
+    assert results["answers"][0]["answer"] == "Berlin"
