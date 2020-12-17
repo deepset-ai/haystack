@@ -57,6 +57,12 @@ finder = Finder(reader, retriever)
 
 </div>
 
+<div class="recommendation">
+
+**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+
+</div>
+
 While these models can work on CPU, it is recommended that they are run using GPUs to keep query times low.
 
 ## Choosing the Right Model

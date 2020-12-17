@@ -56,3 +56,9 @@ or like this if directly calling the `Retriever`:
 ``` python
 retrieved_docs = retriever.retrieve(top_k=10)
 ```
+
+<div class="recommendation">
+
+**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+
+</div>
