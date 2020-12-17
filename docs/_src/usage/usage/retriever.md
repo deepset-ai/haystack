@@ -176,6 +176,12 @@ finder = Finder(reader, retriever)
 
 </div>
 
+<div class="recommendation">
+
+**Tip:** Haystack supports training of your own DPR model! Tutorial coming soon!
+
+</div>
+
 <!-- _comment: !! Training in future? !! -->
 <!-- _comment: !! Talk more about benchmarks, SoTA, results !! -->
 ## Embedding Retrieval
