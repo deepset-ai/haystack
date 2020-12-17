@@ -23,6 +23,7 @@ pydoc-markdown pydoc-markdown-preprocessor.yml
 pydoc-markdown pydoc-markdown-reader.yml
 pydoc-markdown pydoc-markdown-generator.yml
 pydoc-markdown pydoc-markdown-retriever.yml
+pydoc-markdown pydoc-markdown-pipelines.yml
 ```
 
 (Or run one of the commands above to update the docstrings only for a single module)

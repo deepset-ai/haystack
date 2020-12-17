@@ -145,3 +145,9 @@ When the query is complete, you can expect to see results that look something li
     }, ...
 ]
 ```
+
+<div class="recommendation">
+
+**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+
+</div>

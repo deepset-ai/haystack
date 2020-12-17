@@ -1,3 +1,140 @@
+<a name="sparse"></a>
+# Module sparse
+
+<a name="sparse.ElasticsearchRetriever"></a>
+## ElasticsearchRetriever Objects
+
+```python
+class ElasticsearchRetriever(BaseRetriever)
+```
+
+<a name="sparse.ElasticsearchRetriever.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(document_store: ElasticsearchDocumentStore, custom_query: str = None)
+```
+
+**Arguments**:
+
+- `document_store`: an instance of a DocumentStore to retrieve documents from.
+- `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
+
+Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
+names must match with the filters dict supplied in self.retrieve().
+::
+
+**An example custom_query:**
+```python
+|    {
+|        "size": 10,
+|        "query": {
+|            "bool": {
+|                "should": [{"multi_match": {
+|                    "query": "${query}",                 // mandatory query placeholder
+|                    "type": "most_fields",
+|                    "fields": ["text", "title"]}}],
+|                "filter": [                                 // optional custom filters
+|                    {"terms": {"year": "${years}"}},
+|                    {"terms": {"quarter": "${quarters}"}},
+|                    {"range": {"date": {"gte": "${date}"}}}
+|                    ],
+|            }
+|        },
+|    }
+```
+
+**For this custom_query, a sample retrieve() could be:**
+```python
+|    self.retrieve(query="Why did the revenue increase?",
+|                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+```
+
+<a name="sparse.ElasticsearchRetriever.retrieve"></a>
+#### retrieve
+
+```python
+ | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query.
+
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+
+<a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
+## ElasticsearchFilterOnlyRetriever Objects
+
+```python
+class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
+```
+
+Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
+Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
+
+<a name="sparse.ElasticsearchFilterOnlyRetriever.retrieve"></a>
+#### retrieve
+
+```python
+ | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query.
+
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+
+<a name="sparse.TfidfRetriever"></a>
+## TfidfRetriever Objects
+
+```python
+class TfidfRetriever(BaseRetriever)
+```
+
+Read all documents from a SQL backend.
+
+Split documents into smaller units (eg, paragraphs or pages) to reduce the
+computations when text is passed on to a Reader for QA.
+
+It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
+
+<a name="sparse.TfidfRetriever.retrieve"></a>
+#### retrieve
+
+```python
+ | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query.
+
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+
+<a name="sparse.TfidfRetriever.fit"></a>
+#### fit
+
+```python
+ | fit()
+```
+
+Performing training on this class according to the TF-IDF algorithm.
+
 <a name="dense"></a>
 # Module dense
 
@@ -111,7 +248,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_negatives: int = 0, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, optimizer_name: str = "TransformersAdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr-tutorial", query_encoder_save_dir: str = "lm1", passage_encoder_save_dir: str = "lm2")
+ | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, optimizer_name: str = "TransformersAdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
 ```
 
 train a DensePassageRetrieval model
@@ -125,7 +262,7 @@ train a DensePassageRetrieval model
 - `batch_size`: total number of samples in 1 batch of data
 - `embed_title`: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
 - `num_hard_negatives`: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
-- `num_negatives`: number of negative passages(any random passage from dataset which do not contain answer to query)
+- `num_positives`: number of positive passages
 - `n_epochs`: number of epochs to train the model on
 - `evaluate_every`: number of training steps after evaluation is run
 - `n_gpu`: number of gpus to train on
@@ -144,7 +281,7 @@ train a DensePassageRetrieval model
 #### save
 
 ```python
- | save(save_dir: Union[Path, str])
+ | save(save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder")
 ```
 
 Save DensePassageRetriever to the specified directory.
@@ -152,6 +289,8 @@ Save DensePassageRetriever to the specified directory.
 **Arguments**:
 
 - `save_dir`: Directory to save to.
+- `query_encoder_dir`: Directory in save_dir that contains query encoder model.
+- `passage_encoder_dir`: Directory in save_dir that contains passage encoder model.
 
 **Returns**:
 
@@ -162,7 +301,7 @@ None
 
 ```python
  | @classmethod
- | load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product")
+ | load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder")
 ```
 
 Load DensePassageRetriever from the specified directory.
@@ -269,143 +408,6 @@ Create embeddings for a list of passages. For this Retriever type: The same as c
 
 Embeddings, one per input passage
 
-<a name="sparse"></a>
-# Module sparse
-
-<a name="sparse.ElasticsearchRetriever"></a>
-## ElasticsearchRetriever Objects
-
-```python
-class ElasticsearchRetriever(BaseRetriever)
-```
-
-<a name="sparse.ElasticsearchRetriever.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(document_store: ElasticsearchDocumentStore, custom_query: str = None)
-```
-
-**Arguments**:
-
-- `document_store`: an instance of a DocumentStore to retrieve documents from.
-- `custom_query`: query string as per Elasticsearch DSL with a mandatory question placeholder($question).
-
-Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-names must match with the filters dict supplied in self.retrieve().
-::
-
-**An example custom_query:**
-```python
-|    {
-|        "size": 10,
-|        "query": {
-|            "bool": {
-|                "should": [{"multi_match": {
-|                    "query": "${question}",                 // mandatory $question placeholder
-|                    "type": "most_fields",
-|                    "fields": ["text", "title"]}}],
-|                "filter": [                                 // optional custom filters
-|                    {"terms": {"year": "${years}"}},
-|                    {"terms": {"quarter": "${quarters}"}},
-|                    {"range": {"date": {"gte": "${date}"}}}
-|                    ],
-|            }
-|        },
-|    }
-```
-
-**For this custom_query, a sample retrieve() could be:**
-```python
-|    self.retrieve(query="Why did the revenue increase?",
-|                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
-```
-
-<a name="sparse.ElasticsearchRetriever.retrieve"></a>
-#### retrieve
-
-```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
-```
-
-Scan through documents in DocumentStore and return a small number documents
-that are most relevant to the query.
-
-**Arguments**:
-
-- `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-- `top_k`: How many documents to return per query.
-- `index`: The name of the index in the DocumentStore from which to retrieve documents
-
-<a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
-## ElasticsearchFilterOnlyRetriever Objects
-
-```python
-class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
-```
-
-Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
-Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
-
-<a name="sparse.ElasticsearchFilterOnlyRetriever.retrieve"></a>
-#### retrieve
-
-```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
-```
-
-Scan through documents in DocumentStore and return a small number documents
-that are most relevant to the query.
-
-**Arguments**:
-
-- `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-- `top_k`: How many documents to return per query.
-- `index`: The name of the index in the DocumentStore from which to retrieve documents
-
-<a name="sparse.TfidfRetriever"></a>
-## TfidfRetriever Objects
-
-```python
-class TfidfRetriever(BaseRetriever)
-```
-
-Read all documents from a SQL backend.
-
-Split documents into smaller units (eg, paragraphs or pages) to reduce the
-computations when text is passed on to a Reader for QA.
-
-It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
-
-<a name="sparse.TfidfRetriever.retrieve"></a>
-#### retrieve
-
-```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
-```
-
-Scan through documents in DocumentStore and return a small number documents
-that are most relevant to the query.
-
-**Arguments**:
-
-- `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-- `top_k`: How many documents to return per query.
-- `index`: The name of the index in the DocumentStore from which to retrieve documents
-
-<a name="sparse.TfidfRetriever.fit"></a>
-#### fit
-
-```python
- | fit()
-```
-
-Performing training on this class according to the TF-IDF algorithm.
-
 <a name="base"></a>
 # Module base
 
@@ -451,7 +453,7 @@ Wrapper method used to time functions.
 ```
 
 Performs evaluation on the Retriever.
-Retriever is evaluated based on whether it finds the correct document given the question string and at which
+Retriever is evaluated based on whether it finds the correct document given the query string and at which
 position in the ranking of documents the correct document is.
 
 |  Returns a dict containing the following metrics:
@@ -469,7 +471,7 @@ per query.
 
 - `label_index`: Index/Table in DocumentStore where labeled questions are stored
 - `doc_index`: Index/Table in DocumentStore where documents that are used for evaluation are stored
-- `top_k`: How many documents to return per question
+- `top_k`: How many documents to return per query
 - `open_domain`: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
 contained in the retrieved docs (common approach in open-domain QA).
 If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids

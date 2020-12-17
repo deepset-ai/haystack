@@ -36,6 +36,7 @@ Here are the combinations which are supported:
 
 See [Optimization](/docs/latest/optimizationmd) for suggestions on how to choose top-k values.
 
+
 ## TF-IDF
 
 ### Description
@@ -75,6 +76,12 @@ retriever = TfidfRetriever(document_store)
 finder = Finder(reader, retriever)
 ```
 
+<div class="recommendation">
+
+**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+
+</div>
+
 ## BM25 (Recommended)
 
 ### Description
@@ -97,6 +104,12 @@ retriever = ElasticsearchRetriever(document_store)
 ...
 finder = Finder(reader, retriever)
 ```
+
+<div class="recommendation">
+
+**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+
+</div>
 
 See [this](https://www.elastic.co/blog/practical-bm25-part-2-the-bm25-algorithm-and-its-variables) blog post for more details about the algorithm.
 
@@ -157,6 +170,18 @@ retriever = DensePassageRetriever(
 finder = Finder(reader, retriever)
 ```
 
+<div class="recommendation">
+
+**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+
+</div>
+
+<div class="recommendation">
+
+**Tip:** Haystack supports training of your own DPR model! Tutorial coming soon!
+
+</div>
+
 <!-- _comment: !! Training in future? !! -->
 <!-- _comment: !! Talk more about benchmarks, SoTA, results !! -->
 ## Embedding Retrieval
@@ -191,6 +216,12 @@ retriever = EmbeddingRetriever(document_store=document_store,
 ...
 finder = Finder(reader, retriever)
 ```
+
+<div class="recommendation">
+
+**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+
+</div>
 
 ## Deeper Dive: Dense vs Sparse
 

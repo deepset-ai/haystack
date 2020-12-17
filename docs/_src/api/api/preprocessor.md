@@ -55,6 +55,19 @@ Perform document splitting on a single document. This method can split on differ
 with different strides. It can also respect sectence boundaries. Its exact functionality is defined by
 the parameters passed into PreProcessor.__init__(). Takes a single document as input and returns a list of documents.
 
+<a name="cleaning"></a>
+# Module cleaning
+
+<a name="cleaning.clean_wiki_text"></a>
+#### clean\_wiki\_text
+
+```python
+clean_wiki_text(text: str) -> str
+```
+
+Clean wikipedia text by removing multiple new lines, removing extremely short lines,
+adding paragraph breaks and removing empty paragraphs
+
 <a name="utils"></a>
 # Module utils
 
@@ -159,17 +172,4 @@ class BasePreProcessor()
 ```
 
 Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
-
-<a name="cleaning"></a>
-# Module cleaning
-
-<a name="cleaning.clean_wiki_text"></a>
-#### clean\_wiki\_text
-
-```python
-clean_wiki_text(text: str) -> str
-```
-
-Clean wikipedia text by removing multiple new lines, removing extremely short lines,
-adding paragraph breaks and removing empty paragraphs
 

@@ -1,6 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/file_converter]
+    search_path: [../../../../haystack]
+    modules: ['pipeline']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter
@@ -14,4 +15,4 @@ renderer:
   descriptive_module_title: true
   add_method_class_prefix: false
   add_member_class_prefix: false
-  filename: file_converter.md
+  filename: pipelines.md

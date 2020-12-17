@@ -304,6 +304,20 @@ class InMemoryDocumentStore(BaseDocumentStore)
 
 In-memory document store
 
+<a name="memory.InMemoryDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(embedding_field: Optional[str] = "embedding", return_embedding: bool = False, similarity="dot_product")
+```
+
+**Arguments**:
+
+- `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `return_embedding`: To return document embedding
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+
 <a name="memory.InMemoryDocumentStore.write_documents"></a>
 #### write\_documents
 
@@ -492,6 +506,8 @@ class SQLDocumentStore(BaseDocumentStore)
 ```python
  | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
 ```
+
+An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
 
 **Arguments**:
 
@@ -775,6 +791,8 @@ documents. When set as True, any document with an existing ID gets updated.
 If set to False, an error is raised if the document ID of the document being
 added already exists.
 - `index`: Name of index in document store to use.
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents

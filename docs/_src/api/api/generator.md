@@ -22,23 +22,23 @@ i.e. the model can easily adjust to domain documents even after training has fin
 **Example**
 
 ```python
-|     question = "who got the first nobel prize in physics?"
+|     query = "who got the first nobel prize in physics?"
 |
 |     # Retrieve related documents from retriever
-|     retrieved_docs = retriever.retrieve(query=question)
+|     retrieved_docs = retriever.retrieve(query=query)
 |
-|     # Now generate answer from question and retrieved documents
+|     # Now generate answer from query and retrieved documents
 |     generator.predict(
-|        question=question,
+|        query=query,
 |        documents=retrieved_docs,
 |        top_k=1
 |     )
 |
 |     # Answer
 |
-|     {'question': 'who got the first nobel prize in physics',
+|     {'query': 'who got the first nobel prize in physics',
 |      'answers':
-|          [{'question': 'who got the first nobel prize in physics',
+|          [{'query': 'who got the first nobel prize in physics',
 |            'answer': ' albert einstein',
 |            'meta': { 'doc_ids': [...],
 |                      'doc_scores': [80.42758 ...],
@@ -77,15 +77,15 @@ See https://huggingface.co/models for full list of available models.
 #### predict
 
 ```python
- | predict(question: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
 ```
 
-Generate the answer to the input question. The generation will be conditioned on the supplied documents.
+Generate the answer to the input query. The generation will be conditioned on the supplied documents.
 These document can for example be retrieved via the Retriever.
 
 **Arguments**:
 
-- `question`: Question
+- `query`: Query
 - `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
 - `top_k`: Number of returned answers
 
@@ -94,9 +94,9 @@ These document can for example be retrieved via the Retriever.
 Generated answers plus additional infos in a dict like this:
 
 ```python
-|     {'question': 'who got the first nobel prize in physics',
+|     {'query': 'who got the first nobel prize in physics',
 |      'answers':
-|          [{'question': 'who got the first nobel prize in physics',
+|          [{'query': 'who got the first nobel prize in physics',
 |            'answer': ' albert einstein',
 |            'meta': { 'doc_ids': [...],
 |                      'doc_scores': [80.42758 ...],
@@ -123,14 +123,14 @@ Abstract class for Generators
 
 ```python
  | @abstractmethod
- | predict(question: str, documents: List[Document], top_k: Optional[int]) -> Dict
+ | predict(query: str, documents: List[Document], top_k: Optional[int]) -> Dict
 ```
 
 Abstract method to generate answers.
 
 **Arguments**:
 
-- `question`: Question
+- `query`: Query
 - `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
 - `top_k`: Number of returned answers
 

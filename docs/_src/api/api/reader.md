@@ -1,91 +1,3 @@
-<a name="transformers"></a>
-# Module transformers
-
-<a name="transformers.TransformersReader"></a>
-## TransformersReader Objects
-
-```python
-class TransformersReader(BaseReader)
-```
-
-Transformer based model for extractive Question Answering using the HuggingFace's transformers framework
-(https://github.com/huggingface/transformers).
-While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
-With this reader, you can directly get predictions via predict()
-
-<a name="transformers.TransformersReader.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
-```
-
-Load a QA model from Transformers.
-Available models include:
-
-- ``'distilbert-base-uncased-distilled-squad`'``
-- ``'bert-large-cased-whole-word-masking-finetuned-squad``'
-- ``'bert-large-uncased-whole-word-masking-finetuned-squad``'
-
-See https://huggingface.co/models for full list of available QA models
-
-**Arguments**:
-
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
-'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
-See https://huggingface.co/models for full list of available models.
-- `tokenizer`: Name of the tokenizer (usually the same as model)
-- `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
-The context usually helps users to understand if the answer really makes sense.
-- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
-- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
-Note that this is not the number of "final answers" you will receive
-(see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
-and that no_answer can be included in the sorted list of predictions.
-- `return_no_answers`: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
-If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
-If you would like to set no_answer_boost, use a `FARMReader`.
-- `max_seq_len`: max sequence length of one input text for the model
-- `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
-
-<a name="transformers.TransformersReader.predict"></a>
-#### predict
-
-```python
- | predict(question: str, documents: List[Document], top_k: Optional[int] = None)
-```
-
-Use loaded QA model to find answers for a question in the supplied list of Document.
-
-Returns dictionaries containing answers sorted by (desc.) probability.
-Example:
-
-```python
-|{
-|    'question': 'Who is the father of Arya Stark?',
-|    'answers':[
-|                 {'answer': 'Eddard,',
-|                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-|                 'offset_answer_start': 147,
-|                 'offset_answer_end': 154,
-|                 'probability': 0.9787139466668613,
-|                 'score': None,
-|                 'document_id': '1337'
-|                 },...
-|              ]
-|}
-```
-
-**Arguments**:
-
-- `question`: Question string
-- `documents`: List of Document in which to search for the answer
-- `top_k`: The maximum number of answers to return
-
-**Returns**:
-
-Dict containing question and answers
-
 <a name="farm"></a>
 # Module farm
 
@@ -108,7 +20,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: Optional[float] = None, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128)
+ | __init__(model_name_or_path: Union[str, Path], context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128)
 ```
 
 **Arguments**:
@@ -123,9 +35,10 @@ Memory consumption is much lower in inference mode. Recommendation: Increase the
 to a value so only a single batch is used.
 - `use_gpu`: Whether to use GPU (if available)
 - `no_ans_boost`: How much the no_answer logit is boosted/increased.
-If set to None (default), disables returning "no answer" predictions.
+If set to 0 (default), the no_answer logit is not changed.
 If a negative number, there is a lower chance of "no_answer" being predicted.
 If a positive number, there is an increased chance of "no_answer"
+- `return_no_answer`: Whether to include no_answer predictions in the results.
 - `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
 Note that this is not the number of "final answers" you will receive
 (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
@@ -189,6 +102,15 @@ See details on: https://nvidia.github.io/apex/amp.html
 
 None
 
+<a name="farm.FARMReader.update_parameters"></a>
+#### update\_parameters
+
+```python
+ | update_parameters(context_window_size: Optional[int] = None, no_ans_boost: Optional[float] = None, return_no_answer: Optional[bool] = None, max_seq_len: Optional[int] = None, doc_stride: Optional[int] = None)
+```
+
+Hot update parameters of a loaded Reader. It may not to be safe when processing concurrent requests.
+
 <a name="farm.FARMReader.save"></a>
 #### save
 
@@ -206,37 +128,37 @@ Saves the Reader model so that it can be reused at a later point in time.
 #### predict\_batch
 
 ```python
- | predict_batch(question_doc_list: List[dict], top_k_per_question: int = None, batch_size: int = None)
+ | predict_batch(query_doc_list: List[dict], top_k: int = None, batch_size: int = None)
 ```
 
-Use loaded QA model to find answers for a list of questions in each question's supplied list of Document.
+Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
 
 Returns list of dictionaries containing answers sorted by (desc.) probability
 
 **Arguments**:
 
-- `question_doc_list`: List of dictionaries containing questions with their retrieved documents
-- `top_k_per_question`: The maximum number of answers to return for each question
+- `query_doc_list`: List of dictionaries containing queries with their retrieved documents
+- `top_k`: The maximum number of answers to return for each query
 - `batch_size`: Number of samples the model receives in one batch for inference
 
 **Returns**:
 
-List of dictionaries containing question and answers
+List of dictionaries containing query and answers
 
 <a name="farm.FARMReader.predict"></a>
 #### predict
 
 ```python
- | predict(question: str, documents: List[Document], top_k: Optional[int] = None)
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None)
 ```
 
-Use loaded QA model to find answers for a question in the supplied list of Document.
+Use loaded QA model to find answers for a query in the supplied list of Document.
 
 Returns dictionaries containing answers sorted by (desc.) probability.
 Example:
 ```python
 |{
-|    'question': 'Who is the father of Arya Stark?',
+|    'query': 'Who is the father of Arya Stark?',
 |    'answers':[
 |                 {'answer': 'Eddard,',
 |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
@@ -252,13 +174,13 @@ Example:
 
 **Arguments**:
 
-- `question`: Question string
+- `query`: Query string
 - `documents`: List of Document in which to search for the answer
 - `top_k`: The maximum number of answers to return
 
 **Returns**:
 
-Dict containing question and answers
+Dict containing query and answers
 
 <a name="farm.FARMReader.eval_on_file"></a>
 #### eval\_on\_file
@@ -367,6 +289,94 @@ float32 could still be be more performant.
 - `quantize`: convert floating point number to integers
 - `task_type`: Type of task for the model. Available options: "question_answering" or "embeddings".
 - `opset_version`: ONNX opset version
+
+<a name="transformers"></a>
+# Module transformers
+
+<a name="transformers.TransformersReader"></a>
+## TransformersReader Objects
+
+```python
+class TransformersReader(BaseReader)
+```
+
+Transformer based model for extractive Question Answering using the HuggingFace's transformers framework
+(https://github.com/huggingface/transformers).
+While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
+With this reader, you can directly get predictions via predict()
+
+<a name="transformers.TransformersReader.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+```
+
+Load a QA model from Transformers.
+Available models include:
+
+- ``'distilbert-base-uncased-distilled-squad`'``
+- ``'bert-large-cased-whole-word-masking-finetuned-squad``'
+- ``'bert-large-uncased-whole-word-masking-finetuned-squad``'
+
+See https://huggingface.co/models for full list of available QA models
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
+See https://huggingface.co/models for full list of available models.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
+The context usually helps users to understand if the answer really makes sense.
+- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+Note that this is not the number of "final answers" you will receive
+(see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
+and that no_answer can be included in the sorted list of predictions.
+- `return_no_answers`: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
+If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
+If you would like to set no_answer_boost, use a `FARMReader`.
+- `max_seq_len`: max sequence length of one input text for the model
+- `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
+
+<a name="transformers.TransformersReader.predict"></a>
+#### predict
+
+```python
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None)
+```
+
+Use loaded QA model to find answers for a query in the supplied list of Document.
+
+Returns dictionaries containing answers sorted by (desc.) probability.
+Example:
+
+```python
+|{
+|    'query': 'Who is the father of Arya Stark?',
+|    'answers':[
+|                 {'answer': 'Eddard,',
+|                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
+|                 'offset_answer_start': 147,
+|                 'offset_answer_end': 154,
+|                 'probability': 0.9787139466668613,
+|                 'score': None,
+|                 'document_id': '1337'
+|                 },...
+|              ]
+|}
+```
+
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
 
 <a name="base"></a>
 # Module base
