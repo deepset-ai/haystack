@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/document_store]
+    search_path: [../../../../../haystack/document_store]
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter

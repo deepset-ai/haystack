@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/generator]
+    search_path: [../../../../../haystack/generator]
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter
