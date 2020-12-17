@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
 
+from conftest import get_document_store
 from haystack import Document, Label
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
@@ -367,6 +368,20 @@ def test_elasticsearch_update_meta(document_store):
     assert len(updated_document.meta.keys()) == 2
     assert updated_document.meta["meta_key_1"] == "99"
     assert updated_document.meta["meta_key_2"] == "2"
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
+def test_custom_embedding_field(document_store_type):
+    document_store = get_document_store(
+        document_store_type=document_store_type, embedding_field="custom_embedding_field"
+    )
+    doc_to_write = {"text": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
+    document_store.write_documents([doc_to_write])
+    documents = document_store.get_all_documents(return_embedding=True)
+    assert len(documents) == 1
+    assert documents[0].text == "test"
+    np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
 
 
 @pytest.mark.elasticsearch
