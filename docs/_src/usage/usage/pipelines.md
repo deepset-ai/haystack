@@ -1,3 +1,12 @@
+<!---
+title: "Pipelines"
+metaTitle: "Pipelines"
+metaDescription: ""
+slug: "/docs/pipelines"
+date: "2020-11-05"
+id: "pipelinesmd"
+--->
+
 # Pipelines
 
 The new Pipelines class was added in Haystack 0.6.0 to give a more flexible way of defining your processing steps. 
