@@ -187,6 +187,7 @@ The Document Stores have different characteristics. You should choose one depend
 **Pros:**
 - Simple & fast to test
 - No database requirements
+- Supports MySQL, PostgreSQL and SQLite
 
 **Cons:** 
 - Not scalable
