@@ -138,10 +138,9 @@ The Document Stores have different characteristics. You should choose one depend
 <div class="tabcontent">
 
 **Pros:** 
-- Fast & accurate sparse retrieval
+- Fast & accurate sparse retrieval with many tuning options
 - Basic support for dense retrieval
-- Production-ready 
-- Many options to tune sparse retrieval
+- Production-ready
 - Support also for Open Distro
 
 **Cons:** 
