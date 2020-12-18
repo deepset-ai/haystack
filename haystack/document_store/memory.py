@@ -20,6 +20,12 @@ class InMemoryDocumentStore(BaseDocumentStore):
     """
 
     def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = False, similarity="dot_product"):
+        """
+        :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param return_embedding: To return document embedding
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        """
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = "document"
         self.label_index: str = "label"

@@ -73,6 +73,8 @@ class FAISSDocumentStore(SQLDocumentStore):
                                           If set to False, an error is raised if the document ID of the document being
                                           added already exists.
         :param index: Name of index in document store to use.
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         """
         self.vector_dim = vector_dim
 

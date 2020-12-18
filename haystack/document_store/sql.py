@@ -71,6 +71,8 @@ class SQLDocumentStore(BaseDocumentStore):
         update_existing_documents: bool = False,
     ):
         """
+        An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
+
         :param url: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
         :param index: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents. 
                       This parameter sets the default value for document index.
