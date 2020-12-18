@@ -29,9 +29,7 @@ Initialising a new DocumentStore is straight forward.
 
 ```python
 document_store = ElasticsearchDocumentStore()
-
 # or
-
 document_store = OpenDistroElasticsearchDocumentStore()
 
 ```
