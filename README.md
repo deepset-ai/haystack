@@ -94,7 +94,7 @@ We recommend Elasticsearch or FAISS, but have also more light-weight options for
 5.  **Reader**: Neural network (e.g. BERT or RoBERTA) that reads through texts in detail
     to find an answer. The Reader takes multiple passages of text as input and returns top-n answers. Models are trained via [FARM](https://github.com/deepset-ai/FARM) or [Transformers](https://github.com/huggingface/transformers) on SQuAD like tasks.  You can just load a pretrained model from [Hugging Face's model hub](https://huggingface.co/models) or fine-tune it on your own domain data.
 6.  **Generator**: Neural network (e.g. RAG) that *generates* an answer for a given question conditioned on the retrieved documents from the retriever.
-6.  **Finder**: Glues together a Retriever + Reader/Generator as a pipeline to provide an easy-to-use question answering interface.
+6.  **Pipeline**: Stick building blocks together to highly custom pipelines that are represented as Directed Acyclic Graphs (DAG). Think of it as "Apache Airflow for search".
 7.  **REST API**: Exposes a simple API based on fastAPI for running QA search, uploading files and collecting user feedback for continuous learning.
 8.  **Haystack Annotate**: Create custom QA labels to improve performance of your domain-specific models. [Hosted version](https://annotate.deepset.ai/login) or [Docker images](https://github.com/deepset-ai/haystack/tree/master/annotation_tool). 
 
@@ -102,8 +102,49 @@ We recommend Elasticsearch or FAISS, but have also more light-weight options for
 
 ## Usage
 
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/code_snippet_usage.png)
+```python
+# DB to store your docs
+document_store = ElasticsearchDocumentStore(host="localhost", username="", password="",
+                                            index="document", embedding_dim=768,                                                                 embedding_field="embedding")
 
+# Index your docs
+# (Options: Convert text from PDFs etc. via FileConverter; Split and clean docs with the PreProcessor)
+docs = [Document(text="Arya accompanies her father Ned and her sister Sansa to King's Landing. Before their departure ...", meta={}), 
+        ...]
+
+document_store.write_documents([doc])
+
+# Init Retriever: Fast algorithm to identify most promising candidate docs
+# (Options: DPR, TF-IDF, Elasticsearch, Plain Embeddings ..)
+retriever = DensePassageRetriever(document_store=document_store,                         
+                                query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                )
+document_store.update_embeddings(retriever)
+
+# Init Reader: Powerful, but slower neural model 
+# (Options: FARM or Transformers Framework; Extractive or generative models)
+reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
+
+# The Pipeline sticks together Reader + Retriever to a DAG
+# There's many different pipeline types and you can easily build your own
+pipeline = ExtractiveQAPipeline(reader, retriever)
+
+# Voilá! Ask a question!
+prediction = pipeline.run(query="Who is the father of Arya Stark?", top_k_retriever=10,                                         top_k_reader=3)
+print_answers(prediction, details="minimal")
+
+[   {   'answer': 'Eddard',
+        'context': """... She travels with her father, Eddard, to 
+                   King's Landing when he is made Hand of the King ..."""},
+    {   'answer': 'Ned',
+        'context': """... girl disguised as a boy all along and is surprised 
+                   to learn she is Arya, Ned Stark's daughter ..."""},
+    {   'answer': 'Ned',
+        'context': """... Arya accompanies her father Ned and her sister Sansa to
+                   King's Landing. Before their departure ..."""}
+]
+``` 
 ## Tutorials
 
 -   Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
@@ -132,7 +173,7 @@ We recommend Elasticsearch or FAISS, but have also more light-weight options for
 
 
 ## Quick Tour
-[File Conversion](https://github.com/deepset-ai/haystack/blob/master/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/master/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/master/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/master/README.md#4-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-readers) | [REST API](https://github.com/deepset-ai/haystack/blob/master/README.md#6-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/master/README.md#7-labeling-tool) 
+[File Conversion](https://github.com/deepset-ai/haystack/blob/master/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/master/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/master/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/master/README.md#4-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-readers) | [Pipelines](https://github.com/deepset-ai/haystack/blob/master/README.md#6-pipelines) | [REST API](https://github.com/deepset-ai/haystack/blob/master/README.md#7-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/master/README.md#8-labeling-tool) 
 
 ### 1) File Conversion
 **What**  
@@ -295,7 +336,36 @@ reader.predict(question="Who is the father of Arya Starck?", documents=documents
 ```
 -> See [docs](https://haystack.deepset.ai/docs/latest/readermd) for details
 
-### 6) REST API
+### 5) Pipelines
+
+**What**  
+In order to build modern search pipelines, you need two things: powerful building blocks and a flexible way to stick them together.
+The `Pipeline` class is exactly build for this purpose and enables many search scenarios beyond QA. The core idea: you can build a Directed Acyclic Graph (DAG) where each node is one "building block" (Reader, Retriever, Generator ...).
+
+**Available Options**   
+- Standard nodes: Reader, Retriever, Generator ...
+- Join nodes: For example, combine results of multiple retrievers via the `JoinDocuments` node
+- Decision Nodes: For example, classify an incoming query and depending on the results execute only certain branch of your graph 
+
+**Example**  
+A minimal Open-Domain QA Pipeline:
+
+```python
+p = Pipeline()
+p.add_node(component=retriever, name="ESRetriever1", inputs=["Query"])
+p.add_node(component=reader, name="QAReader", inputs=["ESRetriever1"])
+res = p.run(query="What did Einstein work on?", top_k_retriever=1)
+
+```
+You can **draw the DAG** to better inspect what you are building:
+```python
+p.draw(path="custom_pipe.png")
+```
+![image](https://user-images.githubusercontent.com/1563902/102451716-54813700-4039-11eb-881e-f3c01b47ca15.png)
+
+-> See [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd) for details and example of more complex pipelines
+
+### 7) REST API
 **What**  
 A simple REST API based on [FastAPI](https://fastapi.tiangolo.com/) is provided to:
 
@@ -315,7 +385,7 @@ To serve the API, adjust the values in `rest_api/config.py` and run:
 You will find the Swagger API documentation at
 <http://127.0.0.1:8000/docs>
 
-### 7) Labeling Tool
+### 8) Labeling Tool
 
 -   Use the [hosted version](https://annotate.deepset.ai/login) (Beta) or deploy it yourself with the [Docker Images](https://github.com/deepset-ai/haystack/blob/master/annotation_tool).
 -   Create labels with different techniques: Come up with questions (+ answers) while reading passages (SQuAD style) or have a set of predefined questions and look for answers in the document (~ Natural Questions).
