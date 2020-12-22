@@ -336,7 +336,7 @@ reader.predict(question="Who is the father of Arya Starck?", documents=documents
 ```
 -> See [docs](https://haystack.deepset.ai/docs/latest/readermd) for details
 
-### 5) Pipelines
+### 6) Pipelines
 
 **What**  
 In order to build modern search pipelines, you need two things: powerful building blocks and a flexible way to stick them together.
