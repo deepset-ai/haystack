@@ -83,7 +83,7 @@ retriever = TfidfRetriever(document_store=document_store)
 #
 # Load a  local model or any of the QA models on
 # Hugging Face's model hub (https://huggingface.co/models)
-reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False)
+reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
 
 
 # #### TransformersReader

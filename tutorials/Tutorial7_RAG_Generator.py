@@ -48,14 +48,14 @@ retriever = DensePassageRetriever(
     document_store=document_store,
     query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
     passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-    use_gpu=False,
+    use_gpu=True,
     embed_title=True,
 )
 
 # Initialize RAG Generator
 generator = RAGenerator(
     model_name_or_path="facebook/rag-token-nq",
-    use_gpu=False,
+    use_gpu=True,
     top_k_answers=1,
     max_length=200,
     min_length=2,
