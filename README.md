@@ -105,12 +105,13 @@ We recommend Elasticsearch or FAISS, but have also more light-weight options for
 ```python
 # DB to store your docs
 document_store = ElasticsearchDocumentStore(host="localhost", username="", password="",
-                                            index="document", embedding_dim=768,                                                                 embedding_field="embedding")
+                                            index="document", embedding_dim=768,
+                                            embedding_field="embedding")
 
 # Index your docs
 # (Options: Convert text from PDFs etc. via FileConverter; Split and clean docs with the PreProcessor)
 docs = [Document(text="Arya accompanies her father Ned and her sister Sansa to King's Landing. Before their departure ...", meta={}), 
-        ...]
+       ...]
 
 document_store.write_documents([doc])
 
@@ -131,7 +132,7 @@ reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=Tr
 pipeline = ExtractiveQAPipeline(reader, retriever)
 
 # Voilá! Ask a question!
-prediction = pipeline.run(query="Who is the father of Arya Stark?", top_k_retriever=10,                                         top_k_reader=3)
+prediction = pipeline.run(query="Who is the father of Arya Stark?", top_k_retriever=10,top_k_reader=3)
 print_answers(prediction, details="minimal")
 
 [   {   'answer': 'Eddard',
