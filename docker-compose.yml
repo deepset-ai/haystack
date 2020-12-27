@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   haystack-api:
     build:
@@ -27,10 +27,16 @@ services:
     command: "/bin/bash -c 'sleep 15 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180 --preload'"
   elasticsearch:
     # This will start an empty elasticsearch instance (so you have to add your documents yourself)
-    image: "elasticsearch:7.6.1"
+    #image: "elasticsearch:7.6.1"
     # If you want a demo image instead that is "ready-to-query" with some indexed Game of Thrones articles:
-    #image: "deepset/elasticsearch-game-of-thrones"
+    image: "deepset/elasticsearch-game-of-thrones"
     ports:
       - 9200:9200
     environment:
       - discovery.type=single-node
+  ui:
+    image: "deepset/haystack-streamlit-ui"
+    ports:
+      - 8501:8501
+    environment:
+      - API_ENDPOINT=http://haystack-api:8000
