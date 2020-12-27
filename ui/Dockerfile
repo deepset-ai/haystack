@@ -5,12 +5,12 @@ WORKDIR /home/user
 RUN apt-get update && apt-get install -y curl git pkg-config cmake
 
 # copy code
-COPY frontend /home/user/
+COPY utils.py /home/user/
+COPY webapp.py /home/user/
 
 # install as a package
-COPY frontend/requirements.txt /home/user/
+COPY requirements.txt /home/user/
 RUN pip install -r requirements.txt
-RUN pip install -e .
 
 EXPOSE 8501
 

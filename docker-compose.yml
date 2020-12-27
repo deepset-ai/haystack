@@ -34,8 +34,8 @@ services:
       - 9200:9200
     environment:
       - discovery.type=single-node
-  frontend:
-    image: "tanmaylaud/haystack-frontend:1.0"
+  ui:
+    image: "deepset/haystack-streamlit-ui"
     ports:
       - 8501:8501
     environment:

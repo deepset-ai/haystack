@@ -1,10 +1,8 @@
 import requests
 import streamlit as st
 import os
-# For financial data, you can try this API_ENDPOINT:
-# https://haystack-demo-api.deepset.ai
-# API_ENDPOINT = "http://localhost:8000/models/"
-API_ENDPOINT = os.getenv("API_ENDPOINT","http://localhost:8000")
+
+API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
 MODEL_ID = "1"
 DOC_REQUEST = "doc-qa"
 
@@ -26,9 +24,12 @@ def format_request(question,filters=None,top_k_reader=5,top_k_retriever=5):
  
 @st.cache(show_spinner=False)
 def retrieve_doc(question,filters=None,top_k_reader=5,top_k_retriever=5):
+   # Query Haystack API
    url = API_ENDPOINT +'/models/' + MODEL_ID + "/" + DOC_REQUEST
    req = format_request(question,filters,top_k_reader=top_k_reader,top_k_retriever=top_k_retriever)
    response_raw = requests.post(url,json=req).json()
+
+   # Format response
    result = []
    answers = response_raw['results'][0]['answers']
    for i in range(top_k_reader):
