@@ -1,7 +1,8 @@
 ## Demo UI
 
-This is a minimal UI that can spin up to test Haystack for your prototypes. It's based on streamlit. 
+This is a minimal UI that can spin up to test Haystack for your prototypes. It's based on streamlit and is very easy to extend for your purposes. 
 
+![Screenshot](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/streamlit_ui_screenshot.png)
 
 ## Usage
 
