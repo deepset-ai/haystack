@@ -1,8 +1,5 @@
-<p align="center">
-    <br>
-    <img src="https://github.com/deepset-ai/haystack/blob/master/docs/_src/img/haystack_logo_blue_banner.png?raw=true" />
-    <br>
-<p>
+![Logo](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/haystack_logo_blue_banner.png)
+
 <p>
     <a href="https://github.com/deepset-ai/haystack/actions">
         <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
@@ -19,9 +16,11 @@
     <a href="https://github.com/deepset-ai/haystack/blob/master/LICENSE">
         <img alt="License" src="https://img.shields.io/github/license/deepset-ai/haystack.svg?color=blue">
     </a>
-        </a>
     <a href="https://github.com/deepset-ai/haystack/commits/master">
         <img alt="Last commit" src="https://img.shields.io/github/last-commit/deepset-ai/haystack">
+    </a>
+    <a href="https://pepy.tech/project/haystack">
+        <img alt="Downloads" src="https://pepy.tech/badge/haystack/month">
     </a>
 </p>
 
