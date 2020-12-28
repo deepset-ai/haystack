@@ -9,6 +9,7 @@ from networkx.drawing.nx_agraph import to_agraph
 from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
+from haystack.summarizer.base import BaseSummarizer
 
 
 class Pipeline:
@@ -235,6 +236,31 @@ class GenerativeQAPipeline(BaseStandardPipeline):
     def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_generator: int = 10):
         output = self.pipeline.run(
             query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_generator=top_k_generator
+        )
+        return output
+
+
+class SummarizationQAPipeline(BaseStandardPipeline):
+    def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever):
+        """
+        Initialize a Pipeline for Summarization Question Answering.
+
+        :param summarizer: Summarizer instance
+        :param retriever: Retriever instance
+        """
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
+
+    def run(
+        self,
+        query: str,
+        filters: Optional[Dict] = None,
+        top_k_retriever: int = 10,
+        generate_one_summary: bool = False
+    ):
+        output = self.pipeline.run(
+            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_one_summary=generate_one_summary
         )
         return output
 
