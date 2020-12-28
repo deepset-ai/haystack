@@ -46,7 +46,10 @@ jobs:
 #      run: docker rm -f `docker ps -a -q`
 
     - name: Run pytest with generator/pipeline marker
-      run: cd test && pytest -m "pipeline or generator or summarizer"
+      run: cd test && pytest -m "pipeline or generator"
+
+    - name: Run pytest with summarizer marker
+      run: cd test && pytest -m "summarizer"
 
     - name: Test with mypy
       run: |
