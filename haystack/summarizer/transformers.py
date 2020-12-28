@@ -110,7 +110,7 @@ class TransformersSummarizer(BaseSummarizer):
             # TODO: How to fix this?
             # Documents order is very important to produce summary.
             # Different order of same documents produce different summary.
-            contexts: List[str] = [self.padding_for_one_summary.join(contexts)]
+            contexts = [self.padding_for_one_summary.join(contexts)]
 
         summarized_answers = self.summarizer(
             contexts,
