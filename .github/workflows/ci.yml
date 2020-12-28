@@ -40,7 +40,7 @@ jobs:
         pip install -e .
 
     - name: Run Pytest without generator/pipeline marker
-      run: cd test &&  pytest -m "not pipeline and not generator and nor summarizer"
+      run: cd test &&  pytest -m "not pipeline and not generator and not summarizer"
 
 #    - name: Stop Containers
 #      run: docker rm -f `docker ps -a -q`
