@@ -56,7 +56,6 @@ Haystack is an end-to-end framework for Question Answering & Neural search that 
 -   **Customizable**: Fine-tune models to your own domain or implement your custom DocumentStore.
 -   **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
 
-[![](https://sourcerer.io/fame/tholor/deepset-ai/haystack/images/0)](https://sourcerer.io/fame/tholor/deepset-ai/haystack/links/0)[![](https://sourcerer.io/fame/tholor/deepset-ai/haystack/images/1)](https://sourcerer.io/fame/tholor/deepset-ai/haystack/links/1)[![](https://sourcerer.io/fame/tholor/deepset-ai/haystack/images/2)](https://sourcerer.io/fame/tholor/deepset-ai/haystack/links/2)[![](https://sourcerer.io/fame/tholor/deepset-ai/haystack/images/3)](https://sourcerer.io/fame/tholor/deepset-ai/haystack/links/3)[![](https://sourcerer.io/fame/tholor/deepset-ai/haystack/images/4)](https://sourcerer.io/fame/tholor/deepset-ai/haystack/links/4)[![](https://sourcerer.io/fame/tholor/deepset-ai/haystack/images/5)](https://sourcerer.io/fame/tholor/deepset-ai/haystack/links/5)[![](https://sourcerer.io/fame/tholor/deepset-ai/haystack/images/6)](https://sourcerer.io/fame/tholor/deepset-ai/haystack/links/6)[![](https://sourcerer.io/fame/tholor/deepset-ai/haystack/images/7)](https://sourcerer.io/fame/tholor/deepset-ai/haystack/links/7)
 
 ## Installation
 
