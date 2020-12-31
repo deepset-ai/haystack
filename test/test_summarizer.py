@@ -48,7 +48,7 @@ def test_summarization(summarizer):
 @pytest.mark.slow
 @pytest.mark.summarizer
 def test_summarization_one_summary(summarizer):
-    summarized_docs = summarizer.predict(documents=SPLIT_DOCS, generate_one_summary=True)
+    summarized_docs = summarizer.predict(documents=SPLIT_DOCS, generate_single_summary=True)
     answers = summarized_docs["answers"]
     assert len(answers) == 1
     assert EXPECTED_ONE_SUMMARIES[0] == answers[0]["answer"]
