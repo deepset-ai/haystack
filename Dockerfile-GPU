@@ -16,6 +16,8 @@ COPY haystack /home/user/haystack
 
 # install as a package
 COPY setup.py requirements.txt README.md /home/user/
+RUN pip3 install numpy scipy Cython
+
 RUN pip3 install -r requirements.txt
 RUN pip3 install -e .
 
