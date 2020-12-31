@@ -75,7 +75,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index: str = "document",
         label_index: str = "label",
         update_existing_documents: bool = False,
-        batch_size: int = 999,
+        batch_size: int = 32766,
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -89,8 +89,9 @@ class SQLDocumentStore(BaseDocumentStore):
                                           If set to False, an error is raised if the document ID of the document being
                                           added already exists. Using this parameter could cause performance degradation
                                           for document insertion.
-        :param batch_size: Maximum number of host parameters in a single SQL statement.
-                           To help in excessive memory allocations.
+        :param batch_size: Maximum the number of variable parameters and rows fetched in a single SQL statement,
+                           to help in excessive memory allocations. Tune this value based on host machine main memory.
+                           For SQLite versions prior to v3.32.0 keep this value less than 1000.
                            More info refer: https://www.sqlite.org/limits.html
         """
         engine = create_engine(url)
