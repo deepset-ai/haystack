@@ -1,7 +1,7 @@
 import pytest
 
 from haystack import Document
-from haystack.pipeline import SummarizationQAPipeline
+from haystack.pipeline import SearchSummarizationPipeline
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 
 DOCS = [
@@ -69,7 +69,7 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
         document_store.update_embeddings(retriever=retriever)
 
     query = "Where is Eiffel Tower?"
-    pipeline = SummarizationQAPipeline(retriever=retriever, summarizer=summarizer)
+    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer)
     output = pipeline.run(query=query, top_k_retriever=1)
     answers = output["answers"]
     assert len(answers) == 1
@@ -91,8 +91,8 @@ def test_summarization_pipeline_one_summary(document_store, retriever, summarize
         document_store.update_embeddings(retriever=retriever)
 
     query = "Where is Eiffel Tower?"
-    pipeline = SummarizationQAPipeline(retriever=retriever, summarizer=summarizer)
-    output = pipeline.run(query=query, top_k_retriever=2, generate_one_summary=True)
+    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer)
+    output = pipeline.run(query=query, top_k_retriever=2, generate_single_summary=True)
     answers = output["answers"]
     assert len(answers) == 1
     assert answers[0]["answer"] in EXPECTED_ONE_SUMMARIES

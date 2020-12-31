@@ -240,10 +240,10 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         return output
 
 
-class SummarizationQAPipeline(BaseStandardPipeline):
+class SearchSummarizationPipeline(BaseStandardPipeline):
     def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever):
         """
-        Initialize a Pipeline for Summarization Question Answering.
+        Initialize a Pipeline that retrieves documents for a query and then summarizes those documents.
 
         :param summarizer: Summarizer instance
         :param retriever: Retriever instance
@@ -257,11 +257,14 @@ class SummarizationQAPipeline(BaseStandardPipeline):
         query: str,
         filters: Optional[Dict] = None,
         top_k_retriever: int = 10,
-        generate_one_summary: bool = False
+        generate_single_summary: bool = False
     ):
         output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_one_summary=generate_one_summary
+            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_single_summary=generate_single_summary
         )
+
+        # TODO do conversion of docs to answers here?
+
         return output
 
 

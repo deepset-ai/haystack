@@ -30,7 +30,7 @@ class TransformersSummarizer(BaseSummarizer):
         |     summarizer.predict(
         |        query=query,
         |        documents=retrieved_docs,
-        |        generate_one_summary=True
+        |        generate_single_summary=True
         |     )
         |
         |     # Answer
