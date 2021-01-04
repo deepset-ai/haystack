@@ -79,7 +79,7 @@ class PreProcessor(BasePreProcessor):
 
     def split(self, document: dict) -> List[dict]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,
-        with different strides. It can also respect sectence boundaries. Its exact functionality is defined by
+        with different strides. It can also respect sentence boundaries. Its exact functionality is defined by
         the parameters passed into PreProcessor.__init__(). Takes a single document as input and returns a list of documents. """
 
         if not self.split_by:
