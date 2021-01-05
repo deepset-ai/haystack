@@ -21,7 +21,7 @@ class PreProcessor(BasePreProcessor):
         clean_empty_lines: Optional[bool] = True,
         split_by: Optional[str] = "word",
         split_length: Optional[int] = 1000,
-        split_stride: Optional[int] = None,
+        split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = True,
     ):
         """
@@ -34,10 +34,12 @@ class PreProcessor(BasePreProcessor):
         :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
-        :param split_stride: Length of striding window over the splits. For example, if split_by -> `word`,
-                             split_length -> 5 & split_stride -> 2, then the splits would be like:
-                             [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
-                             Set the value to None to disable striding behaviour.
+        :param split_overlap: Word overlap between two adjacent documents after a split.
+                              Setting this to a positive number essentially enables the sliding window approach.
+                              For example, if split_by -> `word`,
+                              split_length -> 5 & split_overlap -> 2, then the splits would be like:
+                              [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
+                              Set the value to None to ensure there is no overlap among the documents after splitting.
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
@@ -48,7 +50,7 @@ class PreProcessor(BasePreProcessor):
         self.clean_empty_lines = clean_empty_lines
         self.split_by = split_by
         self.split_length = split_length
-        self.split_stride = split_stride
+        self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
 
     def clean(self, document: dict) -> dict:
@@ -107,12 +109,12 @@ class PreProcessor(BasePreProcessor):
                 if word_count + current_word_count > self.split_length:
                     list_splits.append(current_slice)
                     #Enable split_stride with split_by='word' while respecting sentence boundaries.
-                    if self.split_stride:
+                    if self.split_overlap:
                         overlap = []
                         w_count = 0
                         for s in current_slice[::-1]:
                             sen_len = len(s.split(" "))
-                            if w_count < self.split_stride:
+                            if w_count < self.split_overlap:
                                 overlap.append(s)
                                 w_count += sen_len
                             else:
@@ -139,8 +141,8 @@ class PreProcessor(BasePreProcessor):
                 raise NotImplementedError("PreProcessor only supports 'passage' or 'sentence' split_by options.")
 
             # concatenate individual elements based on split_length & split_stride
-            if self.split_stride:
-                segments = windowed(elements, n=self.split_length, step=self.split_length - self.split_stride)
+            if self.split_overlap:
+                segments = windowed(elements, n=self.split_length, step=self.split_length - self.split_overlap)
             else:
                 segments = windowed(elements, n=self.split_length, step=self.split_length)
             text_splits = []
