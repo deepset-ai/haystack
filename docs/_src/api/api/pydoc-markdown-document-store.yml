@@ -1,6 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/document_store]
+    modules: ['elasticsearch', 'memory', 'sql', 'base', 'faiss']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter

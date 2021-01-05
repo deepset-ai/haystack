@@ -1,6 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/file_converter]
+    modules: ['txt', 'docx', 'tika', 'base', 'pdf']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter
