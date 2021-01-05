@@ -21,12 +21,12 @@ in the sentence.
 @pytest.mark.tika
 def test_preprocess_sentence_split():
     document = {"text": TEXT}
-    preprocessor = PreProcessor(split_length=1, split_stride=0, split_by="sentence")
+    preprocessor = PreProcessor(split_length=1, split_overlap=0, split_by="sentence")
     documents = preprocessor.process(document)
     assert len(documents) == 15
 
     preprocessor = PreProcessor(
-        split_length=10, split_stride=0, split_by="sentence"
+        split_length=10, split_overlap=0, split_by="sentence"
     )
     documents = preprocessor.process(document)
     assert len(documents) == 2
@@ -35,11 +35,11 @@ def test_preprocess_sentence_split():
 @pytest.mark.tika
 def test_preprocess_word_split():
     document = {"text": TEXT}
-    preprocessor = PreProcessor(split_length=10, split_stride=0, split_by="word", split_respect_sentence_boundary=False)
+    preprocessor = PreProcessor(split_length=10, split_overlap=0, split_by="word", split_respect_sentence_boundary=False)
     documents = preprocessor.process(document)
     assert len(documents) == 11
 
-    preprocessor = PreProcessor(split_length=15, split_stride=0, split_by="word", split_respect_sentence_boundary=True)
+    preprocessor = PreProcessor(split_length=15, split_overlap=0, split_by="word", split_respect_sentence_boundary=True)
     documents = preprocessor.process(document)
     for i,doc in enumerate(documents):
         if i == 0:
@@ -47,7 +47,7 @@ def test_preprocess_word_split():
         assert len(doc["text"].split(" ")) <= 15 or doc["text"].startswith("This is to trick")
     assert len(documents) == 8
 
-    preprocessor = PreProcessor(split_length=40, split_stride=10, split_by="word", split_respect_sentence_boundary=True)
+    preprocessor = PreProcessor(split_length=40, split_overlap=10, split_by="word", split_respect_sentence_boundary=True)
     documents = preprocessor.process(document)
     assert len(documents) == 5
 
@@ -55,11 +55,11 @@ def test_preprocess_word_split():
 @pytest.mark.tika
 def test_preprocess_passage_split():
     document = {"text": TEXT}
-    preprocessor = PreProcessor(split_length=1, split_stride=0, split_by="passage", split_respect_sentence_boundary=False)
+    preprocessor = PreProcessor(split_length=1, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False)
     documents = preprocessor.process(document)
     assert len(documents) == 3
 
-    preprocessor = PreProcessor(split_length=2, split_stride=0, split_by="passage", split_respect_sentence_boundary=False)
+    preprocessor = PreProcessor(split_length=2, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False)
     documents = preprocessor.process(document)
     assert len(documents) == 2
 
