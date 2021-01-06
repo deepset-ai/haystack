@@ -35,7 +35,7 @@ class DensePassageRetriever(BaseRetriever):
     """
 
     def __init__(self,
-                 document_store: BaseDocumentStore,
+                 document_store: Union[BaseDocumentStore, None],
                  query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
                  passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
                  max_seq_len_query: int = 64,
@@ -87,7 +87,11 @@ class DensePassageRetriever(BaseRetriever):
         self.max_seq_len_passage = max_seq_len_passage
         self.max_seq_len_query = max_seq_len_query
 
-        if document_store.similarity != "dot_product":
+        if document_store is None:
+           logger.warning("DensePassageRetriever initialized without a document store. "
+                          "This is fine if you are performing DPR training. "
+                          "Otherwise, please provide a document store in the constructor.")
+        elif document_store.similarity != "dot_product":
             logger.warning(f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
                            "We recommend you use dot_product instead. "
                            "This can be set when initializing the DocumentStore")
