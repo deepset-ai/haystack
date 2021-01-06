@@ -56,7 +56,8 @@ def eval_data_from_jsonl(filename: str, batch_size: Union[int, bool] = None,
     Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
 
-    This is a generator and will yield batch_size documents per iteration.
+    This is a generator which will yield one tuple per iteration containing a list
+    of batch_size documents and a list with the documents' labels.
     If batch_size is set to None, this method will yield all documents and labels.
 
     :param filename: Path to file in SQuAD format

@@ -275,7 +275,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         able to perform evaluation on it. The SQuAD file needs to be in jsonl-format
         with one document per line.
 
-        `utils.py` contains a methods `squad_json_to_jsonl` to convert a standard
+        `utils.py` contains a method `squad_json_to_jsonl` to convert a standard
         SQuAD-file to .jsonl format.
 
         :param filename: Name of the file containing evaluation data
