@@ -94,12 +94,15 @@ For suggestions on how best to split your documents, see [Optimization](/docs/la
 
 ```python
 doc = converter.convert(file_path=file, meta=None)
-processor = PreProcessor(clean_empty_lines=True,
-                         clean_whitespace=True,
-                         clean_header_footer=True,
-                         split_by="word",
-                         split_length=200,
-                         split_respect_sentence_boundary=True)
+processor = PreProcessor(
+    clean_empty_lines=True,
+    clean_whitespace=True,
+    clean_header_footer=True,
+    split_by="word",
+    split_length=200,
+    split_respect_sentence_boundary=True,
+    split_overlap=0
+)
 docs = processor.process(d)
 ```
 
@@ -109,3 +112,5 @@ docs = processor.process(d)
 * `split_by` determines what unit the document is split by: `'word'`, `'sentence'` or `'passage'`
 * `split_length` sets a maximum number of `'word'`, `'sentence'` or `'passage'` units per output document
 * `split_respect_sentence_boundary` ensures that document boundaries do not fall in the middle of sentences
+* `split_overlap` sets the amount of overlap between two adjacent documents after a split. Setting this to a positive number essentially enables the sliding window approach.
+
