@@ -3,6 +3,7 @@ import logging
 import tarfile
 import tempfile
 import zipfile
+import gzip
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import json
@@ -265,6 +266,12 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
             elif url[-7:] == ".tar.gz":
                 tar_archive = tarfile.open(temp_file.name)
                 tar_archive.extractall(output_dir)
+            elif url[-3:] == ".gz":
+                json_bytes = gzip.open(temp_file.name).read()
+                filename = url.split("/")[-1].replace(".gz", "")
+                output_filename = Path(output_dir) / filename
+                output = open(output_filename, "wb")
+                output.write(json_bytes)
             else:
                 logger.warning('Skipped url {0} as file type is not supported here. '
                                'See haystack documentation for support of more file types'.format(url))
