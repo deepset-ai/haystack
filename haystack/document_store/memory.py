@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.preprocessor.utils import eval_data_from_file
+from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl
 from haystack.retriever.base import BaseRetriever
 
 from scipy.spatial.distance import cosine
@@ -262,11 +262,39 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :type label_index: str
         """
 
-        docs, labels = eval_data_from_file(filename)
+        docs, labels = eval_data_from_json(filename)
         doc_index = doc_index or self.index
         label_index = label_index or self.label_index
         self.write_documents(docs, index=doc_index)
         self.write_labels(labels, index=label_index)
+
+    def add_eval_data_batchwise(self, filename: str, doc_index: str = "eval_document",
+                                label_index: str = "label", batch_size: int = 50000):
+        """
+        Adds a SQuAD-formatted .jsonl file to the DocumentStore in order to be
+        able to perform evaluation on it. The SQuAD file needs to be in jsonl-format
+        with one document per line.
+
+        `utils.py` contains a methods `squad_json_to_jsonl` to convert a standard
+        SQuAD-file to .jsonl format.
+
+        :param filename: Name of the file containing evaluation data
+        :type filename: str
+        :param doc_index: Elasticsearch index where evaluation documents should be stored
+        :type doc_index: str
+        :param label_index: Elasticsearch index where labeled questions should be stored
+        :type label_index: str
+        :param batch_size: Number of documents to be processed at once
+        :type batch_size: int
+        """
+
+        doc_index = doc_index or self.index
+        label_index = label_index or self.label_index
+        for docs, labels in eval_data_from_jsonl(filename, batch_size):
+            if docs:
+                self.write_documents(docs, index=doc_index)
+            if labels:
+                self.write_labels(labels, index=label_index)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """

@@ -113,3 +113,20 @@ def convert_labels_to_squad(labels_file: str):
 
     with open("labels_in_squad_format.json", "w+") as outfile:
         json.dump(labels_in_squad_format, outfile)
+
+
+def squad_json_to_jsonl(squad_file: str, output_file: str):
+    """
+    Converts a SQuAD-json-file into jsonl format with one document per line.
+
+    :param squad_file: SQuAD-file in json format.
+    :type squad_file: str
+    :param output_file: Name of output file (SQuAD in jsonl format)
+    :type output_file: str
+    """
+    with open(squad_file) as json_file, open(output_file, "w") as jsonl_file:
+        squad_json = json.load(json_file)
+
+        for doc in squad_json["data"]:
+            json.dump(doc, jsonl_file)
+            jsonl_file.write("\n")

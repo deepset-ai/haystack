@@ -4,7 +4,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union, Generator
 import json
 
 from farm.data_handler.utils import http_get
@@ -19,7 +19,8 @@ from haystack.file_converter.txt import TextConverter
 logger = logging.getLogger(__name__)
 
 
-def eval_data_from_file(filename: str, max_docs: Union[int, bool]=None) -> Tuple[List[Document], List[Label]]:
+
+def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
@@ -36,54 +37,102 @@ def eval_data_from_file(filename: str, max_docs: Union[int, bool]=None) -> Tuple
         data = json.load(file)
         if "title" not in data["data"][0]:
             logger.warning(f"No title information found for documents in QA file: {filename}")
+
         for document in data["data"]:
             if max_docs:
                 if len(docs) > max_docs:
                     break
-            # get all extra fields from document level (e.g. title)
-            meta_doc = {k: v for k, v in document.items() if k not in ("paragraphs", "title")}
-            for paragraph in document["paragraphs"]:
-                if max_docs:
-                    if len(docs) > max_docs:
-                        break
-                cur_meta = {"name": document.get("title", None)}
-                # all other fields from paragraph level
-                meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
-                cur_meta.update(meta_paragraph)
-                # meta from parent document
-                cur_meta.update(meta_doc)
-                # Create Document
-                cur_doc = Document(text=paragraph["context"], meta=cur_meta)
-                docs.append(cur_doc)
+            # Extracting paragraphs and their labels from a SQuAD document dict
+            cur_docs, cur_labels = _extract_docs_and_labels_from_dict(document)
+            docs.extend(cur_docs)
+            labels.extend(cur_labels)
 
-                # Get Labels
-                for qa in paragraph["qas"]:
-                    if len(qa["answers"]) > 0:
-                        for answer in qa["answers"]:
-                            label = Label(
-                                question=qa["question"],
-                                answer=answer["text"],
-                                is_correct_answer=True,
-                                is_correct_document=True,
-                                document_id=cur_doc.id,
-                                offset_start_in_doc=answer["answer_start"],
-                                no_answer=qa["is_impossible"],
-                                origin="gold_label",
-                            )
-                            labels.append(label)
-                    else:
-                        label = Label(
-                            question=qa["question"],
-                            answer="",
-                            is_correct_answer=True,
-                            is_correct_document=True,
-                            document_id=cur_doc.id,
-                            offset_start_in_doc=0,
-                            no_answer=qa["is_impossible"],
-                            origin="gold_label",
-                        )
-                        labels.append(label)
-        return docs, labels
+    return docs, labels
+
+
+def eval_data_from_jsonl(filename: str, batch_size: Union[int, bool] = None,
+                         max_docs: Union[int, bool] = None) -> Generator[Tuple[List[Document], List[Label]], None, None]:
+    """
+    Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
+    Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
+
+    This is a generator and will yield batch_size documents per iteration.
+    If batch_size is set to None, this method will yield all documents and labels.
+
+    :param filename: Path to file in SQuAD format
+    :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+    :return: (List of Documents, List of Labels)
+    """
+
+    docs: List[Document] = []
+    labels = []
+
+    with open(filename, "r") as file:
+        for document in file:
+            if max_docs:
+                if len(docs) > max_docs:
+                    break
+            # Extracting paragraphs and their labels from a SQuAD document dict
+            document_dict = json.loads(document)
+            cur_docs, cur_labels = _extract_docs_and_labels_from_dict(document_dict)
+            docs.extend(cur_docs)
+            labels.extend(cur_labels)
+
+            if batch_size is not None:
+                if len(docs) >= batch_size:
+                    yield docs, labels
+                    docs = []
+                    labels = []
+
+    yield docs, labels
+
+
+def _extract_docs_and_labels_from_dict(document_dict: Dict):
+    docs = []
+    labels = []
+
+    # get all extra fields from document level (e.g. title)
+    meta_doc = {k: v for k, v in document_dict.items() if k not in ("paragraphs", "title")}
+    for paragraph in document_dict["paragraphs"]:
+        cur_meta = {"name": document_dict.get("title", None)}
+        # all other fields from paragraph level
+        meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
+        cur_meta.update(meta_paragraph)
+        # meta from parent document
+        cur_meta.update(meta_doc)
+        # Create Document
+        cur_doc = Document(text=paragraph["context"], meta=cur_meta)
+        docs.append(cur_doc)
+
+        # Get Labels
+        for qa in paragraph["qas"]:
+            if len(qa["answers"]) > 0:
+                for answer in qa["answers"]:
+                    label = Label(
+                        question=qa["question"],
+                        answer=answer["text"],
+                        is_correct_answer=True,
+                        is_correct_document=True,
+                        document_id=cur_doc.id,
+                        offset_start_in_doc=answer["answer_start"],
+                        no_answer=qa["is_impossible"],
+                        origin="gold_label",
+                    )
+                    labels.append(label)
+            else:
+                label = Label(
+                    question=qa["question"],
+                    answer="",
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    document_id=cur_doc.id,
+                    offset_start_in_doc=0,
+                    no_answer=qa["is_impossible"],
+                    origin="gold_label",
+                )
+                labels.append(label)
+
+    return docs, labels
 
 
 def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> \
