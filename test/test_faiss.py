@@ -1,3 +1,5 @@
+import os
+
 import faiss
 import numpy as np
 import pytest
@@ -120,15 +122,30 @@ def test_faiss_update_with_empty_store(document_store, retriever):
 
 @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
 def test_faiss_retrieving(index_factory):
-    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", faiss_index_factory_str=index_factory)
+    document_store = FAISSDocumentStore(
+        sql_url="sqlite:///test_faiss_retrieving.db",
+        faiss_index_factory_str=index_factory
+    )
+
     document_store.delete_all_documents(index="document")
     if "ivf" in index_factory.lower():
         document_store.train_index(DOCUMENTS)
     document_store.write_documents(DOCUMENTS)
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False)
+
+    retriever = EmbeddingRetriever(
+        document_store=document_store,
+        embedding_model="deepset/sentence_bert",
+        use_gpu=False
+    )
     result = retriever.retrieve(query="How to test this?")
+
     assert len(result) == len(DOCUMENTS)
     assert type(result[0]) == Document
+
+    # Cleanup
+    document_store.faiss_index.reset()
+    if os.path.exists("test_faiss_retrieving.db"):
+        os.remove("test_faiss_retrieving.db")
 
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
