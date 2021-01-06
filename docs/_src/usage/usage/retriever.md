@@ -125,7 +125,7 @@ Key features:
 * One BERT base model to encode documents
 
 
-* One Bert base model to encode queries
+* One BERT base model to encode queries
 
 
 * Ranking of documents done by dot product similarity between query and document embeddings
@@ -134,16 +134,6 @@ Key features:
 Indexing using DPR is comparatively expensive in terms of required computation since all documents in the database need to be processed through the transformer.
 The embeddings that are created in this step can be stored in FAISS, a database optimized for vector similarity.
 DPR can also work with the ElasticsearchDocumentStore or the InMemoryDocumentStore.
-
-<div class="recommendation">
-
-**Tip**
-
-When using DPR, it is recommended that you use the dot product similarity function since that is how it is trained.
-To do so, simply provide `similarity="dot_product"` when initializing the DocumentStore 
-as is done in the code example below.
-
-</div>
 
 There are two design decisions that have made DPR particularly performant.
 
@@ -157,6 +147,16 @@ In Haystack, you can simply download the pretrained encoders needed to start usi
 If you’d like to learn how to set up a DPR based system, have a look at our tutorials.
 
 ### Initialisation
+
+<div class="recommendation">
+
+**Tip**
+
+When using DPR, it is recommended that you use the dot product similarity function since that is how it is trained.
+To do so, simply provide `similarity="dot_product"` when initializing the DocumentStore 
+as is done in the code example below.
+
+</div>
 
 ```python
 document_store = FAISSDocumentStore(similarity="dot_product")
@@ -172,15 +172,17 @@ finder = Finder(reader, retriever)
 
 <div class="recommendation">
 
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+**Training DPR:** Haystack supports training of your own DPR model! Check out our tutorial to see how this is done!
 
 </div>
 
 <div class="recommendation">
 
-**Tip:** Haystack supports training of your own DPR model! Tutorial coming soon!
+**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
 
 </div>
+
+
 
 <!-- _comment: !! Training in future? !! -->
 <!-- _comment: !! Talk more about benchmarks, SoTA, results !! -->
