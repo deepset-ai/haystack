@@ -1,3 +1,22 @@
+<a name="base"></a>
+# Module base
+
+<a name="base.BasePreProcessor"></a>
+## BasePreProcessor Objects
+
+```python
+class BasePreProcessor()
+```
+
+<a name="base.BasePreProcessor.process"></a>
+#### process
+
+```python
+ | process(document: dict) -> List[dict]
+```
+
+Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
+
 <a name="preprocessor"></a>
 # Module preprocessor
 
@@ -12,7 +31,7 @@ class PreProcessor(BasePreProcessor)
 #### \_\_init\_\_
 
 ```python
- | __init__(clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_stride: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True)
+ | __init__(clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True)
 ```
 
 **Arguments**:
@@ -26,10 +45,12 @@ or similar.
 - `split_by`: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
 - `split_length`: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
 "sentence", then each output document will have 10 sentences.
-- `split_stride`: Length of striding window over the splits. For example, if split_by -> `word`,
-split_length -> 5 & split_stride -> 2, then the splits would be like:
+- `split_overlap`: Word overlap between two adjacent documents after a split.
+Setting this to a positive number essentially enables the sliding window approach.
+For example, if split_by -> `word`,
+split_length -> 5 & split_overlap -> 2, then the splits would be like:
 [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
-Set the value to None to disable striding behaviour.
+Set the value to None to ensure there is no overlap among the documents after splitting.
 - `split_respect_sentence_boundary`: Whether to split in partial sentences if split_by -> `word`. If set
 to True, the individual split will always have complete sentences &
 the number of words will be <= split_length.
@@ -52,21 +73,8 @@ and empty lines. Its exact functionality is defined by the parameters passed int
 ```
 
 Perform document splitting on a single document. This method can split on different units, at different lengths,
-with different strides. It can also respect sectence boundaries. Its exact functionality is defined by
+with different strides. It can also respect sentence boundaries. Its exact functionality is defined by
 the parameters passed into PreProcessor.__init__(). Takes a single document as input and returns a list of documents.
-
-<a name="cleaning"></a>
-# Module cleaning
-
-<a name="cleaning.clean_wiki_text"></a>
-#### clean\_wiki\_text
-
-```python
-clean_wiki_text(text: str) -> str
-```
-
-Clean wikipedia text by removing multiple new lines, removing extremely short lines,
-adding paragraph breaks and removing empty paragraphs
 
 <a name="utils"></a>
 # Module utils
@@ -154,22 +162,16 @@ Fetch an archive (zip or tar.gz) from a url via http and extract content to an o
 
 bool if anything got fetched
 
-<a name="base"></a>
-# Module base
+<a name="cleaning"></a>
+# Module cleaning
 
-<a name="base.BasePreProcessor"></a>
-## BasePreProcessor Objects
-
-```python
-class BasePreProcessor()
-```
-
-<a name="base.BasePreProcessor.process"></a>
-#### process
+<a name="cleaning.clean_wiki_text"></a>
+#### clean\_wiki\_text
 
 ```python
- | process(document: dict) -> List[dict]
+clean_wiki_text(text: str) -> str
 ```
 
-Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
+Clean wikipedia text by removing multiple new lines, removing extremely short lines,
+adding paragraph breaks and removing empty paragraphs
 
