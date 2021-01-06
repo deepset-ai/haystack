@@ -89,8 +89,9 @@ class SQLDocumentStore(BaseDocumentStore):
                                           If set to False, an error is raised if the document ID of the document being
                                           added already exists. Using this parameter could cause performance degradation
                                           for document insertion.
-        :param batch_size: Maximum the number of variable parameters and rows fetched in a single SQL statement,
-                           to help in excessive memory allocations. Tune this value based on host machine main memory.
+        :param batch_size: Maximum number of variable parameters and rows fetched in a single SQL statement,
+                           to help in excessive memory allocations. In most methods of the DocumentStore this means number of documents fetched in one query.
+                           Tune this value based on host machine main memory.
                            For SQLite versions prior to v3.32.0 keep this value less than 1000.
                            More info refer: https://www.sqlite.org/limits.html
         """
