@@ -22,26 +22,19 @@ class BaseSummarizer(ABC):
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
         :param query: Query
-        :return: Generated answers plus additional infos in a dict like this:
-
-        ```python
-        |     {'query': 'Where is Eiffel Tower?',
-        |      'answers':
-        |          [{'query': 'Where is Eiffel Tower?',
-        |            'answer': 'The Eiffel Tower is a landmark in Paris, France.',
-        |            'meta': {
-        |                      'text': 'The tower is 324 metres ...'
-        |      }}]}
-        ```
+        :return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
+                 the original, not summarized text
         """
         pass
 
-    def run(self, documents: List[Document], generate_single_summary: bool = False, query: str = None, **kwargs):
+    def run(self, documents: List[Document], generate_single_summary: bool = False, **kwargs):
+
+        results = {
+            "documents": [],
+            **kwargs
+        }
 
         if documents:
-            results = self.predict(query=query, documents=documents, generate_single_summary=generate_single_summary)
-        else:
-            results = {"answers": []}
+            results["documents"] = self.predict(documents=documents, generate_single_summary=generate_single_summary)
 
-        results.update(**kwargs)
         return results, "output_1"

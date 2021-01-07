@@ -257,15 +257,43 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         query: str,
         filters: Optional[Dict] = None,
         top_k_retriever: int = 10,
-        generate_single_summary: bool = False
+        generate_single_summary: bool = False,
+        return_in_answer_format=False
     ):
+        """
+        :param query: Your search query
+        :param filters:
+        :param top_k_retriever: Number of top docs the retriever should pass to the summarizer.
+                                The higher this value, the slower your pipeline.
+        :param generate_single_summary: Whether to generate single summary from all retrieved docs (True) or one per doc (False).
+        :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer format used in other QA pipelines (True).
+                                        With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
+        """
         output = self.pipeline.run(
             query=query, filters=filters, top_k_retriever=top_k_retriever, generate_single_summary=generate_single_summary
         )
 
-        # TODO do conversion of docs to answers here?
+        # Convert to answer format to allow "drop-in replacement" for other QA pipelines
+        if return_in_answer_format:
+            results: Dict = {"query": query, "answers": []}
+            docs = deepcopy(output["documents"])
+            for doc in docs:
+                cur_answer = {
+                    "query": query,
+                    "answer": doc.text,
+                    "document_id": doc.id,
+                    "context": doc.meta.pop("context"),
+                    "score": None,
+                    "probability": None,
+                    "offset_start": None,
+                    "offset_end": None,
+                    "meta": doc.meta,
+                }
 
-        return output
+                results["answers"].append(cur_answer)
+        else:
+            results = output
+        return results
 
 
 class FAQPipeline(BaseStandardPipeline):

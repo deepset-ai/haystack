@@ -21,27 +21,28 @@ class TransformersSummarizer(BaseSummarizer):
         **Example**
 
         ```python
-        |     query = "Where is Eiffel Tower?"
+        |     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions.
+        |            The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by
+        |            the shutoffs which were expected to last through at least midday tomorrow.")]
         |
-        |     # Retrieve related documents from retriever
-        |     retrieved_docs = retriever.retrieve(query=query)
-        |
-        |     # Now summarize answer from query and retrieved documents
-        |     summarizer.predict(
-        |        query=query,
-        |        documents=retrieved_docs,
+        |     # Summarize
+        |     summary = summarizer.predict(
+        |        documents=docs,
         |        generate_single_summary=True
         |     )
         |
-        |     # Answer
+        |     # Show results (List of Documents, containing summary and original text)
+        |     print(summary)
         |
-        |     {'query': 'Where is Eiffel Tower?',
-        |      'answers':
-        |          [{'query': 'Where is Eiffel Tower?',
-        |            'answer': 'The Eiffel Tower is a landmark in Paris, France.',
-        |            'meta': {
-        |                      'text': 'The tower is 324 metres ...'
-        |      }}]}
+        |    [
+        |      {
+        |        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
+        |        ...
+        |        "meta": {
+        |          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ....
+        |              },
+        |        ...
+        |      },
         ```
     """
 
@@ -78,7 +79,7 @@ class TransformersSummarizer(BaseSummarizer):
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         self.separator_for_single_summary = separator_for_single_summary
 
-    def predict(self, documents: List[Document], generate_single_summary: bool = False, query: str = None) -> Dict:
+    def predict(self, documents: List[Document], generate_single_summary: bool = False) -> List[Document]:
         """
         Produce the summarization from the supplied documents.
         These document can for example be retrieved via the Retriever.
@@ -88,18 +89,8 @@ class TransformersSummarizer(BaseSummarizer):
                                         If set to "True", all docs will be joined to a single string that will then
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
-        :param query: Query
-        :return: Generated answers plus additional infos in a dict like this:
-
-        ```python
-        |     {'query': 'Where is Eiffel Tower?',
-        |      'answers':
-        |          [{'query': 'Where is Eiffel Tower?',
-        |            'answer': 'The Eiffel Tower is a landmark in Paris, France.',
-        |            'meta': {
-        |                      'text': 'The tower is 324 metres ...'
-        |      }}]}
-        ```
+        :return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
+                 the original, not summarized text
         """
 
         if self.min_length > self.max_length:
@@ -115,7 +106,7 @@ class TransformersSummarizer(BaseSummarizer):
             # Different order of same documents produce different summary.
             contexts = [self.separator_for_single_summary.join(contexts)]
 
-        summarized_answers = self.summarizer(
+        summaries = self.summarizer(
             contexts,
             min_length=self.min_length,
             max_length=self.max_length,
@@ -123,18 +114,10 @@ class TransformersSummarizer(BaseSummarizer):
             clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
         )
 
-        answers: List[Any] = []
+        result: List[Document] = []
 
-        for context, summarized_answer in zip(contexts, summarized_answers):
-            cur_answer = {
-                "query": query,
-                "answer": summarized_answer['summary_text'],
-                "meta": {
-                    "text": context,
-                }
-            }
-            answers.append(cur_answer)
-
-        result = {"query": query, "answers": answers}
+        for context, summarized_answer in zip(contexts, summaries):
+            cur_doc = Document(text=summarized_answer['summary_text'], meta={"context": context})
+            result.append(cur_doc)
 
         return result

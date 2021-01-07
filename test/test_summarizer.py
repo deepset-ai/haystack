@@ -13,7 +13,7 @@ DOCS = [
     )
 ]
 
-EXPECTED_ANSWER = [
+EXPECTED_SUMMARIES = [
     "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
     "The Eiffel Tower is a landmark in Paris, France."
 ]
@@ -39,19 +39,17 @@ EXPECTED_ONE_SUMMARIES = [
 @pytest.mark.summarizer
 def test_summarization(summarizer):
     summarized_docs = summarizer.predict(documents=DOCS)
-    answers = summarized_docs["answers"]
-    assert len(answers) == len(DOCS)
-    for expected_answer, answer in zip(EXPECTED_ANSWER, answers):
-        assert expected_answer == answer["answer"]
+    assert len(summarized_docs) == len(DOCS)
+    for expected_summary, summary in zip(EXPECTED_SUMMARIES, summarized_docs):
+        assert expected_summary == summary.text
 
 
 @pytest.mark.slow
 @pytest.mark.summarizer
 def test_summarization_one_summary(summarizer):
     summarized_docs = summarizer.predict(documents=SPLIT_DOCS, generate_single_summary=True)
-    answers = summarized_docs["answers"]
-    assert len(answers) == 1
-    assert EXPECTED_ONE_SUMMARIES[0] == answers[0]["answer"]
+    assert len(summarized_docs) == 1
+    assert EXPECTED_ONE_SUMMARIES[0] == summarized_docs[0].text
 
 
 @pytest.mark.slow
@@ -70,7 +68,7 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
 
     query = "Where is Eiffel Tower?"
     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer)
-    output = pipeline.run(query=query, top_k_retriever=1)
+    output = pipeline.run(query=query, top_k_retriever=1, return_in_answer_format=True)
     answers = output["answers"]
     assert len(answers) == 1
     assert "The Eiffel Tower is a landmark in Paris, France." == answers[0]["answer"]
@@ -92,7 +90,7 @@ def test_summarization_pipeline_one_summary(document_store, retriever, summarize
 
     query = "Where is Eiffel Tower?"
     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer)
-    output = pipeline.run(query=query, top_k_retriever=2, generate_single_summary=True)
+    output = pipeline.run(query=query, top_k_retriever=2, generate_single_summary=True, return_in_answer_format=True)
     answers = output["answers"]
     assert len(answers) == 1
     assert answers[0]["answer"] in EXPECTED_ONE_SUMMARIES
