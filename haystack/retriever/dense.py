@@ -105,12 +105,16 @@ class DensePassageRetriever(BaseRetriever):
 
         # Init & Load Encoders
         self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
-                                              do_lower_case=True, use_fast=use_fast_tokenizers)
+                                              do_lower_case=True,
+                                              use_fast=use_fast_tokenizers,
+                                              tokenizer_class="DPRQuestionEncoderTokenizer")
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 language_model_class="DPRQuestionEncoder")
 
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
-                                                do_lower_case=True, use_fast=use_fast_tokenizers)
+                                                do_lower_case=True,
+                                                use_fast=use_fast_tokenizers,
+                                                tokenizer_class="DPRContextEncoderTokenizer")
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   language_model_class="DPRContextEncoder")
 
@@ -371,6 +375,7 @@ class DensePassageRetriever(BaseRetriever):
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function
         )
+        logger.info(f"DPR model loaded from {load_dir}")
 
         return dpr
 
