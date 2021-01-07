@@ -347,7 +347,7 @@ class DensePassageRetriever(BaseRetriever):
     @classmethod
     def load(cls,
              load_dir: Union[Path, str],
-             document_store: BaseDocumentStore,
+             document_store: Union[BaseDocumentStore, None],
              max_seq_len_query: int = 64,
              max_seq_len_passage: int = 256,
              use_gpu: bool = True,
