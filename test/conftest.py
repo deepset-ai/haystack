@@ -237,7 +237,7 @@ def document_store_with_docs(request, test_docs_xs):
         document_store.faiss_index.reset()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"], scope="module")
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
 def document_store(request, test_docs_xs):
     document_store = get_document_store(request.param)
     yield document_store
