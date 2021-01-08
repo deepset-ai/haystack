@@ -144,7 +144,7 @@ There are two design decisions that have made DPR particularly performant.
 * Training with ‘In-batch negatives’ (gold labels are treated as negative examples for other samples in same batch) is highly efficient
 
 In Haystack, you can simply download the pretrained encoders needed to start using DPR.
-If you’d like to learn how to set up a DPR based system, have a look at our tutorials.
+If you’d like to learn how to set up a DPR based system, have a look at the [tutorial](docs/latest/tutorial6md).
 
 ### Initialisation
 
@@ -172,7 +172,7 @@ finder = Finder(reader, retriever)
 
 <div class="recommendation">
 
-**Training DPR:** Haystack supports training of your own DPR model! Check out our tutorial to see how this is done!
+**Training DPR:** Haystack supports training of your own DPR model! Check out the [tutorial](docs/latest/tutorial9md) to see how this is done!
 
 </div>
 
