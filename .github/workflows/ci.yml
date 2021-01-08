@@ -32,6 +32,11 @@ jobs:
         pip install -r requirements.txt
         pip install -e .
 
+    - name: Test with mypy
+      run: |
+        pip install mypy
+        mypy haystack --ignore-missing-imports
+
     - name: Run Pytest without generator/pipeline marker
       run: cd test &&  pytest -m "not pipeline and not generator and not summarizer"
 
@@ -44,7 +49,4 @@ jobs:
     - name: Run pytest with summarizer marker
       run: cd test && pytest -m "summarizer"
 
-    - name: Test with mypy
-      run: |
-        pip install mypy
-        mypy haystack --ignore-missing-imports
+

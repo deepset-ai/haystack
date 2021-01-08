@@ -12,7 +12,7 @@ class BaseSummarizer(ABC):
     outgoing_edges = 1
 
     @abstractmethod
-    def predict(self, documents: List[Document], generate_single_summary: bool = False, query: str = None) -> Dict:
+    def predict(self, documents: List[Document], generate_single_summary: bool = False) -> List[Document]:
         """
         Abstract method for creating a summary.
 
@@ -21,7 +21,6 @@ class BaseSummarizer(ABC):
                                         If set to "True", all docs will be joined to a single string that will then
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
-        :param query: Query
         :return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
                  the original, not summarized text
         """
@@ -29,7 +28,7 @@ class BaseSummarizer(ABC):
 
     def run(self, documents: List[Document], generate_single_summary: bool = False, **kwargs):
 
-        results = {
+        results: Dict = {
             "documents": [],
             **kwargs
         }
