@@ -150,6 +150,9 @@ class DensePassageRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
+        if not self.document_store:
+            logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
+            return []
         if index is None:
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])
