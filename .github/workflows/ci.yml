@@ -14,13 +14,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       
-    - name: Configure sysctl limits for Elasticsearch
-      run: |
-        sudo swapoff -a
-        sudo sysctl -w vm.swappiness=1
-        sudo sysctl -w fs.file-max=262144
-        sudo sysctl -w vm.max_map_count=262144
-      
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
@@ -39,8 +32,13 @@ jobs:
         pip install -r requirements.txt
         pip install -e .
 
+    - name: Test with mypy
+      run: |
+        pip install mypy
+        mypy haystack --ignore-missing-imports
+
     - name: Run Pytest without generator/pipeline marker
-      run: cd test &&  pytest -m "not pipeline and not generator"
+      run: cd test &&  pytest -m "not pipeline and not generator and not summarizer"
 
 #    - name: Stop Containers
 #      run: docker rm -f `docker ps -a -q`
@@ -48,7 +46,7 @@ jobs:
     - name: Run pytest with generator/pipeline marker
       run: cd test && pytest -m "pipeline or generator"
 
-    - name: Test with mypy
-      run: |
-        pip install mypy
-        mypy haystack --ignore-missing-imports
+    - name: Run pytest with summarizer marker
+      run: cd test && pytest -m "summarizer"
+
+

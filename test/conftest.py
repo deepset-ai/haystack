@@ -20,12 +20,15 @@ from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
+from haystack.summarizer.transformers import TransformersSummarizer
 
 
 def pytest_collection_modifyitems(items):
     for item in items:
         if "generator" in item.nodeid:
             item.add_marker(pytest.mark.generator)
+        elif "summarizer" in item.nodeid:
+            item.add_marker(pytest.mark.summarizer)
         elif "tika" in item.nodeid:
             item.add_marker(pytest.mark.tika)
         elif "elasticsearch" in item.nodeid:
@@ -114,6 +117,14 @@ def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
         generator_type=RAGeneratorType.TOKEN
+    )
+
+
+@pytest.fixture(scope="module")
+def summarizer():
+    return TransformersSummarizer(
+        model_name_or_path="google/pegasus-xsum",
+        use_gpu=-1
     )
 
 
