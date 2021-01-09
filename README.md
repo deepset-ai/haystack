@@ -19,8 +19,8 @@
     <a href="https://github.com/deepset-ai/haystack/commits/master">
         <img alt="Last commit" src="https://img.shields.io/github/last-commit/deepset-ai/haystack">
     </a>
-    <a href="https://pepy.tech/project/haystack">
-        <img alt="Downloads" src="https://pepy.tech/badge/haystack/month">
+    <a href="https://pepy.tech/project/farm-haystack">
+        <img alt="Downloads" src="https://pepy.tech/badge/farm-haystack/month">
     </a>
 </p>
 
