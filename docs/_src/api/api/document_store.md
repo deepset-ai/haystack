@@ -1,3 +1,57 @@
+<a name="base"></a>
+# Module base
+
+<a name="base.BaseDocumentStore"></a>
+## BaseDocumentStore Objects
+
+```python
+class BaseDocumentStore(ABC)
+```
+
+Base class for implementing Document Stores.
+
+<a name="base.BaseDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | @abstractmethod
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+```
+
+Indexes documents for later queries.
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+Optionally: Include meta data via {"text": "<the-actual-text>",
+"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: Optional name of index where the documents shall be written to.
+If None, the DocumentStore's default index (self.index) will be used.
+
+**Returns**:
+
+None
+
+<a name="base.BaseDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | @abstractmethod
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+
 <a name="elasticsearch"></a>
 # Module elasticsearch
 
@@ -504,7 +558,7 @@ class SQLDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
+ | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False, batch_size: int = 32766)
 ```
 
 An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -518,7 +572,13 @@ This parameter sets the default value for document index.
 - `update_existing_documents`: Whether to update any existing documents with the same ID when adding
 documents. When set as True, any document with an existing ID gets updated.
 If set to False, an error is raised if the document ID of the document being
-added already exists. Using this parameter coud cause performance degradation for document insertion.
+added already exists. Using this parameter could cause performance degradation
+for document insertion.
+- `batch_size`: Maximum number of variable parameters and rows fetched in a single SQL statement,
+to help in excessive memory allocations. In most methods of the DocumentStore this means number of documents fetched in one query.
+Tune this value based on host machine main memory.
+For SQLite versions prior to v3.32.0 keep this value less than 1000.
+More info refer: https://www.sqlite.org/limits.html
 
 <a name="sql.SQLDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -681,60 +741,6 @@ Delete documents in an index. All documents are deleted if no filters are passed
 **Returns**:
 
 None
-
-<a name="base"></a>
-# Module base
-
-<a name="base.BaseDocumentStore"></a>
-## BaseDocumentStore Objects
-
-```python
-class BaseDocumentStore(ABC)
-```
-
-Base class for implementing Document Stores.
-
-<a name="base.BaseDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | @abstractmethod
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
-```
-
-Indexes documents for later queries.
-
-**Arguments**:
-
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: Optional name of index where the documents shall be written to.
-If None, the DocumentStore's default index (self.index) will be used.
-
-**Returns**:
-
-None
-
-<a name="base.BaseDocumentStore.get_all_documents"></a>
-#### get\_all\_documents
-
-```python
- | @abstractmethod
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
-```
-
-Get documents from the document store.
-
-**Arguments**:
-
-- `index`: Name of the index to get the documents from. If None, the
-DocumentStore's default index (self.index) will be used.
-- `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `return_embedding`: Whether to return the document embeddings.
 
 <a name="faiss"></a>
 # Module faiss

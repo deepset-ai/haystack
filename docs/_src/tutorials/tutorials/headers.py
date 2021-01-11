@@ -54,5 +54,13 @@ metaDescription: ""
 slug: "/docs/tutorial7"
 date: "2020-11-12"
 id: "tutorial7md"
+--->""",
+    8: """<!---
+title: "Tutorial 8"
+metaTitle: "Preprocessing"
+metaDescription: ""
+slug: "/docs/tutorial8"
+date: "2020-11-12"
+id: "tutorial8md"
 --->"""
 }
