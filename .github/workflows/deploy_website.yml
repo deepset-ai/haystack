@@ -23,9 +23,8 @@ jobs:
           sudo apt install python3-setuptools
           pip3 install 'pydoc-markdown>=3.0.0,<4.0.0'
           pip3 install jupytercontrib
-          ls -l
           cd docs/_src/api/api/
-          .generate_docstrings.sh 
+          ./generate_docstrings.sh 
           cd ../../tutorials/tutorials/
           python3 convert_ipynb.py 
 
