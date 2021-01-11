@@ -60,7 +60,7 @@ retriever = DensePassageRetriever(
 
 retriever.train(
     data_dir=doc_dir,
-    train_filename=train_filename,
+    train_filename=dev_filename,
     dev_filename=dev_filename,
     test_filename=dev_filename,
     n_epochs=1,
@@ -68,9 +68,10 @@ retriever.train(
     grad_acc_steps=4,
     save_dir=save_dir,
     evaluate_every=3000,
-    embed_title=True
+    embed_title=True,
+    num_positives=1,
+    num_hard_negatives=1
 )
-
 
 ## Loading
 
