@@ -34,6 +34,7 @@ jobs:
           ./generate_docstrings.sh 
           cd ../../tutorials/tutorials/
           python3 convert_ipynb.py  
+          git status
 
       # Creates dispatch event for haystack-website repo
       - name: Repository Dispatch
