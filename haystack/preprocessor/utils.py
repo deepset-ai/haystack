@@ -50,7 +50,7 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None) -> Tup
     return docs, labels
 
 
-def eval_data_from_jsonl(filename: str, batch_size: Union[int, bool] = None,
+def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
                          max_docs: Union[int, bool] = None) -> Generator[Tuple[List[Document], List[Label]], None, None]:
     """
     Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
@@ -320,3 +320,20 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
                                'See haystack documentation for support of more file types'.format(url))
             # temp_file gets deleted here
         return True
+
+
+def squad_json_to_jsonl(squad_file: str, output_file: str):
+    """
+    Converts a SQuAD-json-file into jsonl format with one document per line.
+
+    :param squad_file: SQuAD-file in json format.
+    :type squad_file: str
+    :param output_file: Name of output file (SQuAD in jsonl format)
+    :type output_file: str
+    """
+    with open(squad_file) as json_file, open(output_file, "w") as jsonl_file:
+        squad_json = json.load(json_file)
+
+        for doc in squad_json["data"]:
+            json.dump(doc, jsonl_file)
+            jsonl_file.write("\n")

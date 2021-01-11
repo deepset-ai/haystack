@@ -133,7 +133,8 @@ class BaseDocumentStore(ABC):
         pass
 
     @abstractmethod
-    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "label"):
+    def add_eval_data(self, filename: str, doc_index: str = "document", label_index: str = "label",
+                      batch_size: Optional[int] = None):
         pass
 
     @abstractmethod
