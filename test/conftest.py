@@ -249,7 +249,7 @@ def get_document_store(document_store_type, embedding_field="embedding"):
     if document_store_type == "sql":
         if os.path.exists("haystack_test.db"):
             os.remove("haystack_test.db")
-        document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
+        document_store = SQLDocumentStore(url="sqlite://")
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(return_embedding=True, embedding_field=embedding_field)
     elif document_store_type == "elasticsearch":
@@ -263,7 +263,7 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         if os.path.exists("haystack_test_faiss.db"):
             os.remove("haystack_test_faiss.db")
         document_store = FAISSDocumentStore(
-            sql_url="sqlite:///haystack_test_faiss.db", return_embedding=True, embedding_field=embedding_field
+            sql_url="sqlite://", return_embedding=True, embedding_field=embedding_field
         )
         return document_store
     else:
