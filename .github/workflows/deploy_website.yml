@@ -26,10 +26,6 @@ jobs:
           pip install 'pydoc-markdown>=3.0.0,<4.0.0'
           pip install mkdocs
           pip install jupytercontrib
-          cd docs/_src/api/api/
-          ./generate_docstrings.sh 
-          cd ../../tutorials/tutorials/
-          python3 convert_ipynb.py 
 
       # Generates the docstrings and tutorials so that we have the latest for the deployment
       - name: Generate Docstrings and Tutorials
