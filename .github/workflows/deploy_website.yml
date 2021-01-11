@@ -26,7 +26,13 @@ jobs:
           pip3 install mkdocs
           pip3 install jupytercontrib
           cd docs/_src/api/api/
-          ./generate_docstrings.sh 
+          pydoc-markdown pydoc-markdown-document-store.yml
+          pydoc-markdown pydoc-markdown-file-converters.yml
+          pydoc-markdown pydoc-markdown-preprocessor.yml
+          pydoc-markdown pydoc-markdown-reader.yml
+          pydoc-markdown pydoc-markdown-generator.yml
+          pydoc-markdown pydoc-markdown-retriever.yml
+          pydoc-markdown pydoc-markdown-pipelines.yml
           cd ../../tutorials/tutorials/
           python3 convert_ipynb.py 
 
