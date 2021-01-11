@@ -38,7 +38,6 @@ def check_data_correctness(documents_indexed, documents_inserted):
 def test_faiss_index_save_and_load(document_store):
     import os
     files = os.listdir(os.curdir)
-    print(f"Files in Directory: {files}")
     document_store.write_documents(DOCUMENTS)
 
     # test saving the index
@@ -51,8 +50,8 @@ def test_faiss_index_save_and_load(document_store):
     assert document_store.faiss_index.ntotal == 0
 
     # test loading the index
-    new_document_store = document_store.load(sql_url="sqlite:///haystack_test.db",
-                                             faiss_file_path="haystack_test_faiss")
+    new_document_store = FAISSDocumentStore.load(sql_url="sqlite:///haystack_test_faiss.db",
+                                                 faiss_file_path="haystack_test_faiss")
 
     # check faiss index is restored
     assert new_document_store.faiss_index.ntotal == len(DOCUMENTS)
