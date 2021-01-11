@@ -4,7 +4,7 @@ name: Deploy website
 # events but only for the master branch
 on:
   push:
-    branches: [ master, benchmarks ]
+    branches: [ master, benchmarks, automate_docstrings ]
 
 jobs:
   # This workflow contains a single job called "build"
