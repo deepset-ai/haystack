@@ -12,9 +12,8 @@ from scipy.special import expit
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl
+from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 from haystack.retriever.base import BaseRetriever
-from haystack.preprocessor.utils import squad_json_to_jsonl
 
 logger = logging.getLogger(__name__)
 
