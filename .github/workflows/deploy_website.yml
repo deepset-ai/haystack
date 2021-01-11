@@ -19,6 +19,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install python3-pip
+          sudo apt install python3-setuptools
           pip3 install 'pydoc-markdown>=3.0.0,<4.0.0'
           pip3 install jupytercontrib
           cd docs/_src/api/api/
