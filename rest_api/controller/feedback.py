@@ -10,6 +10,7 @@ from rest_api.config import (
     DB_USER,
     DB_PW,
     DB_INDEX,
+    DB_INDEX_FEEDBACK,
     ES_CONN_SCHEME,
     TEXT_FIELD_NAME,
     SEARCH_FIELD_NAME,
@@ -20,7 +21,6 @@ from rest_api.config import (
     CREATE_INDEX,
     VECTOR_SIMILARITY_METRIC
 )
-from rest_api.config import DB_INDEX_FEEDBACK
 
 router = APIRouter()
 
@@ -30,6 +30,7 @@ document_store = ElasticsearchDocumentStore(
     username=DB_USER,
     password=DB_PW,
     index=DB_INDEX,
+    label_index=DB_INDEX_FEEDBACK,
     scheme=ES_CONN_SCHEME,
     ca_certs=False,
     verify_certs=False,

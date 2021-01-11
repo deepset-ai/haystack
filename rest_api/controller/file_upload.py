@@ -9,7 +9,7 @@ from fastapi import APIRouter
 from fastapi import HTTPException
 from fastapi import UploadFile, File, Form
 
-from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, ES_CONN_SCHEME, TEXT_FIELD_NAME, \
+from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DB_INDEX_FEEDBACK, ES_CONN_SCHEME, TEXT_FIELD_NAME, \
     SEARCH_FIELD_NAME, FILE_UPLOAD_PATH, EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, VALID_LANGUAGES, \
     FAQ_QUESTION_FIELD_NAME, REMOVE_NUMERIC_TABLES, REMOVE_WHITESPACE, REMOVE_EMPTY_LINES, REMOVE_HEADER_FOOTER, \
     CREATE_INDEX, VECTOR_SIMILARITY_METRIC
@@ -28,6 +28,7 @@ document_store = ElasticsearchDocumentStore(
     username=DB_USER,
     password=DB_PW,
     index=DB_INDEX,
+    label_index=DB_INDEX_FEEDBACK,
     scheme=ES_CONN_SCHEME,
     ca_certs=False,
     verify_certs=False,
