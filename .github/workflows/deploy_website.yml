@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v2
 
       # Generates the docstrings and tutorials so that we have the latest for the deployment
       - name: Generate Docstrings and Tutorials
@@ -22,6 +23,7 @@ jobs:
           sudo apt install python3-setuptools
           pip3 install 'pydoc-markdown>=3.0.0,<4.0.0'
           pip3 install jupytercontrib
+          ls -l
           cd docs/_src/api/api/
           .generate_docstrings.sh 
           cd ../../tutorials/tutorials/
