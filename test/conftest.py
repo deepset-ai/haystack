@@ -1,4 +1,3 @@
-import os
 import subprocess
 import time
 from subprocess import run
@@ -247,8 +246,6 @@ def document_store(request, test_docs_xs):
 
 def get_document_store(document_store_type, embedding_field="embedding"):
     if document_store_type == "sql":
-        if os.path.exists("haystack_test.db"):
-            os.remove("haystack_test.db")
         document_store = SQLDocumentStore(url="sqlite://")
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(return_embedding=True, embedding_field=embedding_field)
@@ -260,8 +257,6 @@ def get_document_store(document_store_type, embedding_field="embedding"):
             index="haystack_test", return_embedding=True, embedding_field=embedding_field
         )
     elif document_store_type == "faiss":
-        if os.path.exists("haystack_test_faiss.db"):
-            os.remove("haystack_test_faiss.db")
         document_store = FAISSDocumentStore(
             sql_url="sqlite://", return_embedding=True, embedding_field=embedding_field
         )
