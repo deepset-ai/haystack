@@ -19,7 +19,8 @@ from rest_api.config import (
     EXCLUDE_META_DATA_FIELDS,
     FAQ_QUESTION_FIELD_NAME,
     CREATE_INDEX,
-    VECTOR_SIMILARITY_METRIC
+    VECTOR_SIMILARITY_METRIC,
+    UPDATE_EXISTING_DOCUMENTS
 )
 
 router = APIRouter()
@@ -41,6 +42,7 @@ document_store = ElasticsearchDocumentStore(
     embedding_field=EMBEDDING_FIELD_NAME,
     excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
     create_index=CREATE_INDEX,
+    update_existing_documents=UPDATE_EXISTING_DOCUMENTS,
     similarity=VECTOR_SIMILARITY_METRIC
 )
 
