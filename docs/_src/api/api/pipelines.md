@@ -207,6 +207,44 @@ Initialize a Pipeline for Generative Question Answering.
 - `generator`: Generator instance
 - `retriever`: Retriever instance
 
+<a name="pipeline.SearchSummarizationPipeline"></a>
+## SearchSummarizationPipeline Objects
+
+```python
+class SearchSummarizationPipeline(BaseStandardPipeline)
+```
+
+<a name="pipeline.SearchSummarizationPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(summarizer: BaseSummarizer, retriever: BaseRetriever)
+```
+
+Initialize a Pipeline that retrieves documents for a query and then summarizes those documents.
+
+**Arguments**:
+
+- `summarizer`: Summarizer instance
+- `retriever`: Retriever instance
+
+<a name="pipeline.SearchSummarizationPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, generate_single_summary: bool = False, return_in_answer_format=False)
+```
+
+**Arguments**:
+
+- `query`: Your search query
+- `filters`: 
+- `top_k_retriever`: Number of top docs the retriever should pass to the summarizer.
+The higher this value, the slower your pipeline.
+- `generate_single_summary`: Whether to generate single summary from all retrieved docs (True) or one per doc (False).
+- `return_in_answer_format`: Whether the results should be returned as documents (False) or in the answer format used in other QA pipelines (True).
+With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
+
 <a name="pipeline.FAQPipeline"></a>
 ## FAQPipeline Objects
 
