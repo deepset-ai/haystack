@@ -83,6 +83,7 @@ class Label:
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: str,
+                 id: Optional[str] = None,
                  document_id: Optional[str] = None,
                  offset_start_in_doc: Optional[int] = None,
                  no_answer: Optional[bool] = None,
@@ -99,11 +100,19 @@ class Label:
                                     incorrect answer but correct document & incorrect document. This flag denotes if
                                     the returned document was correct.
         :param origin: the source for the labels. It can be used to later for filtering.
+        :param id: Unique ID used within the DocumentStore. If not supplied, a uuid will be generated automatically.
         :param document_id: the document_store's ID for the returned answer document.
         :param offset_start_in_doc: the answer start offset in the document.
         :param no_answer: whether the question in unanswerable.
         :param model_id: model_id used for prediction (in-case of user feedback).
         """
+
+        # Create a unique ID (either new one, or one from user input)
+        if id:
+            self.id = str(id)
+        else:
+            self.id = str(uuid4())
+
         self.question = question
         self.answer = answer
         self.is_correct_answer = is_correct_answer
