@@ -12,7 +12,7 @@ from fastapi import UploadFile, File, Form
 from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DB_INDEX_FEEDBACK, ES_CONN_SCHEME, TEXT_FIELD_NAME, \
     SEARCH_FIELD_NAME, FILE_UPLOAD_PATH, EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, VALID_LANGUAGES, \
     FAQ_QUESTION_FIELD_NAME, REMOVE_NUMERIC_TABLES, REMOVE_WHITESPACE, REMOVE_EMPTY_LINES, REMOVE_HEADER_FOOTER, \
-    CREATE_INDEX, VECTOR_SIMILARITY_METRIC
+    CREATE_INDEX, UPDATE_EXISTING_DOCUMENTS, VECTOR_SIMILARITY_METRIC
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.txt import TextConverter
@@ -39,6 +39,7 @@ document_store = ElasticsearchDocumentStore(
     excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
     faq_question_field=FAQ_QUESTION_FIELD_NAME,
     create_index=CREATE_INDEX,
+    update_existing_documents=UPDATE_EXISTING_DOCUMENTS,
     similarity=VECTOR_SIMILARITY_METRIC
 )
 

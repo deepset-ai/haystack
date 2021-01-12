@@ -313,6 +313,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 **label.to_dict()
             }  # type: Dict[str, Any]
 
+            # rename id for elastic
+            if label.id is not None:
+                _label["_id"] = str(_label.pop("id"))
+
             labels_to_index.append(_label)
         bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
 
