@@ -12,7 +12,6 @@ from scipy.special import expit
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.preprocessor.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
@@ -233,7 +232,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        batch_size: Optional[int] = None):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -252,6 +252,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                           Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
                           should be changed to what you have set for self.text_field and self.name_field.
         :param index: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
+        :param batch_size: Number of documents that are passed to Elasticsearch's bulk function at a time.
+                           If `None`, all documents will be passed to bulk at once.
         :return: None
         """
 
@@ -261,12 +263,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if index is None:
             index = self.index
 
-        # Make sure we comply to Document class format
-        documents_objects = [Document.from_dict(d, field_map=self._create_document_field_map())
-                             if isinstance(d, dict) else d for d in documents]
-
         documents_to_index = []
-        for doc in documents_objects:
+        for document in documents:
+            # Make sure we comply to Document class format
+            if isinstance(document, dict):
+                doc = Document.from_dict(document, field_map=self._create_document_field_map())
+            else:
+                doc = document
 
             _doc = {
                 "_op_type": "index" if self.update_existing_documents else "create",
@@ -294,19 +297,36 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     _doc[k] = v
                 _doc.pop("meta")
             documents_to_index.append(_doc)
-        bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
 
-    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None):
-        """Write annotation labels into document store."""
+            if batch_size is not None:
+                # Pass batch_size number of documents to bulk
+                if len(documents_to_index) % batch_size == 0:
+                    bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
+                    documents_to_index = []
+
+        if documents_to_index:
+            bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
+
+    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None,
+                     batch_size: Optional[int] = None):
+        """Write annotation labels into document store.
+
+        :param labels: A list of Python dictionaries or a list of Haystack Label objects.
+        :param batch_size: Number of labels that are passed to Elasticsearch's bulk function at a time.
+                           If `None`, all labels will be passed to bulk at once.
+        """
         index = index or self.label_index
         if index and not self.client.indices.exists(index=index):
             self._create_label_index(index)
 
-        # Make sure we comply to Label class format
-        label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
-
         labels_to_index = []
-        for label in label_objects:
+        for l in labels:
+            # Make sure we comply to Label class format
+            if isinstance(l, dict):
+                label = Label.from_dict(l)
+            else:
+                label = l
+
             _label = {
                 "_op_type": "index" if self.update_existing_documents else "create",
                 "_index": index,
@@ -318,7 +338,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 _label["_id"] = str(_label.pop("id"))
 
             labels_to_index.append(_label)
-        bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
+
+            if batch_size is not None:
+                # Pass batch_size number of labels to bulk
+                if len(labels_to_index) % batch_size == 0:
+                    bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
+                    labels_to_index = []
+
+        if labels_to_index:
+            bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
         """
@@ -690,22 +718,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             doc_updates.append(update)
 
         bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
-
-    def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label"):
-        """
-        Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-        :param filename: Name of the file containing evaluation data
-        :type filename: str
-        :param doc_index: Elasticsearch index where evaluation documents should be stored
-        :type doc_index: str
-        :param label_index: Elasticsearch index where labeled questions should be stored
-        :type label_index: str
-        """
-
-        docs, labels = eval_data_from_file(filename)
-        self.write_documents(docs, index=doc_index)
-        self.write_labels(labels, index=label_index)
 
     def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
         """
