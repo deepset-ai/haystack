@@ -27,6 +27,7 @@ EMBEDDING_FIELD_NAME = os.getenv("EMBEDDING_FIELD_NAME", "embedding")
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", 768))
 VECTOR_SIMILARITY_METRIC = os.getenv("VECTOR_SIMILARITY_METRIC", "dot_product")
 CREATE_INDEX = os.getenv("CREATE_INDEX", "True").lower() == "true"
+UPDATE_EXISTING_DOCUMENTS = os.getenv("UPDATE_EXISTING_DOCUMENTS", "False").lower() == "true"
 
 # Reader
 READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", "deepset/roberta-base-squad2")
