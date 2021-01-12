@@ -5,12 +5,12 @@ from collections import defaultdict
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.preprocessor.utils import eval_data_from_file
 from haystack.retriever.base import BaseRetriever
 
 from scipy.spatial.distance import cosine
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -249,24 +249,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
             result = list(self.indexes[index].values())
 
         return result
-
-    def add_eval_data(self, filename: str, doc_index: Optional[str] = None, label_index: Optional[str] = None):
-        """
-        Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-        :param filename: Name of the file containing evaluation data
-        :type filename: str
-        :param doc_index: Elasticsearch index where evaluation documents should be stored
-        :type doc_index: str
-        :param label_index: Elasticsearch index where labeled questions should be stored
-        :type label_index: str
-        """
-
-        docs, labels = eval_data_from_file(filename)
-        doc_index = doc_index or self.index
-        label_index = label_index or self.label_index
-        self.write_documents(docs, index=doc_index)
-        self.write_labels(labels, index=label_index)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
