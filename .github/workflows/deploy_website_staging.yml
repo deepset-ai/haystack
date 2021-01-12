@@ -23,4 +23,4 @@ jobs:
           token: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
           repository: deepset-ai/haystack-website
           event-type: deploy-website-staging
-          client-payload: '{}'
+          client-payload: '{"ref": "${{ github.ref }}"}'
