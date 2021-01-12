@@ -1,3 +1,6 @@
+<a name="base"></a>
+# Module base
+
 <a name="farm"></a>
 # Module farm
 
@@ -377,7 +380,4 @@ Example:
 **Returns**:
 
 Dict containing query and answers
-
-<a name="base"></a>
-# Module base
 
