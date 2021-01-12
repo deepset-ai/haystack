@@ -12,7 +12,6 @@ from scipy.special import expit
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
@@ -686,40 +685,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             doc_updates.append(update)
 
         bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
-
-    def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
-                      batch_size: Optional[int] = None):
-        """
-        Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-        :param filename: Name of the file containing evaluation data (json or jsonl)
-        :type filename: str
-        :param doc_index: Elasticsearch index where evaluation documents should be stored
-        :type doc_index: str
-        :param label_index: Elasticsearch index where labeled questions should be stored
-        :type label_index: str
-        """
-        if filename.endswith(".json"):
-            if batch_size is None:
-                docs, labels = eval_data_from_json(filename)
-                self.write_documents(docs, index=doc_index)
-                self.write_labels(labels, index=label_index)
-            else:
-                jsonl_filename = filename + "l"
-                logger.info(f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
-                            f"Converting json to jsonl to: {jsonl_filename}")
-                squad_json_to_jsonl(filename, jsonl_filename)
-                self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size)
-
-        elif filename.endswith(".jsonl"):
-            for docs, labels in eval_data_from_jsonl(filename, batch_size):
-                if docs:
-                    self.write_documents(docs, index=doc_index)
-                if labels:
-                    self.write_labels(labels, index=label_index)
-
-        else:
-            logger.error("File needs to be in json or jsonl format.")
 
     def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
         """
