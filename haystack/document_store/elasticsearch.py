@@ -37,7 +37,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         faq_question_field: Optional[str] = None,
         analyzer: str = "standard",
         scheme: str = "http",
-        ca_certs: bool = False,
+        ca_certs: str = None,
         verify_certs: bool = True,
         create_index: bool = True,
         update_existing_documents: bool = False,
@@ -71,7 +71,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
                                    Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
         :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
-        :param ca_certs: Root certificates for SSL
+        :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
         :param verify_certs: Whether to be strict about ca certificates
         :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
         :param update_existing_documents: Whether to update any existing documents with the same ID when adding
