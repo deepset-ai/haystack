@@ -4,7 +4,9 @@ name: Deploy website
 # events but only for the master branch
 on:
   push:
-    branches: [ master, benchmarks ]
+    branches-ignore:
+      - master
+      - benchmarks
 
 jobs:
   # This workflow contains a single job called "build"
@@ -20,5 +22,5 @@ jobs:
         with:
           token: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
           repository: deepset-ai/haystack-website
-          event-type: deploy-website
+          event-type: deploy-website-staging
           client-payload: '{}'

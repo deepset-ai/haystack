@@ -4,9 +4,9 @@ name: Update Docstrings and Tutorials
 # events but only for the master branch
 on:
   push:
-    branches: 
-      - '**'        # matches every branch
-      - '!master'   # excludes master
+    branches-ignore:
+      - master
+      - benchmarks
 
 jobs:
   # This workflow contains a single job called "build"
