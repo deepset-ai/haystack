@@ -134,10 +134,16 @@ class BaseDocumentStore(ABC):
     def get_label_count(self, index: Optional[str] = None) -> int:
         pass
 
+    @abstractmethod
+    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None):
+        pass
+
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
                       batch_size: Optional[int] = None):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
+        If a jsonl file and a batch size is passed to the function, documents are loaded batch by batch
+        in order to prevent out of memory errors.
 
         :param filename: Name of the file containing evaluation data (json or jsonl)
         :type filename: str
@@ -145,6 +151,11 @@ class BaseDocumentStore(ABC):
         :type doc_index: str
         :param label_index: Elasticsearch index where labeled questions should be stored
         :type label_index: str
+        :param batch_size: Number of documents that are loaded and processed at a time.
+                           Only works with jsonl formatted files. Setting batch_size and
+                           using a json formatted file will convert the json to jsonl prior
+                           to adding eval data.
+        :type batch_size: int
         """
         if filename.endswith(".json"):
             if batch_size is None:
