@@ -142,8 +142,8 @@ class BaseDocumentStore(ABC):
                       batch_size: Optional[int] = None):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-        If a jsonl file and a batch size is passed to the function, documents are loaded batch by batch
-        in order to prevent out of memory errors.
+        If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
+        from disk and also indexed batchwise to the DocumentStore in order to prevent out of memory errors.
 
         :param filename: Name of the file containing evaluation data (json or jsonl)
         :type filename: str
