@@ -5,6 +5,7 @@ def tutorial9_dpr_training():
 
     from haystack.retriever.dense import DensePassageRetriever
     from haystack.preprocessor.utils import fetch_archive_from_http
+    from haystack.document_store.memory import InMemoryDocumentStore
 
     # Download original DPR data
     # WARNING: the train set is 7.4GB and the dev set is 800MB
@@ -49,7 +50,7 @@ def tutorial9_dpr_training():
     ## Initialize DPR model
 
     retriever = DensePassageRetriever(
-        document_store=None,
+        document_store=InMemoryDocumentStore(),
         query_embedding_model=query_model,
         passage_embedding_model=passage_model,
         max_seq_len_query=64,

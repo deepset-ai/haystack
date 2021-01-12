@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.memory import InMemoryDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
 
@@ -35,7 +36,7 @@ class DensePassageRetriever(BaseRetriever):
     """
 
     def __init__(self,
-                 document_store: Union[BaseDocumentStore, None],
+                 document_store: BaseDocumentStore,
                  query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
                  passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
                  max_seq_len_query: int = 64,
@@ -350,7 +351,7 @@ class DensePassageRetriever(BaseRetriever):
     @classmethod
     def load(cls,
              load_dir: Union[Path, str],
-             document_store: Union[BaseDocumentStore, None],
+             document_store: BaseDocumentStore,
              max_seq_len_query: int = 64,
              max_seq_len_passage: int = 256,
              use_gpu: bool = True,
