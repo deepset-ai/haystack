@@ -1,4 +1,3 @@
-import os
 import subprocess
 import time
 from subprocess import run
@@ -20,12 +19,15 @@ from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
+from haystack.summarizer.transformers import TransformersSummarizer
 
 
 def pytest_collection_modifyitems(items):
     for item in items:
         if "generator" in item.nodeid:
             item.add_marker(pytest.mark.generator)
+        elif "summarizer" in item.nodeid:
+            item.add_marker(pytest.mark.summarizer)
         elif "tika" in item.nodeid:
             item.add_marker(pytest.mark.tika)
         elif "elasticsearch" in item.nodeid:
@@ -114,6 +116,14 @@ def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
         generator_type=RAGeneratorType.TOKEN
+    )
+
+
+@pytest.fixture(scope="module")
+def summarizer():
+    return TransformersSummarizer(
+        model_name_or_path="google/pegasus-xsum",
+        use_gpu=-1
     )
 
 
@@ -236,9 +246,7 @@ def document_store(request, test_docs_xs):
 
 def get_document_store(document_store_type, embedding_field="embedding"):
     if document_store_type == "sql":
-        if os.path.exists("haystack_test.db"):
-            os.remove("haystack_test.db")
-        document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
+        document_store = SQLDocumentStore(url="sqlite://")
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(return_embedding=True, embedding_field=embedding_field)
     elif document_store_type == "elasticsearch":
@@ -249,10 +257,8 @@ def get_document_store(document_store_type, embedding_field="embedding"):
             index="haystack_test", return_embedding=True, embedding_field=embedding_field
         )
     elif document_store_type == "faiss":
-        if os.path.exists("haystack_test_faiss.db"):
-            os.remove("haystack_test_faiss.db")
         document_store = FAISSDocumentStore(
-            sql_url="sqlite:///haystack_test_faiss.db", return_embedding=True, embedding_field=embedding_field
+            sql_url="sqlite://", return_embedding=True, embedding_field=embedding_field
         )
         return document_store
     else:

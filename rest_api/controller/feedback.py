@@ -10,6 +10,7 @@ from rest_api.config import (
     DB_USER,
     DB_PW,
     DB_INDEX,
+    DB_INDEX_FEEDBACK,
     ES_CONN_SCHEME,
     TEXT_FIELD_NAME,
     SEARCH_FIELD_NAME,
@@ -18,9 +19,9 @@ from rest_api.config import (
     EXCLUDE_META_DATA_FIELDS,
     FAQ_QUESTION_FIELD_NAME,
     CREATE_INDEX,
-    VECTOR_SIMILARITY_METRIC
+    VECTOR_SIMILARITY_METRIC,
+    UPDATE_EXISTING_DOCUMENTS
 )
-from rest_api.config import DB_INDEX_FEEDBACK
 
 router = APIRouter()
 
@@ -30,6 +31,7 @@ document_store = ElasticsearchDocumentStore(
     username=DB_USER,
     password=DB_PW,
     index=DB_INDEX,
+    label_index=DB_INDEX_FEEDBACK,
     scheme=ES_CONN_SCHEME,
     ca_certs=False,
     verify_certs=False,
@@ -40,6 +42,7 @@ document_store = ElasticsearchDocumentStore(
     embedding_field=EMBEDDING_FIELD_NAME,
     excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
     create_index=CREATE_INDEX,
+    update_existing_documents=UPDATE_EXISTING_DOCUMENTS,
     similarity=VECTOR_SIMILARITY_METRIC
 )
 
