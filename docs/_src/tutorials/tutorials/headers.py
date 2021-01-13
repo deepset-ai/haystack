@@ -60,7 +60,15 @@ title: "Tutorial 8"
 metaTitle: "Preprocessing"
 metaDescription: ""
 slug: "/docs/tutorial8"
-date: "2020-11-12"
+date: "2021-01-08"
 id: "tutorial8md"
+--->""",
+    9: """<!---
+title: "Tutorial 9"
+metaTitle: "Training a Dense Passage Retrieval model"
+metaDescription: ""
+slug: "/docs/tutorial9"
+date: "2021-01-08"
+id: "tutorial9md"
 --->"""
 }
