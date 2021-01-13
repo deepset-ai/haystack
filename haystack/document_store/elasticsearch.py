@@ -455,10 +455,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             }
         }  # type: Dict[str, Any]
 
-        if page_number is not None:
+        if page_number is not None and page_size is not None:
             body["slice"] = {"id": page_number}
-            if page_size is not None:
-                body["slice"]["max"] = math.ceil(self.get_document_count(index=index) / page_size)
+            body["slice"]["max"] = math.ceil(self.get_document_count(index=index) / page_size) + 1
 
         if filters:
             filter_clause = []
