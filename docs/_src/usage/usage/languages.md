@@ -159,8 +159,7 @@ reader = TransformersReader("deepset/xlm-roberta-large-squad2")
 
 The **French** and **Italian models** are both monolingual language models trained on French and Italian versions of the SQuAD dataset
 and their authors report decent results in their model cards
-[here](https://huggingface.co/illuin/camembert-base-fquad) and [here](https://huggingface.co/mrm8488/bert-italian-finedtuned-squadv1-it-alfa) .
-Note that there is also a [large variant](https://huggingface.co/illuin/camembert-large-fquad) of the French model available on the model hub.
+[here](https://huggingface.co/illuin/camembert-base-fquad) and [here](https://huggingface.co/mrm8488/bert-italian-finedtuned-squadv1-it-alfa).
 There also exist Korean QA models on the model hub but their performance is not reported.
 
 The **zero-shot model** that is shown above is a **multilingual XLM-RoBERTa Large** that is trained on English SQuAD.
