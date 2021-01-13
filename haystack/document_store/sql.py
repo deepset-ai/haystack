@@ -142,10 +142,12 @@ class SQLDocumentStore(BaseDocumentStore):
         return sorted_documents
 
     def get_all_documents(
-            self,
-            index: Optional[str] = None,
-            filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        page_number: Optional[int] = None,
+        page_size: Optional[int] = None,
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -155,6 +157,11 @@ class SQLDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
+        :param page_number: For getting a large number of documents, the results can be paginated. This
+                    parameter defines the page number to be retrieved starting from the value 0. When using
+                    page_number, the page_size argument must be set.
+        :param page_size: Number of documents to return in a single page. The page_number argument must be set when
+                          using page_size.
         """
 
         index = index or self.index
@@ -166,6 +173,8 @@ class SQLDocumentStore(BaseDocumentStore):
             DocumentORM.text,
             DocumentORM.vector_id
         ).filter_by(index=index)
+        if page_number is not None and page_size is not None:
+            documents_query = documents_query.offset(page_number * page_size).limit(page_size)
 
         if filters:
             documents_query = documents_query.join(MetaORM)

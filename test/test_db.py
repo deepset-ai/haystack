@@ -86,6 +86,22 @@ def test_get_document_count(document_store):
 
 
 @pytest.mark.elasticsearch
+def test_get_document_pagination(document_store):
+    documents = [
+        {"text": "text1", "id": "1", "meta_field_for_count": "a"},
+        {"text": "text2", "id": "2", "meta_field_for_count": "b"},
+        {"text": "text3", "id": "3", "meta_field_for_count": "b"},
+        {"text": "text4", "id": "4", "meta_field_for_count": "b"},
+        {"text": "text5", "id": "5", "meta_field_for_count": "b"},
+    ]
+
+    document_store.write_documents(documents)
+    assert len(document_store.get_all_documents()) == 5
+    assert len(document_store.get_all_documents(page_size=3, page_number=0)) == 3
+    assert len(document_store.get_all_documents(page_size=3, page_number=1)) == 2
+
+
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch", "sql", "faiss"], indirect=True)
 @pytest.mark.parametrize("update_existing_documents", [True, False])
 def test_update_existing_documents(document_store, update_existing_documents):
@@ -166,6 +182,44 @@ def test_document_with_embeddings(document_store):
 
     documents_with_embedding = document_store.get_all_documents(index="haystack_test_1", return_embedding=True)
     assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
+
+
+@pytest.mark.parametrize("retriever", ["dpr", "embedding"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+def test_update_embeddings(document_store, retriever):
+    documents = [
+        {"text": "text1", "id": "1", "meta_field": "value_1"},
+        {"text": "text2", "id": "2", "meta_field": "value_2"},
+        {"text": "text3", "id": "3", "meta_field": "value_3"},
+        {"text": "text4", "id": "4", "meta_field": "value_4"},
+        {"text": "text1", "id": "5", "meta_field": "value_5"},
+    ]
+    document_store.write_documents(documents, index="haystack_test_1")
+    assert len(document_store.get_all_documents(index="haystack_test_1")) == 5
+    document_store.update_embeddings(retriever, index="haystack_test_1")
+    documents = document_store.get_all_documents(index="haystack_test_1", return_embedding=True)
+    assert len(documents) == 5
+    for doc in documents:
+        assert type(doc.embedding) is np.ndarray
+
+    documents = document_store.get_all_documents(
+        index="haystack_test_1",
+        filters={"meta_field": ["value_1", "value_5"]},
+        return_embedding=True,
+    )
+    np.testing.assert_array_equal(documents[0].embedding, documents[1].embedding)
+
+    documents = document_store.get_all_documents(
+        index="haystack_test_1",
+        filters={"meta_field": ["value_2", "value_4"]},
+        return_embedding=True,
+    )
+    np.testing.assert_raises(
+        AssertionError,
+        np.testing.assert_array_equal,
+        documents[0].embedding,
+        documents[1].embedding
+    )
 
 
 @pytest.mark.elasticsearch

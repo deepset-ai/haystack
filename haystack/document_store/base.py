@@ -40,7 +40,9 @@ class BaseDocumentStore(ABC):
             self,
             index: Optional[str] = None,
             filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None
+            return_embedding: Optional[bool] = None,
+            page_number: Optional[int] = None,
+            page_size: Optional[int] = None,
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -50,6 +52,11 @@ class BaseDocumentStore(ABC):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
+        :param page_number: For getting a large number of documents, the results can be paginated. This
+                            parameter defines the page number to be retrieved starting from the value 0. When using
+                            page_number, the page_size argument must be set.
+        :param page_size: Number of documents to return in a single page. The page_number argument must be set
+                          when using page_size.
         """
         pass
 

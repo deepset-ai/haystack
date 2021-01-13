@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import time
 from copy import deepcopy
 from string import Template
@@ -31,6 +32,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         name_field: str = "name",
         embedding_field: str = "embedding",
         embedding_dim: int = 768,
+        index_buffer_size: int = 10_000,
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
         faq_question_field: Optional[str] = None,
@@ -63,6 +65,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param name_field: Name of field that contains the title of the the doc
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param index_buffer_size: When working with large datasets, the updation of embeddings can be buffered in
+                                  smaller chunks to reduce memory footprint.
         :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
         :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
                          Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
@@ -102,6 +106,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.name_field = name_field
         self.embedding_field = embedding_field
         self.embedding_dim = embedding_dim
+        self.index_buffer_size = index_buffer_size
         self.excluded_meta_data = excluded_meta_data
         self.faq_question_field = faq_question_field
         self.analyzer = analyzer
@@ -387,10 +392,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return self.get_document_count(index=index)
 
     def get_all_documents(
-            self,
-            index: Optional[str] = None,
-            filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        page_number: Optional[int] = None,
+        page_size: Optional[int] = None,
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -400,12 +407,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
+        :param page_number: For getting a large number of documents, the results can be paginated. This
+                            parameter defines the page number to be retrieved starting from the value 0. When using
+                            page_number, the page_size argument must be set.
+        :param page_size: Number of documents to return in a single page. For ElasticsearchDocumentStore, page_size is
+                          implemented using heuristics, so the actual page sizes may differ.
         """
 
         if index is None:
             index = self.index
 
-        result = self.get_all_documents_in_index(index=index, filters=filters)
+        result = self.get_all_documents_in_index(
+            index=index, filters=filters, page_number=page_number, page_size=page_size
+        )
         if return_embedding is None:
             return_embedding = self.return_embedding
         documents = [self._convert_es_hit_to_document(hit, return_embedding=return_embedding) for hit in result]
@@ -421,7 +435,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         labels = [Label.from_dict(hit["_source"]) for hit in result]
         return labels
 
-    def get_all_documents_in_index(self, index: str, filters: Optional[Dict[str, List[str]]] = None) -> List[dict]:
+    def get_all_documents_in_index(
+        self,
+        index: str,
+        filters: Optional[Dict[str, List[str]]] = None,
+        page_number: Optional[int] = None,
+        page_size: Optional[int] = None,
+    ) -> List[dict]:
         """
         Return all documents in a specific index in the document store
         """
@@ -435,6 +455,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             }
         }  # type: Dict[str, Any]
 
+        if page_number is not None:
+            body["slice"] = {"id": page_number}
+            if page_size is not None:
+                body["slice"]["max"] = math.ceil(self.get_document_count(index=index) / page_size)
+
         if filters:
             filter_clause = []
             for key, values in filters.items():
@@ -444,7 +469,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     }
                 )
             body["query"]["bool"]["filter"] = filter_clause
-        result = list(scan(self.client, query=body, index=index))
+
+        try:
+            result = list(scan(self.client, query=body, index=index))
+        except Exception as e:
+            if "[slice] failed to parse field [max]" in str(e):  # ignore error in fetching n+1 page
+                result = []
+            else:
+                raise e
 
         return result
 
@@ -698,26 +730,32 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
-        # TODO Index embeddings every X batches to avoid OOM for huge document collections
-        docs = self.get_all_documents(index)
-        logger.info(f"Updating embeddings for {len(docs)} docs ...")
-        embeddings = retriever.embed_passages(docs)  # type: ignore
-        assert len(docs) == len(embeddings)
+        logger.info(f"Updating embeddings for {self.get_document_count(index=index)} docs ...")
 
-        if embeddings[0].shape[0] != self.embedding_dim:
-            raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                               f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                               "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
-        doc_updates = []
-        for doc, emb in zip(docs, embeddings):
-            update = {"_op_type": "update",
-                      "_index": index,
-                      "_id": doc.id,
-                      "doc": {self.embedding_field: emb.tolist()},
-                      }
-            doc_updates.append(update)
+        page_number = 0
+        while True:
+            docs = self.get_all_documents(index, page_size=self.index_buffer_size, page_number=page_number)
+            if len(docs) == 0:
+                break
 
-        bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
+            embeddings = retriever.embed_passages(docs)  # type: ignore
+            assert len(docs) == len(embeddings)
+
+            if embeddings[0].shape[0] != self.embedding_dim:
+                raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                                   f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
+                                   "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
+            doc_updates = []
+            for doc, emb in zip(docs, embeddings):
+                update = {"_op_type": "update",
+                          "_index": index,
+                          "_id": doc.id,
+                          "doc": {self.embedding_field: emb.tolist()},
+                          }
+                doc_updates.append(update)
+
+            bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
+            page_number += 1
 
     def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
         """

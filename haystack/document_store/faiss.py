@@ -174,39 +174,37 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.faiss_index.reset()
 
         index = index or self.index
-        documents = self.get_all_documents(index=index)
 
-        if len(documents) == 0:
-            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
-            return
+        document_count = self.get_document_count(index=index)
+        logger.info(f"Updating embeddings for {document_count} docs...")
+        vector_id = self.faiss_index.ntotal
+        page_number = 0
+        for _ in tqdm(range(0, document_count, self.index_buffer_size)):
+            documents = self.get_all_documents(index=index, page_number=page_number, page_size=self.index_buffer_size)
+            if len(documents) == 0:
+                break
 
-        # To clear out the FAISS index contents and frees all memory immediately that is in use by the index
-        self.faiss_index.reset()
+            embeddings = retriever.embed_passages(documents)  # type: ignore
+            assert len(documents) == len(embeddings)
 
-        logger.info(f"Updating embeddings for {len(documents)} docs...")
-        embeddings = retriever.embed_passages(documents)  # type: ignore
-        assert len(documents) == len(embeddings)
-        for i, doc in enumerate(documents):
-            doc.embedding = embeddings[i]
+            embeddings_to_index = np.array(embeddings, dtype="float32")
+            self.faiss_index.add(embeddings_to_index)
 
-        logger.info("Indexing embeddings and updating vectors_ids...")
-        for i in tqdm(range(0, len(documents), self.index_buffer_size)):
             vector_id_map = {}
-            vector_id = self.faiss_index.ntotal
-            embeddings = [doc.embedding for doc in documents[i: i + self.index_buffer_size]]
-            embeddings = np.array(embeddings, dtype="float32")
-            self.faiss_index.add(embeddings)
-
-            for doc in documents[i: i + self.index_buffer_size]:
+            for doc in documents:
                 vector_id_map[doc.id] = vector_id
                 vector_id += 1
             self.update_vector_ids(vector_id_map, index=index)
 
+            page_number += 1
+
     def get_all_documents(
-            self,
-            index: Optional[str] = None,
-            filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        page_number: Optional[int] = None,
+        page_size: Optional[int] = None,
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -216,8 +214,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
+        :param page_number: For getting a large number of documents, the results can be paginated. This
+                    parameter defines the page number to be retrieved starting from the value 0. When using
+                    page_number, the page_size argument must be set.
+        :param page_size: Number of documents to return in a single page. The page_number argument must be set when
+                          using page_size.
         """
-        documents = super(FAISSDocumentStore, self).get_all_documents(index=index, filters=filters)
+        documents = super(FAISSDocumentStore, self).get_all_documents(
+            index=index, filters=filters, page_number=page_number, page_size=page_size
+        )
         if return_embedding is None:
             return_embedding = self.return_embedding
         if return_embedding:
