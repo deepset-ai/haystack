@@ -231,6 +231,14 @@ class FAISSDocumentStore(SQLDocumentStore):
                     doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         return documents
 
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+        documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index)
+        if self.return_embedding:
+            for doc in documents:
+                if doc.meta and doc.meta.get("vector_id") is not None:
+                    doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+        return documents
+
     def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
         """
         Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
