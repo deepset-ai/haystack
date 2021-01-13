@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.memory import InMemoryDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
 
@@ -87,7 +88,11 @@ class DensePassageRetriever(BaseRetriever):
         self.max_seq_len_passage = max_seq_len_passage
         self.max_seq_len_query = max_seq_len_query
 
-        if document_store.similarity != "dot_product":
+        if document_store is None:
+           logger.warning("DensePassageRetriever initialized without a document store. "
+                          "This is fine if you are performing DPR training. "
+                          "Otherwise, please provide a document store in the constructor.")
+        elif document_store.similarity != "dot_product":
             logger.warning(f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
                            "We recommend you use dot_product instead. "
                            "This can be set when initializing the DocumentStore")
@@ -101,12 +106,16 @@ class DensePassageRetriever(BaseRetriever):
 
         # Init & Load Encoders
         self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
-                                              do_lower_case=True, use_fast=use_fast_tokenizers)
+                                              do_lower_case=True,
+                                              use_fast=use_fast_tokenizers,
+                                              tokenizer_class="DPRQuestionEncoderTokenizer")
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 language_model_class="DPRQuestionEncoder")
 
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
-                                                do_lower_case=True, use_fast=use_fast_tokenizers)
+                                                do_lower_case=True,
+                                                use_fast=use_fast_tokenizers,
+                                                tokenizer_class="DPRContextEncoderTokenizer")
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   language_model_class="DPRContextEncoder")
 
@@ -142,6 +151,9 @@ class DensePassageRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
+        if not self.document_store:
+            logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
+            return []
         if index is None:
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])
@@ -367,6 +379,7 @@ class DensePassageRetriever(BaseRetriever):
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function
         )
+        logger.info(f"DPR model loaded from {load_dir}")
 
         return dpr
 
