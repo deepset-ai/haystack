@@ -26,117 +26,121 @@ from haystack.file_converter.docx import DocxToTextConverter
 from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.preprocessor.preprocessor import PreProcessor
 
-# This fetches some sample files to work with
 
-doc_dir = "data/preprocessing_tutorial"
-s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial.zip"
-fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
+def tutorial8_preprocessing():
+    # This fetches some sample files to work with
 
-"""
-## Converters
+    doc_dir = "data/preprocessing_tutorial"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial.zip"
+    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
-Haystack's converter classes are designed to help you turn files on your computer into the documents
-that can be processed by the Haystack pipeline.
-There are file converters for txt, pdf, docx files as well as a converter that is powered by Apache Tika.
-"""
+    """
+    ## Converters
+    
+    Haystack's converter classes are designed to help you turn files on your computer into the documents
+    that can be processed by the Haystack pipeline.
+    There are file converters for txt, pdf, docx files as well as a converter that is powered by Apache Tika.
+    """
 
-# Here are some examples of how you would use file converters
+    # Here are some examples of how you would use file converters
 
-converter = TextConverter(remove_numeric_tables=True, valid_languages=["en"])
-doc_txt = converter.convert(file_path="data/preprocessing_tutorial/classics.txt", meta=None)
+    converter = TextConverter(remove_numeric_tables=True, valid_languages=["en"])
+    doc_txt = converter.convert(file_path="data/preprocessing_tutorial/classics.txt", meta=None)
 
-converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
-doc_pdf = converter.convert(file_path="data/preprocessing_tutorial/bert.pdf", meta=None)
+    converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
+    doc_pdf = converter.convert(file_path="data/preprocessing_tutorial/bert.pdf", meta=None)
 
-converter = DocxToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
-doc_docx = converter.convert(file_path="data/preprocessing_tutorial/heavy_metal.docx", meta=None)
+    converter = DocxToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
+    doc_docx = converter.convert(file_path="data/preprocessing_tutorial/heavy_metal.docx", meta=None)
 
-# Haystack also has a convenience function that will automatically apply the right converter to each file in a directory.
+    # Haystack also has a convenience function that will automatically apply the right converter to each file in a directory.
 
-all_docs = convert_files_to_dicts(dir_path="data/preprocessing_tutorial")
+    all_docs = convert_files_to_dicts(dir_path="data/preprocessing_tutorial")
 
-"""
-
-## PreProcessor
-
-The PreProcessor class is designed to help you clean text and split text into sensible units.
-File splitting can have a very significant impact on the system's performance.
-Have a look at the [Preprocessing](https://haystack.deepset.ai/docs/latest/preprocessingmd)
-and [Optimization](https://haystack.deepset.ai/docs/latest/optimizationmd) pages on our website for more details.
-"""
-
-
-# This is a default usage of the PreProcessor.
-# Here, it performs cleaning of consecutive whitespaces
-# and splits a single large document into smaller documents.
-# Each document is up to 1000 words long and document breaks cannot fall in the middle of sentences
-# Note how the single document passed into the document gets split into 5 smaller documents
-
-preprocessor = PreProcessor(
-    clean_empty_lines=True,
-    clean_whitespace=True,
-    clean_header_footer=False,
-    split_by="word",
-    split_length=1000,
-    split_respect_sentence_boundary=True
-)
-docs_default = preprocessor.process(doc_txt)
-print(f"n_docs_input: 1\nn_docs_output: {len(docs_default)}")
-
-"""
-## Cleaning
-
-- `clean_empty_lines` will normalize 3 or more consecutive empty lines to be just a two empty lines
-- `clean_whitespace` will remove any whitespace at the beginning or end of each line in the text
-- `clean_header_footer` will remove any long header or footer texts that are repeated on each page
-
-## Splitting
-By default, the PreProcessor will respect sentence boundaries, meaning that documents will not start or end
-midway through a sentence.
-This will help reduce the possibility of answer phrases being split between two documents.
-This feature can be turned off by setting `split_respect_sentence_boundary=False`.
-"""
-
-# Not respecting sentence boundary vs respecting sentence boundary
-
-preprocessor_nrsb = PreProcessor(split_respect_sentence_boundary=False)
-docs_nrsb = preprocessor_nrsb.process(doc_txt)
-
-print("RESPECTING SENTENCE BOUNDARY")
-end_text = docs_default[0]["text"][-50:]
-print("End of document: \"..." + end_text + "\"")
-print()
-print("NOT RESPECTING SENTENCE BOUNDARY")
-end_text_nrsb = docs_nrsb[0]["text"][-50:]
-print("End of document: \"..." + end_text_nrsb + "\"")
-
-"""
-A commonly used strategy to split long documents, especially in the field of Question Answering,
-is the sliding window approach. If `split_length=10` and `split_overlap=3`, your documents will look like this:
-
-- doc1 = words[0:10]
-- doc2 = words[7:17]
-- doc3 = words[14:24]
-- ...
-
-You can use this strategy by following the code below.
-"""
-
-# Sliding window approach
-
-preprocessor_sliding_window = PreProcessor(
-    split_overlap=3,
-    split_length=10,
-    split_respect_sentence_boundary=False
-)
-docs_sliding_window = preprocessor_sliding_window.process(doc_txt)
-
-doc1 = docs_sliding_window[0]["text"][:200]
-doc2 = docs_sliding_window[1]["text"][:100]
-doc3 = docs_sliding_window[2]["text"][:100]
-
-print("Document 1: \"" + doc1 + "...\"")
-print("Document 2: \"" + doc2 + "...\"")
-print("Document 3: \"" + doc3 + "...\"")
+    """
+    
+    ## PreProcessor
+    
+    The PreProcessor class is designed to help you clean text and split text into sensible units.
+    File splitting can have a very significant impact on the system's performance.
+    Have a look at the [Preprocessing](https://haystack.deepset.ai/docs/latest/preprocessingmd)
+    and [Optimization](https://haystack.deepset.ai/docs/latest/optimizationmd) pages on our website for more details.
+    """
 
 
+    # This is a default usage of the PreProcessor.
+    # Here, it performs cleaning of consecutive whitespaces
+    # and splits a single large document into smaller documents.
+    # Each document is up to 1000 words long and document breaks cannot fall in the middle of sentences
+    # Note how the single document passed into the document gets split into 5 smaller documents
+
+    preprocessor = PreProcessor(
+        clean_empty_lines=True,
+        clean_whitespace=True,
+        clean_header_footer=False,
+        split_by="word",
+        split_length=1000,
+        split_respect_sentence_boundary=True
+    )
+    docs_default = preprocessor.process(doc_txt)
+    print(f"n_docs_input: 1\nn_docs_output: {len(docs_default)}")
+
+    """
+    ## Cleaning
+    
+    - `clean_empty_lines` will normalize 3 or more consecutive empty lines to be just a two empty lines
+    - `clean_whitespace` will remove any whitespace at the beginning or end of each line in the text
+    - `clean_header_footer` will remove any long header or footer texts that are repeated on each page
+    
+    ## Splitting
+    By default, the PreProcessor will respect sentence boundaries, meaning that documents will not start or end
+    midway through a sentence.
+    This will help reduce the possibility of answer phrases being split between two documents.
+    This feature can be turned off by setting `split_respect_sentence_boundary=False`.
+    """
+
+    # Not respecting sentence boundary vs respecting sentence boundary
+
+    preprocessor_nrsb = PreProcessor(split_respect_sentence_boundary=False)
+    docs_nrsb = preprocessor_nrsb.process(doc_txt)
+
+    print("RESPECTING SENTENCE BOUNDARY")
+    end_text = docs_default[0]["text"][-50:]
+    print("End of document: \"..." + end_text + "\"")
+    print()
+    print("NOT RESPECTING SENTENCE BOUNDARY")
+    end_text_nrsb = docs_nrsb[0]["text"][-50:]
+    print("End of document: \"..." + end_text_nrsb + "\"")
+
+    """
+    A commonly used strategy to split long documents, especially in the field of Question Answering,
+    is the sliding window approach. If `split_length=10` and `split_overlap=3`, your documents will look like this:
+    
+    - doc1 = words[0:10]
+    - doc2 = words[7:17]
+    - doc3 = words[14:24]
+    - ...
+    
+    You can use this strategy by following the code below.
+    """
+
+    # Sliding window approach
+
+    preprocessor_sliding_window = PreProcessor(
+        split_overlap=3,
+        split_length=10,
+        split_respect_sentence_boundary=False
+    )
+    docs_sliding_window = preprocessor_sliding_window.process(doc_txt)
+
+    doc1 = docs_sliding_window[0]["text"][:200]
+    doc2 = docs_sliding_window[1]["text"][:100]
+    doc3 = docs_sliding_window[2]["text"][:100]
+
+    print("Document 1: \"" + doc1 + "...\"")
+    print("Document 2: \"" + doc2 + "...\"")
+    print("Document 3: \"" + doc3 + "...\"")
+
+
+if __name__ == "__main__":
+    tutorial8_preprocessing()
