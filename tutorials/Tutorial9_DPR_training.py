@@ -61,7 +61,7 @@ def tutorial9_dpr_training():
 
     retriever.train(
         data_dir=doc_dir,
-        train_filename=dev_filename,
+        train_filename=train_filename,
         dev_filename=dev_filename,
         test_filename=dev_filename,
         n_epochs=1,
