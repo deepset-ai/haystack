@@ -317,11 +317,11 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
                 tar_archive = tarfile.open(temp_file.name)
                 tar_archive.extractall(output_dir)
             elif url[-3:] == ".gz":
-                json_bytes = gzip.open(temp_file.name).read()
                 filename = url.split("/")[-1].replace(".gz", "")
                 output_filename = Path(output_dir) / filename
-                output = open(output_filename, "wb")
-                output.write(json_bytes)
+                with gzip.open(temp_file.name) as f, open(output_filename, "wb") as output:
+                        for line in f:
+                               output.write(line)
             else:
                 logger.warning('Skipped url {0} as file type is not supported here. '
                                'See haystack documentation for support of more file types'.format(url))
