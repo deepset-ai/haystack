@@ -48,8 +48,6 @@ Haystack is an end-to-end framework for Question Answering & Neural search that 
 | :bird: [Twitter](https://twitter.com/deepset_ai) | Follow us on Twitter for news and updates |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
-https://medium.com/deepset-ai
-
 ## Core Features
 
 -   **Latest models**: Utilize all latest transformer based models (e.g. BERT, RoBERTa, MiniLM) for extractive QA, generative QA and document retrieval.
