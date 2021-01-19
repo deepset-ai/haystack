@@ -1,5 +1,6 @@
 import logging
 from abc import abstractmethod, ABC
+from pathlib import Path
 from typing import Any, Optional, Dict, List, Union
 from haystack import Document, Label, MultiLabel
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
@@ -157,19 +158,20 @@ class BaseDocumentStore(ABC):
                            to adding eval data.
         :type batch_size: int
         """
-        if filename.endswith(".json"):
+        file_path = Path(filename)
+        if file_path.suffix == ".json":
             if batch_size is None:
                 docs, labels = eval_data_from_json(filename)
                 self.write_documents(docs, index=doc_index)
                 self.write_labels(labels, index=label_index)
             else:
-                jsonl_filename = filename + "l"
+                jsonl_filename = file_path.parent / (file_path.stem + '.jsonl')
                 logger.info(f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
                             f"Converting json to jsonl to: {jsonl_filename}")
                 squad_json_to_jsonl(filename, jsonl_filename)
                 self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size)
 
-        elif filename.endswith(".jsonl"):
+        elif file_path.suffix == ".jsonl":
             for docs, labels in eval_data_from_jsonl(filename, batch_size):
                 if docs:
                     self.write_documents(docs, index=doc_index)
