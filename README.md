@@ -44,6 +44,9 @@ Haystack is an end-to-end framework for Question Answering & Neural search that 
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers and DocumentStores |
 | :telescope: [Roadmap](https://haystack.deepset.ai/docs/latest/roadmapmd) | Public roadmap of Haystack |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
+| :pray: [Slack](https://haystack.deepset.ai/community/join) | Join our community on Slack |
+| :bird: [Twitter](https://twitter.com/deepset_ai) | Follow us on Twitter for news and updates |
+| :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
 ## Core Features
 
@@ -406,6 +409,8 @@ You will find the Swagger API documentation at
 
 We are very open to contributions from the community - be it the fix of a small typo or a completely new feature! You don't need to be an
 Haystack expert for providing meaningful improvements. To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
+
+We'd also like to invite you to our Slack community channels. Please join [here](https://haystack.deepset.ai/community/join)!
 
 Tests will automatically run for every commit you push to your PR. You can also run them locally by executing [pytest](https://docs.pytest.org/en/stable/) in your terminal from the root folder of this repository:
 
