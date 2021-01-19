@@ -165,7 +165,7 @@ class BaseDocumentStore(ABC):
                 self.write_documents(docs, index=doc_index)
                 self.write_labels(labels, index=label_index)
             else:
-                jsonl_filename = file_path.parent / (file_path.stem + '.jsonl')
+                jsonl_filename = (file_path.parent / (file_path.stem + '.jsonl')).as_posix()
                 logger.info(f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
                             f"Converting json to jsonl to: {jsonl_filename}")
                 squad_json_to_jsonl(filename, jsonl_filename)
