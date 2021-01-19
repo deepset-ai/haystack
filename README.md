@@ -44,9 +44,9 @@ Haystack is an end-to-end framework for Question Answering & Neural search that 
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers and DocumentStores |
 | :telescope: [Roadmap](https://haystack.deepset.ai/docs/latest/roadmapmd) | Public roadmap of Haystack |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
-| :heart: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
-| :heart: [Slack](https://haystack.deepset.ai/community/join) | Join our community on Slack! |
-| :heart: [Twitter](https://twitter.com/deepset_ai) | Follow us! |
+| :pray: [Slack](https://haystack.deepset.ai/community/join) | Join our community on Slack |
+| :radio: [Twitter](https://twitter.com/deepset_ai) | Follow us on Twitter for news and updates |
+| :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
 https://medium.com/deepset-ai
 
