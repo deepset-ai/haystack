@@ -16,12 +16,13 @@ from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.tika import TikaConverter
 from haystack import Document, Label
 from haystack.file_converter.txt import TextConverter
+from haystack.preprocessor.preprocessor import PreProcessor
 
 logger = logging.getLogger(__name__)
 
 
 
-def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None) -> Tuple[List[Document], List[Label]]:
+def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
@@ -44,7 +45,7 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None) -> Tup
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
-            cur_docs, cur_labels = _extract_docs_and_labels_from_dict(document)
+            cur_docs, cur_labels = _extract_docs_and_labels_from_dict(document, preprocessor)
             docs.extend(cur_docs)
             labels.extend(cur_labels)
 
@@ -52,7 +53,7 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None) -> Tup
 
 
 def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
-                         max_docs: Union[int, bool] = None) -> Generator[Tuple[List[Document], List[Label]], None, None]:
+                         max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Generator[Tuple[List[Document], List[Label]], None, None]:
     """
     Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
@@ -76,7 +77,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
             document_dict = json.loads(document)
-            cur_docs, cur_labels = _extract_docs_and_labels_from_dict(document_dict)
+            cur_docs, cur_labels = _extract_docs_and_labels_from_dict(document_dict, preprocessor)
             docs.extend(cur_docs)
             labels.extend(cur_labels)
 
@@ -89,50 +90,85 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
     yield docs, labels
 
 
-def _extract_docs_and_labels_from_dict(document_dict: Dict):
+def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PreProcessor = None):
     docs = []
     labels = []
 
     # get all extra fields from document level (e.g. title)
     meta_doc = {k: v for k, v in document_dict.items() if k not in ("paragraphs", "title")}
     for paragraph in document_dict["paragraphs"]:
+        ## Create Metadata
         cur_meta = {"name": document_dict.get("title", None)}
         # all other fields from paragraph level
         meta_paragraph = {k: v for k, v in paragraph.items() if k not in ("qas", "context")}
         cur_meta.update(meta_paragraph)
         # meta from parent document
         cur_meta.update(meta_doc)
-        # Create Document
-        cur_doc = Document(text=paragraph["context"], meta=cur_meta)
-        docs.append(cur_doc)
 
-        # Get Labels
+        ## Create Document
+        cur_doc = Document(text=paragraph["context"], meta=cur_meta)
+        if preprocessor is not None:
+            splits_dicts = preprocessor.process(cur_doc.to_dict())
+            # we need to pull in _split_id into the document id for unique reference in labels
+            # todo: PreProcessor should work on Documents instead of dicts
+            splits = []
+            offset = 0
+            for d in splits_dicts:
+                id = f"{d['id']}-{d['meta']['_split_id']}"
+                d["meta"]["_split_offset"] = offset
+                offset += len(d["text"]) + 1 # when splitting a whitespace is removed
+                mydoc = Document(text=d["text"],
+                                 id=id,
+                                 meta=d["meta"])
+                splits.append(mydoc)
+        else:
+            splits = [cur_doc]
+        docs.extend(splits)
+
+        ## Assign Labels to corresponding documents
         for qa in paragraph["qas"]:
-            if len(qa["answers"]) > 0:
+            if not qa["is_impossible"]:
                 for answer in qa["answers"]:
+                    ans = answer["text"]
+                    # find corresponding document or split
+                    if len(splits) == 1:
+                        cur_id = splits[0].id
+                        cur_ans_start = answer["answer_start"]
+                    else:
+                        for s in splits:
+                            # If answer start offset is contained in passage we assign the label to that passage
+                            if (answer["answer_start"] >= s.meta["_split_offset"]) and (answer["answer_start"] < (s.meta["_split_offset"] + len(s.text))):
+                                cur_id = s.id
+                                cur_ans_start = answer["answer_start"] - s.meta["_split_offset"]
+                                # If a document is splitting an answer we add the whole answer text to the document
+                                if s.text[cur_ans_start:cur_ans_start+len(ans)] != ans:
+                                    s.text = s.text[:cur_ans_start] + ans
+                                break
                     label = Label(
                         question=qa["question"],
-                        answer=answer["text"],
+                        answer=ans,
                         is_correct_answer=True,
                         is_correct_document=True,
-                        document_id=cur_doc.id,
-                        offset_start_in_doc=answer["answer_start"],
+                        document_id=cur_id,
+                        offset_start_in_doc=cur_ans_start,
                         no_answer=qa["is_impossible"],
                         origin="gold_label",
                     )
                     labels.append(label)
             else:
-                label = Label(
-                    question=qa["question"],
-                    answer="",
-                    is_correct_answer=True,
-                    is_correct_document=True,
-                    document_id=cur_doc.id,
-                    offset_start_in_doc=0,
-                    no_answer=qa["is_impossible"],
-                    origin="gold_label",
-                )
-                labels.append(label)
+                # for no_answer we need to assign each split as not fitting to the question
+                for s in splits:
+                    label = Label(
+                        question=qa["question"],
+                        answer="",
+                        is_correct_answer=True,
+                        is_correct_document=True,
+                        document_id=s.id,
+                        offset_start_in_doc=0,
+                        no_answer=qa["is_impossible"],
+                        origin="gold_label",
+                    )
+                    labels.append(label)
 
     return docs, labels
 

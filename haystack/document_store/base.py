@@ -3,6 +3,7 @@ from abc import abstractmethod, ABC
 from typing import Any, Optional, Dict, List, Union
 from haystack import Document, Label, MultiLabel
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
+from haystack.preprocessor.preprocessor import PreProcessor
 
 
 logger = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ class BaseDocumentStore(ABC):
         pass
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
-                      batch_size: Optional[int] = None):
+                      batch_size: Optional[int] = None, preprocessor: PreProcessor = None):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
         If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
@@ -157,9 +158,21 @@ class BaseDocumentStore(ABC):
                            to adding eval data.
         :type batch_size: int
         """
+        # Since we need to align offsets in answers with text, we cannot remove symbols from the text or have duplicate text
+        # TODO improve support for PreProcessor when adding eval data
+        assert preprocessor.split_overlap == 0, f"Overlapping documents are currently not supported when adding eval data.\n" \
+                                                f"Please set 'split_overlap=0' in the supplied PreProcessor."
+        assert preprocessor.clean_empty_lines == False, f"clean_empty_lines currently not supported when adding eval data.\n" \
+                                                f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
+        assert preprocessor.clean_whitespace == False, f"clean_whitespace is currently not supported when adding eval data.\n" \
+                                                f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
+        assert preprocessor.clean_header_footer == False, f"clean_header_footer is currently not supported when adding eval data.\n" \
+                                                f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
+
+
         if filename.endswith(".json"):
             if batch_size is None:
-                docs, labels = eval_data_from_json(filename)
+                docs, labels = eval_data_from_json(filename, preprocessor=preprocessor)
                 self.write_documents(docs, index=doc_index)
                 self.write_labels(labels, index=label_index)
             else:
@@ -170,7 +183,7 @@ class BaseDocumentStore(ABC):
                 self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size)
 
         elif filename.endswith(".jsonl"):
-            for docs, labels in eval_data_from_jsonl(filename, batch_size):
+            for docs, labels in eval_data_from_jsonl(filename, batch_size, preprocessor=preprocessor):
                 if docs:
                     self.write_documents(docs, index=doc_index)
                 if labels:
