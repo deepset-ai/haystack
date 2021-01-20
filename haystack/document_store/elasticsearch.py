@@ -1,10 +1,9 @@
 import json
 import logging
-import math
 import time
 from copy import deepcopy
 from string import Template
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Union, Dict, Any, Iterator
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
@@ -14,6 +13,7 @@ from scipy.special import expit
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
 from haystack.retriever.base import BaseRetriever
+from haystack.utils import generator_grouper
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         name_field: str = "name",
         embedding_field: str = "embedding",
         embedding_dim: int = 768,
-        index_buffer_size: int = 10_000,
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
         faq_question_field: Optional[str] = None,
@@ -65,8 +64,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param name_field: Name of field that contains the title of the the doc
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
-        :param index_buffer_size: When working with large datasets, the updation of embeddings can be buffered in
-                                  smaller chunks to reduce memory footprint.
         :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
         :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
                          Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
@@ -106,7 +103,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.name_field = name_field
         self.embedding_field = embedding_field
         self.embedding_dim = embedding_dim
-        self.index_buffer_size = index_buffer_size
         self.excluded_meta_data = excluded_meta_data
         self.faq_question_field = faq_question_field
         self.analyzer = analyzer
@@ -237,8 +233,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: Optional[int] = None):
+    def write_documents(
+        self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,  batch_size: int = 10_000
+    ):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -258,7 +255,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                           should be changed to what you have set for self.text_field and self.name_field.
         :param index: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
         :param batch_size: Number of documents that are passed to Elasticsearch's bulk function at a time.
-                           If `None`, all documents will be passed to bulk at once.
         :return: None
         """
 
@@ -303,22 +299,21 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 _doc.pop("meta")
             documents_to_index.append(_doc)
 
-            if batch_size is not None:
-                # Pass batch_size number of documents to bulk
-                if len(documents_to_index) % batch_size == 0:
-                    bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
-                    documents_to_index = []
+            # Pass batch_size number of documents to bulk
+            if len(documents_to_index) % batch_size == 0:
+                bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
+                documents_to_index = []
 
         if documents_to_index:
             bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
 
-    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None,
-                     batch_size: Optional[int] = None):
+    def write_labels(
+        self, labels: Union[List[Label], List[dict]], index: Optional[str] = None, batch_size: int = 10_000
+    ):
         """Write annotation labels into document store.
 
         :param labels: A list of Python dictionaries or a list of Haystack Label objects.
         :param batch_size: Number of labels that are passed to Elasticsearch's bulk function at a time.
-                           If `None`, all labels will be passed to bulk at once.
         """
         index = index or self.label_index
         if index and not self.client.indices.exists(index=index):
@@ -344,11 +339,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             labels_to_index.append(_label)
 
-            if batch_size is not None:
-                # Pass batch_size number of labels to bulk
-                if len(labels_to_index) % batch_size == 0:
-                    bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
-                    labels_to_index = []
+            # Pass batch_size number of labels to bulk
+            if len(labels_to_index) % batch_size == 0:
+                bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
+                labels_to_index = []
 
         if labels_to_index:
             bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
@@ -396,8 +390,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
-        page_number: Optional[int] = None,
-        page_size: Optional[int] = None,
+        batch_size: int = 10_000,
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -407,41 +400,60 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
-        :param page_number: For getting a large number of documents, the results can be paginated. This
-                            parameter defines the page number to be retrieved starting from the value 0. When using
-                            page_number, the page_size argument must be set.
-        :param page_size: Number of documents to return in a single page. For ElasticsearchDocumentStore, page_size is
-                          implemented using heuristics, so the actual page sizes may differ.
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        """
+        result = self.get_all_documents_generator(
+            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
+        )
+        documents = list(result)
+        return documents
+
+    def get_all_documents_generator(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
+    ) -> Iterator[Document]:
+        """
+        Get documents from the document store.
+
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param return_embedding: Whether to return the document embeddings.
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
 
         if index is None:
             index = self.index
 
-        result = self.get_all_documents_in_index(
-            index=index, filters=filters, page_number=page_number, page_size=page_size
-        )
         if return_embedding is None:
             return_embedding = self.return_embedding
-        documents = [self._convert_es_hit_to_document(hit, return_embedding=return_embedding) for hit in result]
 
-        return documents
+        result = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size)
+        for hit in result:
+            document = self._convert_es_hit_to_document(hit, return_embedding=return_embedding)
+            yield document
 
-    def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+    def get_all_labels(
+        self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000
+    ) -> List[Label]:
         """
         Return all labels in the document store
         """
         index = index or self.label_index
-        result = self.get_all_documents_in_index(index=index, filters=filters)
+        result = list(self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size))
         labels = [Label.from_dict(hit["_source"]) for hit in result]
         return labels
 
-    def get_all_documents_in_index(
+    def _get_all_documents_in_index(
         self,
         index: str,
         filters: Optional[Dict[str, List[str]]] = None,
-        page_number: Optional[int] = None,
-        page_size: Optional[int] = None,
-    ) -> List[dict]:
+        batch_size: int = 10_000,
+    ) -> Iterator[dict]:
         """
         Return all documents in a specific index in the document store
         """
@@ -455,10 +467,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             }
         }  # type: Dict[str, Any]
 
-        if page_number is not None and page_size is not None:
-            body["slice"] = {"id": page_number}
-            body["slice"]["max"] = math.ceil(self.get_document_count(index=index) / page_size) + 1
-
         if filters:
             filter_clause = []
             for key, values in filters.items():
@@ -469,15 +477,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 )
             body["query"]["bool"]["filter"] = filter_clause
 
-        try:
-            result = list(scan(self.client, query=body, index=index))
-        except Exception as e:
-            if "[slice] failed to parse field [max]" in str(e):  # ignore error in fetching n+1 page
-                result = []
-            else:
-                raise e
-
-        return result
+        result = scan(self.client, query=body, index=index, size=batch_size, scroll="1d")
+        yield from result
 
     def query(
         self,
@@ -714,13 +715,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                  }
         return stats
 
-    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
+    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
-        :param retriever: Retriever
+        :param retriever: Retriever to use to update the embeddings.
         :param index: Index name to update
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
         if index is None:
@@ -731,21 +733,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         logger.info(f"Updating embeddings for {self.get_document_count(index=index)} docs ...")
 
-        page_number = 0
-        while True:
-            docs = self.get_all_documents(index, page_size=self.index_buffer_size, page_number=page_number)
-            if len(docs) == 0:
+        result = self.get_all_documents_generator(index, batch_size=batch_size)
+        for document_batch in generator_grouper(result, batch_size):
+            if len(document_batch) == 0:
                 break
-
-            embeddings = retriever.embed_passages(docs)  # type: ignore
-            assert len(docs) == len(embeddings)
+            embeddings = retriever.embed_passages(document_batch)  # type: ignore
+            assert len(document_batch) == len(embeddings)
 
             if embeddings[0].shape[0] != self.embedding_dim:
                 raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
                                    f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                    "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
             doc_updates = []
-            for doc, emb in zip(docs, embeddings):
+            for doc, emb in zip(document_batch, embeddings):
                 update = {"_op_type": "update",
                           "_index": index,
                           "_id": doc.id,
@@ -754,7 +754,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 doc_updates.append(update)
 
             bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
-            page_number += 1
 
     def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
         """

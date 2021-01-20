@@ -254,14 +254,13 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(
-            index="haystack_test", return_embedding=True, embedding_field=embedding_field, index_buffer_size=10
+            index="haystack_test", return_embedding=True, embedding_field=embedding_field
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
-            index_buffer_size=10,
         )
         return document_store
     else:

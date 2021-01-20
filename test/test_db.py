@@ -86,7 +86,7 @@ def test_get_document_count(document_store):
 
 
 @pytest.mark.elasticsearch
-def test_get_document_pagination(document_store):
+def test_get_all_documents_generator(document_store):
     documents = [
         {"text": "text1", "id": "1", "meta_field_for_count": "a"},
         {"text": "text2", "id": "2", "meta_field_for_count": "b"},
@@ -96,9 +96,7 @@ def test_get_document_pagination(document_store):
     ]
 
     document_store.write_documents(documents)
-    assert len(document_store.get_all_documents()) == 5
-    assert len(document_store.get_all_documents(page_size=3, page_number=0)) == 3
-    assert len(document_store.get_all_documents(page_size=3, page_number=1)) == 2
+    assert len(list(document_store.get_all_documents_generator(batch_size=2))) == 5
 
 
 @pytest.mark.elasticsearch

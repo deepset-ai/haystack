@@ -1,5 +1,6 @@
 import json
 from collections import defaultdict
+from itertools import islice
 import logging
 import pprint
 import pandas as pd
@@ -113,3 +114,14 @@ def convert_labels_to_squad(labels_file: str):
 
     with open("labels_in_squad_format.json", "w+") as outfile:
         json.dump(labels_in_squad_format, outfile)
+
+
+def generator_grouper(iterable, n):
+    """
+    Batch elements of an iterable into fixed-length chunks or blocks.
+    """
+    it = iter(iterable)
+    x = tuple(islice(it, n))
+    while x:
+        yield x
+        x = tuple(islice(it, n))
