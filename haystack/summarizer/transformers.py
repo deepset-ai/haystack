@@ -2,6 +2,8 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from transformers import pipeline
+from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer
 
 from haystack import Document
 from haystack.summarizer.base import BaseSummarizer
@@ -73,7 +75,11 @@ class TransformersSummarizer(BaseSummarizer):
                                              into a single text. This separator appears between those subsequent docs.
         """
 
-        self.summarizer = pipeline("summarization", model=model_name_or_path, tokenizer=tokenizer, device=use_gpu)
+        # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
+        if tokenizer is None:
+            tokenizer = model_name_or_path
+        model = AutoModelForSeq2SeqLM.from_pretrained(pretrained_model_name_or_path=model_name_or_path)
+        self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=use_gpu)
         self.max_length = max_length
         self.min_length = min_length
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
