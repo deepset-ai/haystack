@@ -113,6 +113,6 @@ def test_dpr_saving_and_loading(retriever, document_store):
     assert loaded_retriever.query_tokenizer.do_lower_case == True
     assert loaded_retriever.passage_tokenizer.vocab_size == 30522
     assert loaded_retriever.query_tokenizer.vocab_size == 30522
-    assert loaded_retriever.passage_tokenizer.max_len == 512
-    assert loaded_retriever.query_tokenizer.max_len == 512
+    assert loaded_retriever.passage_tokenizer.model_max_length == 512
+    assert loaded_retriever.query_tokenizer.model_max_length == 512
 
