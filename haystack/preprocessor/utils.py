@@ -116,7 +116,14 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             for d in splits_dicts:
                 id = f"{d['id']}-{d['meta']['_split_id']}"
                 d["meta"]["_split_offset"] = offset
-                offset += len(d["text"]) + 1 # when splitting a whitespace is removed
+                offset += len(d["text"])
+                # offset correction based on splitting method
+                if preprocessor.split_by == "word":
+                    offset += 1
+                elif preprocessor.split_by == "passage":
+                    offset += 2
+                else:
+                    raise NotImplementedError
                 mydoc = Document(text=d["text"],
                                  id=id,
                                  meta=d["meta"])
@@ -130,6 +137,10 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             if not qa["is_impossible"]:
                 for answer in qa["answers"]:
                     ans = answer["text"]
+                    ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
+                    if ans != ans_position:
+                        logger.warning(f"Answer Text and Answer position mismatch. Skipping Answer")
+                        break
                     # find corresponding document or split
                     if len(splits) == 1:
                         cur_id = splits[0].id
