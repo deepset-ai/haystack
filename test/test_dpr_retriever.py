@@ -3,6 +3,7 @@ import time
 import numpy as np
 
 from haystack import Document
+from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.retriever.dense import DensePassageRetriever
 
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
@@ -61,6 +62,13 @@ def test_dpr_retrieval(document_store, retriever, return_embedding):
         assert res[0].embedding is not None
     else:
         assert res[0].embedding is None
+
+    # test filtering
+    if not isinstance(document_store, FAISSDocumentStore):
+        res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?", filters={"name": ["0", "2"]})
+        assert len(res) == 3
+        for r in res:
+            assert r.meta["name"] in ["0", "2"]
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
