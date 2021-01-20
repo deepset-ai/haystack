@@ -1,5 +1,6 @@
 import logging
 from abc import abstractmethod, ABC
+from pathlib import Path
 from typing import Any, Optional, Dict, List, Union
 from haystack import Document, Label, MultiLabel
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
@@ -169,20 +170,20 @@ class BaseDocumentStore(ABC):
         assert preprocessor.clean_header_footer == False, f"clean_header_footer is currently not supported when adding eval data.\n" \
                                                 f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
 
-
-        if filename.endswith(".json"):
+        file_path = Path(filename)
+        if file_path.suffix == ".json":
             if batch_size is None:
                 docs, labels = eval_data_from_json(filename, preprocessor=preprocessor)
                 self.write_documents(docs, index=doc_index)
                 self.write_labels(labels, index=label_index)
             else:
-                jsonl_filename = filename + "l"
+                jsonl_filename = (file_path.parent / (file_path.stem + '.jsonl')).as_posix()
                 logger.info(f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
                             f"Converting json to jsonl to: {jsonl_filename}")
                 squad_json_to_jsonl(filename, jsonl_filename)
                 self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size)
 
-        elif filename.endswith(".jsonl"):
+        elif file_path.suffix == ".jsonl":
             for docs, labels in eval_data_from_jsonl(filename, batch_size, preprocessor=preprocessor):
                 if docs:
                     self.write_documents(docs, index=doc_index)
