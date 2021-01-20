@@ -66,7 +66,7 @@ def test_dpr_retrieval(document_store, retriever, return_embedding):
     # test filtering
     if not isinstance(document_store, FAISSDocumentStore):
         res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?", filters={"name": ["0", "2"]})
-        assert len(res) == 3
+        assert len(res) == 2
         for r in res:
             assert r.meta["name"] in ["0", "2"]
 
