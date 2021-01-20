@@ -107,11 +107,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         from numpy import dot
         from numpy.linalg import norm
 
-        if filters:
-            raise NotImplementedError("Setting `filters` is currently not supported in "
-                                      "InMemoryDocumentStore.query_by_embedding(). Please remove filters or "
-                                      "use a different DocumentStore (e.g. ElasticsearchDocumentStore).")
-
         index = index or self.index
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -119,8 +114,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if query_emb is None:
             return []
 
+        document_to_search = self.get_all_documents(index=index, filters=filters, return_embedding=True)
         candidate_docs = []
-        for idx, doc in self.indexes[index].items():
+        for doc in document_to_search:
             curr_meta = deepcopy(doc.meta)
             new_document = Document(
                 id=doc.id,
@@ -185,7 +181,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         index = index or self.label_index
         return len(self.indexes[index].items())
-      
+
     def get_all_documents(
             self,
             index: Optional[str] = None,
