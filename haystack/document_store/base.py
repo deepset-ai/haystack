@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Optional, Dict, List, Union
 from haystack import Document, Label, MultiLabel
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
+from haystack.preprocessor.preprocessor import PreProcessor
 
 
 logger = logging.getLogger(__name__)
@@ -140,28 +141,43 @@ class BaseDocumentStore(ABC):
         pass
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
-                      batch_size: Optional[int] = None):
+                      batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None,
+                      max_docs: Union[int, bool] = None):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
         If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
         from disk and also indexed batchwise to the DocumentStore in order to prevent out of memory errors.
 
         :param filename: Name of the file containing evaluation data (json or jsonl)
-        :type filename: str
         :param doc_index: Elasticsearch index where evaluation documents should be stored
-        :type doc_index: str
         :param label_index: Elasticsearch index where labeled questions should be stored
-        :type label_index: str
-        :param batch_size: Number of documents that are loaded and processed at a time.
-                           Only works with jsonl formatted files. Setting batch_size and
-                           using a json formatted file will convert the json to jsonl prior
-                           to adding eval data.
-        :type batch_size: int
+        :param batch_size: Optional number of documents that are loaded and processed at a time.
+                           When set to None (default) all documents are processed at once.
+        :param preprocessor: Optional PreProcessor to preprocess evaluation documents.
+                             It can be used for splitting documents into passages (and assigning labels to corresponding passages).
+                             Currently the PreProcessor does not support split_by sentence, cleaning nor split_overlap != 0.
+                             When set to None (default) preprocessing is disabled.
+        :param max_docs: Optional number of documents that will be loaded.
+                         When set to None (default) all available eval documents are used.
+
         """
+        # TODO improve support for PreProcessor when adding eval data
+        if preprocessor is not None:
+            assert preprocessor.split_by != "sentence", f"Split by sentence not supported.\n" \
+                                                    f"Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
+            assert preprocessor.split_overlap == 0, f"Overlapping documents are currently not supported when adding eval data.\n" \
+                                                    f"Please set 'split_overlap=0' in the supplied PreProcessor."
+            assert preprocessor.clean_empty_lines == False, f"clean_empty_lines currently not supported when adding eval data.\n" \
+                                                    f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
+            assert preprocessor.clean_whitespace == False, f"clean_whitespace is currently not supported when adding eval data.\n" \
+                                                    f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
+            assert preprocessor.clean_header_footer == False, f"clean_header_footer is currently not supported when adding eval data.\n" \
+                                                    f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
+
         file_path = Path(filename)
         if file_path.suffix == ".json":
             if batch_size is None:
-                docs, labels = eval_data_from_json(filename)
+                docs, labels = eval_data_from_json(filename, max_docs=max_docs, preprocessor=preprocessor)
                 self.write_documents(docs, index=doc_index)
                 self.write_labels(labels, index=label_index)
             else:
@@ -172,7 +188,7 @@ class BaseDocumentStore(ABC):
                 self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size)
 
         elif file_path.suffix == ".jsonl":
-            for docs, labels in eval_data_from_jsonl(filename, batch_size):
+            for docs, labels in eval_data_from_jsonl(filename, batch_size, max_docs=max_docs, preprocessor=preprocessor):
                 if docs:
                     self.write_documents(docs, index=doc_index)
                 if labels:
