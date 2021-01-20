@@ -141,7 +141,7 @@ class BaseDocumentStore(ABC):
         pass
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
-                      batch_size: Optional[int] = None, preprocessor: PreProcessor = None):
+                      batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
         If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
@@ -159,16 +159,16 @@ class BaseDocumentStore(ABC):
                            to adding eval data.
         :type batch_size: int
         """
-        # Since we need to align offsets in answers with text, we cannot remove symbols from the text or have duplicate text
         # TODO improve support for PreProcessor when adding eval data
-        assert preprocessor.split_overlap == 0, f"Overlapping documents are currently not supported when adding eval data.\n" \
-                                                f"Please set 'split_overlap=0' in the supplied PreProcessor."
-        assert preprocessor.clean_empty_lines == False, f"clean_empty_lines currently not supported when adding eval data.\n" \
-                                                f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
-        assert preprocessor.clean_whitespace == False, f"clean_whitespace is currently not supported when adding eval data.\n" \
-                                                f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
-        assert preprocessor.clean_header_footer == False, f"clean_header_footer is currently not supported when adding eval data.\n" \
-                                                f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
+        if preprocessor is not None:
+            assert preprocessor.split_overlap == 0, f"Overlapping documents are currently not supported when adding eval data.\n" \
+                                                    f"Please set 'split_overlap=0' in the supplied PreProcessor."
+            assert preprocessor.clean_empty_lines == False, f"clean_empty_lines currently not supported when adding eval data.\n" \
+                                                    f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
+            assert preprocessor.clean_whitespace == False, f"clean_whitespace is currently not supported when adding eval data.\n" \
+                                                    f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
+            assert preprocessor.clean_header_footer == False, f"clean_header_footer is currently not supported when adding eval data.\n" \
+                                                    f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
 
         file_path = Path(filename)
         if file_path.suffix == ".json":
