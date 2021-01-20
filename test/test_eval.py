@@ -1,5 +1,7 @@
 import pytest
 from haystack.document_store.base import BaseDocumentStore
+from haystack.document_store.memory import InMemoryDocumentStore
+from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.finder import Finder
 
 
@@ -160,3 +162,50 @@ def test_eval_finder(document_store: BaseDocumentStore, reader, retriever):
     # clean up
     document_store.delete_all_documents(index="test_eval_document")
     document_store.delete_all_documents(index="test_feedback")
+
+@pytest.mark.elasticsearch
+def test_eval_data_splitting(document_store):
+    # splitting by word
+    document_store.delete_all_documents(index="test_eval_document")
+    document_store.delete_all_documents(index="test_feedback")
+
+    preprocessor = PreProcessor(
+        clean_empty_lines=False,
+        clean_whitespace=False,
+        clean_header_footer=False,
+        split_by="word",
+        split_length=4,
+        split_overlap=0,
+        split_respect_sentence_boundary=False
+    )
+
+    document_store.add_eval_data(filename="samples/squad/tiny.json",
+                                 doc_index="test_eval_document",
+                                 label_index="test_feedback",
+                                 preprocessor=preprocessor)
+    labels = document_store.get_all_labels_aggregated(index="test_feedback")
+    docs = document_store.get_all_documents(index="test_eval_document")
+    assert len(docs) == 5
+    assert len(set(labels[0].multiple_document_ids)) == 2
+
+    # splitting by passage
+    document_store.delete_all_documents(index="test_eval_document")
+    document_store.delete_all_documents(index="test_feedback")
+
+    preprocessor = PreProcessor(
+        clean_empty_lines=False,
+        clean_whitespace=False,
+        clean_header_footer=False,
+        split_by="passage",
+        split_length=1,
+        split_overlap=0,
+        split_respect_sentence_boundary=False
+    )
+
+    document_store.add_eval_data(filename="samples/squad/tiny_passages.json",
+                                 doc_index="test_eval_document",
+                                 label_index="test_feedback",
+                                 preprocessor=preprocessor)
+    docs = document_store.get_all_documents(index="test_eval_document")
+    assert len(docs) == 2
+    assert len(docs[1].text) == 56
