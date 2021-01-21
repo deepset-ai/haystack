@@ -508,7 +508,7 @@ class FARMReader(BaseReader):
         # Create DataLoader that can be passed to the Evaluator
         tic = perf_counter()
         indices = range(len(farm_input))
-        dataset, tensor_names = self.inferencer.processor.dataset_from_dicts(farm_input, indices=indices)
+        dataset, tensor_names, problematic_ids = self.inferencer.processor.dataset_from_dicts(farm_input, indices=indices)
         data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
 
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
