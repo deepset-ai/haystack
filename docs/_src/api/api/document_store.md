@@ -52,6 +52,31 @@ DocumentStore's default index (self.index) will be used.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 
+<a name="base.BaseDocumentStore.add_eval_data"></a>
+#### add\_eval\_data
+
+```python
+ | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label", batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None, max_docs: Union[int, bool] = None)
+```
+
+Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
+If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
+from disk and also indexed batchwise to the DocumentStore in order to prevent out of memory errors.
+
+**Arguments**:
+
+- `filename`: Name of the file containing evaluation data (json or jsonl)
+- `doc_index`: Elasticsearch index where evaluation documents should be stored
+- `label_index`: Elasticsearch index where labeled questions should be stored
+- `batch_size`: Optional number of documents that are loaded and processed at a time.
+When set to None (default) all documents are processed at once.
+- `preprocessor`: Optional PreProcessor to preprocess evaluation documents.
+It can be used for splitting documents into passages (and assigning labels to corresponding passages).
+Currently the PreProcessor does not support split_by sentence, cleaning nor split_overlap != 0.
+When set to None (default) preprocessing is disabled.
+- `max_docs`: Optional number of documents that will be loaded.
+When set to None (default) all available eval documents are used.
+
 <a name="elasticsearch"></a>
 # Module elasticsearch
 
@@ -66,7 +91,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: str = "localhost", port: int = 9200, username: str = "", password: str = "", index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: bool = False, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False)
+ | __init__(host: str = "localhost", port: int = 9200, username: str = "", password: str = "", index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: str = None, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False)
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -95,7 +120,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.h
 - `excluded_meta_data`: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
 Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
 - `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
-- `ca_certs`: Root certificates for SSL
+- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
 - `verify_certs`: Whether to be strict about ca certificates
 - `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
 - `update_existing_documents`: Whether to update any existing documents with the same ID when adding
@@ -133,7 +158,7 @@ Fetch documents by specifying a list of text id strings
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Indexes documents for later queries in Elasticsearch.
@@ -155,6 +180,7 @@ It can be used for filtering and is accessible in the responses of the Finder.
 Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
 should be changed to what you have set for self.text_field and self.name_field.
 - `index`: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
+- `batch_size`: Number of documents that are passed to Elasticsearch's bulk function at a time.
 
 **Returns**:
 
@@ -164,10 +190,15 @@ None
 #### write\_labels
 
 ```python
- | write_labels(labels: Union[List[Label], List[dict]], index: Optional[str] = None)
+ | write_labels(labels: Union[List[Label], List[dict]], index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Write annotation labels into document store.
+
+**Arguments**:
+
+- `labels`: A list of Python dictionaries or a list of Haystack Label objects.
+- `batch_size`: Number of labels that are passed to Elasticsearch's bulk function at a time.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.update_document_meta"></a>
 #### update\_document\_meta
@@ -200,7 +231,7 @@ Return the number of labels in the document store
 #### get\_all\_documents
 
 ```python
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> List[Document]
 ```
 
 Get documents from the document store.
@@ -212,24 +243,36 @@ DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_all_documents_generator"></a>
+#### get\_all\_documents\_generator
+
+```python
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> Generator[Document, None, None]
+```
+
+Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+document store and yielded as individual documents. This method can be used to iteratively process
+a large number of documents without having to load all documents in memory.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_all_labels"></a>
 #### get\_all\_labels
 
 ```python
- | get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]
+ | get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000) -> List[Label]
 ```
 
 Return all labels in the document store
-
-<a name="elasticsearch.ElasticsearchDocumentStore.get_all_documents_in_index"></a>
-#### get\_all\_documents\_in\_index
-
-```python
- | get_all_documents_in_index(index: str, filters: Optional[Dict[str, List[str]]] = None) -> List[dict]
-```
-
-Return all documents in a specific index in the document store
 
 <a name="elasticsearch.ElasticsearchDocumentStore.query"></a>
 #### query
@@ -283,7 +326,7 @@ Return a summary of the documents in the document store
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
+ | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -291,30 +334,13 @@ This can be useful if want to add or change the embeddings for your documents (e
 
 **Arguments**:
 
-- `retriever`: Retriever
+- `retriever`: Retriever to use to update the embeddings.
 - `index`: Index name to update
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
 
 None
-
-<a name="elasticsearch.ElasticsearchDocumentStore.add_eval_data"></a>
-#### add\_eval\_data
-
-```python
- | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label")
-```
-
-Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-**Arguments**:
-
-- `filename`: Name of the file containing evaluation data
-:type filename: str
-- `doc_index`: Elasticsearch index where evaluation documents should be stored
-:type doc_index: str
-- `label_index`: Elasticsearch index where labeled questions should be stored
-:type label_index: str
 
 <a name="elasticsearch.ElasticsearchDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
@@ -482,14 +508,15 @@ Return the number of documents in the document store.
 
 Return the number of labels in the document store
 
-<a name="memory.InMemoryDocumentStore.get_all_documents"></a>
-#### get\_all\_documents
+<a name="memory.InMemoryDocumentStore.get_all_documents_generator"></a>
+#### get\_all\_documents\_generator
 
 ```python
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> Generator[Document, None, None]
 ```
 
-Get documents from the document store.
+Get all documents from the document store. The methods returns a Python Generator that yields individual
+documents.
 
 **Arguments**:
 
@@ -507,24 +534,6 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 ```
 
 Return all labels in the document store
-
-<a name="memory.InMemoryDocumentStore.add_eval_data"></a>
-#### add\_eval\_data
-
-```python
- | add_eval_data(filename: str, doc_index: Optional[str] = None, label_index: Optional[str] = None)
-```
-
-Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-**Arguments**:
-
-- `filename`: Name of the file containing evaluation data
-:type filename: str
-- `doc_index`: Elasticsearch index where evaluation documents should be stored
-:type doc_index: str
-- `label_index`: Elasticsearch index where labeled questions should be stored
-:type label_index: str
 
 <a name="memory.InMemoryDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
@@ -558,7 +567,7 @@ class SQLDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False, batch_size: int = 32766)
+ | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
 ```
 
 An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -574,11 +583,6 @@ documents. When set as True, any document with an existing ID gets updated.
 If set to False, an error is raised if the document ID of the document being
 added already exists. Using this parameter could cause performance degradation
 for document insertion.
-- `batch_size`: Maximum number of variable parameters and rows fetched in a single SQL statement,
-to help in excessive memory allocations. In most methods of the DocumentStore this means number of documents fetched in one query.
-Tune this value based on host machine main memory.
-For SQLite versions prior to v3.32.0 keep this value less than 1000.
-More info refer: https://www.sqlite.org/limits.html
 
 <a name="sql.SQLDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -593,7 +597,7 @@ Fetch a document by specifying its text id string
 #### get\_documents\_by\_id
 
 ```python
- | get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings
@@ -602,19 +606,21 @@ Fetch documents by specifying a list of text id strings
 #### get\_documents\_by\_vector\_ids
 
 ```python
- | get_documents_by_vector_ids(vector_ids: List[str], index: Optional[str] = None)
+ | get_documents_by_vector_ids(vector_ids: List[str], index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Fetch documents by specifying a list of text vector id strings
 
-<a name="sql.SQLDocumentStore.get_all_documents"></a>
-#### get\_all\_documents
+<a name="sql.SQLDocumentStore.get_all_documents_generator"></a>
+#### get\_all\_documents\_generator
 
 ```python
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> Generator[Document, None, None]
 ```
 
-Get documents from the document store.
+Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+document store and yielded as individual documents. This method can be used to iteratively process
+a large number of documents without having to load all documents in memory.
 
 **Arguments**:
 
@@ -637,7 +643,7 @@ Return all labels in the document store
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Indexes documents for later queries.
@@ -651,6 +657,7 @@ Optionally: Include meta data via {"text": "<the-actual-text>",
 It can be used for filtering and is accessible in the responses of the Finder.
 - `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
 documents for evaluation can be indexed in a separate index than the documents for search.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
 
@@ -669,7 +676,7 @@ Write annotation labels into document store.
 #### update\_vector\_ids
 
 ```python
- | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None)
+ | update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Update vector_ids for given document_ids.
@@ -678,6 +685,16 @@ Update vector_ids for given document_ids.
 
 - `vector_id_map`: dict containing mapping of document_id -> vector_id.
 - `index`: filter documents by the optional index attribute for documents in database.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+<a name="sql.SQLDocumentStore.reset_vector_ids"></a>
+#### reset\_vector\_ids
+
+```python
+ | reset_vector_ids(index: Optional[str] = None)
+```
+
+Set vector IDs for all documents as None
 
 <a name="sql.SQLDocumentStore.update_document_meta"></a>
 #### update\_document\_meta
@@ -687,24 +704,6 @@ Update vector_ids for given document_ids.
 ```
 
 Update the metadata dictionary of a document by specifying its string id
-
-<a name="sql.SQLDocumentStore.add_eval_data"></a>
-#### add\_eval\_data
-
-```python
- | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label")
-```
-
-Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-
-**Arguments**:
-
-- `filename`: Name of the file containing evaluation data
-:type filename: str
-- `doc_index`: Elasticsearch index where evaluation documents should be stored
-:type doc_index: str
-- `label_index`: Elasticsearch index where labeled questions should be stored
-:type label_index: str
 
 <a name="sql.SQLDocumentStore.get_document_count"></a>
 #### get\_document\_count
@@ -764,15 +763,13 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", **kwargs, ,)
 ```
 
 **Arguments**:
 
 - `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
 deployment, Postgres is recommended.
-- `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
-smaller chunks to reduce memory footprint.
 - `vector_dim`: the embedding vector size.
 - `faiss_index_factory_str`: Create a new FAISS index of the specified type.
 The type is determined from the given string following the conventions
@@ -804,7 +801,7 @@ more performant with DPR embeddings. 'cosine' is recommended if you are using a 
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Add new documents to the DocumentStore.
@@ -814,6 +811,7 @@ Add new documents to the DocumentStore.
 - `documents`: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
 them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
 - `index`: (SQL) index name for storing the docs and metadata
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
 
@@ -823,7 +821,7 @@ them right away in FAISS. If not, you can later call update_embeddings() to crea
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
+ | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -833,19 +831,22 @@ This can be useful if want to add or change the embeddings for your documents (e
 
 - `retriever`: Retriever to use to get embeddings for text
 - `index`: (SQL) index name for storing the docs and metadata
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
 
 None
 
-<a name="faiss.FAISSDocumentStore.get_all_documents"></a>
-#### get\_all\_documents
+<a name="faiss.FAISSDocumentStore.get_all_documents_generator"></a>
+#### get\_all\_documents\_generator
 
 ```python
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> Generator[Document, None, None]
 ```
 
-Get documents from the document store.
+Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
+document store and yielded as individual documents. This method can be used to iteratively process
+a large number of documents without having to load all documents in memory.
 
 **Arguments**:
 
@@ -854,6 +855,7 @@ DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="faiss.FAISSDocumentStore.train_index"></a>
 #### train\_index
@@ -928,7 +930,7 @@ None
 
 ```python
  | @classmethod
- | load(cls, faiss_file_path: Union[str, Path], sql_url: str, index_buffer_size: int = 10_000)
+ | load(cls, faiss_file_path: Union[str, Path], sql_url: str)
 ```
 
 Load a saved FAISS index from a file and connect to the SQL database.
@@ -939,8 +941,6 @@ make sure to use the same SQL DB that you used when calling `save()`.
 
 - `faiss_file_path`: Stored FAISS index file. Can be created via calling `save()`
 - `sql_url`: Connection string to the SQL database that contains your docs and metadata.
-- `index_buffer_size`: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
-smaller chunks to reduce memory footprint.
 
 **Returns**:
 
