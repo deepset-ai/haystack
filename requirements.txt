@@ -1,4 +1,4 @@
-farm==0.5.0
+farm==0.6.2
 --find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn
