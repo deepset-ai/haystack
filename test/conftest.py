@@ -258,7 +258,9 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
-            sql_url="sqlite://", return_embedding=True, embedding_field=embedding_field
+            sql_url="sqlite://",
+            return_embedding=True,
+            embedding_field=embedding_field,
         )
         return document_store
     else:
