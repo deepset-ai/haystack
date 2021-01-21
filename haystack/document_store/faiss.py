@@ -179,7 +179,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         logger.info(f"Updating embeddings for {document_count} docs...")
         vector_id = self.faiss_index.ntotal
 
-        result = self.get_all_documents_generator(batch_size=batch_size * 100)
+        result = self.get_all_documents_generator(index=index, batch_size=batch_size, return_embedding=False)
         batched_documents = generator_grouper(result, batch_size)
         with tqdm(total=self.get_document_count()) as progress_bar:
             for document_batch in batched_documents:
