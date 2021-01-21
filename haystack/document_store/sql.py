@@ -247,7 +247,7 @@ class SQLDocumentStore(BaseDocumentStore):
         for i in range(0, len(document_objects), batch_size):
             for doc in document_objects[i: i + batch_size]:
                 meta_fields = doc.meta or {}
-                vector_id = meta_fields.get("vector_id")
+                vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
                 doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
                 if self.update_existing_documents:
@@ -311,6 +311,14 @@ class SQLDocumentStore(BaseDocumentStore):
                 logger.error(f"Transaction rollback: {ex.__cause__}")
                 self.session.rollback()
                 raise ex
+
+    def reset_vector_ids(self, index: Optional[str] = None):
+        """
+        Set vector IDs for all documents as None
+        """
+        index = index or self.index
+        self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: DocumentORM.text})
+        self.session.commit()
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
         """

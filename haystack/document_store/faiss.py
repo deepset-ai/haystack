@@ -172,16 +172,21 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         # Faiss does not support update in existing index data so clear all existing data in it
         self.faiss_index.reset()
+        self.reset_vector_ids(index=index)
 
         index = index or self.index
 
-        document_count = self.get_document_count(index=index)
+        document_count = self.get_document_count()
+        if document_count == 0:
+            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
+            return
+
         logger.info(f"Updating embeddings for {document_count} docs...")
         vector_id = self.faiss_index.ntotal
 
         result = self.get_all_documents_generator(index=index, batch_size=batch_size, return_embedding=False)
         batched_documents = generator_grouper(result, batch_size)
-        with tqdm(total=self.get_document_count()) as progress_bar:
+        with tqdm(total=document_count) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
