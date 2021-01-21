@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod, ABC
 from pathlib import Path
-from typing import Optional, Dict, List, Union
+from typing import Any, Optional, Dict, List, Union
 from haystack import Document, Label, MultiLabel
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 from haystack.preprocessor.preprocessor import PreProcessor
@@ -40,7 +40,7 @@ class BaseDocumentStore(ABC):
             self,
             index: Optional[str] = None,
             filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None,
+            return_embedding: Optional[bool] = None
     ) -> List[Document]:
         """
         Get documents from the document store.
