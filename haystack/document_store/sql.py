@@ -151,7 +151,9 @@ class SQLDocumentStore(BaseDocumentStore):
         batch_size: int = 10_000,
     ) -> Generator[Document, None, None]:
         """
-        Get documents from the document store.
+        Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+        document store and yielded as individual documents. This method can be used to iteratively process
+        a large number of documents without having to load all documents in memory.
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
