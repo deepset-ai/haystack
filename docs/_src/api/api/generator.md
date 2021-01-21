@@ -1,3 +1,35 @@
+<a name="base"></a>
+# Module base
+
+<a name="base.BaseGenerator"></a>
+## BaseGenerator Objects
+
+```python
+class BaseGenerator(ABC)
+```
+
+Abstract class for Generators
+
+<a name="base.BaseGenerator.predict"></a>
+#### predict
+
+```python
+ | @abstractmethod
+ | predict(query: str, documents: List[Document], top_k: Optional[int]) -> Dict
+```
+
+Abstract method to generate answers.
+
+**Arguments**:
+
+- `query`: Query
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `top_k`: Number of returned answers
+
+**Returns**:
+
+Generated answers plus additional infos in a dict
+
 <a name="transformers"></a>
 # Module transformers
 
@@ -105,36 +137,4 @@ Generated answers plus additional infos in a dict like this:
 |                      'titles': ['"Albert Einstein"', ...]
 |      }}]}
 ```
-
-<a name="base"></a>
-# Module base
-
-<a name="base.BaseGenerator"></a>
-## BaseGenerator Objects
-
-```python
-class BaseGenerator(ABC)
-```
-
-Abstract class for Generators
-
-<a name="base.BaseGenerator.predict"></a>
-#### predict
-
-```python
- | @abstractmethod
- | predict(query: str, documents: List[Document], top_k: Optional[int]) -> Dict
-```
-
-Abstract method to generate answers.
-
-**Arguments**:
-
-- `query`: Query
-- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-- `top_k`: Number of returned answers
-
-**Returns**:
-
-Generated answers plus additional infos in a dict
 
