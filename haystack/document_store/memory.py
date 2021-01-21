@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Generator
 from uuid import uuid4
 from collections import defaultdict
 
@@ -183,13 +183,26 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return len(self.indexes[index].items())
 
     def get_all_documents(
-            self,
-            index: Optional[str] = None,
-            filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
     ) -> List[Document]:
+        result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding)
+        documents = list(result)
+        return documents
+      
+    def get_all_documents_generator(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
+    ) -> Generator[Document, None, None]:
         """
-        Get documents from the document store.
+        Get all documents from the document store. The methods returns a Python Generator that yields individual
+        documents.
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
@@ -222,7 +235,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         else:
             filtered_documents = documents
 
-        return filtered_documents
+        yield from filtered_documents
 
     def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
         """

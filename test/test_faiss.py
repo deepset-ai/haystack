@@ -19,21 +19,6 @@ DOCUMENTS = [
 ]
 
 
-def check_data_correctness(documents_indexed, documents_inserted):
-    # test if correct vector_ids are assigned
-    for i, doc in enumerate(documents_indexed):
-        assert doc.meta["vector_id"] == str(i)
-
-    # test if number of documents is correct
-    assert len(documents_indexed) == len(documents_inserted)
-
-    # test if two docs have same vector_is assigned
-    vector_ids = set()
-    for i, doc in enumerate(documents_indexed):
-        vector_ids.add(doc.meta["vector_id"])
-    assert len(vector_ids) == len(documents_inserted)
-
-
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 def test_faiss_index_save_and_load(document_store):
     document_store.write_documents(DOCUMENTS)
@@ -65,6 +50,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         document_store.write_documents(DOCUMENTS[i: i + batch_size])
 
     documents_indexed = document_store.get_all_documents()
+    assert len(documents_indexed) == len(DOCUMENTS)
 
     # test if correct vectors are associated with docs
     for i, doc in enumerate(documents_indexed):
@@ -74,34 +60,26 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
 
-    # test document correctness
-    check_data_correctness(documents_indexed, DOCUMENTS)
-
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("index_buffer_size", [10_000, 2])
-def test_faiss_update_docs(document_store, index_buffer_size, retriever):
-    # adjust buffer size
-    document_store.index_buffer_size = index_buffer_size
-
+@pytest.mark.parametrize("batch_size", [4, 6])
+def test_faiss_update_docs(document_store, retriever, batch_size):
     # initial write
     document_store.write_documents(DOCUMENTS)
 
-    document_store.update_embeddings(retriever=retriever)
+    document_store.update_embeddings(retriever=retriever, batch_size=batch_size)
     documents_indexed = document_store.get_all_documents()
+    assert len(documents_indexed) == len(DOCUMENTS)
 
     # test if correct vectors are associated with docs
-    for i, doc in enumerate(documents_indexed):
+    for doc in documents_indexed:
         original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
         updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
-        stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+        stored_doc = document_store.get_all_documents(filters={"name": [doc.meta["name"]]})[0]
         # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(updated_embedding, stored_emb, rtol=0.01)
-
-    # test document correctness
-    check_data_correctness(documents_indexed, DOCUMENTS)
+        assert np.allclose(updated_embedding, stored_doc.embedding, rtol=0.01)
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
@@ -115,8 +93,7 @@ def test_faiss_update_with_empty_store(document_store, retriever):
 
     documents_indexed = document_store.get_all_documents()
 
-    # test document correctness
-    check_data_correctness(documents_indexed, DOCUMENTS)
+    assert len(documents_indexed) == len(DOCUMENTS)
 
 
 @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
@@ -190,5 +167,8 @@ def test_faiss_passing_index_from_outside():
     document_store.write_documents(documents=DOCUMENTS, index="document")
     documents_indexed = document_store.get_all_documents(index="document")
 
-    # test document correctness
-    check_data_correctness(documents_indexed, DOCUMENTS)
+    # test if vectors ids are associated with docs
+    for doc in documents_indexed:
+        assert 0 <= int(doc.meta["vector_id"]) <= 7
+
+

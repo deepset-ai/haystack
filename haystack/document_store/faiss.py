@@ -1,14 +1,14 @@
 import logging
 from sys import platform
 from pathlib import Path
-from typing import Union, List, Optional, Dict
+from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
 import numpy as np
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
-
+from haystack.utils import get_batches_from_generator
 from scipy.special import expit
 
 if platform != 'win32' and platform != 'cygwin':
@@ -34,7 +34,6 @@ class FAISSDocumentStore(SQLDocumentStore):
     def __init__(
         self,
         sql_url: str = "sqlite:///",
-        index_buffer_size: int = 10_000,
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional[faiss.swigfaiss.Index] = None,
@@ -47,8 +46,6 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
-        :param index_buffer_size: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
-                                  smaller chunks to reduce memory footprint.
         :param vector_dim: the embedding vector size.
         :param faiss_index_factory_str: Create a new FAISS index of the specified type.
                                         The type is determined from the given string following the conventions
@@ -85,7 +82,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             if "ivf" in faiss_index_factory_str.lower():  # enable reconstruction of vectors for inverted index
                 self.faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
 
-        self.index_buffer_size = index_buffer_size
         self.return_embedding = return_embedding
         if similarity == "dot_product":
             self.similarity = similarity
@@ -111,13 +107,16 @@ class FAISSDocumentStore(SQLDocumentStore):
             index = faiss.index_factory(vector_dim, index_factory, metric_type)
         return index
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
+    def write_documents(
+        self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
+    ):
         """
         Add new documents to the DocumentStore.
 
         :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
                           them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
         :param index: (SQL) index name for storing the docs and metadata
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return:
         """
         # vector index
@@ -136,15 +135,15 @@ class FAISSDocumentStore(SQLDocumentStore):
                            "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
                            "Please call `update_embeddings` method to repopulate `faiss_index`")
 
-        for i in range(0, len(document_objects), self.index_buffer_size):
-            vector_id = self.faiss_index.ntotal
+        vector_id = self.faiss_index.ntotal
+        for i in range(0, len(document_objects), batch_size):
             if add_vectors:
-                embeddings = [doc.embedding for doc in document_objects[i: i + self.index_buffer_size]]
+                embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                 embeddings = np.array(embeddings, dtype="float32")
                 self.faiss_index.add(embeddings)
 
             docs_to_write_in_sql = []
-            for doc in document_objects[i : i + self.index_buffer_size]:
+            for doc in document_objects[i: i + batch_size]:
                 meta = doc.meta
                 if add_vectors:
                     meta["vector_id"] = vector_id
@@ -158,13 +157,14 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.index: "embedding",
         }
 
-    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
+    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
         :param retriever: Retriever to use to get embeddings for text
         :param index: (SQL) index name for storing the docs and metadata
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
         if not self.faiss_index:
@@ -172,55 +172,85 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         # Faiss does not support update in existing index data so clear all existing data in it
         self.faiss_index.reset()
+        self.reset_vector_ids(index=index)
 
         index = index or self.index
-        documents = self.get_all_documents(index=index)
 
-        if len(documents) == 0:
+        document_count = self.get_document_count(index=index)
+        if document_count == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
 
-        # To clear out the FAISS index contents and frees all memory immediately that is in use by the index
-        self.faiss_index.reset()
+        logger.info(f"Updating embeddings for {document_count} docs...")
+        vector_id = self.faiss_index.ntotal
 
-        logger.info(f"Updating embeddings for {len(documents)} docs...")
-        embeddings = retriever.embed_passages(documents)  # type: ignore
-        assert len(documents) == len(embeddings)
-        for i, doc in enumerate(documents):
-            doc.embedding = embeddings[i]
+        result = self.get_all_documents_generator(index=index, batch_size=batch_size, return_embedding=False)
+        batched_documents = get_batches_from_generator(result, batch_size)
+        with tqdm(total=document_count) as progress_bar:
+            for document_batch in batched_documents:
+                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                assert len(document_batch) == len(embeddings)
 
-        logger.info("Indexing embeddings and updating vectors_ids...")
-        for i in tqdm(range(0, len(documents), self.index_buffer_size)):
-            vector_id_map = {}
-            vector_id = self.faiss_index.ntotal
-            embeddings = [doc.embedding for doc in documents[i: i + self.index_buffer_size]]
-            embeddings = np.array(embeddings, dtype="float32")
-            self.faiss_index.add(embeddings)
+                embeddings_to_index = np.array(embeddings, dtype="float32")
+                self.faiss_index.add(embeddings_to_index)
 
-            for doc in documents[i: i + self.index_buffer_size]:
-                vector_id_map[doc.id] = vector_id
-                vector_id += 1
-            self.update_vector_ids(vector_id_map, index=index)
+                vector_id_map = {}
+                for doc in document_batch:
+                    vector_id_map[doc.id] = vector_id
+                    vector_id += 1
+                self.update_vector_ids(vector_id_map, index=index)
+                progress_bar.update(batch_size)
+        progress_bar.close()
 
     def get_all_documents(
-            self,
-            index: Optional[str] = None,
-            filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
     ) -> List[Document]:
+        result = self.get_all_documents_generator(
+            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
+        )
+        documents = list(result)
+        return documents
+
+    def get_all_documents_generator(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
+    ) -> Generator[Document, None, None]:
         """
-        Get documents from the document store.
+        Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
+        document store and yielded as individual documents. This method can be used to iteratively process
+        a large number of documents without having to load all documents in memory.
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
-        documents = super(FAISSDocumentStore, self).get_all_documents(index=index, filters=filters)
+        documents = super(FAISSDocumentStore, self).get_all_documents_generator(
+            index=index, filters=filters, batch_size=batch_size
+        )
         if return_embedding is None:
             return_embedding = self.return_embedding
-        if return_embedding:
+
+        for doc in documents:
+            if return_embedding:
+                if doc.meta and doc.meta.get("vector_id") is not None:
+                    doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+            yield doc
+
+    def get_documents_by_id(
+        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000
+    ) -> List[Document]:
+        documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index)
+        if self.return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
                     doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
@@ -309,7 +339,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             cls,
             faiss_file_path: Union[str, Path],
             sql_url: str,
-            index_buffer_size: int = 10_000,
     ):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
@@ -318,8 +347,6 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         :param faiss_file_path: Stored FAISS index file. Can be created via calling `save()`
         :param sql_url: Connection string to the SQL database that contains your docs and metadata.
-        :param index_buffer_size: When working with large datasets, the ingestion process(FAISS + SQL) can be buffered in
-                                  smaller chunks to reduce memory footprint.
         :return:
         """
         """
@@ -328,7 +355,6 @@ class FAISSDocumentStore(SQLDocumentStore):
         return cls(
             faiss_index=faiss_index,
             sql_url=sql_url,
-            index_buffer_size=index_buffer_size,
             vector_dim=faiss_index.d
         )
 

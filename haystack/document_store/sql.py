@@ -1,15 +1,15 @@
 import itertools
 import logging
-from typing import Any, Dict, Union, List, Optional
+from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, func, ForeignKey, Boolean, Text
+from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.sql import case
+from sqlalchemy.sql import case, null
 
-from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
+from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,6 @@ class SQLDocumentStore(BaseDocumentStore):
         index: str = "document",
         label_index: str = "label",
         update_existing_documents: bool = False,
-        batch_size: int = 32766,
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -87,11 +86,6 @@ class SQLDocumentStore(BaseDocumentStore):
                                           If set to False, an error is raised if the document ID of the document being
                                           added already exists. Using this parameter could cause performance degradation
                                           for document insertion.
-        :param batch_size: Maximum number of variable parameters and rows fetched in a single SQL statement,
-                           to help in excessive memory allocations. In most methods of the DocumentStore this means number of documents fetched in one query.
-                           Tune this value based on host machine main memory.
-                           For SQLite versions prior to v3.32.0 keep this value less than 1000.
-                           More info refer: https://www.sqlite.org/limits.html
         """
         engine = create_engine(url)
         ORMBase.metadata.create_all(engine)
@@ -102,7 +96,6 @@ class SQLDocumentStore(BaseDocumentStore):
         self.update_existing_documents = update_existing_documents
         if getattr(self, "similarity", None) is None:
             self.similarity = None
-        self.batch_size = batch_size
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
@@ -110,14 +103,14 @@ class SQLDocumentStore(BaseDocumentStore):
         document = documents[0] if documents else None
         return document
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
 
         documents = []
-        for i in range(0, len(ids), self.batch_size):
+        for i in range(0, len(ids), batch_size):
             query = self.session.query(DocumentORM).filter(
-                DocumentORM.id.in_(ids[i: i + self.batch_size]),
+                DocumentORM.id.in_(ids[i: i + batch_size]),
                 DocumentORM.index == index
             )
             for row in query.all():
@@ -125,14 +118,14 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def get_documents_by_vector_ids(self, vector_ids: List[str], index: Optional[str] = None):
+    def get_documents_by_vector_ids(self, vector_ids: List[str], index: Optional[str] = None, batch_size: int = 10_000):
         """Fetch documents by specifying a list of text vector id strings"""
         index = index or self.index
 
         documents = []
-        for i in range(0, len(vector_ids), self.batch_size):
+        for i in range(0, len(vector_ids), batch_size):
             query = self.session.query(DocumentORM).filter(
-                DocumentORM.vector_id.in_(vector_ids[i: i + self.batch_size]),
+                DocumentORM.vector_id.in_(vector_ids[i: i + batch_size]),
                 DocumentORM.index == index
             )
             for row in query.all():
@@ -142,13 +135,25 @@ class SQLDocumentStore(BaseDocumentStore):
         return sorted_documents
 
     def get_all_documents(
-            self,
-            index: Optional[str] = None,
-            filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> List[Document]:
+        documents = list(self.get_all_documents_generator(index=index, filters=filters))
+        return documents
+
+    def get_all_documents_generator(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
+    ) -> Generator[Document, None, None]:
         """
-        Get documents from the document store.
+        Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+        document store and yielded as individual documents. This method can be used to iteratively process
+        a large number of documents without having to load all documents in memory.
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
@@ -177,26 +182,31 @@ class SQLDocumentStore(BaseDocumentStore):
                 )
 
         documents_map = {}
-        for row in documents_query.all():
+        for i, row in enumerate(self._windowed_query(documents_query, DocumentORM.id, batch_size), start=1):
             documents_map[row.id] = Document(
                 id=row.id,
                 text=row.text,
-                meta=None if row.vector_id is None else {"vector_id": row.vector_id} # type: ignore
+                meta=None if row.vector_id is None else {"vector_id": row.vector_id}  # type: ignore
             )
+            if i % batch_size == 0:
+                documents_map = self._get_documents_meta(documents_map)
+                yield from documents_map.values()
+                documents_map = {}
+        if documents_map:
+            documents_map = self._get_documents_meta(documents_map)
+            yield from documents_map.values()
 
-        for doc_ids in self.chunked_iterable(documents_map.keys(), size=self.batch_size):
-            meta_query = self.session.query(
-                MetaORM.document_id,
-                MetaORM.name,
-                MetaORM.value
-            ).filter(MetaORM.document_id.in_(doc_ids))
+    def _get_documents_meta(self, documents_map):
+        doc_ids = documents_map.keys()
+        meta_query = self.session.query(
+         MetaORM.document_id,
+         MetaORM.name,
+         MetaORM.value
+        ).filter(MetaORM.document_id.in_(doc_ids))
 
-            for row in meta_query.all():
-                if documents_map[row.document_id].meta is None:
-                    documents_map[row.document_id].meta = {}
-                documents_map[row.document_id].meta[row.name] = row.value # type: ignore
-
-        return list(documents_map.values())
+        for row in meta_query.all():
+            documents_map[row.document_id].meta[row.name] = row.value  # type: ignore
+        return documents_map
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None):
         """
@@ -209,17 +219,20 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return labels
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
+    def write_documents(
+        self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
+    ):
         """
         Indexes documents for later queries.
 
-      :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
                           Optionally: Include meta data via {"text": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           It can be used for filtering and is accessible in the responses of the Finder.
         :param index: add an optional index attribute to documents. It can be later used for filtering. For instance,
                       documents for evaluation can be indexed in a separate index than the documents for search.
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
 
         :return: None
         """
@@ -233,10 +246,10 @@ class SQLDocumentStore(BaseDocumentStore):
         else:
             document_objects = documents
 
-        for i in range(0, len(document_objects), self.batch_size):
-            for doc in document_objects[i: i + self.batch_size]:
+        for i in range(0, len(document_objects), batch_size):
+            for doc in document_objects[i: i + batch_size]:
                 meta_fields = doc.meta or {}
-                vector_id = meta_fields.get("vector_id")
+                vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
                 doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
                 if self.update_existing_documents:
@@ -275,15 +288,16 @@ class SQLDocumentStore(BaseDocumentStore):
             self.session.add(label_orm)
         self.session.commit()
 
-    def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None):
+    def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None, batch_size: int = 10_000):
         """
         Update vector_ids for given document_ids.
 
         :param vector_id_map: dict containing mapping of document_id -> vector_id.
         :param index: filter documents by the optional index attribute for documents in database.
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         index = index or self.index
-        for chunk_map in self.chunked_dict(vector_id_map, size=self.batch_size):
+        for chunk_map in self.chunked_dict(vector_id_map, size=batch_size):
             self.session.query(DocumentORM).filter(
                 DocumentORM.id.in_(chunk_map),
                 DocumentORM.index == index
@@ -299,6 +313,14 @@ class SQLDocumentStore(BaseDocumentStore):
                 logger.error(f"Transaction rollback: {ex.__cause__}")
                 self.session.rollback()
                 raise ex
+
+    def reset_vector_ids(self, index: Optional[str] = None):
+        """
+        Set vector IDs for all documents as None
+        """
+        index = index or self.index
+        self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: null()})
+        self.session.commit()
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
         """
@@ -392,16 +414,55 @@ class SQLDocumentStore(BaseDocumentStore):
             session.commit()
             return instance
 
-    # Refer: https://alexwlchan.net/2018/12/iterating-in-fixed-size-chunks/
-    def chunked_iterable(self, iterable, size):
-        it = iter(iterable)
-        while True:
-            chunk = tuple(itertools.islice(it, size))
-            if not chunk:
-                break
-            yield chunk
-
     def chunked_dict(self, dictionary, size):
         it = iter(dictionary)
         for i in range(0, len(dictionary), size):
             yield {k: dictionary[k] for k in itertools.islice(it, size)}
+
+    def _column_windows(self, session, column, windowsize):
+        """Return a series of WHERE clauses against
+        a given column that break it into windows.
+
+        Result is an iterable of tuples, consisting of
+        ((start, end), whereclause), where (start, end) are the ids.
+
+        The code is taken from: https://github.com/sqlalchemy/sqlalchemy/wiki/RangeQuery-and-WindowedRangeQuery
+        """
+
+        def int_for_range(start_id, end_id):
+            if end_id:
+                return and_(
+                    column >= start_id,
+                    column < end_id
+                )
+            else:
+                return column >= start_id
+
+        q = session.query(
+            column,
+            func.row_number(). \
+                over(order_by=column). \
+                label('rownum')
+        ). \
+            from_self(column)
+        if windowsize > 1:
+            q = q.filter(text("rownum %% %d=1" % windowsize))
+
+        intervals = [id for id, in q]
+
+        while intervals:
+            start = intervals.pop(0)
+            if intervals:
+                end = intervals[0]
+            else:
+                end = None
+            yield int_for_range(start, end)
+
+    def _windowed_query(self, q, column, windowsize):
+        """"Break a Query into windows on a given column."""
+
+        for whereclause in self._column_windows(
+                q.session,
+                column, windowsize):
+            for row in q.filter(whereclause).order_by(column):
+                yield row
