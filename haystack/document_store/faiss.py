@@ -1,14 +1,14 @@
 import logging
 from sys import platform
 from pathlib import Path
-from typing import Union, List, Optional, Dict, Iterator
+from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
 import numpy as np
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
-from haystack.utils import generator_grouper
+from haystack.utils import get_batches_from_generator
 from scipy.special import expit
 
 if platform != 'win32' and platform != 'cygwin':
@@ -185,7 +185,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_id = self.faiss_index.ntotal
 
         result = self.get_all_documents_generator(index=index, batch_size=batch_size, return_embedding=False)
-        batched_documents = generator_grouper(result, batch_size)
+        batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(total=document_count) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
@@ -221,9 +221,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-    ) -> Iterator[Document]:
+    ) -> Generator[Document, None, None]:
         """
-        Get documents from the document store.
+        Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
+        document store and yielded as individual documents. This method can be used to iteratively process
+        a large number of documents without having to load all documents in memory.
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.

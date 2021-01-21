@@ -3,7 +3,7 @@ import logging
 import time
 from copy import deepcopy
 from string import Template
-from typing import List, Optional, Union, Dict, Any, Iterator
+from typing import List, Optional, Union, Dict, Any, Generator
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
@@ -13,7 +13,7 @@ from scipy.special import expit
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
 from haystack.retriever.base import BaseRetriever
-from haystack.utils import generator_grouper
+from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
 
@@ -414,9 +414,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-    ) -> Iterator[Document]:
+    ) -> Generator[Document, None, None]:
         """
-        Get documents from the document store.
+        Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+        document store and yielded as individual documents. This method can be used to iteratively process
+        a large number of documents without having to load all documents in memory.
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
@@ -453,7 +455,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         index: str,
         filters: Optional[Dict[str, List[str]]] = None,
         batch_size: int = 10_000,
-    ) -> Iterator[dict]:
+    ) -> Generator[dict, None, None]:
         """
         Return all documents in a specific index in the document store
         """
@@ -734,7 +736,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         logger.info(f"Updating embeddings for {self.get_document_count(index=index)} docs ...")
 
         result = self.get_all_documents_generator(index, batch_size=batch_size)
-        for document_batch in generator_grouper(result, batch_size):
+        for document_batch in get_batches_from_generator(result, batch_size):
             if len(document_batch) == 0:
                 break
             embeddings = retriever.embed_passages(document_batch)  # type: ignore

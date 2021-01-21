@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Dict, List, Optional, Union, Iterator
+from typing import Dict, List, Optional, Union, Generator
 from uuid import uuid4
 from collections import defaultdict
 
@@ -199,9 +199,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-    ) -> Iterator[Document]:
+    ) -> Generator[Document, None, None]:
         """
-        Get documents from the document store.
+        Get all documents from the document store. The methods returns a Python Generator that yields individual
+        documents.
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.

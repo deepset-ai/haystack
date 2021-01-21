@@ -116,7 +116,7 @@ def convert_labels_to_squad(labels_file: str):
         json.dump(labels_in_squad_format, outfile)
 
 
-def generator_grouper(iterable, n):
+def get_batches_from_generator(iterable, n):
     """
     Batch elements of an iterable into fixed-length chunks or blocks.
     """

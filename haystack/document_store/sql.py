@@ -1,6 +1,6 @@
 import itertools
 import logging
-from typing import Any, Dict, Union, List, Optional, Iterator
+from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
 from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text
@@ -149,7 +149,7 @@ class SQLDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-    ) -> Iterator[Document]:
+    ) -> Generator[Document, None, None]:
         """
         Get documents from the document store.
 
@@ -424,13 +424,7 @@ class SQLDocumentStore(BaseDocumentStore):
         Result is an iterable of tuples, consisting of
         ((start, end), whereclause), where (start, end) are the ids.
 
-        Requires a database that supports window functions,
-        i.e. Postgresql, SQL Server, Oracle.
-
-        Enhance this yourself !  Add a "where" argument
-        so that windows of just a subset of rows can
-        be computed.
-
+        The code is taken from: https://github.com/sqlalchemy/sqlalchemy/wiki/RangeQuery-and-WindowedRangeQuery
         """
 
         def int_for_range(start_id, end_id):
