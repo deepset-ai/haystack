@@ -176,7 +176,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         index = index or self.index
 
-        document_count = self.get_document_count()
+        document_count = self.get_document_count(index=index)
         if document_count == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
