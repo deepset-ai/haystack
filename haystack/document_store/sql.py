@@ -6,7 +6,7 @@ from uuid import uuid4
 from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.sql import case
+from sqlalchemy.sql import case, null
 
 from haystack import Document, Label
 from haystack.document_store.base import BaseDocumentStore
@@ -317,7 +317,7 @@ class SQLDocumentStore(BaseDocumentStore):
         Set vector IDs for all documents as None
         """
         index = index or self.index
-        self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: DocumentORM.text})
+        self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: null()})
         self.session.commit()
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
