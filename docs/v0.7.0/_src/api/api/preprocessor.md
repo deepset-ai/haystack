@@ -79,38 +79,15 @@ the parameters passed into PreProcessor.__init__(). Takes a single document as i
 <a name="utils"></a>
 # Module utils
 
-<a name="utils.eval_data_from_json"></a>
-#### eval\_data\_from\_json
+<a name="utils.eval_data_from_file"></a>
+#### eval\_data\_from\_file
 
 ```python
-eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Tuple[List[Document], List[Label]]
+eval_data_from_file(filename: str, max_docs: Union[int, bool] = None) -> Tuple[List[Document], List[Label]]
 ```
 
 Read Documents + Labels from a SQuAD-style file.
 Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
-
-**Arguments**:
-
-- `filename`: Path to file in SQuAD format
-- `max_docs`: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
-
-**Returns**:
-
-(List of Documents, List of Labels)
-
-<a name="utils.eval_data_from_jsonl"></a>
-#### eval\_data\_from\_jsonl
-
-```python
-eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Generator[Tuple[List[Document], List[Label]], None, None]
-```
-
-Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
-Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
-
-This is a generator which will yield one tuple per iteration containing a list
-of batch_size documents and a list with the documents' labels.
-If batch_size is set to None, this method will yield all documents and labels.
 
 **Arguments**:
 
@@ -184,22 +161,6 @@ Fetch an archive (zip or tar.gz) from a url via http and extract content to an o
 **Returns**:
 
 bool if anything got fetched
-
-<a name="utils.squad_json_to_jsonl"></a>
-#### squad\_json\_to\_jsonl
-
-```python
-squad_json_to_jsonl(squad_file: str, output_file: str)
-```
-
-Converts a SQuAD-json-file into jsonl format with one document per line.
-
-**Arguments**:
-
-- `squad_file`: SQuAD-file in json format.
-:type squad_file: str
-- `output_file`: Name of output file (SQuAD in jsonl format)
-:type output_file: str
 
 <a name="cleaning"></a>
 # Module cleaning
