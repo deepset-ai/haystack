@@ -403,6 +403,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index = index or self.index
         documents = self.session.query(DocumentORM).filter_by(index=index)
         documents.delete(synchronize_session=False)
+        self.session.commit()
 
     def _get_or_create(self, session, model, **kwargs):
         instance = session.query(model).filter_by(**kwargs).first()

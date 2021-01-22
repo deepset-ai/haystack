@@ -388,7 +388,7 @@ In-memory document store
 #### \_\_init\_\_
 
 ```python
- | __init__(embedding_field: Optional[str] = "embedding", return_embedding: bool = False, similarity="dot_product")
+ | __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product")
 ```
 
 **Arguments**:
