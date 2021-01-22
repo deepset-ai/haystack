@@ -19,7 +19,15 @@ class InMemoryDocumentStore(BaseDocumentStore):
         In-memory document store
     """
 
-    def __init__(self, embedding_field: Optional[str] = "embedding", return_embedding: bool = False, similarity="dot_product"):
+    def __init__(
+        self,
+        index: str = "document",
+        label_index: str = "label",
+        embedding_field: Optional[str] = "embedding",
+        embedding_dim: int = 768,
+        return_embedding: bool = False,
+        similarity: str = "dot_product",
+    ):
         """
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param return_embedding: To return document embedding
@@ -27,12 +35,12 @@ class InMemoryDocumentStore(BaseDocumentStore):
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         """
         self.indexes: Dict[str, Dict] = defaultdict(dict)
-        self.index: str = "document"
-        self.label_index: str = "label"
-        self.embedding_field: str = embedding_field if embedding_field is not None else "embedding"
-        self.embedding_dim: int = 768
-        self.return_embedding: bool = return_embedding
-        self.similarity: str = similarity
+        self.index: str = index
+        self.label_index: str = label_index
+        self.embedding_field = embedding_field
+        self.embedding_dim = embedding_dim
+        self.return_embedding = return_embedding
+        self.similarity = similarity
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
