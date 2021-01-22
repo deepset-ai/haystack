@@ -22,6 +22,24 @@ from haystack.reader.transformers import TransformersReader
 from haystack.summarizer.transformers import TransformersSummarizer
 
 
+def _sql_session_rollback(self, attr):
+    """
+    Inject SQLDocumentStore at runtime to do a session rollback each time it is called. This allows to catch
+    errors where an intended operation is still in a transaction, but not committed to the database.
+    """
+    method = object.__getattribute__(self, attr)
+    if callable(method):
+        try:
+            self.session.rollback()
+        except AttributeError:
+            pass
+
+    return method
+
+
+SQLDocumentStore.__getattribute__ = _sql_session_rollback
+
+
 def pytest_collection_modifyitems(items):
     for item in items:
         if "generator" in item.nodeid:
@@ -246,9 +264,11 @@ def document_store(request, test_docs_xs):
 
 def get_document_store(document_store_type, embedding_field="embedding"):
     if document_store_type == "sql":
-        document_store = SQLDocumentStore(url="sqlite://")
+        document_store = SQLDocumentStore(url="sqlite://", index="haystack_test")
     elif document_store_type == "memory":
-        document_store = InMemoryDocumentStore(return_embedding=True, embedding_field=embedding_field)
+        document_store = InMemoryDocumentStore(
+            return_embedding=True, embedding_field=embedding_field, index="haystack_test"
+        )
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
@@ -261,6 +281,7 @@ def get_document_store(document_store_type, embedding_field="embedding"):
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
+            index="haystack_test",
         )
         return document_store
     else:
