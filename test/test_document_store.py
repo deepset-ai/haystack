@@ -51,6 +51,19 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
+@pytest.mark.parametrize("document_store_with_docs", ["sql"], indirect=True)
+def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_with_docs):
+    document_store_with_docs.use_windowed_query = False
+    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
+    assert len(documents) == 1
+    assert documents[0].meta["name"] == "filename2"
+
+    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test3"]})
+    assert len(documents) == 2
+    assert {d.meta["name"] for d in documents} == {"filename1", "filename3"}
+    assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
+
+
 @pytest.mark.elasticsearch
 def test_get_all_documents_with_incorrect_filter_name(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"incorrect_meta_field": ["test2"]})

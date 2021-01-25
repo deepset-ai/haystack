@@ -96,6 +96,11 @@ class SQLDocumentStore(BaseDocumentStore):
         self.update_existing_documents = update_existing_documents
         if getattr(self, "similarity", None) is None:
             self.similarity = None
+        self.use_windowed_query = True
+        if "sqlite" in url:
+            import sqlite3
+            if sqlite3.sqlite_version < "3.25":
+                self.use_windowed_query = False
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
@@ -182,7 +187,11 @@ class SQLDocumentStore(BaseDocumentStore):
                 )
 
         documents_map = {}
-        for i, row in enumerate(self._windowed_query(documents_query, DocumentORM.id, batch_size), start=1):
+
+        if self.use_windowed_query:
+            documents_query = self._windowed_query(documents_query, DocumentORM.id, batch_size)
+
+        for i, row in enumerate(documents_query, start=1):
             documents_map[row.id] = Document(
                 id=row.id,
                 text=row.text,
