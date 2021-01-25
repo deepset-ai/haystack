@@ -408,7 +408,7 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         if filters:
-            raise NotImplementedError("Delete by filters is not implemented for SQLDocumentStore.")
+            raise NotImplementedError(f"Delete by filters is not implemented for {type(self).__name__}")
         index = index or self.index
         documents = self.session.query(DocumentORM).filter_by(index=index)
         documents.delete(synchronize_session=False)
