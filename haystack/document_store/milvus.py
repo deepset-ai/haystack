@@ -1,13 +1,16 @@
 import logging
 import time
-from typing import Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 import numpy as np
 
 from milvus import IndexType, MetricType, Milvus
+from scipy.special import expit
+from tqdm import tqdm
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
+from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
 
@@ -29,22 +32,27 @@ class MilvusDocumentStore(SQLDocumentStore):
             index: str = "document",
             vector_dim: int = 768,
             index_file_size: int = 2048,
-            milvus_metric_type: MetricType = MetricType.IP,
-            milvus_index_type: IndexType = IndexType.FLAT,
+            metric_type: MetricType = MetricType.IP,
+            index_type: IndexType = IndexType.FLAT,
+            index_param: Optional[Dict[str, Any]] = None,
+            search_param: Optional[Dict[str, Any]] = None,
             update_existing_documents: bool = False,
             return_embedding: bool = False,
+            embedding_field: str = "embedding",
             **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
+                        If using MySQL then same server can aslo be used for Milvus metadata. Refer for more detail
+                        https://milvus.io/docs/v0.10.5/data_manage.md
         :param server_uri: Milvus server uri, it will automatically deduce protocol, host and port from uri.
         :param connection_pool: Connection pool type to connect with Milvus server
         :param index: Index name for text, embedding and metadata.
         :param vector_dim: The embedding vector size.
         :param index_file_size: File size for Milvus server embedding vector store.
-        :param milvus_metric_type: Embedding vector search metrics by default it use L2
-        :param milvus_index_type: default it use FLAT
+        :param metric_type: Embedding vector search metrics by default it use L2
+        :param index_type: default it use FLAT
         :param update_existing_documents: Whether to update any existing documents with the same ID when adding
                                           documents. When set as True, any document with an existing ID gets updated.
                                           If set to False, an error is raised if the document ID of the document being
@@ -54,11 +62,15 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.milvus_server = Milvus(uri=server_uri, pool=connection_pool)
         self.vector_dim = vector_dim
         self.index_file_size = index_file_size
-        self.milvus_metric_type = milvus_metric_type
-        self.milvus_index_type = milvus_index_type
+        self.metric_type = metric_type
+        self.index_type = index_type
+        # Refer https://github.com/milvus-io/pymilvus/blob/master/doc/source/param.rst
+        self.index_param = index_param or {"nlist": 16384}
+        self.search_param = search_param or {"nprobe": 10}
         self.index = index
         self._create_collection_and_index_if_not_exist(self.index)
         self.return_embedding = return_embedding
+        self.embedding_field = embedding_field
 
         super().__init__(
             url=sql_url,
@@ -69,96 +81,117 @@ class MilvusDocumentStore(SQLDocumentStore):
     def __del__(self):
         return self.milvus_server.close()
 
-    def _create_collection_and_index_if_not_exist(self, index: Optional[str] = None):
+    def _create_collection_and_index_if_not_exist(
+        self,
+        index: Optional[str] = None,
+        index_param: Optional[Dict[str, Any]] = None
+    ):
         index = index or self.index
+        index_param = index_param or self.index_param
+
         status, ok = self.milvus_server.has_collection(collection_name=index)
         if not ok:
-            param = {
+            collection_param = {
                 'collection_name': index,
                 'dimension': self.vector_dim,
                 'index_file_size': self.index_file_size,
-                'milvus_metric_type': self.milvus_metric_type
+                'metric_type': self.metric_type
             }
 
-            self.milvus_server.create_collection(param)
+            self.milvus_server.create_collection(collection_param)
 
-            index_param = {
-                'M': 48,
-                'efConstruction': 500
-            }
-            self.milvus_server.create_index(index, self.milvus_index_type, index_param)
+            self.milvus_server.create_index(index, self.index_type, index_param)
 
     def _create_document_field_map(self) -> Dict:
         return {
-            self.index: "embedding",
+            self.index: self.embedding_field,
         }
 
     def write_documents(
             self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
     ):
+        """
+        Add new documents to the DocumentStore.
+
+        :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
+                                  them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
+        :param index: (SQL) index name for storing the docs and metadata
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :return:
+        """
         index = index or self.index
         self._create_collection_and_index_if_not_exist(index)
-        document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+        field_map = self._create_document_field_map()
+        document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         add_vectors = False if document_objects[0].embedding is None else True
 
-        for i in range(0, len(document_objects), self.index_file_size):
+        for i in range(0, len(document_objects), batch_size):
             vector_ids = []
             if add_vectors:
-                embeddings = [doc.embedding for doc in document_objects[i: i + self.index_file_size]]
-                vectors = [emb.tolist() for emb in embeddings]
-                status, vector_ids = self.milvus_server.insert(collection_name=index, records=vectors)
+                doc_ids = []
+                embeddings = []
+                for doc in document_objects[i: i + batch_size]:
+                    doc_ids.append(doc.id)
+                    embeddings.append(doc.embedding)
+
+                if self.update_existing_documents:
+                    existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
+                    self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
+
+                status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings)
 
             docs_to_write_in_sql = []
-            for vector_id, doc in enumerate(document_objects[i: i + self.index_file_size]):
+            for idx, doc in enumerate(document_objects[i: i + batch_size]):
                 meta = doc.meta
                 if add_vectors:
-                    meta["vector_id"] = str(vector_id) if len(vector_ids) == 0 else str(vector_ids[vector_id])
+                    meta["vector_id"] = vector_ids[idx]
                 docs_to_write_in_sql.append(doc)
 
             super().write_documents(docs_to_write_in_sql, index=index)
 
         self.milvus_server.flush([index])
+        if self.update_existing_documents:
+            self.milvus_server.compact(collection_name=index)
 
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+
         :param retriever: Retriever to use to get embeddings for text
-        :param index: Index name to update
+        :param index: (SQL) index name for storing the docs and metadata
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
         index = index or self.index
-        self.milvus_server.drop_collection(collection_name=index)
-        self.milvus_server.flush([index])
-        time.sleep(10)
         self._create_collection_and_index_if_not_exist(index)
-        time.sleep(10)
 
-        documents = self.get_all_documents(index=index)
-        logger.info(f"Updating embeddings for {len(documents)} docs ...")
-        embeddings = retriever.embed_passages(documents)  # type: ignore
-        assert len(documents) == len(embeddings)
-        for i, doc in enumerate(documents):
-            doc.embedding = embeddings[i]
+        document_count = self.get_document_count(index=index)
+        if document_count == 0:
+            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
+            return
 
-        vector_ids = []
-        for i in range(0, len(documents), self.index_file_size):
-            embeddings = [doc.embedding for doc in documents[i: i + self.index_file_size]]
-            vectors = [emb.tolist() for emb in embeddings]
-            vector_ids = [vid for vid in range(len(embeddings))]
-            self.milvus_server.insert(collection_name=index, records=vectors, ids=vector_ids)
+        logger.info(f"Updating embeddings for {document_count} docs...")
 
-        doc_meta_to_update = []
-        for vector_id, doc in enumerate(documents[i: i + self.index_file_size]):
-            meta = doc.meta or {}
-            if not doc.meta:
-                doc.meta = meta
-            meta["vector_id"] = str(vector_id) if len(vector_ids) == 0 else str(vector_ids[vector_id])
-            doc_meta_to_update.append((doc.id, meta))
+        result = self.get_all_documents_generator(index=index, batch_size=batch_size, return_embedding=False)
+        batched_documents = get_batches_from_generator(result, batch_size)
+        with tqdm(total=document_count) as progress_bar:
+            for document_batch in batched_documents:
+                self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
-            for doc_id, meta in doc_meta_to_update:
-                super().update_document_meta(id=doc_id, meta=meta)
+                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                assert len(document_batch) == len(embeddings)
+
+                status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings)
+
+                vector_id_map = {}
+                for vector_id, doc in zip(vector_ids, document_batch):
+                    vector_id_map[doc.id] = vector_id
+
+                self.update_vector_ids(vector_id_map, index=index)
+                progress_bar.update(batch_size)
+        progress_bar.close()
 
         self.milvus_server.flush([index])
         self.milvus_server.compact(collection_name=index)
@@ -169,6 +202,17 @@ class MilvusDocumentStore(SQLDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None) -> List[Document]:
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param top_k: How many documents to return
+        :param index: (SQL) index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :return:
+        """
         if filters:
             raise Exception("Query filters are not implemented for the MilvusDocumentStore.")
 
@@ -177,25 +221,33 @@ class MilvusDocumentStore(SQLDocumentStore):
         if not ok:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
 
-        query_emb = query_emb.reshape(1, -1)
-        search_param = {'ef': 4096}
-        status, vector_id_matrix = self.milvus_server.search(
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+        index = index or self.index
+
+        query_emb = query_emb.reshape(1, -1).astype(np.float32)
+        status, search_result = self.milvus_server.search(
             collection_name=index,
             query_records=query_emb,
             top_k=top_k,
-            params=search_param
+            params=self.search_param
         )
         vector_ids_for_query = []
-        if len(vector_id_matrix) > 0:
-            vector_ids_for_query = [str(vector_id.id) for vector_id in vector_id_matrix[0]]
+        scores_for_vector_ids: Dict[str, float] = {}
+        for vector_id_list, distance_list in zip(search_result.id_array, search_result.distance_array):
+            for vector_id, distance in zip(vector_id_list, distance_list):
+                vector_ids_for_query.append(vector_id)
+                scores_for_vector_ids[str(vector_id)] = distance
 
-        if len(vector_ids_for_query) > 0:
-            documents = self.get_all_documents(filters={"vector_id": vector_ids_for_query}, index=index)
-            # sort the documents as per query results
-            documents = sorted(documents,
-                               key=lambda doc: vector_ids_for_query.index(doc.meta["vector_id"]))  # type: ignore
-        else:
-            documents = []
+        documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
+        for doc in documents:
+            doc.score = scores_for_vector_ids[doc.meta["vector_id"]]
+            doc.probability = float(expit(np.asarray(doc.score / 100)))
+            if return_embedding is True:
+                doc.embedding = self.milvus_server.get_entity_by_id(
+                    collection_name=index,
+                    ids=[int(doc.meta["vector_id"])]
+                )
 
         return documents
 
@@ -236,7 +288,10 @@ class MilvusDocumentStore(SQLDocumentStore):
         for doc in documents:
             if return_embedding:
                 if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+                    doc.embedding = self.milvus_server.get_entity_by_id(
+                        collection_name=index,
+                        ids=[int(doc.meta["vector_id"])]
+                    )
             yield doc
 
     def get_all_documents(
@@ -259,8 +314,25 @@ class MilvusDocumentStore(SQLDocumentStore):
         if self.return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+                    doc.embedding = self.milvus_server.get_entity_by_id(
+                        collection_name=index,
+                        ids=[int(doc.meta["vector_id"])]
+                    )
         return documents
+
+    def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
+        index = index or self.index
+        existing_vector_ids = []
+        for doc in documents:
+            if "vector_id" in doc.meta:
+                existing_vector_ids.append(int(doc.meta["vector_id"]))
+        if len(existing_vector_ids) > 0:
+            status = self.milvus_server.delete_entity_by_id(
+                collection_name=index,
+                id_array=existing_vector_ids
+            )
+            if not status:
+                raise RuntimeError("Unable to delete existing vector ids from Milvus server")
 
     def get_all_vectors(self, index=None) -> List[np.array]:
         index = index or self.index

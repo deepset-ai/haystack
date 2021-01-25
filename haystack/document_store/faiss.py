@@ -41,6 +41,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         update_existing_documents: bool = False,
         index: str = "document",
         similarity: str = "dot_product",
+        embedding_field: str = "embedding",
         **kwargs,
     ):
         """
@@ -83,6 +84,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 self.faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
 
         self.return_embedding = return_embedding
+        self.embedding_field = embedding_field
         if similarity == "dot_product":
             self.similarity = similarity
         else:
@@ -154,7 +156,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def _create_document_field_map(self) -> Dict:
         return {
-            self.index: "embedding",
+            self.index: self.embedding_field,
         }
 
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):

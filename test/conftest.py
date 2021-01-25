@@ -8,6 +8,7 @@ import requests
 from elasticsearch import Elasticsearch
 from milvus import Milvus
 
+from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
@@ -261,7 +262,7 @@ def get_retriever(retriever_type, document_store):
     return retriever
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
@@ -270,7 +271,7 @@ def document_store_with_docs(request, test_docs_xs):
         document_store.faiss_index.reset()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store(request, test_docs_xs):
     document_store = get_document_store(request.param)
     yield document_store
@@ -294,6 +295,14 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
+            sql_url="sqlite://",
+            return_embedding=True,
+            embedding_field=embedding_field,
+            index="haystack_test",
+        )
+        return document_store
+    elif document_store_type == "milvus":
+        document_store = MilvusDocumentStore(
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
