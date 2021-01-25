@@ -63,7 +63,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                 "query": {
                     "bool": {
                         "should": [{
-                            "multi_match": {"query": "${query}", "type": "most_fields", "fields": ["text"]}}],
+                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
                             "filter": [{"terms": {"year": ${years}}}]}}}"""
     )
     results = retriever.run(query="test", filters={"years": ["2020", "2021"]})[0]["documents"]
@@ -78,7 +78,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                     "query": {
                         "bool": {
                             "should": [{
-                                "multi_match": {"query": "${query}", "type": "most_fields", "fields": ["text"]}}],
+                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
                                 "filter": [{"term": {"year": ${years}}}]}}}"""
     )
     results = retriever.run(query="test", filters={"years": "2021"})[0]["documents"]
