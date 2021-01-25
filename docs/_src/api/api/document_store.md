@@ -881,7 +881,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index=None)
+ | delete_all_documents(index=None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete all documents from the document store.
