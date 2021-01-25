@@ -51,7 +51,7 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-@pytest.mark.parametrize("document_store", ["sql"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["sql"], indirect=True)
 def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_with_docs):
     document_store_with_docs.use_windowed_query = False
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
