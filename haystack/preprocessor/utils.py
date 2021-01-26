@@ -507,7 +507,7 @@ def fetch_data_from_url(url: str or List, output_dir: str, chrome_driver_path: s
                     #get sub links from url
                     write_to_files(sub_links, driver, output_dir=output_dir, base_url=url)
                 else:
-                    write_to_file(url, driver, output_dir=output_dir)
+                    write_to_files(url, driver, output_dir=output_dir)
             else:
                 #hangle list of urls
                 sub_links = {}
