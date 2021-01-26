@@ -67,7 +67,7 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "elasticsearch")],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_faq_pipeline(retriever, document_store):
@@ -97,7 +97,7 @@ def test_faq_pipeline(retriever, document_store):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "elasticsearch")],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_document_search_pipeline(retriever, document_store):

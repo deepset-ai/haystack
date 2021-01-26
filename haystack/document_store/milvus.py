@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Any, Dict, Generator, List, Optional, Union
 import numpy as np
 
@@ -18,10 +17,9 @@ logger = logging.getLogger(__name__)
 class MilvusDocumentStore(SQLDocumentStore):
     """
     Document store for very large scale embedding based dense retrievers like the DPR.
-    It implements the Milvus (https://github.com/milvus-io/milvus)
-    to perform similarity search on vectors.
-    The document text and meta-data(for filtering) is stored using the SQLDocumentStore, while
-    the vector embeddings are indexed in a Milvus Index.
+    It implements the Milvus (https://github.com/milvus-io/milvus) to perform similarity search on vectors.
+    The document text and meta-data (for filtering) is stored using the SQLDocumentStore, while the vector embeddings
+    are indexed in a Milvus Server Index. Refer https://milvus.io/docs/v0.10.5/tuning.md for performance tuning option
     """
 
     def __init__(
@@ -31,7 +29,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             connection_pool: str = "SingletonThread",
             index: str = "document",
             vector_dim: int = 768,
-            index_file_size: int = 2048,
+            index_file_size: int = 1024,
             metric_type: MetricType = MetricType.IP,
             index_type: IndexType = IndexType.FLAT,
             index_param: Optional[Dict[str, Any]] = None,
@@ -39,32 +37,34 @@ class MilvusDocumentStore(SQLDocumentStore):
             update_existing_documents: bool = False,
             return_embedding: bool = False,
             embedding_field: str = "embedding",
-            **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
-                        deployment, Postgres is recommended.
-                        If using MySQL then same server can aslo be used for Milvus metadata. Refer for more detail
-                        https://milvus.io/docs/v0.10.5/data_manage.md
+                        deployment, Postgres is recommended. If using MySQL then same server can also be used for
+                        Milvus metadata. Refer for more detail https://milvus.io/docs/v0.10.5/data_manage.md.
         :param server_uri: Milvus server uri, it will automatically deduce protocol, host and port from uri.
-        :param connection_pool: Connection pool type to connect with Milvus server
+        :param connection_pool: Connection pool type to connect with Milvus server by default it use SingletonThread.
         :param index: Index name for text, embedding and metadata.
-        :param vector_dim: The embedding vector size.
-        :param index_file_size: File size for Milvus server embedding vector store.
-        :param metric_type: Embedding vector search metrics by default it use L2
-        :param index_type: default it use FLAT
+        :param vector_dim: The embedding vector size by default it use 768 dimension.
+        :param index_file_size: File size for Milvus server embedding vector store by default it use 1024 MB.
+        :param metric_type: Embedding vector search metrics by default it use IP.
+        :param index_type: Embedding vector indexing type by default it use FLAT.
+        :param index_param: Embedding vector index creation parameter by default it use {"nlist": 16384}.
+                            Refer for more information https://github.com/milvus-io/pymilvus/blob/master/doc/source/param.rst
+        :param search_param: Embedding vector search parameter by default it use {"nprobe": 10}.
+                             Refer for more information https://github.com/milvus-io/pymilvus/blob/master/doc/source/param.rst
         :param update_existing_documents: Whether to update any existing documents with the same ID when adding
                                           documents. When set as True, any document with an existing ID gets updated.
                                           If set to False, an error is raised if the document ID of the document being
                                           added already exists.
-        :param base_document_store: Base document store to store text and metadata. Either SQL or ES store can be used.
+        :param return_embedding: To return document embedding.
+        :param embedding_field: Name of field containing an embedding vector.
         """
         self.milvus_server = Milvus(uri=server_uri, pool=connection_pool)
         self.vector_dim = vector_dim
         self.index_file_size = index_file_size
         self.metric_type = metric_type
         self.index_type = index_type
-        # Refer https://github.com/milvus-io/pymilvus/blob/master/doc/source/param.rst
         self.index_param = index_param or {"nlist": 16384}
         self.search_param = search_param or {"nprobe": 10}
         self.index = index
@@ -251,7 +251,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def delete_all_documents(self, index=None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         index = index or self.index
         super().delete_all_documents(index=index, filters=filters)
         status, ok = self.milvus_server.has_collection(collection_name=index)
@@ -335,6 +335,13 @@ class MilvusDocumentStore(SQLDocumentStore):
                 raise RuntimeError("Unable to delete existing vector ids from Milvus server")
 
     def get_all_vectors(self, index=None) -> List[np.array]:
+        """
+        Helper function to dump all vectors stored in Milvus server.
+
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :return: List[np.array]: List of vectors.
+        """
         index = index or self.index
         status, collection_info = self.milvus_server.get_collection_stats(collection_name=index)
         if not status.OK():

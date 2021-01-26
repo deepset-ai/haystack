@@ -267,16 +267,14 @@ def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
     yield document_store
-    if request.param == "faiss":
-        document_store.faiss_index.reset()
+    document_store.delete_all_documents()
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store(request, test_docs_xs):
     document_store = get_document_store(request.param)
     yield document_store
-    if request.param == "faiss":
-        document_store.faiss_index.reset()
+    document_store.delete_all_documents()
 
 
 def get_document_store(document_store_type, embedding_field="embedding"):

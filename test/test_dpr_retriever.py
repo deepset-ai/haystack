@@ -10,7 +10,7 @@ from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderToken
 
 @pytest.mark.slow
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("return_embedding", [True, False])
 def test_dpr_retrieval(document_store, retriever, return_embedding):

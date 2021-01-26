@@ -73,6 +73,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param embedding_field: Name of field containing an embedding vector.
         """
         self.vector_dim = vector_dim
 
@@ -277,7 +278,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             embeddings = np.array(embeddings, dtype="float32")
         self.faiss_index.train(embeddings)
 
-    def delete_all_documents(self, index=None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete all documents from the document store.
         """

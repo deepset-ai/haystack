@@ -113,7 +113,7 @@ def test_get_all_documents_generator(document_store):
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "sql", "faiss"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "sql", "faiss", "milvus"], indirect=True)
 @pytest.mark.parametrize("update_existing_documents", [True, False])
 def test_update_existing_documents(document_store, update_existing_documents):
     original_docs = [
@@ -177,7 +177,7 @@ def test_write_document_index(document_store):
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_document_with_embeddings(document_store):
     documents = [
         {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -196,7 +196,7 @@ def test_document_with_embeddings(document_store):
 
 
 @pytest.mark.parametrize("retriever", ["dpr", "embedding"], indirect=True)
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
     for i in range(23):
