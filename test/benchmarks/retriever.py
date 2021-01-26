@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 from time import perf_counter
 from utils import get_document_store, get_retriever, index_to_doc_store, load_config
-from haystack.preprocessor.utils import eval_data_from_file
+from haystack.preprocessor.utils import eval_data_from_json
 from haystack.document_store.faiss import FAISSDocumentStore
 
 from haystack import Document
@@ -265,7 +265,7 @@ def prepare_data(data_dir, filename_gold, filename_negative, data_s3_url,  embed
             download_from_s3(data_s3_url + str(embeddings_dir) + embedding_filename, cache_dir=data_dir)
     logging.getLogger("farm").setLevel(logging.WARN)
 
-    gold_docs, labels = eval_data_from_file(data_dir + filename_gold)
+    gold_docs, labels = eval_data_from_json(data_dir + filename_gold)
 
     # Reduce number of docs
     gold_docs = gold_docs[:n_docs]
