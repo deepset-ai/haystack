@@ -346,7 +346,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index: str, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -796,6 +796,7 @@ added already exists.
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `embedding_field`: Name of field containing an embedding vector.
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -881,7 +882,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index=None, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete all documents from the document store.
