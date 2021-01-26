@@ -37,6 +37,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             update_existing_documents: bool = False,
             return_embedding: bool = False,
             embedding_field: str = "embedding",
+            **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
@@ -133,7 +134,12 @@ class MilvusDocumentStore(SQLDocumentStore):
                 embeddings = []
                 for doc in document_objects[i: i + batch_size]:
                     doc_ids.append(doc.id)
-                    embeddings.append(doc.embedding)
+                    if isinstance(doc.embedding, np.ndarray):
+                        embeddings.append(doc.embedding.tolist())
+                    elif isinstance(doc.embedding, list):
+                        embeddings.append(doc.embedding)
+                    else:
+                        raise AttributeError("Document embedded in unrecognized format")
 
                 if self.update_existing_documents:
                     existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
@@ -181,9 +187,10 @@ class MilvusDocumentStore(SQLDocumentStore):
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
-                assert len(document_batch) == len(embeddings)
+                embeddings_list = [embedding.tolist() for embedding in embeddings]
+                assert len(document_batch) == len(embeddings_list)
 
-                status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings)
+                status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings_list)
 
                 vector_id_map = {}
                 for vector_id, doc in zip(vector_ids, document_batch):
@@ -279,6 +286,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        index = index or self.index
         documents = super().get_all_documents_generator(
             index=index, filters=filters, batch_size=batch_size
         )
@@ -301,6 +309,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             return_embedding: Optional[bool] = None,
             batch_size: int = 10_000,
     ) -> List[Document]:
+        index = index or self.index
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
@@ -310,6 +319,7 @@ class MilvusDocumentStore(SQLDocumentStore):
     def get_documents_by_id(
             self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000
     ) -> List[Document]:
+        index = index or self.index
         documents = super().get_documents_by_id(ids=ids, index=index)
         if self.return_embedding:
             for doc in documents:
