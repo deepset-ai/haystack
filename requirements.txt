@@ -24,4 +24,3 @@ nltk
 more_itertools
 networkx
 selenium
-urllib
