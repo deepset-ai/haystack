@@ -216,7 +216,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             self.faq_question_field if self.faq_question_field else "question": "question"
         }
 
-    def get_document_by_id(self, id: str, index=None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
         index = index or self.index
         documents = self.get_documents_by_id([id], index=index)
@@ -225,13 +225,45 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index=None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         query = {"query": {"ids": {"values": ids}}}
         result = self.client.search(index=index, body=query)["hits"]["hits"]
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
+
+    def get_metadata_values_by_key(
+        self,
+        key: str,
+        query: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        index: Optional[str] = None,
+    ) -> List[dict]:
+        """
+        Get values associated with a metadata key. The output is in the format:
+            [{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
+        """
+        body: dict = {"size": 0, "aggs": {"metadata_agg": {"terms": {"field": key}}}}
+        if query:
+            body["query"] = {
+                "bool": {
+                    "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields, }}]
+                }
+            }
+        if filters:
+            filter_clause = []
+            for key, values in filters.items():
+                filter_clause.append({"terms": {key: values}})
+            if not body.get("query"):
+                body["query"] = {"bool": {}}
+            body["query"]["bool"].update({"filter": filter_clause})
+        result = self.client.search(body=body, index=index)
+        buckets = result["aggregations"]["metadata_agg"]["buckets"]
+        for bucket in buckets:
+            bucket["count"] = bucket.pop("doc_count")
+            bucket["value"] = bucket.pop("key")
+        return buckets
 
     def write_documents(
         self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,  batch_size: int = 10_000

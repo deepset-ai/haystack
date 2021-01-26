@@ -450,6 +450,44 @@ def test_custom_embedding_field(document_store_type):
 
 
 @pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_get_meta_values_by_key(document_store):
+    documents = [
+        Document(
+            text="Doc1",
+            meta={"meta_key_1": "1", "meta_key_2": "11"}
+        ),
+        Document(
+            text="Doc2",
+            meta={"meta_key_1": "2", "meta_key_2": "22"}
+        ),
+        Document(
+            text="Doc3",
+            meta={"meta_key_1": "3", "meta_key_2": "33"}
+        )
+    ]
+    document_store.write_documents(documents)
+
+    # test without filters or query
+    result = document_store.get_metadata_values_by_key(key="meta_key_1")
+    for bucket in result:
+        assert bucket["value"] in ["1", "2", "3"]
+        assert bucket["count"] == 1
+
+    # test with filters but no query
+    result = document_store.get_metadata_values_by_key(key="meta_key_1", filters={"meta_key_2": ["11", "22"]})
+    for bucket in result:
+        assert bucket["value"] in ["1", "2"]
+        assert bucket["count"] == 1
+
+    # test with filters & query
+    result = document_store.get_metadata_values_by_key(key="meta_key_1", query="Doc1")
+    for bucket in result:
+        assert bucket["value"] in ["1"]
+        assert bucket["count"] == 1
+
+
+@pytest.mark.elasticsearch
 def test_elasticsearch_custom_fields(elasticsearch_fixture):
     client = Elasticsearch()
     client.indices.delete(index='haystack_test_custom', ignore=[404])
