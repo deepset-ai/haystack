@@ -105,7 +105,7 @@ def test_update_exiting_docs(document_store, retriever):
 
     assert old_documents_indexed[0].id == new_documents_indexed[0].id
     assert old_documents_indexed[0].text == "text_1"
-    assert old_documents_indexed[0].text == "text_2"
+    assert new_documents_indexed[0].text == "text_2"
     assert not np.allclose(old_documents_indexed[0].embedding, new_documents_indexed[0].embedding, rtol=0.01)
     assert old_documents_indexed[0].meta["vector_id"] != new_documents_indexed[0].meta["vector_id"]
 

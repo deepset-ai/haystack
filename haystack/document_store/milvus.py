@@ -1,8 +1,10 @@
 import logging
 from typing import Any, Dict, Generator, List, Optional, Union
+
+import numpy
 import numpy as np
 
-from milvus import IndexType, MetricType, Milvus
+from milvus import IndexType, MetricType, Milvus, Status
 from scipy.special import expit
 from tqdm import tqdm
 
@@ -25,12 +27,12 @@ class MilvusDocumentStore(SQLDocumentStore):
     def __init__(
             self,
             sql_url: str = "sqlite:///",
-            server_uri: str = "tcp://localhost:19530",
+            milvus_url: str = "tcp://localhost:19530",
             connection_pool: str = "SingletonThread",
             index: str = "document",
             vector_dim: int = 768,
             index_file_size: int = 1024,
-            metric_type: MetricType = MetricType.IP,
+            similarity: str = "dot_product",
             index_type: IndexType = IndexType.FLAT,
             index_param: Optional[Dict[str, Any]] = None,
             search_param: Optional[Dict[str, Any]] = None,
@@ -43,12 +45,14 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended. If using MySQL then same server can also be used for
                         Milvus metadata. Refer for more detail https://milvus.io/docs/v0.10.5/data_manage.md.
-        :param server_uri: Milvus server uri, it will automatically deduce protocol, host and port from uri.
+        :param milvus_url: Milvus server uri, it will automatically deduce protocol, host and port from uri.
         :param connection_pool: Connection pool type to connect with Milvus server by default it use SingletonThread.
         :param index: Index name for text, embedding and metadata.
         :param vector_dim: The embedding vector size by default it use 768 dimension.
         :param index_file_size: File size for Milvus server embedding vector store by default it use 1024 MB.
-        :param metric_type: Embedding vector search metrics by default it use IP.
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine
+                           it is more performant with DPR embeddings. 'cosine' is recommended if you are using a
+                           Sentence BERT model.
         :param index_type: Embedding vector indexing type by default it use FLAT.
         :param index_param: Embedding vector index creation parameter by default it use {"nlist": 16384}.
                             Refer for more information https://github.com/milvus-io/pymilvus/blob/master/doc/source/param.rst
@@ -61,10 +65,16 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
         """
-        self.milvus_server = Milvus(uri=server_uri, pool=connection_pool)
+        self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)
         self.vector_dim = vector_dim
         self.index_file_size = index_file_size
-        self.metric_type = metric_type
+
+        if similarity == "dot_product":
+            self.metric_type = MetricType.L2
+        else:
+            raise ValueError("The Milvus document store can currently only support dot_product similarity. "
+                             "Please set similarity=\"dot_product\"")
+
         self.index_type = index_type
         self.index_param = index_param or {"nlist": 16384}
         self.search_param = search_param or {"nprobe": 10}
@@ -99,9 +109,13 @@ class MilvusDocumentStore(SQLDocumentStore):
                 'metric_type': self.metric_type
             }
 
-            self.milvus_server.create_collection(collection_param)
+            status = self.milvus_server.create_collection(collection_param)
+            if status.code != Status.SUCCESS:
+                raise RuntimeError(f'Collection creation on Milvus server failed: {status}')
 
-            self.milvus_server.create_index(index, self.index_type, index_param)
+            status = self.milvus_server.create_index(index, self.index_type, index_param)
+            if status.code != Status.SUCCESS:
+                raise RuntimeError(f'Index creation on Milvus server failed: {status}')
 
     def _create_document_field_map(self) -> Dict:
         return {
@@ -139,13 +153,16 @@ class MilvusDocumentStore(SQLDocumentStore):
                     elif isinstance(doc.embedding, list):
                         embeddings.append(doc.embedding)
                     else:
-                        raise AttributeError("Document embedded in unrecognized format")
+                        raise AttributeError(f'Format of supplied document embedding {type(doc.embedding)} is not '
+                                             f'supported. Please use list or numpy.ndarray')
 
                 if self.update_existing_documents:
                     existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
                     self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
 
                 status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings)
+                if status.code != Status.SUCCESS:
+                    raise RuntimeError(f'Vector embedding insertion failed: {status}')
 
             docs_to_write_in_sql = []
             for idx, doc in enumerate(document_objects[i: i + batch_size]):
@@ -191,6 +208,8 @@ class MilvusDocumentStore(SQLDocumentStore):
                 assert len(document_batch) == len(embeddings_list)
 
                 status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings_list)
+                if status.code != Status.SUCCESS:
+                    raise RuntimeError(f'Vector embedding insertion failed: {status}')
 
                 vector_id_map = {}
                 for vector_id, doc in zip(vector_ids, document_batch):
@@ -225,6 +244,8 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         index = index or self.index
         status, ok = self.milvus_server.has_collection(collection_name=index)
+        if status.code != Status.SUCCESS:
+            raise RuntimeError(f'Milvus has collection check failed: {status}')
         if not ok:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
 
@@ -239,6 +260,9 @@ class MilvusDocumentStore(SQLDocumentStore):
             top_k=top_k,
             params=self.search_param
         )
+        if status.code != Status.SUCCESS:
+            raise RuntimeError(f'Vector embedding search failed: {status}')
+
         vector_ids_for_query = []
         scores_for_vector_ids: Dict[str, float] = {}
         for vector_id_list, distance_list in zip(search_result.id_array, search_result.distance_array):
@@ -251,10 +275,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             doc.score = scores_for_vector_ids[doc.meta["vector_id"]]
             doc.probability = float(expit(np.asarray(doc.score / 100)))
             if return_embedding is True:
-                doc.embedding = self.milvus_server.get_entity_by_id(
-                    collection_name=index,
-                    ids=[int(doc.meta["vector_id"])]
-                )
+                doc.embedding = self._get_embedding_by_id(index=index, id=doc.meta.get("vector_id"))
 
         return documents
 
@@ -262,8 +283,13 @@ class MilvusDocumentStore(SQLDocumentStore):
         index = index or self.index
         super().delete_all_documents(index=index, filters=filters)
         status, ok = self.milvus_server.has_collection(collection_name=index)
+        if status.code != Status.SUCCESS:
+            raise RuntimeError(f'Milvus has collection check failed: {status}')
         if ok:
-            self.milvus_server.drop_collection(collection_name=index)
+            status = self.milvus_server.drop_collection(collection_name=index)
+            if status.code != Status.SUCCESS:
+                raise RuntimeError(f'Milvus drop collection failed: {status}')
+
             self.milvus_server.flush([index])
             self.milvus_server.compact(collection_name=index)
 
@@ -296,10 +322,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         for doc in documents:
             if return_embedding:
                 if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self.milvus_server.get_entity_by_id(
-                        collection_name=index,
-                        ids=[int(doc.meta["vector_id"])]
-                    )
+                    doc.embedding = self._get_embedding_by_id(index=index, id=doc.meta.get("vector_id"))
             yield doc
 
     def get_all_documents(
@@ -316,6 +339,12 @@ class MilvusDocumentStore(SQLDocumentStore):
         documents = list(result)
         return documents
 
+    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+        """Fetch a document by specifying its text id string"""
+        documents = self.get_documents_by_id([id], index)
+        document = documents[0] if documents else None
+        return document
+
     def get_documents_by_id(
             self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000
     ) -> List[Document]:
@@ -324,11 +353,18 @@ class MilvusDocumentStore(SQLDocumentStore):
         if self.return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self.milvus_server.get_entity_by_id(
-                        collection_name=index,
-                        ids=[int(doc.meta["vector_id"])]
-                    )
+                    doc.embedding = self._get_embedding_by_id(index=index, id=doc.meta.get("vector_id"))
         return documents
+
+    def _get_embedding_by_id(self, id: str, index: Optional[str] = None) -> np.array:
+        index = index or self.index
+        status, vector_embedding = self.milvus_server.get_entity_by_id(
+            collection_name=index,
+            ids=[int(id)]
+        )
+        if status.code != Status.SUCCESS:
+            raise RuntimeError(f'Getting vector embedding by id failed: {status}')
+        return numpy.array(vector_embedding[0])
 
     def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
         index = index or self.index
@@ -341,8 +377,8 @@ class MilvusDocumentStore(SQLDocumentStore):
                 collection_name=index,
                 id_array=existing_vector_ids
             )
-            if not status:
-                raise RuntimeError("Unable to delete existing vector ids from Milvus server")
+            if status.code != Status.SUCCESS:
+                raise RuntimeError("E existing vector ids deletion failed: {status}")
 
     def get_all_vectors(self, index=None) -> List[np.array]:
         """

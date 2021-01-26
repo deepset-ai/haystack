@@ -232,17 +232,17 @@ def test_update_embeddings(document_store, retriever):
 
 @pytest.mark.elasticsearch
 def test_delete_all_documents(document_store_with_docs):
-    assert len(document_store_with_docs.get_all_documents(index="haystack_test")) == 3
+    assert len(document_store_with_docs.get_all_documents()) == 3
 
-    document_store_with_docs.delete_all_documents(index="haystack_test")
-    documents = document_store_with_docs.get_all_documents(index="haystack_test")
+    document_store_with_docs.delete_all_documents()
+    documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 0
 
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
-    document_store_with_docs.delete_all_documents(index="haystack_test", filters={"meta_field": ["test1", "test2"]})
+    document_store_with_docs.delete_all_documents(filters={"meta_field": ["test1", "test2"]})
     documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 1
     assert documents[0].meta["meta_field"] == "test3"
