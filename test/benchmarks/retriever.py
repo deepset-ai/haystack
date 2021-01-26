@@ -134,7 +134,11 @@ def benchmark_querying(n_docs_options,
         for retriever_name, doc_store_name in retriever_doc_stores:
             try:
                 logger.info(f"##### Start querying run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
-                doc_store = get_document_store(doc_store_name)
+                if retriever_name == "elasticsearch":
+                    similarity = "cosine"
+                else:
+                    similarity = "dot_product"
+                doc_store = get_document_store(doc_store_name, similarity=similarity)
                 retriever = get_retriever(retriever_name, doc_store)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
