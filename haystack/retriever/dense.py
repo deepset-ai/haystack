@@ -178,8 +178,7 @@ class DensePassageRetriever(BaseRetriever):
         :return: dictionary of embeddings for "passages" and "query"
         """
 
-
-        dataset, tensor_names, baskets = self.processor.dataset_from_dicts(
+        dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
 
