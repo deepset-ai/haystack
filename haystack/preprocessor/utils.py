@@ -394,7 +394,7 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
             json.dump(doc, jsonl_file)
             jsonl_file.write("\n")
 
-def write_to_files(urls: str or list, driver: Any, output_dir: str, base_url: str = None):
+def write_to_files(urls: Any, driver: Any, output_dir: str, base_url: str = None):
     """
     Stores content from urls to files
 
@@ -478,7 +478,7 @@ def extract_sublinks_from_url(driver: Any, base_url: str):
     return sub_links
 
 
-def fetch_data_from_url(url: str or List, output_dir: str, chrome_driver_path: str = None, firefox_driver_path: str = None, extract_sub_links: bool = True):
+def fetch_data_from_url(url: Any, output_dir: str, chrome_driver_path: str = None, firefox_driver_path: str = None, extract_sub_links: bool = True):
     """"""
     path = Path(output_dir)
     if not path.exists():
