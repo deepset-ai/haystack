@@ -48,7 +48,7 @@ def get_document_store(document_store_type, similarity='dot_product'):
         status = subprocess.run(
             ['docker run --name haystack-postgres -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres'],
             shell=True)
-        time.sleep(3)
+        time.sleep(6)
         status = subprocess.run(
             ['docker exec -it haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
         time.sleep(1)
