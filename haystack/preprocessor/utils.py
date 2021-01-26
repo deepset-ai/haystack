@@ -5,8 +5,10 @@ import tempfile
 import zipfile
 import gzip
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union, Generator
+from typing import Callable, Dict, List, Optional, Tuple, Union, Generator, Any
 import json
+from selenium import webdriver
+from urllib.parse import urlparse
 
 from farm.data_handler.utils import http_get
 
@@ -391,3 +393,129 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
         for doc in squad_json["data"]:
             json.dump(doc, jsonl_file)
             jsonl_file.write("\n")
+
+def write_to_files(urls: str or list, driver: Any, output_dir: str, base_url: str = None):
+    """
+    Stores content from urls to files
+
+    :param urls: http addresses whoose content need to be stored in files
+    :type urls: list or str
+    :param drive: seleium webdriver
+    :param output_dir: path of directory where files need to be stored
+    :type: str
+    :param base_url: http address of base url
+    :type: str
+    :return: None
+    """
+    if type(urls) != list:
+        urls = list(urls)
+    for link in urls:
+        logger.info(f"writing contents from `{link}`")
+        driver.get(link)
+        el = driver.find_element_by_tag_name('body')
+        text = el.text
+        link_split_values = link.replace('https://','').split('/')
+        file_name = '{}/{}.txt'.format(output_dir, '_'.join(link_split_values))
+        data = {}
+        data['url'] = link
+        if base_url:
+            data['base_url'] = base_url
+        data['text'] = text
+        with open(file_name, 'w') as f:
+            f.write(str(data))
+
+def is_internal_url(base_url: str, sub_link: str):
+    """
+    :param base_url: http address of base url
+    :type base_url: str 
+    :param sub_link: sub url extracted from base url
+    :type sub_link: str
+    :return: bool if sub_link is external url or not
+    """
+    base_url = urlparse(base_url)
+    sub_link = urlparse(sub_link)
+    return base_url.scheme == sub_link.scheme and base_url.netloc == sub_link.netloc
+
+def use_chrome(chrome_driver_path: str):
+    """
+    :param chrome_driver_path: executale file path for chrome driver
+    :return: selenium webdriver
+    """
+    options = webdriver.chrome.options.Options()
+    options.add_argument('--headless')
+    driver = webdriver.Chrome(executable_path=chrome_driver_path, options=options)
+
+    return driver
+
+def use_firefox(firefox_driver_path: str):
+    """
+    :param firefox_driver_path: executale file path for firefox driver
+    :return: selenium webdriver
+    """
+    options = webdriver.firefox.options.Options()
+    options.add_argument('--headless')
+    driver = webdriver.Firefox(executable_path=firefox_driver_path, options=options)
+
+    return driver
+
+def extract_sublinks_from_url(driver: Any, base_url: str):
+    """
+    extracts sub links from url
+
+    :param driver: selenium webdriver
+    :param base_url: http address of base url
+    :type base_url: str
+    :return: list of sub-links extracted from base url
+    """
+    driver.get(base_url)
+    a_elements = driver.find_elements_by_tag_name('a')
+    sub_links = set()
+    for i in a_elements:
+        if is_internal_url(base_url=base_url, sub_link=sub_link):
+            sub_links.add(sub_link)
+    
+    return sub_links
+
+
+def fetch_data_from_url(url: str or List, output_dir: str, chrome_driver_path: str = None, firefox_driver_path: str = None, extract_sub_links: bool = True):
+    """"""
+    path = Path(output_dir)
+    if not path.exists():
+        path.mkdir(parents=True)
+    
+    is_not_empty = len(list(Path(path).rglob("*"))) > 0
+    if is_not_empty:
+        logger.info(
+            f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data."
+        )
+        return False
+    else:
+        if (not chrome_driver_path) and (not firefox_driver_path):
+            logger.info(f"chrome driver executable path or firefox driver executable path need to be specified")
+        else:
+            logger.info(f"Fetching from {url} to `{output_dir}`")
+
+            if chrome_driver_path:
+                driver = use_chrome(chrome_driver_path=chrome_driver_path)
+            elif firefox_driver_path:
+                driver = use_firefox(firefox_driver_path=firefox_driver_path)
+
+            if type(url) != list:
+                #extract links from url            
+                if extract_sub_links == True:
+                    sub_links = extract_sublinks_from_url(driver=driver, base_url=url)
+                    #get sub links from url
+                    write_to_files(sub_links, driver, output_dir=output_dir, base_url=url)
+                else:
+                    write_to_file(url, driver, output_dir=output_dir)
+            else:
+                #hangle list of urls
+                sub_links = {}
+                if extract_sub_links==True:
+                    for url_ in url:
+                        sub_links[url] = list(extract_sublinks_from_url(driver=driver, base_url=url_))
+                    for item in sub_links:
+                        write_to_files(sub_links[item], driver, output_dir=output_dir, base_url=item)
+                else:
+                    for url_ in url:
+                        write_to_files(url_, driver, output_dir=output_dir)
