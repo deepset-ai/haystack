@@ -471,6 +471,7 @@ def extract_sublinks_from_url(driver: Any, base_url: str):
     a_elements = driver.find_elements_by_tag_name('a')
     sub_links = set()
     for i in a_elements:
+        sub_link = i.get_attribute('href')
         if is_internal_url(base_url=base_url, sub_link=sub_link):
             sub_links.add(sub_link)
     
