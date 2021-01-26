@@ -432,9 +432,9 @@ def is_internal_url(base_url: str, sub_link: str):
     :type sub_link: str
     :return: bool if sub_link is external url or not
     """
-    base_url = urlparse(base_url)
-    sub_link = urlparse(sub_link)
-    return base_url.scheme == sub_link.scheme and base_url.netloc == sub_link.netloc
+    base_url_ = urlparse(base_url)
+    sub_link_ = urlparse(sub_link)
+    return base_url_.scheme == sub_link_.scheme and base_url_.netloc == sub_link_.netloc
 
 def use_chrome(chrome_driver_path: str):
     """
