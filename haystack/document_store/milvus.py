@@ -267,7 +267,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {}
         for vector_id_list, distance_list in zip(search_result.id_array, search_result.distance_array):
             for vector_id, distance in zip(vector_id_list, distance_list):
-                vector_ids_for_query.append(vector_id)
+                vector_ids_for_query.append(str(vector_id))
                 scores_for_vector_ids[str(vector_id)] = distance
 
         documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
