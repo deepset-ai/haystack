@@ -322,7 +322,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         for doc in documents:
             if return_embedding:
                 if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self._get_embedding_by_id(index=index, id=doc.meta.get("vector_id"))
+                    doc.embedding = self._get_embedding_by_id(index=index, id=str(doc.meta.get("vector_id")))
             yield doc
 
     def get_all_documents(
@@ -353,7 +353,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         if self.return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self._get_embedding_by_id(index=index, id=doc.meta.get("vector_id"))
+                    doc.embedding = self._get_embedding_by_id(index=index, id=str(doc.meta.get("vector_id")))
         return documents
 
     def _get_embedding_by_id(self, id: str, index: Optional[str] = None) -> np.array:
