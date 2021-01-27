@@ -408,7 +408,7 @@ def write_to_files(urls: Any, driver: Any, output_dir: str, base_url: str = None
     :return: None
     """
     if type(urls) != list:
-        urls = list(urls)
+        urls = [urls]
     for link in urls:
         logger.info(f"writing contents from `{link}`")
         driver.get(link)
@@ -436,6 +436,20 @@ def is_internal_url(base_url: str, sub_link: str):
     sub_link_ = urlparse(sub_link)
     return base_url_.scheme == sub_link_.scheme and base_url_.netloc == sub_link_.netloc
 
+def is_inpage_navigation(base_url: str, sub_link: str):
+    """
+    to find whether sub-link is inpage navigation link or not
+
+    :param base_url: http address of base url
+    :type base_url: str 
+    :param sub_link: sub url extracted from base url
+    :type sub_link: str
+    :return: bool if sub-link is inpage navigation or not
+    """
+    base_url_ = urlparse(base_url)
+    sub_link_ = urlparse(sub_link)
+    return base_url_.path == sub_link_.path and base_url_.netloc == sub_link_.netloc
+
 def use_chrome(chrome_driver_path: str):
     """
     :param chrome_driver_path: executale file path for chrome driver
@@ -458,28 +472,43 @@ def use_firefox(firefox_driver_path: str):
 
     return driver
 
-def extract_sublinks_from_url(driver: Any, base_url: str):
+def extract_sublinks_from_url(driver: Any, base_url: str, existed_links: List = None):
     """
     extracts sub links from url
 
     :param driver: selenium webdriver
     :param base_url: http address of base url
     :type base_url: str
+    :param existed_links: already extracted links
+    :type existed_links: List
     :return: list of sub-links extracted from base url
     """
     driver.get(base_url)
     a_elements = driver.find_elements_by_tag_name('a')
     sub_links = set()
+    sub_links.add(base_url)
     for i in a_elements:
         sub_link = i.get_attribute('href')
-        if is_internal_url(base_url=base_url, sub_link=sub_link):
-            sub_links.add(sub_link)
-    
+        if not (existed_links and sub_link in existed_links):
+            if is_internal_url(base_url=base_url, sub_link=sub_link) and (not is_inpage_navigation(base_url=base_url, sub_link=sub_link)):
+                sub_links.add(sub_link)
     return sub_links
 
 
-def fetch_data_from_url(url: Any, output_dir: str, chrome_driver_path: str = None, firefox_driver_path: str = None, extract_sub_links: bool = True):
-    """"""
+def fetch_data_from_url(urls: Any, output_dir: str, chrome_driver_path: str = None, firefox_driver_path: str = None, extract_sub_links: bool = True):
+    """
+    takes url/urls as input and write contents to files
+
+    :param urls: list of http addresses or single http address
+    :type urls: str or list (Any)
+    :param chrome_driver_path: chrome webdriver path for selenium
+    :type chrome_driver_path: str
+    :param firefox_driver_path: firefox webdriver path for selenium
+    :type firefox_driver_path: str
+    :param extract_sub_links: whether to extract sub-links from urls or not
+    :type extract_sub_links: bool
+    :return : None
+    """
     path = Path(output_dir)
     if not path.exists():
         path.mkdir(parents=True)
@@ -494,29 +523,31 @@ def fetch_data_from_url(url: Any, output_dir: str, chrome_driver_path: str = Non
         if (not chrome_driver_path) and (not firefox_driver_path):
             logger.info(f"chrome driver executable path or firefox driver executable path need to be specified")
         else:
-            logger.info(f"Fetching from {url} to `{output_dir}`")
+            logger.info(f"Fetching from {urls} to `{output_dir}`")
 
             if chrome_driver_path:
                 driver = use_chrome(chrome_driver_path=chrome_driver_path)
             elif firefox_driver_path:
                 driver = use_firefox(firefox_driver_path=firefox_driver_path)
 
-            if type(url) != list:
+            if type(urls) != list:
                 #extract links from url            
                 if extract_sub_links == True:
-                    sub_links = extract_sublinks_from_url(driver=driver, base_url=url)
+                    sub_links = extract_sublinks_from_url(driver=driver, base_url=urls)
                     #get sub links from url
-                    write_to_files(sub_links, driver, output_dir=output_dir, base_url=url)
+                    write_to_files(sub_links, driver, output_dir=output_dir, base_url=urls)
                 else:
-                    write_to_files(url, driver, output_dir=output_dir)
+                    write_to_files(urls, driver, output_dir=output_dir)
             else:
                 #hangle list of urls
                 sub_links = {}
                 if extract_sub_links==True:
-                    for url_ in url:
-                        sub_links[url] = list(extract_sublinks_from_url(driver=driver, base_url=url_))
-                    for item in sub_links:
-                        write_to_files(sub_links[item], driver, output_dir=output_dir, base_url=item)
+                    for url_ in urls:
+                        existed_links = sum(list(sub_links.values()), [])
+                        sub_links[url_] = list(extract_sublinks_from_url(driver=driver, base_url=url_, existed_links=existed_links))
+
+                    for url in sub_links:
+                        write_to_files(sub_links[url], driver, output_dir=output_dir, base_url=url)
                 else:
-                    for url_ in url:
+                    for url_ in urls:
                         write_to_files(url_, driver, output_dir=output_dir)
