@@ -163,41 +163,50 @@ class MilvusDocumentStore(SQLDocumentStore):
         index = index or self.index
         self._create_collection_and_index_if_not_exist(index)
         field_map = self._create_document_field_map()
+
+        if len(documents) == 0:
+            logger.warning("Calling DocumentStore.write_documents() with empty list")
+            return
+
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         add_vectors = False if document_objects[0].embedding is None else True
 
-        for i in range(0, len(document_objects), batch_size):
-            vector_ids = []
-            if add_vectors:
-                doc_ids = []
-                embeddings = []
-                for doc in document_objects[i: i + batch_size]:
-                    doc_ids.append(doc.id)
-                    if isinstance(doc.embedding, np.ndarray):
-                        embeddings.append(doc.embedding.tolist())
-                    elif isinstance(doc.embedding, list):
-                        embeddings.append(doc.embedding)
-                    else:
-                        raise AttributeError(f'Format of supplied document embedding {type(doc.embedding)} is not '
-                                             f'supported. Please use List or numpy.ndarray')
-
-                if self.update_existing_documents:
-                    existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
-                    self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
-
-                status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings)
-                if status.code != Status.SUCCESS:
-                    raise RuntimeError(f'Vector embedding insertion failed: {status}')
-
-            docs_to_write_in_sql = []
-            for idx, doc in enumerate(document_objects[i: i + batch_size]):
-                meta = doc.meta
+        batched_documents = get_batches_from_generator(document_objects, batch_size)
+        with tqdm(total=len(document_objects)) as progress_bar:
+            for document_batch in batched_documents:
+                vector_ids = []
                 if add_vectors:
-                    meta["vector_id"] = vector_ids[idx]
-                docs_to_write_in_sql.append(doc)
+                    doc_ids = []
+                    embeddings = []
+                    for doc in document_batch:
+                        doc_ids.append(doc.id)
+                        if isinstance(doc.embedding, np.ndarray):
+                            embeddings.append(doc.embedding.tolist())
+                        elif isinstance(doc.embedding, list):
+                            embeddings.append(doc.embedding)
+                        else:
+                            raise AttributeError(f'Format of supplied document embedding {type(doc.embedding)} is not '
+                                                 f'supported. Please use list or numpy.ndarray')
 
-            super().write_documents(docs_to_write_in_sql, index=index)
+                    if self.update_existing_documents:
+                        existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
+                        self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
+
+                    status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings)
+                    if status.code != Status.SUCCESS:
+                        raise RuntimeError(f'Vector embedding insertion failed: {status}')
+
+                docs_to_write_in_sql = []
+                for idx, doc in enumerate(document_batch):
+                    meta = doc.meta
+                    if add_vectors:
+                        meta["vector_id"] = vector_ids[idx]
+                    docs_to_write_in_sql.append(doc)
+
+                super().write_documents(docs_to_write_in_sql, index=index)
+                progress_bar.update(batch_size)
+        progress_bar.close()
 
         self.milvus_server.flush([index])
         if self.update_existing_documents:
@@ -297,11 +306,13 @@ class MilvusDocumentStore(SQLDocumentStore):
                 scores_for_vector_ids[str(vector_id)] = distance
 
         documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
+
+        if return_embedding:
+            self._populate_embeddings_to_docs(index=index, docs=documents)
+
         for doc in documents:
             doc.score = scores_for_vector_ids[doc.meta["vector_id"]]
             doc.probability = float(expit(np.asarray(doc.score / 100)))
-            if return_embedding is True:
-                doc.embedding = self._get_embedding_by_id(index=index, id=doc.meta.get("vector_id"))
 
         return documents
 
@@ -354,8 +365,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         for doc in documents:
             if return_embedding:
-                if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self._get_embedding_by_id(index=index, id=str(doc.meta.get("vector_id")))
+                self._populate_embeddings_to_docs(index=index, docs=[doc])
             yield doc
 
     def get_all_documents(
@@ -409,20 +419,30 @@ class MilvusDocumentStore(SQLDocumentStore):
         index = index or self.index
         documents = super().get_documents_by_id(ids=ids, index=index)
         if self.return_embedding:
-            for doc in documents:
-                if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = self._get_embedding_by_id(index=index, id=str(doc.meta.get("vector_id")))
+            self._populate_embeddings_to_docs(index=index, docs=documents)
+
         return documents
 
-    def _get_embedding_by_id(self, id: str, index: Optional[str] = None) -> np.array:
+    def _populate_embeddings_to_docs(self, docs: List[Document], index: Optional[str] = None):
         index = index or self.index
-        status, vector_embedding = self.milvus_server.get_entity_by_id(
+        docs_with_vector_ids = []
+        for doc in docs:
+            if doc.meta and doc.meta.get("vector_id") is not None:
+                docs_with_vector_ids.append(doc)
+
+        if len(docs_with_vector_ids) == 0:
+            return
+
+        ids = [int(doc.meta.get("vector_id")) for doc in docs_with_vector_ids]
+        status, vector_embeddings = self.milvus_server.get_entity_by_id(
             collection_name=index,
-            ids=[int(id)]
+            ids=ids
         )
         if status.code != Status.SUCCESS:
             raise RuntimeError(f'Getting vector embedding by id failed: {status}')
-        return numpy.array(vector_embedding[0], dtype=float)
+
+        for embedding, doc in zip(vector_embeddings, docs_with_vector_ids):
+            doc.embedding = numpy.array(embedding, dtype="float32")
 
     def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
         index = index or self.index
