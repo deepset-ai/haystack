@@ -544,7 +544,7 @@ def fetch_data_from_url(urls: Any, output_dir: str, chrome_driver_path: str = No
                 sub_links = {}
                 if extract_sub_links==True:
                     for url_ in urls:
-                        existed_links = sum(list(sub_links.values()), [])
+                        existed_links: List = list(sum(list(sub_links.values()), []))
                         sub_links[url_] = list(extract_sublinks_from_url(driver=driver, base_url=url_, existed_links=existed_links))
 
                     for url in sub_links:
