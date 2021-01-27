@@ -19,83 +19,83 @@
     "data": [
         {
             "model": "DPR / ElasticSearch",
-            "n_docs": 1000,
-            "map": 0.929
-        },
-        {
-            "model": "DPR / ElasticSearch",
             "n_docs": 10000,
-            "map": 0.881
+            "map": 0.8987097014904355
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 100000,
-            "map": 0.821
+            "map": 0.8654606328368972
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 500000,
-            "map": 0.730
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 1000,
-            "map": 0.929
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 10000,
-            "map": 0.898
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 100000,
-            "map": 0.863
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 500000,
-            "map": 0.805
-        },
-        {
-            "model": "BM25 / ElasticSearch",
-            "n_docs": 1000,
-            "map": 0.748
+            "map": 0.8086137228234094
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 10000,
-            "map": 0.6609999999999999
+            "map": 0.6633019927857611
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "map": 0.56
+            "map": 0.5626106985872819
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 500000,
-            "map": 0.452
+            "map": 0.4560396022876066
         },
         {
-            "model": "DPR / FAISS (HSNW)",
-            "n_docs": 1000,
-            "map": 0.929
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 10000,
+            "map": 0.8987097014904354
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 100000,
+            "map": 0.8654606328368972
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 500000,
+            "map": 0.808613722823409
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 10000,
-            "map": 0.896
+            "map": 0.8969941373746582
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 100000,
-            "map": 0.849
+            "map": 0.8507984377595874
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 500000,
-            "map": 0.766
+            "map": 0.7691475821598232
+        },
+        {
+            "model": "DPR / ElasticSearch",
+            "n_docs": 1000,
+            "map": 0.9295105322830888
+        },
+        {
+            "model": "BM25 / ElasticSearch",
+            "n_docs": 1000,
+            "map": 0.7420444712972909
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 1000,
+            "map": 0.9295105322830888
+        },
+        {
+            "model": "DPR / FAISS (HSNW)",
+            "n_docs": 1000,
+            "map": 0.9295105322830888
         }
     ]
 }
