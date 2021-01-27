@@ -85,16 +85,17 @@ class TransformersTranslator(BaseTranslator):
 
         dict_key = dict_key or "text"
 
-        if isinstance(documents[0], Document):
-            text_for_translator = [doc.text for doc in documents]
-        elif isinstance(documents[0], str):
-            text_for_translator = documents
-        elif isinstance(documents[0], dict):
-            if not isinstance(documents[0].get(dict_key, None), str): # type: ignore
-                raise AttributeError(f"Dictionary should have {dict_key} key and it's value should be `str` type")
-            text_for_translator = [doc.text for doc in documents]
+        if isinstance(documents, list):
+            if isinstance(documents[0], Document):
+                text_for_translator = [doc.text for doc in documents]   # type: ignore
+            elif isinstance(documents[0], str):
+                text_for_translator = documents   # type: ignore
+            else:
+                if not isinstance(documents[0].get(dict_key, None), str):    # type: ignore
+                    raise AttributeError(f"Dictionary should have {dict_key} key and it's value should be `str` type")
+                text_for_translator = [doc[dict_key] for doc in documents]    # type: ignore
         else:
-            text_for_translator: List[str] = [query]
+            text_for_translator: List[str] = [query]     # type: ignore
 
         translated_texts = self.model(
             text_for_translator,
@@ -103,14 +104,16 @@ class TransformersTranslator(BaseTranslator):
 
         if query:
             return translated_texts[0]["translation_text"]
+        elif documents:
+            if isinstance(documents, list) and isinstance(documents[0], str):
+                return [translated_text["translation_text"] for translated_text in translated_texts]
 
-        if isinstance(documents[0], str):
-            return [translated_text["translation_text"] for translated_text in translated_texts]
+            for translated_text, doc in zip(translated_texts, documents):
+                if isinstance(doc, Document):
+                    doc.text = translated_text["translation_text"]
+                else:
+                    doc[dict_key] = translated_text["translation_text"]  # type: ignore
 
-        for translated_text, doc in zip(translated_texts, documents):
-            if isinstance(doc, Document):
-                doc.text = translated_text["translation_text"]
-            else:
-                doc[dict_key] = translated_text["translation_text"]  # type: ignore
+            return documents
 
-        return documents
+        raise AttributeError("Translator need query or documents to perform translation")
