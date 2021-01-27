@@ -486,7 +486,8 @@ def extract_sublinks_from_url(driver: Any, base_url: str, existed_links: List = 
     driver.get(base_url)
     a_elements = driver.find_elements_by_tag_name('a')
     sub_links = set()
-    sub_links.add(base_url)
+    if not (existed_links and base_url in existed_links):
+        sub_links.add(base_url)
     for i in a_elements:
         sub_link = i.get_attribute('href')
         if not (existed_links and sub_link in existed_links):
@@ -539,7 +540,7 @@ def fetch_data_from_url(urls: Any, output_dir: str, chrome_driver_path: str = No
                 else:
                     write_to_files(urls, driver, output_dir=output_dir)
             else:
-                #hangle list of urls
+                #handle list of urls
                 sub_links = {}
                 if extract_sub_links==True:
                     for url_ in urls:
