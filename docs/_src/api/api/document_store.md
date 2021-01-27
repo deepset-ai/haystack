@@ -629,6 +629,7 @@ DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="sql.SQLDocumentStore.get_all_labels"></a>
 #### get\_all\_labels
