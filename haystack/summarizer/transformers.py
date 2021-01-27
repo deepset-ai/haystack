@@ -1,9 +1,8 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import  List, Optional
 
 from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
-from transformers import AutoTokenizer
 
 from haystack import Document
 from haystack.summarizer.base import BaseSummarizer
