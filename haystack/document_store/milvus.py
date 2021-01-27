@@ -433,7 +433,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         if len(docs_with_vector_ids) == 0:
             return
 
-        ids = [int(doc.meta.get("vector_id")) for doc in docs_with_vector_ids]
+        ids = [int(doc.meta.get("vector_id")) for doc in docs_with_vector_ids] # type: ignore
         status, vector_embeddings = self.milvus_server.get_entity_by_id(
             collection_name=index,
             ids=ids
