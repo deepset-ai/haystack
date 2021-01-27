@@ -364,7 +364,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         )
         if status.code != Status.SUCCESS:
             raise RuntimeError(f'Getting vector embedding by id failed: {status}')
-        return numpy.array(vector_embedding[0])
+        return numpy.array(vector_embedding[0], dtype=float)
 
     def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
         index = index or self.index
