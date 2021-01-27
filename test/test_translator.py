@@ -22,6 +22,10 @@ def test_translator_with_dictionary(translator):
     assert translator.translate(documents=[{"text": INPUT}])[0]["text"] == EXPECTED_OUTPUT
 
 
+def test_translator_with_dictionary_with_dict_key(translator):
+    assert translator.translate(documents=[{"key": INPUT}], dict_key="key")[0]["key"] == EXPECTED_OUTPUT
+
+
 def test_translator_with_empty_input(translator):
     with pytest.raises(AttributeError):
         translator.translate()

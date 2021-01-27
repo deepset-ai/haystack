@@ -21,6 +21,7 @@ class BaseTranslator(ABC):
         self,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
+        dict_key: Optional[str] = None,
         **kwargs
     ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
         pass
@@ -29,6 +30,7 @@ class BaseTranslator(ABC):
         self,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
+        dict_key: Optional[str] = None,
         **kwargs
     ):
 
@@ -38,7 +40,7 @@ class BaseTranslator(ABC):
         }
 
         if documents:
-            results["documents"] = self.translate(documents=documents)
+            results["documents"] = self.translate(documents=documents, dict_key=dict_key)
         if query:
             results["query"] = self.translate(query=query)
 
@@ -68,6 +70,7 @@ class TransformersTranslator(BaseTranslator):
         self,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
+        dict_key: Optional[str] = None,
         **kwargs
     ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
         if not query and not documents:
@@ -80,13 +83,15 @@ class TransformersTranslator(BaseTranslator):
             logger.warning("Empty documents list is passed")
             return documents
 
+        dict_key = dict_key or "text"
+
         if isinstance(documents[0], Document):
             text_for_translator = [doc.text for doc in documents]
         elif isinstance(documents[0], str):
             text_for_translator = documents
         elif isinstance(documents[0], dict):
-            if not isinstance(documents[0].get('text', None), str): # type: ignore
-                raise AttributeError("Documents dictionary should have `text` key and it's value should be `str` type")
+            if not isinstance(documents[0].get(dict_key, None), str): # type: ignore
+                raise AttributeError(f"Dictionary should have {dict_key} key and it's value should be `str` type")
             text_for_translator = [doc.text for doc in documents]
         else:
             text_for_translator: List[str] = [query]
@@ -106,6 +111,6 @@ class TransformersTranslator(BaseTranslator):
             if isinstance(doc, Document):
                 doc.text = translated_text["translation_text"]
             else:
-                doc["text"] = translated_text["translation_text"]  # type: ignore
+                doc[dict_key] = translated_text["translation_text"]  # type: ignore
 
         return documents
