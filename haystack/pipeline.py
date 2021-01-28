@@ -1,11 +1,14 @@
+import os
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Optional, Dict
 
 import networkx as nx
+import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
+from haystack.document_store.base import BaseDocumentStore
 from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
@@ -113,9 +116,7 @@ class Pipeline:
     def _get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
         next_nodes = [
-            next_node
-            for _, next_node, data in current_node_edges
-            if not stream_id or data["label"] == stream_id
+            next_node for _, next_node, data in current_node_edges if not stream_id or data["label"] == stream_id
         ]
         return next_nodes
 
@@ -128,13 +129,83 @@ class Pipeline:
         try:
             import pygraphviz
         except ImportError:
-            raise ImportError(f"Could not import `pygraphviz`. Please install via: \n"
-                              f"pip install pygraphviz\n"
-                              f"(You might need to run this first: apt install libgraphviz-dev graphviz )")
+            raise ImportError(
+                f"Could not import `pygraphviz`. Please install via: \n"
+                f"pip install pygraphviz\n"
+                f"(You might need to run this first: apt install libgraphviz-dev graphviz )"
+            )
 
         graphviz = to_agraph(self.graph)
         graphviz.layout("dot")
         graphviz.draw(path)
+
+    def load_from_yaml(self, path: Path, pipeline_name: Optional[str] = None):
+        with open(path, "r") as stream:
+            data = yaml.safe_load(stream)
+
+            if pipeline_name is None:
+                if len(data["pipelines"]) == 1:
+                    pipeline_config = data["pipelines"][0]
+                else:
+                    raise Exception(
+                        "The YAML file contains multiple pipelines. Please specify the pipeline name to load."
+                    )
+            else:
+                pipelines_in_yaml = list(filter(lambda pipeline: pipeline["name"] == pipeline_name, data["pipelines"]))
+                if not pipelines_in_yaml:
+                    raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+
+            self._component_definitons = {}
+            for definition in data["components"]:
+                self._interpolate_environment_variables(definition)
+                name = definition.pop("name")
+                self._component_definitons[name] = definition
+
+            self._components: dict = {}
+            for node_config in pipeline_config["nodes"]:
+                name = node_config["name"]
+                if not self._components.get(name):
+                    config = self._component_definitons[name]
+                    component_params = config["params"]
+                    component_type = config["type"]
+                    self._load_component(name=name, component_type=component_type, **component_params)
+
+                component = self._components[name]
+                if "DocumentStore" not in self._component_definitons[name]["type"]:
+                    self.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
+
+    def _load_component(self, name: str, component_type: str, **kwargs):
+        for key, value in kwargs.items():
+            if self._component_definitons.get(value):
+                if not self._components.get(value):
+                    self._load_component(
+                        name=value,
+                        component_type=self._component_definitons[value]["type"],
+                        **self._component_definitons[value]["params"],
+                    )
+                kwargs[key] = self._components[value]
+
+        if "DocumentStore" in component_type:
+            ComponentClass = BaseDocumentStore
+        elif "Reader" in component_type:
+            ComponentClass = BaseReader
+        elif "Retriever" in component_type:
+            ComponentClass = BaseRetriever
+        elif "Generator" in component_type:
+            ComponentClass = BaseGenerator
+        elif "Summarizer" in component_type:
+            ComponentClass = BaseSummarizer
+        else:
+            raise NotImplementedError(f"Component of type '{component_type}' is not implemented for pipelines.")
+        instance = ComponentClass.load_from_args(instance_type=component_type, **kwargs)
+        self._components[name] = instance
+
+    def _interpolate_environment_variables(self, definition: dict):
+        env_prefix = f"{definition['name']}_params_".upper()
+        for key, value in os.environ.items():
+            if key.startswith(env_prefix):
+                param_name = key.replace(env_prefix, "").lower()
+                definition["params"][param_name] = value
 
 
 class BaseStandardPipeline:
@@ -258,7 +329,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         filters: Optional[Dict] = None,
         top_k_retriever: int = 10,
         generate_single_summary: bool = False,
-        return_in_answer_format=False
+        return_in_answer_format=False,
     ):
         """
         :param query: Your search query
@@ -270,7 +341,10 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
                                         With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
         """
         output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_single_summary=generate_single_summary
+            query=query,
+            filters=filters,
+            top_k_retriever=top_k_retriever,
+            generate_single_summary=generate_single_summary,
         )
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
@@ -382,7 +456,7 @@ class JoinDocuments:
             if self.weights:
                 weights = self.weights
             else:
-                weights = [1/len(inputs)] * len(inputs)
+                weights = [1 / len(inputs)] * len(inputs)
             for (input_from_node, _), weight in zip(inputs, weights):
                 for doc in input_from_node["documents"]:
                     if document_map.get(doc.id):  # document already exists; update score

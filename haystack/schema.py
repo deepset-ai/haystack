@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
 
@@ -207,3 +208,24 @@ class MultiLabel:
 
     def __str__(self):
         return str(self.to_dict())
+
+
+class BaseComponent:
+    outgoing_edges: int
+    subclasses: dict = {}
+
+    def __init_subclass__(cls, **kwargs):
+        """ This automatically keeps track of all available subclasses.
+        Enables generic load() for all specific component implementations.
+        """
+        super().__init_subclass__(**kwargs)
+        cls.subclasses[cls.__name__] = cls
+
+    @classmethod
+    def load_from_args(cls, instance_type: str, **kwargs):
+        instance = cls.subclasses[instance_type](**kwargs)
+        return instance
+
+    @abstractmethod
+    def run(self, **kwargs):
+        pass

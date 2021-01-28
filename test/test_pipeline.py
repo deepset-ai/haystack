@@ -1,9 +1,26 @@
+from pathlib import Path
+
 import pytest
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.pipeline import JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, DocumentSearchPipeline
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_load_yaml(document_store_with_docs):
+    pipeline = Pipeline()
+
+    # # test correct load from yaml
+    pipeline.load_from_yaml(Path("samples/pipeline/test_pipeline.yaml", pipeline_name="my_query"))
+    prediction = pipeline.run(query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3)
+    assert prediction["query"] == "Who lives in Berlin?"
+    assert prediction["answers"][0]["answer"] == "Carla"
+
+    # test invalid pipeline name
+    with pytest.raises(Exception):
+        pipeline.load_from_yaml(path=Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="invalid")
 
 
 @pytest.mark.slow

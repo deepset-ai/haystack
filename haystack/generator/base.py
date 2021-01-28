@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict
 
-from haystack import Document
+from haystack import Document, BaseComponent
 
 
-class BaseGenerator(ABC):
+class BaseGenerator(BaseComponent):
     """
     Abstract class for Generators
     """
