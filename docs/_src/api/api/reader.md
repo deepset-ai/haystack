@@ -23,7 +23,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128)
+ | __init__(model_name_or_path: Union[str, Path], model_version: str = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128)
 ```
 
 **Arguments**:
@@ -31,6 +31,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 - `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
 'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
 See https://huggingface.co/models for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `context_window_size`: The size, in characters, of the window around the answer span that is used when
 displaying the context around the answer.
 - `batch_size`: Number of samples the model receives in one batch for inference.
@@ -312,7 +313,7 @@ With this reader, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+ | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: str = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
 ```
 
 Load a QA model from Transformers.
@@ -329,6 +330,7 @@ See https://huggingface.co/models for full list of available QA models
 - `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
 'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
 See https://huggingface.co/models for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
 The context usually helps users to understand if the answer really makes sense.
