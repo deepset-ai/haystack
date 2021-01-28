@@ -39,6 +39,7 @@ class DensePassageRetriever(BaseRetriever):
                  document_store: BaseDocumentStore,
                  query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
                  passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
+                 model_version: Optional[str] = None,
                  max_seq_len_query: int = 64,
                  max_seq_len_passage: int = 256,
                  use_gpu: bool = True,
@@ -71,6 +72,7 @@ class DensePassageRetriever(BaseRetriever):
         :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
                                         one used by hugging-face transformers' modelhub models
                                         Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param use_gpu: Whether to use gpu or not
@@ -106,17 +108,20 @@ class DensePassageRetriever(BaseRetriever):
 
         # Init & Load Encoders
         self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
+                                              revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
                                               tokenizer_class="DPRQuestionEncoderTokenizer")
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
+                                                revision=model_version,
                                                 language_model_class="DPRQuestionEncoder")
-
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
+                                                revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
                                                 tokenizer_class="DPRContextEncoderTokenizer")
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
+                                                  revision=model_version,
                                                   language_model_class="DPRContextEncoder")
 
         self.processor = TextSimilarityProcessor(tokenizer=self.query_tokenizer,

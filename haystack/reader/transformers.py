@@ -17,7 +17,7 @@ class TransformersReader(BaseReader):
     def __init__(
         self,
         model_name_or_path: str = "distilbert-base-uncased-distilled-squad",
-        model_version: str = None,
+        model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
         context_window_size: int = 70,
         use_gpu: int = 0,

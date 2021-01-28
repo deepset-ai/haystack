@@ -41,7 +41,7 @@ class FARMReader(BaseReader):
     def __init__(
         self,
         model_name_or_path: Union[str, Path],
-        model_version: str = None,
+        model_version: Optional[str] = None,
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
