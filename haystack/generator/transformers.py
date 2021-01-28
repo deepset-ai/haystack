@@ -64,6 +64,7 @@ class RAGenerator(BaseGenerator):
     def __init__(
             self,
             model_name_or_path: str = "facebook/rag-token-nq",
+            model_version: Optional[str] = None,
             retriever: Optional[DensePassageRetriever] = None,
             generator_type: RAGeneratorType = RAGeneratorType.TOKEN,
             top_k_answers: int = 2,
@@ -81,6 +82,7 @@ class RAGenerator(BaseGenerator):
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
                                    'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                                    See https://huggingface.co/models for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param retriever: `DensePassageRetriever` used to embedded passage
         :param generator_type: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
         :param top_k_answers: Number of independently generated text to return
@@ -120,7 +122,7 @@ class RAGenerator(BaseGenerator):
             # Also refer refer https://github.com/huggingface/transformers/issues/7829
             # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
         else:
-            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path).to(self.device)
+            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version).to(self.device)
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
     # Refer section 2.3 of https://arxiv.org/abs/2005.11401
