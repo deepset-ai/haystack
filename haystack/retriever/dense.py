@@ -394,6 +394,7 @@ class EmbeddingRetriever(BaseRetriever):
         self,
         document_store: BaseDocumentStore,
         embedding_model: str,
+        model_version: Optional[str] = None,
         use_gpu: bool = True,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
@@ -402,6 +403,7 @@ class EmbeddingRetriever(BaseRetriever):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use gpu or not
         :param model_format: Name of framework that was used for saving the model. Options:
 
@@ -426,7 +428,7 @@ class EmbeddingRetriever(BaseRetriever):
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
         if model_format == "farm" or model_format == "transformers":
             self.embedding_model = Inferencer.load(
-                embedding_model, task_type="embeddings", extraction_strategy=self.pooling_strategy,
+                embedding_model, revision=model_version, task_type="embeddings", extraction_strategy=self.pooling_strategy,
                 extraction_layer=self.emb_extraction_layer, gpu=use_gpu, batch_size=4, max_seq_len=512, num_processes=0
             )
             # Check that document_store has the right similarity function
