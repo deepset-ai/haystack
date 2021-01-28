@@ -389,13 +389,14 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1)
 ```
 
 **Arguments**:
 
 - `document_store`: An instance of DocumentStore from which to retrieve documents.
 - `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `use_gpu`: Whether to use gpu or not
 - `model_format`: Name of framework that was used for saving the model. Options:
 
