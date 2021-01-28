@@ -51,6 +51,7 @@ class TransformersSummarizer(BaseSummarizer):
     def __init__(
             self,
             model_name_or_path: str = "google/pegasus-xsum",
+            model_version: Optional[str] = None,
             tokenizer: Optional[str] = None,
             max_length: int = 200,
             min_length: int = 5,
@@ -66,6 +67,7 @@ class TransformersSummarizer(BaseSummarizer):
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
                                    'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                                    See https://huggingface.co/models?filter=summarization for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param max_length: Maximum length of summarized text
         :param min_length: Minimum length of summarized text
@@ -78,7 +80,7 @@ class TransformersSummarizer(BaseSummarizer):
         # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
         if tokenizer is None:
             tokenizer = model_name_or_path
-        model = AutoModelForSeq2SeqLM.from_pretrained(pretrained_model_name_or_path=model_name_or_path)
+        model = AutoModelForSeq2SeqLM.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
         self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=use_gpu)
         self.max_length = max_length
         self.min_length = min_length
