@@ -34,7 +34,7 @@ jobs:
         pip install pytest
         pip install -r requirements.txt
         pip install -e .
-        wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.02.tar.gz && tar -xvf xpdf-tools-linux-4.02.tar.gz && sudo cp xpdf-tools-linux-4.02/bin64/pdftotext /usr/local/bin
+        wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.02.tar.gz && sudo cp xpdf-tools-linux-4.02/bin64/pdftotext /usr/local/bin
     - name: Test with mypy
       run: |
         pip install mypy
