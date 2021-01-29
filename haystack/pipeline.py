@@ -1,13 +1,14 @@
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Type
 
 import networkx as nx
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
+from haystack import BaseComponent
 from haystack.document_store.base import BaseDocumentStore
 from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
@@ -28,6 +29,7 @@ class Pipeline:
         self.graph = DiGraph()
         self.root_node_id = "Query"
         self.graph.add_node("Query", component=QueryNode())
+        self.components: dict = {}
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
@@ -116,7 +118,9 @@ class Pipeline:
     def _get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
         next_nodes = [
-            next_node for _, next_node, data in current_node_edges if not stream_id or data["label"] == stream_id
+            next_node
+            for _, next_node, data in current_node_edges
+            if not stream_id or data["label"] == stream_id
         ]
         return next_nodes
 
@@ -129,17 +133,24 @@ class Pipeline:
         try:
             import pygraphviz
         except ImportError:
-            raise ImportError(
-                f"Could not import `pygraphviz`. Please install via: \n"
-                f"pip install pygraphviz\n"
-                f"(You might need to run this first: apt install libgraphviz-dev graphviz )"
-            )
+            raise ImportError(f"Could not import `pygraphviz`. Please install via: \n"
+                              f"pip install pygraphviz\n"
+                              f"(You might need to run this first: apt install libgraphviz-dev graphviz )")
 
         graphviz = to_agraph(self.graph)
         graphviz.layout("dot")
         graphviz.draw(path)
 
-    def load_from_yaml(self, path: Path, pipeline_name: Optional[str] = None):
+    @classmethod
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None):
+        """
+        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        be passed.
+
+        :param path: path of the YAML file.
+        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        """
         with open(path, "r") as stream:
             data = yaml.safe_load(stream)
 
@@ -147,46 +158,55 @@ class Pipeline:
                 if len(data["pipelines"]) == 1:
                     pipeline_config = data["pipelines"][0]
                 else:
-                    raise Exception(
-                        "The YAML file contains multiple pipelines. Please specify the pipeline name to load."
-                    )
+                    raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
             else:
-                pipelines_in_yaml = list(filter(lambda pipeline: pipeline["name"] == pipeline_name, data["pipelines"]))
+                pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
                 if not pipelines_in_yaml:
                     raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
 
-            self._component_definitons = {}
+            definitions = {}  # definitions of each component from the YAML.
             for definition in data["components"]:
-                self._interpolate_environment_variables(definition)
+                cls._interpolate_environment_variables(definition)
                 name = definition.pop("name")
-                self._component_definitons[name] = definition
+                definitions[name] = definition
 
-            self._components: dict = {}
+            pipeline = cls()
+
+            components: dict = {}  # instances of component objects.
             for node_config in pipeline_config["nodes"]:
                 name = node_config["name"]
-                if not self._components.get(name):
-                    config = self._component_definitons[name]
-                    component_params = config["params"]
-                    component_type = config["type"]
-                    self._load_component(name=name, component_type=component_type, **component_params)
+                component = cls._load_or_get_component(name=name, definitions=definitions, components=components)
+                # DocumentStore is not an explicit node in a Pipeline
+                if "DocumentStore" not in definitions[name]["type"]:
+                    pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
 
-                component = self._components[name]
-                if "DocumentStore" not in self._component_definitons[name]["type"]:
-                    self.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
+            return pipeline
 
-    def _load_component(self, name: str, component_type: str, **kwargs):
-        for key, value in kwargs.items():
-            if self._component_definitons.get(value):
-                if not self._components.get(value):
-                    self._load_component(
-                        name=value,
-                        component_type=self._component_definitons[value]["type"],
-                        **self._component_definitons[value]["params"],
-                    )
-                kwargs[key] = self._components[value]
+    @classmethod
+    def _load_or_get_component(cls, name: str, definitions: dict, components: dict):
+        """
+        Load a component from the definition or return if component object already present in `components` dict.
+
+        :param name: name of the component to load or get.
+        :param definitions: dict containing definitions of all components retrieved from the YAML.
+        :param components: dict containing component objects.
+        """
+        if name in components.keys():  # check if component is already loaded.
+            return components[name]
+
+        component_params = definitions[name]["params"]
+        component_type = definitions[name]["type"]
+
+        for key, value in component_params.items():
+            # Component params can reference to other components. For instance, a Retriever can reference a
+            # DocumentStore defined in the YAML. All references should be recursively resolved.
+            if value in definitions.keys():  # check if the param value is a reference to another component.
+                if value not in components.keys():  # check if the referenced component is already loaded.
+                    cls._load_or_get_component(name=value, definitions=definitions, components=components)
+                component_params[key] = components[value]  # substitute reference (string) with the component object.
 
         if "DocumentStore" in component_type:
-            ComponentClass = BaseDocumentStore
+            ComponentClass: Type[BaseComponent] = BaseDocumentStore
         elif "Reader" in component_type:
             ComponentClass = BaseReader
         elif "Retriever" in component_type:
@@ -197,10 +217,19 @@ class Pipeline:
             ComponentClass = BaseSummarizer
         else:
             raise NotImplementedError(f"Component of type '{component_type}' is not implemented for pipelines.")
-        instance = ComponentClass.load_from_args(instance_type=component_type, **kwargs)
-        self._components[name] = instance
+        instance = ComponentClass.load_from_args(component_type=component_type, **component_params)
+        components[name] = instance
+        return instance
 
-    def _interpolate_environment_variables(self, definition: dict):
+    @classmethod
+    def _interpolate_environment_variables(cls, definition: dict):
+        """
+        Override the YAML configuration with environment variables. For example, to change index name param for an
+        ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+        `_` sign must be used to specify nested hierarchical properties.
+
+        :param definition: a dictionary containing the YAML definition of a component.
+        """
         env_prefix = f"{definition['name']}_params_".upper()
         for key, value in os.environ.items():
             if key.startswith(env_prefix):
@@ -329,7 +358,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         filters: Optional[Dict] = None,
         top_k_retriever: int = 10,
         generate_single_summary: bool = False,
-        return_in_answer_format=False,
+        return_in_answer_format=False
     ):
         """
         :param query: Your search query
@@ -341,10 +370,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
                                         With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
         """
         output = self.pipeline.run(
-            query=query,
-            filters=filters,
-            top_k_retriever=top_k_retriever,
-            generate_single_summary=generate_single_summary,
+            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_single_summary=generate_single_summary
         )
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
@@ -456,7 +482,7 @@ class JoinDocuments:
             if self.weights:
                 weights = self.weights
             else:
-                weights = [1 / len(inputs)] * len(inputs)
+                weights = [1/len(inputs)] * len(inputs)
             for (input_from_node, _), weight in zip(inputs, weights):
                 for doc in input_from_node["documents"]:
                     if document_map.get(doc.id):  # document already exists; update score

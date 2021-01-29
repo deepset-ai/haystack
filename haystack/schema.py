@@ -211,6 +211,10 @@ class MultiLabel:
 
 
 class BaseComponent:
+    """
+    A base class for implementing nodes in a Pipeline.
+    """
+
     outgoing_edges: int
     subclasses: dict = {}
 
@@ -222,10 +226,12 @@ class BaseComponent:
         cls.subclasses[cls.__name__] = cls
 
     @classmethod
-    def load_from_args(cls, instance_type: str, **kwargs):
-        instance = cls.subclasses[instance_type](**kwargs)
+    def load_from_args(cls, component_type: str, **kwargs):
+        """
+        Load a component instance of the given type using the kwargs.
+        
+        :param component_type: name of the component class to load.
+        :param kwargs: parameters to pass to the __init__() for the component. 
+        """
+        instance = cls.subclasses[component_type](**kwargs)
         return instance
-
-    @abstractmethod
-    def run(self, **kwargs):
-        pass
