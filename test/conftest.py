@@ -6,6 +6,9 @@ from sys import platform
 import pytest
 import requests
 from elasticsearch import Elasticsearch
+from milvus import Milvus
+
+from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
@@ -76,6 +79,20 @@ def elasticsearch_fixture():
             raise Exception(
                 "Failed to launch Elasticsearch. Please check docker container logs.")
         time.sleep(30)
+
+
+@pytest.fixture(scope="session")
+def milvus_fixture():
+    # test if a Milvus server is already running. If not, start Milvus docker container locally.
+    # Make sure you have given > 6GB memory to docker engine
+    try:
+        milvus_server = Milvus(uri="tcp://localhost:19530", timeout=5, wait_timeout=5)
+        milvus_server.server_status(timeout=5)
+    except:
+        print("Starting Milvus ...")
+        status = subprocess.run(['docker run -d --name milvus_cpu_0.10.5 -p 19530:19530 -p 19121:19121 '
+                                 'milvusdb/milvus:0.10.5-cpu-d010621-4eda95'], shell=True)
+        time.sleep(40)
 
 
 @pytest.fixture(scope="session")
@@ -245,21 +262,19 @@ def get_retriever(retriever_type, document_store):
     return retriever
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
     yield document_store
-    if request.param == "faiss":
-        document_store.faiss_index.reset()
+    document_store.delete_all_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store(request, test_docs_xs):
     document_store = get_document_store(request.param)
     yield document_store
-    if request.param == "faiss":
-        document_store.faiss_index.reset()
+    document_store.delete_all_documents()
 
 
 def get_document_store(document_store_type, embedding_field="embedding"):
@@ -278,6 +293,14 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
+            sql_url="sqlite://",
+            return_embedding=True,
+            embedding_field=embedding_field,
+            index="haystack_test",
+        )
+        return document_store
+    elif document_store_type == "milvus":
+        document_store = MilvusDocumentStore(
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
