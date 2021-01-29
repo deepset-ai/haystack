@@ -243,6 +243,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Get values associated with a metadata key. The output is in the format:
             [{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
+
+        :param key: the meta key name to get the values for.
+        :param query: narrow down the scope to documents matching the query string.
+        :param filters: narrow down the scope to documents that match the given filters.
+        :param index: Elasticsearch index where the meta values should be searched. If not supplied,
+                      self.index will be used.
         """
         body: dict = {"size": 0, "aggs": {"metadata_agg": {"terms": {"field": key}}}}
         if query:
