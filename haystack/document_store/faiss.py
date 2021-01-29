@@ -41,6 +41,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         update_existing_documents: bool = False,
         index: str = "document",
         similarity: str = "dot_product",
+        embedding_field: str = "embedding",
         **kwargs,
     ):
         """
@@ -72,6 +73,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param embedding_field: Name of field containing an embedding vector.
         """
         self.vector_dim = vector_dim
 
@@ -83,6 +85,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 self.faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
 
         self.return_embedding = return_embedding
+        self.embedding_field = embedding_field
         if similarity == "dot_product":
             self.similarity = similarity
         else:
@@ -154,7 +157,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def _create_document_field_map(self) -> Dict:
         return {
-            self.index: "embedding",
+            self.index: self.embedding_field,
         }
 
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):
@@ -275,13 +278,13 @@ class FAISSDocumentStore(SQLDocumentStore):
             embeddings = np.array(embeddings, dtype="float32")
         self.faiss_index.train(embeddings)
 
-    def delete_all_documents(self, index=None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete all documents from the document store.
         """
         index = index or self.index
         self.faiss_index.reset()
-        super().delete_all_documents(index=index)
+        super().delete_all_documents(index=index, filters=filters)
 
     def query_by_embedding(self,
                            query_emb: np.array,

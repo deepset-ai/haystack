@@ -176,7 +176,7 @@ class RAGenerator(BaseGenerator):
             embeddings = self.retriever.embed_passages(docs)
 
         embeddings_in_tensor = torch.cat(
-            [torch.from_numpy(embedding).unsqueeze(0) for embedding in embeddings],
+            [torch.from_numpy(embedding).float().unsqueeze(0) for embedding in embeddings],
             dim=0
         )
 

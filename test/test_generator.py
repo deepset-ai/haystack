@@ -415,7 +415,7 @@ def test_rag_token_generator(rag_generator):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("elasticsearch", "elasticsearch")],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("elasticsearch", "elasticsearch")],
     indirect=True,
 )
 def test_generator_pipeline(document_store, retriever, rag_generator):
