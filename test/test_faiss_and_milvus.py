@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 import faiss
 import numpy as np
@@ -63,9 +64,9 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
 @pytest.mark.parametrize("batch_size", [4, 6])
-def test_faiss_update_docs(document_store, retriever, batch_size):
+def test_update_docs(document_store, retriever, batch_size):
     # initial write
     document_store.write_documents(DOCUMENTS)
 
@@ -82,9 +83,35 @@ def test_faiss_update_docs(document_store, retriever, batch_size):
         assert np.allclose(updated_embedding, stored_doc.embedding, rtol=0.01)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_update_with_empty_store(document_store, retriever):
+@pytest.mark.parametrize("document_store", ["milvus", "faiss"], indirect=True)
+def test_update_exiting_docs(document_store, retriever):
+    document_store.update_existing_documents = True
+    old_document = Document(text="text_1")
+    # initial write
+    document_store.write_documents([old_document])
+    document_store.update_embeddings(retriever=retriever)
+    old_documents_indexed = document_store.get_all_documents()
+    assert len(old_documents_indexed) == 1
+
+    # Update document data
+    new_document = Document(text="text_2")
+    new_document.id = old_document.id
+    document_store.write_documents([new_document])
+    document_store.update_embeddings(retriever=retriever)
+    new_documents_indexed = document_store.get_all_documents()
+    assert len(new_documents_indexed) == 1
+
+    assert old_documents_indexed[0].id == new_documents_indexed[0].id
+    assert old_documents_indexed[0].text == "text_1"
+    assert new_documents_indexed[0].text == "text_2"
+    assert not np.allclose(old_documents_indexed[0].embedding, new_documents_indexed[0].embedding, rtol=0.01)
+
+
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_update_with_empty_store(document_store, retriever):
     # Call update with empty doc store
     document_store.update_embeddings(retriever=retriever)
 
@@ -125,8 +152,8 @@ def test_faiss_retrieving(index_factory):
 
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_finding(document_store, retriever):
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     finder = Finder(reader=None, retriever=retriever)
 
@@ -136,8 +163,8 @@ def test_faiss_finding(document_store, retriever):
 
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_pipeline(document_store, retriever):
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_pipeline(document_store, retriever):
     documents = [
         {"name": "name_1", "text": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
         {"name": "name_2", "text": "text_2", "embedding": np.random.rand(768).astype(np.float32)},

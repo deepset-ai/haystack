@@ -4,13 +4,14 @@ import numpy as np
 
 from haystack import Document
 from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.retriever.dense import DensePassageRetriever
 
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 @pytest.mark.slow
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("return_embedding", [True, False])
 def test_dpr_retrieval(document_store, retriever, return_embedding):
@@ -71,7 +72,7 @@ def test_dpr_retrieval(document_store, retriever, return_embedding):
         assert res[0].embedding is None
 
     # test filtering
-    if not isinstance(document_store, FAISSDocumentStore):
+    if not isinstance(document_store, FAISSDocumentStore) and not isinstance(document_store, MilvusDocumentStore):
         res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?", filters={"name": ["0", "2"]})
         assert len(res) == 2
         for r in res:

@@ -198,6 +198,6 @@ class BaseDocumentStore(ABC):
             logger.error("File needs to be in json or jsonl format.")
 
     @abstractmethod
-    def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
 

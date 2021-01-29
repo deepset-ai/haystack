@@ -57,7 +57,7 @@ def test_summarization_one_summary(summarizer):
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("elasticsearch", "elasticsearch")],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("elasticsearch", "elasticsearch")],
     indirect=True,
 )
 def test_summarization_pipeline(document_store, retriever, summarizer):
@@ -79,7 +79,7 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("elasticsearch", "elasticsearch")],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("elasticsearch", "elasticsearch")],
     indirect=True,
 )
 def test_summarization_pipeline_one_summary(document_store, retriever, summarizer):

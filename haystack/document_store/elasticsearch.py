@@ -757,7 +757,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
 
-    def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -765,6 +765,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
+        index = index or self.index
         query: Dict[str, Any] = {"query": {}}
         if filters:
             filter_clause = []
