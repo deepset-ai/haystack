@@ -154,33 +154,32 @@ class Pipeline:
         with open(path, "r") as stream:
             data = yaml.safe_load(stream)
 
-            if pipeline_name is None:
-                if len(data["pipelines"]) == 1:
-                    pipeline_config = data["pipelines"][0]
-                else:
-                    raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
+        if pipeline_name is None:
+            if len(data["pipelines"]) == 1:
+                pipeline_config = data["pipelines"][0]
             else:
-                pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
-                if not pipelines_in_yaml:
-                    raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
+        else:
+            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
+            if not pipelines_in_yaml:
+                raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
 
-            definitions = {}  # definitions of each component from the YAML.
-            for definition in data["components"]:
-                cls._interpolate_environment_variables(definition)
-                name = definition.pop("name")
-                definitions[name] = definition
+        definitions = {}  # definitions of each component from the YAML.
+        for definition in data["components"]:
+            cls._interpolate_environment_variables(definition)
+            name = definition.pop("name")
+            definitions[name] = definition
 
-            pipeline = cls()
+        pipeline = cls()
 
-            components: dict = {}  # instances of component objects.
-            for node_config in pipeline_config["nodes"]:
-                name = node_config["name"]
-                component = cls._load_or_get_component(name=name, definitions=definitions, components=components)
-                # DocumentStore is not an explicit node in a Pipeline
-                if "DocumentStore" not in definitions[name]["type"]:
-                    pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
+        components: dict = {}  # instances of component objects.
+        for node_config in pipeline_config["nodes"]:
+            name = node_config["name"]
+            component = cls._load_or_get_component(name=name, definitions=definitions, components=components)
+            if "DocumentStore" not in definitions[name]["type"]:  # DocumentStore is not an explicit node in a Pipeline
+                pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
 
-            return pipeline
+        return pipeline
 
     @classmethod
     def _load_or_get_component(cls, name: str, definitions: dict, components: dict):
