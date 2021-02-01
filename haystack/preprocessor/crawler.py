@@ -46,16 +46,7 @@ def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = T
         if type(urls) != list:
             urls = [urls]
 
-            # #extract links from url            
-            # if extract_sub_links == True:
-            #     sub_links = list(extract_sublinks_from_url(base_url=urls, driver=driver, include=include))
-            #     #get sub links from url
-            #     docs += write_to_files(sub_links, driver=driver, output_dir=output_dir, base_url=urls)
-            # else:
-            #     docs += write_to_files(urls, driver=driver, output_dir=output_dir)
-        # else:
-            #handle list of urls
-        sub_links = dict()
+        sub_links: Dict[str, str] = {}
         if extract_sub_links==True:
             for url_ in urls:
                 existed_links: List = list(sum(list(sub_links.values()), []))
@@ -112,7 +103,7 @@ def is_inpage_navigation(base_url: str, sub_link: str):
     return base_url_.path == sub_link_.path and base_url_.netloc == sub_link_.netloc
 
 
-def extract_sublinks_from_url(base_url: str, driver: Any, include: str, existed_links: List = None):
+def extract_sublinks_from_url(base_url: str, driver: Any, include: Optional[str] = None, existed_links: List = None):
     driver.get(base_url)
     a_elements = driver.find_elements_by_tag_name('a')
     sub_links = set()
