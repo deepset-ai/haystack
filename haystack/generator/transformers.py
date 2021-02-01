@@ -176,7 +176,7 @@ class RAGenerator(BaseGenerator):
             embeddings = self.retriever.embed_passages(docs)
 
         embeddings_in_tensor = torch.cat(
-            [torch.from_numpy(embedding).unsqueeze(0) for embedding in embeddings],
+            [torch.from_numpy(embedding).float().unsqueeze(0) for embedding in embeddings],
             dim=0
         )
 
@@ -251,18 +251,8 @@ class RAGenerator(BaseGenerator):
         doc_scores = torch.bmm(query_embedding.unsqueeze(1),
                                passage_embeddings.unsqueeze(0).transpose(1, 2)).squeeze(1)
 
-        # TODO Need transformers 3.4.0
-        # Refer https://github.com/huggingface/transformers/issues/7874
-        # Pass it as parameter to generate function as follows -
-        # n_docs=len(flat_docs_dict["text"])
-        self.model.config.n_docs = len(flat_docs_dict["text"])
-
         # Get generated ids from generator
         generator_ids = self.model.generate(
-            # TODO: Need transformers 3.4.0
-            # Refer https://github.com/huggingface/transformers/issues/7871
-            # Remove input_ids parameter once upgraded to 3.4.0
-            input_ids=input_ids,
             context_input_ids=context_input_ids,
             context_attention_mask=context_attention_mask,
             doc_scores=doc_scores,
@@ -270,6 +260,7 @@ class RAGenerator(BaseGenerator):
             num_beams=self.num_beams,
             max_length=self.max_length,
             min_length=self.min_length,
+            n_docs=len(flat_docs_dict["text"])
         )
 
         generated_answers = self.tokenizer.batch_decode(generator_ids, skip_special_tokens=True)

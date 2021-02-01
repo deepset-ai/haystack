@@ -346,7 +346,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index: str, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -629,6 +629,7 @@ DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="sql.SQLDocumentStore.get_all_labels"></a>
 #### get\_all\_labels
@@ -763,7 +764,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", **kwargs, ,)
 ```
 
 **Arguments**:
@@ -796,6 +797,7 @@ added already exists.
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `embedding_field`: Name of field containing an embedding vector.
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -881,7 +883,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index=None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete all documents from the document store.

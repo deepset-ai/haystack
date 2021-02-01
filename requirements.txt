@@ -23,5 +23,7 @@ httptools
 nltk
 more_itertools
 networkx
+# Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
+pymilvus
 selenium
 webdriver-manager

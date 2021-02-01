@@ -165,6 +165,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
 
         index = index or self.index
@@ -408,7 +409,7 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         if filters:
-            raise NotImplementedError("Delete by filters is not implemented for SQLDocumentStore.")
+            raise NotImplementedError(f"Delete by filters is not implemented for {type(self).__name__}")
         index = index or self.index
         documents = self.session.query(DocumentORM).filter_by(index=index)
         documents.delete(synchronize_session=False)
