@@ -193,7 +193,14 @@ class DensePassageRetriever(BaseRetriever):
         )
         all_embeddings = {"query": [], "passages": []}
         self.model.eval()
-        for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=False)):
+
+        # When running evaluations etc., we don't want a progress bar for every single query
+        if len(dataset) == 1:
+            disable_tqdm=True
+        else:
+            disable_tqdm = False
+
+        for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
             batch = {key: batch[key].to(self.device) for key in batch}
 
             # get logits
