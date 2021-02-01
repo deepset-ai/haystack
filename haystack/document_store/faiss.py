@@ -42,6 +42,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: str = "document",
         similarity: str = "dot_product",
         embedding_field: str = "embedding",
+        progress_bar: bool = True,
         **kwargs,
     ):
         """
@@ -74,6 +75,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         :param embedding_field: Name of field containing an embedding vector.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+                             Can be helpful to disable in production deployments to keep the logs clean.
         """
         self.vector_dim = vector_dim
 
@@ -91,6 +94,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         else:
             raise ValueError("The FAISS document store can currently only support dot_product similarity. "
                              "Please set similarity=\"dot_product\"")
+        self.progress_bar = progress_bar
+
         super().__init__(
             url=sql_url,
             update_existing_documents=update_existing_documents,
@@ -189,7 +194,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         result = self.get_all_documents_generator(index=index, batch_size=batch_size, return_embedding=False)
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count) as progress_bar:
+        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
