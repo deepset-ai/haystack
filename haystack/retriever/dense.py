@@ -205,7 +205,7 @@ class DensePassageRetriever(BaseRetriever):
             all_embeddings["query"] = np.concatenate(all_embeddings["query"])
         return all_embeddings
 
-    def embed_queries(self, texts: List[str]) -> List[np.array]:
+    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """
         Create embeddings for a list of queries using the query encoder
 
@@ -216,7 +216,7 @@ class DensePassageRetriever(BaseRetriever):
         result = self._get_predictions(queries)["query"]
         return result
 
-    def embed_passages(self, docs: List[Document]) -> List[np.array]:
+    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
         """
         Create embeddings for a list of passages using the passage encoder
 
@@ -476,7 +476,7 @@ class EmbeddingRetriever(BaseRetriever):
                                                            top_k=top_k, index=index)
         return documents
 
-    def embed(self, texts: Union[List[str], str]) -> List[np.array]:
+    def embed(self, texts: Union[List[str], str]) -> List[np.ndarray]:
         """
         Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
 
@@ -501,7 +501,7 @@ class EmbeddingRetriever(BaseRetriever):
             emb = [r for r in emb]
         return emb
 
-    def embed_queries(self, texts: List[str]) -> List[np.array]:
+    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """
         Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
 
@@ -510,7 +510,7 @@ class EmbeddingRetriever(BaseRetriever):
         """
         return self.embed(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.array]:
+    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
         """
         Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 

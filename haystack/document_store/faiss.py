@@ -142,8 +142,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         for i in range(0, len(document_objects), batch_size):
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
-                embeddings = np.array(embeddings, dtype="float32")
-                self.faiss_index.add(embeddings)
+                embeddings_to_index = np.array(embeddings, dtype="float32")
+                self.faiss_index.add(embeddings_to_index)
 
             docs_to_write_in_sql = []
             for doc in document_objects[i: i + batch_size]:
@@ -259,7 +259,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                     doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         return documents
 
-    def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
+    def train_index(
+            self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.ndarray] = None
+    ):
         """
         Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
         The train vectors should come from the same distribution as your final ones.
@@ -274,9 +276,11 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise ValueError("Either pass `documents` or `embeddings`. You passed both.")
         if documents:
             document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
-            embeddings = [doc.embedding for doc in document_objects]
-            embeddings = np.array(embeddings, dtype="float32")
-        self.faiss_index.train(embeddings)
+            doc_embeddings = [doc.embedding for doc in document_objects]
+            embeddings_for_train = np.array(doc_embeddings, dtype="float32")
+            self.faiss_index.train(embeddings_for_train)
+        if embeddings:
+            self.faiss_index.train(embeddings)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
@@ -287,7 +291,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         super().delete_all_documents(index=index, filters=filters)
 
     def query_by_embedding(self,
-                           query_emb: np.array,
+                           query_emb: np.ndarray,
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,

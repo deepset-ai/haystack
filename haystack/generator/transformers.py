@@ -164,7 +164,7 @@ class RAGenerator(BaseGenerator):
         return contextualized_inputs["input_ids"].to(self.device), \
                contextualized_inputs["attention_mask"].to(self.device)
 
-    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: List[Optional[numpy.ndarray]]) -> torch.Tensor:
+    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: List[numpy.ndarray]) -> torch.Tensor:
 
         # If document missing embedding, then need embedding for all the documents
         is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
