@@ -167,6 +167,9 @@ class BaseDocumentStore(ABC):
         if preprocessor is not None:
             assert preprocessor.split_by != "sentence", f"Split by sentence not supported.\n" \
                                                     f"Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
+            assert preprocessor.split_respect_sentence_boundary == False, \
+                f"split_respect_sentence_boundary not supported yet.\n" \
+                f"Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
             assert preprocessor.split_overlap == 0, f"Overlapping documents are currently not supported when adding eval data.\n" \
                                                     f"Please set 'split_overlap=0' in the supplied PreProcessor."
             assert preprocessor.clean_empty_lines == False, f"clean_empty_lines currently not supported when adding eval data.\n" \
