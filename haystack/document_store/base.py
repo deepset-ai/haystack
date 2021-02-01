@@ -1,11 +1,13 @@
 import logging
 from abc import abstractmethod, ABC
 from pathlib import Path
-from typing import Any, Optional, Dict, List, Union
-from haystack import Document, Label, MultiLabel
-from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
-from haystack.preprocessor.preprocessor import PreProcessor
+from typing import Optional, Dict, List, Union
 
+import numpy as np
+
+from haystack import Document, Label, MultiLabel
+from haystack.preprocessor.preprocessor import PreProcessor
+from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,7 @@ class BaseDocumentStore(ABC):
         all_labels = self.get_all_labels(index=index, filters=filters)
 
         # Collect all answers to a question in a dict
-        question_ans_dict = {} # type: ignore
+        question_ans_dict: dict = {}
         for l in all_labels:
             # only aggregate labels with correct answers, as only those can be currently used in evaluation
             if not l.is_correct_answer:
@@ -125,7 +127,7 @@ class BaseDocumentStore(ABC):
 
     @abstractmethod
     def query_by_embedding(self,
-                           query_emb: List[float],
+                           query_emb: np.ndarray,
                            filters: Optional[Optional[Dict[str, List[str]]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
