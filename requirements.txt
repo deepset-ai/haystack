@@ -24,3 +24,4 @@ nltk
 more_itertools
 networkx
 selenium
+webdriver-manager
