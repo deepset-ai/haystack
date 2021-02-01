@@ -819,7 +819,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.client.delete_by_query(index=index, body=query, ignore=[404])
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
-            time.sleep(1)
+            time.sleep(2)
 
 
 class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
