@@ -19,33 +19,48 @@
     "data": [
         {
             "model": "DPR / ElasticSearch",
+            "n_docs": 1000,
+            "map": 0.9295105322830888
+        },
+        {
+            "model": "DPR / ElasticSearch",
             "n_docs": 10000,
-            "map": 0.8987097014904355
+            "map": 0.8987097014904354
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 100000,
-            "map": 0.8654606328368972
+            "map": 0.8654564090434241
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 500000,
-            "map": 0.8086137228234094
+            "map": 0.8086137228234089
+        },
+        {
+            "model": "BM25 / ElasticSearch",
+            "n_docs": 1000,
+            "map": 0.7420444712972909
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 10000,
-            "map": 0.6633019927857611
+            "map": 0.6620627317806674
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "map": 0.5626106985872819
+            "map": 0.5625959153101251
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 500000,
-            "map": 0.4560396022876066
+            "map": 0.4559452709000341
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 1000,
+            "map": 0.9295105322830888
         },
         {
             "model": "DPR / FAISS (flat)",
@@ -64,6 +79,11 @@
         },
         {
             "model": "DPR / FAISS (HSNW)",
+            "n_docs": 1000,
+            "map": 0.9295105322830888
+        },
+        {
+            "model": "DPR / FAISS (HSNW)",
             "n_docs": 10000,
             "map": 0.8969941373746582
         },
@@ -76,26 +96,6 @@
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 500000,
             "map": 0.7691475821598232
-        },
-        {
-            "model": "DPR / ElasticSearch",
-            "n_docs": 1000,
-            "map": 0.9295105322830888
-        },
-        {
-            "model": "BM25 / ElasticSearch",
-            "n_docs": 1000,
-            "map": 0.7420444712972909
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 1000,
-            "map": 0.9295105322830888
-        },
-        {
-            "model": "DPR / FAISS (HSNW)",
-            "n_docs": 1000,
-            "map": 0.9295105322830888
         }
     ]
 }
