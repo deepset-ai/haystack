@@ -34,6 +34,7 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
 
     docs: List[Document] = []
     labels = []
+    problematic_ids = []
 
     with open(filename, "r") as file:
         data = json.load(file)
@@ -45,10 +46,13 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
-            cur_docs, cur_labels = _extract_docs_and_labels_from_dict(document, preprocessor)
+            cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(document, preprocessor)
             docs.extend(cur_docs)
             labels.extend(cur_labels)
-
+            problematic_ids.extend(cur_problematic_ids)
+    if len(problematic_ids) > 0:
+        logger.warning(f"Could not convert an answer for {len(problematic_ids)} questions.\n"
+                       f"There were conversion errors for question ids: {problematic_ids}")
     return docs, labels
 
 
@@ -69,6 +73,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
 
     docs: List[Document] = []
     labels = []
+    problematic_ids = []
 
     with open(filename, "r") as file:
         for document in file:
@@ -77,15 +82,20 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
             document_dict = json.loads(document)
-            cur_docs, cur_labels = _extract_docs_and_labels_from_dict(document_dict, preprocessor)
+            cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(document_dict, preprocessor)
             docs.extend(cur_docs)
             labels.extend(cur_labels)
+            problematic_ids.extend(cur_problematic_ids)
 
             if batch_size is not None:
                 if len(docs) >= batch_size:
+                    if len(problematic_ids) > 0:
+                        logger.warning(f"Could not convert an answer for {len(problematic_ids)} questions.\n"
+                                       f"There were conversion errors for question ids: {problematic_ids}")
                     yield docs, labels
                     docs = []
                     labels = []
+                    problematic_ids = []
 
     yield docs, labels
 
@@ -93,6 +103,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
 def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PreProcessor = None):
     docs = []
     labels = []
+    problematic_ids = []
 
     # get all extra fields from document level (e.g. title)
     meta_doc = {k: v for k, v in document_dict.items() if k not in ("paragraphs", "title")}
@@ -139,7 +150,8 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                     ans = answer["text"]
                     ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
                     if ans != ans_position:
-                        logger.warning(f"Answer Text and Answer position mismatch. Skipping Answer")
+                        # do not use answer
+                        problematic_ids.append(qa.get("id","missing"))
                         break
                     # find corresponding document or split
                     if len(splits) == 1:
@@ -181,7 +193,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                     )
                     labels.append(label)
 
-    return docs, labels
+    return docs, labels, problematic_ids
 
 
 def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> \
