@@ -225,7 +225,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product")
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product")
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -253,6 +253,7 @@ Currently available remote names: ``"facebook/dpr-question_encoder-single-nq-bas
 - `passage_embedding_model`: Local path or remote name of passage encoder checkpoint. The format equals the
 one used by hugging-face transformers' modelhub models
 Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
 - `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
 - `use_gpu`: Whether to use gpu or not
@@ -285,7 +286,7 @@ that are most relevant to the query.
 #### embed\_queries
 
 ```python
- | embed_queries(texts: List[str]) -> List[np.array]
+ | embed_queries(texts: List[str]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of queries using the query encoder
@@ -302,7 +303,7 @@ Embeddings, one per input queries
 #### embed\_passages
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.array]
+ | embed_passages(docs: List[Document]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of passages using the passage encoder
@@ -388,13 +389,14 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1)
 ```
 
 **Arguments**:
 
 - `document_store`: An instance of DocumentStore from which to retrieve documents.
 - `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `use_gpu`: Whether to use gpu or not
 - `model_format`: Name of framework that was used for saving the model. Options:
 
@@ -432,7 +434,7 @@ that are most relevant to the query.
 #### embed
 
 ```python
- | embed(texts: Union[List[str], str]) -> List[np.array]
+ | embed(texts: Union[List[str], str]) -> List[np.ndarray]
 ```
 
 Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
@@ -449,7 +451,7 @@ List of embeddings (one per input text). Each embedding is a list of floats.
 #### embed\_queries
 
 ```python
- | embed_queries(texts: List[str]) -> List[np.array]
+ | embed_queries(texts: List[str]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
@@ -466,7 +468,7 @@ Embeddings, one per input queries
 #### embed\_passages
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.array]
+ | embed_passages(docs: List[Document]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()

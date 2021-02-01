@@ -41,6 +41,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         update_existing_documents: bool = False,
         index: str = "document",
         similarity: str = "dot_product",
+        embedding_field: str = "embedding",
         **kwargs,
     ):
         """
@@ -72,6 +73,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param embedding_field: Name of field containing an embedding vector.
         """
         self.vector_dim = vector_dim
 
@@ -83,6 +85,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 self.faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
 
         self.return_embedding = return_embedding
+        self.embedding_field = embedding_field
         if similarity == "dot_product":
             self.similarity = similarity
         else:
@@ -139,8 +142,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         for i in range(0, len(document_objects), batch_size):
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
-                embeddings = np.array(embeddings, dtype="float32")
-                self.faiss_index.add(embeddings)
+                embeddings_to_index = np.array(embeddings, dtype="float32")
+                self.faiss_index.add(embeddings_to_index)
 
             docs_to_write_in_sql = []
             for doc in document_objects[i: i + batch_size]:
@@ -154,7 +157,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def _create_document_field_map(self) -> Dict:
         return {
-            self.index: "embedding",
+            self.index: self.embedding_field,
         }
 
     def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):
@@ -256,7 +259,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                     doc.embedding = self.faiss_index.reconstruct(int(doc.meta["vector_id"]))
         return documents
 
-    def train_index(self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None):
+    def train_index(
+            self, documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.ndarray] = None
+    ):
         """
         Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
         The train vectors should come from the same distribution as your final ones.
@@ -271,20 +276,22 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise ValueError("Either pass `documents` or `embeddings`. You passed both.")
         if documents:
             document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
-            embeddings = [doc.embedding for doc in document_objects]
-            embeddings = np.array(embeddings, dtype="float32")
-        self.faiss_index.train(embeddings)
+            doc_embeddings = [doc.embedding for doc in document_objects]
+            embeddings_for_train = np.array(doc_embeddings, dtype="float32")
+            self.faiss_index.train(embeddings_for_train)
+        if embeddings:
+            self.faiss_index.train(embeddings)
 
-    def delete_all_documents(self, index=None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete all documents from the document store.
         """
         index = index or self.index
         self.faiss_index.reset()
-        super().delete_all_documents(index=index)
+        super().delete_all_documents(index=index, filters=filters)
 
     def query_by_embedding(self,
-                           query_emb: np.array,
+                           query_emb: np.ndarray,
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,

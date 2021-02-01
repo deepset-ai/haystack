@@ -1,11 +1,13 @@
 import logging
 from abc import abstractmethod, ABC
 from pathlib import Path
-from typing import Any, Optional, Dict, List, Union
-from haystack import Document, Label, MultiLabel
-from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
-from haystack.preprocessor.preprocessor import PreProcessor
+from typing import Optional, Dict, List, Union
 
+import numpy as np
+
+from haystack import Document, Label, MultiLabel
+from haystack.preprocessor.preprocessor import PreProcessor
+from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,7 @@ class BaseDocumentStore(ABC):
         all_labels = self.get_all_labels(index=index, filters=filters)
 
         # Collect all answers to a question in a dict
-        question_ans_dict = {} # type: ignore
+        question_ans_dict: dict = {}
         for l in all_labels:
             # only aggregate labels with correct answers, as only those can be currently used in evaluation
             if not l.is_correct_answer:
@@ -125,7 +127,7 @@ class BaseDocumentStore(ABC):
 
     @abstractmethod
     def query_by_embedding(self,
-                           query_emb: List[float],
+                           query_emb: np.ndarray,
                            filters: Optional[Optional[Dict[str, List[str]]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
@@ -165,6 +167,9 @@ class BaseDocumentStore(ABC):
         if preprocessor is not None:
             assert preprocessor.split_by != "sentence", f"Split by sentence not supported.\n" \
                                                     f"Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
+            assert preprocessor.split_respect_sentence_boundary == False, \
+                f"split_respect_sentence_boundary not supported yet.\n" \
+                f"Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
             assert preprocessor.split_overlap == 0, f"Overlapping documents are currently not supported when adding eval data.\n" \
                                                     f"Please set 'split_overlap=0' in the supplied PreProcessor."
             assert preprocessor.clean_empty_lines == False, f"clean_empty_lines currently not supported when adding eval data.\n" \
@@ -198,6 +203,6 @@ class BaseDocumentStore(ABC):
             logger.error("File needs to be in json or jsonl format.")
 
     @abstractmethod
-    def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
 

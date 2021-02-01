@@ -140,7 +140,7 @@ more performant with DPR embeddings. 'cosine' is recommended if you are using a 
 #### get\_document\_by\_id
 
 ```python
- | get_document_by_id(id: str, index=None) -> Optional[Document]
+ | get_document_by_id(id: str, index: Optional[str] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string
@@ -149,10 +149,28 @@ Fetch a document by specifying its text id string
 #### get\_documents\_by\_id
 
 ```python
- | get_documents_by_id(ids: List[str], index=None) -> List[Document]
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_metadata_values_by_key"></a>
+#### get\_metadata\_values\_by\_key
+
+```python
+ | get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> List[dict]
+```
+
+Get values associated with a metadata key. The output is in the format:
+[{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
+
+**Arguments**:
+
+- `key`: the meta key name to get the values for.
+- `query`: narrow down the scope to documents matching the query string.
+- `filters`: narrow down the scope to documents that match the given filters.
+- `index`: Elasticsearch index where the meta values should be searched. If not supplied,
+self.index will be used.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
 #### write\_documents
@@ -295,7 +313,7 @@ that are most relevant to the query as defined by the BM25 algorithm.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.array, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -346,7 +364,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index: str, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -453,7 +471,7 @@ Fetch documents by specifying a list of text id strings
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: List[float], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -629,6 +647,7 @@ DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="sql.SQLDocumentStore.get_all_labels"></a>
 #### get\_all\_labels
@@ -763,7 +782,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", **kwargs, ,)
 ```
 
 **Arguments**:
@@ -796,6 +815,7 @@ added already exists.
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `embedding_field`: Name of field containing an embedding vector.
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -861,7 +881,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### train\_index
 
 ```python
- | train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None)
+ | train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.ndarray] = None)
 ```
 
 Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
@@ -881,7 +901,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index=None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete all documents from the document store.
@@ -890,7 +910,7 @@ Delete all documents from the document store.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.

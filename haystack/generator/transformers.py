@@ -64,6 +64,7 @@ class RAGenerator(BaseGenerator):
     def __init__(
             self,
             model_name_or_path: str = "facebook/rag-token-nq",
+            model_version: Optional[str] = None,
             retriever: Optional[DensePassageRetriever] = None,
             generator_type: RAGeneratorType = RAGeneratorType.TOKEN,
             top_k_answers: int = 2,
@@ -81,6 +82,7 @@ class RAGenerator(BaseGenerator):
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
                                    'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                                    See https://huggingface.co/models for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param retriever: `DensePassageRetriever` used to embedded passage
         :param generator_type: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
         :param top_k_answers: Number of independently generated text to return
@@ -120,7 +122,7 @@ class RAGenerator(BaseGenerator):
             # Also refer refer https://github.com/huggingface/transformers/issues/7829
             # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
         else:
-            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path).to(self.device)
+            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version).to(self.device)
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
     # Refer section 2.3 of https://arxiv.org/abs/2005.11401
@@ -164,7 +166,7 @@ class RAGenerator(BaseGenerator):
         return contextualized_inputs["input_ids"].to(self.device), \
                contextualized_inputs["attention_mask"].to(self.device)
 
-    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: List[Optional[numpy.ndarray]]) -> torch.Tensor:
+    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: List[numpy.ndarray]) -> torch.Tensor:
 
         # If document missing embedding, then need embedding for all the documents
         is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
@@ -176,7 +178,7 @@ class RAGenerator(BaseGenerator):
             embeddings = self.retriever.embed_passages(docs)
 
         embeddings_in_tensor = torch.cat(
-            [torch.from_numpy(embedding).unsqueeze(0) for embedding in embeddings],
+            [torch.from_numpy(embedding).float().unsqueeze(0) for embedding in embeddings],
             dim=0
         )
 
@@ -251,18 +253,8 @@ class RAGenerator(BaseGenerator):
         doc_scores = torch.bmm(query_embedding.unsqueeze(1),
                                passage_embeddings.unsqueeze(0).transpose(1, 2)).squeeze(1)
 
-        # TODO Need transformers 3.4.0
-        # Refer https://github.com/huggingface/transformers/issues/7874
-        # Pass it as parameter to generate function as follows -
-        # n_docs=len(flat_docs_dict["text"])
-        self.model.config.n_docs = len(flat_docs_dict["text"])
-
         # Get generated ids from generator
         generator_ids = self.model.generate(
-            # TODO: Need transformers 3.4.0
-            # Refer https://github.com/huggingface/transformers/issues/7871
-            # Remove input_ids parameter once upgraded to 3.4.0
-            input_ids=input_ids,
             context_input_ids=context_input_ids,
             context_attention_mask=context_attention_mask,
             doc_scores=doc_scores,
@@ -270,6 +262,7 @@ class RAGenerator(BaseGenerator):
             num_beams=self.num_beams,
             max_length=self.max_length,
             min_length=self.min_length,
+            n_docs=len(flat_docs_dict["text"])
         )
 
         generated_answers = self.tokenizer.batch_decode(generator_ids, skip_special_tokens=True)

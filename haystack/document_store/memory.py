@@ -1,15 +1,15 @@
+import logging
+from collections import defaultdict
 from copy import deepcopy
 from typing import Dict, List, Optional, Union, Generator
 from uuid import uuid4
-from collections import defaultdict
 
-from haystack.document_store.base import BaseDocumentStore
-from haystack import Document, Label
-from haystack.retriever.base import BaseRetriever
-
+import numpy as np
 from scipy.spatial.distance import cosine
 
-import logging
+from haystack import Document, Label
+from haystack.document_store.base import BaseDocumentStore
+from haystack.retriever.base import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return documents
 
     def query_by_embedding(self,
-                           query_emb: List[float],
+                           query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,

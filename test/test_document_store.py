@@ -113,7 +113,7 @@ def test_get_all_documents_generator(document_store):
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "sql", "faiss"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "sql", "faiss", "milvus"], indirect=True)
 @pytest.mark.parametrize("update_existing_documents", [True, False])
 def test_update_existing_documents(document_store, update_existing_documents):
     original_docs = [
@@ -177,7 +177,7 @@ def test_write_document_index(document_store):
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_document_with_embeddings(document_store):
     documents = [
         {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -196,7 +196,7 @@ def test_document_with_embeddings(document_store):
 
 
 @pytest.mark.parametrize("retriever", ["dpr", "embedding"], indirect=True)
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
     for i in range(23):
@@ -232,17 +232,17 @@ def test_update_embeddings(document_store, retriever):
 
 @pytest.mark.elasticsearch
 def test_delete_all_documents(document_store_with_docs):
-    assert len(document_store_with_docs.get_all_documents(index="haystack_test")) == 3
+    assert len(document_store_with_docs.get_all_documents()) == 3
 
-    document_store_with_docs.delete_all_documents(index="haystack_test")
-    documents = document_store_with_docs.get_all_documents(index="haystack_test")
+    document_store_with_docs.delete_all_documents()
+    documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 0
 
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
-    document_store_with_docs.delete_all_documents(index="haystack_test", filters={"meta_field": ["test1", "test2"]})
+    document_store_with_docs.delete_all_documents(filters={"meta_field": ["test1", "test2"]})
     documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 1
     assert documents[0].meta["meta_field"] == "test3"
@@ -447,6 +447,44 @@ def test_custom_embedding_field(document_store_type):
     assert len(documents) == 1
     assert documents[0].text == "test"
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_get_meta_values_by_key(document_store):
+    documents = [
+        Document(
+            text="Doc1",
+            meta={"meta_key_1": "1", "meta_key_2": "11"}
+        ),
+        Document(
+            text="Doc2",
+            meta={"meta_key_1": "2", "meta_key_2": "22"}
+        ),
+        Document(
+            text="Doc3",
+            meta={"meta_key_1": "3", "meta_key_2": "33"}
+        )
+    ]
+    document_store.write_documents(documents)
+
+    # test without filters or query
+    result = document_store.get_metadata_values_by_key(key="meta_key_1")
+    for bucket in result:
+        assert bucket["value"] in ["1", "2", "3"]
+        assert bucket["count"] == 1
+
+    # test with filters but no query
+    result = document_store.get_metadata_values_by_key(key="meta_key_1", filters={"meta_key_2": ["11", "22"]})
+    for bucket in result:
+        assert bucket["value"] in ["1", "2"]
+        assert bucket["count"] == 1
+
+    # test with filters & query
+    result = document_store.get_metadata_values_by_key(key="meta_key_1", query="Doc1")
+    for bucket in result:
+        assert bucket["value"] in ["1"]
+        assert bucket["count"] == 1
 
 
 @pytest.mark.elasticsearch
