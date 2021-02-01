@@ -128,7 +128,12 @@ class PreProcessor(BasePreProcessor):
                 word_count += len(sen.split(" "))
             if current_slice:
                 list_splits.append(current_slice)
-            text_splits = [' '.join(sl) for sl in list_splits]
+
+            text_splits = []
+            for sl in list_splits:
+                txt = ' '.join(sl)
+                if len(txt) > 0:
+                    text_splits.append(txt)
         else:
             # create individual "elements" of passage, sentence, or word
             if self.split_by == "passage":
@@ -138,7 +143,7 @@ class PreProcessor(BasePreProcessor):
             elif self.split_by == "word":
                 elements = text.split(" ")
             else:
-                raise NotImplementedError("PreProcessor only supports 'passage' or 'sentence' split_by options.")
+                raise NotImplementedError("PreProcessor only supports 'passage', 'sentence' or 'word' split_by options.")
 
             # concatenate individual elements based on split_length & split_stride
             if self.split_overlap:
@@ -148,7 +153,8 @@ class PreProcessor(BasePreProcessor):
             text_splits = []
             for seg in segments:
                 txt = " ".join([t for t in seg if t])
-                text_splits.append(txt)
+                if len(txt) > 0:
+                    text_splits.append(txt)
 
         # create new document dicts for each text split
         documents = []
