@@ -4,13 +4,13 @@ from pathlib import Path
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urlparse
-from typing import List, Any
+from typing import List, Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
 
-def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = True, include: str = None):
+def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = True, include: Optional[str] = None):
     """
     takes url/urls as input and write contents to files
 
@@ -21,7 +21,7 @@ def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = T
     :param extract_sub_links: whether to extract sub-links from urls or not
     :type extract_sub_links: bool
     :param include: regex to include matching urls only
-    :type include: str
+    :type include: optional
     :return : None
     """
 
@@ -55,7 +55,7 @@ def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = T
             #     docs += write_to_files(urls, driver=driver, output_dir=output_dir)
         # else:
             #handle list of urls
-        sub_links = {}
+        sub_links = dict()
         if extract_sub_links==True:
             for url_ in urls:
                 existed_links: List = list(sum(list(sub_links.values()), []))
