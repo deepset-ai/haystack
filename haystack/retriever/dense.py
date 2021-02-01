@@ -47,7 +47,7 @@ class DensePassageRetriever(BaseRetriever):
                  embed_title: bool = True,
                  use_fast_tokenizers: bool = True,
                  similarity_function: str = "dot_product",
-                 progress_bar=True
+                 progress_bar: bool = True
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
