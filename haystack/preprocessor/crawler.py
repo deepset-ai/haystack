@@ -4,7 +4,7 @@ from pathlib import Path
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urlparse
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Dict
 
 logger = logging.getLogger(__name__)
 
