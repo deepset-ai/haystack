@@ -46,7 +46,7 @@ def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = T
         if type(urls) != list:
             urls = [urls]
 
-        sub_links: Dict[str, str] = {}
+        sub_links: Dict[str, List] = {}
         if extract_sub_links==True:
             for url_ in urls:
                 existed_links: List = list(sum(list(sub_links.values()), []))
