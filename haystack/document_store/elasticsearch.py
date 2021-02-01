@@ -568,7 +568,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return documents
 
     def query_by_embedding(self,
-                           query_emb: np.array,
+                           query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
@@ -631,7 +631,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             ]
             return documents
 
-    def _get_vector_similarity_query(self, query_emb: np.array, top_k: int):
+    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
         """
@@ -849,7 +849,7 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name):
                 raise e
 
-    def _get_vector_similarity_query(self, query_emb: np.array, top_k: int):
+    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
         """

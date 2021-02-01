@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
+import numpy as np
 from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -136,7 +137,7 @@ class SQLDocumentStore(BaseDocumentStore):
             for row in query.all():
                 documents.append(self._convert_sql_row_to_document(row))
 
-        sorted_documents = sorted(documents, key=lambda doc: vector_ids.index(doc.meta["vector_id"]))  # type: ignore
+        sorted_documents = sorted(documents, key=lambda doc: vector_ids.index(doc.meta["vector_id"]))
         return sorted_documents
 
     def get_all_documents(
@@ -196,7 +197,7 @@ class SQLDocumentStore(BaseDocumentStore):
             documents_map[row.id] = Document(
                 id=row.id,
                 text=row.text,
-                meta=None if row.vector_id is None else {"vector_id": row.vector_id}  # type: ignore
+                meta=None if row.vector_id is None else {"vector_id": row.vector_id}
             )
             if i % batch_size == 0:
                 documents_map = self._get_documents_meta(documents_map)
@@ -215,7 +216,7 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter(MetaORM.document_id.in_(doc_ids))
 
         for row in meta_query.all():
-            documents_map[row.document_id].meta[row.name] = row.value  # type: ignore
+            documents_map[row.document_id].meta[row.name] = row.value
         return documents_map
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None):
@@ -389,7 +390,7 @@ class SQLDocumentStore(BaseDocumentStore):
         return label
 
     def query_by_embedding(self,
-                           query_emb: List[float],
+                           query_emb: np.ndarray,
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,

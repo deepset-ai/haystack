@@ -258,7 +258,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.milvus_server.compact(collection_name=index)
 
     def query_by_embedding(self,
-                           query_emb: np.array,
+                           query_emb: np.ndarray,
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
@@ -458,7 +458,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             if status.code != Status.SUCCESS:
                 raise RuntimeError("E existing vector ids deletion failed: {status}")
 
-    def get_all_vectors(self, index=None) -> List[np.array]:
+    def get_all_vectors(self, index: Optional[str] = None) -> List[np.ndarray]:
         """
         Helper function to dump all vectors stored in Milvus server.
 

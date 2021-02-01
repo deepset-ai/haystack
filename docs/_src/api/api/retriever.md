@@ -286,7 +286,7 @@ that are most relevant to the query.
 #### embed\_queries
 
 ```python
- | embed_queries(texts: List[str]) -> List[np.array]
+ | embed_queries(texts: List[str]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of queries using the query encoder
@@ -303,7 +303,7 @@ Embeddings, one per input queries
 #### embed\_passages
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.array]
+ | embed_passages(docs: List[Document]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of passages using the passage encoder
@@ -434,7 +434,7 @@ that are most relevant to the query.
 #### embed
 
 ```python
- | embed(texts: Union[List[str], str]) -> List[np.array]
+ | embed(texts: Union[List[str], str]) -> List[np.ndarray]
 ```
 
 Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
@@ -451,7 +451,7 @@ List of embeddings (one per input text). Each embedding is a list of floats.
 #### embed\_queries
 
 ```python
- | embed_queries(texts: List[str]) -> List[np.array]
+ | embed_queries(texts: List[str]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
@@ -468,7 +468,7 @@ Embeddings, one per input queries
 #### embed\_passages
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.array]
+ | embed_passages(docs: List[Document]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
