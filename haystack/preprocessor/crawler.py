@@ -22,7 +22,7 @@ def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = T
     :type extract_sub_links: bool
     :param include: regex to include matching urls only
     :type include: optional
-    :return : None
+    :return : dictionary of documents
     """
 
     path = Path(output_dir)
