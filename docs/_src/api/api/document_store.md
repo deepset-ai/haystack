@@ -295,7 +295,7 @@ that are most relevant to the query as defined by the BM25 algorithm.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.array, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -453,7 +453,7 @@ Fetch documents by specifying a list of text id strings
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: List[float], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -863,7 +863,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### train\_index
 
 ```python
- | train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None)
+ | train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.ndarray] = None)
 ```
 
 Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
@@ -892,7 +892,7 @@ Delete all documents from the document store.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.

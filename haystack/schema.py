@@ -11,7 +11,7 @@ class Document:
                  probability: Optional[float] = None,
                  question: Optional[str] = None,
                  meta: Dict[str, Any] = None,
-                 embedding: Optional[np.array] = None):
+                 embedding: Optional[np.ndarray] = None):
         """
         Object used to represent documents / passages in a standardized way within Haystack.
         For example, this is what the retriever will return from the DocumentStore,
