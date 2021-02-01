@@ -3,7 +3,6 @@ from typing import Any, Optional, Dict, List, Union
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
-from haystack.retriever.base import BaseRetriever
 from haystack.retriever.dense import EmbeddingRetriever
 from haystack.document_store.memory import InMemoryDocumentStore
 
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class BaseRanker:
     document_store: BaseDocumentStore
-    retriever: BaseRetriever
+    retriever: EmbeddingRetriever
     outgoing_edges = 1
 
     def __init__(self,
