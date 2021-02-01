@@ -522,7 +522,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
             template = Template(custom_query)
             # replace all "${query}" placeholder(s) with query
-            substitutions = {"query": query}
+            substitutions = {"query": f'"{query}"'}
             # For each filter we got passed, we'll try to find & replace the corresponding placeholder in the template
             # Example: filters={"years":[2018]} => replaces {$years} in custom_query with '[2018]'
             if filters:
@@ -568,7 +568,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return documents
 
     def query_by_embedding(self,
-                           query_emb: np.array,
+                           query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
@@ -631,7 +631,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             ]
             return documents
 
-    def _get_vector_similarity_query(self, query_emb: np.array, top_k: int):
+    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
         """
@@ -757,7 +757,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
 
-    def delete_all_documents(self, index: str, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -765,6 +765,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
+        index = index or self.index
         query: Dict[str, Any] = {"query": {}}
         if filters:
             filter_clause = []
@@ -848,7 +849,7 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name):
                 raise e
 
-    def _get_vector_similarity_query(self, query_emb: np.array, top_k: int):
+    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
         """

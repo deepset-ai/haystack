@@ -32,13 +32,13 @@ class ElasticsearchRetriever(BaseRetriever):
                                 |        "query": {
                                 |            "bool": {
                                 |                "should": [{"multi_match": {
-                                |                    "query": "${query}",                 // mandatory query placeholder
+                                |                    "query": ${query},                 // mandatory query placeholder
                                 |                    "type": "most_fields",
                                 |                    "fields": ["text", "title"]}}],
                                 |                "filter": [                                 // optional custom filters
-                                |                    {"terms": {"year": "${years}"}},
-                                |                    {"terms": {"quarter": "${quarters}"}},
-                                |                    {"range": {"date": {"gte": "${date}"}}}
+                                |                    {"terms": {"year": ${years}}},
+                                |                    {"terms": {"quarter": ${quarters}}},
+                                |                    {"range": {"date": {"gte": ${date}}}}
                                 |                    ],
                                 |            }
                                 |        },

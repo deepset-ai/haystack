@@ -39,6 +39,7 @@ class DensePassageRetriever(BaseRetriever):
                  document_store: BaseDocumentStore,
                  query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
                  passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
+                 model_version: Optional[str] = None,
                  max_seq_len_query: int = 64,
                  max_seq_len_passage: int = 256,
                  use_gpu: bool = True,
@@ -71,6 +72,7 @@ class DensePassageRetriever(BaseRetriever):
         :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
                                         one used by hugging-face transformers' modelhub models
                                         Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param use_gpu: Whether to use gpu or not
@@ -106,17 +108,20 @@ class DensePassageRetriever(BaseRetriever):
 
         # Init & Load Encoders
         self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
+                                              revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
                                               tokenizer_class="DPRQuestionEncoderTokenizer")
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
+                                                revision=model_version,
                                                 language_model_class="DPRQuestionEncoder")
-
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
+                                                revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
                                                 tokenizer_class="DPRContextEncoderTokenizer")
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
+                                                  revision=model_version,
                                                   language_model_class="DPRContextEncoder")
 
         self.processor = TextSimilarityProcessor(tokenizer=self.query_tokenizer,
@@ -205,7 +210,7 @@ class DensePassageRetriever(BaseRetriever):
             all_embeddings["query"] = np.concatenate(all_embeddings["query"])
         return all_embeddings
 
-    def embed_queries(self, texts: List[str]) -> List[np.array]:
+    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """
         Create embeddings for a list of queries using the query encoder
 
@@ -216,7 +221,7 @@ class DensePassageRetriever(BaseRetriever):
         result = self._get_predictions(queries)["query"]
         return result
 
-    def embed_passages(self, docs: List[Document]) -> List[np.array]:
+    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
         """
         Create embeddings for a list of passages using the passage encoder
 
@@ -389,6 +394,7 @@ class EmbeddingRetriever(BaseRetriever):
         self,
         document_store: BaseDocumentStore,
         embedding_model: str,
+        model_version: Optional[str] = None,
         use_gpu: bool = True,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
@@ -397,6 +403,7 @@ class EmbeddingRetriever(BaseRetriever):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use gpu or not
         :param model_format: Name of framework that was used for saving the model. Options:
 
@@ -421,7 +428,7 @@ class EmbeddingRetriever(BaseRetriever):
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
         if model_format == "farm" or model_format == "transformers":
             self.embedding_model = Inferencer.load(
-                embedding_model, task_type="embeddings", extraction_strategy=self.pooling_strategy,
+                embedding_model, revision=model_version, task_type="embeddings", extraction_strategy=self.pooling_strategy,
                 extraction_layer=self.emb_extraction_layer, gpu=use_gpu, batch_size=4, max_seq_len=512, num_processes=0
             )
             # Check that document_store has the right similarity function
@@ -476,7 +483,7 @@ class EmbeddingRetriever(BaseRetriever):
                                                            top_k=top_k, index=index)
         return documents
 
-    def embed(self, texts: Union[List[str], str]) -> List[np.array]:
+    def embed(self, texts: Union[List[str], str]) -> List[np.ndarray]:
         """
         Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
 
@@ -501,7 +508,7 @@ class EmbeddingRetriever(BaseRetriever):
             emb = [r for r in emb]
         return emb
 
-    def embed_queries(self, texts: List[str]) -> List[np.array]:
+    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """
         Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
 
@@ -510,7 +517,7 @@ class EmbeddingRetriever(BaseRetriever):
         """
         return self.embed(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.array]:
+    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
         """
         Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 
