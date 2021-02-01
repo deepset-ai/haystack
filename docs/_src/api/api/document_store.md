@@ -140,7 +140,7 @@ more performant with DPR embeddings. 'cosine' is recommended if you are using a 
 #### get\_document\_by\_id
 
 ```python
- | get_document_by_id(id: str, index=None) -> Optional[Document]
+ | get_document_by_id(id: str, index: Optional[str] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string
@@ -149,10 +149,28 @@ Fetch a document by specifying its text id string
 #### get\_documents\_by\_id
 
 ```python
- | get_documents_by_id(ids: List[str], index=None) -> List[Document]
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_metadata_values_by_key"></a>
+#### get\_metadata\_values\_by\_key
+
+```python
+ | get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> List[dict]
+```
+
+Get values associated with a metadata key. The output is in the format:
+[{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
+
+**Arguments**:
+
+- `key`: the meta key name to get the values for.
+- `query`: narrow down the scope to documents matching the query string.
+- `filters`: narrow down the scope to documents that match the given filters.
+- `index`: Elasticsearch index where the meta values should be searched. If not supplied,
+self.index will be used.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
 #### write\_documents
