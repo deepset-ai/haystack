@@ -34,23 +34,35 @@ class BaseRanker:
                                             pooling_strategy=pooling_strategy,
                                             emb_extraction_layer=emb_extraction_layer)
 
+        self.top_k_ranker = top_k_ranker
+
     def run(self, query: str, documents: List[Document], top_k_ranker: Optional[int] = None, **kwargs):
-        self.document_store.write_documents(documents)
-        self.document_store.update_embeddings(retriever=self.retriever)
+        if documents:
+            self.document_store.write_documents(documents)
+            self.document_store.update_embeddings(retriever=self.retriever)
 
-        if top_k_ranker:
-            documents = self.retriever.retrieve(query=query, top_k=top_k_ranker)
+            if top_k_ranker:
+                documents = self.retriever.retrieve(query=query, top_k=top_k_ranker)
+            elif self.top_k_ranker:
+                documents = self.retriever.retrieve(query=query, top_k=self.top_k_ranker)
+            else:
+                documents = self.retriever.retrieve(query=query)
+
+            self.document_store.delete_all_documents(index='document')
+
+            document_ids = [doc.id for doc in documents]
+            logger.debug(f"Retrieved documents with IDs: {document_ids}")
+            output = {
+                "query": query,
+                "documents": documents,
+                **kwargs
+            }
         else:
-            documents = self.retriever.retrieve(query=query)
-
-        self.document_store.delete_all_documents(index='document')
-
-        document_ids = [doc.id for doc in documents]
-        logger.debug(f"Retrieved documents with IDs: {document_ids}")
-        output = {
-            "query": query,
-            "documents": documents,
-            **kwargs
-        }
+            logger.debug(f"No documents were passed")
+            output = {
+                "query": query,
+                "documents": documents,
+                **kwargs
+            }
 
         return output, "output_1"
