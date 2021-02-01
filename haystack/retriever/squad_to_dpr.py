@@ -60,7 +60,7 @@ import subprocess
 from itertools import islice
 from pathlib import Path
 from time import sleep
-from typing import Dict, Iterator, Tuple, List
+from typing import Dict, Iterator, Tuple, List, Union
 
 from elasticsearch import Elasticsearch
 from haystack.document_store.base import BaseDocumentStore
@@ -268,7 +268,7 @@ def main(squad_input_filename: Path, dpr_output_filename: Path,
     # 2. Prepare document store
     store_factory = HaystackDocumentStore(store_type=document_store_type_config[0],
                                           **document_store_type_config[1])
-    document_store: BaseDocumentStore = store_factory.get_document_store()
+    document_store: Union[ElasticsearchDocumentStore, FAISSDocumentStore] = store_factory.get_document_store()
 
     # 3. Load data into the document store
     document_store.add_eval_data(squad_file_path.as_posix(), doc_index="document",
@@ -331,7 +331,7 @@ if __name__ == '__main__':
         "embedding_dim": 768,
     }
 
-    retriever_bm25_config = {}
+    retriever_bm25_config: dict = {}
 
     main(squad_input_filename=squad_input_filename,
          dpr_output_filename=dpr_output_filename,
