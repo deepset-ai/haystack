@@ -46,7 +46,8 @@ class DensePassageRetriever(BaseRetriever):
                  batch_size: int = 16,
                  embed_title: bool = True,
                  use_fast_tokenizers: bool = True,
-                 similarity_function: str = "dot_product"
+                 similarity_function: str = "dot_product",
+                 progress_bar=True
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -83,12 +84,15 @@ class DensePassageRetriever(BaseRetriever):
                             The title is expected to be present in doc.meta["name"] and can be supplied in the documents
                             before writing them to the DocumentStore like this:
                             {"text": "my text", "meta": {"name": "my title"}}.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+                             Can be helpful to disable in production deployments to keep the logs clean.
         """
 
         self.document_store = document_store
         self.batch_size = batch_size
         self.max_seq_len_passage = max_seq_len_passage
         self.max_seq_len_query = max_seq_len_query
+        self.progress_bar = progress_bar
 
         if document_store is None:
            logger.warning("DensePassageRetriever initialized without a document store. "
@@ -198,7 +202,7 @@ class DensePassageRetriever(BaseRetriever):
         if len(dataset) == 1:
             disable_tqdm=True
         else:
-            disable_tqdm = False
+            disable_tqdm = self.progress_bar
 
         for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
             batch = {key: batch[key].to(self.device) for key in batch}
