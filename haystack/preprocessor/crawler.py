@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 
-def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = True, include: Optional[str] = None):
+def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = True, include: Optional[List] = None):
     """
     takes url/urls as input and write contents to files
 
@@ -20,8 +20,8 @@ def fetch_data_from_urls(urls: Any, output_dir: str, extract_sub_links: bool = T
     :type output_dir: str
     :param extract_sub_links: whether to extract sub-links from urls or not
     :type extract_sub_links: bool
-    :param include: regex to include matching urls only
-    :type include: optional
+    :param include: regexs to include matching urls only
+    :type include: optional[List]
     :return : dictionary of documents
     """
 
@@ -103,13 +103,13 @@ def is_inpage_navigation(base_url: str, sub_link: str):
     return base_url_.path == sub_link_.path and base_url_.netloc == sub_link_.netloc
 
 
-def extract_sublinks_from_url(base_url: str, driver: Any, include: Optional[str] = None, existed_links: List = None):
+def extract_sublinks_from_url(base_url: str, driver: Any, include: Optional[List] = None, existed_links: List = None):
     driver.get(base_url)
     a_elements = driver.find_elements_by_tag_name('a')
     sub_links = set()
     if not (existed_links and base_url in existed_links):
         if include:
-            if re.compile(include).search(base_url):
+            if re.compile('|'.join(include)).search(base_url):
                 sub_links.add(base_url)
 
     for i in a_elements:
@@ -118,7 +118,7 @@ def extract_sublinks_from_url(base_url: str, driver: Any, include: Optional[str]
             if is_internal_url(base_url=base_url, sub_link=sub_link) \
                 and (not is_inpage_navigation(base_url=base_url, sub_link=sub_link)):
                 if include:
-                    if re.compile(include).search(sub_link):
+                    if re.compile('|'.join(include)).search(sub_link):
                         sub_links.add(sub_link)
                 else:
                     sub_links.add(sub_link)
