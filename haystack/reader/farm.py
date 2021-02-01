@@ -52,6 +52,7 @@ class FARMReader(BaseReader):
         num_processes: Optional[int] = None,
         max_seq_len: int = 256,
         doc_stride: int = 128,
+        progress_bar: bool = True
     ):
 
         """
@@ -86,14 +87,16 @@ class FARMReader(BaseReader):
                               want to debug the Language Model, you might need to disable multiprocessing!
         :param max_seq_len: Max sequence length of one input text for the model
         :param doc_stride: Length of striding window for splitting long texts (used if ``len(text) > max_seq_len``)
-
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+                             Can be helpful to disable in production deployments to keep the logs clean.
         """
 
         self.return_no_answers = return_no_answer
         self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = QAInferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
-                                          task_type="question_answering", max_seq_len=max_seq_len,
-                                          doc_stride=doc_stride, num_processes=num_processes, revision=model_version)
+                                            task_type="question_answering", max_seq_len=max_seq_len,
+                                            doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
+                                            disable_tqdm=progress_bar)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
@@ -103,6 +106,7 @@ class FARMReader(BaseReader):
             logger.warning("Could not set `top_k_per_sample` in FARM. Please update FARM version.")
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
+        self.progress_bar = progress_bar
 
     def train(
         self,
@@ -226,6 +230,7 @@ class FARMReader(BaseReader):
             evaluate_every=evaluate_every,
             device=device,
             use_amp=use_amp,
+            disable_tqdm=self.progress_bar
         )
 
 
