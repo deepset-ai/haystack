@@ -1,10 +1,10 @@
-from abc import ABC, abstractmethod
-from typing import List, Optional, Dict
+from abc import abstractmethod
+from typing import List, Dict
 
-from haystack import Document
+from haystack import Document, BaseComponent
 
 
-class BaseSummarizer(ABC):
+class BaseSummarizer(BaseComponent):
     """
     Abstract class for Summarizer
     """

@@ -5,7 +5,7 @@
 ## BaseDocumentStore Objects
 
 ```python
-class BaseDocumentStore(ABC)
+class BaseDocumentStore(BaseComponent)
 ```
 
 Base class for implementing Document Stores.
