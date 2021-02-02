@@ -5,7 +5,7 @@
 ## BaseRetriever Objects
 
 ```python
-class BaseRetriever(ABC)
+class BaseRetriever(BaseComponent)
 ```
 
 <a name="base.BaseRetriever.retrieve"></a>
