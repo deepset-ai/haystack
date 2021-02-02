@@ -5,7 +5,7 @@
 ## BaseGenerator Objects
 
 ```python
-class BaseGenerator(ABC)
+class BaseGenerator(BaseComponent)
 ```
 
 Abstract class for Generators

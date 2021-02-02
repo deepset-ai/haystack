@@ -1,18 +1,18 @@
 import logging
-from abc import abstractmethod, ABC
+from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Dict, List, Union
 
 import numpy as np
 
-from haystack import Document, Label, MultiLabel
+from haystack import Document, Label, MultiLabel, BaseComponent
 from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
 logger = logging.getLogger(__name__)
 
 
-class BaseDocumentStore(ABC):
+class BaseDocumentStore(BaseComponent):
     """
     Base class for implementing Document Stores.
     """
@@ -206,3 +206,5 @@ class BaseDocumentStore(ABC):
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
 
+    def run(self, **kwargs):
+        raise NotImplementedError
