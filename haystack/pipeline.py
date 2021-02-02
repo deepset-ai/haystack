@@ -142,14 +142,46 @@ class Pipeline:
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None):
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
         be passed.
 
+        Here's a sample configuration:
+
+        version: '0.7'
+
+        components:    # define all the building-blocks for Pipeline
+          - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+            type: FARMReader    # Haystack Class name for the component
+            params:
+              no_ans_boost: -10
+              model_name_or_path: deepset/roberta-base-squad2
+          - name: MyESRetriever
+            type: ElasticsearchRetriever
+            params:
+              document_store: MyDocumentStore    # params can reference other components defined in the YAML
+              custom_query: null
+          - name: MyDocumentStore
+            type: ElasticsearchDocumentStore
+            params:
+              index: haystack_test
+
+        pipelines:    # multiple Pipelines can be defined using the components from above
+          - name: my_query_pipeline    # a simple extractive-qa Pipeline
+            nodes:
+              - name: MyESRetriever
+                inputs: [Query]
+              - name: MyReader
+                inputs: [MyESRetriever]
+
         :param path: path of the YAML file.
         :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
         """
         with open(path, "r") as stream:
             data = yaml.safe_load(stream)
@@ -163,10 +195,12 @@ class Pipeline:
             pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
             if not pipelines_in_yaml:
                 raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+            pipeline_config = pipelines_in_yaml[0]
 
         definitions = {}  # definitions of each component from the YAML.
         for definition in data["components"]:
-            cls._interpolate_environment_variables(definition)
+            if overwrite_with_env_variables:
+                cls._overwrite_with_env_variables(definition)
             name = definition.pop("name")
             definitions[name] = definition
 
@@ -221,9 +255,9 @@ class Pipeline:
         return instance
 
     @classmethod
-    def _interpolate_environment_variables(cls, definition: dict):
+    def _overwrite_with_env_variables(cls, definition: dict):
         """
-        Override the YAML configuration with environment variables. For example, to change index name param for an
+        Overwrite the YAML configuration with environment variables. For example, to change index name param for an
         ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
         `_` sign must be used to specify nested hierarchical properties.
 
