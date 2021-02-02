@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
 
@@ -207,3 +208,30 @@ class MultiLabel:
 
     def __str__(self):
         return str(self.to_dict())
+
+
+class BaseComponent:
+    """
+    A base class for implementing nodes in a Pipeline.
+    """
+
+    outgoing_edges: int
+    subclasses: dict = {}
+
+    def __init_subclass__(cls, **kwargs):
+        """ This automatically keeps track of all available subclasses.
+        Enables generic load() for all specific component implementations.
+        """
+        super().__init_subclass__(**kwargs)
+        cls.subclasses[cls.__name__] = cls
+
+    @classmethod
+    def load_from_args(cls, component_type: str, **kwargs):
+        """
+        Load a component instance of the given type using the kwargs.
+        
+        :param component_type: name of the component class to load.
+        :param kwargs: parameters to pass to the __init__() for the component. 
+        """
+        instance = cls.subclasses[component_type](**kwargs)
+        return instance

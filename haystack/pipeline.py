@@ -1,11 +1,15 @@
+import os
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Type
 
 import networkx as nx
+import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
+from haystack import BaseComponent
+from haystack.document_store.base import BaseDocumentStore
 from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
@@ -25,6 +29,7 @@ class Pipeline:
         self.graph = DiGraph()
         self.root_node_id = "Query"
         self.graph.add_node("Query", component=QueryNode())
+        self.components: dict = {}
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
@@ -135,6 +140,136 @@ class Pipeline:
         graphviz = to_agraph(self.graph)
         graphviz.layout("dot")
         graphviz.draw(path)
+
+    @classmethod
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+        """
+        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        be passed.
+
+        Here's a sample configuration:
+
+            ```yaml
+            |   version: '0.7'
+            |
+            |    components:    # define all the building-blocks for Pipeline
+            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+            |      type: FARMReader    # Haystack Class name for the component
+            |      params:
+            |        no_ans_boost: -10
+            |        model_name_or_path: deepset/roberta-base-squad2
+            |    - name: MyESRetriever
+            |      type: ElasticsearchRetriever
+            |      params:
+            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+            |        custom_query: null
+            |    - name: MyDocumentStore
+            |      type: ElasticsearchDocumentStore
+            |      params:
+            |        index: haystack_test
+            |
+            |    pipelines:    # multiple Pipelines can be defined using the components from above
+            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+            |      nodes:
+            |      - name: MyESRetriever
+            |        inputs: [Query]
+            |      - name: MyReader
+            |        inputs: [MyESRetriever]
+            ```
+
+        :param path: path of the YAML file.
+        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        """
+        with open(path, "r") as stream:
+            data = yaml.safe_load(stream)
+
+        if pipeline_name is None:
+            if len(data["pipelines"]) == 1:
+                pipeline_config = data["pipelines"][0]
+            else:
+                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
+        else:
+            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
+            if not pipelines_in_yaml:
+                raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+            pipeline_config = pipelines_in_yaml[0]
+
+        definitions = {}  # definitions of each component from the YAML.
+        for definition in data["components"]:
+            if overwrite_with_env_variables:
+                cls._overwrite_with_env_variables(definition)
+            name = definition.pop("name")
+            definitions[name] = definition
+
+        pipeline = cls()
+
+        components: dict = {}  # instances of component objects.
+        for node_config in pipeline_config["nodes"]:
+            name = node_config["name"]
+            component = cls._load_or_get_component(name=name, definitions=definitions, components=components)
+            if "DocumentStore" not in definitions[name]["type"]:  # DocumentStore is not an explicit node in a Pipeline
+                pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
+
+        return pipeline
+
+    @classmethod
+    def _load_or_get_component(cls, name: str, definitions: dict, components: dict):
+        """
+        Load a component from the definition or return if component object already present in `components` dict.
+
+        :param name: name of the component to load or get.
+        :param definitions: dict containing definitions of all components retrieved from the YAML.
+        :param components: dict containing component objects.
+        """
+        if name in components.keys():  # check if component is already loaded.
+            return components[name]
+
+        component_params = definitions[name]["params"]
+        component_type = definitions[name]["type"]
+
+        for key, value in component_params.items():
+            # Component params can reference to other components. For instance, a Retriever can reference a
+            # DocumentStore defined in the YAML. All references should be recursively resolved.
+            if value in definitions.keys():  # check if the param value is a reference to another component.
+                if value not in components.keys():  # check if the referenced component is already loaded.
+                    cls._load_or_get_component(name=value, definitions=definitions, components=components)
+                component_params[key] = components[value]  # substitute reference (string) with the component object.
+
+        if "DocumentStore" in component_type:
+            ComponentClass: Type[BaseComponent] = BaseDocumentStore
+        elif "Reader" in component_type:
+            ComponentClass = BaseReader
+        elif "Retriever" in component_type:
+            ComponentClass = BaseRetriever
+        elif "Generator" in component_type:
+            ComponentClass = BaseGenerator
+        elif "Summarizer" in component_type:
+            ComponentClass = BaseSummarizer
+        else:
+            raise NotImplementedError(f"Component of type '{component_type}' is not implemented for pipelines.")
+        instance = ComponentClass.load_from_args(component_type=component_type, **component_params)
+        components[name] = instance
+        return instance
+
+    @classmethod
+    def _overwrite_with_env_variables(cls, definition: dict):
+        """
+        Overwrite the YAML configuration with environment variables. For example, to change index name param for an
+        ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+        `_` sign must be used to specify nested hierarchical properties.
+
+        :param definition: a dictionary containing the YAML definition of a component.
+        """
+        env_prefix = f"{definition['name']}_params_".upper()
+        for key, value in os.environ.items():
+            if key.startswith(env_prefix):
+                param_name = key.replace(env_prefix, "").lower()
+                definition["params"][param_name] = value
 
 
 class BaseStandardPipeline:

@@ -5,13 +5,13 @@ from time import perf_counter
 from functools import wraps
 from tqdm import tqdm
 
-from haystack import Document
+from haystack import Document, BaseComponent
 from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
 
 
-class BaseRetriever(ABC):
+class BaseRetriever(BaseComponent):
     document_store: BaseDocumentStore
     outgoing_edges = 1
 

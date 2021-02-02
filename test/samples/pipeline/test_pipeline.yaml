@@ -1,0 +1,25 @@
+version: '0.7'
+
+components:
+  - name: TestReader
+    type: FARMReader
+    params:
+      no_ans_boost: -10
+      model_name_or_path: deepset/roberta-base-squad2
+  - name: TestESRetriever
+    type: ElasticsearchRetriever
+    params:
+      document_store: TestDocumentStore
+      custom_query: null
+  - name: TestDocumentStore
+    type: ElasticsearchDocumentStore
+    params:
+      index: haystack_test
+
+pipelines:
+  - name: test_query_pipeline
+    nodes:
+      - name: TestESRetriever
+        inputs: [Query]
+      - name: TestReader
+        inputs: [TestESRetriever]

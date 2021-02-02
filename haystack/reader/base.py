@@ -4,10 +4,10 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import List, Optional, Sequence
 
-from haystack import Document
+from haystack import Document, BaseComponent
 
 
-class BaseReader(ABC):
+class BaseReader(BaseComponent):
     return_no_answers: bool
     outgoing_edges = 1
 
@@ -61,3 +61,5 @@ class BaseReader(ABC):
 
         results.update(**kwargs)
         return results, "output_1"
+
+
