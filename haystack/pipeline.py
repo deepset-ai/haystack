@@ -150,31 +150,33 @@ class Pipeline:
 
         Here's a sample configuration:
 
-        version: '0.7'
-
-        components:    # define all the building-blocks for Pipeline
-          - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            type: FARMReader    # Haystack Class name for the component
-            params:
-              no_ans_boost: -10
-              model_name_or_path: deepset/roberta-base-squad2
-          - name: MyESRetriever
-            type: ElasticsearchRetriever
-            params:
-              document_store: MyDocumentStore    # params can reference other components defined in the YAML
-              custom_query: null
-          - name: MyDocumentStore
-            type: ElasticsearchDocumentStore
-            params:
-              index: haystack_test
-
-        pipelines:    # multiple Pipelines can be defined using the components from above
-          - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            nodes:
-              - name: MyESRetriever
-                inputs: [Query]
-              - name: MyReader
-                inputs: [MyESRetriever]
+            ```yaml
+            |   version: '0.7'
+            |
+            |    components:    # define all the building-blocks for Pipeline
+            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+            |      type: FARMReader    # Haystack Class name for the component
+            |      params:
+            |        no_ans_boost: -10
+            |        model_name_or_path: deepset/roberta-base-squad2
+            |    - name: MyESRetriever
+            |      type: ElasticsearchRetriever
+            |      params:
+            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+            |        custom_query: null
+            |    - name: MyDocumentStore
+            |      type: ElasticsearchDocumentStore
+            |      params:
+            |        index: haystack_test
+            |
+            |    pipelines:    # multiple Pipelines can be defined using the components from above
+            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+            |      nodes:
+            |      - name: MyESRetriever
+            |        inputs: [Query]
+            |      - name: MyReader
+            |        inputs: [MyESRetriever]
+            ```
 
         :param path: path of the YAML file.
         :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
