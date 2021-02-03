@@ -65,7 +65,7 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
     assert reader_eval_results["f1"] > 66.65
     assert reader_eval_results["f1"] < 66.67
     assert reader_eval_results["EM"] == 50
-    assert reader_eval_results["top_n_accuracy"] == 1.0
+    assert reader_eval_results["top_n_accuracy"] == 100.0
 
 
 @pytest.mark.elasticsearch
