@@ -2,6 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
+from typing import Dict, Union, List
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from rest_api.config import (
@@ -65,6 +66,8 @@ class DocQAFeedback(FAQQAFeedback):
         ..., description="The answer start offset in the original doc. Only required for doc-qa feedback."
     )
 
+class FilterRequest(BaseModel):
+    filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
 
 @router.post("/doc-qa-feedback")
 def doc_qa_feedback(feedback: DocQAFeedback):
@@ -76,6 +79,35 @@ def faq_qa_feedback(feedback: FAQQAFeedback):
     feedback_payload = {"is_correct_document": feedback.is_correct_answer, "answer": None, **feedback.dict()}
     document_store.write_labels([{"origin": "user-feedback-faq", **feedback_payload}])
 
+
+@router.post("/eval-doc-qa-feedback")
+def eval_doc_qa_feedback(filters: FilterRequest = None):
+    """
+    Return basic performance metrics based on the user feedback.
+    Which ratio of answers was correct? Which ratio of documents was correct?
+    """
+
+    if filters:
+        filters = filters.filters
+        filters["origin"] = ["user-feedback"]
+    else:
+        filters = {"origin": ["user-feedback"]}
+
+    labels = document_store.get_all_labels(
+        index=DB_INDEX_FEEDBACK,
+        filters=filters
+    )
+
+    answer_feedback = [1 if l.is_correct_answer else 0 for l in labels]
+    doc_feedback = [1 if l.is_correct_document else 0 for l in labels]
+
+    answer_accuracy = sum(answer_feedback)/len(answer_feedback)
+    doc_accuracy = sum(doc_feedback)/len(doc_feedback)
+
+    res = {"answer_accuracy": answer_accuracy,
+           "document_accuracy": doc_accuracy,
+           "n_feedback": len(labels)}
+    return res
 
 @router.get("/export-doc-qa-feedback")
 def export_doc_qa_feedback(context_size: int = 2_000):
