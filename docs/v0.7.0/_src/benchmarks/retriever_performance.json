@@ -24,30 +24,30 @@
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 100000,
-            "index_speed": 73.93635160290218,
-            "query_speed": 6.23,
-            "map": 82
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 100000,
-            "index_speed": 104.77116699738369,
-            "query_speed": 4.89,
-            "map": 86.3
+            "index_speed": 70.7842323095542,
+            "query_speed": 6.108417678791537,
+            "map": 82.47044752499787
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "index_speed": 484.32931514144724,
-            "query_speed": 162.59,
-            "map": 56
+            "index_speed": 486.8274411916137,
+            "query_speed": 162.40717155994315,
+            "map": 56.25959153101251
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 100000,
+            "index_speed": 98.76191471019415,
+            "query_speed": 6.614453113633132,
+            "map": 86.54606328368972
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 100000,
-            "index_speed": 91.41086878008392,
-            "query_speed": 12.85,
-            "map": 84.9
+            "index_speed": 86.8695584169603,
+            "query_speed": 38.24323466239034,
+            "map": 85.07984377595874
         }
     ]
 }

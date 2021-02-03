@@ -524,9 +524,9 @@ class FARMReader(BaseReader):
         toc = perf_counter()
         reader_time = toc - tic
         results = {
-            "EM": eval_results[0]["EM"],
-            "f1": eval_results[0]["f1"],
-            "top_n_accuracy": eval_results[0]["top_n_accuracy"],
+            "EM": eval_results[0]["EM"] * 100,
+            "f1": eval_results[0]["f1"] * 100,
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"] * 100,
             "top_n": self.inferencer.model.prediction_heads[0].n_best,
             "reader_time": reader_time,
             "seconds_per_query": reader_time / n_queries
