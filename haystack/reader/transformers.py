@@ -17,6 +17,7 @@ class TransformersReader(BaseReader):
     def __init__(
         self,
         model_name_or_path: str = "distilbert-base-uncased-distilled-squad",
+        model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
         context_window_size: int = 70,
         use_gpu: int = 0,
@@ -38,6 +39,7 @@ class TransformersReader(BaseReader):
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
         'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
         See https://huggingface.co/models for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param context_window_size: Num of chars (before and after the answer) to return as "context" for each answer.
                                     The context usually helps users to understand if the answer really makes sense.
@@ -53,7 +55,7 @@ class TransformersReader(BaseReader):
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 
         """
-        self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=use_gpu)
+        self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=use_gpu, revision=model_version)
         self.context_window_size = context_window_size
         self.top_k_per_candidate = top_k_per_candidate
         self.return_no_answers = return_no_answers

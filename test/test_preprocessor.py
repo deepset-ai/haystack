@@ -51,6 +51,10 @@ def test_preprocess_word_split():
     documents = preprocessor.process(document)
     assert len(documents) == 5
 
+    preprocessor = PreProcessor(split_length=5, split_overlap=0, split_by="word", split_respect_sentence_boundary=True)
+    documents = preprocessor.process(document)
+    assert len(documents) == 15
+
 
 @pytest.mark.tika
 def test_preprocess_passage_split():

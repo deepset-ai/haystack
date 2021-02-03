@@ -41,6 +41,7 @@ class FARMReader(BaseReader):
     def __init__(
         self,
         model_name_or_path: Union[str, Path],
+        model_version: Optional[str] = None,
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
@@ -57,6 +58,7 @@ class FARMReader(BaseReader):
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
         'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
         See https://huggingface.co/models for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param context_window_size: The size, in characters, of the window around the answer span that is used when
                                     displaying the context around the answer.
         :param batch_size: Number of samples the model receives in one batch for inference.
@@ -91,7 +93,7 @@ class FARMReader(BaseReader):
         self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = QAInferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
                                           task_type="question_answering", max_seq_len=max_seq_len,
-                                          doc_stride=doc_stride, num_processes=num_processes)
+                                          doc_stride=doc_stride, num_processes=num_processes, revision=model_version)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
@@ -517,9 +519,9 @@ class FARMReader(BaseReader):
         toc = perf_counter()
         reader_time = toc - tic
         results = {
-            "EM": eval_results[0]["EM"],
-            "f1": eval_results[0]["f1"],
-            "top_n_accuracy": eval_results[0]["top_n_accuracy"],
+            "EM": eval_results[0]["EM"] * 100,
+            "f1": eval_results[0]["f1"] * 100,
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"] * 100,
             "top_n": self.inferencer.model.prediction_heads[0].n_best,
             "reader_time": reader_time,
             "seconds_per_query": reader_time / n_queries

@@ -28,10 +28,10 @@ class BaseReader(ABC):
         # the most significant difference between scores.
         # Most significant difference: a model switching from predicting an answer to "no answer" (or vice versa).
         # No_ans_gap is a list of this most significant difference per document
-        no_ans_gaps = np.array(no_ans_gaps)
-        max_no_ans_gap = np.max(no_ans_gaps)
+        no_ans_gap_array = np.array(no_ans_gaps)
+        max_no_ans_gap = np.max(no_ans_gap_array)
         # all passages "no answer" as top score
-        if (np.sum(no_ans_gaps < 0) == len(no_ans_gaps)):  # type: ignore
+        if np.sum(no_ans_gap_array < 0) == len(no_ans_gap_array):
             no_ans_score = best_score_answer - max_no_ans_gap  # max_no_ans_gap is negative, so it increases best pos score
         else:  # case: at least one passage predicts an answer (positive no_ans_gap)
             no_ans_score = best_score_answer - max_no_ans_gap
