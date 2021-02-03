@@ -20,62 +20,62 @@
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 10000,
-            "map": 0.8826183154948457
+            "map": 88.26183154948457
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 100000,
-            "map": 0.8247044752499787
+            "map": 82.47044752499787
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 500000,
-            "map": 0.734952735751035
+            "map": 73.4952735751035
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 10000,
-            "map": 0.6633019927857616
+            "map": 66.33019927857616
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "map": 0.5625959153101251
+            "map": 56.25959153101251
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 500000,
-            "map": 0.4560339705629754
+            "map": 45.60339705629754
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 10000,
-            "map": 0.8987097014904354
+            "map": 89.87097014904354
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 100000,
-            "map": 0.8654606328368972
+            "map": 86.54606328368972
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 500000,
-            "map": 0.808613722823409
+            "map": 80.8613722823409
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 10000,
-            "map": 0.8969941373746582
+            "map": 89.69941373746582
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 100000,
-            "map": 0.8507984377595874
+            "map": 85.07984377595874
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 500000,
-            "map": 0.7691475821598232
+            "map": 76.91475821598232
         }
     ]
 }
