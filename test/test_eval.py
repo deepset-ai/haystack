@@ -62,9 +62,9 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
         doc_index="haystack_test_eval_document",
         device="cpu",
     )
-    assert reader_eval_results["f1"] > 0.65
-    assert reader_eval_results["f1"] < 0.67
-    assert reader_eval_results["EM"] == 0.5
+    assert reader_eval_results["f1"] > 66.65
+    assert reader_eval_results["f1"] < 66.67
+    assert reader_eval_results["EM"] == 50
     assert reader_eval_results["top_n_accuracy"] == 1.0
 
 
