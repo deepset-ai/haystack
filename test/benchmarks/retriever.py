@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 from time import perf_counter
 from utils import get_document_store, get_retriever, index_to_doc_store, load_config
-from haystack.preprocessor.utils import eval_data_from_file
+from haystack.preprocessor.utils import eval_data_from_json
 from haystack.document_store.faiss import FAISSDocumentStore
 
 from haystack import Document
@@ -134,7 +134,11 @@ def benchmark_querying(n_docs_options,
         for retriever_name, doc_store_name in retriever_doc_stores:
             try:
                 logger.info(f"##### Start querying run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
-                doc_store = get_document_store(doc_store_name)
+                if retriever_name == "elastic":
+                    similarity = "cosine"
+                else:
+                    similarity = "dot_product"
+                doc_store = get_document_store(doc_store_name, similarity=similarity)
                 retriever = get_retriever(retriever_name, doc_store)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
@@ -160,8 +164,8 @@ def benchmark_querying(n_docs_options,
                     "retrieve_time": raw_results["retrieve_time"],
                     "queries_per_second": raw_results["n_questions"] / raw_results["retrieve_time"],
                     "seconds_per_query": raw_results["retrieve_time"]/ raw_results["n_questions"],
-                    "recall": raw_results["recall"],
-                    "map": raw_results["map"],
+                    "recall": raw_results["recall"] * 100,
+                    "map": raw_results["map"] * 100,
                     "top_k": raw_results["top_k"],
                     "date_time": datetime.datetime.now(),
                     "error": None
@@ -265,7 +269,7 @@ def prepare_data(data_dir, filename_gold, filename_negative, data_s3_url,  embed
             download_from_s3(data_s3_url + str(embeddings_dir) + embedding_filename, cache_dir=data_dir)
     logging.getLogger("farm").setLevel(logging.WARN)
 
-    gold_docs, labels = eval_data_from_file(data_dir + filename_gold)
+    gold_docs, labels = eval_data_from_json(data_dir + filename_gold)
 
     # Reduce number of docs
     gold_docs = gold_docs[:n_docs]

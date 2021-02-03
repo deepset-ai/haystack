@@ -20,82 +20,82 @@
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 1000,
-            "map": 0.929
+            "map": 92.95105322830888
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 10000,
-            "map": 0.881
+            "map": 89.87097014904354
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 100000,
-            "map": 0.821
+            "map": 86.54564090434241
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 500000,
-            "map": 0.730
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 1000,
-            "map": 0.929
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 10000,
-            "map": 0.898
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 100000,
-            "map": 0.863
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 500000,
-            "map": 0.805
+            "map": 80.86137228234089
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 1000,
-            "map": 0.748
+            "map": 74.20444712972909
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 10000,
-            "map": 0.6609999999999999
+            "map": 66.20627317806674
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "map": 0.56
+            "map": 56.25959153101251
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 500000,
-            "map": 0.452
+            "map": 45.59452709000341
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 1000,
+            "map": 92.95105322830888
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 10000,
+            "map": 89.87097014904354
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 100000,
+            "map": 86.54606328368972
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 500000,
+            "map": 80.8613722823409
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 1000,
-            "map": 0.929
+            "map": 92.95105322830888
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 10000,
-            "map": 0.896
+            "map": 89.69941373746582
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 100000,
-            "map": 0.849
+            "map": 85.07984377595874
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 500000,
-            "map": 0.766
+            "map": 76.91475821598232
         }
     ]
 }
