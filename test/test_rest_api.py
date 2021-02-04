@@ -1,19 +1,20 @@
 import pytest
 from fastapi.testclient import TestClient
-
+from pathlib import Path
 from haystack import Finder
 from haystack.retriever.sparse import ElasticsearchRetriever
 
 # TODO: Add integration tests for other APIs
 
 
-def get_test_client_and_override_dependencies(reader, document_store_with_docs):
+def get_test_client_and_override_dependencies(reader, document_store):
     from rest_api.application import app
-    from rest_api.controller import search
+    from rest_api.controller import search, file_upload
 
-    search.document_store = document_store_with_docs
-    search.retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    search.document_store = document_store
+    search.retriever = ElasticsearchRetriever(document_store=document_store)
     search.FINDERS = {1: Finder(reader=reader, retriever=search.retriever)}
+    file_upload.document_store = document_store
 
     return TestClient(app)
 
@@ -96,3 +97,14 @@ def test_query_api_filters(reader, document_store_with_docs):
     assert "New York" == response_json['hits']['hits'][0]["_source"]["answer"]
     assert "My name is Paul and I live in New York" == response_json['hits']['hits'][0]["_source"]["context"]
 
+
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_file_upload(document_store):
+    assert document_store.get_document_count() == 0
+    client = get_test_client_and_override_dependencies(reader=None, document_store=document_store)
+    file_to_upload = {'file': Path("samples/pdf/sample_pdf_1.pdf").open('rb')}
+    response = client.post(url="/file-upload", files=file_to_upload)
+    assert 200 == response.status_code
+    assert document_store.get_document_count() > 0

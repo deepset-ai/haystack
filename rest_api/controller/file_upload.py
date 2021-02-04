@@ -16,6 +16,7 @@ from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DB_INDEX
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.txt import TextConverter
+from haystack.preprocessor.preprocessor import PreProcessor
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ document_store = ElasticsearchDocumentStore(
     index=DB_INDEX,
     label_index=DB_INDEX_FEEDBACK,
     scheme=ES_CONN_SCHEME,
-    ca_certs=False,
+    ca_certs=None,
     verify_certs=False,
     text_field=TEXT_FIELD_NAME,
     search_fields=SEARCH_FIELD_NAME,
@@ -62,27 +63,27 @@ def upload_file_to_document_store(
 
         if file.filename.split(".")[-1].lower() == "pdf":
             pdf_converter = PDFToTextConverter(
-                remove_numeric_tables=remove_numeric_tables,
-                remove_whitespace=remove_whitespace,
-                remove_empty_lines=remove_empty_lines,
-                remove_header_footer=remove_header_footer,
-                valid_languages=valid_languages,
+                remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
             )
             document = pdf_converter.convert(file_path)
         elif file.filename.split(".")[-1].lower() == "txt":
             txt_converter = TextConverter(
-                remove_numeric_tables=remove_numeric_tables,
-                remove_whitespace=remove_whitespace,
-                remove_empty_lines=remove_empty_lines,
-                remove_header_footer=remove_header_footer,
-                valid_languages=valid_languages,
+                remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages,
             )
             document = txt_converter.convert(file_path)
         else:
             raise HTTPException(status_code=415, detail=f"Only .pdf and .txt file formats are supported.")
 
-        document_to_write = {TEXT_FIELD_NAME: document["text"], "name": file.filename}
-        document_store.write_documents([document_to_write])
+        document = {TEXT_FIELD_NAME: document["text"], "name": file.filename}
+
+        preprocessor = PreProcessor(
+            clean_whitespace=remove_whitespace,
+            clean_header_footer=remove_header_footer,
+            clean_empty_lines=remove_empty_lines,
+        )
+
+        documents = preprocessor.process(document)
+        document_store.write_documents(documents)
         return "File upload was successful."
     finally:
         file.file.close()
