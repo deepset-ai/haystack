@@ -12,7 +12,6 @@ from scipy.special import expit
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.retriever.base import BaseRetriever
 from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
@@ -755,7 +754,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                  }
         return stats
 
-    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):
+    def update_embeddings(self, retriever, index: Optional[str] = None, batch_size: int = 10_000):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
