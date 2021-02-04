@@ -344,7 +344,7 @@ Return a summary of the documents in the document store
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000)
+ | update_embeddings(retriever, index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
