@@ -12,7 +12,8 @@ from fastapi import UploadFile, File, Form
 from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DB_INDEX_FEEDBACK, ES_CONN_SCHEME, TEXT_FIELD_NAME, \
     SEARCH_FIELD_NAME, FILE_UPLOAD_PATH, EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, VALID_LANGUAGES, \
     FAQ_QUESTION_FIELD_NAME, REMOVE_NUMERIC_TABLES, REMOVE_WHITESPACE, REMOVE_EMPTY_LINES, REMOVE_HEADER_FOOTER, \
-    CREATE_INDEX, UPDATE_EXISTING_DOCUMENTS, VECTOR_SIMILARITY_METRIC
+    CREATE_INDEX, UPDATE_EXISTING_DOCUMENTS, VECTOR_SIMILARITY_METRIC, SPLIT_BY, SPLIT_LENGTH, SPLIT_OVERLAP, \
+    SPLIT_RESPECT_SENTENCE_BOUNDARY
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.txt import TextConverter
@@ -55,6 +56,10 @@ def upload_file_to_document_store(
     remove_empty_lines: Optional[bool] = Form(REMOVE_EMPTY_LINES),
     remove_header_footer: Optional[bool] = Form(REMOVE_HEADER_FOOTER),
     valid_languages: Optional[List[str]] = Form(VALID_LANGUAGES),
+    split_by: Optional[str] = Form(SPLIT_BY),
+    split_length: Optional[int] = Form(SPLIT_LENGTH),
+    split_overlap: Optional[int] = Form(SPLIT_OVERLAP),
+    split_respect_sentence_boundary: Optional[bool] = Form(SPLIT_RESPECT_SENTENCE_BOUNDARY),
 ):
     try:
         file_path = Path(FILE_UPLOAD_PATH) / f"{uuid.uuid4().hex}_{file.filename}"
@@ -80,6 +85,10 @@ def upload_file_to_document_store(
             clean_whitespace=remove_whitespace,
             clean_header_footer=remove_header_footer,
             clean_empty_lines=remove_empty_lines,
+            split_by=split_by,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            split_respect_sentence_boundary=split_respect_sentence_boundary,
         )
 
         documents = preprocessor.process(document)
