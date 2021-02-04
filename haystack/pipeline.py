@@ -1,7 +1,7 @@
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Dict, Type
+from typing import List, Optional, Dict
 
 import networkx as nx
 import yaml
@@ -9,7 +9,6 @@ from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
 from haystack import BaseComponent
-from haystack.document_store.base import BaseDocumentStore
 from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
@@ -240,19 +239,7 @@ class Pipeline:
                     cls._load_or_get_component(name=value, definitions=definitions, components=components)
                 component_params[key] = components[value]  # substitute reference (string) with the component object.
 
-        if "DocumentStore" in component_type:
-            ComponentClass: Type[BaseComponent] = BaseDocumentStore
-        elif "Reader" in component_type:
-            ComponentClass = BaseReader
-        elif "Retriever" in component_type:
-            ComponentClass = BaseRetriever
-        elif "Generator" in component_type:
-            ComponentClass = BaseGenerator
-        elif "Summarizer" in component_type:
-            ComponentClass = BaseSummarizer
-        else:
-            raise NotImplementedError(f"Component of type '{component_type}' is not implemented for pipelines.")
-        instance = ComponentClass.load_from_args(component_type=component_type, **component_params)
+        instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
         components[name] = instance
         return instance
 
