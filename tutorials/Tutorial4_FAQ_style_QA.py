@@ -24,7 +24,7 @@ def tutorial4_faq_style_qa():
     # - Generalizability: We can only answer questions that are similar to existing ones in FAQ
     #
     # In some use cases, a combination of extractive QA and FAQ-style can also be an interesting option.
-    LAUNCH_ELASTICSEARCH=True
+    LAUNCH_ELASTICSEARCH=False
 
     if LAUNCH_ELASTICSEARCH:
         logging.info("Starting Elasticsearch ...")
@@ -34,7 +34,7 @@ def tutorial4_faq_style_qa():
         if status.returncode:
             raise Exception("Failed to launch Elasticsearch. If you want to connect to an existing Elasticsearch instance"
                             "then set LAUNCH_ELASTICSEARCH in the script to False.")
-        time.sleep(15)
+        time.sleep(30)
 
     ### Init the DocumentStore
     # In contrast to Tutorial 1 (extractive QA), we:
@@ -77,10 +77,12 @@ def tutorial4_faq_style_qa():
     docs_to_index = df.to_dict(orient="records")
     document_store.write_documents(docs_to_index)
 
+    #    Initialize a Pipeline (this time without a reader) and ask questions
 
-    # Init reader & and use Finder to get answer (same as in Tutorial 1)
-    finder = Finder(reader=None, retriever=retriever)
-    prediction = finder.get_answers_via_similar_questions(question="How is the virus spreading?", top_k_retriever=10)
+    from haystack.pipeline import FAQPipeline
+    pipe = FAQPipeline(retriever=retriever)
+
+    prediction = pipe.run(query="How is the virus spreading?", top_k_retriever=10)
     print_answers(prediction, details="all")
 
 

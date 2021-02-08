@@ -111,6 +111,12 @@ def tutorial7_rag_generator():
         answers = predicted_result["answers"]
         print(f'Generated answer is \'{answers[0]["answer"]}\' for the question = \'{question}\'')
 
+    # Or alternatively use the Pipeline class
+    from haystack.pipeline import GenerativeQAPipeline
+    pipe = GenerativeQAPipeline(generator=generator, retriever=retriever)
+    for question in QUESTIONS:
+        res = pipe.run(query=question, top_k_generator=1, top_k_retriever=5)
+        print(res)
 
 if __name__ == "__main__":
     tutorial7_rag_generator()
