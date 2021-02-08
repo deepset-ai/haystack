@@ -28,8 +28,8 @@ class PDFToTextConverter(BaseConverter):
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                 
                    Installation on Linux:
-                   wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.02.tar.gz &&
-                   tar -xvf xpdf-tools-linux-4.02.tar.gz && sudo cp xpdf-tools-linux-4.02/bin64/pdftotext /usr/local/bin
+                   wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz &&
+                   tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
                    
                    Installation on MacOS:
                    brew install xpdf
@@ -40,14 +40,18 @@ class PDFToTextConverter(BaseConverter):
 
         super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
-    def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    def convert(self, file_path: Path, meta: Optional[Dict[str, str]] = None, encoding: str = "UTF-8") -> Dict[str, Any]:
         """
         Extract text from a .pdf file.
 
         :param file_path: Path to the .pdf file you want to convert
+        :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
+                     Can be any custom keys and values.
+        :param encoding: Encoding that will be passed as -enc parameter to pdftotext
+                        (see: https://www.xpdfreader.com/pdftotext-man.html)
         """
 
-        pages = self._read_pdf(file_path, layout=False)
+        pages = self._read_pdf(file_path, layout=False, encoding=encoding)
 
         cleaned_pages = []
         for page in pages:
@@ -89,7 +93,7 @@ class PDFToTextConverter(BaseConverter):
         document = {"text": text, "meta": meta}
         return document
 
-    def _read_pdf(self, file_path: Path, layout: bool) -> List[str]:
+    def _read_pdf(self, file_path: Path, layout: bool, encoding: str) -> List[str]:
         """
         Extract pages from the pdf file at file_path.
 
@@ -98,9 +102,9 @@ class PDFToTextConverter(BaseConverter):
                        the content stream order.
         """
         if layout:
-            command = ["pdftotext", "-layout", str(file_path), "-"]
+            command = ["pdftotext", "-enc", encoding, "-layout", str(file_path), "-"]
         else:
-            command = ["pdftotext", str(file_path), "-"]
+            command = ["pdftotext", "-enc", encoding, str(file_path), "-"]
         output = subprocess.run(command, stdout=subprocess.PIPE, shell=False)
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")
