@@ -124,21 +124,28 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return documents
 
-    def get_documents_by_vector_ids(self, vector_ids: List[str], index: Optional[str] = None, batch_size: int = 10_000):
-        """Fetch documents by specifying a list of text vector id strings"""
-        index = index or self.index
+    def get_documents_by_vector_ids(
+        self,
+        vector_ids: List[str],
+        index: Optional[str] = None,
+        batch_size: int = 10_000
+    ):
+        """
+        Fetch documents by specifying a list of text vector id strings
 
-        documents = []
-        for i in range(0, len(vector_ids), batch_size):
-            query = self.session.query(DocumentORM).filter(
-                DocumentORM.vector_id.in_(vector_ids[i: i + batch_size]),
-                DocumentORM.index == index
-            )
-            for row in query.all():
-                documents.append(self._convert_sql_row_to_document(row))
+        :param vector_ids: List of vector_id strings.
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        """
 
-        sorted_documents = sorted(documents, key=lambda doc: vector_ids.index(doc.meta["vector_id"]))
-        return sorted_documents
+        result = self._query(
+            index=index,
+            vector_ids=vector_ids,
+            batch_size=batch_size
+        )
+        documents = list(result)
+        return documents
 
     def get_all_documents(
         self,
@@ -169,6 +176,32 @@ class SQLDocumentStore(BaseDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
 
+        if return_embedding is True:
+            raise Exception("return_embeddings is not supported by SQLDocumentStore.")
+        result = self._query(
+            index=index,
+            filters=filters,
+            batch_size=batch_size,
+        )
+        yield from result
+
+    def _query(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        vector_ids: Optional[List[str]] = None,
+        filter_documents_without_embeddings: bool = False,
+        batch_size: int = 10_000
+    ):
+        """
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param vector_ids: List of vector_id strings to filter the documents by.
+        :param filter_documents_without_embeddings: return only documents without an embedding.
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        """
         index = index or self.index
         # Generally ORM objects kept in memory cause performance issue
         # Hence using directly column name improve memory and performance.
@@ -187,6 +220,10 @@ class SQLDocumentStore(BaseDocumentStore):
                     MetaORM.value.in_(values),
                     DocumentORM.id == MetaORM.document_id
                 )
+        if filter_documents_without_embeddings:
+            documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
+        if vector_ids:
+            documents_query = documents_query.filter(DocumentORM.vector_id.in_(vector_ids))
 
         documents_map = {}
 
@@ -409,11 +446,18 @@ class SQLDocumentStore(BaseDocumentStore):
         :return: None
         """
 
-        if filters:
-            raise NotImplementedError(f"Delete by filters is not implemented for {type(self).__name__}")
         index = index or self.index
-        documents = self.session.query(DocumentORM).filter_by(index=index)
-        documents.delete(synchronize_session=False)
+        document_ids_to_delete = self.session.query(DocumentORM.id).filter_by(index=index)
+        if filters:
+            # documents_query = documents_query.join(MetaORM)
+            for key, values in filters.items():
+                document_ids_to_delete = document_ids_to_delete.filter(
+                    MetaORM.name == key,
+                    MetaORM.value.in_(values),
+                    DocumentORM.id == MetaORM.document_id
+                )
+
+        self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(synchronize_session=False)
         self.session.commit()
 
     def _get_or_create(self, session, model, **kwargs):

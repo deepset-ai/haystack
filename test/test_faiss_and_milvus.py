@@ -28,16 +28,18 @@ def test_faiss_index_save_and_load(document_store):
     document_store.save("haystack_test_faiss")
 
     # clear existing faiss_index
-    document_store.faiss_index.reset()
+    document_store.faiss_indexes[document_store.index].reset()
 
     # test faiss index is cleared
-    assert document_store.faiss_index.ntotal == 0
+    assert document_store.faiss_indexes[document_store.index].ntotal == 0
 
     # test loading the index
-    new_document_store = FAISSDocumentStore.load(sql_url="sqlite://", faiss_file_path="haystack_test_faiss")
+    new_document_store = FAISSDocumentStore.load(
+        sql_url="sqlite://", faiss_file_path="haystack_test_faiss", index=document_store.index
+    )
 
     # check faiss index is restored
-    assert new_document_store.faiss_index.ntotal == len(DOCUMENTS)
+    assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
@@ -57,7 +59,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
     for i, doc in enumerate(documents_indexed):
         # we currently don't get the embeddings back when we call document_store.get_all_documents()
         original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
-        stored_emb = document_store.faiss_index.reconstruct(int(doc.meta["vector_id"]))
+        stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
 
@@ -146,7 +148,7 @@ def test_faiss_retrieving(index_factory):
     assert type(result[0]) == Document
 
     # Cleanup
-    document_store.faiss_index.reset()
+    document_store.faiss_indexes[document_store.index].reset()
     if os.path.exists("test_faiss_retrieving.db"):
         os.remove("test_faiss_retrieving.db")
 
@@ -182,17 +184,18 @@ def test_faiss_passing_index_from_outside():
     d = 768
     nlist = 2
     quantizer = faiss.IndexFlatIP(d)
+    index = "haystack_test_1"
     faiss_index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_INNER_PRODUCT)
     faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
     faiss_index.nprobe = 2
-    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", faiss_index=faiss_index)
+    document_store = FAISSDocumentStore(sql_url="sqlite:///haystack_test_faiss.db", faiss_index=faiss_index, index=index)
 
-    document_store.delete_all_documents(index="document")
+    document_store.delete_all_documents()
     # as it is a IVF index we need to train it before adding docs
     document_store.train_index(DOCUMENTS)
 
-    document_store.write_documents(documents=DOCUMENTS, index="document")
-    documents_indexed = document_store.get_all_documents(index="document")
+    document_store.write_documents(documents=DOCUMENTS)
+    documents_indexed = document_store.get_all_documents()
 
     # test if vectors ids are associated with docs
     for doc in documents_indexed:
