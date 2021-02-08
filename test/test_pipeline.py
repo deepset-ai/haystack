@@ -152,7 +152,7 @@ def test_extractive_qa_answers_with_translator(reader, retriever_with_docs, en_t
     prediction = pipeline.run(query="Wer lebt in Berlin?", top_k_retriever=10, top_k_reader=3)
     assert prediction is not None
     assert prediction["query"] == "Wer lebt in Berlin?"
-    assert prediction["answers"][0]["answer"] == "Carla"
+    assert "Carla" in prediction["answers"][0]["answer"]
     assert prediction["answers"][0]["probability"] <= 1
     assert prediction["answers"][0]["probability"] >= 0
     assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
