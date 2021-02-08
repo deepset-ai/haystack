@@ -467,10 +467,13 @@ class EndToEndTranslationPipeline(BaseStandardPipeline):
         graph = pipeline.pipeline.graph
         previous_node_name = ["InputTranslator"]
         # Traverse in BFS
-        # TODO: Do not work properly for Join Node and Answer format
         for node in graph.nodes:
             if node == "Query":
                 continue
+
+            # TODO: Do not work properly for Join Node and Answer format
+            if graph.nodes[node]["inputs"] and len(graph.nodes[node]["inputs"]) > 1:
+                raise AttributeError("Split and merge nodes are not supported currently")
 
             self.pipeline.add_node(name=node, component=graph.nodes[node]["component"], inputs=previous_node_name)
             previous_node_name = [node]
