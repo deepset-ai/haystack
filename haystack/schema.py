@@ -117,8 +117,8 @@ class Label:
             self.id = str(uuid4())
 
         if not created_at:
-            self.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
-
+            created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.created_at = created_at
         self.question = question
         self.answer = answer
         self.is_correct_answer = is_correct_answer
