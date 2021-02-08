@@ -46,6 +46,7 @@ class DensePassageRetriever(BaseRetriever):
                  batch_size: int = 16,
                  embed_title: bool = True,
                  use_fast_tokenizers: bool = True,
+                 infer_tokenizer_classes: bool = False,
                  similarity_function: str = "dot_product",
                  progress_bar: bool = True
                  ):
@@ -109,13 +110,21 @@ class DensePassageRetriever(BaseRetriever):
             self.device = torch.device("cpu")
 
         self.embed_title = embed_title
+        self.infer_tokenizer_classes = infer_tokenizer_classes
+        tokenizers_default_classes = {
+            "query": "DPRQuestionEncoderTokenizer",
+            "passage": "DPRContextEncoderTokenizer"
+        }
+        if self.infer_tokenizer_classes:
+            tokenizers_default_classes["query"] = None
+            tokenizers_default_classes["passage"] = None
 
         # Init & Load Encoders
         self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class="DPRQuestionEncoderTokenizer")
+                                              tokenizer_class=tokenizers_default_classes["query"])
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 revision=model_version,
                                                 language_model_class="DPRQuestionEncoder")
@@ -123,7 +132,7 @@ class DensePassageRetriever(BaseRetriever):
                                                 revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
-                                                tokenizer_class="DPRContextEncoderTokenizer")
+                                                tokenizer_class=tokenizers_default_classes["passage"])
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   revision=model_version,
                                                   language_model_class="DPRContextEncoder")
