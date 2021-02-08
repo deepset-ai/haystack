@@ -92,7 +92,7 @@ class SQLDocumentStore(BaseDocumentStore):
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
-        self.index = index
+        self.index: str = index
         self.label_index = label_index
         self.update_existing_documents = update_existing_documents
         if getattr(self, "similarity", None) is None:

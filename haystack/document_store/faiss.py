@@ -322,7 +322,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise Exception("filters are supported for deleting documents in FAISSDocumentStore.")
         index = index or self.index
         self.faiss_indexes[index].reset()
-        super().delete_all_documents(index=index, filters=filters)
+        super().delete_all_documents(index=index)
 
     def query_by_embedding(
         self,
@@ -345,12 +345,13 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         if filters:
             raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
+
+        index = index or self.index
         if not self.faiss_indexes.get(index):
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
 
         if return_embedding is None:
             return_embedding = self.return_embedding
-        index = index or self.index
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
         score_matrix, vector_id_matrix = self.faiss_indexes[index].search(query_emb, top_k)
