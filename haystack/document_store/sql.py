@@ -145,7 +145,8 @@ class SQLDocumentStore(BaseDocumentStore):
             batch_size=batch_size
         )
         documents = list(result)
-        return documents
+        sorted_documents = sorted(documents, key=lambda doc: vector_ids.index(doc.meta["vector_id"]))
+        return sorted_documents
 
     def get_all_documents(
         self,
