@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.pipeline import JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, DocumentSearchPipeline
+from haystack.pipeline import EndToEndTranslationPipeline, JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, \
+    DocumentSearchPipeline
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
 
@@ -134,6 +135,39 @@ def test_document_search_pipeline(retriever, document_store):
 
     if isinstance(document_store, ElasticsearchDocumentStore):
         output = pipeline.run(query="How to test this?", filters={"source": ["wiki2"]}, top_k_retriever=5)
+        assert len(output["documents"]) == 1
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize(
+    "retriever,document_store",
+    [("embedding", "memory")],
+    indirect=True,
+)
+def test_translator_search_pipeline(retriever, document_store, en_to_de_translator, de_to_en_translator):
+    documents = [
+        {"text": "Sample text for document-1", 'meta': {"source": "wiki1"}},
+        {"text": "Sample text for document-2", 'meta': {"source": "wiki2"}},
+        {"text": "Sample text for document-3", 'meta': {"source": "wiki3"}},
+        {"text": "Sample text for document-4", 'meta': {"source": "wiki4"}},
+        {"text": "Sample text for document-5", 'meta': {"source": "wiki5"}},
+    ]
+
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever)
+
+    base_pipeline = DocumentSearchPipeline(retriever=retriever)
+    pipeline = EndToEndTranslationPipeline(
+        input_translator=de_to_en_translator,
+        output_translator=en_to_de_translator,
+        pipeline=base_pipeline
+    )
+
+    output = pipeline.run(query="Wie kann ich das testen?", top_k_retriever=4)
+    assert len(output.get('documents', [])) == 4
+
+    if isinstance(document_store, ElasticsearchDocumentStore):
+        output = pipeline.run(query="Wie kann ich das testen?", filters={"source": ["wiki2"]}, top_k_retriever=5)
         assert len(output["documents"]) == 1
 
 

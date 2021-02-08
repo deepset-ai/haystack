@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
-from transformers import pipeline
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 
 from haystack import Document
 
@@ -52,19 +52,16 @@ class TransformersTranslator(BaseTranslator):
     def __init__(
         self,
         # Refer https://huggingface.co/models?filter=translation for language code
-        input_language_code: str,
-        output_language_code: str,
-        model_name_or_path: str = "t5-base",
-        use_gpu: int = 0,
-        tokenizer: Optional[str] = None,
-        clean_up_tokenization_spaces: Optional[bool] = False,
+        # Opus models are preferred https://huggingface.co/Helsinki-NLP
+        # Currently do not support multilingual model
+        model_name_or_path: str,
+        tokenizer_name: Optional[str] = None,
+        skip_special_tokens: Optional[bool] = True,
     ):
-        self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
-        self.input_language_code = input_language_code
-        self.output_language_code = output_language_code
-        # Naming convention of pipeline is translation_xx_to_yy
-        pipeline_name = f'translation_{input_language_code}_to_{output_language_code}'
-        self.model = pipeline(pipeline_name, model=model_name_or_path, tokenizer=tokenizer, device=use_gpu)
+        self.skip_special_tokens = skip_special_tokens
+        tokenizer_name = tokenizer_name or model_name_or_path
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
 
     def translate(
         self,
@@ -97,10 +94,9 @@ class TransformersTranslator(BaseTranslator):
         else:
             text_for_translator: List[str] = [query]     # type: ignore
 
-        translated_texts = self.model(
-            text_for_translator,
-            clean_up_tokenization_spaces=self.clean_up_tokenization_spaces
-        )
+        batch = self.tokenizer.prepare_seq2seq_batch(src_texts=text_for_translator, return_tensors="pt")
+        generated_output = self.model.generate(**batch)
+        translated_texts = self.tokenizer.batch_decode(generated_output, skip_special_tokens=self.skip_special_tokens)
 
         if query:
             return translated_texts[0]["translation_text"]

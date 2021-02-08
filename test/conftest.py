@@ -164,12 +164,16 @@ def summarizer():
 
 
 @pytest.fixture(scope="module")
-def translator():
+def en_to_de_translator():
     return TransformersTranslator(
-        model_name_or_path="t5-base",
-        input_language_code="en",
-        output_language_code="de",
-        use_gpu=-1
+        model_name_or_path="Helsinki-NLP/opus-mt-en-de",
+    )
+
+
+@pytest.fixture(scope="module")
+def de_to_en_translator():
+    return TransformersTranslator(
+        model_name_or_path="Helsinki-NLP/opus-mt-de-en",
     )
 
 

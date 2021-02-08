@@ -1,3 +1,4 @@
+from abc import ABC
 import os
 from copy import deepcopy
 from pathlib import Path
@@ -13,9 +14,10 @@ from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 from haystack.summarizer.base import BaseSummarizer
+from haystack.translator import BaseTranslator
 
 
-class Pipeline:
+class Pipeline(ABC):
     """
     Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
 
@@ -45,7 +47,7 @@ class Pipeline:
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
         """
-        self.graph.add_node(name, component=component)
+        self.graph.add_node(name, component=component, inputs=inputs)
 
         for i in inputs:
             if "." in i:
@@ -93,7 +95,7 @@ class Pipeline:
         while has_next_node:
             output_dict, stream_id = self.graph.nodes[current_node_id]["component"].run(**input_dict)
             input_dict = output_dict
-            next_nodes = self._get_next_nodes(current_node_id, stream_id)
+            next_nodes = self.get_next_nodes(current_node_id, stream_id)
 
             if len(next_nodes) > 1:
                 join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
@@ -114,7 +116,7 @@ class Pipeline:
 
         return output_dict
 
-    def _get_next_nodes(self, node_id: str, stream_id: str):
+    def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
         next_nodes = [
             next_node
@@ -259,7 +261,7 @@ class Pipeline:
                 definition["params"][param_name] = value
 
 
-class BaseStandardPipeline:
+class BaseStandardPipeline(ABC):
     pipeline: Pipeline
 
     def add_node(self, component, name: str, inputs: List[str]):
@@ -450,6 +452,34 @@ class FAQPipeline(BaseStandardPipeline):
             results["answers"].append(cur_answer)
 
         return results
+
+
+class EndToEndTranslationPipeline(BaseStandardPipeline):
+    def __init__(
+        self,
+        input_translator: BaseTranslator,
+        output_translator: BaseTranslator,
+        pipeline: BaseStandardPipeline
+    ):
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=input_translator, name="InputTranslator", inputs=["Query"])
+
+        graph = pipeline.pipeline.graph
+        previous_node_name = ["InputTranslator"]
+        # Traverse in BFS
+        # TODO: Do not work properly for Join Node and Answer format
+        for node in graph.nodes:
+            if node == "Query":
+                continue
+
+            self.pipeline.add_node(name=node, component=graph.nodes[node]["component"], inputs=previous_node_name)
+            previous_node_name = [node]
+
+        self.pipeline.add_node(component=output_translator, name="OutputTranslator", inputs=previous_node_name)
+
+    def run(self, **kwargs):
+        output = self.pipeline.run(**kwargs)
+        return output
 
 
 class QueryNode:
