@@ -5,7 +5,7 @@
 ## Pipeline Objects
 
 ```python
-class Pipeline()
+class Pipeline(ABC)
 ```
 
 Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
@@ -131,7 +131,7 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 ## BaseStandardPipeline Objects
 
 ```python
-class BaseStandardPipeline()
+class BaseStandardPipeline(ABC)
 ```
 
 <a name="pipeline.BaseStandardPipeline.add_node"></a>
