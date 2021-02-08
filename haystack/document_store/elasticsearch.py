@@ -194,9 +194,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "offset_start_in_doc": {"type": "long"},
                     "no_answer": {"type": "boolean"},
                     "model_id": {"type": "keyword"},
-                    "model_name": {"type": "keyword"},
                     "type": {"type": "keyword"},
                     "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
+                    #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
                 }
             }
         }
