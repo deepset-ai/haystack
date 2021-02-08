@@ -83,8 +83,16 @@ def faq_qa_feedback(feedback: FAQQAFeedback):
 @router.post("/eval-doc-qa-feedback")
 def eval_doc_qa_feedback(filters: FilterRequest = None):
     """
-    Return basic performance metrics based on the user feedback.
+    Return basic accuracy metrics based on the user feedback.
     Which ratio of answers was correct? Which ratio of documents was correct?
+    You can supply filters in the request to only use a certain subset of labels.
+
+    **Example:**
+
+            ```
+                | curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback' \
+                | --header 'Content-Type: application/json' \
+                | --data-raw '{ "filters": {"document_id": ["XRR3xnEBCYVTkbTystOB"]} }'
     """
 
     if filters:
@@ -98,15 +106,20 @@ def eval_doc_qa_feedback(filters: FilterRequest = None):
         filters=filters
     )
 
-    answer_feedback = [1 if l.is_correct_answer else 0 for l in labels]
-    doc_feedback = [1 if l.is_correct_document else 0 for l in labels]
+    if len(labels) > 0:
+        answer_feedback = [1 if l.is_correct_answer else 0 for l in labels]
+        doc_feedback = [1 if l.is_correct_document else 0 for l in labels]
 
-    answer_accuracy = sum(answer_feedback)/len(answer_feedback)
-    doc_accuracy = sum(doc_feedback)/len(doc_feedback)
+        answer_accuracy = sum(answer_feedback)/len(answer_feedback)
+        doc_accuracy = sum(doc_feedback)/len(doc_feedback)
 
-    res = {"answer_accuracy": answer_accuracy,
-           "document_accuracy": doc_accuracy,
-           "n_feedback": len(labels)}
+        res = {"answer_accuracy": answer_accuracy,
+               "document_accuracy": doc_accuracy,
+               "n_feedback": len(labels)}
+    else:
+        res = {"answer_accuracy": None,
+               "document_accuracy": None,
+               "n_feedback": 0}
     return res
 
 @router.get("/export-doc-qa-feedback")
