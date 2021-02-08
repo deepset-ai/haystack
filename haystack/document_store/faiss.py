@@ -321,7 +321,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         if filters:
             raise Exception("filters are supported for deleting documents in FAISSDocumentStore.")
         index = index or self.index
-        self.faiss_indexes[index].reset()
+        if index in self.faiss_indexes.keys():
+            self.faiss_indexes[index].reset()
         super().delete_all_documents(index=index)
 
     def query_by_embedding(
