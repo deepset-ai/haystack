@@ -189,12 +189,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "answer": {"type": "text"},
                     "is_correct_answer": {"type": "boolean"},
                     "is_correct_document": {"type": "boolean"},
-                    "origin": {"type": "keyword"},
+                    "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
                     "document_id": {"type": "keyword"},
                     "offset_start_in_doc": {"type": "long"},
                     "no_answer": {"type": "boolean"},
                     "model_id": {"type": "keyword"},
+                    "model_name": {"type": "keyword"},
                     "type": {"type": "keyword"},
+                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
                 }
             }
         }
