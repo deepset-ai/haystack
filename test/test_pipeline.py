@@ -138,37 +138,25 @@ def test_document_search_pipeline(retriever, document_store):
         assert len(output["documents"]) == 1
 
 
+@pytest.mark.slow
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [("embedding", "memory")],
-    indirect=True,
-)
-def test_translator_search_pipeline(retriever, document_store, en_to_de_translator, de_to_en_translator):
-    documents = [
-        {"text": "Sample text for document-1", 'meta': {"source": "wiki1"}},
-        {"text": "Sample text for document-2", 'meta': {"source": "wiki2"}},
-        {"text": "Sample text for document-3", 'meta': {"source": "wiki3"}},
-        {"text": "Sample text for document-4", 'meta': {"source": "wiki4"}},
-        {"text": "Sample text for document-5", 'meta': {"source": "wiki5"}},
-    ]
-
-    document_store.write_documents(documents)
-    document_store.update_embeddings(retriever)
-
-    base_pipeline = DocumentSearchPipeline(retriever=retriever)
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+def test_extractive_qa_answers_with_translator(reader, retriever_with_docs, en_to_de_translator, de_to_en_translator):
+    base_pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     pipeline = EndToEndTranslationPipeline(
         input_translator=de_to_en_translator,
         output_translator=en_to_de_translator,
         pipeline=base_pipeline
     )
 
-    output = pipeline.run(query="Wie kann ich das testen?", top_k_retriever=4)
-    assert len(output.get('documents', [])) == 4
-
-    if isinstance(document_store, ElasticsearchDocumentStore):
-        output = pipeline.run(query="Wie kann ich das testen?", filters={"source": ["wiki2"]}, top_k_retriever=5)
-        assert len(output["documents"]) == 1
+    prediction = pipeline.run(query="Wer lebt in Berlin?", top_k_retriever=10, top_k_reader=3)
+    assert prediction is not None
+    assert prediction["query"] == "Wer lebt in Berlin?"
+    assert prediction["answers"][0]["answer"] == "Carla"
+    assert prediction["answers"][0]["probability"] <= 1
+    assert prediction["answers"][0]["probability"] >= 0
+    assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
+    assert prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)

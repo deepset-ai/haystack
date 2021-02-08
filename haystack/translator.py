@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 
@@ -30,19 +30,31 @@ class BaseTranslator(ABC):
         self,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
+        answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
         **kwargs
     ):
 
         results: Dict = {
-            "documents": [],
             **kwargs
         }
 
-        if documents:
-            results["documents"] = self.translate(documents=documents, dict_key=dict_key)
+        # This will cover input query stage
         if query:
             results["query"] = self.translate(query=query)
+        # This will cover retriever and summarizer
+        if documents:
+            dict_key = dict_key or "text"
+            results["documents"] = self.translate(documents=documents, dict_key=dict_key)
+
+        if answers:
+            dict_key = dict_key or "answer"
+            if isinstance(answers, Mapping):
+                # This will cover reader
+                results["answers"] = self.translate(documents=answers["answers"], dict_key=dict_key)
+            else:
+                # This will cover generator
+                results["answers"] = self.translate(documents=answers, dict_key=dict_key)
 
         return results, "output_1"
 
@@ -99,16 +111,16 @@ class TransformersTranslator(BaseTranslator):
         translated_texts = self.tokenizer.batch_decode(generated_output, skip_special_tokens=self.skip_special_tokens)
 
         if query:
-            return translated_texts[0]["translation_text"]
+            return translated_texts[0]
         elif documents:
             if isinstance(documents, list) and isinstance(documents[0], str):
-                return [translated_text["translation_text"] for translated_text in translated_texts]
+                return [translated_text for translated_text in translated_texts]
 
             for translated_text, doc in zip(translated_texts, documents):
                 if isinstance(doc, Document):
-                    doc.text = translated_text["translation_text"]
+                    doc.text = translated_text
                 else:
-                    doc[dict_key] = translated_text["translation_text"]  # type: ignore
+                    doc[dict_key] = translated_text  # type: ignore
 
             return documents
 
