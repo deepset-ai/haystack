@@ -1,5 +1,4 @@
 import os
-from copy import deepcopy
 
 import faiss
 import numpy as np
