@@ -26,11 +26,16 @@ class Pipeline(ABC):
     Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
 
-    def __init__(self):
+    def __init__(self, pipeline_type: str = "Query"):
         self.graph = DiGraph()
-        self.root_node_id = "Query"
-        self.graph.add_node("Query", component=QueryNode())
+        if pipeline_type == "Query":
+            self.root_node_id = "Query"
+            self.graph.add_node("Query", component=RootNode())
+        elif pipeline_type == "Indexing":
+            self.root_node_id = "File"
+            self.graph.add_node("File", component=RootNode())
         self.components: dict = {}
+        self.pipeline_type = pipeline_type
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
@@ -48,6 +53,10 @@ class Pipeline(ABC):
                        must be specified explicitly as "QueryClassifier.output_2".
         """
         self.graph.add_node(name, component=component, inputs=inputs)
+
+        if len(self.graph.nodes) == 2:  # first node added; connect with Root
+            self.graph.add_edge(self.root_node_id, name, label="output_1")
+            return
 
         for i in inputs:
             if "." in i:
@@ -89,7 +98,7 @@ class Pipeline(ABC):
     def run(self, **kwargs):
         has_next_node = True
         current_node_id = self.root_node_id
-        input_dict = kwargs
+        input_dict = {"pipeline_type": self.pipeline_type, **kwargs}
         output_dict = None
 
         while has_next_node:
@@ -207,14 +216,13 @@ class Pipeline(ABC):
             name = definition.pop("name")
             definitions[name] = definition
 
-        pipeline = cls()
+        pipeline = cls(pipeline_type=pipeline_config["type"])
 
         components: dict = {}  # instances of component objects.
         for node_config in pipeline_config["nodes"]:
             name = node_config["name"]
             component = cls._load_or_get_component(name=name, definitions=definitions, components=components)
-            if "DocumentStore" not in definitions[name]["type"]:  # DocumentStore is not an explicit node in a Pipeline
-                pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
+            pipeline.add_node(component=component, name=node_config["name"], inputs=node_config.get("inputs", []))
 
         return pipeline
 
@@ -499,7 +507,7 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         return output
 
 
-class QueryNode:
+class RootNode:
     outgoing_edges = 1
 
     def run(self, **kwargs):

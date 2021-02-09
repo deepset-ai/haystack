@@ -4,9 +4,10 @@ import logging
 from time import perf_counter
 from functools import wraps
 from tqdm import tqdm
-
+from copy import deepcopy
 from haystack import Document, BaseComponent
 from haystack.document_store.base import BaseDocumentStore
+# from haystack.retriever import DensePassageRetriever, EmbeddingRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -168,12 +169,21 @@ class BaseRetriever(BaseComponent):
         else:
             return metrics
 
-    def run(
-            self,
-            query: str,
-            filters: Optional[dict] = None,
-            top_k_retriever: Optional[int] = None,
-            **kwargs,
+    def run(self, pipeline_type: str, **kwargs):
+        if pipeline_type == "Query":
+            output, stream = self.run_query(**kwargs)
+        elif pipeline_type == "Indexing":
+            output, stream = self.run_indexing(**kwargs)
+        else:
+            raise Exception(f"Invalid pipeline_type '{pipeline_type}'.")
+        return output, stream
+
+    def run_query(
+        self,
+        query: str,
+        filters: Optional[dict] = None,
+        top_k_retriever: Optional[int] = None,
+        **kwargs,
     ):
         if top_k_retriever:
             documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever)
@@ -187,4 +197,15 @@ class BaseRetriever(BaseComponent):
             **kwargs
         }
 
+        return output, "output_1"
+
+    def run_indexing(self, documents: List[dict], **kwargs):
+        if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
+            documents = deepcopy(documents)
+            document_objects = [Document.from_dict(doc) for doc in documents]
+            embeddings = self.embed_passages(document_objects)
+            for doc, emb in zip(documents, embeddings):
+                doc["embedding"] = emb
+
+        output = {**kwargs, "documents": documents}
         return output, "output_1"
