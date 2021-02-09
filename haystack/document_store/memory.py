@@ -63,6 +63,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
 
         field_map = self._create_document_field_map()
+        documents = deepcopy(documents)
         documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         for document in documents_objects:
