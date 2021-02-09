@@ -191,7 +191,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         vector_ids: Optional[List[str]] = None,
-        filter_documents_without_embeddings: bool = False,
+        only_documents_without_embedding: bool = False,
         batch_size: int = 10_000
     ):
         """
@@ -200,7 +200,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param vector_ids: List of vector_id strings to filter the documents by.
-        :param filter_documents_without_embeddings: return only documents without an embedding.
+        :param only_documents_without_embedding: return only documents without an embedding.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         index = index or self.index
@@ -221,7 +221,7 @@ class SQLDocumentStore(BaseDocumentStore):
                     MetaORM.value.in_(values),
                     DocumentORM.id == MetaORM.document_id
                 )
-        if filter_documents_without_embeddings:
+        if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
         if vector_ids:
             documents_query = documents_query.filter(DocumentORM.vector_id.in_(vector_ids))
