@@ -18,8 +18,7 @@ def test_convert(Converter, xpdf_fixture):
 
 
 @pytest.mark.tika
-# @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
-@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter, xpdf_fixture):
     converter = Converter(remove_numeric_tables=True)
     document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
@@ -31,7 +30,7 @@ def test_table_removal(Converter, xpdf_fixture):
     # assert text is retained from the document.
     # As whitespace can differ (\n," ", etc.), we standardize all to simple whitespace
     page_standard_whitespace = " ".join(pages[0].split())
-    assert"Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
+    assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
 @pytest.mark.tika
