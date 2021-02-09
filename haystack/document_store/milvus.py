@@ -254,7 +254,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             vector_ids=None,
             batch_size=batch_size,
             filters=filters,
-            filter_documents_without_embeddings=not update_existing_embeddings
+            only_documents_without_embedding=not update_existing_embeddings
         )
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:

@@ -492,7 +492,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         index: str,
         filters: Optional[Dict[str, List[str]]] = None,
         batch_size: int = 10_000,
-        filter_documents_without_embedding: bool = False,
+        only_documents_without_embedding: bool = False,
     ) -> Generator[dict, None, None]:
         """
         Return all documents in a specific index in the document store
@@ -517,7 +517,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 )
             body["query"]["bool"]["filter"] = filter_clause
 
-        if filter_documents_without_embedding:
+        if only_documents_without_embedding:
             body["query"]["bool"] = {"must_not": {"exists": {"field": self.embedding_field}}}
 
         result = scan(self.client, query=body, index=index, size=batch_size, scroll="1d")
@@ -796,7 +796,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             index=index,
             filters=filters,
             batch_size=batch_size,
-            filter_documents_without_embedding=not update_existing_embeddings
+            only_documents_without_embedding=not update_existing_embeddings
         )
 
         for result_batch in get_batches_from_generator(result, batch_size):

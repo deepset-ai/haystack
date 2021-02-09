@@ -32,10 +32,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         progress_bar: bool = True,
     ):
         """
+        :param index: The documents are scoped to an index attribute that can be used when writing, querying,
+                      or deleting documents. This parameter sets the default value for document index.
+        :param label_index: The default value of index attribute for the labels.
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param embedding_dim: The size of the embedding vector.
         :param return_embedding: To return document embedding
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+                             Can be helpful to disable in production deployments to keep the logs clean.
         """
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index
@@ -183,7 +189,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         # TODO Index embeddings every X batches to avoid OOM for huge document collections
         result = self._query(
-            index=index, filters=filters, filter_documents_without_embeddings=not update_existing_embeddings
+            index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
         )
         document_count = len(result)
         logger.info(f"Updating embeddings for {document_count} docs ...")
@@ -220,7 +226,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
-        filter_documents_without_embeddings: bool = False,
+        only_documents_without_embedding: bool = False,
         batch_size: int = 10_000,
     ):
         index = index or self.index
@@ -234,7 +240,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             for doc in documents:
                 doc.embedding = None
 
-        if filter_documents_without_embeddings:
+        if only_documents_without_embedding:
             documents = [doc for doc in documents if doc.embedding is None]
         if filters:
             for doc in documents:

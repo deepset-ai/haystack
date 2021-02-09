@@ -211,7 +211,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             vector_ids=None,
             batch_size=batch_size,
             filters=filters,
-            filter_documents_without_embeddings=not update_existing_embeddings
+            only_documents_without_embedding=not update_existing_embeddings
         )
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
@@ -349,7 +349,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         index = index or self.index
         if not self.faiss_indexes.get(index):
-            raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
+            raise Exception(f"Index named '{index}' does not exists. Use 'update_embeddings()' to create an index.")
 
         if return_embedding is None:
             return_embedding = self.return_embedding
