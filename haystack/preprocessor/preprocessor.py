@@ -56,13 +56,13 @@ class PreProcessor(BasePreProcessor):
     def process(
         self,
         document: dict,
-        clean_whitespace: Optional[bool] = True,
-        clean_header_footer: Optional[bool] = False,
-        clean_empty_lines: Optional[bool] = True,
-        split_by: Optional[str] = "word",
-        split_length: Optional[int] = 1000,
-        split_overlap: Optional[int] = 0,
-        split_respect_sentence_boundary: Optional[bool] = True,
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        split_by: Optional[str] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
+        split_respect_sentence_boundary: Optional[bool] = None,
     ) -> List[dict]:
         """
         Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.

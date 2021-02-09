@@ -18,6 +18,7 @@ components:
 
 pipelines:
   - name: test_query_pipeline
+    type: Query
     nodes:
       - name: TestESRetriever
         inputs: [Query]

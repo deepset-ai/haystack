@@ -34,8 +34,11 @@ class Pipeline(ABC):
         elif pipeline_type == "Indexing":
             self.root_node_id = "File"
             self.graph.add_node("File", component=RootNode())
-        self.components: dict = {}
+        else:
+            raise Exception(f"pipeline_type '{pipeline_type}' is not valid. Supported types are 'Query' & 'Indexing'.")
+
         self.pipeline_type = pipeline_type
+        self.components: dict = {}
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
