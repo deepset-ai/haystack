@@ -211,7 +211,7 @@ in garbled text.
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, encoding: str = "UTF-8") -> Dict[str, Any]
 ```
 
 Extract text from a .pdf file.
@@ -219,4 +219,8 @@ Extract text from a .pdf file.
 **Arguments**:
 
 - `file_path`: Path to the .pdf file you want to convert
+- `meta`: Optional dictionary with metadata that shall be attached to all resulting documents.
+Can be any custom keys and values.
+- `encoding`: Encoding that will be passed as -enc parameter to pdftotext
+(see: https://www.xpdfreader.com/pdftotext-man.html)
 
