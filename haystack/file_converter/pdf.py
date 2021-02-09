@@ -72,7 +72,7 @@ class PDFToTextConverter(BaseConverter):
                          (See list of available encodings by running `pdftotext -listencodings` in the terminal)
         """
 
-        pages = self._read_pdf(file_path, layout=False)
+        pages = self._read_pdf(file_path, layout=False, encoding=encoding)
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables
         if valid_languages is None:

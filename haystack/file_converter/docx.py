@@ -14,7 +14,7 @@ class DocxToTextConverter(BaseConverter):
         self,
         file_path: Path,
         meta: Optional[Dict[str, str]] = None,
-        remove_numeric_tables: bool = False,
+        remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
