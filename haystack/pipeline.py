@@ -436,14 +436,14 @@ class FAQPipeline(BaseStandardPipeline):
         for doc in documents:
             # TODO proper calibration of pseudo probabilities
             cur_answer = {
-                "query": doc.meta["question"],
-                "answer": doc.text,
+                "query": doc.text,
+                "answer": doc.meta["answer"],
                 "document_id": doc.id,
-                "context": doc.text,
+                "context": doc.meta["answer"],
                 "score": doc.score,
                 "probability": doc.probability,
                 "offset_start": 0,
-                "offset_end": len(doc.text),
+                "offset_end": len(doc.meta["answer"]),
                 "meta": doc.meta,
             }
 
