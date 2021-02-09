@@ -6,7 +6,7 @@
 #
 # To use GPU with Docker, ensure nvidia-docker(https://github.com/NVIDIA/nvidia-docker) is installed.
 
-docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.1
+docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2
 # alternative: for a demo you can also use this elasticsearch image with already indexed GoT articles
 #docker run -d -p 9200:9200 -e "discovery.type=single-node" deepset/elasticsearch-game-of-thrones
 

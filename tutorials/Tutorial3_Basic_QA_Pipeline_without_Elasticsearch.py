@@ -91,18 +91,20 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     # Alternative:
     # reader = TransformersReader(model_name_or_path="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
 
-    # ### Finder
+    # ### Pipeline
     #
-    # The Finder sticks together reader and retriever in a pipeline to answer our actual questions.
-    finder = Finder(reader, retriever)
+    # With a Haystack `Pipeline` you can stick together your building blocks to a search pipeline.
+    # Under the hood, `Pipelines` are Directed Acyclic Graphs (DAGs) that you can easily customize for your own use cases.
+    # To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `ExtractiveQAPipeline` that combines a retriever and a reader to answer our questions.
+    # You can learn more about `Pipelines` in the [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd).
+    from haystack.pipeline import ExtractiveQAPipeline
+    pipe = ExtractiveQAPipeline(reader, retriever)
 
-    # ## Voilà! Ask a question!
+    ## Voilà! Ask a question!
+    prediction = pipe.run(query="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
 
-    # You can configure how many candidates the reader and retriever shall return
-    # The higher top_k_retriever, the better (but also the slower) your answers.
-    prediction = finder.get_answers(question="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
-    # prediction = finder.get_answers(question="Who created the Dothraki vocabulary?", top_k_reader=5)
-    # prediction = finder.get_answers(question="Who is the sister of Sansa?", top_k_reader=5)
+    # prediction = pipe.run(query="Who created the Dothraki vocabulary?", top_k_reader=5)
+    # prediction = pipe.run(query="Who is the sister of Sansa?", top_k_reader=5)
 
     print_answers(prediction, details="minimal")
 

@@ -98,7 +98,7 @@ class HaystackDocumentStore:
         if not es.ping():
             logging.info("Starting Elasticsearch ...")
             status = subprocess.run(
-                ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2'], shell=True
+                ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
             )
             if status.returncode:
                 raise Exception(
