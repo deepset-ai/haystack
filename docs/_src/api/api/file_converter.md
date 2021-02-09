@@ -211,16 +211,20 @@ in garbled text.
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, encoding: str = "UTF-8") -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, encoding: str = "Latin1") -> Dict[str, Any]
 ```
 
-Extract text from a .pdf file.
+Extract text from a .pdf file using the pdftotext library (https://www.xpdfreader.com/pdftotext-man.html)
 
 **Arguments**:
 
 - `file_path`: Path to the .pdf file you want to convert
 - `meta`: Optional dictionary with metadata that shall be attached to all resulting documents.
 Can be any custom keys and values.
-- `encoding`: Encoding that will be passed as -enc parameter to pdftotext
-(see: https://www.xpdfreader.com/pdftotext-man.html)
+- `encoding`: Encoding that will be passed as -enc parameter to pdftotext. "Latin 1" is the default encoding
+of pdftotext. While this works well on many PDFs, it might be needed to switch to "UTF-8" or
+others if your doc contains special characters (e.g. German Umlauts, Cyrillic characters ...).
+Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
+"xef\xac\x81c" (see test cases). That's why we keep "Latin 1" as default here.
+(See list of available encodings by running `pdftotext -listencodings` in the terminal)
 
