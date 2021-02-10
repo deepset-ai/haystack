@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.pipeline import EndToEndTranslationPipeline, JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, \
+from haystack.pipeline import TranslationWrapperPipeline, JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, \
     DocumentSearchPipeline
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
@@ -143,7 +143,7 @@ def test_document_search_pipeline(retriever, document_store):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_with_translator(reader, retriever_with_docs, en_to_de_translator, de_to_en_translator):
     base_pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    pipeline = EndToEndTranslationPipeline(
+    pipeline = TranslationWrapperPipeline(
         input_translator=de_to_en_translator,
         output_translator=en_to_de_translator,
         pipeline=base_pipeline

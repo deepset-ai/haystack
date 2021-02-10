@@ -1,66 +1,12 @@
 import logging
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from haystack import Document
+from haystack.translator import BaseTranslator
 
 logger = logging.getLogger(__name__)
-
-
-class BaseTranslator(ABC):
-    """
-    Abstract class for a Translator component that translates either a query or a doc from language A to language B.
-    """
-
-    outgoing_edges = 1
-
-    @abstractmethod
-    def translate(
-        self,
-        query: Optional[str] = None,
-        documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
-        dict_key: Optional[str] = None,
-        **kwargs
-    ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
-        """
-        Translate the passed query or a list of documents from language A to B.
-        """
-        pass
-
-    def run(
-        self,
-        query: Optional[str] = None,
-        documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
-        answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-        dict_key: Optional[str] = None,
-        **kwargs
-    ):
-        """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
-
-        results: Dict = {
-            **kwargs
-        }
-
-        # This will cover input query stage
-        if query:
-            results["query"] = self.translate(query=query)
-        # This will cover retriever and summarizer
-        if documents:
-            dict_key = dict_key or "text"
-            results["documents"] = self.translate(documents=documents, dict_key=dict_key)
-
-        if answers:
-            dict_key = dict_key or "answer"
-            if isinstance(answers, Mapping):
-                # This will cover reader
-                results["answers"] = self.translate(documents=answers["answers"], dict_key=dict_key)
-            else:
-                # This will cover generator
-                results["answers"] = self.translate(documents=answers, dict_key=dict_key)
-
-        return results, "output_1"
 
 
 class TransformersTranslator(BaseTranslator):
@@ -86,7 +32,11 @@ class TransformersTranslator(BaseTranslator):
     def __init__(
         self,
         model_name_or_path: str,
-        tokenizer_name: Optional[str] = None
+        tokenizer_name: Optional[str] = None,
+        max_length: Optional[int] = 512,
+        skip_special_tokens: Optional[bool] = True,
+        clean_up_tokenization_spaces: Optional[bool] = True,
+        padding: Optional[str] = "do_not_pad"
     ):
         """ Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
@@ -102,12 +52,27 @@ class TransformersTranslator(BaseTranslator):
 
         :param model_name_or_path: Name of the seq2seq model that shall be used for translation.
                                    Can be a remote name from Huggingface's modelhub or a local path.
-        :param tokenizer_name: Optional tokenizer name. If not supplied, `model_name_or_path` will also be used for the tokenizer.
-        :param skip_special_tokens:
+        :param tokenizer_name: Optional tokenizer name. If not supplied, `model_name_or_path` will also be used for the
+                               tokenizer.
+        :param max_length: The maximum sentence length the model accepts. (Default 512)
+        :param skip_special_tokens: Whether or not to remove special tokens in the decoding. (default True)
+        :param clean_up_tokenization_spaces: Whether or not to clean up the tokenization spaces. (default True)
+        :param padding: Activates and controls padding. Accepts the following values (default `do_not_pad`):
+                        1. `longest`: Pad to the longest sequence in the batch (or no padding if only a
+                        single sequence if provided).
+                        2. `max_length`: Pad to a maximum acceptable input length for the model
+                        3. `do_not_pad` No padding
         """
 
+        self.skip_special_tokens = skip_special_tokens
+        self.padding = padding
+        self.max_length = max_length
+        self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         tokenizer_name = tokenizer_name or model_name_or_path
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_name,
+            model_max_length=self.max_length
+        )
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
 
     def translate(
@@ -144,9 +109,18 @@ class TransformersTranslator(BaseTranslator):
         else:
             text_for_translator: List[str] = [query]     # type: ignore
 
-        batch = self.tokenizer.prepare_seq2seq_batch(src_texts=text_for_translator, return_tensors="pt")
+        batch = self.tokenizer.prepare_seq2seq_batch(
+            src_texts=text_for_translator,
+            return_tensors="pt",
+            max_length=self.max_length,
+            padding=self.padding
+        )
         generated_output = self.model.generate(**batch)
-        translated_texts = self.tokenizer.batch_decode(generated_output, skip_special_tokens=self.skip_special_tokens)
+        translated_texts = self.tokenizer.batch_decode(
+            generated_output,
+            skip_special_tokens=self.skip_special_tokens,
+            clean_up_tokenization_spaces=self.clean_up_tokenization_spaces
+        )
 
         if query:
             return translated_texts[0]

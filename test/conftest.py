@@ -44,7 +44,7 @@ def _sql_session_rollback(self, attr):
 SQLDocumentStore.__getattribute__ = _sql_session_rollback
 
 
-def pytest_collection_modifyitems(items):
+def pytest_collection_modify_items(items):
     for item in items:
         if "generator" in item.nodeid:
             item.add_marker(pytest.mark.generator)
