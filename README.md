@@ -24,15 +24,29 @@
     </a>
 </p>
 
-Haystack is an end-to-end framework for Question Answering & Neural search that enables you to ...
+Haystack is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
+Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
+Haystack is built in modular fashion so that you can combine the best technology from other open source projects like Huggingface’s Transformers, Elasticsearch or Milvus.
 
-... **ask questions** in natural language and find granular answers in your own documents.  
-... **do semantic document search** and retrieve more relevant documents for your search queries.  
-... **search at scale** through millions of documents.  
-... **use off-the-shelf models or fine-tune** them to your own domain.  
-... **evaluate, benchmark and continuously improve** your models via user feedback.  
-... **improve chat bots** by leveraging existing knowledge bases for the long tail of queries.  
-... **automate processes** by automatically applying a list of questions to new documents and using the extracted answers.  
+## What can be done with Haystack:
+- Ask questions in natural language and find granular answers in your own documents.
+- Perform semantic search and retrieve documents according to meaning not keywords
+- Use off-the-shelf models or fine-tune them to your own domain.
+- Use user feedback to evaluate, benchmark and continuously improve your models.
+- Leverage existing knowledge bases and better handle the long tail of queries that chatbots receive.
+- Automate processes by automatically applying a list of questions to new documents and using the extracted answers.  
+
+## Core Features
+
+-   **Latest models**: Utilize all latest transformer based models (e.g. BERT, RoBERTa, MiniLM) for extractive QA, generative QA and document retrieval.
+-   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter or modeling framwework.
+-   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g. Transformers, FARM, sentence-transformers)
+-   **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS and a fastAPI REST API
+-   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling ...    
+-   **Developer friendly**: Easy to debug, extend and modify.
+-   **Customizable**: Fine-tune models to your own domain or implement your custom DocumentStore.
+-   **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
+
 
 |  |  |
 |-|-|
@@ -48,16 +62,6 @@ Haystack is an end-to-end framework for Question Answering & Neural search that 
 | :bird: [Twitter](https://twitter.com/deepset_ai) | Follow us on Twitter for news and updates |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
-## Core Features
-
--   **Latest models**: Utilize all latest transformer based models (e.g. BERT, RoBERTa, MiniLM) for extractive QA, generative QA and document retrieval.
--   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter or modeling framwework.
--   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g. Transformers, FARM, sentence-transformers)
--   **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS and a fastAPI REST API
--   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling ...    
--   **Developer friendly**: Easy to debug, extend and modify.
--   **Customizable**: Fine-tune models to your own domain or implement your custom DocumentStore.
--   **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
 
 
 ## Installation
