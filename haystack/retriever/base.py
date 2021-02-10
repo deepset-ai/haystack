@@ -7,7 +7,6 @@ from tqdm import tqdm
 from copy import deepcopy
 from haystack import Document, BaseComponent
 from haystack.document_store.base import BaseDocumentStore
-# from haystack.retriever import DensePassageRetriever, EmbeddingRetriever
 
 logger = logging.getLogger(__name__)
 
