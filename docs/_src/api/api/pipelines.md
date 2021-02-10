@@ -316,6 +316,32 @@ Initialize a Pipeline for finding similar FAQs using semantic document search.
 
 - `retriever`: Retriever instance
 
+<a name="pipeline.TranslationWrapperPipeline"></a>
+## TranslationWrapperPipeline Objects
+
+```python
+class TranslationWrapperPipeline(BaseStandardPipeline)
+```
+
+Takes an existing search pipeline and adds one "input translation node" after the Query and one
+"output translation" node just before returning the results
+
+<a name="pipeline.TranslationWrapperPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(input_translator: BaseTranslator, output_translator: BaseTranslator, pipeline: BaseStandardPipeline)
+```
+
+Wrap a given `pipeline` with the `input_translator` and `output_translator`.
+
+**Arguments**:
+
+- `input_translator`: A Translator node that shall translate the input query from language A to B
+- `output_translator`: A Translator node that shall translate the pipeline results from language B to A
+- `pipeline`: The pipeline object (e.g. ExtractiveQAPipeline) you want to "wrap".
+Note that pipelines with split or merge nodes are currently not supported.
+
 <a name="pipeline.JoinDocuments"></a>
 ## JoinDocuments Objects
 
