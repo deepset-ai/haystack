@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class BaseTranslator(ABC):
     """
-    Abstract class for Summarizer
+    Abstract class for a Translator component that translates either a query or a doc from language A to language B.
     """
 
     outgoing_edges = 1
@@ -24,6 +24,9 @@ class BaseTranslator(ABC):
         dict_key: Optional[str] = None,
         **kwargs
     ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
+        """
+        Translate the passed query or a list of documents from language A to B.
+        """
         pass
 
     def run(
@@ -34,6 +37,7 @@ class BaseTranslator(ABC):
         dict_key: Optional[str] = None,
         **kwargs
     ):
+        """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
 
         results: Dict = {
             **kwargs
@@ -60,17 +64,48 @@ class BaseTranslator(ABC):
 
 
 class TransformersTranslator(BaseTranslator):
+    """
+    Translator component based on Seq2Seq models from Huggingface's transformers library.
+    Exemplary use cases:
+    - Translate a query from Language A to B (e.g. if you only have good models + documents in language B)
+    - Translate a document from Language A to B (e.g. if you want to return results in the native language of the user)
 
+    We currently recommend using OPUS models (see __init__() for details)
+
+    **Example:**
+
+        ```python
+        |    DOCS = [
+        |        Document(text="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
+        |                       and widely attributed as the originator of Second-order cybernetics.")
+        |    ]
+        |    translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
+        |    res = translator.translate(documents=DOCS, query=None)
+        ```
+    """
     def __init__(
         self,
-        # Refer https://huggingface.co/models?filter=translation for language code
-        # Opus models are preferred https://huggingface.co/Helsinki-NLP
-        # Currently do not support multilingual model
         model_name_or_path: str,
-        tokenizer_name: Optional[str] = None,
-        skip_special_tokens: Optional[bool] = True,
+        tokenizer_name: Optional[str] = None
     ):
-        self.skip_special_tokens = skip_special_tokens
+        """ Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
+        models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
+        of different models, usually one model per language pair and translation direction.
+        They have a pretty standardized naming that should help you find the right model:
+        - "Helsinki-NLP/opus-mt-en-de" => translating from English to German
+        - "Helsinki-NLP/opus-mt-de-en" => translating from German to English
+        - "Helsinki-NLP/opus-mt-fr-en" => translating from French to English
+        - "Helsinki-NLP/opus-mt-hi-en"=> translating from Hindi to English
+        ...
+
+        They also have a few multilingual models that support multiple languages at once.
+
+        :param model_name_or_path: Name of the seq2seq model that shall be used for translation.
+                                   Can be a remote name from Huggingface's modelhub or a local path.
+        :param tokenizer_name: Optional tokenizer name. If not supplied, `model_name_or_path` will also be used for the tokenizer.
+        :param skip_special_tokens:
+        """
+
         tokenizer_name = tokenizer_name or model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
@@ -82,6 +117,9 @@ class TransformersTranslator(BaseTranslator):
         dict_key: Optional[str] = None,
         **kwargs
     ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
+        """
+        Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
+        """
         if not query and not documents:
             raise AttributeError("Translator need query or documents to perform translation")
 

@@ -454,13 +454,28 @@ class FAQPipeline(BaseStandardPipeline):
         return results
 
 
-class EndToEndTranslationPipeline(BaseStandardPipeline):
+class TranslationWrapperPipeline(BaseStandardPipeline):
+
+    """
+    Takes an existing search pipeline and adds one "input translation node" after the Query and one
+    "output translation" node just before returning the results
+    """
+
     def __init__(
         self,
         input_translator: BaseTranslator,
         output_translator: BaseTranslator,
         pipeline: BaseStandardPipeline
     ):
+        """
+        Wrap a given `pipeline` with the `input_translator` and `output_translator`.
+
+        :param input_translator: A Translator node that shall translate the input query from language A to B
+        :param output_translator: A Translator node that shall translate the pipeline results from language B to A
+        :param pipeline: The pipeline object (e.g. ExtractiveQAPipeline) you want to "wrap".
+                         Note that pipelines with split or merge nodes are currently not supported.
+        """
+
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=input_translator, name="InputTranslator", inputs=["Query"])
 
