@@ -1,20 +1,14 @@
 import logging
-from sys import platform
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
+import faiss
 import numpy as np
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.utils import get_batches_from_generator
-from scipy.special import expit
-
-if platform != 'win32' and platform != 'cygwin':
-    import faiss
-else:
-    raise ModuleNotFoundError("FAISSDocumentStore on windows platform is not supported")
 
 logger = logging.getLogger(__name__)
 
