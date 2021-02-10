@@ -23,33 +23,33 @@ You can use a Translator node in your pipeline to
 **Example (Stand-alone Translator)**
 
 You can use the Translator component directly to translate your query or document(s): 
-    ```python
-    |    DOCS = [
-    |        Document(text="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
-    |                       and widely attributed as the originator of Second-order cybernetics.")
-    |    ]
-    |    translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
-    |    res = translator.translate(documents=DOCS, query=None)
-    ```
+```python
+DOCS = [
+        Document(text="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
+                       and widely attributed as the originator of Second-order cybernetics.")
+    ]
+translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
+res = translator.translate(documents=DOCS, query=None)
+```
 
 **Example (Wrapping another Pipeline)**
 
 You can also wrap one of your existing pipelines and "add" the translation nodes at the beginning and at the end of your pipeline.
 For example, lets translate the incoming query to from french to english, then do our document retrieval and then translate the results back from english to french:
 
-    ```python
-    |        from haystack.pipeline import TranslationWrapperPipeline, DocumentSearchPipeline
-    |        from haystack.translator import TransformersTranslator
-    |        
-    |        pipeline = DocumentSearchPipeline(retriever=my_dpr_retriever)
-    |        
-    |        in_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-fr-en")
-    |        out_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-fr")
-    |        
-    |        pipeline_with_translation = TranslationWrapperPipeline(input_translator=in_translator,
-    |                                                               output_translator=out_translator,
-    |                                                               pipeline=pipeline)
-    ```
+```python
+from haystack.pipeline import TranslationWrapperPipeline, DocumentSearchPipeline
+from haystack.translator import TransformersTranslator
+
+pipeline = DocumentSearchPipeline(retriever=my_dpr_retriever)
+
+in_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-fr-en")
+out_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-fr")
+
+pipeline_with_translation = TranslationWrapperPipeline(input_translator=in_translator,
+                                                       output_translator=out_translator,
+                                                       pipeline=pipeline)
+```
 
 
 </div>
