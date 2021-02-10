@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from haystack import Document
-from haystack.translator import BaseTranslator
+from haystack.translator.base import BaseTranslator
 
 logger = logging.getLogger(__name__)
 
