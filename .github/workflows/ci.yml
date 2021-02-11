@@ -7,10 +7,39 @@ on:
     branches: [ master ]
 
 jobs:
+  lint:
+    steps:
+      - uses: actions/checkout@v2
+      - name: Test with mypy
+          run: |
+            pip install mypy
+            mypy haystack --ignore-missing-imports
+
   build:
-
     runs-on: ubuntu-20.04
-
+    strategy:
+      matrix:
+        test-path:
+          - test_document_store.py
+          - test_docx_conversion.py
+          - test_dpr_retriever.py
+          - test_dummy_retriever.py
+          - test_elastic_dsl_convertor.py
+          - test_elastic_retriever.py
+          - test_embedding_retriever.py
+          - test_eval.py
+          - test_faiss_and_milvus.py
+          - test_finder.py
+          - test_generator.py
+          - test_imports.py
+          - test_pdf_conversion.py
+          - test_pipeline.py
+          - test_preprocessor.py
+          - test_reader.py
+          - test_rest_api.py
+          - test_summarizer.py
+          - test_tfidf_retriever.py
+          - test_utils.py
     steps:
     - uses: actions/checkout@v2
       
@@ -35,21 +64,6 @@ jobs:
         pip install -r requirements.txt
         pip install -e .
         wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
-    - name: Test with mypy
-      run: |
-        pip install mypy
-        mypy haystack --ignore-missing-imports
 
-    - name: Run Pytest without generator/pipeline marker
-      run: cd test &&  pytest -m "not pipeline and not generator and not summarizer"
-
-#    - name: Stop Containers
-#      run: docker rm -f `docker ps -a -q`
-
-    - name: Run pytest with generator/pipeline marker
-      run: cd test && pytest -m "pipeline or generator"
-
-    - name: Run pytest with summarizer marker
-      run: cd test && pytest -m "summarizer"
-
-
+    - name: Run tests
+      run: cd test && pytest ${{ matrix.test-path }}
