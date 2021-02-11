@@ -33,8 +33,7 @@ class TransformersTranslator(BaseTranslator):
         self,
         model_name_or_path: str,
         tokenizer_name: Optional[str] = None,
-        max_length: Optional[int] = 512,
-        skip_special_tokens: Optional[bool] = True,
+        max_seq_len: Optional[int] = None,
         clean_up_tokenization_spaces: Optional[bool] = True,
         padding: Optional[str] = "do_not_pad"
     ):
@@ -54,8 +53,7 @@ class TransformersTranslator(BaseTranslator):
                                    Can be a remote name from Huggingface's modelhub or a local path.
         :param tokenizer_name: Optional tokenizer name. If not supplied, `model_name_or_path` will also be used for the
                                tokenizer.
-        :param max_length: The maximum sentence length the model accepts. (Default 512)
-        :param skip_special_tokens: Whether or not to remove special tokens in the decoding. (default True)
+        :param max_seq_len: The maximum sentence length the model accepts. (Optional)
         :param clean_up_tokenization_spaces: Whether or not to clean up the tokenization spaces. (default True)
         :param padding: Activates and controls padding. Accepts the following values (default `do_not_pad`):
                         1. `longest`: Pad to the longest sequence in the batch (or no padding if only a
@@ -64,14 +62,13 @@ class TransformersTranslator(BaseTranslator):
                         3. `do_not_pad` No padding
         """
 
-        self.skip_special_tokens = skip_special_tokens
         self.padding = padding
-        self.max_length = max_length
+        self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         tokenizer_name = tokenizer_name or model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_name,
-            model_max_length=self.max_length
+            model_max_length=self.max_seq_len
         )
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
 
@@ -112,13 +109,12 @@ class TransformersTranslator(BaseTranslator):
         batch = self.tokenizer.prepare_seq2seq_batch(
             src_texts=text_for_translator,
             return_tensors="pt",
-            max_length=self.max_length,
+            max_length=self.max_seq_len,
             padding=self.padding
         )
         generated_output = self.model.generate(**batch)
         translated_texts = self.tokenizer.batch_decode(
             generated_output,
-            skip_special_tokens=self.skip_special_tokens,
             clean_up_tokenization_spaces=self.clean_up_tokenization_spaces
         )
 
