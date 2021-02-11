@@ -20,82 +20,82 @@
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 1000,
-            "query_speed": 40.802
+            "query_speed": 30.68451185154913
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 10000,
-            "query_speed": 24.8
+            "query_speed": 19.568754413737462
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 100000,
-            "query_speed": 6.23
+            "query_speed": 4.5992769354707805
         },
         {
             "model": "DPR / ElasticSearch",
             "n_docs": 500000,
-            "query_speed": 1.45
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 1000,
-            "query_speed": 40.048
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 10000,
-            "query_speed": 22.47
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 100000,
-            "query_speed": 4.90
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 500000,
-            "query_speed": 1.08
+            "query_speed": 1.0558140319761546
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 1000,
-            "query_speed": 232.97799999999998
+            "query_speed": 262.9405144288997
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 10000,
-            "query_speed": 248.97
+            "query_speed": 183.6070813438718
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "query_speed": 162.59
+            "query_speed": 162.42378943468643
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 500000,
-            "query_speed": 91.39
+            "query_speed": 82.43179203331141
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 1000,
+            "query_speed": 35.40380445859966
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 10000,
+            "query_speed": 25.78749025294445
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 100000,
+            "query_speed": 6.511162294559942
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 500000,
+            "query_speed": 1.5161593755666505
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 1000,
-            "query_speed": 37.884
+            "query_speed": 39.16414272911727
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 10000,
-            "query_speed": 31.34
+            "query_speed": 33.6432023480111
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 100000,
-            "query_speed": 12.85
+            "query_speed": 33.65729082116796
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 500000,
-            "query_speed": 3.32
+            "query_speed": 34.27671486454735
         }
     ]
 }

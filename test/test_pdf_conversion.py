@@ -28,7 +28,9 @@ def test_table_removal(Converter, xpdf_fixture):
     assert "54x growth" not in pages[0]
 
     # assert text is retained from the document.
-    assert "Adobe Systems made the PDF specification available free of charge in 1993." in pages[0].replace("\n", "")
+    # As whitespace can differ (\n," ", etc.), we standardize all to simple whitespace
+    page_standard_whitespace = " ".join(pages[0].split())
+    assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
 @pytest.mark.tika

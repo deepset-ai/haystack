@@ -5,7 +5,7 @@
 ## BaseDocumentStore Objects
 
 ```python
-class BaseDocumentStore(ABC)
+class BaseDocumentStore(BaseComponent)
 ```
 
 Base class for implementing Document Stores.
@@ -140,7 +140,7 @@ more performant with DPR embeddings. 'cosine' is recommended if you are using a 
 #### get\_document\_by\_id
 
 ```python
- | get_document_by_id(id: str, index=None) -> Optional[Document]
+ | get_document_by_id(id: str, index: Optional[str] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string
@@ -149,10 +149,28 @@ Fetch a document by specifying its text id string
 #### get\_documents\_by\_id
 
 ```python
- | get_documents_by_id(ids: List[str], index=None) -> List[Document]
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings
+
+<a name="elasticsearch.ElasticsearchDocumentStore.get_metadata_values_by_key"></a>
+#### get\_metadata\_values\_by\_key
+
+```python
+ | get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> List[dict]
+```
+
+Get values associated with a metadata key. The output is in the format:
+[{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
+
+**Arguments**:
+
+- `key`: the meta key name to get the values for.
+- `query`: narrow down the scope to documents matching the query string.
+- `filters`: narrow down the scope to documents that match the given filters.
+- `index`: Elasticsearch index where the meta values should be searched. If not supplied,
+self.index will be used.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
 #### write\_documents
@@ -295,7 +313,7 @@ that are most relevant to the query as defined by the BM25 algorithm.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.array, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -326,7 +344,7 @@ Return a summary of the documents in the document store
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000)
+ | update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -336,6 +354,12 @@ This can be useful if want to add or change the embeddings for your documents (e
 
 - `retriever`: Retriever to use to update the embeddings.
 - `index`: Index name to update
+- `update_existing_embeddings`: Whether to update existing embeddings of the documents. If set to False,
+only documents without embeddings are processed. This mode can be used for
+incremental updating of embeddings, wherein, only newly indexed documents
+get processed.
+- `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
@@ -388,15 +412,21 @@ In-memory document store
 #### \_\_init\_\_
 
 ```python
- | __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product")
+ | __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True)
 ```
 
 **Arguments**:
 
+- `index`: The documents are scoped to an index attribute that can be used when writing, querying,
+or deleting documents. This parameter sets the default value for document index.
+- `label_index`: The default value of index attribute for the labels.
 - `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `embedding_dim`: The size of the embedding vector.
 - `return_embedding`: To return document embedding
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
 
 <a name="memory.InMemoryDocumentStore.write_documents"></a>
 #### write\_documents
@@ -453,7 +483,7 @@ Fetch documents by specifying a list of text id strings
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: List[float], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -475,7 +505,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None)
+ | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -483,8 +513,15 @@ This can be useful if want to add or change the embeddings for your documents (e
 
 **Arguments**:
 
-- `retriever`: Retriever
-- `index`: Index name to update
+- `retriever`: Retriever to use to get embeddings for text
+- `index`: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
+- `update_existing_embeddings`: Whether to update existing embeddings of the documents. If set to False,
+only documents without embeddings are processed. This mode can be used for
+incremental updating of embeddings, wherein, only newly indexed documents
+get processed.
+- `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
 
@@ -610,6 +647,13 @@ Fetch documents by specifying a list of text id strings
 ```
 
 Fetch documents by specifying a list of text vector id strings
+
+**Arguments**:
+
+- `vector_ids`: List of vector_id strings.
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="sql.SQLDocumentStore.get_all_documents_generator"></a>
 #### get\_all\_documents\_generator
@@ -764,7 +808,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -798,6 +842,8 @@ added already exists.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `embedding_field`: Name of field containing an embedding vector.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -823,7 +869,7 @@ them right away in FAISS. If not, you can later call update_embeddings() to crea
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000)
+ | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -832,7 +878,13 @@ This can be useful if want to add or change the embeddings for your documents (e
 **Arguments**:
 
 - `retriever`: Retriever to use to get embeddings for text
-- `index`: (SQL) index name for storing the docs and metadata
+- `index`: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
+- `update_existing_embeddings`: Whether to update existing embeddings of the documents. If set to False,
+only documents without embeddings are processed. This mode can be used for
+incremental updating of embeddings, wherein, only newly indexed documents
+get processed.
+- `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
@@ -863,7 +915,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### train\_index
 
 ```python
- | train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.array] = None)
+ | train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.ndarray] = None, index: Optional[str] = None)
 ```
 
 Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
@@ -874,6 +926,7 @@ You can pass either documents (incl. embeddings) or just the plain embeddings th
 
 - `documents`: Documents (incl. the embeddings)
 - `embeddings`: Plain embeddings
+- `index`: Name of the index to train. If None, the DocumentStore's default index (self.index) will be used.
 
 **Returns**:
 
@@ -892,7 +945,7 @@ Delete all documents from the document store.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.array, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -903,7 +956,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 - `filters`: Optional filters to narrow down the search space.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
-- `index`: (SQL) index name for storing the docs and metadata
+- `index`: Index name to query the document from.
 - `return_embedding`: To return document embedding
 
 **Returns**:
@@ -932,7 +985,7 @@ None
 
 ```python
  | @classmethod
- | load(cls, faiss_file_path: Union[str, Path], sql_url: str)
+ | load(cls, faiss_file_path: Union[str, Path], sql_url: str, index: str)
 ```
 
 Load a saved FAISS index from a file and connect to the SQL database.
@@ -943,6 +996,8 @@ make sure to use the same SQL DB that you used when calling `save()`.
 
 - `faiss_file_path`: Stored FAISS index file. Can be created via calling `save()`
 - `sql_url`: Connection string to the SQL database that contains your docs and metadata.
+- `index`: Index name to load the FAISS index as. It must match the index name used for
+when creating the FAISS index.
 
 **Returns**:
 

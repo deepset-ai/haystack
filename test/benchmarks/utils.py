@@ -22,7 +22,7 @@ reader_types = ["farm"]
 doc_index = "eval_document"
 label_index = "label"
 
-def get_document_store(document_store_type, es_similarity='cosine'):
+def get_document_store(document_store_type, similarity='dot_product'):
     """ TODO This method is taken from test/conftest.py but maybe should be within Haystack.
     Perhaps a class method of DocStore that just takes string for type of DocStore"""
     if document_store_type == "sql":
@@ -35,7 +35,7 @@ def get_document_store(document_store_type, es_similarity='cosine'):
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
-        document_store = ElasticsearchDocumentStore(index="eval_document", similarity=es_similarity, timeout=3000)
+        document_store = ElasticsearchDocumentStore(index="eval_document", similarity=similarity, timeout=3000)
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
             index_type = "Flat"
@@ -48,12 +48,13 @@ def get_document_store(document_store_type, es_similarity='cosine'):
         status = subprocess.run(
             ['docker run --name haystack-postgres -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres'],
             shell=True)
-        time.sleep(3)
+        time.sleep(6)
         status = subprocess.run(
             ['docker exec -it haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
         time.sleep(1)
         document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
-                                            faiss_index_factory_str=index_type)
+                                            faiss_index_factory_str=index_type,
+                                            similarity=similarity)
 
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")

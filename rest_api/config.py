@@ -53,12 +53,19 @@ EMBEDDING_MODEL_FORMAT = os.getenv("EMBEDDING_MODEL_FORMAT", "farm")
 # File uploads
 FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", "file-uploads")
 REMOVE_NUMERIC_TABLES = os.getenv("REMOVE_NUMERIC_TABLES", "True").lower() == "true"
-REMOVE_WHITESPACE = os.getenv("REMOVE_WHITESPACE", "True").lower() == "true"
-REMOVE_EMPTY_LINES = os.getenv("REMOVE_EMPTY_LINES", "True").lower() == "true"
-REMOVE_HEADER_FOOTER = os.getenv("REMOVE_HEADER_FOOTER", "True").lower() == "true"
 VALID_LANGUAGES = os.getenv("VALID_LANGUAGES", None)
 if VALID_LANGUAGES:
     VALID_LANGUAGES = ast.literal_eval(VALID_LANGUAGES)
+
+# Preprocessing
+REMOVE_WHITESPACE = os.getenv("REMOVE_WHITESPACE", "True").lower() == "true"
+REMOVE_EMPTY_LINES = os.getenv("REMOVE_EMPTY_LINES", "True").lower() == "true"
+REMOVE_HEADER_FOOTER = os.getenv("REMOVE_HEADER_FOOTER", "True").lower() == "true"
+SPLIT_BY = os.getenv("SPLIT_BY", "word")
+SPLIT_LENGTH = os.getenv("SPLIT_LENGTH", 1_000)
+SPLIT_OVERLAP = os.getenv("SPLIT_OVERLAP", None)
+SPLIT_RESPECT_SENTENCE_BOUNDARY = os.getenv("SPLIT_RESPECT_SENTENCE_BOUNDARY", True)
+
 
 # Monitoring
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

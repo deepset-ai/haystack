@@ -1,15 +1,17 @@
+import logging
+from collections import defaultdict
 from copy import deepcopy
 from typing import Dict, List, Optional, Union, Generator
 from uuid import uuid4
-from collections import defaultdict
 
-from haystack.document_store.base import BaseDocumentStore
-from haystack import Document, Label
-from haystack.retriever.base import BaseRetriever
-
+import numpy as np
 from scipy.spatial.distance import cosine
+from tqdm import tqdm
 
-import logging
+from haystack import Document, Label
+from haystack.document_store.base import BaseDocumentStore
+from haystack.retriever.base import BaseRetriever
+from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +29,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
         embedding_dim: int = 768,
         return_embedding: bool = False,
         similarity: str = "dot_product",
+        progress_bar: bool = True,
     ):
         """
+        :param index: The documents are scoped to an index attribute that can be used when writing, querying,
+                      or deleting documents. This parameter sets the default value for document index.
+        :param label_index: The default value of index attribute for the labels.
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param embedding_dim: The size of the embedding vector.
         :param return_embedding: To return document embedding
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+                             Can be helpful to disable in production deployments to keep the logs clean.
         """
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index
@@ -41,6 +50,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.return_embedding = return_embedding
         self.similarity = similarity
+        self.progress_bar = progress_bar
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
         """
@@ -59,6 +69,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
 
         field_map = self._create_document_field_map()
+        documents = deepcopy(documents)
         documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         for document in documents_objects:
@@ -94,7 +105,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return documents
 
     def query_by_embedding(self,
-                           query_emb: List[float],
+                           query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
@@ -147,13 +158,27 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return sorted(candidate_docs, key=lambda x: x.score if x.score is not None else 0.0, reverse=True)[0:top_k]
 
-    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None):
+    def update_embeddings(
+        self,
+        retriever: BaseRetriever,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        update_existing_embeddings: bool = True,
+        batch_size: int = 10_000,
+    ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
-        :param retriever: Retriever
-        :param index: Index name to update
+        :param retriever: Retriever to use to get embeddings for text
+        :param index: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
+        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
+                                           only documents without embeddings are processed. This mode can be used for
+                                           incremental updating of embeddings, wherein, only newly indexed documents
+                                           get processed.
+        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
         if index is None:
@@ -163,18 +188,24 @@ class InMemoryDocumentStore(BaseDocumentStore):
             raise RuntimeError("Specify the arg embedding_field when initializing InMemoryDocumentStore()")
 
         # TODO Index embeddings every X batches to avoid OOM for huge document collections
-        docs = self.get_all_documents(index)
-        logger.info(f"Updating embeddings for {len(docs)} docs ...")
-        embeddings = retriever.embed_passages(docs)  # type: ignore
-        assert len(docs) == len(embeddings)
+        result = self._query(
+            index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
+        )
+        document_count = len(result)
+        logger.info(f"Updating embeddings for {document_count} docs ...")
+        batched_documents = get_batches_from_generator(result, batch_size)
+        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+            for document_batch in batched_documents:
+                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                assert len(document_batch) == len(embeddings)
 
-        if embeddings[0].shape[0] != self.embedding_dim:
-            raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                               f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                               "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()")
+                if embeddings[0].shape[0] != self.embedding_dim:
+                    raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                                       f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
+                                       "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()")
 
-        for doc, emb in zip(docs, embeddings):
-            self.indexes[index][doc.id].embedding = emb
+                for doc, emb in zip(document_batch, embeddings):
+                    self.indexes[index][doc.id].embedding = emb
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         """
@@ -189,6 +220,43 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         index = index or self.label_index
         return len(self.indexes[index].items())
+
+    def _query(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        only_documents_without_embedding: bool = False,
+        batch_size: int = 10_000,
+    ):
+        index = index or self.index
+        documents = deepcopy(list(self.indexes[index].values()))
+
+        filtered_documents = []
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+        if return_embedding is False:
+            for doc in documents:
+                doc.embedding = None
+
+        if only_documents_without_embedding:
+            documents = [doc for doc in documents if doc.embedding is None]
+        if filters:
+            for doc in documents:
+                is_hit = True
+                for key, values in filters.items():
+                    if doc.meta.get(key):
+                        if doc.meta[key] not in values:
+                            is_hit = False
+                    else:
+                        is_hit = False
+                if is_hit:
+                    filtered_documents.append(doc)
+        else:
+            filtered_documents = documents
+
+        return filtered_documents
 
     def get_all_documents(
         self,
@@ -218,32 +286,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         """
-        index = index or self.index
-        documents = deepcopy(list(self.indexes[index].values()))
-
-        filtered_documents = []
-
-        if return_embedding is None:
-            return_embedding = self.return_embedding
-        if return_embedding is False:
-            for doc in documents:
-                doc.embedding = None
-
-        if filters:
-            for doc in documents:
-                is_hit = True
-                for key, values in filters.items():
-                    if doc.meta.get(key):
-                        if doc.meta[key] not in values:
-                            is_hit = False
-                    else:
-                        is_hit = False
-                if is_hit:
-                    filtered_documents.append(doc)
-        else:
-            filtered_documents = documents
-
-        yield from filtered_documents
+        result = self._query(
+            index=index,
+            filters=filters,
+            return_embedding=return_embedding,
+            batch_size=batch_size
+        )
+        yield from result
 
     def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
         """

@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
 
@@ -11,7 +12,7 @@ class Document:
                  probability: Optional[float] = None,
                  question: Optional[str] = None,
                  meta: Dict[str, Any] = None,
-                 embedding: Optional[np.array] = None):
+                 embedding: Optional[np.ndarray] = None):
         """
         Object used to represent documents / passages in a standardized way within Haystack.
         For example, this is what the retriever will return from the DocumentStore,
@@ -207,3 +208,32 @@ class MultiLabel:
 
     def __str__(self):
         return str(self.to_dict())
+
+
+class BaseComponent:
+    """
+    A base class for implementing nodes in a Pipeline.
+    """
+
+    outgoing_edges: int
+    subclasses: dict = {}
+
+    def __init_subclass__(cls, **kwargs):
+        """ This automatically keeps track of all available subclasses.
+        Enables generic load() for all specific component implementations.
+        """
+        super().__init_subclass__(**kwargs)
+        cls.subclasses[cls.__name__] = cls
+
+    @classmethod
+    def load_from_args(cls, component_type: str, **kwargs):
+        """
+        Load a component instance of the given type using the kwargs.
+        
+        :param component_type: name of the component class to load.
+        :param kwargs: parameters to pass to the __init__() for the component. 
+        """
+        if component_type not in cls.subclasses.keys():
+            raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
+        instance = cls.subclasses[component_type](**kwargs)
+        return instance

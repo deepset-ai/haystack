@@ -49,6 +49,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             update_existing_documents: bool = False,
             return_embedding: bool = False,
             embedding_field: str = "embedding",
+            progress_bar: bool = True,
             **kwargs,
     ):
         """
@@ -90,6 +91,8 @@ class MilvusDocumentStore(SQLDocumentStore):
                                           added already exists.
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+                             Can be helpful to disable in production deployments to keep the logs clean.
         """
         self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)
         self.vector_dim = vector_dim
@@ -108,6 +111,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         self._create_collection_and_index_if_not_exist(self.index)
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
+        self.progress_bar = progress_bar
 
         super().__init__(
             url=sql_url,
@@ -173,7 +177,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         add_vectors = False if document_objects[0].embedding is None else True
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)
-        with tqdm(total=len(document_objects)) as progress_bar:
+        with tqdm(total=len(document_objects), disable=self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 vector_ids = []
                 if add_vectors:
@@ -212,7 +216,14 @@ class MilvusDocumentStore(SQLDocumentStore):
         if self.update_existing_documents:
             self.milvus_server.compact(collection_name=index)
 
-    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):
+    def update_embeddings(
+        self,
+        retriever: BaseRetriever,
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        update_existing_embeddings: bool = True,
+        filters: Optional[Dict[str, List[str]]] = None,
+    ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
@@ -220,6 +231,12 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param retriever: Retriever to use to get embeddings for text
         :param index: (SQL) index name for storing the docs and metadata
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
+                                           only documents without embeddings are processed. This mode can be used for
+                                           incremental updating of embeddings, wherein, only newly indexed documents
+                                           get processed.
+        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
         index = index or self.index
@@ -232,9 +249,15 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         logger.info(f"Updating embeddings for {document_count} docs...")
 
-        result = self.get_all_documents_generator(index=index, batch_size=batch_size, return_embedding=False)
+        result = self._query(
+            index=index,
+            vector_ids=None,
+            batch_size=batch_size,
+            filters=filters,
+            only_documents_without_embedding=not update_existing_embeddings
+        )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count) as progress_bar:
+        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
@@ -258,7 +281,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.milvus_server.compact(collection_name=index)
 
     def query_by_embedding(self,
-                           query_emb: np.array,
+                           query_emb: np.ndarray,
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
@@ -458,7 +481,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             if status.code != Status.SUCCESS:
                 raise RuntimeError("E existing vector ids deletion failed: {status}")
 
-    def get_all_vectors(self, index=None) -> List[np.array]:
+    def get_all_vectors(self, index: Optional[str] = None) -> List[np.ndarray]:
         """
         Helper function to dump all vectors stored in Milvus server.
 

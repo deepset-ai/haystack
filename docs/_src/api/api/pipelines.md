@@ -76,6 +76,57 @@ Create a Graphviz visualization of the pipeline.
 
 - `path`: the path to save the image.
 
+<a name="pipeline.Pipeline.load_from_yaml"></a>
+#### load\_from\_yaml
+
+```python
+ | @classmethod
+ | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+```
+
+Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+```yaml
+|   version: '0.7'
+|
+|    components:    # define all the building-blocks for Pipeline
+|    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+|      type: FARMReader    # Haystack Class name for the component
+|      params:
+|        no_ans_boost: -10
+|        model_name_or_path: deepset/roberta-base-squad2
+|    - name: MyESRetriever
+|      type: ElasticsearchRetriever
+|      params:
+|        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+|        custom_query: null
+|    - name: MyDocumentStore
+|      type: ElasticsearchDocumentStore
+|      params:
+|        index: haystack_test
+|
+|    pipelines:    # multiple Pipelines can be defined using the components from above
+|    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+|      nodes:
+|      - name: MyESRetriever
+|        inputs: [Query]
+|      - name: MyReader
+|        inputs: [MyESRetriever]
+```
+
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
+
 <a name="pipeline.BaseStandardPipeline"></a>
 ## BaseStandardPipeline Objects
 

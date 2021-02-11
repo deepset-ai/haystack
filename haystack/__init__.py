@@ -1,7 +1,7 @@
 import logging
 
 import pandas as pd
-from haystack.schema import Document, Label, MultiLabel
+from haystack.schema import Document, Label, MultiLabel, BaseComponent
 from haystack.finder import Finder
 from haystack.pipeline import Pipeline
 
