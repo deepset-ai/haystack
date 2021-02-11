@@ -56,7 +56,7 @@ class Crawler(BaseComponent):
                               1: Follow links found on the initial URLs (but no further)
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
-        :return: dictionary of documents
+        :return: List of Documents
         """
         path = Path(output_dir)
         if not path.exists():
@@ -124,6 +124,18 @@ class Crawler(BaseComponent):
             output_dir: str,
             crawler_depth: int = 1,
             filter_urls: Optional[List] = None) -> (List[Document], str):
+        """
+        Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
+
+        :param urls: List of http addresses or single http address
+        :param output_dir: Path for the directory to store files
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
+                              0: Only initial list of urls
+                              1: Follow links found on the initial URLs (but no further)
+        :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
+                           All URLs not matching at least one of the regular expressions will be dropped.
+        :return: (List of Documents, Name of output edge)
+        """
 
         docs = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth, filter_urls=filter_urls)
         return docs, "output_1"
