@@ -28,9 +28,9 @@ Haystack is an end-to-end framework that enables you to build powerful and produ
 Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
 Haystack is built in modular fashion so that you can combine the best technology from other open source projects like Huggingface’s Transformers, Elasticsearch or Milvus.
 
-![Example](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif)
+![Example](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif | width=100)
 
-## What can be done with Haystack:
+## What to build with Haystack
 - Ask questions in natural language and find granular answers in your own documents.
 - Perform semantic search and retrieve documents according to meaning not keywords
 - Use off-the-shelf models or fine-tune them to your own domain.
@@ -39,7 +39,6 @@ Haystack is built in modular fashion so that you can combine the best technology
 - Automate processes by automatically applying a list of questions to new documents and using the extracted answers.  
 
 ## Core Features
-
 -   **Latest models**: Utilize all latest transformer based models (e.g. BERT, RoBERTa, MiniLM) for extractive QA, generative QA and document retrieval.
 -   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter or modeling framwework.
 -   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g. Transformers, FARM, sentence-transformers)
