@@ -2,7 +2,7 @@ import logging
 import re
 from pathlib import Path
 from urllib.parse import urlparse
-from typing import List, Any, Optional, Dict
+from typing import List, Any, Optional, Dict, Tuple
 from haystack.schema import Document, BaseComponent
 logger = logging.getLogger(__name__)
 
@@ -63,11 +63,11 @@ class Crawler(BaseComponent):
             path.mkdir(parents=True)
 
         is_not_empty = len(list(Path(path).rglob("*"))) > 0
-        if is_not_empty:
+        if is_not_empty :
             logger.info(
                 f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data."
             )
-            return False
+            return []
         else:
             logger.info(f"Fetching from {urls} to `{output_dir}`")
 
@@ -123,7 +123,7 @@ class Crawler(BaseComponent):
     def run(self, urls: Any,
             output_dir: str,
             crawler_depth: int = 1,
-            filter_urls: Optional[List] = None) -> (List[Document], str):
+            filter_urls: Optional[List] = None) -> Tuple[List[Document], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
