@@ -1,4 +1,4 @@
-![Logo](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/haystack_logo_blue_banner.png)
+![Logo](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/logo_white_background.png)
 
 <p>
     <a href="https://github.com/deepset-ai/haystack/actions">
@@ -27,6 +27,8 @@
 Haystack is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
 Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
 Haystack is built in modular fashion so that you can combine the best technology from other open source projects like Huggingface’s Transformers, Elasticsearch or Milvus.
+
+![Example](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif)
 
 ## What can be done with Haystack:
 - Ask questions in natural language and find granular answers in your own documents.
