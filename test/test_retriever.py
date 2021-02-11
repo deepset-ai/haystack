@@ -113,7 +113,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_dpr_embeddings(document_store, retriever):
+def test_dpr_embedding(document_store, retriever):
     documents = [
         Document(
             text="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
@@ -157,23 +157,6 @@ def test_dpr_embeddings(document_store, retriever):
     assert abs(doc_4.embedding[0] - (-0.0802)) < 0.001
     doc_5 = document_store.get_document_by_id("5")
     assert abs(doc_5.embedding[0] - (-0.0551)) < 0.001
-
-    res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?")
-
-    assert res[0].meta["name"] == "1"
-
-    # # test embedding
-    # if return_embedding is True:
-    #     assert res[0].embedding is not None
-    # else:
-    #     assert res[0].embedding is None
-    #
-    # # test filtering
-    # if not isinstance(document_store, FAISSDocumentStore) and not isinstance(document_store, MilvusDocumentStore):
-    #     res = retriever.retrieve(query="Which philosopher attacked Schopenhauer?", filters={"name": ["0", "2"]})
-    #     assert len(res) == 2
-    #     for r in res:
-    #         assert r.meta["name"] in ["0", "2"]
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
