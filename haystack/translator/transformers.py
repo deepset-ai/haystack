@@ -67,8 +67,7 @@ class TransformersTranslator(BaseTranslator):
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         tokenizer_name = tokenizer_name or model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_name,
-            model_max_length=self.max_seq_len
+            tokenizer_name
         )
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
 
