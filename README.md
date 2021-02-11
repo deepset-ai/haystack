@@ -31,12 +31,12 @@ Haystack is built in modular fashion so that you can combine the best technology
 <img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif" width="1000" height="742"/>
 
 ## What to build with Haystack
-- Ask questions in natural language and find granular answers in your own documents.
-- Perform semantic search and retrieve documents according to meaning not keywords
-- Use off-the-shelf models or fine-tune them to your own domain.
-- Use user feedback to evaluate, benchmark and continuously improve your models.
-- Leverage existing knowledge bases and better handle the long tail of queries that chatbots receive.
-- Automate processes by automatically applying a list of questions to new documents and using the extracted answers.  
+- **Ask questions in natural language** and find granular answers in your own documents.
+- Perform **semantic search** and retrieve documents according to meaning not keywords
+- Use **off-the-shelf models** or **fine-tune** them to your own domain.
+- Use **user feedback** to evaluate, benchmark and continuously improve your live models.
+- Leverage existing **knowledge bases** and better handle the long tail of queries that **chatbots** receive.
+- **Automate processes** by automatically applying a list of questions to new documents and using the extracted answers.  
 
 ## Core Features
 
