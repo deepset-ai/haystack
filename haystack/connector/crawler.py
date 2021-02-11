@@ -3,11 +3,11 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 from typing import List, Any, Optional, Dict
-from haystack.schema import Document
+from haystack.schema import Document, BaseComponent
 logger = logging.getLogger(__name__)
 
 
-class Crawler:
+class Crawler(BaseComponent):
     """
     Crawl texts from a website so that we can use them later in Haystack as a corpus for search / question answering etc.
 
@@ -22,6 +22,9 @@ class Crawler:
     |                         filter_urls= ["haystack\.deepset\.ai\/docs\/"])
     ```
     """
+
+    outgoing_edges = 1
+
     def __init__(self):
 
         try:
@@ -116,6 +119,14 @@ class Crawler:
             docs.append(new_doc)
 
         return docs
+
+    def run(self, urls: Any,
+            output_dir: str,
+            crawler_depth: int = 1,
+            filter_urls: Optional[List] = None) -> (List[Document], str):
+
+        docs = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth, filter_urls=filter_urls)
+        return docs, "output_1"
 
     @staticmethod
     def _is_internal_url(base_url: str, sub_link: str) -> bool:
