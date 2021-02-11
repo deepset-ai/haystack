@@ -39,6 +39,7 @@ Haystack is built in modular fashion so that you can combine the best technology
 - Automate processes by automatically applying a list of questions to new documents and using the extracted answers.  
 
 ## Core Features
+
 -   **Latest models**: Utilize all latest transformer based models (e.g. BERT, RoBERTa, MiniLM) for extractive QA, generative QA and document retrieval.
 -   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter or modeling framwework.
 -   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g. Transformers, FARM, sentence-transformers)
