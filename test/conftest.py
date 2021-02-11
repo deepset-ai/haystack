@@ -244,7 +244,8 @@ def get_retriever(retriever_type, document_store):
                                           passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
                                           use_gpu=False, embed_title=True)
     elif retriever_type == "tfidf":
-        return TfidfRetriever(document_store=document_store)
+        retriever = TfidfRetriever(document_store=document_store)
+        retriever.fit()
     elif retriever_type == "embedding":
         retriever = EmbeddingRetriever(
             document_store=document_store,

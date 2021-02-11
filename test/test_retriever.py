@@ -8,7 +8,7 @@ from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.retriever.dense import DensePassageRetriever
-from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever
+from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 
@@ -26,11 +26,12 @@ from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderToken
         ("embedding", "milvus"),
         ("elasticsearch", "elasticsearch"),
         ("es_filter_only", "elasticsearch"),
+        ("tfidf", "memory"),
     ],
     indirect=True,
 )
 def test_retrieval(retriever_with_docs, document_store_with_docs):
-    if not isinstance(retriever_with_docs, (ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever)):
+    if not isinstance(retriever_with_docs, (ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     # test without filters
@@ -40,7 +41,9 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
     assert res[0].meta["name"] == "filename1"
 
     # test with filters
-    if not isinstance(document_store_with_docs, (FAISSDocumentStore, MilvusDocumentStore)):
+    if not isinstance(document_store_with_docs, (FAISSDocumentStore, MilvusDocumentStore)) and not isinstance(
+        retriever_with_docs, TfidfRetriever
+    ):
         # single filter
         result = retriever_with_docs.retrieve(query="godzilla", filters={"name": ["filename3"]}, top_k=5)
         assert len(result) == 1
