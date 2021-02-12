@@ -25,17 +25,20 @@ You can use a Translator node in your pipeline to
 You can use the Translator component directly to translate your query or document(s): 
 ```python
 DOCS = [
-        Document(text="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
-                       and widely attributed as the originator of Second-order cybernetics.")
+        Document(
+            text="""Heinz von Foerster was an Austrian American scientist 
+                  combining physics and philosophy, and widely attributed 
+                  as the originator of Second-order cybernetics."""
+        )
     ]
-translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
+translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-fr")
 res = translator.translate(documents=DOCS, query=None)
 ```
 
 **Example (Wrapping another Pipeline)**
 
 You can also wrap one of your existing pipelines and "add" the translation nodes at the beginning and at the end of your pipeline.
-For example, lets translate the incoming query to from french to english, then do our document retrieval and then translate the results back from english to french:
+For example, lets translate the incoming query to from French to English, then do our document retrieval and then translate the results back from English to French:
 
 ```python
 from haystack.pipeline import TranslationWrapperPipeline, DocumentSearchPipeline

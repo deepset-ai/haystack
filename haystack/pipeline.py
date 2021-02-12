@@ -14,7 +14,7 @@ from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 from haystack.summarizer.base import BaseSummarizer
-from haystack.translator import BaseTranslator
+from haystack.translator.base import BaseTranslator
 
 
 class Pipeline(ABC):

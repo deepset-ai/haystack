@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from haystack import Document
-from haystack.pipeline import EndToEndTranslationPipeline, GenerativeQAPipeline
+from haystack.pipeline import TranslationWrapperPipeline, GenerativeQAPipeline
 
 DOCS_WITH_EMBEDDINGS = [
     Document(
@@ -447,7 +447,7 @@ def test_generator_pipeline_with_translator(
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     query = "Was ist die Hauptstadt der Bundesrepublik Deutschland?"
     base_pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    pipeline = EndToEndTranslationPipeline(
+    pipeline = TranslationWrapperPipeline(
         input_translator=de_to_en_translator,
         output_translator=en_to_de_translator,
         pipeline=base_pipeline

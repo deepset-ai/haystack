@@ -1,7 +1,7 @@
 import pytest
 
 from haystack import Document
-from haystack.pipeline import EndToEndTranslationPipeline, SearchSummarizationPipeline
+from haystack.pipeline import TranslationWrapperPipeline, SearchSummarizationPipeline
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 
 DOCS = [
@@ -119,7 +119,7 @@ def test_summarization_pipeline_with_translator(
 
     query = "Wo steht der Eiffelturm?"
     base_pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer)
-    pipeline = EndToEndTranslationPipeline(
+    pipeline = TranslationWrapperPipeline(
         input_translator=de_to_en_translator,
         output_translator=en_to_de_translator,
         pipeline=base_pipeline
