@@ -497,15 +497,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Return all documents in a specific index in the document store
         """
-        body = {
-            "query": {
-                "bool": {
-                    "must": {
-                        "match_all": {}
-                    }
-                }
-            }
-        }  # type: Dict[str, Any]
+        body: dict = {"query": {"bool": {}}}
 
         if filters:
             filter_clause = []
@@ -640,13 +632,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "query": self._get_vector_similarity_query(query_emb, top_k)
             }
             if filters:
+                filter_clause = []
                 for key, values in filters.items():
                     if type(values) != list:
                         raise ValueError(f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
                                          'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
-                body["query"]["script_score"]["query"] = {
-                    "terms": filters
-                }
+                    filter_clause.append(
+                        {
+                            "terms": {key: values}
+                        }
+                    )
+                body["query"]["script_score"]["query"] = {"bool": {"filter": filter_clause}}
 
             excluded_meta_data: Optional[list] = None
 
