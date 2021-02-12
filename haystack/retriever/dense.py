@@ -6,8 +6,6 @@ from pathlib import Path
 from tqdm import tqdm
 
 from haystack.document_store.base import BaseDocumentStore
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_store.memory import InMemoryDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
 
