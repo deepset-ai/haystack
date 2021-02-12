@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.pipeline import JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, DocumentSearchPipeline
+from haystack.pipeline import TranslationWrapperPipeline, JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, \
+    DocumentSearchPipeline
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
 
@@ -135,6 +136,27 @@ def test_document_search_pipeline(retriever, document_store):
     if isinstance(document_store, ElasticsearchDocumentStore):
         output = pipeline.run(query="How to test this?", filters={"source": ["wiki2"]}, top_k_retriever=5)
         assert len(output["documents"]) == 1
+
+
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+def test_extractive_qa_answers_with_translator(reader, retriever_with_docs, en_to_de_translator, de_to_en_translator):
+    base_pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    pipeline = TranslationWrapperPipeline(
+        input_translator=de_to_en_translator,
+        output_translator=en_to_de_translator,
+        pipeline=base_pipeline
+    )
+
+    prediction = pipeline.run(query="Wer lebt in Berlin?", top_k_retriever=10, top_k_reader=3)
+    assert prediction is not None
+    assert prediction["query"] == "Wer lebt in Berlin?"
+    assert "Carla" in prediction["answers"][0]["answer"]
+    assert prediction["answers"][0]["probability"] <= 1
+    assert prediction["answers"][0]["probability"] >= 0
+    assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
+    assert prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
