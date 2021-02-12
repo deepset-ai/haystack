@@ -88,7 +88,7 @@ pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
 
 ## Key Components
 
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/concepts_haystack_v2.png)
+![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/concepts_haystack_handdrawn.png)
 
 1.  **FileConverter**: Extracts pure text from files (pdf, docx, pptx, html and many more). 
 2.  **PreProcessor**: Cleans and splits texts into smaller chunks.
