@@ -57,6 +57,7 @@ jobs:
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
+      fail-fast: false
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.7
