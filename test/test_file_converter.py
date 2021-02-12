@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from haystack.file_converter.docx import DocxToTextConverter
 from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.tika import TikaConverter
 
@@ -45,3 +46,7 @@ def test_language_validation(Converter, xpdf_fixture, caplog):
     assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
+def test_docx_converter():
+    converter = DocxToTextConverter()
+    document = converter.convert(file_path=Path("samples/docx/sample_docx.docx"))
+    assert document["text"].startswith("Sample Docx File")
