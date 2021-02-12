@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from haystack.file_converter.docx import DocxToTextConverter
 from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.tika import TikaConverter
 
@@ -28,7 +29,9 @@ def test_table_removal(Converter, xpdf_fixture):
     assert "54x growth" not in pages[0]
 
     # assert text is retained from the document.
-    assert "Adobe Systems made the PDF specification available free of charge in 1993." in pages[0].replace("\n", "")
+    # As whitespace can differ (\n," ", etc.), we standardize all to simple whitespace
+    page_standard_whitespace = " ".join(pages[0].split())
+    assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
 @pytest.mark.tika
@@ -43,3 +46,7 @@ def test_language_validation(Converter, xpdf_fixture, caplog):
     assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
+def test_docx_converter():
+    converter = DocxToTextConverter()
+    document = converter.convert(file_path=Path("samples/docx/sample_docx.docx"))
+    assert document["text"].startswith("Sample Docx File")

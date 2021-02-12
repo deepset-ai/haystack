@@ -434,7 +434,7 @@ class FAQPipeline(BaseStandardPipeline):
 
         results: Dict = {"query": query, "answers": []}
         for doc in documents:
-            # TODO proper calibratation of pseudo probabilities
+            # TODO proper calibration of pseudo probabilities
             cur_answer = {
                 "query": doc.text,
                 "answer": doc.meta["answer"],
@@ -448,7 +448,6 @@ class FAQPipeline(BaseStandardPipeline):
             }
 
             results["answers"].append(cur_answer)
-
         return results
 
 
