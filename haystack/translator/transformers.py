@@ -34,8 +34,7 @@ class TransformersTranslator(BaseTranslator):
         model_name_or_path: str,
         tokenizer_name: Optional[str] = None,
         max_seq_len: Optional[int] = None,
-        clean_up_tokenization_spaces: Optional[bool] = True,
-        padding: Optional[str] = "do_not_pad"
+        clean_up_tokenization_spaces: Optional[bool] = True
     ):
         """ Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
@@ -55,14 +54,8 @@ class TransformersTranslator(BaseTranslator):
                                tokenizer.
         :param max_seq_len: The maximum sentence length the model accepts. (Optional)
         :param clean_up_tokenization_spaces: Whether or not to clean up the tokenization spaces. (default True)
-        :param padding: Activates and controls padding. Accepts the following values (default `do_not_pad`):
-                        1. `longest`: Pad to the longest sequence in the batch (or no padding if only a
-                        single sequence if provided).
-                        2. `max_length`: Pad to a maximum acceptable input length for the model
-                        3. `do_not_pad` No padding
         """
 
-        self.padding = padding
         self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         tokenizer_name = tokenizer_name or model_name_or_path
@@ -108,8 +101,7 @@ class TransformersTranslator(BaseTranslator):
         batch = self.tokenizer.prepare_seq2seq_batch(
             src_texts=text_for_translator,
             return_tensors="pt",
-            max_length=self.max_seq_len,
-            padding=self.padding
+            max_length=self.max_seq_len
         )
         generated_output = self.model.generate(**batch)
         translated_texts = self.tokenizer.batch_decode(
