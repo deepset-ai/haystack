@@ -23,6 +23,7 @@ from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.summarizer.transformers import TransformersSummarizer
+from haystack.translator import TransformersTranslator
 
 
 def _sql_session_rollback(self, attr):
@@ -158,6 +159,20 @@ def summarizer():
     return TransformersSummarizer(
         model_name_or_path="google/pegasus-xsum",
         use_gpu=-1
+    )
+
+
+@pytest.fixture(scope="module")
+def en_to_de_translator():
+    return TransformersTranslator(
+        model_name_or_path="Helsinki-NLP/opus-mt-en-de",
+    )
+
+
+@pytest.fixture(scope="module")
+def de_to_en_translator():
+    return TransformersTranslator(
+        model_name_or_path="Helsinki-NLP/opus-mt-de-en",
     )
 
 

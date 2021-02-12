@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from haystack import Document
-from haystack.pipeline import GenerativeQAPipeline
+from haystack.pipeline import TranslationWrapperPipeline, GenerativeQAPipeline
 
 DOCS_WITH_EMBEDDINGS = [
     Document(
@@ -422,6 +422,36 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     query = "What is capital of the Germany?"
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
+    output = pipeline.run(query=query, top_k_generator=2, top_k_retriever=1)
+    answers = output["answers"]
+    assert len(answers) == 2
+    assert "berlin" in answers[0]["answer"]
+
+
+# Keeping few (retriever,document_store) combination to reduce test time
+@pytest.mark.slow
+@pytest.mark.generator
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize(
+    "retriever,document_store",
+    [("embedding", "memory"), ("elasticsearch", "elasticsearch")],
+    indirect=True,
+)
+def test_generator_pipeline_with_translator(
+    document_store,
+    retriever,
+    rag_generator,
+    en_to_de_translator,
+    de_to_en_translator
+):
+    document_store.write_documents(DOCS_WITH_EMBEDDINGS)
+    query = "Was ist die Hauptstadt der Bundesrepublik Deutschland?"
+    base_pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
+    pipeline = TranslationWrapperPipeline(
+        input_translator=de_to_en_translator,
+        output_translator=en_to_de_translator,
+        pipeline=base_pipeline
+    )
     output = pipeline.run(query=query, top_k_generator=2, top_k_retriever=1)
     answers = output["answers"]
     assert len(answers) == 2
