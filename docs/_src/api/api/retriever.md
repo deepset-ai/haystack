@@ -264,6 +264,11 @@ titles contain meaningful information for retrieval (topic, entities etc.) .
 The title is expected to be present in doc.meta["name"] and can be supplied in the documents
 before writing them to the DocumentStore like this:
 {"text": "my text", "meta": {"name": "my title"}}.
+- `use_fast_tokenizers`: Whether to use fast Rust tokenizers
+- `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
+If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
+- `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
+Options: `dot_product` (Default) or `cosine`
 - `progress_bar`: Whether to show a tqdm progress bar or not.
 Can be helpful to disable in production deployments to keep the logs clean.
 
