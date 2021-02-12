@@ -132,10 +132,9 @@ def xpdf_fixture(tika_fixture):
             raise Exception(
                 """Currently auto installation of pdftotext is not supported on {0} platform """.format(platform)
             )
-
-        commands = """ wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-{0}-4.02.tar.gz &&
-                       tar -xvf xpdf-tools-{0}-4.02.tar.gz &&
-                       {1} cp xpdf-tools-{0}-4.02/bin64/pdftotext /usr/local/bin""".format(platform_id, sudo_prefix)
+        commands = """ wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-{0}-4.03.tar.gz &&
+                       tar -xvf xpdf-tools-{0}-4.03.tar.gz &&
+                       {1} cp xpdf-tools-{0}-4.03/bin64/pdftotext /usr/local/bin""".format(platform_id, sudo_prefix)
         run([commands], shell=True)
 
         verify_installation = run(["pdftotext -v"], shell=True)
