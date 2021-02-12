@@ -225,7 +225,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", progress_bar: bool = True)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", progress_bar: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -264,6 +264,11 @@ titles contain meaningful information for retrieval (topic, entities etc.) .
 The title is expected to be present in doc.meta["name"] and can be supplied in the documents
 before writing them to the DocumentStore like this:
 {"text": "my text", "meta": {"name": "my title"}}.
+- `use_fast_tokenizers`: Whether to use fast Rust tokenizers
+- `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
+If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
+- `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
+Options: `dot_product` (Default) or `cosine`
 - `progress_bar`: Whether to show a tqdm progress bar or not.
 Can be helpful to disable in production deployments to keep the logs clean.
 
