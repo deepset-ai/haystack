@@ -212,7 +212,7 @@ def test_update_embeddings(document_store, retriever):
 
     documents = document_store.get_all_documents(
         index="haystack_test_1",
-        filters={"meta_field": ["value_0", "value_6"]},
+        filters={"meta_field": ["value_0"]},
         return_embedding=True,
     )
     np.testing.assert_array_equal(documents[0].embedding, documents[1].embedding)
