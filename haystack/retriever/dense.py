@@ -85,6 +85,11 @@ class DensePassageRetriever(BaseRetriever):
                             The title is expected to be present in doc.meta["name"] and can be supplied in the documents
                             before writing them to the DocumentStore like this:
                             {"text": "my text", "meta": {"name": "my title"}}.
+        :param use_fast_tokenizers: Whether to use fast Rust tokenizers
+        :param infer_tokenizer_classes: Whether to infer tokenizer class from the model config / name. 
+                                        If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
+        :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training. 
+                                    Options: `dot_product` (Default) or `cosine`
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
@@ -116,8 +121,8 @@ class DensePassageRetriever(BaseRetriever):
             "passage": "DPRContextEncoderTokenizer"
         }
         if self.infer_tokenizer_classes:
-            tokenizers_default_classes["query"] = None
-            tokenizers_default_classes["passage"] = None
+            tokenizers_default_classes["query"] = None   # type: ignore
+            tokenizers_default_classes["passage"] = None # type: ignore
 
         # Init & Load Encoders
         self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
