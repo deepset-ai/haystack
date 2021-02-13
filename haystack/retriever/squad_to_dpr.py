@@ -317,8 +317,11 @@ if __name__ == '__main__':
                         )
 
     args = parser.parse_args()
-
-    preprocessor = PreProcessor(split_length=100, split_overlap=0, clean_empty_lines=False,
+    
+    preprocessor = PreProcessor(split_length=100,
+                                split_overlap=0,
+                                clean_empty_lines=False,
+                                split_respect_sentence_boundary=False,
                                 clean_whitespace=False)
     squad_input_filename = Path(args.squad_input_filename)
     dpr_output_filename = Path(args.dpr_output_filename)
