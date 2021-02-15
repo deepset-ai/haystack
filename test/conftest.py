@@ -23,6 +23,7 @@ from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.summarizer.transformers import TransformersSummarizer
+from haystack.translator import TransformersTranslator
 
 
 def _sql_session_rollback(self, attr):
@@ -132,10 +133,9 @@ def xpdf_fixture(tika_fixture):
             raise Exception(
                 """Currently auto installation of pdftotext is not supported on {0} platform """.format(platform)
             )
-
-        commands = """ wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-{0}-4.02.tar.gz &&
-                       tar -xvf xpdf-tools-{0}-4.02.tar.gz &&
-                       {1} cp xpdf-tools-{0}-4.02/bin64/pdftotext /usr/local/bin""".format(platform_id, sudo_prefix)
+        commands = """ wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-{0}-4.03.tar.gz &&
+                       tar -xvf xpdf-tools-{0}-4.03.tar.gz &&
+                       {1} cp xpdf-tools-{0}-4.03/bin64/pdftotext /usr/local/bin""".format(platform_id, sudo_prefix)
         run([commands], shell=True)
 
         verify_installation = run(["pdftotext -v"], shell=True)
@@ -159,6 +159,20 @@ def summarizer():
     return TransformersSummarizer(
         model_name_or_path="google/pegasus-xsum",
         use_gpu=-1
+    )
+
+
+@pytest.fixture(scope="module")
+def en_to_de_translator():
+    return TransformersTranslator(
+        model_name_or_path="Helsinki-NLP/opus-mt-en-de",
+    )
+
+
+@pytest.fixture(scope="module")
+def de_to_en_translator():
+    return TransformersTranslator(
+        model_name_or_path="Helsinki-NLP/opus-mt-de-en",
     )
 
 
@@ -245,7 +259,8 @@ def get_retriever(retriever_type, document_store):
                                           passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
                                           use_gpu=False, embed_title=True)
     elif retriever_type == "tfidf":
-        return TfidfRetriever(document_store=document_store)
+        retriever = TfidfRetriever(document_store=document_store)
+        retriever.fit()
     elif retriever_type == "embedding":
         retriever = EmbeddingRetriever(
             document_store=document_store,

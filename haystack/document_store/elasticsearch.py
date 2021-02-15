@@ -12,7 +12,6 @@ from scipy.special import expit
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
-from haystack.retriever.base import BaseRetriever
 from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
@@ -495,19 +494,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         index: str,
         filters: Optional[Dict[str, List[str]]] = None,
         batch_size: int = 10_000,
+        only_documents_without_embedding: bool = False,
     ) -> Generator[dict, None, None]:
         """
         Return all documents in a specific index in the document store
         """
-        body = {
-            "query": {
-                "bool": {
-                    "must": {
-                        "match_all": {}
-                    }
-                }
-            }
-        }  # type: Dict[str, Any]
+        body: dict = {"query": {"bool": {}}}
 
         if filters:
             filter_clause = []
@@ -518,6 +510,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     }
                 )
             body["query"]["bool"]["filter"] = filter_clause
+
+        if only_documents_without_embedding:
+            body["query"]["bool"] = {"must_not": {"exists": {"field": self.embedding_field}}}
 
         result = scan(self.client, query=body, index=index, size=batch_size, scroll="1d")
         yield from result
@@ -639,13 +634,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "query": self._get_vector_similarity_query(query_emb, top_k)
             }
             if filters:
+                filter_clause = []
                 for key, values in filters.items():
                     if type(values) != list:
                         raise ValueError(f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
                                          'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
-                body["query"]["script_score"]["query"] = {
-                    "terms": filters
-                }
+                    filter_clause.append(
+                        {
+                            "terms": {key: values}
+                        }
+                    )
+                body["query"]["script_score"]["query"] = {"bool": {"filter": filter_clause}}
 
             excluded_meta_data: Optional[list] = None
 
@@ -757,13 +756,26 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                  }
         return stats
 
-    def update_embeddings(self, retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000):
+    def update_embeddings(
+        self,
+        retriever,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        update_existing_embeddings: bool = True,
+        batch_size: int = 10_000
+    ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
         This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
 
         :param retriever: Retriever to use to update the embeddings.
         :param index: Index name to update
+        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
+                                           only documents without embeddings are processed. This mode can be used for
+                                           incremental updating of embeddings, wherein, only newly indexed documents
+                                           get processed.
+        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
@@ -773,12 +785,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
-        logger.info(f"Updating embeddings for {self.get_document_count(index=index)} docs ...")
+        if update_existing_embeddings:
+            logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
+        else:
+            logger.info(f"Updating embeddings for new docs without embeddings ...")
 
-        result = self.get_all_documents_generator(index, batch_size=batch_size)
-        for document_batch in get_batches_from_generator(result, batch_size):
-            if len(document_batch) == 0:
-                break
+        result = self._get_all_documents_in_index(
+            index=index,
+            filters=filters,
+            batch_size=batch_size,
+            only_documents_without_embedding=not update_existing_embeddings
+        )
+
+        for result_batch in get_batches_from_generator(result, batch_size):
+            document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
             embeddings = retriever.embed_passages(document_batch)  # type: ignore
             assert len(document_batch) == len(embeddings)
 

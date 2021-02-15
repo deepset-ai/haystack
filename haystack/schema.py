@@ -240,5 +240,7 @@ class BaseComponent:
         :param component_type: name of the component class to load.
         :param kwargs: parameters to pass to the __init__() for the component. 
         """
+        if component_type not in cls.subclasses.keys():
+            raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
         instance = cls.subclasses[component_type](**kwargs)
         return instance

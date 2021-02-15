@@ -199,27 +199,30 @@ def test_document_with_embeddings(document_store):
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
-    for i in range(23):
+    for i in range(6):
         documents.append({"text": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
-    documents.append({"text": "text_0", "id": "23", "meta_field": "value_0"})
+    documents.append({"text": "text_0", "id": "6", "meta_field": "value_0"})
 
     document_store.write_documents(documents, index="haystack_test_1")
-    document_store.update_embeddings(retriever, index="haystack_test_1")
+    document_store.update_embeddings(retriever, index="haystack_test_1", batch_size=3)
     documents = document_store.get_all_documents(index="haystack_test_1", return_embedding=True)
-    assert len(documents) == 24
+    assert len(documents) == 7
     for doc in documents:
         assert type(doc.embedding) is np.ndarray
 
     documents = document_store.get_all_documents(
         index="haystack_test_1",
-        filters={"meta_field": ["value_0", "value_23"]},
+        filters={"meta_field": ["value_0"]},
         return_embedding=True,
     )
-    np.testing.assert_array_equal(documents[0].embedding, documents[1].embedding)
+    assert len(documents) == 2
+    for doc in documents:
+        assert doc.meta["meta_field"] == "value_0"
+    np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding)
 
     documents = document_store.get_all_documents(
         index="haystack_test_1",
-        filters={"meta_field": ["value_0", "value_10"]},
+        filters={"meta_field": ["value_0", "value_5"]},
         return_embedding=True,
     )
     np.testing.assert_raises(
@@ -228,6 +231,38 @@ def test_update_embeddings(document_store, retriever):
         documents[0].embedding,
         documents[1].embedding
     )
+
+    doc = {"text": "text_7", "id": "7", "meta_field": "value_7",
+           "embedding": retriever.embed_queries(texts=["a random string"])[0]}
+    document_store.write_documents([doc], index="haystack_test_1")
+
+    documents = []
+    for i in range(8, 11):
+        documents.append({"text": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
+    document_store.write_documents(documents, index="haystack_test_1")
+
+    doc_before_update = document_store.get_all_documents(index="haystack_test_1", filters={"meta_field": ["value_7"]})[0]
+    embedding_before_update = doc_before_update.embedding
+
+    # test updating only documents without embeddings
+    document_store.update_embeddings(retriever, index="haystack_test_1", batch_size=3, update_existing_embeddings=False)
+    doc_after_update = document_store.get_all_documents(index="haystack_test_1", filters={"meta_field": ["value_7"]})[0]
+    embedding_after_update = doc_after_update.embedding
+    np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
+
+    # test updating with filters
+    document_store.update_embeddings(
+        retriever, index="haystack_test_1", batch_size=3, filters={"meta_field": ["value_0", "value_1"]}
+    )
+    doc_after_update = document_store.get_all_documents(index="haystack_test_1", filters={"meta_field": ["value_7"]})[0]
+    embedding_after_update = doc_after_update.embedding
+    np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
+
+    # test update all embeddings
+    document_store.update_embeddings(retriever, index="haystack_test_1", batch_size=3, update_existing_embeddings=True)
+    doc_after_update = document_store.get_all_documents(index="haystack_test_1", filters={"meta_field": ["value_7"]})[0]
+    embedding_after_update = doc_after_update.embedding
+    np.testing.assert_raises(AssertionError, np.testing.assert_array_equal, embedding_before_update, embedding_after_update)
 
 
 @pytest.mark.elasticsearch
