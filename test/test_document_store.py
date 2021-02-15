@@ -218,7 +218,7 @@ def test_update_embeddings(document_store, retriever):
     assert len(documents) == 2
     for doc in documents:
         assert doc.meta["meta_field"] == "value_0"
-    np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding)
+    np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding, decimal=4)
 
     documents = document_store.get_all_documents(
         index="haystack_test_1",
