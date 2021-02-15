@@ -53,9 +53,9 @@ Haystack is built in modular fashion so that you can combine the best technology
 |  |  |
 |-|-|
 | :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
-| :computer: [Requirements](https://github.com/deepset-ai/haystack/#requirements) | Minimum system requirements |
-| :computer: [Quick Demo](https://github.com/deepset-ai/haystack/#quick-start) | Quickly see what Haystack offers |
-| :computer: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install |
+| :memo: [Requirements](https://github.com/deepset-ai/haystack/#requirements) | Minimum system requirements |
+| :beginner: [Quick Demo](https://github.com/deepset-ai/haystack/#quick-start) | Quickly see what Haystack offers |
+| :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :art: [Key Components](https://github.com/deepset-ai/haystack/#key-components) | Overview of core concepts |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
 | :eyes: [How to use Haystack](https://github.com/deepset-ai/haystack/#how-to-use-haystack) | Basic explanation of concepts, options and usage |
@@ -73,17 +73,17 @@ Here's a list of the minimum system requirements to install and use Haystack:
 * RAM: 4GB or more
 * CPU: 64-bit, 4 cores or more
 * Storage: 20GB
-* Python 3.6.0 or higher
-* OS — Ubuntu 18.04 or later, MacOS X 10.15 or later, Windows 10
-* pip3 (if you'd like to go beyond the Quick Start below)
+* Python: 3.6.0 or higher
+* OS: Ubuntu 18.04 or later, MacOS X 10.15 or later, Windows 10
+* pip3 (if you'd like to go beyond the Quick Demo below)
 
 **Note**: For production-ready applications you may need more CPU (and GPU) power, memory and disk space.
 
-## Quick Start
+## Quick Demo
 
-The quickest way to see what Haystack offers is to start a [Docker Compose](https://docs.docker.com/compose/) demo application.
+The quickest way to see what Haystack offers is to start a [Docker Compose](https://docs.docker.com/compose/) demo application:
 
-1. Update/install and launch Docker
+1. Update/install Docker and Docker Compose, then launch Docker
 
 ```
     # apt-get update && apt-get install docker && apt-get install docker-compose
@@ -103,7 +103,7 @@ The quickest way to see what Haystack offers is to start a [Docker Compose](http
     # docker-compose up
 ```
 
-You should be able see the following in your terminal window as part of the log information:
+You should be able see the following in your terminal window as part of the log output:
 
 ```
 ..
@@ -128,9 +128,11 @@ You can then try different queries against a pre-defined set of indexed articles
 * DocumentStore (Elasticsearch): listens on port 9200
 * Streamlit UI: listens on port 8501
 
-Please note that this demo assumes the container ports above to be accessible from the Internet. We suggest that you review the access policy depending on your system setup and your security guidelines. If you start this demo on an restricted system, you may use SSH port forwarding to access the UI.
+Please note that this demo assumes the container ports above to be accessible from the Internet. If you start this demo on an restricted system, you may use SSH port forwarding to access the UI. *We suggest that you review the access policy depending on your system setup and your security guidelines.*
 
 ## Installation
+
+If you're interested in learning more about Haystack and start using it as part of your application, we offer several options.
 
 1. Installing from a package
 
@@ -285,6 +287,8 @@ If you'd like to learn more about Haystack, feel free to go through the tutorial
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.py)
 
 ## How to use Haystack
+
+Below you'll find more detailed descriptions of various Haystack components along with quick examples. Please also refer to our [documentation](https://haystack.deepset.ai/docs/intromd).
 
 [File Conversion](https://github.com/deepset-ai/haystack/blob/master/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/master/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/master/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/master/README.md#4-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-readers) | [Pipelines](https://github.com/deepset-ai/haystack/blob/master/README.md#6-pipelines) | [REST API](https://github.com/deepset-ai/haystack/blob/master/README.md#7-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/master/README.md#8-labeling-tool)
 
