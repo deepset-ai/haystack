@@ -14,6 +14,7 @@ services:
       # See rest_api/config.py for more variables that you can configure here.
       - DB_HOST=elasticsearch
       - USE_GPU=False
+      - TOP_K_PER_SAMPLE=3 # how many answers can come from the same small passage (reduce value for more variety of answers)
       # Load a model from transformers' model hub or a local path into the FARMReader.
       - READER_MODEL_PATH=deepset/roberta-base-squad2
       # - READER_MODEL_PATH=home/user/models/roberta-base-squad2
