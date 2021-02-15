@@ -1,7 +1,5 @@
-from abc import abstractmethod
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
-
 import numpy as np
 
 
@@ -78,6 +76,7 @@ class Document:
     def __str__(self):
         return str(self.to_dict())
 
+
 class Label:
     def __init__(self, question: str,
                  answer: str,
@@ -88,7 +87,9 @@ class Label:
                  document_id: Optional[str] = None,
                  offset_start_in_doc: Optional[int] = None,
                  no_answer: Optional[bool] = None,
-                 model_id: Optional[int] = None):
+                 model_id: Optional[int] = None,
+                 created_at: Optional[str] = None,
+                 updated_at: Optional[str] = None):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
         This includes labels from dataset like SQuAD, annotations from labeling tools,
@@ -106,6 +107,10 @@ class Label:
         :param offset_start_in_doc: the answer start offset in the document.
         :param no_answer: whether the question in unanswerable.
         :param model_id: model_id used for prediction (in-case of user feedback).
+        :param created_at: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
+                           Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
+        :param created_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
+                           Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
         """
 
         # Create a unique ID (either new one, or one from user input)
@@ -114,6 +119,8 @@ class Label:
         else:
             self.id = str(uuid4())
 
+        self.created_at = created_at
+        self.updated_at = updated_at
         self.question = question
         self.answer = answer
         self.is_correct_answer = is_correct_answer
@@ -142,7 +149,9 @@ class Label:
                 getattr(other, 'document_id', None) == self.document_id and
                 getattr(other, 'offset_start_in_doc', None) == self.offset_start_in_doc and
                 getattr(other, 'no_answer', None) == self.no_answer and
-                getattr(other, 'model_id', None) == self.model_id)
+                getattr(other, 'model_id', None) == self.model_id and
+                getattr(other, 'created_at', None) == self.created_at and
+                getattr(other, 'updated_at', None) == self.updated_at)
 
     def __hash__(self):
         return hash(self.question +
@@ -153,7 +162,8 @@ class Label:
                     str(self.document_id) +
                     str(self.offset_start_in_doc) +
                     str(self.no_answer) +
-                    str(self.model_id))
+                    str(self.model_id)
+                    )
 
     def __repr__(self):
         return str(self.to_dict())
