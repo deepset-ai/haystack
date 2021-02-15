@@ -118,7 +118,7 @@ haystack-api_1   | [2021-01-01 10:21:58 +0000] [17] [INFO] Application startup c
 
 You should see the following:
 
-<img src="https://raw.githubusercontent.com/aantti/haystack/revamp_readme/docs/_src/img/haystack_streamlit_ui.png"/>
+<img src="https://raw.githubusercontent.com/aantti/haystack/revamp_readme/docs/_src/img/streamlit_ui_screenshot.png"/>
 
 You can then try different queries against a pre-defined set of indexed articles related to Game of Thrones.
 
@@ -132,7 +132,7 @@ Please note that this demo assumes the container ports above to be accessible fr
 
 ## Installation
 
-If you're interested in learning more about Haystack and start using it as part of your application, we offer several options.
+If you're interested in learning more about Haystack and using it as part of your application, we offer several options.
 
 1. Installing from a package
 
@@ -288,9 +288,11 @@ If you'd like to learn more about Haystack, feel free to go through the tutorial
 
 ## How to use Haystack
 
-Below you'll find more detailed descriptions of various Haystack components along with quick examples. Please also refer to our [documentation](https://haystack.deepset.ai/docs/intromd).
+Below you'll find more detailed descriptions of various Haystack components along with quick examples.
 
 [File Conversion](https://github.com/deepset-ai/haystack/blob/master/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/master/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/master/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/master/README.md#4-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-readers) | [Pipelines](https://github.com/deepset-ai/haystack/blob/master/README.md#6-pipelines) | [REST API](https://github.com/deepset-ai/haystack/blob/master/README.md#7-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/master/README.md#8-labeling-tool)
+
+Please also refer to our [documentation](https://haystack.deepset.ai/docs/intromd).
 
 ### 1) File Conversion
 
