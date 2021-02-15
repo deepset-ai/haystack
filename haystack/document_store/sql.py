@@ -22,8 +22,8 @@ class ORMBase(Base):
     __abstract__ = True
 
     id = Column(String(100), default=lambda: str(uuid4()), primary_key=True)
-    created = Column(DateTime, server_default=func.now())
-    updated = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
 
 class DocumentORM(ORMBase):
@@ -424,6 +424,8 @@ class SQLDocumentStore(BaseDocumentStore):
             answer=row.answer,
             offset_start_in_doc=row.offset_start_in_doc,
             model_id=row.model_id,
+            created_at=row.created_at,
+            updated_at=row.updated_at
         )
         return label
 
