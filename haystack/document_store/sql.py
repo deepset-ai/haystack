@@ -424,6 +424,8 @@ class SQLDocumentStore(BaseDocumentStore):
             answer=row.answer,
             offset_start_in_doc=row.offset_start_in_doc,
             model_id=row.model_id,
+            created_at=row.created_at,
+            updated_at=row.updated_at
         )
         return label
 

@@ -194,7 +194,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "no_answer": {"type": "boolean"},
                     "model_id": {"type": "keyword"},
                     "type": {"type": "keyword"},
-                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
+                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
+                    "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
                     #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
                 }
             }
@@ -365,6 +366,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 label = Label.from_dict(l)
             else:
                 label = l
+
+            # create timestamps if not available yet
+            if not label.created_at:
+                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            if not label.updated_at:
+                label.updated_at = label.created_at
 
             _label = {
                 "_op_type": "index" if self.update_existing_documents else "create",
