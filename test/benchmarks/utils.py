@@ -53,7 +53,7 @@ def get_document_store(document_store_type, similarity='dot_product'):
             shell=True)
         time.sleep(6)
         status = subprocess.run(
-            ['docker exec -it haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
+            ['docker exec haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
         time.sleep(1)
         document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
                                             faiss_index_factory_str=index_type,
