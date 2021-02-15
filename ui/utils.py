@@ -32,7 +32,7 @@ def retrieve_doc(question,filters=None,top_k_reader=5,top_k_retriever=5):
    # Format response
    result = []
    answers = response_raw['results'][0]['answers']
-   for i in range(top_k_reader):
+   for i in range(len(answers)):
        answer = answers[i]['answer']
        if answer:
            context = '...' + answers[i]['context'] + '...'
