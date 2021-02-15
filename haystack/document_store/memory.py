@@ -3,6 +3,7 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import Dict, List, Optional, Union, Generator
 from uuid import uuid4
+import time
 
 import numpy as np
 from scipy.spatial.distance import cosine
