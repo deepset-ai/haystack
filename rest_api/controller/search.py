@@ -14,7 +14,8 @@ from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DB_INDEX
     RETRIEVER_TYPE, EMBEDDING_MODEL_PATH, USE_GPU, READER_MODEL_PATH, BATCHSIZE, CONTEXT_WINDOW_SIZE, \
     TOP_K_PER_CANDIDATE, NO_ANS_BOOST, READER_CAN_HAVE_NO_ANSWER, MAX_PROCESSES, MAX_SEQ_LEN, DOC_STRIDE, \
     CONCURRENT_REQUEST_PER_WORKER, FAQ_QUESTION_FIELD_NAME, EMBEDDING_MODEL_FORMAT, READER_TYPE, READER_TOKENIZER, \
-    GPU_NUMBER, NAME_FIELD_NAME, VECTOR_SIMILARITY_METRIC, CREATE_INDEX, LOG_LEVEL, UPDATE_EXISTING_DOCUMENTS
+    GPU_NUMBER, NAME_FIELD_NAME, VECTOR_SIMILARITY_METRIC, CREATE_INDEX, LOG_LEVEL, UPDATE_EXISTING_DOCUMENTS, \
+    TOP_K_PER_SAMPLE
 
 from rest_api.controller.request import Question
 from rest_api.controller.response import Answers, AnswersToIndividualQuestion
@@ -75,6 +76,7 @@ else:
                      )
 
 if READER_MODEL_PATH:  # for extractive doc-qa
+    logger.info(f"Loading reader model `{READER_MODEL_PATH}` ...")
     if READER_TYPE == "TransformersReader":
         use_gpu = -1 if not USE_GPU else GPU_NUMBER
         reader = TransformersReader(
@@ -91,6 +93,7 @@ if READER_MODEL_PATH:  # for extractive doc-qa
             use_gpu=USE_GPU,
             context_window_size=CONTEXT_WINDOW_SIZE,
             top_k_per_candidate=TOP_K_PER_CANDIDATE,
+            top_k_per_sample=TOP_K_PER_SAMPLE,
             no_ans_boost=NO_ANS_BOOST,
             num_processes=MAX_PROCESSES,
             max_seq_len=MAX_SEQ_LEN,
