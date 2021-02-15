@@ -34,8 +34,9 @@ READER_MODEL_PATH = os.getenv("READER_MODEL_PATH", "deepset/roberta-base-squad2"
 READER_TYPE = os.getenv("READER_TYPE", "FARMReader") # alternative: 'TransformersReader'
 READER_TOKENIZER = os.getenv("READER_TOKENIZER", None)
 CONTEXT_WINDOW_SIZE = int(os.getenv("CONTEXT_WINDOW_SIZE", 500))
-DEFAULT_TOP_K_READER = int(os.getenv("DEFAULT_TOP_K_READER", 5))
-TOP_K_PER_CANDIDATE = int(os.getenv("TOP_K_PER_CANDIDATE", 3))
+DEFAULT_TOP_K_READER = int(os.getenv("DEFAULT_TOP_K_READER", 5)) # How many answers to return in total
+TOP_K_PER_CANDIDATE = int(os.getenv("TOP_K_PER_CANDIDATE", 10)) # How many answers can come from one indexed doc
+TOP_K_PER_SAMPLE = int(os.getenv("TOP_K_PER_SAMPLE", 1)) # How many answers can come from one passage that the reader processes at once (i.e. text of max_seq_len from the doc)
 NO_ANS_BOOST = int(os.getenv("NO_ANS_BOOST", -10))
 READER_CAN_HAVE_NO_ANSWER = os.getenv("READER_CAN_HAVE_NO_ANSWER", "True").lower() == "true"
 DOC_STRIDE = int(os.getenv("DOC_STRIDE", 128))
