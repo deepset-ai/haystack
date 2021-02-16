@@ -53,7 +53,6 @@ Haystack is built in modular fashion so that you can combine the best technology
 |  |  |
 |-|-|
 | :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
-| :memo: [Requirements](https://github.com/deepset-ai/haystack/#requirements) | Minimum system requirements |
 | :beginner: [Quick Demo](https://github.com/deepset-ai/haystack/#quick-start) | Quickly see what Haystack offers |
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :art: [Key Components](https://github.com/deepset-ai/haystack/#key-components) | Overview of core concepts |
@@ -66,37 +65,24 @@ Haystack is built in modular fashion so that you can combine the best technology
 | :bird: [Twitter](https://twitter.com/deepset_ai) | Follow us on Twitter for news and updates |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
-## Requirements
-
-Here's a list of the minimum system requirements to install and use Haystack:
-
-* RAM: 4GB or more
-* CPU: 64-bit, 4 cores or more
-* Storage: 20GB
-* Python: 3.6.0 or higher
-* OS: Ubuntu 18.04 or later, MacOS X 10.15 or later, Windows 10
-* pip3 (if you'd like to go beyond the Quick Demo below)
-
-**Note**: For production-ready applications you may need more CPU (and GPU) power, memory and disk space.
-
 ## Quick Demo
 
 The quickest way to see what Haystack offers is to start a [Docker Compose](https://docs.docker.com/compose/) demo application:
 
-1. Update/install Docker and Docker Compose, then launch Docker
+**1. Update/install Docker and Docker Compose, then launch Docker**
 
 ```
     # apt-get update && apt-get install docker && apt-get install docker-compose
     # service docker start
 ```
 
-2. Clone Haystack repository
+**2. Clone Haystack repository**
 
 ```
     # git clone https://github.com/deepset-ai/haystack.git
 ```
 
-3. Launch demo app
+**3. Launch demo app**
 
 ```
     # cd haystack
@@ -128,13 +114,13 @@ You can then try different queries against a pre-defined set of indexed articles
 * DocumentStore (Elasticsearch): listens on port 9200
 * Streamlit UI: listens on port 8501
 
-Please note that this demo assumes the container ports above to be accessible from the Internet. If you start this demo on an restricted system, you may use SSH port forwarding to access the UI. *We suggest that you review the access policy depending on your system setup and your security guidelines.*
+Please note that this demo sets up the container ports so that they are potentially accessible from the Internet. *We suggest that you review the firewall settings depending on your system setup and the security guidelines.*
 
 ## Installation
 
 If you're interested in learning more about Haystack and using it as part of your application, we offer several options.
 
-1. Installing from a package
+**1. Installing from a package**
 
 You can install Haystack Python package by using [pip](https://github.com/pypa/pip).
 
@@ -144,7 +130,7 @@ You can install Haystack Python package by using [pip](https://github.com/pypa/p
 
 Please check our page [on PyPi](https://pypi.org/project/farm-haystack/) for more information.
 
-2. Installing from GitHub
+**2. Installing from GitHub**
 
 You can also just clone it from GitHub — in case you'd like to work with the master branch and check the latest features:
 
@@ -156,7 +142,7 @@ You can also just clone it from GitHub — in case you'd like to work with the m
 
 To update your installation, just do a ``git pull``. The ``--editable`` flag will update changes immediately.
 
-3. Installing on Windows
+**3. Installing on Windows**
 
 On Windows you might need:
 
@@ -234,7 +220,7 @@ print_answers(prediction, details="minimal")
 
 ## Tutorials
 
-If you'd like to learn more about Haystack, feel free to go through the tutorials below. All tutorials include both ``.ipynb`` and ``.py`` code. Tutorials that use the Elastisearch DocumentStore will automatically start a pre-built Docker container.
+If you'd like to learn more about Haystack, feel free to go through the tutorials below. All tutorials include both ``.ipynb`` and ``.py`` code.
 
 -   Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
     |
