@@ -104,7 +104,7 @@ haystack-api_1   | [2021-01-01 10:21:58 +0000] [17] [INFO] Application startup c
 
 You should see the following:
 
-<img src="https://raw.githubusercontent.com/aantti/haystack/revamp_readme/docs/_src/img/streamlit_ui_screenshot.png"/>
+<img src="https://raw.githubusercontent.com/deepset/haystack/revamp_readme/docs/_src/img/streamlit_ui_screenshot.png"/>
 
 You can then try different queries against a pre-defined set of indexed articles related to Game of Thrones.
 
