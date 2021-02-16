@@ -103,7 +103,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
-            n_links = kwargs.get("n_links", 128)
+            n_links = kwargs.get("n_links", 64)
             index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
             index.hnsw.efSearch = kwargs.get("efSearch", 20)#20
             index.hnsw.efConstruction = kwargs.get("efConstruction", 80)#80

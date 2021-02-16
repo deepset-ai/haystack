@@ -42,9 +42,9 @@ def get_document_store(document_store_type, similarity='dot_product'):
             index_type = IndexType.FLAT
             index_param = None
             search_param = None
-        elif document_store_type == "milvus_hsnw":
+        elif document_store_type == "milvus_hnsw":
             index_type = IndexType.HNSW
-            index_param = {"M": 128, "efConstruction": 80}
+            index_param = {"M": 64, "efConstruction": 80}
             search_param = {"ef": 20}
         document_store = MilvusDocumentStore(similarity=similarity, index_type=index_type, index_param=index_param, search_param=search_param)
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
