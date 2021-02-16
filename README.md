@@ -114,7 +114,7 @@ You can then try different queries against a pre-defined set of indexed articles
 * DocumentStore (Elasticsearch): listens on port 9200
 * Streamlit UI: listens on port 8501
 
-Please note that this demo sets up the container ports so that they are potentially accessible from the Internet. *We suggest that you review the firewall settings depending on your system setup and the security guidelines.*
+Please note that this demo sets up the container ports to be potentially accessible from the Internet. *We suggest that you review the firewall settings depending on your system setup and the security guidelines.*
 
 ## Installation
 
