@@ -93,7 +93,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                             "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
                             "filter": [{"terms": {"year": ${years}}}]}}}""",
     )
-    results = retriever.run(query="test", filters={"years": ["2020", "2021"]})[0]["documents"]
+    results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
     assert len(results) == 4
 
     # test custom "term" query
@@ -108,7 +108,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                                 "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
                                 "filter": [{"term": {"year": ${years}}}]}}}""",
     )
-    results = retriever.run(query="test", filters={"years": "2021"})[0]["documents"]
+    results = retriever.retrieve(query="test", filters={"years": "2021"})
     assert len(results) == 3
 
 

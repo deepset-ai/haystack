@@ -5,14 +5,14 @@
 ## BasePreProcessor Objects
 
 ```python
-class BasePreProcessor()
+class BasePreProcessor(BaseComponent)
 ```
 
 <a name="base.BasePreProcessor.process"></a>
 #### process
 
 ```python
- | process(document: dict) -> List[dict]
+ | process(document: dict, clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True) -> List[dict]
 ```
 
 Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
@@ -31,7 +31,7 @@ class PreProcessor(BasePreProcessor)
 #### \_\_init\_\_
 
 ```python
- | __init__(clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True)
+ | __init__(clean_whitespace: bool = True, clean_header_footer: bool = False, clean_empty_lines: bool = True, split_by: str = "word", split_length: int = 1000, split_overlap: int = 0, split_respect_sentence_boundary: bool = True)
 ```
 
 **Arguments**:
@@ -50,16 +50,25 @@ Setting this to a positive number essentially enables the sliding window approac
 For example, if split_by -> `word`,
 split_length -> 5 & split_overlap -> 2, then the splits would be like:
 [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
-Set the value to None to ensure there is no overlap among the documents after splitting.
+Set the value to 0 to ensure there is no overlap among the documents after splitting.
 - `split_respect_sentence_boundary`: Whether to split in partial sentences if split_by -> `word`. If set
 to True, the individual split will always have complete sentences &
 the number of words will be <= split_length.
+
+<a name="preprocessor.PreProcessor.process"></a>
+#### process
+
+```python
+ | process(document: dict, clean_whitespace: Optional[bool] = None, clean_header_footer: Optional[bool] = None, clean_empty_lines: Optional[bool] = None, split_by: Optional[str] = None, split_length: Optional[int] = None, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = None) -> List[dict]
+```
+
+Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
 
 <a name="preprocessor.PreProcessor.clean"></a>
 #### clean
 
 ```python
- | clean(document: dict) -> dict
+ | clean(document: dict, clean_whitespace: bool, clean_header_footer: bool, clean_empty_lines: bool) -> dict
 ```
 
 Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
@@ -69,7 +78,7 @@ and empty lines. Its exact functionality is defined by the parameters passed int
 #### split
 
 ```python
- | split(document: dict) -> List[dict]
+ | split(document: dict, split_by: str, split_length: int, split_overlap: int, split_respect_sentence_boundary: bool) -> List[dict]
 ```
 
 Perform document splitting on a single document. This method can split on different units, at different lengths,
