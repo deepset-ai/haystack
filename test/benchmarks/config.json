@@ -4,7 +4,11 @@
       "retriever_doc_stores": [
         [
           "dpr",
-          "milvus"
+          "milvus_flat"
+        ],
+        [
+          "dpr",
+          "milvus_hnsw"
         ],
         [
           "dpr",
