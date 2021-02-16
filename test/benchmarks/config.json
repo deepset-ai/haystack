@@ -11,10 +11,6 @@
           "milvus_hnsw"
         ],
         [
-          "dpr",
-          "faiss_flat"
-        ],
-        [
           "elastic",
           "elasticsearch"
         ],
