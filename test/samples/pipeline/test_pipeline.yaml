@@ -14,12 +14,34 @@ components:
   - name: TestDocumentStore
     type: ElasticsearchDocumentStore
     params:
-      index: haystack_test
+      index: haystack_test_pipeline
+  - name: TestPDFConverter
+    type: PDFToTextConverter
+    params:
+      remove_numeric_tables: false
+  - name: TestPreprocessor
+    type: PreProcessor
+    params:
+      clean_whitespace: true
+
 
 pipelines:
   - name: test_query_pipeline
+    type: Query
     nodes:
       - name: TestESRetriever
         inputs: [Query]
       - name: TestReader
+        inputs: [TestESRetriever]
+
+  - name: test_indexing_pipeline
+    type: Indexing
+    nodes:
+      - name: TestPDFConverter
+        inputs: [File]
+      - name: TestPreprocessor
+        inputs: [TestPDFConverter]
+      - name: TestESRetriever
+        inputs: [TestPreprocessor]
+      - name: TestDocumentStore
         inputs: [TestESRetriever]
