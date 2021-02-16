@@ -28,7 +28,7 @@ Haystack is an end-to-end framework that enables you to build powerful and produ
 Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
 Haystack is built in modular fashion so that you can combine the best technology from other open source projects like Huggingface’s Transformers, Elasticsearch or Milvus.
 
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif" width="600" height="445"/></p>
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif"></p>
 
 ## What to build with Haystack
 
@@ -100,7 +100,7 @@ ui_1             |   External URL: http://192.168.108.218:8501
 haystack-api_1   | [2021-01-01 10:21:58 +0000] [17] [INFO] Application startup complete.
 ```
 
-4. Open the Streamlit UI for Haystack by pointing your browser to the "External URL" from above.
+**4. Open the Streamlit UI for Haystack by pointing your browser to the "External URL" from above.**
 
 You should see the following:
 
