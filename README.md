@@ -152,7 +152,7 @@ On Windows you might need:
 
 ## Key Components
 
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/concepts_haystack_handdrawn.png)
+![image](https://github.com/deepset-ai/haystack/blob/master/docs/_src/img/streamlit_ui_screenshot.png)
 
 1.  **FileConverter**: Extracts pure text from files (pdf, docx, pptx, html and many more).
 2.  **PreProcessor**: Cleans and splits texts into smaller chunks.
