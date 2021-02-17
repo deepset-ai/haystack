@@ -38,6 +38,18 @@ document_store = OpenDistroElasticsearchDocumentStore()
 </div>
 
 <div class="tab">
+<input type="radio" id="tab-1-4" name="tab-group-1">
+<label class="labelouter" for="tab-1-4">Milvus</label>
+<div class="tabcontent">
+
+```python
+document_store = MilvusDocumentStore()
+```
+
+</div>
+</div>
+
+<div class="tab">
 <input type="radio" id="tab-1-2" name="tab-group-1">
 <label class="labelouter" for="tab-1-2">FAISS</label>
 <div class="tabcontent">
@@ -145,6 +157,23 @@ The Document Stores have different characteristics. You should choose one depend
 
 **Cons:** 
 - Slow for dense retrieval with more than ~ 1 Mio documents
+
+</div>
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2-2" name="tab-group-2">
+<label class="labelouter" for="tab-2-2">Milvus</label>
+<div class="tabcontent">
+
+**Pros:** 
+- Scalable DocumentStore that excels at handling vectors (hence suited to dense retrieval methods like DPR)
+- Encapsulates multiple ANN libraries (e.g. FAISS and ANNOY) and provides added reliability
+- Runs as a separate service (e.g. a Docker container)
+- Allows dynamic data management
+
+**Cons:**
+- No efficient sparse retrieval
 
 </div>
 </div>
