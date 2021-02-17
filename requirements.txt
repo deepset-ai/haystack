@@ -16,7 +16,7 @@ python-multipart
 python-docx
 sqlalchemy_utils
 # for using FAISS with GPUs, install faiss-gpu
-faiss-cpu==1.6.3
+faiss-cpu>=1.6.3
 tika
 uvloop==0.14; sys_platform != 'win32' and sys_platform != 'cygwin'
 httptools
