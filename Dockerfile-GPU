@@ -1,8 +1,9 @@
-FROM  nvidia/cuda:10.1-runtime
+FROM  nvidia/cuda:11.0-runtime-ubuntu20.04
 
 WORKDIR /home/user
 
-RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-distutils python3-pip curl git pkg-config cmake
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
+RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-distutils python3-pip curl git pkg-config cmake swig
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
@@ -17,6 +18,11 @@ COPY haystack /home/user/haystack
 # install as a package
 COPY setup.py requirements.txt README.md /home/user/
 RUN pip3 install numpy scipy Cython
+
+# Install PyTorch for CUDA 11
+RUN pip3 install torch==1.7.1+cu110 -f https://download.pytorch.org/whl/torch_stable.html
+# Install faiss separately as building latest versions can cause trouble with swig
+RUN pip3 install faiss-cpu==1.6.3
 
 RUN pip3 install -r requirements.txt
 RUN pip3 install -e .
