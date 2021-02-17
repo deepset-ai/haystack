@@ -134,7 +134,7 @@ def benchmark_querying(n_docs_options,
         for retriever_name, doc_store_name in retriever_doc_stores:
             try:
                 logger.info(f"##### Start querying run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
-                if retriever_name == "elastic":
+                if retriever_name in ["elastic","sentence_transformers"]:
                     similarity = "cosine"
                 else:
                     similarity = "dot_product"
@@ -313,7 +313,7 @@ def prepare_negative_passages(data_dir, filename_negative, n_docs):
 
 
 if __name__ == "__main__":
-    params, filenames = load_config(config_filename="config.json", ci=True)
-    benchmark_indexing(**params, **filenames, update_json=True, save_markdown=False)
+    params, filenames = load_config(config_filename="config.json", ci=False)
+    #benchmark_indexing(**params, **filenames, update_json=True, save_markdown=False)
     benchmark_querying(**params, **filenames, update_json=True, save_markdown=False)
 

@@ -546,6 +546,8 @@ class EmbeddingRetriever(BaseRetriever):
         :param docs: List of documents to embed
         :return: Embeddings, one per input passage
         """
-        texts = [d.text for d in docs]
-
-        return self.embed(texts)
+        if self.model_format == "sentence_transformers":
+            passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.text] for d in docs]
+        else:
+            passages = [d.text for d in docs]
+        return self.embed(passages)

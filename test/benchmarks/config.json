@@ -3,24 +3,12 @@
     "full": {
       "retriever_doc_stores": [
         [
-          "elastic",
+          "sentence_transformers",
           "elasticsearch"
-        ],
-        [
-          "dpr",
-          "elasticsearch"
-        ],
-        [
-          "dpr",
-          "faiss_flat"
-        ],
-        [
-          "dpr",
-          "faiss_hnsw"
         ]
       ],
       "n_docs_options": [
-        1000,
+        100,
         10000,
         100000,
         500000

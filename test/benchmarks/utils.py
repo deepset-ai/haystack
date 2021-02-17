@@ -4,7 +4,7 @@ from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
-from haystack.retriever.dense import DensePassageRetriever
+from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 import logging
@@ -72,6 +72,11 @@ def get_retriever(retriever_name, doc_store):
                                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
                                       use_gpu=True,
                                       use_fast_tokenizers=False)
+    if retriever_name == "sentence_transformers":
+        return EmbeddingRetriever(document_store=doc_store,
+                                  embedding_model="nq-distilbert-base-v1",
+                                  use_gpu=True,
+                                  model_format="sentence_transformers")
 
 def get_reader(reader_name, reader_type, max_seq_len=384):
     reader_class = None
