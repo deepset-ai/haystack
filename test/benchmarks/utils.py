@@ -58,7 +58,7 @@ def get_document_store(document_store_type, similarity='dot_product'):
 
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
-    assert document_store.get_document_count() == 0
+    #assert document_store.get_document_count(index="haystack_test") == 0
     return document_store
 
 def get_retriever(retriever_name, doc_store):
@@ -92,7 +92,7 @@ def index_to_doc_store(doc_store, docs, retriever, labels=None):
         doc_store.write_labels(labels, index=label_index)
     # these lines are not run if the docs.embedding field is already populated with precomputed embeddings
     # See the prepare_data() fn in the retriever benchmark script
-    elif callable(getattr(retriever, "embed_passages", None)) and docs[0].embedding is None:
+    if callable(getattr(retriever, "embed_passages", None)) and docs[0].embedding is None:
         doc_store.update_embeddings(retriever, index=doc_index)
 
 def load_config(config_filename, ci):

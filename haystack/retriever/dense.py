@@ -526,7 +526,7 @@ class EmbeddingRetriever(BaseRetriever):
         elif self.model_format == "sentence_transformers":
             # text is single string, sentence-transformers needs a list of strings
             # get back list of numpy embedding vectors
-            emb = self.embedding_model.encode(texts)
+            emb = self.embedding_model.encode(texts, batch_size=200, show_progress_bar=False)
             emb = [r for r in emb]
         return emb
 

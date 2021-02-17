@@ -134,7 +134,7 @@ def benchmark_querying(n_docs_options,
         for retriever_name, doc_store_name in retriever_doc_stores:
             try:
                 logger.info(f"##### Start querying run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
-                if retriever_name in ["elastic","sentence_transformers"]:
+                if retriever_name in ["elastic", "sentence_transformers"]:
                     similarity = "cosine"
                 else:
                     similarity = "dot_product"
