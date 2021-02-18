@@ -403,3 +403,4 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
         for doc in squad_json["data"]:
             json.dump(doc, jsonl_file)
             jsonl_file.write("\n")
+
