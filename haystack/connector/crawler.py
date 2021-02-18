@@ -25,13 +25,13 @@ class Crawler(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self, urls: List[str], output_dir: str, crawler_depth: int = 1,
+    def __init__(self, output_dir: str, urls: Optional[List[str]] = None, crawler_depth: int = 1,
                  filter_urls: Optional[List] = None, overwrite_existing_files=True):
         """
         Init object with basic params for crawling (can be overwritten later).
 
-        :param urls: List of http addresses or single http address
         :param output_dir: Path for the directory to store files
+        :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
         :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
                               0: Only initial list of urls
                               1: Follow links found on the initial URLs (but no further)
@@ -60,8 +60,8 @@ class Crawler(BaseComponent):
         self.filter_urls = filter_urls
         self.overwrite_existing_files = overwrite_existing_files
 
-    def crawl(self, urls: Optional[List[str]] = None,
-              output_dir: Union[str, Path, None] = None,
+    def crawl(self,  output_dir: Union[str, Path, None] = None,
+              urls: Optional[List[str]] = None,
               crawler_depth: Optional[int] = None,
               filter_urls: Optional[List] = None,
               overwrite_existing_files: Optional[bool] = None) -> List[Path]:
@@ -72,8 +72,8 @@ class Crawler(BaseComponent):
         All parameters are optional here and only meant to overwrite instance attributes at runtime.
         If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
 
-        :param urls: List of http addresses or single http address
         :param output_dir: Path for the directory to store files
+        :param urls: List of http addresses or single http address
         :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
                               0: Only initial list of urls
                               1: Follow links found on the initial URLs (but no further)
@@ -85,6 +85,8 @@ class Crawler(BaseComponent):
         """
         # use passed params or fallback to instance attributes
         urls = urls or self.urls
+        if urls is None:
+            raise ValueError("Got no urls to crawl. Set `urls` to a list of URLs in __init__(), crawl() or run(). `")
         output_dir = output_dir or self.output_dir
         filter_urls = filter_urls or self.filter_urls
         if overwrite_existing_files is None:
@@ -147,8 +149,8 @@ class Crawler(BaseComponent):
         return paths
 
     def run(self,
-            urls: Optional[List[str]] = None,
             output_dir: Union[str, Path, None] = None,
+            urls: Optional[List[str]] = None,
             crawler_depth: Optional[int] = None,
             filter_urls: Optional[List] = None,
             overwrite_existing_files: Optional[bool] = None,
@@ -156,8 +158,8 @@ class Crawler(BaseComponent):
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
-        :param urls: List of http addresses or single http address
         :param output_dir: Path for the directory to store files
+        :param urls: List of http addresses or single http address
         :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
                               0: Only initial list of urls
                               1: Follow links found on the initial URLs (but no further)
