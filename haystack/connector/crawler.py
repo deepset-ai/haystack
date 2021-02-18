@@ -2,7 +2,7 @@ import logging
 import re
 from pathlib import Path
 from urllib.parse import urlparse
-from typing import List, Any, Optional, Dict, Tuple
+from typing import List, Any, Optional, Dict, Tuple, Union
 from haystack.schema import Document, BaseComponent
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,20 @@ class Crawler(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self):
+    def __init__(self, urls: List[str], output_dir: str, crawler_depth: int = 1,
+                 filter_urls: Optional[List] = None, overwrite_existing_files=True):
+        """
+        Init object with basic params for crawling (can be overwritten later).
 
+        :param urls: List of http addresses or single http address
+        :param output_dir: Path for the directory to store files
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
+                              0: Only initial list of urls
+                              1: Follow links found on the initial URLs (but no further)
+        :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
+                           All URLs not matching at least one of the regular expressions will be dropped.
+        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
+        """
         try:
             from webdriver_manager.chrome import ChromeDriverManager
         except ImportError:
@@ -42,12 +54,23 @@ class Crawler(BaseComponent):
         options = webdriver.chrome.options.Options()
         options.add_argument('--headless')
         self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+        self.urls = urls
+        self.output_dir = output_dir
+        self.crawler_depth = crawler_depth
+        self.filter_urls = filter_urls
+        self.overwrite_existing_files = overwrite_existing_files
 
-    def crawl(self, urls: Any, output_dir: str, crawler_depth: int = 1, filter_urls: Optional[List] = None) -> List[Document]:
+    def crawl(self, urls: Optional[List[str]] = None,
+              output_dir: Union[str, Path, None] = None,
+              crawler_depth: Optional[int] = None,
+              filter_urls: Optional[List] = None,
+              overwrite_existing_files: Optional[bool] = None) -> List[Document]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
         file per URL, including text and basic meta data).
         You can optionally specify via `filter_urls` to only crawl URLs that match a certain pattern.
+        All parameters are optional here and only meant to overwrite instance attributes at runtime.
+        If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
 
         :param urls: List of http addresses or single http address
         :param output_dir: Path for the directory to store files
@@ -56,14 +79,25 @@ class Crawler(BaseComponent):
                               1: Follow links found on the initial URLs (but no further)
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
-        :return: List of Documents
-        """
-        path = Path(output_dir)
-        if not path.exists():
-            path.mkdir(parents=True)
+        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
 
-        is_not_empty = len(list(Path(path).rglob("*"))) > 0
-        if is_not_empty :
+        :return: List of paths where the crawled webpages got stored
+        """
+        # use passed params or fallback to instance attributes
+        urls = urls or self.urls
+        output_dir = output_dir or self.output_dir
+        filter_urls = filter_urls or self.filter_urls
+        if overwrite_existing_files is None:
+            overwrite_existing_files = self.overwrite_existing_files
+        if crawler_depth is None:
+            crawler_depth = self.crawler_depth
+
+        output_dir = Path(output_dir)
+        if not output_dir.exists():
+            output_dir.mkdir(parents=True)
+
+        is_not_empty = len(list(output_dir.rglob("*"))) > 0
+        if is_not_empty and not overwrite_existing_files:
             logger.info(
                 f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data."
             )
@@ -71,7 +105,7 @@ class Crawler(BaseComponent):
         else:
             logger.info(f"Fetching from {urls} to `{output_dir}`")
 
-            docs = []
+            filepaths = []
             if type(urls) != list:
                 urls = [urls]
 
@@ -80,7 +114,7 @@ class Crawler(BaseComponent):
             # don't go beyond the initial list of urls
             if crawler_depth == 0:
                 for url_ in urls:
-                    docs += self._write_to_files(url_, output_dir=output_dir)
+                    filepaths += self._write_to_files(url_, output_dir=output_dir)
             # follow one level of sublinks
             elif crawler_depth == 1:
                 for url_ in urls:
@@ -88,15 +122,15 @@ class Crawler(BaseComponent):
                     sub_links[url_] = list(self._extract_sublinks_from_url(base_url=url_, filter_urls=filter_urls,
                                                                      existed_links=existed_links))
                 for url in sub_links:
-                    docs += self._write_to_files(sub_links[url], output_dir=output_dir, base_url=url)
+                    filepaths += self._write_to_files(sub_links[url], output_dir=output_dir, base_url=url)
 
-            return docs
+            return filepaths
 
-    def _write_to_files(self, urls: Any, output_dir: str, base_url: str = None):
+    def _write_to_files(self, urls: List[str], output_dir: Path, base_url: str = None) -> List[Path]:
         if type(urls) != list:
             urls = [urls]
 
-        docs = []
+        paths = []
 
         for link in urls:
             logger.info(f"writing contents from `{link}`")
@@ -105,25 +139,27 @@ class Crawler(BaseComponent):
             text = el.text
 
             link_split_values = link.replace('https://', '').split('/')
-            file_name = '{}/{}.json'.format(output_dir, '_'.join(link_split_values))
+            file_name = f"{'_'.join(link_split_values)}.json"
+            file_path = output_dir / file_name
 
             data = {}
             data['meta'] = {'url': link}
             if base_url:
                 data['meta']['base_url'] = base_url
             data['text'] = text
-            with open(file_name, 'w') as f:
+            with open(file_path, 'w') as f:
                 f.write(str(data))
+            paths.append(file_path)
 
-            new_doc = Document.from_dict(data)
-            docs.append(new_doc)
+        return paths
 
-        return docs
-
-    def run(self, urls: Any,
-            output_dir: str,
-            crawler_depth: int = 1,
-            filter_urls: Optional[List] = None) -> Tuple[List[Document], str]:
+    def run(self,
+            urls: Optional[List[str]] = None,
+            output_dir: Union[str, Path, None] = None,
+            crawler_depth: Optional[int] = None,
+            filter_urls: Optional[List] = None,
+            overwrite_existing_files: Optional[bool] = None,
+            **kwargs) -> Tuple[Dict, str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
@@ -134,11 +170,16 @@ class Crawler(BaseComponent):
                               1: Follow links found on the initial URLs (but no further)
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
-        :return: (List of Documents, Name of output edge)
+        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
+
+        :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
         """
 
-        docs = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth, filter_urls=filter_urls)
-        return docs, "output_1"
+        filepaths = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth, filter_urls=filter_urls,
+                               overwrite_existing_files=overwrite_existing_files)
+        results = {"paths": filepaths}
+        results.update(**kwargs)
+        return results, "output_1"
 
     @staticmethod
     def _is_internal_url(base_url: str, sub_link: str) -> bool:
