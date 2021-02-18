@@ -18,7 +18,7 @@ There are different DocumentStores in Haystack to fit different use cases and te
 
 ## Initialisation
 
-Initialising a new DocumentStore is straight forward.
+Initialising a new DocumentStore within Haystack is straight forward.
 
 <div class="tabs tabsdsinstall">
 
@@ -27,12 +27,26 @@ Initialising a new DocumentStore is straight forward.
 <label class="labelouter" for="tab-1-1">Elasticsearch</label>
 <div class="tabcontent">
 
+[Install](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html)
+Elasticsearch and then [start](https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html)
+an instance. 
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+```bash
+docker pull docker.elastic.co/elasticsearch/elasticsearch:7.9.2
+docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2
+```
+
+Next you can initialize the Haystack object that will connect to this instance.
+
 ```python
 document_store = ElasticsearchDocumentStore()
-# or
-document_store = OpenDistroElasticsearchDocumentStore()
-
 ```
+
+Note that we also support [Open Distro for Elasticsearch](https://opendistro.github.io/for-elasticsearch-docs/).
+Follow [their documentation](https://opendistro.github.io/for-elasticsearch-docs/docs/install/)
+to run it and connect to it using Haystack's `OpenDistroElasticsearchDocumentStore` class.
+
 
 </div>
 </div>
@@ -42,6 +56,9 @@ document_store = OpenDistroElasticsearchDocumentStore()
 <label class="labelouter" for="tab-1-4">Milvus</label>
 <div class="tabcontent">
 
+Follow the [official documentation](https://www.milvus.io/docs/v0.10.5/milvus_docker-cpu.md) to start a Milvus instance via Docker
+ 
+You can initialize the Haystack object that will connect to this instance as follows:
 ```python
 document_store = MilvusDocumentStore()
 ```
@@ -54,6 +71,7 @@ document_store = MilvusDocumentStore()
 <label class="labelouter" for="tab-1-2">FAISS</label>
 <div class="tabcontent">
 
+The `FAISSDocumentStore` requires no external setup. Start it by simply using this line. 
 ```python
 document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 ```
@@ -66,6 +84,7 @@ document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 <label class="labelouter" for="tab-1-3">In Memory</label>
 <div class="tabcontent">
 
+The `InMemoryDocumentStore()` requires no external setup. Start it by simply using this line.
 ```python
 document_store = InMemoryDocumentStore()
 ```
@@ -77,6 +96,9 @@ document_store = InMemoryDocumentStore()
 <input type="radio" id="tab-1-4" name="tab-group-1">
 <label class="labelouter" for="tab-1-4">SQL</label>
 <div class="tabcontent">
+
+The `SQLDocumentStore` requires SQLite, PostgresQL or MySQL to be installed and started.
+Note that SQLite already comes packaged with most operating systems. 
 
 ```python
 document_store = SQLDocumentStore()
