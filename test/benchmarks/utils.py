@@ -29,6 +29,7 @@ def get_document_store(document_store_type, similarity='dot_product'):
         if os.path.exists("haystack_test.db"):
             os.remove("haystack_test.db")
         document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
+        assert document_store.get_document_count() == 0
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore()
     elif document_store_type == "elasticsearch":
@@ -36,6 +37,7 @@ def get_document_store(document_store_type, similarity='dot_product'):
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="eval_document", similarity=similarity, timeout=3000)
+        assert document_store.get_document_count(index="eval_document") == 0
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
             index_type = "Flat"
@@ -55,10 +57,10 @@ def get_document_store(document_store_type, similarity='dot_product'):
         document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
                                             faiss_index_factory_str=index_type,
                                             similarity=similarity)
+        assert document_store.get_document_count() == 0
 
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
-    #assert document_store.get_document_count(index="haystack_test") == 0
     return document_store
 
 def get_retriever(retriever_name, doc_store):
