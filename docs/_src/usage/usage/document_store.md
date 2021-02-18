@@ -1,11 +1,11 @@
-<!---
+---
 title: "Document Store"
 metaTitle: "Document Store"
 metaDescription: ""
 slug: "/docs/documentstore"
 date: "2020-09-03"
 id: "documentstoremd"
---->
+---
 
 
 # DocumentStores
@@ -52,8 +52,8 @@ to run it and connect to it using Haystack's `OpenDistroElasticsearchDocumentSto
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-1-4" name="tab-group-1">
-<label class="labelouter" for="tab-1-4">Milvus</label>
+<input type="radio" id="tab-1-2" name="tab-group-1">
+<label class="labelouter" for="tab-1-2">Milvus</label>
 <div class="tabcontent">
 
 Follow the [official documentation](https://www.milvus.io/docs/v0.10.5/milvus_docker-cpu.md) to start a Milvus instance via Docker
@@ -67,8 +67,8 @@ document_store = MilvusDocumentStore()
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-1-2" name="tab-group-1">
-<label class="labelouter" for="tab-1-2">FAISS</label>
+<input type="radio" id="tab-1-3" name="tab-group-1">
+<label class="labelouter" for="tab-1-3">FAISS</label>
 <div class="tabcontent">
 
 The `FAISSDocumentStore` requires no external setup. Start it by simply using this line. 
@@ -80,8 +80,8 @@ document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-1-3" name="tab-group-1">
-<label class="labelouter" for="tab-1-3">In Memory</label>
+<input type="radio" id="tab-1-4" name="tab-group-1">
+<label class="labelouter" for="tab-1-4">In Memory</label>
 <div class="tabcontent">
 
 The `InMemoryDocumentStore()` requires no external setup. Start it by simply using this line.
@@ -93,8 +93,8 @@ document_store = InMemoryDocumentStore()
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-1-4" name="tab-group-1">
-<label class="labelouter" for="tab-1-4">SQL</label>
+<input type="radio" id="tab-1-5" name="tab-group-1">
+<label class="labelouter" for="tab-1-5">SQL</label>
 <div class="tabcontent">
 
 The `SQLDocumentStore` requires SQLite, PostgresQL or MySQL to be installed and started.
@@ -201,8 +201,8 @@ The Document Stores have different characteristics. You should choose one depend
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-2-2" name="tab-group-2">
-<label class="labelouter" for="tab-2-2">FAISS</label>
+<input type="radio" id="tab-2-3" name="tab-group-2">
+<label class="labelouter" for="tab-2-3">FAISS</label>
 <div class="tabcontent">
 
 **Pros:** 
@@ -217,8 +217,8 @@ The Document Stores have different characteristics. You should choose one depend
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-2-3" name="tab-group-2">
-<label class="labelouter" for="tab-2-3">In Memory</label>
+<input type="radio" id="tab-2-4" name="tab-group-2">
+<label class="labelouter" for="tab-2-4">In Memory</label>
 <div class="tabcontent">
 
 **Pros:**
@@ -234,8 +234,8 @@ The Document Stores have different characteristics. You should choose one depend
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-2-4" name="tab-group-2">
-<label class="labelouter" for="tab-2-4">SQL</label>
+<input type="radio" id="tab-2-5" name="tab-group-2">
+<label class="labelouter" for="tab-2-5">SQL</label>
 <div class="tabcontent">
 
 **Pros:**
