@@ -91,7 +91,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: str = "localhost", port: int = 9200, username: str = "", password: str = "", index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: str = None, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False)
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: str = None, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False)
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -102,11 +102,14 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 
 **Arguments**:
 
-- `host`: url of elasticsearch
-- `port`: port of elasticsearch
-- `username`: username
-- `password`: password
-- `index`: Name of index in elasticsearch to use. If not existing yet, we will create one.
+- `host`: url(s) of elasticsearch nodes
+- `port`: port(s) of elasticsearch nodes
+- `username`: username (standard authentication via http_auth)
+- `password`: password (standard authentication via http_auth)
+- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth)
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth)
+- `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+- `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
 - `search_fields`: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
 - `text_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
 If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
