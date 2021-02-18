@@ -9,6 +9,7 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import numpy as np
 from scipy.special import expit
+import traceback
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
@@ -38,7 +39,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         faq_question_field: Optional[str] = None,
         analyzer: str = "standard",
         scheme: str = "http",
-        ca_certs: str = None,
+        ca_certs: Optional[str] = None,
         verify_certs: bool = True,
         create_index: bool = True,
         update_existing_documents: bool = False,
@@ -135,12 +136,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              api_key_id: Optional[str],
                              api_key: Optional[str],
                              scheme: str,
-                             ca_certs: str,
+                             ca_certs: Optional[str],
                              verify_certs: bool,
                              timeout: int) -> Elasticsearch:
         # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
-        if type(host) == list:
-            if type(port) == list:
+        if isinstance(host, list):
+            if isinstance(port, list):
                 if not len(port) == len(host):
                     raise ValueError("Length of list `host` must match length of list `port`")
                 hosts = [{"host":h, "port":p} for h, p in zip(host,port)]
