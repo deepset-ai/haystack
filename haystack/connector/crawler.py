@@ -64,7 +64,7 @@ class Crawler(BaseComponent):
               output_dir: Union[str, Path, None] = None,
               crawler_depth: Optional[int] = None,
               filter_urls: Optional[List] = None,
-              overwrite_existing_files: Optional[bool] = None) -> List[Document]:
+              overwrite_existing_files: Optional[bool] = None) -> List[Path]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
         file per URL, including text and basic meta data).
@@ -106,15 +106,12 @@ class Crawler(BaseComponent):
             logger.info(f"Fetching from {urls} to `{output_dir}`")
 
             filepaths = []
-            if type(urls) != list:
-                urls = [urls]
 
             sub_links: Dict[str, List] = {}
 
             # don't go beyond the initial list of urls
             if crawler_depth == 0:
-                for url_ in urls:
-                    filepaths += self._write_to_files(url_, output_dir=output_dir)
+                filepaths += self._write_to_files(urls, output_dir=output_dir)
             # follow one level of sublinks
             elif crawler_depth == 1:
                 for url_ in urls:
@@ -127,11 +124,7 @@ class Crawler(BaseComponent):
             return filepaths
 
     def _write_to_files(self, urls: List[str], output_dir: Path, base_url: str = None) -> List[Path]:
-        if type(urls) != list:
-            urls = [urls]
-
         paths = []
-
         for link in urls:
             logger.info(f"writing contents from `{link}`")
             self.driver.get(link)
