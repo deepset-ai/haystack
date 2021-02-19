@@ -7,11 +7,13 @@ from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
+from farm.file_utils import http_get
+
 import logging
 import subprocess
 import time
 import json
-
+from typing import Union
 from pathlib import Path
 logger = logging.getLogger(__name__)
 
@@ -114,3 +116,25 @@ def load_config(config_filename, ci):
     return params, filenames
 
 
+def download_from_url(url: str, filepath:Union[str, Path]):
+    """
+    Download from a url to a local file. Skip already existing files.
+
+    :param url: Url
+    :param filepath: local path where the url content shall be stored
+    :return: local path of the downloaded file
+    """
+
+    logger.info(f"Downloading {url}")
+    # Create local folder
+    folder, filename = os.path.split(filepath)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    # Download file if not present locally
+    if os.path.exists(filepath):
+        logger.info(f"Skipping {url} (exists locally)")
+    else:
+        logger.info(f"Downloading {url} to {filepath} ")
+        with open(filepath, "wb") as file:
+            http_get(url=url, temp_file=file)
+    return filepath
