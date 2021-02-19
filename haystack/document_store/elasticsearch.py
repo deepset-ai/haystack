@@ -20,10 +20,12 @@ logger = logging.getLogger(__name__)
 class ElasticsearchDocumentStore(BaseDocumentStore):
     def __init__(
         self,
-        host: str = "localhost",
-        port: int = 9200,
+        host: Union[str, List[str]] = "localhost",
+        port: Union[int, List[int]] = 9200,
         username: str = "",
         password: str = "",
+        api_key_id: Optional[str] = None,
+        api_key: Optional[str] = None,
         index: str = "document",
         label_index: str = "label",
         search_fields: Union[str, list] = "text",
@@ -36,7 +38,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         faq_question_field: Optional[str] = None,
         analyzer: str = "standard",
         scheme: str = "http",
-        ca_certs: str = None,
+        ca_certs: Optional[str] = None,
         verify_certs: bool = True,
         create_index: bool = True,
         update_existing_documents: bool = False,
@@ -52,11 +54,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             * You can either use an existing Elasticsearch index or create a new one via haystack
             * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
 
-        :param host: url of elasticsearch
-        :param port: port of elasticsearch
-        :param username: username
-        :param password: password
-        :param index: Name of index in elasticsearch to use. If not existing yet, we will create one.
+        :param host: url(s) of elasticsearch nodes
+        :param port: port(s) of elasticsearch nodes
+        :param username: username (standard authentication via http_auth)
+        :param password: password (standard authentication via http_auth)
+        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+        :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
         :param search_fields: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
         :param text_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
@@ -86,10 +91,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param timeout: Number of seconds after which an ElasticSearch request times out.
         :param return_embedding: To return document embedding
 
-
         """
-        self.client = Elasticsearch(hosts=[{"host": host, "port": port}], http_auth=(username, password),
-                                    scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
+
+        self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
+                                           api_key=api_key, api_key_id=api_key_id, scheme=scheme,
+                                           ca_certs=ca_certs, verify_certs=verify_certs,timeout=timeout)
 
         # configure mappings to ES fields that will be used for querying / displaying results
         if type(search_fields) == str:
@@ -120,6 +126,51 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         self.update_existing_documents = update_existing_documents
         self.refresh_type = refresh_type
+
+    def _init_elastic_client(self,
+                             host: Union[str, List[str]],
+                             port: Union[int, List[int]],
+                             username: str,
+                             password: str,
+                             api_key_id: Optional[str],
+                             api_key: Optional[str],
+                             scheme: str,
+                             ca_certs: Optional[str],
+                             verify_certs: bool,
+                             timeout: int) -> Elasticsearch:
+        # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
+        if isinstance(host, list):
+            if isinstance(port, list):
+                if not len(port) == len(host):
+                    raise ValueError("Length of list `host` must match length of list `port`")
+                hosts = [{"host":h, "port":p} for h, p in zip(host,port)]
+            else:
+                hosts = [{"host": h, "port": port} for h in host]
+        else:
+            hosts = [{"host": host, "port": port}]
+
+        if (api_key or api_key_id) and not(api_key and api_key_id):
+            raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
+
+        if api_key:
+            # api key authentication
+            client = Elasticsearch(hosts=hosts, http_auth=(username, password),
+                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
+                                        timeout=timeout)
+        else:
+            # standard http_auth
+            client = Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
+                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
+
+            # Test connection
+        try:
+            status = client.ping()
+            if not status:
+                raise ConnectionError(f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
+        except Exception:
+            raise ConnectionError(
+                f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
+        return client
 
     def _create_document_index(self, index_name: str):
         """
