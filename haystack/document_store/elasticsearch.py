@@ -9,7 +9,6 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import numpy as np
 from scipy.special import expit
-import traceback
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
@@ -153,20 +152,25 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if (api_key or api_key_id) and not(api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
 
-        # Init client based on authentication mode
+        if api_key:
+            # api key authentication
+            client = Elasticsearch(hosts=hosts, http_auth=(username, password),
+                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
+                                        timeout=timeout)
+        else:
+            # standard http_auth
+            client = Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
+                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
+
+            # Test connection
         try:
-            if api_key:
-                # api key authentication
-                return Elasticsearch(hosts=hosts, http_auth=(username, password),
-                                            scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
-                                            timeout=timeout)
-            else:
-                # standard http_auth
-                return Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
-                                            scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
-        except Exception as e:
-            tb = traceback.format_exc()
-            raise ConnectionError(f"Initial connection to Elasticsearch failed. Error: {e}, Traceback: {tb}")
+            status = client.ping()
+            if not status:
+                raise ConnectionError(f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
+        except Exception:
+            raise ConnectionError(
+                f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
+        return client
 
     def _create_document_index(self, index_name: str):
         """
