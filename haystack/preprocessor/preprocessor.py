@@ -44,7 +44,11 @@ class PreProcessor(BasePreProcessor):
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
         """
-        nltk.download("punkt")
+        try:
+            nltk.data.find('tokenizers/punkt')
+        except LookupError:
+            nltk.download('punkt')
+            
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
