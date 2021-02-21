@@ -5,6 +5,9 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 
+from sklearn.utils.validation import check_is_fitted
+from sklearn import pipeline
+
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
@@ -549,3 +552,27 @@ class EmbeddingRetriever(BaseRetriever):
         texts = [d.text for d in docs]
 
         return self.embed(texts)
+
+
+class SklearnTransformerRetriever(EmbeddingRetriever):
+
+    def __init__(
+        self,
+        document_store: BaseDocumentStore,
+        embedding_transformer,
+        progress_bar=True,
+        similarity_function='cosine'
+    ):
+        self.document_store = document_store
+        self.embedding_transformer = embedding_transformer
+        self.progress_bar = progress_bar
+        self.similarity_function = similarity_function
+
+        if isinstance(embedding_transformer, pipeline.Pipeline):
+            for transformer in embedding_transformer.named_steps.values():
+                check_is_fitted(transformer)
+        else:
+            check_is_fitted(embedding_transformer)
+
+    def embed(self, texts: Union[List[str], str]) -> List[np.ndarray]:
+        return self.embedding_transformer.transform(texts)
