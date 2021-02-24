@@ -1,11 +1,11 @@
-<!---
+---
 title: "Document Store"
 metaTitle: "Document Store"
 metaDescription: ""
 slug: "/docs/documentstore"
 date: "2020-09-03"
 id: "documentstoremd"
---->
+---
 
 
 # DocumentStores
@@ -18,7 +18,7 @@ There are different DocumentStores in Haystack to fit different use cases and te
 
 ## Initialisation
 
-Initialising a new DocumentStore is straight forward.
+Initialising a new DocumentStore within Haystack is straight forward.
 
 <div class="tabs tabsdsinstall">
 
@@ -27,21 +27,51 @@ Initialising a new DocumentStore is straight forward.
 <label class="labelouter" for="tab-1-1">Elasticsearch</label>
 <div class="tabcontent">
 
+[Install](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html)
+Elasticsearch and then [start](https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html)
+an instance. 
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+```bash
+docker pull docker.elastic.co/elasticsearch/elasticsearch:7.9.2
+docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2
+```
+
+Next you can initialize the Haystack object that will connect to this instance.
+
 ```python
 document_store = ElasticsearchDocumentStore()
-# or
-document_store = OpenDistroElasticsearchDocumentStore()
-
 ```
+
+Note that we also support [Open Distro for Elasticsearch](https://opendistro.github.io/for-elasticsearch-docs/).
+Follow [their documentation](https://opendistro.github.io/for-elasticsearch-docs/docs/install/)
+to run it and connect to it using Haystack's `OpenDistroElasticsearchDocumentStore` class.
+
 
 </div>
 </div>
 
 <div class="tab">
 <input type="radio" id="tab-1-2" name="tab-group-1">
-<label class="labelouter" for="tab-1-2">FAISS</label>
+<label class="labelouter" for="tab-1-2">Milvus</label>
 <div class="tabcontent">
 
+Follow the [official documentation](https://www.milvus.io/docs/v0.10.5/milvus_docker-cpu.md) to start a Milvus instance via Docker
+ 
+You can initialize the Haystack object that will connect to this instance as follows:
+```python
+document_store = MilvusDocumentStore()
+```
+
+</div>
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-1-3" name="tab-group-1">
+<label class="labelouter" for="tab-1-3">FAISS</label>
+<div class="tabcontent">
+
+The `FAISSDocumentStore` requires no external setup. Start it by simply using this line. 
 ```python
 document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 ```
@@ -50,10 +80,11 @@ document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-1-3" name="tab-group-1">
-<label class="labelouter" for="tab-1-3">In Memory</label>
+<input type="radio" id="tab-1-4" name="tab-group-1">
+<label class="labelouter" for="tab-1-4">In Memory</label>
 <div class="tabcontent">
 
+The `InMemoryDocumentStore()` requires no external setup. Start it by simply using this line.
 ```python
 document_store = InMemoryDocumentStore()
 ```
@@ -62,9 +93,12 @@ document_store = InMemoryDocumentStore()
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-1-4" name="tab-group-1">
-<label class="labelouter" for="tab-1-4">SQL</label>
+<input type="radio" id="tab-1-5" name="tab-group-1">
+<label class="labelouter" for="tab-1-5">SQL</label>
 <div class="tabcontent">
+
+The `SQLDocumentStore` requires SQLite, PostgresQL or MySQL to be installed and started.
+Note that SQLite already comes packaged with most operating systems. 
 
 ```python
 document_store = SQLDocumentStore()
@@ -151,7 +185,24 @@ The Document Stores have different characteristics. You should choose one depend
 
 <div class="tab">
 <input type="radio" id="tab-2-2" name="tab-group-2">
-<label class="labelouter" for="tab-2-2">FAISS</label>
+<label class="labelouter" for="tab-2-2">Milvus</label>
+<div class="tabcontent">
+
+**Pros:** 
+- Scalable DocumentStore that excels at handling vectors (hence suited to dense retrieval methods like DPR)
+- Encapsulates multiple ANN libraries (e.g. FAISS and ANNOY) and provides added reliability
+- Runs as a separate service (e.g. a Docker container)
+- Allows dynamic data management
+
+**Cons:**
+- No efficient sparse retrieval
+
+</div>
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2-3" name="tab-group-2">
+<label class="labelouter" for="tab-2-3">FAISS</label>
 <div class="tabcontent">
 
 **Pros:** 
@@ -166,8 +217,8 @@ The Document Stores have different characteristics. You should choose one depend
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-2-3" name="tab-group-2">
-<label class="labelouter" for="tab-2-3">In Memory</label>
+<input type="radio" id="tab-2-4" name="tab-group-2">
+<label class="labelouter" for="tab-2-4">In Memory</label>
 <div class="tabcontent">
 
 **Pros:**
@@ -183,8 +234,8 @@ The Document Stores have different characteristics. You should choose one depend
 </div>
 
 <div class="tab">
-<input type="radio" id="tab-2-4" name="tab-group-2">
-<label class="labelouter" for="tab-2-4">SQL</label>
+<input type="radio" id="tab-2-5" name="tab-group-2">
+<label class="labelouter" for="tab-2-5">SQL</label>
 <div class="tabcontent">
 
 **Pros:**
@@ -209,6 +260,6 @@ The Document Stores have different characteristics. You should choose one depend
 
 **Allrounder:** Use the `ElasticSearchDocumentStore`, if you want to evaluate the performance of different retrieval options (dense vs. sparse) and are aiming for a smooth transition from PoC to production
 
-**Vector Specialist:** Use the `FAISSDocumentStore`, if you want to focus on dense retrieval and possibly deal with larger datasets
+**Vector Specialist:** Use the `MilvusDocumentStore`, if you want to focus on dense retrieval and possibly deal with larger datasets
 
 </div>
