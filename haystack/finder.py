@@ -251,13 +251,12 @@ class Finder:
             if found_relevant_doc:
                 all_relevant_docs = len(set(question.multiple_document_ids))
                 counts["summed_avg_precision_retriever"] += current_avg_precision / all_relevant_docs
-
-            questions_with_docs.append(
-                {
-                "question": question,
-                "docs": retrieved_docs
-                }
-            )
+                questions_with_docs.append(
+                    {
+                        "question": question,
+                        "docs": retrieved_docs
+                    }
+                )
 
         retriever_total_time = time.time() - retriever_start_time
         counts["number_of_questions"] = q_idx + 1
