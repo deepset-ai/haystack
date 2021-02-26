@@ -34,7 +34,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         if response.status_code > 299:
             raise Exception(response.text)
 
-    def get_all_triples(self, index: Optional[str] = None) -> List[Triple]:
+    def get_all_triples(self, index: Optional[str] = None):
         query = "SELECT * WHERE { ?s ?p ?o. }"
         results = self.query(query=query, index=index)
         return results
@@ -47,5 +47,5 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         sparql.setCredentials(self.username, self.password)
         sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
-        results = list(sparql.query().convert())
-        return results
+        results = sparql.query().convert()
+        return results["results"]["bindings"]
