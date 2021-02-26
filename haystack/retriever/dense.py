@@ -213,7 +213,7 @@ class DensePassageRetriever(BaseRetriever):
         if len(dataset) == 1:
             disable_tqdm=True
         else:
-            disable_tqdm = self.progress_bar
+            disable_tqdm = not self.progress_bar
 
         for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
             batch = {key: batch[key].to(self.device) for key in batch}

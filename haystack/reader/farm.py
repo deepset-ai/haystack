@@ -96,7 +96,7 @@ class FARMReader(BaseReader):
         self.inferencer = QAInferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
                                             task_type="question_answering", max_seq_len=max_seq_len,
                                             doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
-                                            disable_tqdm=progress_bar)
+                                            disable_tqdm=not progress_bar)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
@@ -230,7 +230,7 @@ class FARMReader(BaseReader):
             evaluate_every=evaluate_every,
             device=device,
             use_amp=use_amp,
-            disable_tqdm=self.progress_bar
+            disable_tqdm=not self.progress_bar
         )
 
 
