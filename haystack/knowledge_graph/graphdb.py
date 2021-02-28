@@ -48,4 +48,5 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         sparql.setQuery(query)
         sparql.setReturnFormat(JSON)
         results = sparql.query().convert()
-        return results["results"]["bindings"]
+        # if query is a boolean query, return boolean instead of text result
+        return results["results"]["bindings"] if "results" in results else results["boolean"]
