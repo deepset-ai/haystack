@@ -132,38 +132,36 @@ class KGQARetriever(BaseGraphRetriever):
 
         return queries
 
-    def similarity_of_question_query(self, query, question):
+    def similarity_of_question_queries(self, queries, question, use_farm=True):
         """
-        Calculate the semantic similarity of a query given as a where_clause and a question
-        """
-        return 1.0
-
-    def similarity_of_question_queries(self, queries, question):
-        """
-        Calculate the semantic similarity of each query given as a where_clause and a question
+        Calculate the semantic similarity of each query and a question
         """
         # todo we should use Tree LSTMs to calculate similarity as described in https://journalofbigdata.springeropen.com/track/pdf/10.1186/s40537-020-00383-w.pdf
         # use different encoders for query and question
         # we should replace linked entities in the question with a placeholder as described in http://jens-lehmann.org/files/2018/eswc_qa_query_generation.pdf
         # train on LC-QuAD dataset
         # use text pair classification from farm and train on LC-QuAD
-        basic_texts = [{"text": (question, query)} for query in queries]
-        from pathlib import Path
-        save_dir = Path("saved_models/text_pair_classification_model")
+        if use_farm:
+            basic_texts = [{"text": (question, query.get_sparql_query())} for query in queries]
+            from pathlib import Path
+            save_dir = Path("saved_models/text_pair_classification_model")
 
-        # needs FARM
-        # from farm.infer import Inferencer
-        # model = Inferencer.load(save_dir)
-        # predictions = model.inference_from_dicts(dicts=basic_texts)
-        # model.close_multiprocessing_pool()
-        # return [(query, prediction["probability"]) for query, prediction in zip(queries, predictions)]
+            # needs FARM
+            from farm.infer import Inferencer
+            model = Inferencer.load(save_dir)
+            predictions = model.inference_from_dicts(dicts=basic_texts)
+            model.close_multiprocessing_pool()
+            probabilities = []
+            for prediction in predictions:
+                for p in prediction["predictions"]:
+                    probabilities.append(p["probability"])
+            return [(query, probability) for query, probability in zip(queries, probabilities)]
         return [(query, 1.0) for query in queries]
 
     def query_ranking(self, queries, question):
         """
         Sort queries based on their semantic similarity with the question
         """
-        # queries_with_scores = [(query,similarity_of_question_query(query,question)) for query in queries]
         queries_with_scores = self.similarity_of_question_queries(queries, question)
         queries_with_scores.sort(key=itemgetter(1), reverse=True)  # should we sort ascending or descending?
         return queries_with_scores
