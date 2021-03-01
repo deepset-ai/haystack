@@ -11,6 +11,9 @@ class Query:
         self.question_type: QuestionType = question_type
         self._sparql_query: Optional[str] = None
 
+    def __str__(self) -> str:
+        return f"{self.get_sparql_query()}"
+
     def get_sparql_query(self):
         if not self._sparql_query:
             self._sparql_query = self.build_sparql_query_string()
@@ -29,7 +32,7 @@ class Query:
             query = f"ASK WHERE {{ {where_clause} }}"
             # example: ASK WHERE { dbr:Hermione_Granger dbo:spouse dbr:Ron_Weasley}
         elif self.question_type == QuestionType.ListQuestion:
-            query = "SELECT ?uri WHERE {{ {where_clause} }}"
+            query = f"SELECT ?uri WHERE {{ {where_clause} }}"
             # example: SELECT ?o WHERE{ ?harry rdfs:label "Harry Potter"@en. ?family rdfs:label "family"@en. ?harry ?family ?o. }
 
         if not query:
