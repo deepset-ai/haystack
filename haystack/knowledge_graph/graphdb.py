@@ -39,6 +39,21 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         results = self.query(query=query, index=index)
         return results
 
+    def get_all_subjects(self, index: Optional[str] = None):
+        query = "SELECT ?s WHERE { ?s ?p ?o. }"
+        results = self.query(query=query, index=index)
+        return results
+
+    def get_all_predicates(self, index: Optional[str] = None):
+        query = "SELECT ?p WHERE { ?s ?p ?o. }"
+        results = self.query(query=query, index=index)
+        return results
+
+    def get_all_objects(self, index: Optional[str] = None):
+        query = "SELECT ?o WHERE { ?s ?p ?o. }"
+        results = self.query(query=query, index=index)
+        return results
+
     def query(self, query: str, index: Optional[str] = None):
         if self.index is None and index is None:
             raise Exception("Index name is required")

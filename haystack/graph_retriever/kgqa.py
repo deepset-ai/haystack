@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from typing import List, Tuple, Set, Optional
 
 import spacy
@@ -21,9 +22,13 @@ class KGQARetriever(BaseGraphRetriever):
         self.nlp = spacy.load('en_core_web_lg')
         # self.nlp = spacy.load('en_core_web_trf')
 
-        self.top_relations = json.load(open("top_relations.json"))
+        self.subject_names = Counter([result["s"]["value"] for result in kg.get_all_subjects(index="hp-test")])
+        self.predicate_names = Counter([result["p"]["value"] for result in kg.get_all_predicates(index="hp-test")])
+        self.object_names = Counter([result["o"]["value"] for result in kg.get_all_objects(index="hp-test")])
+
+        self.top_relations = self.predicate_names.keys()
         self.alias_to_entity_and_prob = json.load(open("alias_to_entity_and_prob.json"))
-        self.entity_to_frequency = json.load(open("entity_to_frequency.json"))
+        self.alias_to_entity_and_prob = self.filter_existing_entities()
 
     def eval(self):
         raise NotImplementedError
@@ -34,57 +39,95 @@ class KGQARetriever(BaseGraphRetriever):
     def retrieve(self, question_text: str, top_k_graph: int):
         question: Question = Question(question_text=question_text)
         entities, relations, question_type = question.analyze(nlp=self.nlp,
-                                                              entity_to_frequency=self.entity_to_frequency,
                                                               alias_to_entity_and_prob=self.alias_to_entity_and_prob,
-                                                              top_relations=self.top_relations)
+                                                              top_relations=self.top_relations,
+                                                              subject_names=self.subject_names,
+                                                              predicate_names=self.predicate_names,
+                                                              object_names=self.object_names)
 
         triples = kgqa_retriever.triple_generation(entities, relations, question_type)
         queries = kgqa_retriever.query_generation(triples, question_type)
         queries_with_scores: List[Tuple[Query, float]] = kgqa_retriever.query_ranking(queries, question.question_text)
-        for ranked_query in queries_with_scores[:top_k_graph]:
-            print(ranked_query)
+        results = []
+        print(question.question_text)
+        for queries_with_score in queries_with_scores[:top_k_graph]:
+            result = kgqa_retriever.query_executor.execute(queries_with_score[0])
+            print(queries_with_score[0])
+            print(result)
+            results.append(result)
 
-        # todo use top_k_graph parameter, execute top k queries and return top k results
-        if len(queries_with_scores) > 0:
-            final_query_result = kgqa_retriever.query_executor.execute(queries_with_scores[0][0])
-            print(final_query_result)
+        if len(results) > 0:
+            return results
         else:
-            print("No query executed. Are there any entities and relations in the question that are also in the knowledge graph?")
+            print("No query results. Are there any entities and relations in the question that are also in the knowledge graph?")
+            return None
+
+    def filter_existing_entities(self):
+        # filter out entities that were used in anchor texts but are not in the knowledge graph
+        # { k="Albus" : v=[("Albus_Dumbledore",0.9),("Albus_Potter",0.1)]}
+        alias_to_entity_and_prob_filtered = dict()
+        # {k:v for (k,v) in self.alias_to_entity_and_prob.items() if v in self.subject_names or v in self.object_names}
+        for (alias, v) in self.alias_to_entity_and_prob.items():
+            filtered_entities = []
+            for (entity, probability) in v:
+                if f"https://deepset.ai/harry_potter/{entity.replace(' ', '_').replace('.', '_')}" in self.subject_names or f"https://deepset.ai/harry_potter/{entity.replace(' ', '_').replace('.', '_')}" in self.object_names:
+                    filtered_entities.append((entity, probability))
+            if filtered_entities:
+                alias_to_entity_and_prob_filtered[alias] = filtered_entities
+        return alias_to_entity_and_prob_filtered
 
     def triple_generation(self, entities: Optional[Set[str]], relations: Optional[Set[str]], question_type: QuestionType) -> Set[Triple]:
         """
         Given all linked entities and relations of a question, generate triples of the form (subject, predicate, object)
         """
-        # todo do not check Query.has_result if QuestionType is BooleanQuestion
-        s1: Set[Triple] = set([Triple(e1, p, e2) for e1 in entities for p in relations for e2 in entities if self.query_executor.has_result({Triple(e1, p, e2)})])
-        s2: Set[Triple] = set([Triple(e, p, "?uri") for e in entities for p in relations if self.query_executor.has_result({Triple(e, p, "?uri")})])
-        s3: Set[Triple] = set([Triple("?uri", p, e) for e in entities for p in relations if self.query_executor.has_result({Triple("?uri", p, e)})])
-        s: Set[Triple] = s1.union(s2, s3)
+        # Do not check if triple exists in knowledge graph if QuestionType is BooleanQuestion
+        if question_type is QuestionType.BooleanQuestion:
+            s1: Set[Triple] = set([Triple(e1, p, e2) for e1 in entities for p in relations for e2 in entities])
+            s2: Set[Triple] = set([Triple(e, p, "?uri") for e in entities for p in relations])
+            s3: Set[Triple] = set([Triple("?uri", p, e) for e in entities for p in relations])
+            s: Set[Triple] = s1.union(s2, s3)
 
-        s_extend: Set[Triple] = set()
-        for triple1 in s:
-            for triple2 in s:
-                if triple1.object == "?uri" and triple2.subject == "?urix" and triple1.predicate == triple2.predicate:
-                    if self.query_executor.has_result({Triple("?uri", triple1.predicate, "?urix")}):
+            s_extend: Set[Triple] = set()
+            for triple1 in s:
+                for triple2 in s:
+                    if triple1.object == "?uri" and triple2.subject == "?urix" and triple1.predicate == triple2.predicate:
                         s_extend.add(Triple("?uri", triple1.predicate, "?urix"))
-                    if self.query_executor.has_result({Triple("?urix", triple1.predicate, "?uri")}):
                         s_extend.add(Triple("?urix", triple1.predicate, "?uri"))
 
-        s = s.union(s_extend)
-        return s
+            s = s.union(s_extend)
+            return s
+        else:
+            s1: Set[Triple] = set([Triple(e1, p, e2) for e1 in entities for p in relations for e2 in entities if
+                                   self.query_executor.has_result({Triple(e1, p, e2)})])
+            s2: Set[Triple] = set([Triple(e, p, "?uri") for e in entities for p in relations if
+                                   self.query_executor.has_result({Triple(e, p, "?uri")})])
+            s3: Set[Triple] = set([Triple("?uri", p, e) for e in entities for p in relations if
+                                   self.query_executor.has_result({Triple("?uri", p, e)})])
+            s: Set[Triple] = s1.union(s2, s3)
 
-    def query_generation(self, triples: Set[Triple], question_type: QuestionType):
+            s_extend: Set[Triple] = set()
+            for triple1 in s:
+                for triple2 in s:
+                    if triple1.object == "?uri" and triple2.subject == "?urix" and triple1.predicate == triple2.predicate:
+                        if self.query_executor.has_result({Triple("?uri", triple1.predicate, "?urix")}):
+                            s_extend.add(Triple("?uri", triple1.predicate, "?urix"))
+                        if self.query_executor.has_result({Triple("?urix", triple1.predicate, "?uri")}):
+                            s_extend.add(Triple("?urix", triple1.predicate, "?uri"))
+
+            s = s.union(s_extend)
+            return s
+
+    def query_generation(self, triples: Set[Triple], question_type: QuestionType) -> List[Query]:
         """
         Generate where_clauses by combining triples and check whether they give a result
         """
-        # todo remove the check query_result_exists for boolean questions?
         queries: List[Query] = []
         for k in range(max(len(triples), 5)):
             for triple_combination in itertools.combinations(triples, k):
                 if not triple_combination:
                     continue
                 # check if query result exists in knowledge graph
-                if self.query_executor.has_result(set(triple_combination)):
+                if question_type == QuestionType.BooleanQuestion or self.query_executor.has_result(set(triple_combination)):
                     queries.append(Query(question_type=question_type, triples=set(triple_combination)))
 
         return queries
@@ -130,16 +173,16 @@ if __name__ == "__main__":
     kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="x-x-x")
     # load triples in the db
     # kg.import_from_ttl_file(path="triples.ttl", index="hp-test")
-    # get all triples
-    # results = kg.get_all_triples(index="hp-test")
-
-    # sparql query
-    # results = kg.query(query=sparql_query_str, index="hp-test")
-    # print(results)
+    # return kg.query(query="ASK WHERE { <https://deepset.ai/harry_potter/Albus_Dumbledore> <https://deepset.ai/harry_potter/died> ?uri }", index="hp-test")
+    # return kg.query(query="SELECT ?uri WHERE { <https://deepset.ai/harry_potter/Albus_Dumbledore> <https://deepset.ai/harry_potter/died> ?uri }", index="hp-test")
 
     kgqa_retriever = KGQARetriever(knowledge_graph=kg)
-    kgqa_retriever.retrieve(question_text="Did Dumbledore die?", top_k_graph=1)
+    top_k_graph = 1
+    result = kgqa_retriever.retrieve(question_text="Did Albus Dumbledore die?", top_k_graph=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Did Harry die?", top_k_graph=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="What is the patronus of Harry?", top_k_graph=top_k_graph)[0][0]["uri"]["value"]
+    result = kgqa_retriever.retrieve(question_text="Who is the founder of house Gryffindor?", top_k_graph=top_k_graph)[0][0]["uri"]["value"]
+
     #kgqa_retriever.retrieve(question_text="What is the name of the daughter of Harry and Ginny?", top_k_graph=1)
     #kgqa_retriever.retrieve(question_text="How many children does Harry Potter have?", top_k_graph=1)
     #kgqa_retriever.retrieve(question_text="Does Harry Potter have a child?", top_k_graph=1)
-

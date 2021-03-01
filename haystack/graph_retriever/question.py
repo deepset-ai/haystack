@@ -19,9 +19,9 @@ class Question:
         self.entities: Optional[Set[str]] = None
         self.relations: Optional[Set[str]] = None
 
-    def analyze(self, nlp, entity_to_frequency, alias_to_entity_and_prob, top_relations) -> (Optional[Set[str]], Optional[Set[str]], Optional[QuestionType]):
+    def analyze(self, nlp, alias_to_entity_and_prob, top_relations, subject_names, predicate_names, object_names) -> (Optional[Set[str]], Optional[Set[str]], Optional[QuestionType]):
         self.doc = nlp(self.question_text)
-        self.entities = self.entity_linking(entity_to_frequency=entity_to_frequency, alias_to_entity_and_prob=alias_to_entity_and_prob)
+        self.entities = self.entity_linking(alias_to_entity_and_prob=alias_to_entity_and_prob, subject_names=subject_names, predicate_names=predicate_names, object_names=object_names)
         self.relations = self.relation_linking(top_relations=top_relations, nlp=nlp)
         self.question_type = self.classify_type()
         return self.entities, self.relations, self.question_type
@@ -44,28 +44,30 @@ class Question:
 
         return QuestionType.ListQuestion
 
-    def entity_linking(self, entity_to_frequency, alias_to_entity_and_prob):
+    def entity_linking(self, alias_to_entity_and_prob, subject_names, predicate_names, object_names):
         """
                 Link spacy entities mentioned in a question to entities that exist in our knowledge base
                 """
         entities = set()
         if self.doc.ents:  # if spacy recognized any entities
             for ent in self.doc.ents:
-                if ent.text in entity_to_frequency:
+                if f"https://deepset.ai/harry_potter/{ent.text.replace(' ','_').replace('.', '_')}" in subject_names or f"https://deepset.ai/harry_potter/{ent.text.replace(' ','_').replace('.', '_')}" in object_names:
                     entities.add(ent.text)
                 elif ent.text in alias_to_entity_and_prob:
                     entities.add(max(alias_to_entity_and_prob[ent.text], key=itemgetter(1))[0])
-        else:  # else try to link nouns to entities
-            for token in self.doc:
-                if token.pos_ == "NOUN" or token.pos_ == "PROPN":
-                    if token.text in entity_to_frequency:
-                        entities.add(token.text)
-                    elif token.text in alias_to_entity_and_prob:
-                        entities.add(max(alias_to_entity_and_prob[token.text], key=itemgetter(1))[0])
+        # for any remaining tokens: try to link nouns to entities
+        for token in self.doc:
+            # skip tokens that have already been linked because the are part of entities recognized by spacy
+            if self.doc.ents:
+                if token.ent_type != 0:
+                    continue
+            if token.pos_ == "NOUN" or token.pos_ == "PROPN":
+                if f"https://deepset.ai/harry_potter/{token.text.replace(' ','_').replace('.', '_')}" in subject_names or f"https://deepset.ai/harry_potter/{token.text.replace(' ','_').replace('.', '_')}" in object_names:
+                    entities.add(token.text)
+                elif token.text in alias_to_entity_and_prob:
+                    entities.add(max(alias_to_entity_and_prob[token.text], key=itemgetter(1))[0])
 
-        # TODO remove debug hack
-        entities = {"Albus Dumbledore"}
-        entities = {f"<https://deepset.ai/harry_potter/{entity.replace(' ','_')}>" for entity in entities}
+        entities = {f"<https://deepset.ai/harry_potter/{entity.replace(' ','_').replace('.', '_')}>" for entity in entities}
         return entities
 
     def relation_linking(self, top_relations, nlp):
@@ -79,7 +81,7 @@ class Question:
         recognized_relations = set()
         for token in self.doc:
             if token.pos_ == "VERB" or token.pos_ == "NOUN":
-                if token.lemma_ in top_relations:
+                if f"https://deepset.ai/harry_potter/{token.lemma_.replace(' ', '_')}" in top_relations:
                     recognized_relations.add(token.lemma_)
                 else:
                     relation, score = self.find_most_similar_relation(token.lemma_, nlp, top_relations)
@@ -90,7 +92,7 @@ class Question:
         return recognized_relations
 
     def find_most_similar_relation(self, word, nlp, top_relations):
-        relations_with_scores = [(relation, self.word_similarity(word, relation, nlp)) for relation in top_relations]
+        relations_with_scores = [(relation, self.word_similarity(word, relation.split("/")[-1], nlp)) for relation in top_relations]
         relations_with_scores.sort(key=itemgetter(1), reverse=True)
         return relations_with_scores[0]
 
