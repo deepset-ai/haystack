@@ -198,7 +198,7 @@ class Pipeline(ABC):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        with open(path, "r") as stream:
+        with open(path, "r", encoding='utf-8') as stream:
             data = yaml.safe_load(stream)
 
         if pipeline_name is None:
