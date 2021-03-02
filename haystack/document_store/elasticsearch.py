@@ -154,13 +154,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         if api_key:
             # api key authentication
+            client = Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
+                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
+        else:
+            # standard http_auth
             client = Elasticsearch(hosts=hosts, http_auth=(username, password),
                                         scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
                                         timeout=timeout)
-        else:
-            # standard http_auth
-            client = Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
-                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
 
             # Test connection
         try:
