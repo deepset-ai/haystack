@@ -139,8 +139,8 @@ def add_is_impossible(squad_data: dict, json_file_path: Path):
                 question["is_impossible"] = False
 
     squad_data["data"] = squad_articles
-    with open(new_path, "w") as filo:
-        json.dump(squad_data, filo, indent=4)
+    with open(new_path, "w", encoding='utf-8') as filo:
+        json.dump(squad_data, filo, indent=4, ensure_ascii=False)
 
     return new_path, squad_data
 
@@ -219,8 +219,8 @@ def save_dataset(iter_dpr: Iterator, dpr_output_filename: Path,
     else:
         dataset_splits = {dpr_output_filename: iter_dpr}
     for path, set_iter in dataset_splits.items():
-        with open(path, "w") as json_ds:
-            json.dump(list(set_iter), json_ds, indent=4)
+        with open(path, "w", encoding='utf-8') as json_ds:
+            json.dump(list(set_iter), json_ds, indent=4, ensure_ascii=False)
 
 
 def get_hard_negative_contexts(retriever: BaseRetriever, question: str, answers: List[str],
@@ -242,7 +242,7 @@ def load_squad_file(squad_file_path: Path):
     if not squad_file_path.exists():
         raise FileNotFoundError
 
-    with open(squad_file_path) as squad_file:
+    with open(squad_file_path, encoding='utf-8') as squad_file:
         squad_data = json.load(squad_file)
 
     # squad_data["data"] = squad_data["data"][:10]  # sample
