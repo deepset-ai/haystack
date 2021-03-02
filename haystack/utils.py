@@ -70,7 +70,7 @@ def convert_labels_to_squad(labels_file: str):
     :param labels_file: path for export file from the labeling tool
     :return:
     """
-    with open(labels_file) as label_file:
+    with open(labels_file, encoding='utf-8') as label_file:
         labels = json.load(label_file)
 
     labels_grouped_by_documents = defaultdict(list)
@@ -112,7 +112,7 @@ def convert_labels_to_squad(labels_file: str):
 
         labels_in_squad_format["data"].append(squad_format_label)
 
-    with open("labels_in_squad_format.json", "w+") as outfile:
+    with open("labels_in_squad_format.json", "w+", encoding='utf-8') as outfile:
         json.dump(labels_in_squad_format, outfile)
 
 

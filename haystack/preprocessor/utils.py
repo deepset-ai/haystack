@@ -36,7 +36,7 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
     labels = []
     problematic_ids = []
 
-    with open(filename, "r") as file:
+    with open(filename, "r", encoding='utf-8') as file:
         data = json.load(file)
         if "title" not in data["data"][0]:
             logger.warning(f"No title information found for documents in QA file: {filename}")
@@ -75,7 +75,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
     labels = []
     problematic_ids = []
 
-    with open(filename, "r") as file:
+    with open(filename, "r", encoding='utf-8') as file:
         for document in file:
             if max_docs:
                 if len(docs) > max_docs:
@@ -145,7 +145,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
 
         ## Assign Labels to corresponding documents
         for qa in paragraph["qas"]:
-            if not qa["is_impossible"]:
+            if not qa.get("is_impossible", False):
                 for answer in qa["answers"]:
                     ans = answer["text"]
                     ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
@@ -397,7 +397,7 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
     :param output_file: Name of output file (SQuAD in jsonl format)
     :type output_file: str
     """
-    with open(squad_file) as json_file, open(output_file, "w") as jsonl_file:
+    with open(squad_file, encoding='utf-8') as json_file, open(output_file, "w", encoding='utf-8') as jsonl_file:
         squad_json = json.load(json_file)
 
         for doc in squad_json["data"]:
