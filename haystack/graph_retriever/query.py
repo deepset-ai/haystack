@@ -1,8 +1,10 @@
+import logging
 from typing import Optional, Set
 
 from haystack.graph_retriever.question import QuestionType
 from haystack.graph_retriever.triple import Triple
 
+logger = logging.getLogger(__name__)
 
 class Query:
 
