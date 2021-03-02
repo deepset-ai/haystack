@@ -1,4 +1,5 @@
 import json
+import logging
 from collections import Counter
 from typing import List, Tuple, Set, Optional
 
@@ -26,7 +27,7 @@ class KGQARetriever(BaseGraphRetriever):
         self.predicate_names = Counter([result["p"]["value"] for result in kg.get_all_predicates(index="hp-test")])
         self.object_names = Counter([result["o"]["value"] for result in kg.get_all_objects(index="hp-test")])
 
-        self.top_relations = self.predicate_names.keys()
+        #self.top_relations = self.predicate_names.keys()
         self.alias_to_entity_and_prob = json.load(open("alias_to_entity_and_prob.json"))
         self.alias_to_entity_and_prob = self.filter_existing_entities()
 
@@ -40,7 +41,6 @@ class KGQARetriever(BaseGraphRetriever):
         question: Question = Question(question_text=question_text)
         entities, relations, question_type = question.analyze(nlp=self.nlp,
                                                               alias_to_entity_and_prob=self.alias_to_entity_and_prob,
-                                                              top_relations=self.top_relations,
                                                               subject_names=self.subject_names,
                                                               predicate_names=self.predicate_names,
                                                               object_names=self.object_names)
@@ -49,17 +49,19 @@ class KGQARetriever(BaseGraphRetriever):
         queries = kgqa_retriever.query_generation(triples, question_type)
         queries_with_scores: List[Tuple[Query, float]] = kgqa_retriever.query_ranking(queries, question.question_text)
         results = []
-        print(question.question_text)
+        logger.info(f"Listing top {top_k_graph} queries and answers for question \"{question.question_text}\"")
+        logger.info(f"Linked entities: {question.entities}")
+        logger.info(f"Linked relations: {question.relations}")
         for queries_with_score in queries_with_scores[:top_k_graph]:
             result = kgqa_retriever.query_executor.execute(queries_with_score[0])
-            print(queries_with_score[0])
-            print(result)
+            logger.info(f"Query: {queries_with_score[0]}")
+            logger.info(f"Answer: {result}")
             results.append(result)
 
         if len(results) > 0:
             return results
         else:
-            print("No query results. Are there any entities and relations in the question that are also in the knowledge graph?")
+            logger.warning("No query results. Are there any entities and relations in the question that are also in the knowledge graph?")
             return None
 
     def filter_existing_entities(self):
@@ -171,6 +173,13 @@ class KGQARetriever(BaseGraphRetriever):
 
 if __name__ == "__main__":
     kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="x-x-x")
+
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S",
+        level=logging.INFO)
+
     # load triples in the db
     # kg.import_from_ttl_file(path="triples.ttl", index="hp-test")
     # return kg.query(query="ASK WHERE { <https://deepset.ai/harry_potter/Albus_Dumbledore> <https://deepset.ai/harry_potter/died> ?uri }", index="hp-test")
@@ -180,8 +189,10 @@ if __name__ == "__main__":
     top_k_graph = 1
     result = kgqa_retriever.retrieve(question_text="Did Albus Dumbledore die?", top_k_graph=top_k_graph)
     result = kgqa_retriever.retrieve(question_text="Did Harry die?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="What is the patronus of Harry?", top_k_graph=top_k_graph)[0][0]["uri"]["value"]
-    result = kgqa_retriever.retrieve(question_text="Who is the founder of house Gryffindor?", top_k_graph=top_k_graph)[0][0]["uri"]["value"]
+    result = kgqa_retriever.retrieve(question_text="What is the patronus of Harry?", top_k_graph=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Who is the founder of house Gryffindor?", top_k_graph=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="How many members are in house Gryffindor?", top_k_graph=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Which owner of the Marauders Map was born in Scotland?", top_k_graph=top_k_graph)
 
     #kgqa_retriever.retrieve(question_text="What is the name of the daughter of Harry and Ginny?", top_k_graph=1)
     #kgqa_retriever.retrieve(question_text="How many children does Harry Potter have?", top_k_graph=1)

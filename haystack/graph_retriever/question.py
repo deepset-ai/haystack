@@ -1,8 +1,10 @@
+import logging
 from typing import Optional, Set
 from spacy.tokens import Doc
 from operator import itemgetter
 from enum import Enum
 
+logger = logging.getLogger(__name__)
 
 class QuestionType(Enum):
     BooleanQuestion = "boolean_question"
@@ -19,10 +21,10 @@ class Question:
         self.entities: Optional[Set[str]] = None
         self.relations: Optional[Set[str]] = None
 
-    def analyze(self, nlp, alias_to_entity_and_prob, top_relations, subject_names, predicate_names, object_names) -> (Optional[Set[str]], Optional[Set[str]], Optional[QuestionType]):
+    def analyze(self, nlp, alias_to_entity_and_prob, subject_names, predicate_names, object_names) -> (Optional[Set[str]], Optional[Set[str]], Optional[QuestionType]):
         self.doc = nlp(self.question_text)
         self.entities = self.entity_linking(alias_to_entity_and_prob=alias_to_entity_and_prob, subject_names=subject_names, predicate_names=predicate_names, object_names=object_names)
-        self.relations = self.relation_linking(top_relations=top_relations, nlp=nlp)
+        self.relations = self.relation_linking(predicate_names=predicate_names, nlp=nlp)
         self.question_type = self.classify_type()
         return self.entities, self.relations, self.question_type
 
@@ -51,26 +53,36 @@ class Question:
         entities = set()
         if self.doc.ents:  # if spacy recognized any entities
             for ent in self.doc.ents:
-                if f"https://deepset.ai/harry_potter/{ent.text.replace(' ','_').replace('.', '_')}" in subject_names or f"https://deepset.ai/harry_potter/{ent.text.replace(' ','_').replace('.', '_')}" in object_names:
+                if self.add_namespace_to_resource(ent.text) in subject_names or self.add_namespace_to_resource(ent.text) in object_names:
                     entities.add(ent.text)
                 elif ent.text in alias_to_entity_and_prob:
                     entities.add(max(alias_to_entity_and_prob[ent.text], key=itemgetter(1))[0])
         # for any remaining tokens: try to link nouns to entities
+        for np in self.doc.noun_chunks:
+            logger.info(f"noun phrase: {np}")
         for token in self.doc:
             # skip tokens that have already been linked because the are part of entities recognized by spacy
             if self.doc.ents:
                 if token.ent_type != 0:
                     continue
             if token.pos_ == "NOUN" or token.pos_ == "PROPN":
-                if f"https://deepset.ai/harry_potter/{token.text.replace(' ','_').replace('.', '_')}" in subject_names or f"https://deepset.ai/harry_potter/{token.text.replace(' ','_').replace('.', '_')}" in object_names:
+                if self.add_namespace_to_resource(token.text) in subject_names or self.add_namespace_to_resource(token.text) in object_names:
                     entities.add(token.text)
                 elif token.text in alias_to_entity_and_prob:
                     entities.add(max(alias_to_entity_and_prob[token.text], key=itemgetter(1))[0])
 
-        entities = {f"<https://deepset.ai/harry_potter/{entity.replace(' ','_').replace('.', '_')}>" for entity in entities}
+        #logger.info(f"linked entities: {entities}")
+        entities = {self.add_namespace_to_resource(entity, brackets=True) for entity in entities}
         return entities
 
-    def relation_linking(self, top_relations, nlp):
+    def add_namespace_to_resource(self, resource: str, brackets=False) -> str:
+        if brackets:
+            return f"<https://deepset.ai/harry_potter/{resource.replace(' ', '_').replace('.', '_')}>"
+        else:
+            return f"https://deepset.ai/harry_potter/{resource.replace(' ', '_').replace('.', '_')}"
+    # todo use < > brackets
+
+    def relation_linking(self, predicate_names, nlp):
         """
                 Link verbs and nouns mentioned in a question to relations that exist in our knowledge base
                 """
@@ -78,21 +90,22 @@ class Question:
         #  "Distant supervision [62]: "We learn indicator words for each relation using text from Wikipedia where entity mentions were identified.
         #  This allows deriving noisy training examples: A sentence expresses relation r if it contains two co-occurring entities that are in relation r according to a knowledge base.
         #  For each relation, we rank the words by their tf-idf to learn, for example, that born is a good indicator for the relation place of birth."
-        recognized_relations = set()
+        relations = set()
         for token in self.doc:
             if token.pos_ == "VERB" or token.pos_ == "NOUN":
-                if f"https://deepset.ai/harry_potter/{token.lemma_.replace(' ', '_')}" in top_relations:
-                    recognized_relations.add(token.lemma_)
+                if self.add_namespace_to_resource(token.lemma_) in predicate_names:
+                    relations.add(token.lemma_)
                 else:
-                    relation, score = self.find_most_similar_relation(token.lemma_, nlp, top_relations)
+                    relation, score = self.find_most_similar_relation(token.lemma_, nlp, predicate_names)
                     if score > 0.4:
-                        recognized_relations.add(relation)
+                        relations.add(relation)
 
-        recognized_relations = {f"<https://deepset.ai/harry_potter/{recognized_relation.replace(' ', '_')}>" for recognized_relation in recognized_relations}
-        return recognized_relations
+        #logger.info(f"linked relations: {relations}")
+        relations = {self.add_namespace_to_resource(recognized_relation, brackets=True) for recognized_relation in relations}
+        return relations
 
-    def find_most_similar_relation(self, word, nlp, top_relations):
-        relations_with_scores = [(relation, self.word_similarity(word, relation.split("/")[-1], nlp)) for relation in top_relations]
+    def find_most_similar_relation(self, word, nlp, predicate_names):
+        relations_with_scores = [(relation, self.word_similarity(word, relation.split("/")[-1], nlp)) for relation in predicate_names]
         relations_with_scores.sort(key=itemgetter(1), reverse=True)
         return relations_with_scores[0]
 
