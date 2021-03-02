@@ -145,7 +145,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
 
         ## Assign Labels to corresponding documents
         for qa in paragraph["qas"]:
-            if not qa["is_impossible"]:
+            if not qa.get("is_impossible", False):
                 for answer in qa["answers"]:
                     ans = answer["text"]
                     ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
