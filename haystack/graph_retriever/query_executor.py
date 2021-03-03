@@ -20,9 +20,9 @@ class QueryExecutor:
         result = self.knowledge_graph.query(query=query.get_sparql_query(), index="hp-test")
         text_result = ""
         if query.question_type == QuestionType.CountQuestion and result is not None:
-            text_result = str(result[0]["count_result"]["value"])
+            text_result = [result_item["count_result"]["value"] for result_item in result]
         elif query.question_type == QuestionType.ListQuestion and result is not None:
-            text_result = result[0]["uri"]["value"]
+            text_result = [result_item["uri"]["value"] for result_item in result]
         elif query.question_type == QuestionType.BooleanQuestion and result is not None:
             text_result = result
         return text_result
