@@ -48,34 +48,57 @@ class Question:
 
     def entity_linking(self, alias_to_entity_and_prob, subject_names, predicate_names, object_names):
         """
-                Link spacy entities mentioned in a question to entities that exist in our knowledge base
-                """
+        Link spacy entities mentioned in a question to entities that exist in our knowledge base
+        """
+        linked_entities_indices = set()
         entities = set()
+
+        # todo prevent who from being matched to Bartemius crouch junior
+        for np in self.doc.noun_chunks:
+            if np.lemma_ == "who":
+                continue
+            logger.info(f"noun phrase: {np}")
+            if self.add_namespace_to_resource(np.lemma_) in subject_names or self.add_namespace_to_resource(np.lemma_) in object_names:
+                entities.add(np.lemma_)
+                linked_entities_indices.update(range(np.start, np.end))
+
+            elif np.lemma_ in alias_to_entity_and_prob:
+                entities.add(max(alias_to_entity_and_prob[np.lemma_], key=itemgetter(1))[0])
+                linked_entities_indices.update(range(np.start, np.end))
+
+
         if self.doc.ents:  # if spacy recognized any entities
             for ent in self.doc.ents:
+                if ent.start in linked_entities_indices:
+                    # skip tokens that have already been linked
+                    continue
                 if self.add_namespace_to_resource(ent.text) in subject_names or self.add_namespace_to_resource(ent.text) in object_names:
                     entities.add(ent.text)
+                    linked_entities_indices.update(range(ent.start, ent.end))
                 elif ent.text in alias_to_entity_and_prob:
                     entities.add(max(alias_to_entity_and_prob[ent.text], key=itemgetter(1))[0])
+                    linked_entities_indices.update(range(ent.start, ent.end))
         # for any remaining tokens: try to link nouns to entities
-        for np in self.doc.noun_chunks:
-            logger.info(f"noun phrase: {np}")
         for token in self.doc:
             # skip tokens that have already been linked because the are part of entities recognized by spacy
-            if self.doc.ents:
-                if token.ent_type != 0:
-                    continue
+            if token.i in linked_entities_indices:
+                # skip tokens that have already been linked
+                continue
+            #if self.doc.ents:
+            #    if token.ent_type != 0:
+            #        continue
             if token.pos_ == "NOUN" or token.pos_ == "PROPN":
                 if self.add_namespace_to_resource(token.text) in subject_names or self.add_namespace_to_resource(token.text) in object_names:
                     entities.add(token.text)
                 elif token.text in alias_to_entity_and_prob:
                     entities.add(max(alias_to_entity_and_prob[token.text], key=itemgetter(1))[0])
 
-        #logger.info(f"linked entities: {entities}")
+        logger.info(f"linked entities: {entities}")
         entities = {self.add_namespace_to_resource(entity, brackets=True) for entity in entities}
         return entities
 
-    def add_namespace_to_resource(self, resource: str, brackets=False) -> str:
+    @staticmethod
+    def add_namespace_to_resource(resource: str, brackets=False) -> str:
         if brackets:
             return f"<https://deepset.ai/harry_potter/{resource.replace(' ', '_').replace('.', '_')}>"
         else:
@@ -100,12 +123,12 @@ class Question:
                     if score > 0.4:
                         relations.add(relation)
 
-        #logger.info(f"linked relations: {relations}")
+        logger.info(f"linked relations: {relations}")
         relations = {self.add_namespace_to_resource(recognized_relation, brackets=True) for recognized_relation in relations}
         return relations
 
     def find_most_similar_relation(self, word, nlp, predicate_names):
-        relations_with_scores = [(relation, self.word_similarity(word, relation.split("/")[-1], nlp)) for relation in predicate_names]
+        relations_with_scores = [(relation.split("/")[-1], self.word_similarity(word, relation.split("/")[-1], nlp)) for relation in predicate_names]
         relations_with_scores.sort(key=itemgetter(1), reverse=True)
         return relations_with_scores[0]
 
