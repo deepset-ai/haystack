@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import List, Optional
 import logging
 from time import perf_counter
@@ -16,7 +16,7 @@ class BaseRetriever(BaseComponent):
     outgoing_edges = 1
 
     @abstractmethod
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -184,10 +184,7 @@ class BaseRetriever(BaseComponent):
         top_k_retriever: Optional[int] = None,
         **kwargs,
     ):
-        if top_k_retriever:
-            documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever)
-        else:
-            documents = self.retrieve(query=query, filters=filters)
+        documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever)
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {

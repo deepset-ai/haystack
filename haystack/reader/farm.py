@@ -47,6 +47,7 @@ class FARMReader(BaseReader):
         use_gpu: bool = True,
         no_ans_boost: float = 0.0,
         return_no_answer: bool = False,
+        top_k: int = 10,
         top_k_per_candidate: int = 3,
         top_k_per_sample: int = 1,
         num_processes: Optional[int] = None,
@@ -71,6 +72,7 @@ class FARMReader(BaseReader):
         If a negative number, there is a lower chance of "no_answer" being predicted.
         If a positive number, there is an increased chance of "no_answer"
         :param return_no_answer: Whether to include no_answer predictions in the results.
+        :param top_k: The maximum number of answers to return
         :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
         Note that this is not the number of "final answers" you will receive
         (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
@@ -92,6 +94,7 @@ class FARMReader(BaseReader):
         """
 
         self.return_no_answers = return_no_answer
+        self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = QAInferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
                                             task_type="question_answering", max_seq_len=max_seq_len,
@@ -283,6 +286,8 @@ class FARMReader(BaseReader):
         :return: List of dictionaries containing query and answers
         """
 
+        if top_k is None:
+            top_k = self.top_k
         # convert input to FARM format
         inputs = []
         number_of_docs = []
@@ -357,7 +362,8 @@ class FARMReader(BaseReader):
         :param top_k: The maximum number of answers to return
         :return: Dict containing query and answers
         """
-
+        if top_k is None:
+            top_k = self.top_k
         # convert input to FARM format
         inputs = []
         for doc in documents:

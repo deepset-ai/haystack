@@ -21,6 +21,7 @@ class TransformersReader(BaseReader):
         tokenizer: Optional[str] = None,
         context_window_size: int = 70,
         use_gpu: int = 0,
+        top_k: int = 10,
         top_k_per_candidate: int = 4,
         return_no_answers: bool = True,
         max_seq_len: int = 256,
@@ -44,6 +45,7 @@ class TransformersReader(BaseReader):
         :param context_window_size: Num of chars (before and after the answer) to return as "context" for each answer.
                                     The context usually helps users to understand if the answer really makes sense.
         :param use_gpu: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+        :param top_k: The maximum number of answers to return
         :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
         Note that this is not the number of "final answers" you will receive
         (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
@@ -57,6 +59,7 @@ class TransformersReader(BaseReader):
         """
         self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=use_gpu, revision=model_version)
         self.context_window_size = context_window_size
+        self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         self.return_no_answers = return_no_answers
         self.max_seq_len = max_seq_len
@@ -93,6 +96,8 @@ class TransformersReader(BaseReader):
         :return: Dict containing query and answers
 
         """
+        if top_k is None:
+            top_k = self.top_k
         # get top-answers for each candidate passage
         answers = []
         no_ans_gaps = []
