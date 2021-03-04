@@ -35,7 +35,7 @@ in garbled text.
 
 ```python
  | @abstractmethod
- | convert(file_path: Path, meta: Optional[Dict[str, str]], remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]], remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
 ```
 
 Convert a file to a dictionary containing the text and any associated meta data.
@@ -57,6 +57,7 @@ The rows containing strings are thus retained in this option.
 This option can be used to add test for encoding errors. If the extracted text is
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
+- `encoding`: Select the file encoding (default is `utf-8`)
 
 <a name="base.BaseConverter.validate_language"></a>
 #### validate\_language
@@ -101,7 +102,7 @@ in garbled text.
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: str = "utf-8") -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
 ```
 
 Reads text from a txt file and executes optional preprocessing steps.
@@ -120,6 +121,7 @@ The rows containing strings are thus retained in this option.
 This option can be used to add test for encoding errors. If the extracted text is
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
+- `encoding`: Select the file encoding (default is `utf-8`)
 
 **Returns**:
 
@@ -139,7 +141,7 @@ class DocxToTextConverter(BaseConverter)
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = None) -> Dict[str, Any]
 ```
 
 Extract text from a .docx file.
@@ -160,6 +162,7 @@ The rows containing strings are thus retained in this option.
 This option can be used to add test for encoding errors. If the extracted text is
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
+- `encoding`: Not applicable
 
 <a name="tika"></a>
 # Module tika
@@ -196,7 +199,7 @@ in garbled text.
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = None) -> Dict[str, Any]
 ```
 
 **Arguments**:
@@ -213,6 +216,7 @@ The rows containing strings are thus retained in this option.
 This option can be used to add test for encoding errors. If the extracted text is
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
+- `encoding`: Not applicable
 
 **Returns**:
 
@@ -252,7 +256,7 @@ in garbled text.
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: str = "Latin1") -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "Latin1") -> Dict[str, Any]
 ```
 
 Extract text from a .pdf file using the pdftotext library (https://www.xpdfreader.com/pdftotext-man.html)
