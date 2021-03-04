@@ -130,7 +130,7 @@ class PDFToTextConverter(BaseConverter):
             command = ["pdftotext", "-enc", encoding, "-layout", str(file_path), "-"]
         else:
             command = ["pdftotext", "-enc", encoding, str(file_path), "-"]
-        output = subprocess.run(command, stdout=subprocess.PIPE, shell=False)
+        output = subprocess.run(command, stdout=subprocess.PIPE, shell=False) # ignore
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")
         pages = pages[:-1]  # the last page in the split is always empty.
