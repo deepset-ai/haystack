@@ -46,7 +46,7 @@ class PDFToTextConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
-        encoding: str = "Latin1",
+        encoding: Optional[str] = "Latin1",
     ) -> Dict[str, Any]:
         """
         Extract text from a .pdf file using the pdftotext library (https://www.xpdfreader.com/pdftotext-man.html)

@@ -13,8 +13,9 @@ class MarkdownConverter(BaseConverter):
             self,
             file_path: Path,
             meta: Optional[Dict[str, str]] = None,
-            encoding: str = "utf-8",
-            **kwargs
+            remove_numeric_tables: Optional[bool] = None,
+            valid_languages: Optional[List[str]] = None,
+            encoding: Optional[str] = "utf-8",
     ) -> Dict[str, Any]:
         """
         Reads text from a txt file and executes optional preprocessing steps.
@@ -22,6 +23,8 @@ class MarkdownConverter(BaseConverter):
         :param file_path: path of the file to convert
         :param meta: dictionary of meta data key-value pairs to append in the returned document.
         :param encoding: Select the file encoding (default is `utf-8`)
+        :param remove_numeric_tables: Not applicable
+        :param valid_languages: Not applicable
 
         :return: Dict of format {"text": "The text from file", "meta": meta}}
         """
