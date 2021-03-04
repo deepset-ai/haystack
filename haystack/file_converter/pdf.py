@@ -118,7 +118,7 @@ class PDFToTextConverter(BaseConverter):
         document = {"text": text, "meta": meta}
         return document
 
-    def _read_pdf(self, file_path: Path, layout: bool, encoding: str) -> List[str]:
+    def _read_pdf(self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1") -> List[str]:
         """
         Extract pages from the pdf file at file_path.
 
