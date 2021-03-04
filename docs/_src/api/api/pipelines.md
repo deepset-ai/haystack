@@ -283,7 +283,7 @@ Initialize a Pipeline that retrieves documents for a query and then summarizes t
 #### run
 
 ```python
- | run(query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, generate_single_summary: bool = False, return_in_answer_format=False)
+ | run(query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None, generate_single_summary: Optional[bool] = None, return_in_answer_format: bool = False)
 ```
 
 **Arguments**:
