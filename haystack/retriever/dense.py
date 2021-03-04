@@ -1,5 +1,5 @@
 import logging
-from typing import List, Union, Tuple, Optional
+from typing import List, Union, Optional
 import torch
 import numpy as np
 from pathlib import Path
@@ -40,6 +40,7 @@ class DensePassageRetriever(BaseRetriever):
                  model_version: Optional[str] = None,
                  max_seq_len_query: int = 64,
                  max_seq_len_passage: int = 256,
+                 top_k: int = 10,
                  use_gpu: bool = True,
                  batch_size: int = 16,
                  embed_title: bool = True,
@@ -75,6 +76,7 @@ class DensePassageRetriever(BaseRetriever):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
+        :param top_k: How many documents to return per query.
         :param use_gpu: Whether to use gpu or not
         :param batch_size: Number of questions or passages to encode at once
         :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
@@ -97,6 +99,7 @@ class DensePassageRetriever(BaseRetriever):
         self.max_seq_len_passage = max_seq_len_passage
         self.max_seq_len_query = max_seq_len_query
         self.progress_bar = progress_bar
+        self.top_k = top_k
 
         if document_store is None:
            logger.warning("DensePassageRetriever initialized without a document store. "
@@ -162,7 +165,7 @@ class DensePassageRetriever(BaseRetriever):
         )
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -172,6 +175,8 @@ class DensePassageRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
+        if top_k is None:
+            top_k = self.top_k
         if not self.document_store:
             logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
             return []
@@ -421,6 +426,7 @@ class EmbeddingRetriever(BaseRetriever):
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
+        top_k: int = 10,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -441,11 +447,13 @@ class EmbeddingRetriever(BaseRetriever):
                                  - ``'per_token'`` (individual token vectors)
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
+        :param top_k: How many documents to return per query.
         """
         self.document_store = document_store
         self.model_format = model_format
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
+        self.top_k = top_k
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
         if model_format == "farm" or model_format == "transformers":
@@ -488,7 +496,7 @@ class EmbeddingRetriever(BaseRetriever):
         else:
             raise NotImplementedError
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -498,6 +506,8 @@ class EmbeddingRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
+        if top_k is None:
+            top_k = self.top_k
         if index is None:
             index = self.document_store.index
         query_emb = self.embed(texts=[query])
