@@ -5,10 +5,24 @@ components:    # define all the building-blocks for Pipeline
     type: ElasticsearchDocumentStore
     params:
       index: document
+  - name: FAISSDocumentStore
+    type: FAISSDocumentStore
+    params:
+      sql_url: postgresql://postgres:password@localhost:5432/haystack
   - name: ESRetriever
     type: ElasticsearchRetriever
     params:
       document_store: DocumentStore    # params can reference other components defined in the YAML
+      top_k: 8
+  - name: DPRRetriever
+    type: DensePassageRetriever
+    params:
+      document_store: FAISSDocumentStore
+      top_k: 5
+  - name: JoinDocs
+    type: JoinDocuments
+    params:
+      join_mode: concatenate
   - name: Reader       # custom-name for the component; helpful for visualization & debugging
     type: FARMReader    # Haystack Class name for the component
     params:
@@ -21,5 +35,9 @@ pipelines:
     nodes:
       - name: ESRetriever
         inputs: [Query]
+      - name: DPRRetriever
+        inputs: [Query]
+      - name: JoinDocs
+        inputs: [ESRetriever, DPRRetriever]
       - name: Reader
-        inputs: [ESRetriever]
+        inputs: [JoinDocs]

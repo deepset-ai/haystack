@@ -238,22 +238,25 @@ class Pipeline(ABC):
         :param definitions: dict containing definitions of all components retrieved from the YAML.
         :param components: dict containing component objects.
         """
-        if name in components.keys():  # check if component is already loaded.
-            return components[name]
+        try:
+            if name in components.keys():  # check if component is already loaded.
+                return components[name]
 
-        component_params = definitions[name]["params"]
-        component_type = definitions[name]["type"]
+            component_params = definitions[name]["params"]
+            component_type = definitions[name]["type"]
 
-        for key, value in component_params.items():
-            # Component params can reference to other components. For instance, a Retriever can reference a
-            # DocumentStore defined in the YAML. All references should be recursively resolved.
-            if value in definitions.keys():  # check if the param value is a reference to another component.
-                if value not in components.keys():  # check if the referenced component is already loaded.
-                    cls._load_or_get_component(name=value, definitions=definitions, components=components)
-                component_params[key] = components[value]  # substitute reference (string) with the component object.
+            for key, value in component_params.items():
+                # Component params can reference to other components. For instance, a Retriever can reference a
+                # DocumentStore defined in the YAML. All references should be recursively resolved.
+                if value in definitions.keys():  # check if the param value is a reference to another component.
+                    if value not in components.keys():  # check if the referenced component is already loaded.
+                        cls._load_or_get_component(name=value, definitions=definitions, components=components)
+                    component_params[key] = components[value]  # substitute reference (string) with the component object.
 
-        instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
-        components[name] = instance
+            instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
+            components[name] = instance
+        except Exception as e:
+            raise Exception(f"Failed loading pipeline component '{name}': {e}")
         return instance
 
     @classmethod
@@ -523,7 +526,7 @@ class RootNode:
         return kwargs, "output_1"
 
 
-class JoinDocuments:
+class JoinDocuments(BaseComponent):
     """
     A node to join documents outputted by multiple retriever nodes.
 
