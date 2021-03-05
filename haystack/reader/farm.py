@@ -362,6 +362,7 @@ class FARMReader(BaseReader):
         :param top_k: The maximum number of answers to return
         :return: Dict containing query and answers
         """
+        logger.debug(f"FARMReader got {len(documents)} input docs ")
         if top_k is None:
             top_k = self.top_k
         # convert input to FARM format
