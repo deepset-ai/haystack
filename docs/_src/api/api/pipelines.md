@@ -346,7 +346,7 @@ Note that pipelines with split or merge nodes are currently not supported.
 ## JoinDocuments Objects
 
 ```python
-class JoinDocuments()
+class JoinDocuments(BaseComponent)
 ```
 
 A node to join documents outputted by multiple retriever nodes.
