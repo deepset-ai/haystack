@@ -10,6 +10,10 @@ from pydantic import BaseModel
 from rest_api.controller.utils import RequestLimiter
 import os
 
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+logging.getLogger("haystack").setLevel(LOG_LEVEL)
+
 logger = logging.getLogger('haystack')
 
 
