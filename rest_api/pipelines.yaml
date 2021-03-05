@@ -8,7 +8,7 @@ components:    # define all the building-blocks for Pipeline
   - name: FAISSDocumentStore
     type: FAISSDocumentStore
     params:
-      sql_url: postgresql://postgres:password@localhost:5432/haystack
+      sql_url: postgresql://postgres:password@postgres-host:5432/haystack
   - name: ESRetriever
     type: ElasticsearchRetriever
     params:
