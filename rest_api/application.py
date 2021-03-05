@@ -31,7 +31,7 @@ app = get_application()
 logger.info("Open http://127.0.0.1:8000/docs to see Swagger API Documentation.")
 logger.info(
     """
-Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/query' --data '{"query": ["What is the capital of Germany?"]}'
+Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/query' --data '{"query": "What is the capital of Germany?"}'
 """
 )
 

@@ -5,43 +5,21 @@ components:    # define all the building-blocks for Pipeline
     type: ElasticsearchDocumentStore
     params:
       index: document
-  - name: Retriever
-    type: EmbeddingRetriever
+  - name: ESRetriever
+    type: ElasticsearchRetriever
     params:
       document_store: DocumentStore    # params can reference other components defined in the YAML
-      embedding_model: deepset/sentence_bert
   - name: Reader       # custom-name for the component; helpful for visualization & debugging
     type: FARMReader    # Haystack Class name for the component
     params:
       no_ans_boost: -10
       model_name_or_path: deepset/roberta-base-squad2
-  - name: preprocessor
-    type: Preprocessor
-    params:
-      clean_whitespace: true
-  - name: pdf_converter
-    type: PDFConverter
-    params:
-      remove_numeric_tables: false
-
 
 pipelines:
   - name: query    # a simple extractive-qa Pipeline
     type: Query
     nodes:
-      - name: Retriever
+      - name: ESRetriever
         inputs: [Query]
       - name: Reader
-        inputs: [Retriever]
-
-  - name: indexing
-    type: Indexing
-    nodes:
-      - name: PDFConverter
-        inputs: [File]
-      - name: Preprocessor
-        inputs: [PDFConverter]
-      - name: Retriever
-        inputs: [Preprocessor]
-      - name: DocumentStore
-        inputs: [Retriever]
+        inputs: [ESRetriever]
