@@ -13,7 +13,7 @@ class BaseRetriever(BaseComponent)
 
 ```python
  | @abstractmethod
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -83,7 +83,7 @@ class ElasticsearchRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: ElasticsearchDocumentStore, custom_query: str = None)
+ | __init__(document_store: ElasticsearchDocumentStore, top_k: int = 10, custom_query: str = None)
 ```
 
 **Arguments**:
@@ -121,12 +121,13 @@ names must match with the filters dict supplied in self.retrieve().
 |    self.retrieve(query="Why did the revenue increase?",
 |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
 ```
+- `top_k`: How many documents to return per query.
 
 <a name="sparse.ElasticsearchRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -153,7 +154,7 @@ Helpful for benchmarking, testing and if you want to do QA on small documents wi
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -180,11 +181,23 @@ computations when text is passed on to a Reader for QA.
 
 It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 
+<a name="sparse.TfidfRetriever.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(document_store: BaseDocumentStore, top_k: int = 10)
+```
+
+**Arguments**:
+
+- `document_store`: an instance of a DocumentStore to retrieve documents from.
+- `top_k`: How many documents to return per query.
+
 <a name="sparse.TfidfRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -225,7 +238,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", progress_bar: bool = True)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", progress_bar: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -256,6 +269,7 @@ Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
 - `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
+- `top_k`: How many documents to return per query.
 - `use_gpu`: Whether to use gpu or not
 - `batch_size`: Number of questions or passages to encode at once
 - `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
@@ -276,7 +290,7 @@ Can be helpful to disable in production deployments to keep the logs clean.
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -396,7 +410,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10)
 ```
 
 **Arguments**:
@@ -419,12 +433,13 @@ Options:
 - ``'per_token'`` (individual token vectors)
 - `emb_extraction_layer`: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
 Default: -1 (very last layer).
+- `top_k`: How many documents to return per query.
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents

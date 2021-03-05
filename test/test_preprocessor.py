@@ -21,12 +21,12 @@ in the sentence.
 @pytest.mark.tika
 def test_preprocess_sentence_split():
     document = {"text": TEXT}
-    preprocessor = PreProcessor(split_length=1, split_overlap=0, split_by="sentence")
+    preprocessor = PreProcessor(split_length=1, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False)
     documents = preprocessor.process(document)
     assert len(documents) == 15
 
     preprocessor = PreProcessor(
-        split_length=10, split_overlap=0, split_by="sentence"
+        split_length=10, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False,
     )
     documents = preprocessor.process(document)
     assert len(documents) == 2

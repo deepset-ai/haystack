@@ -151,9 +151,8 @@ class PreProcessor(BasePreProcessor):
         if not split_length:
             raise Exception("split_length needs be set when using split_by.")
 
-        if split_respect_sentence_boundary and split_by not in("word","sentence"):
-            raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with"
-                                      " split_by='word' or split_by='sentence'.")
+        if split_respect_sentence_boundary and split_by is not "word":
+            raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
 
         text = document["text"]
 
