@@ -33,6 +33,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional[faiss.swigfaiss.Index] = None,
+        faiss_file_path: Optional[str] = None,
         return_embedding: bool = False,
         update_existing_documents: bool = False,
         index: str = "document",
@@ -77,8 +78,12 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.vector_dim = vector_dim
         self.faiss_index_factory_str = faiss_index_factory_str
         self.faiss_indexes: Dict[str, faiss.swigfaiss.Index] = {}
+
         if faiss_index:
             self.faiss_indexes[index] = faiss_index
+        elif faiss_file_path:
+            self.faiss_indexes[index] = faiss.read_index(str(faiss_file_path))
+            self.vector_dim = self.faiss_indexes[index].d
         else:
             self.faiss_indexes[index] = self._create_new_index(
                 vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs
@@ -210,7 +215,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             only_documents_without_embedding=not update_existing_embeddings
         )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)

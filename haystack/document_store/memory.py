@@ -200,7 +200,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         document_count = len(result)
         logger.info(f"Updating embeddings for {document_count} docs ...")
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)

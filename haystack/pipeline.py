@@ -198,7 +198,7 @@ class Pipeline(ABC):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        with open(path, "r") as stream:
+        with open(path, "r", encoding='utf-8') as stream:
             data = yaml.safe_load(stream)
 
         if pipeline_name is None:
@@ -238,22 +238,25 @@ class Pipeline(ABC):
         :param definitions: dict containing definitions of all components retrieved from the YAML.
         :param components: dict containing component objects.
         """
-        if name in components.keys():  # check if component is already loaded.
-            return components[name]
+        try:
+            if name in components.keys():  # check if component is already loaded.
+                return components[name]
 
-        component_params = definitions[name]["params"]
-        component_type = definitions[name]["type"]
+            component_params = definitions[name]["params"]
+            component_type = definitions[name]["type"]
 
-        for key, value in component_params.items():
-            # Component params can reference to other components. For instance, a Retriever can reference a
-            # DocumentStore defined in the YAML. All references should be recursively resolved.
-            if value in definitions.keys():  # check if the param value is a reference to another component.
-                if value not in components.keys():  # check if the referenced component is already loaded.
-                    cls._load_or_get_component(name=value, definitions=definitions, components=components)
-                component_params[key] = components[value]  # substitute reference (string) with the component object.
+            for key, value in component_params.items():
+                # Component params can reference to other components. For instance, a Retriever can reference a
+                # DocumentStore defined in the YAML. All references should be recursively resolved.
+                if value in definitions.keys():  # check if the param value is a reference to another component.
+                    if value not in components.keys():  # check if the referenced component is already loaded.
+                        cls._load_or_get_component(name=value, definitions=definitions, components=components)
+                    component_params[key] = components[value]  # substitute reference (string) with the component object.
 
-        instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
-        components[name] = instance
+            instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
+            components[name] = instance
+        except Exception as e:
+            raise Exception(f"Failed loading pipeline component '{name}': {e}")
         return instance
 
     @classmethod
@@ -349,7 +352,7 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10):
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
         output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
@@ -368,7 +371,13 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_generator: int = 10):
+    def run(
+        self,
+        query: str,
+        filters: Optional[Dict] = None,
+        top_k_retriever: Optional[int] = None,
+        top_k_generator: Optional[int] = None
+    ):
         output = self.pipeline.run(
             query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_generator=top_k_generator
         )
@@ -391,9 +400,9 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         self,
         query: str,
         filters: Optional[Dict] = None,
-        top_k_retriever: int = 10,
-        generate_single_summary: bool = False,
-        return_in_answer_format=False
+        top_k_retriever: Optional[int] = None,
+        generate_single_summary: Optional[bool] = None,
+        return_in_answer_format: bool = False,
     ):
         """
         :param query: Your search query
@@ -441,7 +450,7 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10):
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
         output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
         documents = output["documents"]
 
@@ -517,7 +526,7 @@ class RootNode:
         return kwargs, "output_1"
 
 
-class JoinDocuments:
+class JoinDocuments(BaseComponent):
     """
     A node to join documents outputted by multiple retriever nodes.
 

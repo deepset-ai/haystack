@@ -5,49 +5,15 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import Dict, Union, List
 
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from rest_api.config import (
-    DB_HOST,
-    DB_PORT,
-    DB_USER,
-    DB_PW,
-    DB_INDEX,
-    DB_INDEX_FEEDBACK,
-    ES_CONN_SCHEME,
-    TEXT_FIELD_NAME,
-    SEARCH_FIELD_NAME,
-    EMBEDDING_DIM,
-    EMBEDDING_FIELD_NAME,
-    EXCLUDE_META_DATA_FIELDS,
-    FAQ_QUESTION_FIELD_NAME,
-    CREATE_INDEX,
-    VECTOR_SIMILARITY_METRIC,
-    UPDATE_EXISTING_DOCUMENTS
-)
-
 router = APIRouter()
 
-document_store = ElasticsearchDocumentStore(
-    host=DB_HOST,
-    port=DB_PORT,
-    username=DB_USER,
-    password=DB_PW,
-    index=DB_INDEX,
-    label_index=DB_INDEX_FEEDBACK,
-    scheme=ES_CONN_SCHEME,
-    ca_certs=False,
-    verify_certs=False,
-    text_field=TEXT_FIELD_NAME,
-    search_fields=SEARCH_FIELD_NAME,
-    faq_question_field=FAQ_QUESTION_FIELD_NAME,
-    embedding_dim=EMBEDDING_DIM,
-    embedding_field=EMBEDDING_FIELD_NAME,
-    excluded_meta_data=EXCLUDE_META_DATA_FIELDS,  # type: ignore
-    create_index=CREATE_INDEX,
-    update_existing_documents=UPDATE_EXISTING_DOCUMENTS,
-    similarity=VECTOR_SIMILARITY_METRIC
-)
+from .search import PIPELINE
 
+#TODO make this generic for other pipelines with different naming
+retriever = PIPELINE.get_node(name="ESRetriever")
+document_store = retriever.document_store
+
+DB_INDEX_FEEDBACK = "label"
 
 class FAQQAFeedback(BaseModel):
     question: str = Field(..., description="The question input by the user, i.e., the query.")
@@ -70,18 +36,11 @@ class DocQAFeedback(FAQQAFeedback):
 class FilterRequest(BaseModel):
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
 
-@router.post("/doc-qa-feedback")
+@router.post("/feedback")
 def doc_qa_feedback(feedback: DocQAFeedback):
     document_store.write_labels([{"origin": "user-feedback", **feedback.dict()}])
 
-
-@router.post("/faq-qa-feedback")
-def faq_qa_feedback(feedback: FAQQAFeedback):
-    feedback_payload = {"is_correct_document": feedback.is_correct_answer, "answer": None, **feedback.dict()}
-    document_store.write_labels([{"origin": "user-feedback-faq", **feedback_payload}])
-
-
-@router.post("/eval-doc-qa-feedback")
+@router.post("/eval-feedback")
 def eval_doc_qa_feedback(filters: FilterRequest = None):
     """
     Return basic accuracy metrics based on the user feedback.
@@ -123,7 +82,7 @@ def eval_doc_qa_feedback(filters: FilterRequest = None):
                "n_feedback": 0}
     return res
 
-@router.get("/export-doc-qa-feedback")
+@router.get("/export-feedback")
 def export_doc_qa_feedback(context_size: int = 2_000):
     """
     SQuAD format JSON export for question/answer pairs that were marked as "relevant".
@@ -162,26 +121,3 @@ def export_doc_qa_feedback(context_size: int = 2_000):
 
     return export
 
-
-@router.get("/export-faq-qa-feedback")
-def export_faq_feedback():
-    """
-    Export feedback for faq-qa in JSON format.
-    """
-
-    labels = document_store.get_all_labels(index=DB_INDEX_FEEDBACK, filters={"origin": ["user-feedback-faq"]})
-
-    export_data = []
-    for label in labels:
-        document = document_store.get_document_by_id(label.document_id)
-        feedback = {
-            "question": document.question,
-            "query": label.question,
-            "is_correct_answer": label.is_correct_answer,
-            "is_correct_document": label.is_correct_answer,
-        }
-        export_data.append(feedback)
-
-    export = {"data": export_data}
-
-    return export

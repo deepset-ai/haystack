@@ -142,7 +142,7 @@ class Crawler(BaseComponent):
             if base_url:
                 data['meta']['base_url'] = base_url
             data['text'] = text
-            with open(file_path, 'w') as f:
+            with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(str(data))
             paths.append(file_path)
 

@@ -1,5 +1,5 @@
 import logging
-from typing import  List, Optional
+from typing import List, Optional
 
 from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
@@ -57,6 +57,7 @@ class TransformersSummarizer(BaseSummarizer):
             use_gpu: int = 0,
             clean_up_tokenization_spaces: bool = True,
             separator_for_single_summary: str = " ",
+            generate_single_summary: bool = False,
     ):
         """
         Load a Summarization model from Transformers.
@@ -74,6 +75,10 @@ class TransformersSummarizer(BaseSummarizer):
         :param clean_up_tokenization_spaces: Whether or not to clean up the potential extra spaces in the text output
         :param separator_for_single_summary: If `generate_single_summary=True` in `predict()`, we need to join all docs
                                              into a single text. This separator appears between those subsequent docs.
+        :param generate_single_summary: Whether to generate a single summary for all documents or one summary per document.
+                                        If set to "True", all docs will be joined to a single string that will then
+                                        be summarized.
+                                        Important: The summary will depend on the order of the supplied documents!
         """
 
         # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
@@ -85,8 +90,9 @@ class TransformersSummarizer(BaseSummarizer):
         self.min_length = min_length
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         self.separator_for_single_summary = separator_for_single_summary
+        self.generate_single_summary = generate_single_summary
 
-    def predict(self, documents: List[Document], generate_single_summary: bool = False) -> List[Document]:
+    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
         """
         Produce the summarization from the supplied documents.
         These document can for example be retrieved via the Retriever.
@@ -105,6 +111,9 @@ class TransformersSummarizer(BaseSummarizer):
 
         if len(documents) == 0:
             raise AttributeError("Summarizer needs at least one document to produce a summary.")
+
+        if generate_single_summary is None:
+            generate_single_summary = self.generate_single_summary
 
         contexts: List[str] = [doc.text for doc in documents]
 

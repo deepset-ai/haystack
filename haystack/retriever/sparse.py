@@ -1,6 +1,6 @@
 import logging
 from collections import OrderedDict
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: ElasticsearchDocumentStore, custom_query: str = None):
+    def __init__(self, document_store: ElasticsearchDocumentStore, top_k: int = 10, custom_query: str = None):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
@@ -50,11 +50,13 @@ class ElasticsearchRetriever(BaseRetriever):
                             |    self.retrieve(query="Why did the revenue increase?",
                             |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                             ```
+        :param top_k: How many documents to return per query.
         """
         self.document_store: ElasticsearchDocumentStore = document_store
+        self.top_k = top_k
         self.custom_query = custom_query
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -64,6 +66,8 @@ class ElasticsearchRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
+        if top_k is None:
+            top_k = self.top_k
         if index is None:
             index = self.document_store.index
 
@@ -77,7 +81,7 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
     """
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -87,6 +91,8 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
+        if top_k is None:
+            top_k = self.top_k
         if index is None:
             index = self.document_store.index
         documents = self.document_store.query(query=None, filters=filters, top_k=top_k,
@@ -107,7 +113,11 @@ class TfidfRetriever(BaseRetriever):
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
 
-    def __init__(self, document_store: BaseDocumentStore):
+    def __init__(self, document_store: BaseDocumentStore, top_k: int = 10):
+        """
+        :param document_store: an instance of a DocumentStore to retrieve documents from.
+        :param top_k: How many documents to return per query.
+        """
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
             stop_words=None,
@@ -119,6 +129,7 @@ class TfidfRetriever(BaseRetriever):
         self.paragraphs = self._get_all_paragraphs()
         self.df = None
         self.fit()
+        self.top_k = top_k
 
     def _get_all_paragraphs(self) -> List[Paragraph]:
         """
@@ -149,7 +160,7 @@ class TfidfRetriever(BaseRetriever):
         )
         return indices_and_scores
 
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -167,6 +178,8 @@ class TfidfRetriever(BaseRetriever):
         if index:
             raise NotImplementedError("Switching index is not supported in TfidfRetriever.")
 
+        if top_k is None:
+            top_k = self.top_k
         # get scores
         indices_and_scores = self._calc_scores(query)
 
