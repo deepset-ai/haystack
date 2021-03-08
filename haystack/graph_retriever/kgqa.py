@@ -18,6 +18,9 @@ from haystack.graph_retriever.question import QuestionType, Question
 from haystack.graph_retriever.triple import Triple
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 
+from transformers import BartForConditionalGeneration, BartTokenizer
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -214,6 +217,44 @@ class KGQARetriever(BaseGraphRetriever):
         df['prediction'] = predictions
         df.to_csv("20210304_harry_answers_predictions.csv", index=False)
 
+class Text2SparqlRetriever(BaseGraphRetriever):
+    def __init__(self, knowledge_graph, model_name_or_path):
+        self.knowledge_graph = knowledge_graph
+        self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
+        self.tok = BartTokenizer.from_pretrained(model_name_or_path)
+
+    def retrieve(self, question_text: str, top_k_graph: int):
+        inputs = self.tok([question_text], max_length=100,truncation=True, return_tensors='pt')
+        temp = self.model.generate(inputs['input_ids'],
+                                   num_beams=top_k_graph+3,
+                                   max_length=100,
+                                   num_return_sequences=top_k_graph+3,
+                                   early_stopping=True)
+        sparql_list = [self.tok.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in temp]
+        answers = []
+        for s in sparql_list:
+            ans = self._query_kg(query=s)
+            if ans is not None:
+                answers.append(ans)
+        return answers[:top_k_graph]
+
+    def _query_kg(self, query):
+        query = query.replace("}", " }")
+        query = query.replace(")", " )")
+        splits = query.split()
+        query = ""
+        for s in splits:
+            if s.startswith("hp:"):
+                s = s.replace("hp:", "<https://deepset.ai/harry_potter/")
+                s = s + ">"
+            query += s + " "
+        try:
+            results = self.knowledge_graph.query(query=query, index="hp-test")
+        except Exception as e:
+            # print(f"Wrong query with exception: {e}")
+            results = None
+        return results
+
     def eval_on_test_data(self, top_k_graph: int, filename: str):
         # "https://deepset.ai/harry_potter/"
         # https://harrypotter.fandom.com/wiki/
@@ -257,6 +298,7 @@ class KGQARetriever(BaseGraphRetriever):
         # result = kgqa_retriever.retrieve(question_text="Does Harry Potter have a child?", top_k_graph=1)
 
 
+
 def run():
     kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="x-x-x")
 
@@ -276,8 +318,10 @@ def run():
     # return kg.query(query="ASK WHERE { <https://deepset.ai/harry_potter/Albus_Dumbledore> <https://deepset.ai/harry_potter/died> ?uri }", index="hp-test")
     # return kg.query(query="SELECT ?uri WHERE { <https://deepset.ai/harry_potter/Albus_Dumbledore> <https://deepset.ai/harry_potter/died> ?uri }", index="hp-test")
 
-    kgqa_retriever = KGQARetriever(knowledge_graph=kg)
-    top_k_graph = 1
+    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path='../../models/kgqa/hp_v2')
+
+    #kgqa_retriever = KGQARetriever(knowledge_graph=kg)
+    top_k_graph = 2
 
     # kgqa_retriever.eval_on_extractive_qa_test_data(top_k_graph=top_k_graph, filename="20210304_harry_answers.csv")
     # kgqa_retriever.eval_on_test_data(top_k_graph=top_k_graph, filename="2021_03_04_knowledge_graph_eval_questions.csv")
@@ -286,3 +330,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+
