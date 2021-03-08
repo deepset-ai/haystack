@@ -6,20 +6,42 @@ from haystack.graph_retriever.triple import Triple
 
 logger = logging.getLogger(__name__)
 
+
 class Query:
 
     def __init__(self, question_type: QuestionType, triples: Set[Triple]):
         self.triples: Set[Triple] = triples
         self.question_type: QuestionType = question_type
         self._sparql_query: Optional[str] = None
+        self._verbalized_sparql_query: Optional[str] = None
 
     def __str__(self) -> str:
         return f"{self.get_sparql_query()}"
 
-    def get_sparql_query(self):
+    def has_variable_in_every_triple(self) -> bool:
+        for triple in self.triples:
+            if not triple.has_variable():
+                return False
+        return True
+
+    def has_uri_variable(self) -> bool:
+        for triple in self.triples:
+            if triple.has_uri_variable():
+                return True
+        return False
+
+    def get_sparql_query(self) -> str:
         if not self._sparql_query:
             self._sparql_query = self.build_sparql_query_string()
         return self._sparql_query
+
+    def get_verbalized_sparql_query(self) -> str:
+        """
+        Replace identifiers of entities and relations in the sparql query with their natural language label
+        """
+        sparql_query = self.get_sparql_query()
+        verbalized_query = sparql_query.replace("<https://deepset.ai/harry_potter/", "").replace("_", " ").replace(">", "")
+        return verbalized_query
 
     def build_sparql_query_string(self) -> str:
         """
@@ -49,4 +71,3 @@ class Query:
         triples_text = [str(triple) for triple in self.triples]
         where_clause = ". ".join(triples_text)
         return where_clause
-

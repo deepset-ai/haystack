@@ -23,11 +23,15 @@ with io.open("harrypotter_pages_current.xml",'r',encoding='utf-8') as wiki_txt:
 
 for alias in alias_to_entity:
 	total_occurrences = 0
-	alias_to_entity_and_prob[alias] = []
 	for entity in alias_to_entity[alias]:
 		total_occurrences += entity_alias_count[(entity,alias)]
 	for entity in alias_to_entity[alias]:
-		alias_to_entity_and_prob[alias].append((entity,entity_alias_count[(entity,alias)]/total_occurrences))
+		if entity_alias_count[(entity,alias)] > 5:
+			if not alias in alias_to_entity_and_prob:
+				alias_to_entity_and_prob[alias] = []
+			alias_to_entity_and_prob[alias].append((entity,entity_alias_count[(entity,alias)]/total_occurrences))
+		else:
+			print(f"alias {alias} not linked to entity {entity}")
 
 
 #alias_to_entity_and_prob
