@@ -438,6 +438,23 @@ class SQLDocumentStore(BaseDocumentStore):
                                   "Change the query type (e.g. by choosing a different retriever) "
                                   "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")
 
+    def delete_document_by_id(self, id: Union[List[str], str], index: Optional[str] = None):
+        """
+        Delete document given its id
+        :param id: Unique document identifier
+        :param index: Index name to delete the document from.
+        """
+        try:
+            document_to_delete = self.session.query(DocumentORM.id).filter_by(id, index=index)
+            if not id:
+                raise Exception("Document could not be found")
+            self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_to_delete)).delete(synchronize_session=False)
+            self.session.commit()
+        except Exception as ex:
+            logger.error(f"Transaction rollback: {ex.__cause__}")
+            self.session.rollback()
+            raise ex
+
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
