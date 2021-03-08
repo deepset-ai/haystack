@@ -15,6 +15,8 @@ from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 from haystack.summarizer.base import BaseSummarizer
 from haystack.translator.base import BaseTranslator
+from haystack.knowledge_graph.base import BaseKnowledgeGraph
+from haystack.graph_retriever.base import BaseGraphRetriever
 
 
 class Pipeline(ABC):
