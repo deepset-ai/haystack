@@ -1,7 +1,8 @@
+from haystack import BaseComponent
 from haystack.knowledge_graph.base import BaseKnowledgeGraph
 
 
-class BaseGraphRetriever:
+class BaseGraphRetriever(BaseComponent):
     knowledge_graph: BaseKnowledgeGraph
     outgoing_edges = 1
 
