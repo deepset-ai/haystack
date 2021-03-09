@@ -22,7 +22,6 @@ class QueryExecutor:
         # logger.info(query)
         result = None
         if query.question_type == QuestionType.CountQuestion and response is not None:
-            #text_result = [result_item["count_result"]["value"] for result_item in result]
             result = int(response[0]["count_result"]["value"])
         elif query.question_type == QuestionType.ListQuestion and response is not None:
             result = [result_item["uri"]["value"] if "uri" in result_item else "" for result_item in response]

@@ -133,8 +133,10 @@ class Question:
         relations = set()
         for token in self.doc:
             if token.pos_ == "VERB" or token.pos_ == "NOUN":
-                if self.add_namespace_to_resource(token.lemma_) in predicate_names:
+                if self.add_namespace_to_resource(token.lemma_, brackets=False, capitalize=False) in predicate_names:
                     relations.add(token.lemma_)
+                elif self.add_namespace_to_resource(token.text, brackets=False, capitalize=False) in predicate_names:
+                    relations.add(token.text)
                 else:
                     relation, score = self.find_most_similar_relation(token.lemma_, nlp, predicate_names)
                     if score > 0.4:
