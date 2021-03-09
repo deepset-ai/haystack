@@ -1,15 +1,11 @@
 import json
 import logging
 from collections import Counter
-from pathlib import Path
-from typing import List, Tuple, Set, Optional
+from typing import List, Set, Optional
 
 import pandas as pd
 import spacy
 import itertools
-from operator import itemgetter
-
-from farm.infer import Inferencer
 
 from haystack.graph_retriever.base import BaseGraphRetriever
 from haystack.graph_retriever.query import Query
@@ -26,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class KGQARetriever(BaseGraphRetriever):
     def __init__(self, knowledge_graph):
-        self.knowledge_graph = knowledge_graph
+        self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
         self.min_threshold = 2
         self.query_executor = QueryExecutor(knowledge_graph)
         # self.nlp = spacy.load('en_core_web_sm')
@@ -43,8 +39,8 @@ class KGQARetriever(BaseGraphRetriever):
         logger.info(
             f"Loaded {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects.")
 
-        # filter out subject, objects and relations that occur only once
-        self.filter_infrequent_entities(min_threshold=self.min_threshold)
+        # filter out subjects, objects and relations that occur only once
+        self.filter_infrequent_entities_and_relations(min_threshold=self.min_threshold)
         logger.info(
             f"Filtered down to {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects occuring at least {self.min_threshold} times.")
 
@@ -54,8 +50,58 @@ class KGQARetriever(BaseGraphRetriever):
         self.save_dir = Path("saved_models/lcquad_text_pair_classification_with_entity_labels")
         self.model = Inferencer.load(self.save_dir)
 
-    def eval(self):
-        raise NotImplementedError
+
+    def compare_answers(self, answer, prediction, question_type):
+        if question_type == "List":
+            if isinstance(prediction, int):
+                # assumed wrong question type
+                return False
+            # split multiple entities
+            # strip whitespaces, lowercase, and remove namespace
+            # convert answers to sets so that the order of the items does not matter
+
+            answer = [str(answer_item).strip().lower() for answer_item in str(answer).split(",")]
+            answer = {answer_item.replace('https://harrypotter.fandom.com/wiki/', "").replace("_", " ").replace("-", " ") for answer_item in answer}
+
+            prediction = [str(prediction_item).strip().lower() for prediction_item in prediction]
+            prediction = {prediction_item.replace('https://deepset.ai/harry_potter/', "").replace("_", " ") for prediction_item in prediction}
+
+        elif question_type == "Boolean":
+            answer = bool(answer)
+            prediction = bool(prediction)
+        elif question_type == "Count":
+            answer = int(answer)
+            prediction = int(prediction)
+
+        return answer == prediction
+
+    def eval(self, filename, question_type, top_k_graph):
+        """
+        Calculate top_k accuracy given a tsv file with question and answer columns and store predictions
+        Do this evaluation for one chosen type of questions (List, Boolean, Count)
+        """
+        df = pd.read_csv(filename, sep="\t")
+        df = df[df['Type'] == question_type]
+        predictions_for_all_queries = []
+        correct_answers = 0
+        for index, row in df.iterrows():
+            predictions_for_query = self.retrieve(question_text=row['Question'], top_k_graph=top_k_graph)
+            if not predictions_for_query:
+                predictions_for_all_queries.append(None)
+                continue
+            top_k_contain_correct_answer = False
+            for prediction in predictions_for_query:
+                top_k_contain_correct_answer = self.compare_answers(row['Answer'], prediction, row['Type'])
+                if top_k_contain_correct_answer:
+                    correct_answers += 1
+                    logger.info("Correct answer.")
+            if not top_k_contain_correct_answer:
+                logger.info(f"Wrong answer(s). Expected {row['Answer']}")
+            predictions_for_all_queries.append(predictions_for_query)
+
+        logger.info(f"{correct_answers} correct answers out of {len(df)} for k={top_k_graph}")
+        df['prediction'] = predictions_for_all_queries
+        df.to_csv("predictions.csv", index=False)
 
     def run(self, query, top_k_graph, **kwargs):
         raise NotImplementedError
@@ -94,9 +140,10 @@ class KGQARetriever(BaseGraphRetriever):
             if predicate_name in self.object_names:
                 self.object_names.pop(predicate_name)
 
-    def filter_infrequent_entities(self, min_threshold: int = 2):
+    def filter_infrequent_entities_and_relations(self, min_threshold: int = 2):
         self.subject_names = {x: count for x, count in self.subject_names.items() if count >= min_threshold}
-        self.predicate_names = {x: count for x, count in self.predicate_names.items() if count >= min_threshold}
+        # filter top 100 relations
+        self.predicate_names = {x: count for x, count in self.predicate_names.items() if count >= min_threshold and (x, count) in self.predicate_names.most_common(100)}
         self.object_names = {x: count for x, count in self.object_names.items() if count >= min_threshold}
 
     def filter_existing_entities(self):
@@ -326,7 +373,6 @@ def run():
     # kgqa_retriever.eval_on_extractive_qa_test_data(top_k_graph=top_k_graph, filename="20210304_harry_answers.csv")
     # kgqa_retriever.eval_on_test_data(top_k_graph=top_k_graph, filename="2021_03_04_knowledge_graph_eval_questions.csv")
     kgqa_retriever.run_examples(top_k_graph=top_k_graph)
-
 
 if __name__ == "__main__":
     run()
