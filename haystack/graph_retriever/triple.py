@@ -15,3 +15,9 @@ class Triple:
         if not isinstance(other, type(self)):
             return False
         return self.subject == other.subject and self.predicate == other.predicate and self.object == other.object
+
+    def has_variable(self) -> bool:
+        return self.subject.startswith("?") or self.predicate.startswith("?") or self.object.startswith("?")
+
+    def has_uri_variable(self) -> bool:
+        return self.subject == "?uri" or self.predicate == "?uri" or self.object == "?uri"
