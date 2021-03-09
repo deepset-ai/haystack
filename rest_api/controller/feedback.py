@@ -116,36 +116,48 @@ def export_doc_qa_feedback(context_size: int = 100_000, full_document_context=Tr
             if document is None:
                 logger.error("Could not find document with id {label.document_id} for label id {label.id}")
 
-        if label.is_correct_answer == False and label.is_correct_document == False:
-            label.no_answer = True
-        else:
-            label.no_answer = False
 
         if full_document_context:
-            squad_label = {"paragraphs": [{
-                "context": document.text,
-                "id": label.document_id,
-                "qas": [
-                    {"question": label.question,
-                     "id": label.id,
-                     "is_impossible": label.no_answer,
-                     "answers": [{
-                         "text": label.answer,
-                         "answer_start": label.offset_start_in_doc
-                     }]
-                     }
+            # No answer
+            if label.is_correct_answer == False and label.is_correct_document == False:
+                squad_label = {"paragraphs": [{
+                    "context": document.text,
+                    "id": label.document_id,
+                    "qas": [
+                        {"question": label.question,
+                         "id": label.id,
+                         "is_impossible": True,
+                         "answers": []
+                         }
+                    ]
+                }
+                ]
+                }
+            else:
+                squad_label = {"paragraphs": [{
+                    "context": document.text,
+                    "id": label.document_id,
+                    "qas": [
+                        {"question": label.question,
+                         "id": label.id,
+                         "is_impossible": False,
+                         "answers": [{
+                             "text": label.answer,
+                             "answer_start": label.offset_start_in_doc
+                         }]
+                         }
+                    ]
+                }
                 ]
             }
-            ]
-            }
 
-            # quality check
-            start = squad_label["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
-            answer = squad_label["paragraphs"][0]["qas"][0]["answers"][0]["text"]
-            context = squad_label["paragraphs"][0]["context"]
-            if not context[start:start + len(answer)] == answer:
-                logger.error(
-                    f"Skipping invalid squad label as string via offsets ('{context[start:start + len(answer)]}') does not match answer string ('{answer}') ")
+                # quality check
+                start = squad_label["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
+                answer = squad_label["paragraphs"][0]["qas"][0]["answers"][0]["text"]
+                context = squad_label["paragraphs"][0]["context"]
+                if not context[start:start + len(answer)] == answer:
+                    logger.error(
+                        f"Skipping invalid squad label as string via offsets ('{context[start:start + len(answer)]}') does not match answer string ('{answer}') ")
             export_data.append(squad_label)
         else:
             raise NotImplementedError()
@@ -174,7 +186,10 @@ def export_doc_qa_feedback(context_size: int = 100_000, full_document_context=Tr
             # export_data.append({"paragraphs": [{"qas": label, "context": context_to_export}]})
 
     export = {"data": export_data}
+    import json
 
+    with open("feedback_squad_direct.json", "w", encoding='utf8') as f:
+        json.dump(export_data, f, ensure_ascii=False, sort_keys=True, indent=4)
     return export
 
 
