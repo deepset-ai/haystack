@@ -46,7 +46,10 @@ class BaseReader(BaseComponent):
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, **kwargs):
+    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, skip_incorrect_retrieval: bool = True, **kwargs):
+        if skip_incorrect_retrieval:
+            if not kwargs.get("correct_retrieval"):
+                return {}, "output_1"
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k_reader)
         else:
