@@ -1,15 +1,11 @@
 import json
 import logging
 from collections import Counter
-from pathlib import Path
-from typing import List, Tuple, Set, Optional
+from typing import List, Set, Optional
 
 import pandas as pd
 import spacy
 import itertools
-from operator import itemgetter
-
-from farm.infer import Inferencer
 
 from haystack.graph_retriever.base import BaseGraphRetriever
 from haystack.graph_retriever.query import Query
@@ -24,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class KGQARetriever(BaseGraphRetriever):
     def __init__(self, knowledge_graph):
-        self.knowledge_graph = knowledge_graph
+        self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
         self.min_threshold = 2
         self.query_ranker = QueryRanker("saved_models/lcquad_text_pair_classification_with_entity_labels_v2")
         self.query_executor = QueryExecutor(knowledge_graph)
@@ -44,7 +40,7 @@ class KGQARetriever(BaseGraphRetriever):
             f"Loaded {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects.")
 
         # filter out subjects, objects and relations that occur only once
-        self.filter_infrequent_entities(min_threshold=self.min_threshold)
+        self.filter_infrequent_entities_and_relations(min_threshold=self.min_threshold)
         logger.info(
             f"Filtered down to {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects occuring at least {self.min_threshold} times.")
 
@@ -53,13 +49,17 @@ class KGQARetriever(BaseGraphRetriever):
 
     def compare_answers(self, answer, prediction, question_type):
         if question_type == "List":
+            if isinstance(prediction, int):
+                # assumed wrong question type
+                return False
             # split multiple entities
             # strip whitespaces, lowercase, and remove namespace
             # convert answers to sets so that the order of the items does not matter
-            answer = [answer_item.strip().lower() for answer_item in answer.split(",")]
-            answer = {answer_item.replace('https://harrypotter.fandom.com/wiki/', "").replace("_", " ") for answer_item in answer}
 
-            prediction = [prediction_item.strip().lower() for prediction_item in prediction]
+            answer = [str(answer_item).strip().lower() for answer_item in str(answer).split(",")]
+            answer = {answer_item.replace('https://harrypotter.fandom.com/wiki/', "").replace("_", " ").replace("-", " ") for answer_item in answer}
+
+            prediction = [str(prediction_item).strip().lower() for prediction_item in prediction]
             prediction = {prediction_item.replace('https://deepset.ai/harry_potter/', "").replace("_", " ") for prediction_item in prediction}
 
         elif question_type == "Boolean":
@@ -78,25 +78,25 @@ class KGQARetriever(BaseGraphRetriever):
         """
         df = pd.read_csv(filename, sep="\t")
         df = df[df['Type'] == question_type]
-        predictions = []
+        predictions_for_all_queries = []
         correct_answers = 0
         for index, row in df.iterrows():
-            prediction = self.retrieve(question_text=row['Question'], top_k_graph=3)
-            if not prediction:
-                predictions.append(None)
+            predictions_for_query = self.retrieve(question_text=row['Question'], top_k_graph=top_k_graph)
+            if not predictions_for_query:
+                predictions_for_all_queries.append(None)
                 continue
-            correct = False
-            for i in range(len(prediction)):
-                correct = self.compare_answers(row['Answer'], prediction[i], row['Type']) or correct
-            if correct:
-                correct_answers += 1
-                logger.info("Correct answer.")
-            else:
-                logger.info("Wrong answer.")
-            predictions.append(prediction)
+            top_k_contain_correct_answer = False
+            for prediction in predictions_for_query:
+                top_k_contain_correct_answer = self.compare_answers(row['Answer'], prediction, row['Type'])
+                if top_k_contain_correct_answer:
+                    correct_answers += 1
+                    logger.info("Correct answer.")
+            if not top_k_contain_correct_answer:
+                logger.info(f"Wrong answer(s). Expected {row['Answer']}")
+            predictions_for_all_queries.append(predictions_for_query)
 
-        logger.info(f"{correct_answers} correct answers out of {len(df)}")
-        df['prediction'] = predictions
+        logger.info(f"{correct_answers} correct answers out of {len(df)} for k={top_k_graph}")
+        df['prediction'] = predictions_for_all_queries
         df.to_csv("predictions.csv", index=False)
 
     def run(self, query, top_k_graph, **kwargs):
@@ -136,9 +136,10 @@ class KGQARetriever(BaseGraphRetriever):
             if predicate_name in self.object_names:
                 self.object_names.pop(predicate_name)
 
-    def filter_infrequent_entities(self, min_threshold: int = 2):
+    def filter_infrequent_entities_and_relations(self, min_threshold: int = 2):
         self.subject_names = {x: count for x, count in self.subject_names.items() if count >= min_threshold}
-        self.predicate_names = {x: count for x, count in self.predicate_names.items() if count >= min_threshold}
+        # filter top 100 relations
+        self.predicate_names = {x: count for x, count in self.predicate_names.items() if count >= min_threshold and (x, count) in self.predicate_names.most_common(100)}
         self.object_names = {x: count for x, count in self.object_names.items() if count >= min_threshold}
 
     def filter_existing_entities(self):
@@ -283,10 +284,17 @@ def run_experiments():
 
     # kgqa_retriever.eval_on_extractive_qa_test_data(top_k_graph=top_k_graph, filename="20210304_harry_answers.csv")
     # kgqa_retriever.run_examples(top_k_graph=top_k_graph)
+    # result = kgqa_retriever.retrieve(question_text="Who founded Dumbledore's Army?", top_k_graph=top_k_graph)
+    # result = kgqa_retriever.retrieve(question_text="What colour are Lorcan d'Eath's hair?", top_k_graph=top_k_graph)
+    #result = kgqa_retriever.retrieve(question_text="", top_k_graph=top_k_graph)
 
-    result = kgqa_retriever.retrieve(question_text="When was the Potions Club founded?", top_k_graph=top_k_graph)
-    kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt1.tsv", question_type="List", top_k_graph=top_k_graph)
+    #result = kgqa_retriever.retrieve(question_text="Who was a seeker of the Ivorian National Quidditch team?", top_k_graph=top_k_graph)
+    #result = kgqa_retriever.retrieve(question_text="What is Edith Nesbit's blood status?", top_k_graph=top_k_graph)
+    #result = kgqa_retriever.retrieve(question_text="Who founded Dumbledore's Army?", top_k_graph=top_k_graph)
+    # kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt4.tsv", question_type="List", top_k_graph=top_k_graph)
 
+    # todo
+    #  correct handling of 's in Dumbledore's Army vs. Ronald Weasley's nicknames
 
 if __name__ == "__main__":
     run_experiments()
