@@ -279,7 +279,10 @@ class Text2SparqlRetriever(BaseGraphRetriever):
             elif "count" in response[0]:
                 result = int(response[0]["count"]["value"])
             else:
-                result = [result_item["uri"]["value"] if "uri" in result_item else "" for result_item in response]
+                result = []
+                for x in response:
+                    for k,v in x.items():
+                        result.append(v["value"])
         except Exception as e:
             # print(f"Wrong query with exception: {e}")
             result = None
@@ -330,7 +333,7 @@ class Text2SparqlRetriever(BaseGraphRetriever):
 
 
 def run():
-    kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="jKf-zf3-qwF-Pq3")
+    kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="x-x-x")
 
     logger = logging.getLogger(__name__)
     logging.basicConfig(
