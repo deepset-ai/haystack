@@ -264,6 +264,7 @@ class KGQARetriever(BaseGraphRetriever):
         df['prediction'] = predictions
         df.to_csv("20210304_harry_answers_predictions.csv", index=False)
 
+
 class Text2SparqlRetriever(BaseGraphRetriever):
     def __init__(self, knowledge_graph, model_name_or_path):
         self.knowledge_graph = knowledge_graph
