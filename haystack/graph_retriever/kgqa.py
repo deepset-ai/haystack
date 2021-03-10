@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from collections import Counter
 from typing import List, Set, Optional
 
@@ -56,7 +57,7 @@ class KGQARetriever(BaseGraphRetriever):
             # strip whitespaces, lowercase, and remove namespace
             # convert answers to sets so that the order of the items does not matter
 
-            answer = [str(answer_item).strip().lower() for answer_item in str(answer).split(",")]
+            answer = [str(answer_item).strip().lower() for answer_item in re.split(",|\ \ ", str(answer))]
             answer = {answer_item.replace('https://harrypotter.fandom.com/wiki/', "").replace("_", " ").replace("-", " ") for answer_item in answer}
 
             prediction = [str(prediction_item).strip().lower() for prediction_item in prediction]

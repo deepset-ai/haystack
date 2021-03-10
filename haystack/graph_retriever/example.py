@@ -65,8 +65,8 @@ def run_experiments():
     #result = kgqa_retriever.retrieve(question_text="Who was a seeker of the Ivorian National Quidditch team?", top_k_graph=top_k_graph)
     #result = kgqa_retriever.retrieve(question_text="What is Edith Nesbit's blood status?", top_k_graph=top_k_graph)
     #result = kgqa_retriever.retrieve(question_text="Who founded Dumbledore's Army?", top_k_graph=top_k_graph)
-    kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt3.tsv", question_type="List", top_k_graph=top_k_graph)
-    run_examples(kgqa_retriever=kgqa_retriever, top_k_graph=top_k_graph)
+    kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt4.tsv", question_type="List", top_k_graph=top_k_graph)
+    #run_examples(kgqa_retriever=kgqa_retriever, top_k_graph=top_k_graph)
 
     # todo
     #  correct handling of 's in Dumbledore's Army vs. Ronald Weasley's nicknames
