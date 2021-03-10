@@ -80,24 +80,30 @@ class KGQARetriever(BaseGraphRetriever):
         df = pd.read_csv(filename, sep="\t")
         df = df[df['Type'] == question_type]
         predictions_for_all_queries = []
-        correct_answers = 0
+        number_of_correct_predictions = 0
+        correct_predictions = []
         for index, row in df.iterrows():
             predictions_for_query = self.retrieve(question_text=row['Question'], top_k_graph=top_k_graph)
             if not predictions_for_query:
                 predictions_for_all_queries.append(None)
+                correct_predictions.append(0)
                 continue
             top_k_contain_correct_answer = False
             for prediction in predictions_for_query:
                 top_k_contain_correct_answer = self.compare_answers(row['Answer'], prediction, row['Type'])
                 if top_k_contain_correct_answer:
-                    correct_answers += 1
+                    number_of_correct_predictions += 1
+                    correct_predictions.append(1)
                     logger.info("Correct answer.")
+                    break
             if not top_k_contain_correct_answer:
                 logger.info(f"Wrong answer(s). Expected {row['Answer']}")
+                correct_predictions.append(0)
             predictions_for_all_queries.append(predictions_for_query)
 
-        logger.info(f"{correct_answers} correct answers out of {len(df)} for k={top_k_graph}")
+        logger.info(f"{number_of_correct_predictions} correct answers out of {len(df)} for k={top_k_graph}")
         df['prediction'] = predictions_for_all_queries
+        df['correct'] = correct_predictions
         df.to_csv("predictions.csv", index=False)
 
     def run(self, query, top_k_graph, **kwargs):
