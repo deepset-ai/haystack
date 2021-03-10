@@ -100,7 +100,9 @@ class Pipeline(ABC):
 
     def run(self, **kwargs):
         node_output = None
-        stack = {self.root_node_id: kwargs}  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO stack
+        stack = {
+            self.root_node_id: {"pipeline_type": self.pipeline_type, **kwargs}
+        }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO stack
         nodes_executed = set()
         i = -1  # the last item is popped off the stack unless it is a join node with unprocessed predecessors
         while stack:
@@ -123,7 +125,7 @@ class Pipeline(ABC):
                     else:
                         stack[n] = node_output
                 i = -1
-            else:  # execute lower nodes in the stack
+            else:  # attempt executing lower nodes in the stack as `node_id` has unprocessed predecessors
                 i -= 1
         return node_output
 
