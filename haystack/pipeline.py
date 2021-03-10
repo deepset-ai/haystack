@@ -99,34 +99,33 @@ class Pipeline(ABC):
         self.graph.nodes[name]["component"] = component
 
     def run(self, **kwargs):
-        has_next_node = True
-        current_node_id = self.root_node_id
-        input_dict = {"pipeline_type": self.pipeline_type, **kwargs}
-        output_dict = None
-
-        while has_next_node:
-            output_dict, stream_id = self.graph.nodes[current_node_id]["component"].run(**input_dict)
-            input_dict = output_dict
-            next_nodes = self.get_next_nodes(current_node_id, stream_id)
-
-            if len(next_nodes) > 1:
-                join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
-                if set(self.graph.predecessors(join_node_id)) != set(next_nodes):
-                    raise NotImplementedError(
-                        "The current pipeline does not support multiple levels of parallel nodes."
-                    )
-                inputs_for_join_node = {"inputs": []}
-                for n_id in next_nodes:
-                    output = self.graph.nodes[n_id]["component"].run(**input_dict)
-                    inputs_for_join_node["inputs"].append(output)
-                input_dict = inputs_for_join_node
-                current_node_id = join_node_id
-            elif len(next_nodes) == 1:
-                current_node_id = next_nodes[0]
-            else:
-                has_next_node = False
-
-        return output_dict
+        node_output = None
+        stack = {self.root_node_id: kwargs}  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO stack
+        nodes_executed = set()
+        i = -1  # the last item is popped off the stack unless it is a join node with unprocessed predecessors
+        while stack:
+            node_id = list(stack.keys())[i]
+            node_input = stack[node_id]
+            predecessors = set(self.graph.predecessors(node_id))
+            if predecessors.issubset(nodes_executed):  # only execute if predecessor nodes are executed
+                nodes_executed.add(node_id)
+                node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+                stack.pop(node_id)
+                next_nodes = self.get_next_nodes(node_id, stream_id)
+                for n in next_nodes:  # add successor nodes with corresponding inputs to the stack
+                    if stack.get(n):  # concatenate inputs if it's a join node
+                        existing_input = stack[n]
+                        if "inputs" not in existing_input.keys():
+                            updated_input = {"inputs": [existing_input, node_output]}
+                        else:
+                            updated_input = existing_input["inputs"].append(node_output)
+                        stack[n] = updated_input
+                    else:
+                        stack[n] = node_output
+                i = -1
+            else:  # execute lower nodes in the stack
+                i -= 1
+        return node_output
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
