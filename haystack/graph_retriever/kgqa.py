@@ -16,6 +16,8 @@ from haystack.graph_retriever.question import QuestionType, Question
 from haystack.graph_retriever.triple import Triple
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 
+from transformers import BartForConditionalGeneration, BartTokenizer
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,6 +94,7 @@ class KGQARetriever(BaseGraphRetriever):
                 if top_k_contain_correct_answer:
                     correct_answers += 1
                     logger.info("Correct answer.")
+                    break
             if not top_k_contain_correct_answer:
                 logger.info(f"Wrong answer(s). Expected {row['Answer']}")
             predictions_for_all_queries.append(predictions_for_query)
@@ -237,8 +240,7 @@ class KGQARetriever(BaseGraphRetriever):
             elif row['Category'] == "NO":
                 ground_truth_answer = "False"
             else:
-                predictions.append("")
-                continue
+                ground_truth_answer = row["Answer"]
             prediction = self.retrieve(question_text=row['Question Text'], top_k_graph=top_k_graph)
             predictions.append(prediction)
             print(f"Pred: {prediction}")
@@ -247,3 +249,53 @@ class KGQARetriever(BaseGraphRetriever):
 
         df['prediction'] = predictions
         df.to_csv("20210304_harry_answers_predictions.csv", index=False)
+
+
+class Text2SparqlRetriever(KGQARetriever):
+    def __init__(self, knowledge_graph, model_name_or_path):
+        self.knowledge_graph = knowledge_graph
+        self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
+        self.tok = BartTokenizer.from_pretrained(model_name_or_path)
+
+    def retrieve(self, question_text: str, top_k_graph: int):
+        inputs = self.tok([question_text], max_length=100,truncation=True, return_tensors='pt')
+        temp = self.model.generate(inputs['input_ids'],
+                                   num_beams=top_k_graph+3,
+                                   max_length=100,
+                                   num_return_sequences=top_k_graph+3,
+                                   early_stopping=True)
+        sparql_list = [self.tok.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in temp]
+        answers = []
+        for s in sparql_list:
+            ans = self._query_kg(query=s)
+            if ans is not None:
+                answers.append(ans)
+        return answers[:top_k_graph]
+
+
+    def _query_kg(self, query):
+        query = query.replace("}", " }")
+        query = query.replace(")", " )")
+        splits = query.split()
+        query = ""
+        for s in splits:
+            if s.startswith("hp:"):
+                s = s.replace("hp:", "<https://deepset.ai/harry_potter/")
+                s = s + ">"
+            query += s + " "
+        try:
+            response = self.knowledge_graph.query(query=query, index="hp-test")
+            if isinstance(response, bool):
+                result = response
+            elif "count" in response[0]:
+                result = int(response[0]["count"]["value"])
+            else:
+                result = []
+                for x in response:
+                    for k,v in x.items():
+                        result.append(v["value"])
+        except Exception as e:
+            # print(f"Wrong query with exception: {e}")
+            result = None
+        return result
+
