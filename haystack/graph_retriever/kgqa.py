@@ -271,7 +271,8 @@ class KGQARetriever(BaseGraphRetriever):
         # "A sentence expresses relation r if it contains two co-occurring entities that are in relation r according to a knowledge base."
         for index, row in df.iterrows():
             document_text = row['document_text']
-            logger.info(f"Processing document {index+1} out of {len(df)}")
+            logging.getLogger("haystack.graph_retriever.question").setLevel(logging.WARNING)
+            logger.warning(f"Processing document {index+1} out of {len(df)}")
             for sentence in self.nlp(document_text).sents:
                 entities = [token.text for token in sentence]
                 q = Question(question_text=sentence.text)
@@ -279,17 +280,18 @@ class KGQARetriever(BaseGraphRetriever):
                 entities = q.entity_linking(alias_to_entity_and_prob=self.alias_to_entity_and_prob,
                         subject_names=self.subject_names,
                         predicate_names=self.predicate_names,
-                        object_names=self.object_names)
+                        object_names=self.object_names,
+                        fuzzy=False)
 
                 # sentences with too many entities are skipped because they dont help the training
-                if len(entities) > 10:
+                if len(entities) > 5:
                     continue
 
                 tokens = [token.text.lower() for token in sentence]
                 document_frequency.update(set(tokens))
 
                 # for all pairs of entities, check in which relations they co-occur
-                for (s,o) in itertools.permutations(entities, 2):
+                for (s, o) in itertools.permutations(entities, 2):
                     # get all relations
                     triples = {Triple(subject=s, predicate="?uri", object=o)}
                     response = self.query_executor.execute(Query(question_type=QuestionType.ListQuestion, triples=triples))
@@ -310,14 +312,16 @@ class KGQARetriever(BaseGraphRetriever):
         for relation in self.predicate_names:
             best_tf_idf = 0
             for token in document_frequency:
-                if best_tf_idf < relation_to_token[relation][token]/document_frequency[token]:
+                if best_tf_idf < relation_to_token[relation][token]/document_frequency[token] and document_frequency[token] > 10:
                     best_tf_idf = relation_to_token[relation][token] / document_frequency[token]
                     relation_to_best_token[relation] = token
 
         # goal: dictionary: token -> most likely relation and the corresponding tf_idf value
         token_to_relation = dict()
         for token in document_frequency:
-            best_tf_idf = 0
+            if document_frequency[token] <= 10:
+                continue
+            best_tf = 0
             for relation in self.predicate_names:
                 if best_tf < relation_to_token[relation][token]:
                     best_tf = relation_to_token[relation][token]
@@ -325,3 +329,4 @@ class KGQARetriever(BaseGraphRetriever):
 
         json.dump(relation_to_best_token, open("relation_to_best_token.json", "w"))
         json.dump(token_to_relation, open("token_to_relation.json", "w"))
+        json.dump(document_frequency, open("document_frequency.json", "w"))
