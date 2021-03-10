@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 from typing import Optional, Set
 from spacy.tokens import Doc
 from operator import itemgetter
@@ -118,10 +119,14 @@ class Question:
             resource = resource.capitalize()
         else:
             resource = resource.lower()
+        resource = resource.replace(' ', '_').replace('.', '_')
+        # encode entity names with special characters, such as Ichirō Nagai
+        resource = urllib.parse.quote_plus(resource)
         if brackets:
-            return f"<https://deepset.ai/harry_potter/{resource.replace(' ', '_').replace('.', '_')}>"
+            resource = f"<https://deepset.ai/harry_potter/{resource}>"
         else:
-            return f"https://deepset.ai/harry_potter/{resource.replace(' ', '_').replace('.', '_')}"
+            resource = f"https://deepset.ai/harry_potter/{resource}"
+        return resource
 
     def relation_linking(self, predicate_names, nlp):
         """
@@ -139,9 +144,12 @@ class Question:
                 elif self.add_namespace_to_resource(token.text, brackets=False, capitalize=False) in predicate_names:
                     relations.add(token.text)
                 else:
-                    relation, score = self.find_most_similar_relation(token.lemma_, nlp, predicate_names)
-                    if score > 0.4:
-                        relations.add(relation)
+                    pass
+                    # todo fuzzy matching for relation names
+                    #relation, score = self.find_most_similar_relation(token.lemma_, nlp, predicate_names)
+                    #if score > 0.4:
+                    #    logger.info(f"Adding relation {relation} for token {token.text}")
+                    #    relations.add(relation)
 
         if not relations:
             if self.question_text.lower().startswith("when"):
@@ -153,13 +161,13 @@ class Question:
                      relations}
         return relations
 
-    def find_most_similar_relation(self, word, nlp, predicate_names):
+    def find_most_similar_relation(self, word: str, nlp, predicate_names):
         relations_with_scores = [(relation.split("/")[-1], self.word_similarity(word, relation.split("/")[-1], nlp)) for
                                  relation in predicate_names]
         relations_with_scores.sort(key=itemgetter(1), reverse=True)
         return relations_with_scores[0]
 
-    def word_similarity(self, word1, word2, nlp):
+    def word_similarity(self, word1: str, word2: str, nlp):
         token1, token2 = nlp(word1)[0], nlp(word2)[0]
         if token1.is_oov or token2.is_oov:
             return -1

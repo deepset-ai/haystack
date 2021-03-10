@@ -1,14 +1,11 @@
 import logging
 from operator import itemgetter
 from pathlib import Path
-from typing import Set, List, Union, Tuple
+from typing import List, Tuple
 
 from farm.infer import Inferencer
 
 from haystack.graph_retriever.query import Query
-from haystack.graph_retriever.question import QuestionType
-from haystack.graph_retriever.triple import Triple
-from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +16,7 @@ class QueryRanker:
         self.save_dir = Path(filename)
         self.model = Inferencer.load(self.save_dir)
 
-    def query_ranking(self, queries, question, top_k_graph) -> List[Tuple[Query, float]]:
+    def query_ranking(self, queries: List[Query], question: str, top_k_graph: int) -> List[Tuple[Query, float]]:
         """
         Sort queries based on their semantic similarity with the question
         """
@@ -28,7 +25,7 @@ class QueryRanker:
         queries_with_scores.sort(key=itemgetter(1), reverse=True)
         return queries_with_scores
 
-    def similarity_of_question_queries(self, queries, question, use_farm, top_k_graph, max_ranking) -> List[Tuple[Query,float]]:
+    def similarity_of_question_queries(self, queries: List[Query], question: str, use_farm, top_k_graph: int, max_ranking: int) -> List[Tuple[Query, float]]:
         """
         Calculate the semantic similarity of each query and a question
         Current approach uses text pair classification from FARM and is pre-trained on LC-QuAD

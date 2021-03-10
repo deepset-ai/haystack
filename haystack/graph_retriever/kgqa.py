@@ -22,9 +22,9 @@ logger = logging.getLogger(__name__)
 class KGQARetriever(BaseGraphRetriever):
     def __init__(self, knowledge_graph):
         self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
-        self.min_threshold = 2
-        self.query_ranker = QueryRanker("saved_models/lcquad_text_pair_classification_with_entity_labels_v2")
-        self.query_executor = QueryExecutor(knowledge_graph)
+        self.min_threshold: int = 2
+        self.query_ranker: QueryRanker = QueryRanker("saved_models/lcquad_text_pair_classification_with_entity_labels_v2")
+        self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
         # self.nlp = spacy.load('en_core_web_sm')
         self.nlp = spacy.load('en_core_web_lg')
         # self.nlp = spacy.load('en_core_web_trf')
@@ -48,7 +48,7 @@ class KGQARetriever(BaseGraphRetriever):
         self.alias_to_entity_and_prob = json.load(open("alias_to_entity_and_prob.json"))
         self.alias_to_entity_and_prob = self.filter_existing_entities()
 
-    def compare_answers(self, answer, prediction, question_type):
+    def compare_answers(self, answer, prediction, question_type: str):
         if question_type == "List":
             if isinstance(prediction, int):
                 # assumed wrong question type
@@ -234,7 +234,7 @@ class KGQARetriever(BaseGraphRetriever):
         logger.info(f"Number of queries after pruning: {len(queries)}")
         return queries
 
-    def eval_on_extractive_qa_test_data(self, top_k_graph, filename: str):
+    def eval_on_extractive_qa_test_data(self, top_k_graph: int, filename: str):
         df = pd.read_csv(filename, sep=";")
         predictions = []
         for index, row in df.iterrows():
@@ -253,3 +253,75 @@ class KGQARetriever(BaseGraphRetriever):
 
         df['prediction'] = predictions
         df.to_csv("20210304_harry_answers_predictions.csv", index=False)
+
+    def distant_supervision(self):
+        # import pandas as pd
+        # import spacy
+        # nlp = spacy.load('en_core_web_lg')
+        df = pd.read_csv("harrypotter_docs.csv")
+        df = df.head(n=1)
+
+
+
+        document_frequency = Counter() # each sentence corresponds to a document for idf calculation
+        relation_to_token = dict()
+        for relation in self.predicate_names:
+            relation_to_token[relation] = Counter()
+        # works -> (job, 1000)
+        # "A sentence expresses relation r if it contains two co-occurring entities that are in relation r according to a knowledge base."
+        for index, row in df.iterrows():
+            document_text = row['document_text']
+            logger.info(f"Processing document {index+1} out of {len(df)}")
+            for sentence in self.nlp(document_text).sents:
+                entities = [token.text for token in sentence]
+                q = Question(question_text=sentence.text)
+                q.doc = self.nlp(q.question_text)
+                entities = q.entity_linking(alias_to_entity_and_prob=self.alias_to_entity_and_prob,
+                        subject_names=self.subject_names,
+                        predicate_names=self.predicate_names,
+                        object_names=self.object_names)
+
+                # sentences with too many entities are skipped because they dont help the training
+                if len(entities) > 10:
+                    continue
+
+                tokens = [token.text.lower() for token in sentence]
+                document_frequency.update(set(tokens))
+
+                # for all pairs of entities, check in which relations they co-occur
+                for (s,o) in itertools.permutations(entities, 2):
+                    # get all relations
+                    triples = {Triple(subject=s, predicate="?uri", object=o)}
+                    response = self.query_executor.execute(Query(question_type=QuestionType.ListQuestion, triples=triples))
+                    for token in tokens:
+                        for relation in response:
+                            if relation in self.predicate_names:
+                                relation_to_token[relation][token] += 1
+
+        print("completed")
+
+        # relation_to_token[relation][token] contains term frequency
+        # document_frequency[token] contains document frequency
+        #
+        # calculate idf for each word in vocabulary
+        # calculate tf for each relation and each word
+        #
+        relation_to_best_token = dict() #or vice versa
+        for relation in self.predicate_names:
+            best_tf_idf = 0
+            for token in document_frequency:
+                if best_tf_idf < relation_to_token[relation][token]/document_frequency[token]:
+                    best_tf_idf = relation_to_token[relation][token] / document_frequency[token]
+                    relation_to_best_token[relation] = token
+
+        # goal: dictionary: token -> most likely relation and the corresponding tf_idf value
+        token_to_relation = dict()
+        for token in document_frequency:
+            best_tf_idf = 0
+            for relation in self.predicate_names:
+                if best_tf < relation_to_token[relation][token]:
+                    best_tf = relation_to_token[relation][token]
+                    token_to_relation[token] = (relation, best_tf/document_frequency[token])
+
+        json.dump(relation_to_best_token, open("relation_to_best_token.json", "w"))
+        json.dump(token_to_relation, open("token_to_relation.json", "w"))

@@ -1,19 +1,6 @@
-import json
 import logging
-from collections import Counter
-from typing import List, Set, Optional
-
-import pandas as pd
-import spacy
-import itertools
 
 from haystack.graph_retriever import KGQARetriever
-from haystack.graph_retriever.base import BaseGraphRetriever
-from haystack.graph_retriever.query import Query
-from haystack.graph_retriever.query_executor import QueryExecutor
-from haystack.graph_retriever.query_ranker import QueryRanker
-from haystack.graph_retriever.question import QuestionType, Question
-from haystack.graph_retriever.triple import Triple
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 
 logger = logging.getLogger(__name__)
@@ -43,11 +30,11 @@ def run_examples(kgqa_retriever: KGQARetriever, top_k_graph: int):
 def run_experiments():
     kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="x-x-x")
 
-    logger = logging.getLogger(__name__)
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO)
+    #logger = logging.getLogger(__name__)
+    #logging.basicConfig(
+    #    format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+    #    datefmt="%m/%d/%Y %H:%M:%S",
+    #    level=logging.INFO)
 
     for module in ["farm.utils", "farm.infer", "farm.modeling.prediction_head", "farm.data_handler.processor"]:
         module_logger = logging.getLogger(module)
@@ -61,12 +48,15 @@ def run_experiments():
     # result = kgqa_retriever.retrieve(question_text="Who founded Dumbledore's Army?", top_k_graph=top_k_graph)
     # result = kgqa_retriever.retrieve(question_text="What colour are Lorcan d'Eath's hair?", top_k_graph=top_k_graph)
     #result = kgqa_retriever.retrieve(question_text="", top_k_graph=top_k_graph)
+    #result = kgqa_retriever.retrieve(question_text="What Nation did Ichirō Nagai belong to?", top_k_graph=top_k_graph)
 
     #result = kgqa_retriever.retrieve(question_text="Who was a seeker of the Ivorian National Quidditch team?", top_k_graph=top_k_graph)
     #result = kgqa_retriever.retrieve(question_text="What is Edith Nesbit's blood status?", top_k_graph=top_k_graph)
     #result = kgqa_retriever.retrieve(question_text="Who founded Dumbledore's Army?", top_k_graph=top_k_graph)
-    kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt4.tsv", question_type="List", top_k_graph=top_k_graph)
+    #kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt4.tsv", question_type="List", top_k_graph=top_k_graph)
     #run_examples(kgqa_retriever=kgqa_retriever, top_k_graph=top_k_graph)
+
+    kgqa_retriever.distant_supervision()
 
     # todo
     #  correct handling of 's in Dumbledore's Army vs. Ronald Weasley's nicknames

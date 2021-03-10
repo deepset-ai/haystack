@@ -51,13 +51,10 @@ class Query:
         query = None
         if self.question_type == QuestionType.CountQuestion:
             query = f"SELECT (COUNT(  ?uri ) AS ?count_result) WHERE {{ {where_clause} }}"
-            # example: SELECT (COUNT(?harry) AS ?rc) WHERE { ?harry rdfs:label "Harry Potter"@en. }
         elif self.question_type == QuestionType.BooleanQuestion:
             query = f"ASK WHERE {{ {where_clause} }}"
-            # example: ASK WHERE { dbr:Hermione_Granger dbo:spouse dbr:Ron_Weasley}
         elif self.question_type == QuestionType.ListQuestion:
             query = f"SELECT ?uri WHERE {{ {where_clause} }}"
-            # example: SELECT ?o WHERE{ ?harry rdfs:label "Harry Potter"@en. ?family rdfs:label "family"@en. ?harry ?family ?o. }
 
         if not query:
             raise RuntimeError(f"QuestionType {self.question_type} unknown")
