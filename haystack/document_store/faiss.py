@@ -141,7 +141,11 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-
+        # Convert list objects to string since SQL cannot take python list objects
+        for do in document_objects:
+            for m in do.meta:
+                if type(do.meta[m]) == list:
+                    do.meta[m] = str(do.meta[m])
         add_vectors = False if document_objects[0].embedding is None else True
 
         if self.update_existing_documents and add_vectors:
