@@ -561,7 +561,7 @@ class JoinDocuments:
 
         if self.join_mode == "concatenate":
             document_map = {}
-            for input_from_node, _ in inputs:
+            for input_from_node in inputs:
                 for doc in input_from_node["documents"]:
                     document_map[doc.id] = doc
         elif self.join_mode == "merge":
@@ -570,7 +570,7 @@ class JoinDocuments:
                 weights = self.weights
             else:
                 weights = [1/len(inputs)] * len(inputs)
-            for (input_from_node, _), weight in zip(inputs, weights):
+            for input_from_node, weight in zip(inputs, weights):
                 for doc in input_from_node["documents"]:
                     if document_map.get(doc.id):  # document already exists; update score
                         document_map[doc.id].score += doc.score * weight
@@ -583,5 +583,5 @@ class JoinDocuments:
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
         if self.top_k:
             documents = documents[: self.top_k]
-        output = {"query": inputs[0][0]["query"], "documents": documents}
+        output = {"query": inputs[0]["query"], "documents": documents}
         return output, "output_1"
