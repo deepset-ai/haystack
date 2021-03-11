@@ -37,7 +37,7 @@ class BasePreProcessor(BaseComponent):
     ) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
-    def run(self, document: dict, **kwargs):
+    def run(self, document: dict, **kwargs): # type: ignore
         documents = self.process(document)
 
         result = {"documents": documents, **kwargs}

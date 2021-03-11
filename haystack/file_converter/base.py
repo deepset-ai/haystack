@@ -76,14 +76,8 @@ class BaseConverter(BaseComponent):
         else:
             return False
 
-    def run(
-        self,
-        file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
-        remove_numeric_tables: Optional[bool] = None,
-        valid_languages: Optional[List[str]] = None,
-        **kwargs
-    ):
+    def run(self, file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, # type: ignore
+        valid_languages: Optional[List[str]] = None, **kwargs): # type: ignore
         document = self.convert(
             file_path=file_path,
             meta=meta,
