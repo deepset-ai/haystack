@@ -168,7 +168,7 @@ class BaseRetriever(BaseComponent):
         else:
             return metrics
 
-    def run(self, pipeline_type: str, **kwargs):
+    def run(self, pipeline_type: str, **kwargs): # type: ignore
         if pipeline_type == "Query":
             output, stream = self.run_query(**kwargs)
         elif pipeline_type == "Indexing":

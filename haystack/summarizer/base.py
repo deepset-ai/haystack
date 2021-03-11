@@ -26,7 +26,7 @@ class BaseSummarizer(BaseComponent):
         """
         pass
 
-    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None, **kwargs):
+    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None, **kwargs): # type: ignore
 
         results: Dict = {
             "documents": [],
