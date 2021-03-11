@@ -146,8 +146,21 @@ class KGQARetriever(BaseGraphRetriever):
         if len(results) == 0:
             logger.debug(
                 "No query results. Are there any entities and relations in the question that are also in the knowledge graph?")
+            return {"answer": "", "meta": {"model": "GraphRetriever"}}
 
-        return results
+        print([self.format_result(result) for result in results])
+        return [self.format_result(result) for result in results]
+        #return results
+
+    def format_result(self, result):
+        """
+        Generate formatted dictionary output with text answer and additional info
+        """
+        text_answer = self.prediction_to_text(result)
+        meta = {"model": "GraphRetriever"}
+        if True:
+            meta["urls"] = str(self.prediction_to_urls(result))
+        return {"answer": text_answer, "meta": meta}
 
     def filter_relations_from_entities(self):
         for predicate_name in self.predicate_names:
@@ -246,6 +259,18 @@ class KGQARetriever(BaseGraphRetriever):
         logger.info(f"Number of queries after pruning: {len(queries)}")
         return queries
 
+    def prediction_to_urls(self, prediction):
+        if isinstance(prediction, bool) or isinstance(prediction, int):
+            return None
+        elif isinstance(prediction, list):
+            return [entity.replace("https://deepset.ai/harry_potter/", "https://harrypotter.fandom.com/wiki/") for entity in prediction if entity.startswith("https://deepset.ai/harry_potter/")]
+        elif not prediction.startswith("https://"):
+            return None
+        else:
+            #split list and for each entity get url
+            entities = re.split(",|\ \ |\n", prediction)
+            return [entity.replace("https://deepset.ai/harry_potter/", "https://harrypotter.fandom.com/wiki/") for entity in entities if entity.startswith("https://deepset.ai/harry_potter/")]
+
     def predictions_to_text(self, filename):
         df = pd.read_csv(filename)
         for index, row in df.iterrows():
@@ -254,6 +279,8 @@ class KGQARetriever(BaseGraphRetriever):
     def prediction_to_text(self, prediction):
         if isinstance(prediction, bool) or isinstance(prediction, int):
             return prediction
+        elif isinstance(prediction, list):
+            return "\n".join([self.entity_to_text(entity.strip()) for entity in prediction])
         elif not prediction.startswith("https://"):
             return prediction
         else:
@@ -264,7 +291,9 @@ class KGQARetriever(BaseGraphRetriever):
     def entity_to_text(self, entity):
         if entity.startswith("https://deepset.ai/harry_potter/"):
             triples = {Triple(subject=f"<{entity}>", predicate="<https://deepset.ai/harry_potter/name>", object="?uri")}
-            entity = self.query_executor.execute(Query(question_type=QuestionType.ListQuestion, triples=triples))[0]
+            response = self.query_executor.execute(Query(question_type=QuestionType.ListQuestion, triples=triples))
+            if len(response) > 0:
+                entity = response[0]
             entity = entity.replace("https://deepset.ai/harry_potter/", "").replace("_", " ").replace("-", " ")
         elif entity.startswith("https://harrypotter.fandom.com/wiki/"):
             entity = entity.replace("https://harrypotter.fandom.com/wiki/", "").replace("_", " ").replace("-", " ")
