@@ -28,7 +28,7 @@ class Question:
     Optional[Set[str]], Optional[Set[str]], Optional[QuestionType]):
         self.doc = nlp(self.question_text)
         self.entities = self.entity_linking(alias_to_entity_and_prob=alias_to_entity_and_prob,
-                                            subject_names=subject_names, predicate_names=predicate_names,
+                                            subject_names=subject_names,
                                             object_names=object_names)
         self.relations = self.relation_linking(predicate_names=predicate_names, nlp=nlp, relation_tfidf=relation_tfidf)
         self.question_type = self.classify_type()
@@ -52,7 +52,7 @@ class Question:
 
         return QuestionType.ListQuestion
 
-    def entity_linking(self, alias_to_entity_and_prob, subject_names, predicate_names, object_names, fuzzy=True):
+    def entity_linking(self, alias_to_entity_and_prob, subject_names, object_names):
         """
         Link spacy entities mentioned in a question to entities that exist in our knowledge base
         """
@@ -79,7 +79,7 @@ class Question:
                 entities.add(np_lemma_without_determiners)
                 linked_entities_indices.update(range(np.start, np.end))
 
-            elif np_lemma_without_determiners in alias_to_entity_and_prob and fuzzy:
+            elif np_lemma_without_determiners in alias_to_entity_and_prob:
                 entities.add(max(alias_to_entity_and_prob[np_lemma_without_determiners], key=itemgetter(1))[0])
                 linked_entities_indices.update(range(np.start, np.end))
 
@@ -92,7 +92,7 @@ class Question:
                         ent.text) in object_names:
                     entities.add(ent.text)
                     linked_entities_indices.update(range(ent.start, ent.end))
-                elif ent.text in alias_to_entity_and_prob and fuzzy:
+                elif ent.text in alias_to_entity_and_prob:
                     entities.add(max(alias_to_entity_and_prob[ent.text], key=itemgetter(1))[0])
                     linked_entities_indices.update(range(ent.start, ent.end))
         # for any remaining tokens: try to link nouns to entities
@@ -104,7 +104,7 @@ class Question:
                 if self.add_namespace_to_resource(token.text) in subject_names or self.add_namespace_to_resource(
                         token.text) in object_names:
                     entities.add(token.text)
-                elif token.text in alias_to_entity_and_prob and fuzzy:
+                elif token.text in alias_to_entity_and_prob:
                     entities.add(max(alias_to_entity_and_prob[token.text], key=itemgetter(1))[0])
 
             elif token.pos_ == "ADJ":

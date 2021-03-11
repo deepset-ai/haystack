@@ -56,9 +56,7 @@ def train_relation_linking(kgqa_retriever: KGQARetriever, filename: str):
             q.doc = kgqa_retriever.nlp(q.question_text)
             entities = q.entity_linking(alias_to_entity_and_prob=kgqa_retriever.alias_to_entity_and_prob,
                                         subject_names=kgqa_retriever.subject_names,
-                                        predicate_names=kgqa_retriever.predicate_names,
-                                        object_names=kgqa_retriever.object_names,
-                                        fuzzy=True)
+                                        object_names=kgqa_retriever.object_names)
 
             # sentences with too many entities are skipped because they dont help the training
             if len(entities) > 7:
