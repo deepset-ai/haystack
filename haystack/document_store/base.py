@@ -206,6 +206,6 @@ class BaseDocumentStore(BaseComponent):
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None, **kwargs):
+    def run(self, documents: List[dict], index: Optional[str] = None, **kwargs): # type: ignore
         self.write_documents(documents=documents, index=index)
         return kwargs, "output_1"
