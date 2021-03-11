@@ -63,8 +63,7 @@ Where:
 
 * `idf` is the inverse of the fraction of documents containing the word.
 
-In practice, both terms are usually log normalised. If you’d like to learn more about the exact details of the algorithm,
-have a look at [this video](https://www.youtube.com/watch?v=hNXwhF0OZ_o).
+In practice, both terms are usually log normalised.
 
 ### Initialisation
 
