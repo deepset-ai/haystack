@@ -1,3 +1,4 @@
+import json
 import logging
 import urllib.parse
 from typing import Optional, Set
@@ -23,13 +24,13 @@ class Question:
         self.entities: Optional[Set[str]] = None
         self.relations: Optional[Set[str]] = None
 
-    def analyze(self, nlp, alias_to_entity_and_prob, subject_names, predicate_names, object_names) -> (
+    def analyze(self, nlp, alias_to_entity_and_prob, subject_names, predicate_names, object_names, relation_tfidf) -> (
     Optional[Set[str]], Optional[Set[str]], Optional[QuestionType]):
         self.doc = nlp(self.question_text)
         self.entities = self.entity_linking(alias_to_entity_and_prob=alias_to_entity_and_prob,
                                             subject_names=subject_names, predicate_names=predicate_names,
                                             object_names=object_names)
-        self.relations = self.relation_linking(predicate_names=predicate_names, nlp=nlp)
+        self.relations = self.relation_linking(predicate_names=predicate_names, nlp=nlp, relation_tfidf=relation_tfidf)
         self.question_type = self.classify_type()
         return self.entities, self.relations, self.question_type
 
@@ -128,7 +129,7 @@ class Question:
             resource = f"https://deepset.ai/harry_potter/{resource}"
         return resource
 
-    def relation_linking(self, predicate_names, nlp):
+    def relation_linking(self, predicate_names, nlp, relation_tfidf):
         """
         Link verbs and nouns mentioned in a question to relations that exist in our knowledge base
         """
@@ -143,8 +144,13 @@ class Question:
                     relations.add(token.lemma_)
                 elif self.add_namespace_to_resource(token.text, brackets=False, capitalize=False) in predicate_names:
                     relations.add(token.text)
-                else:
-                    pass
+                elif token.pos_ == "VERB":
+                    #pass
+                    best_relation_result, highest_tfidf = self.best_relation(token.lemma_.lower(), predicate_names, relation_tfidf)
+                    if best_relation_result and highest_tfidf > 800:
+                        best_relation_result = best_relation_result.split("/")[-1]
+                        print(token.text, best_relation_result, str(highest_tfidf))
+                        relations.add(best_relation_result)
                     # todo fuzzy matching for relation names
                     #relation, score = self.find_most_similar_relation(token.lemma_, nlp, predicate_names)
                     #if score > 0.4:
@@ -156,6 +162,18 @@ class Question:
                 relations.add("date")
             if self.question_text.lower().startswith("where"):
                 relations.add("location")
+            for token in self.doc:
+                if token.pos_ == "VERB" or token.pos_ == "NOUN" or token.pos_ == "PROPN":
+                    best_relation_result, highest_tfidf = self.best_relation(token.lemma_.lower(), predicate_names, relation_tfidf)
+                    if best_relation_result and highest_tfidf > 800:
+                        best_relation_result = best_relation_result.split("/")[-1]
+                        print("added", token.text, best_relation_result, str(highest_tfidf))
+                        relations.add(best_relation_result)
+                    relation, score = self.find_most_similar_relation(token.lemma_, nlp, predicate_names)
+                    if score > 0.4:
+                        logger.info(f"Adding relation {relation} for token {token.text}")
+                        relations.add(relation)
+
         logger.info(f"linked relations: {relations}")
         relations = {self.add_namespace_to_resource(recognized_relation, brackets=True, capitalize=False) for recognized_relation in
                      relations}
@@ -172,3 +190,23 @@ class Question:
         if token1.is_oov or token2.is_oov:
             return -1
         return token1.similarity(token2)
+
+    def lookup(self, token, relation, relation_tfidf):
+        #relation = "https://deepset.ai/harry_potter/" + relation
+        if str((token, relation)) in relation_tfidf:
+            return relation_tfidf[str((token, relation))]
+        else:
+            return -1
+
+    def best_relation(self, token, predicate_names, relation_tfidf):
+        #token = self.nlp(token)[0].lemma_.lower()
+        highest_tfidf = 0
+        best_relation = None
+        for relation in predicate_names:
+            if relation.endswith("family") or relation.endswith("loyalty") or relation.endswith("alias") or relation.endswith("family_members") or relation.endswith("affiliation") or relation.endswith("wife") or relation.endswith("husband"):
+                continue
+            tfidf = self.lookup(token, relation, relation_tfidf)
+            if tfidf > highest_tfidf:
+                highest_tfidf = tfidf
+                best_relation = relation
+        return best_relation, highest_tfidf

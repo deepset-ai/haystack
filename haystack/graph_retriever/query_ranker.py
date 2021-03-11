@@ -12,26 +12,27 @@ logger = logging.getLogger(__name__)
 
 class QueryRanker:
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, max_ranking: int):
         self.save_dir = Path(filename)
         self.model = Inferencer.load(self.save_dir)
+        self.max_ranking = max_ranking
 
     def query_ranking(self, queries: List[Query], question: str, top_k_graph: int) -> List[Tuple[Query, float]]:
         """
         Sort queries based on their semantic similarity with the question
         """
         logger.info(f"Ranking {len(queries)} queries")
-        queries_with_scores = self.similarity_of_question_queries(queries=queries, question=question, use_farm=True, top_k_graph=top_k_graph, max_ranking=5)
+        queries_with_scores = self.similarity_of_question_queries(queries=queries, question=question, use_farm=True, top_k_graph=top_k_graph)
         queries_with_scores.sort(key=itemgetter(1), reverse=True)
         return queries_with_scores
 
-    def similarity_of_question_queries(self, queries: List[Query], question: str, use_farm, top_k_graph: int, max_ranking: int) -> List[Tuple[Query, float]]:
+    def similarity_of_question_queries(self, queries: List[Query], question: str, use_farm, top_k_graph: int) -> List[Tuple[Query, float]]:
         """
         Calculate the semantic similarity of each query and a question
         Current approach uses text pair classification from FARM and is pre-trained on LC-QuAD
         Alternative approach could use Tree LSTMs to calculate similarity as described in https://journalofbigdata.springeropen.com/track/pdf/10.1186/s40537-020-00383-w.pdf
         """
-        max_ranking = max(top_k_graph, max_ranking)
+        max_ranking = max(top_k_graph, self.max_ranking)
         if len(queries) < 2:
             # if there is no ranking needed, skip it and return score -1 because no score has been calculated
             return [(query, 1.0) for query in queries]

@@ -22,12 +22,11 @@ logger = logging.getLogger(__name__)
 class KGQARetriever(BaseGraphRetriever):
     def __init__(self, knowledge_graph):
         self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
-        self.min_threshold: int = 2
-        self.query_ranker: QueryRanker = QueryRanker("saved_models/lcquad_text_pair_classification_with_entity_labels_v2")
+        self.min_freq_entities_and_relations: int = 2
+        self.query_ranker: QueryRanker = QueryRanker(filename="saved_models/lcquad_text_pair_classification_with_entity_labels_v2", max_ranking=5)
         self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
-        # self.nlp = spacy.load('en_core_web_sm')
         self.nlp = spacy.load('en_core_web_lg')
-        # self.nlp = spacy.load('en_core_web_trf')
+        self.relation_tfidf = json.load(open("token_and_relation_to_tfidf.json"))
 
         logger.info("Loading triples from knowledge graph...")
         self.subject_names = Counter(
@@ -41,9 +40,9 @@ class KGQARetriever(BaseGraphRetriever):
             f"Loaded {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects.")
 
         # filter out subjects, objects and relations that occur only once
-        self.filter_infrequent_entities_and_relations(min_threshold=self.min_threshold)
+        self.filter_infrequent_entities_and_relations(min_threshold=self.min_freq_entities_and_relations)
         logger.info(
-            f"Filtered down to {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects occuring at least {self.min_threshold} times.")
+            f"Filtered down to {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects occuring at least {self.min_freq_entities_and_relations} times.")
 
         self.alias_to_entity_and_prob = json.load(open("alias_to_entity_and_prob.json"))
         self.alias_to_entity_and_prob = self.filter_existing_entities()
@@ -116,7 +115,8 @@ class KGQARetriever(BaseGraphRetriever):
                                                               alias_to_entity_and_prob=self.alias_to_entity_and_prob,
                                                               subject_names=self.subject_names,
                                                               predicate_names=self.predicate_names,
-                                                              object_names=self.object_names)
+                                                              object_names=self.object_names,
+                                                              relation_tfidf=self.relation_tfidf)
 
         triples = self.triple_generation(entities, relations, question_type)
         queries = self.query_generation(triples, question_type)
@@ -151,7 +151,6 @@ class KGQARetriever(BaseGraphRetriever):
 
     def filter_existing_entities(self):
         # filter out entities that were used in anchor texts but are not in the knowledge graph
-        # { k="Albus" : v=[("Albus_Dumbledore",0.9),("Albus_Potter",0.1)]}
         alias_to_entity_and_prob_filtered = dict()
         for (alias, v) in self.alias_to_entity_and_prob.items():
             filtered_entities = []
@@ -234,99 +233,27 @@ class KGQARetriever(BaseGraphRetriever):
         logger.info(f"Number of queries after pruning: {len(queries)}")
         return queries
 
-    def eval_on_extractive_qa_test_data(self, top_k_graph: int, filename: str):
-        df = pd.read_csv(filename, sep=";")
-        predictions = []
+    def predictions_to_text(self, filename):
+        df = pd.read_csv(filename)
         for index, row in df.iterrows():
-            if row['Category'] == "YES":
-                ground_truth_answer = "True"
-            elif row['Category'] == "NO":
-                ground_truth_answer = "False"
-            else:
-                predictions.append("")
-                continue
-            prediction = self.retrieve(question_text=row['Question Text'], top_k_graph=top_k_graph)
-            predictions.append(prediction)
-            print(f"Pred: {prediction}")
-            print(
-                f"Label: {ground_truth_answer.replace('https://harrypotter.fandom.com/wiki/', 'https://deepset.ai/harry_potter/')}")
+            print("\""+self.prediction_to_text(row['Answer']).lower()+"\"")
 
-        df['prediction'] = predictions
-        df.to_csv("20210304_harry_answers_predictions.csv", index=False)
+    def prediction_to_text(self, prediction):
+        if isinstance(prediction, bool) or isinstance(prediction, int):
+            return prediction
+        elif not prediction.startswith("https://"):
+            return prediction
+        else:
+            #split list and for each entity get text representation
+            entities = re.split(",|\ \ |\n", prediction)
+            return "\n".join([self.entity_to_text(entity.strip()) for entity in entities])
 
-    def distant_supervision(self):
-        # import pandas as pd
-        # import spacy
-        # nlp = spacy.load('en_core_web_lg')
-        df = pd.read_csv("harrypotter_docs.csv")
-        df = df.head(n=1)
+    def entity_to_text(self, entity):
+        if entity.startswith("https://deepset.ai/harry_potter/"):
+            triples = {Triple(subject=f"<{entity}>", predicate="<https://deepset.ai/harry_potter/name>", object="?uri")}
+            entity = self.query_executor.execute(Query(question_type=QuestionType.ListQuestion, triples=triples))[0]
+            entity = entity.replace("https://deepset.ai/harry_potter/", "").replace("_", " ").replace("-", " ")
+        elif entity.startswith("https://harrypotter.fandom.com/wiki/"):
+            entity = entity.replace("https://harrypotter.fandom.com/wiki/", "").replace("_", " ").replace("-", " ")
+        return entity
 
-
-
-        document_frequency = Counter() # each sentence corresponds to a document for idf calculation
-        relation_to_token = dict()
-        for relation in self.predicate_names:
-            relation_to_token[relation] = Counter()
-        # works -> (job, 1000)
-        # "A sentence expresses relation r if it contains two co-occurring entities that are in relation r according to a knowledge base."
-        for index, row in df.iterrows():
-            document_text = row['document_text']
-            logging.getLogger("haystack.graph_retriever.question").setLevel(logging.WARNING)
-            logger.warning(f"Processing document {index+1} out of {len(df)}")
-            for sentence in self.nlp(document_text).sents:
-                entities = [token.text for token in sentence]
-                q = Question(question_text=sentence.text)
-                q.doc = self.nlp(q.question_text)
-                entities = q.entity_linking(alias_to_entity_and_prob=self.alias_to_entity_and_prob,
-                        subject_names=self.subject_names,
-                        predicate_names=self.predicate_names,
-                        object_names=self.object_names,
-                        fuzzy=False)
-
-                # sentences with too many entities are skipped because they dont help the training
-                if len(entities) > 5:
-                    continue
-
-                tokens = [token.text.lower() for token in sentence]
-                document_frequency.update(set(tokens))
-
-                # for all pairs of entities, check in which relations they co-occur
-                for (s, o) in itertools.permutations(entities, 2):
-                    # get all relations
-                    triples = {Triple(subject=s, predicate="?uri", object=o)}
-                    response = self.query_executor.execute(Query(question_type=QuestionType.ListQuestion, triples=triples))
-                    for token in tokens:
-                        for relation in response:
-                            if relation in self.predicate_names:
-                                relation_to_token[relation][token] += 1
-
-        print("completed")
-
-        # relation_to_token[relation][token] contains term frequency
-        # document_frequency[token] contains document frequency
-        #
-        # calculate idf for each word in vocabulary
-        # calculate tf for each relation and each word
-        #
-        relation_to_best_token = dict() #or vice versa
-        for relation in self.predicate_names:
-            best_tf_idf = 0
-            for token in document_frequency:
-                if best_tf_idf < relation_to_token[relation][token]/document_frequency[token] and document_frequency[token] > 10:
-                    best_tf_idf = relation_to_token[relation][token] / document_frequency[token]
-                    relation_to_best_token[relation] = token
-
-        # goal: dictionary: token -> most likely relation and the corresponding tf_idf value
-        token_to_relation = dict()
-        for token in document_frequency:
-            if document_frequency[token] <= 10:
-                continue
-            best_tf = 0
-            for relation in self.predicate_names:
-                if best_tf < relation_to_token[relation][token]:
-                    best_tf = relation_to_token[relation][token]
-                    token_to_relation[token] = (relation, best_tf/document_frequency[token])
-
-        json.dump(relation_to_best_token, open("relation_to_best_token.json", "w"))
-        json.dump(token_to_relation, open("token_to_relation.json", "w"))
-        json.dump(document_frequency, open("document_frequency.json", "w"))
