@@ -8,6 +8,7 @@ import networkx as nx
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
+import traceback
 
 from haystack import BaseComponent
 from haystack.generator.base import BaseGenerator
@@ -18,6 +19,9 @@ from haystack.translator.base import BaseTranslator
 from haystack.knowledge_graph.base import BaseKnowledgeGraph
 from haystack.graph_retriever.base import BaseGraphRetriever
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Pipeline(ABC):
     """
@@ -101,34 +105,40 @@ class Pipeline(ABC):
         self.graph.nodes[name]["component"] = component
 
     def run(self, **kwargs):
-        has_next_node = True
-        current_node_id = self.root_node_id
-        input_dict = {"pipeline_type": self.pipeline_type, **kwargs}
-        output_dict = None
-
-        while has_next_node:
-            output_dict, stream_id = self.graph.nodes[current_node_id]["component"].run(**input_dict)
-            input_dict = output_dict
-            next_nodes = self.get_next_nodes(current_node_id, stream_id)
-
-            if len(next_nodes) > 1:
-                join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
-                if set(self.graph.predecessors(join_node_id)) != set(next_nodes):
-                    raise NotImplementedError(
-                        "The current pipeline does not support multiple levels of parallel nodes."
-                    )
-                inputs_for_join_node = {"inputs": []}
-                for n_id in next_nodes:
-                    output = self.graph.nodes[n_id]["component"].run(**input_dict)
-                    inputs_for_join_node["inputs"].append(output)
-                input_dict = inputs_for_join_node
-                current_node_id = join_node_id
-            elif len(next_nodes) == 1:
-                current_node_id = next_nodes[0]
-            else:
-                has_next_node = False
-
-        return output_dict
+        node_output = None
+        stack = {
+            self.root_node_id: {"pipeline_type": self.pipeline_type, **kwargs}
+        }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO stack
+        nodes_executed = set()
+        i = -1  # the last item is popped off the stack unless it is a join node with unprocessed predecessors
+        while stack:
+            node_id = list(stack.keys())[i]
+            node_input = stack[node_id]
+            predecessors = set(self.graph.predecessors(node_id))
+            if predecessors.issubset(nodes_executed):  # only execute if predecessor nodes are executed
+                nodes_executed.add(node_id)
+                try:
+                    logger.debug(f"Running node `{node_id}` with input `{node_input.keys()}`")
+                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+                except Exception as e:
+                    tb = traceback.format_exc()
+                    raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
+                stack.pop(node_id)
+                next_nodes = self.get_next_nodes(node_id, stream_id)
+                for n in next_nodes:  # add successor nodes with corresponding inputs to the stack
+                    if stack.get(n):  # concatenate inputs if it's a join node
+                        existing_input = stack[n]
+                        if "inputs" not in existing_input.keys():
+                            updated_input = {"inputs": [existing_input, node_output]}
+                        else:
+                            updated_input = existing_input["inputs"].append(node_output)
+                        stack[n] = updated_input
+                    else:
+                        stack[n] = node_output
+                i = -1
+            else:  # attempt executing lower nodes in the stack as `node_id` has unprocessed predecessors
+                i -= 1
+        return node_output
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
@@ -246,6 +256,7 @@ class Pipeline(ABC):
 
             component_params = definitions[name]["params"]
             component_type = definitions[name]["type"]
+            logger.debug(f"Loading component `{name}` of type `{definitions[name]['type']}`")
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
@@ -527,6 +538,54 @@ class RootNode:
     def run(self, **kwargs):
         return kwargs, "output_1"
 
+class JoinAnswers(BaseComponent):
+    """
+    A node to join documents outputted by multiple retriever nodes.
+
+    The node allows multiple join modes:
+    * concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
+    * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
+             `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
+    """
+
+    outgoing_edges = 1
+
+    def __init__(
+        self, join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None
+    ):
+        """
+        :param join_mode: `concatenate` to combine documents from multiple retrievers or `merge` to aggregate scores of
+                          individual documents.
+        :param weights: A node-wise list(length of list must be equal to the number of input nodes) of weights for
+                        adjusting document scores when using the `merge` join_mode. By default, equal weight is given
+                        to each retriever score. This param is not compatible with the `concatenate` join_mode.
+        :param top_k_join: Limit documents to top_k based on the resulting scores of the join.
+        """
+        assert join_mode in ["concatenate"], f"JoinAnswers node does not support '{join_mode}' join_mode."
+
+        assert not (
+            weights is not None and join_mode == "concatenate"
+        ), "Weights are not compatible with 'concatenate' join_mode."
+        self.join_mode = join_mode
+        self.weights = weights
+        self.top_k = top_k_join
+
+    def run(self, **kwargs):
+        inputs = kwargs["inputs"]
+
+        if self.join_mode == "concatenate":
+            answers = []
+            for input_from_node in inputs:
+                answers.extend(input_from_node["answers"])
+        else:
+            raise Exception(f"Invalid join_mode: {self.join_mode}")
+
+        # answers = sorted(answer_map.values(), key=lambda d: d.score, reverse=True)
+        # if self.top_k:
+        #     answers = answers[: self.top_k]
+        output = {"query": inputs[0]["query"], "answers": answers, "label": inputs[0].get("label", None)}
+        return output, "output_1"
+
 
 class JoinDocuments(BaseComponent):
     """
@@ -565,7 +624,7 @@ class JoinDocuments(BaseComponent):
 
         if self.join_mode == "concatenate":
             document_map = {}
-            for input_from_node, _ in inputs:
+            for input_from_node in inputs:
                 for doc in input_from_node["documents"]:
                     document_map[doc.id] = doc
         elif self.join_mode == "merge":
@@ -574,7 +633,7 @@ class JoinDocuments(BaseComponent):
                 weights = self.weights
             else:
                 weights = [1/len(inputs)] * len(inputs)
-            for (input_from_node, _), weight in zip(inputs, weights):
+            for input_from_node, weight in zip(inputs, weights):
                 for doc in input_from_node["documents"]:
                     if document_map.get(doc.id):  # document already exists; update score
                         document_map[doc.id].score += doc.score * weight
@@ -587,5 +646,18 @@ class JoinDocuments(BaseComponent):
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
         if self.top_k:
             documents = documents[: self.top_k]
-        output = {"query": inputs[0][0]["query"], "documents": documents, "label": inputs[0][0].get("label", None)}
+        output = {"query": inputs[0]["query"], "documents": documents, "label": inputs[0].get("label", None)}
         return output, "output_1"
+
+
+class QueryRouter(BaseComponent):
+    outgoing_edges = 2
+
+    def run(self, **kwargs):
+        query_executor = kwargs.get("query_executor")
+        if query_executor == "extractive_qa":
+            return kwargs, "output_1"
+        elif query_executor == "knowledge_graph":
+            return kwargs, "output_2"
+        else:
+            raise NotImplementedError(f"'{query_executor}' is not a valid query_executor")

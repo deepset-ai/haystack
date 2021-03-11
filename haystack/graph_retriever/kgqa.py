@@ -24,14 +24,21 @@ logger = logging.getLogger(__name__)
 
 
 class KGQARetriever(BaseGraphRetriever):
-    def __init__(self, knowledge_graph):
+    def __init__(
+        self,
+        knowledge_graph: GraphDBKnowledgeGraph,
+        query_ranker_path: str,
+        alias_to_entity_and_prob_path: str,
+        token_and_relation_to_tfidf_path: str,
+        top_k: int = 10
+    ):
         self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
-        self.min_threshold = 2
-        self.query_ranker = QueryRanker("saved_models/lcquad_text_pair_classification_with_entity_labels_v2")
-        self.query_executor = QueryExecutor(knowledge_graph)
-        # self.nlp = spacy.load('en_core_web_sm')
+        self.min_freq_entities_and_relations: int = 2
+        self.query_ranker: QueryRanker = QueryRanker(query_ranker_path, max_ranking=5)
+        self.top_k = top_k
+        self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
         self.nlp = spacy.load('en_core_web_lg')
-        # self.nlp = spacy.load('en_core_web_trf')
+        self.relation_tfidf = json.load(open(token_and_relation_to_tfidf_path))
 
         logger.info("Loading triples from knowledge graph...")
         self.subject_names = Counter(
@@ -45,14 +52,14 @@ class KGQARetriever(BaseGraphRetriever):
             f"Loaded {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects.")
 
         # filter out subjects, objects and relations that occur only once
-        self.filter_infrequent_entities_and_relations(min_threshold=self.min_threshold)
+        self.filter_infrequent_entities_and_relations(min_threshold=self.min_freq_entities_and_relations)
         logger.info(
-            f"Filtered down to {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects occuring at least {self.min_threshold} times.")
+            f"Filtered down to {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects occuring at least {self.min_freq_entities_and_relations} times.")
 
-        self.alias_to_entity_and_prob = json.load(open("alias_to_entity_and_prob.json"))
+        self.alias_to_entity_and_prob = json.load(open(alias_to_entity_and_prob_path))
         self.alias_to_entity_and_prob = self.filter_existing_entities()
 
-    def compare_answers(self, answer, prediction, question_type):
+    def compare_answers(self, answer, prediction, question_type: str):
         if question_type == "List":
             if isinstance(prediction, int):
                 # assumed wrong question type
@@ -60,8 +67,7 @@ class KGQARetriever(BaseGraphRetriever):
             # split multiple entities
             # strip whitespaces, lowercase, and remove namespace
             # convert answers to sets so that the order of the items does not matter
-
-            answer = [str(answer_item).strip().lower() for answer_item in re.split(",|\ \ ", str(answer))]
+            answer = [str(answer_item).strip().lower() for answer_item in re.split(",|\ \ |\n", str(answer))]
             answer = {answer_item.replace('https://harrypotter.fandom.com/wiki/', "").replace("_", " ").replace("-", " ") for answer_item in answer}
 
             prediction = [str(prediction_item).strip().lower() for prediction_item in prediction]
@@ -76,19 +82,18 @@ class KGQARetriever(BaseGraphRetriever):
 
         return answer == prediction
 
-
     def eval(self, filename, question_type, top_k_graph):
         """
         Calculate top_k accuracy given a tsv file with question and answer columns and store predictions
         Do this evaluation for one chosen type of questions (List, Boolean, Count)
         """
-        df = pd.read_csv(filename, sep="\t")
+        df = pd.read_csv(filename)
         df = df[df['Type'] == question_type]
         predictions_for_all_queries = []
         number_of_correct_predictions = 0
         correct_predictions = []
         for index, row in df.iterrows():
-            predictions_for_query = self.retrieve(question_text=row['Question'], top_k_graph=top_k_graph)
+            predictions_for_query = self.retrieve(question_text=row['Question'], top_k=top_k_graph)
             if not predictions_for_query:
                 predictions_for_all_queries.append(None)
                 correct_predictions.append(0)
@@ -111,35 +116,55 @@ class KGQARetriever(BaseGraphRetriever):
         df['correct'] = correct_predictions
         df.to_csv("predictions.csv", index=False)
 
-    def run(self, query, top_k_graph, **kwargs):
-        return self.retrieve(question_text=query, top_k_graph=top_k_graph)
+    def run(self, query, top_k_graph: Optional[int] = None, **kwargs):
+        answers = self.retrieve(question_text=query, top_k=top_k_graph)
 
-    def retrieve(self, question_text: str, top_k_graph: int):
+        results = {"query": query,
+                   "answers": answers,
+                   **kwargs}
+        return results, "output_1"
+
+    def retrieve(self, question_text: str, top_k: Optional[int] = None):
+        if top_k is None:
+            top_k = self.top_k
         logger.info(f"Processing question \"{question_text}\"")
         question: Question = Question(question_text=question_text)
         entities, relations, question_type = question.analyze(nlp=self.nlp,
                                                               alias_to_entity_and_prob=self.alias_to_entity_and_prob,
                                                               subject_names=self.subject_names,
                                                               predicate_names=self.predicate_names,
-                                                              object_names=self.object_names)
+                                                              object_names=self.object_names,
+                                                              relation_tfidf=self.relation_tfidf)
 
         triples = self.triple_generation(entities, relations, question_type)
         queries = self.query_generation(triples, question_type)
-        queries_with_scores = self.query_ranker.query_ranking(queries=queries, question=question.question_text, top_k_graph=top_k_graph)
+        queries_with_scores = self.query_ranker.query_ranking(queries=queries, question=question.question_text, top_k_graph=top_k)
         results = []
-        logger.info(f"Listing top {min(top_k_graph, len(queries_with_scores))} queries and answers (k={top_k_graph})")
-        for queries_with_score in queries_with_scores[:top_k_graph]:
+        logger.info(f"Listing top {min(top_k, len(queries_with_scores))} queries and answers (k={top_k})")
+        for queries_with_score in queries_with_scores[:top_k]:
             result = self.query_executor.execute(queries_with_score[0])
             logger.info(f"Score: {queries_with_score[1]} Query: {queries_with_score[0]}")
             logger.info(f"Answer: {result}")
             results.append(result)
 
-        if len(results) > 0:
-            return results
-        else:
-            logger.warning(
+        if len(results) == 0:
+            logger.debug(
                 "No query results. Are there any entities and relations in the question that are also in the knowledge graph?")
-            return None
+            return {"answer": "", "meta": {"model": "GraphRetriever"}}
+
+        print([self.format_result(result) for result in results])
+        return [self.format_result(result) for result in results]
+        #return results
+
+    def format_result(self, result):
+        """
+        Generate formatted dictionary output with text answer and additional info
+        """
+        text_answer = self.prediction_to_text(result)
+        meta = {"model": "GraphRetriever"}
+        if True:
+            meta["urls"] = str(self.prediction_to_urls(result))
+        return {"answer": str(text_answer), "meta": meta}
 
     def filter_relations_from_entities(self):
         for predicate_name in self.predicate_names:
@@ -156,7 +181,6 @@ class KGQARetriever(BaseGraphRetriever):
 
     def filter_existing_entities(self):
         # filter out entities that were used in anchor texts but are not in the knowledge graph
-        # { k="Albus" : v=[("Albus_Dumbledore",0.9),("Albus_Potter",0.1)]}
         alias_to_entity_and_prob_filtered = dict()
         for (alias, v) in self.alias_to_entity_and_prob.items():
             filtered_entities = []
@@ -239,24 +263,46 @@ class KGQARetriever(BaseGraphRetriever):
         logger.info(f"Number of queries after pruning: {len(queries)}")
         return queries
 
-    def eval_on_extractive_qa_test_data(self, top_k_graph, filename: str):
-        df = pd.read_csv(filename, sep=";")
-        predictions = []
-        for index, row in df.iterrows():
-            if row['Category'] == "YES":
-                ground_truth_answer = "True"
-            elif row['Category'] == "NO":
-                ground_truth_answer = "False"
-            else:
-                ground_truth_answer = row["Answer"]
-            prediction = self.retrieve(question_text=row['Question Text'], top_k_graph=top_k_graph)
-            predictions.append(prediction)
-            print(f"Pred: {prediction}")
-            print(
-                f"Label: {ground_truth_answer.replace('https://harrypotter.fandom.com/wiki/', 'https://deepset.ai/harry_potter/')}")
+    def prediction_to_urls(self, prediction):
+        if isinstance(prediction, bool) or isinstance(prediction, int):
+            return None
+        elif isinstance(prediction, list):
+            return [entity.replace("https://deepset.ai/harry_potter/", "https://harrypotter.fandom.com/wiki/") for entity in prediction if entity.startswith("https://deepset.ai/harry_potter/")]
+        elif not prediction.startswith("https://"):
+            return None
+        else:
+            #split list and for each entity get url
+            entities = re.split(",|\ \ |\n", prediction)
+            return [entity.replace("https://deepset.ai/harry_potter/", "https://harrypotter.fandom.com/wiki/") for entity in entities if entity.startswith("https://deepset.ai/harry_potter/")]
 
-        df['prediction'] = predictions
-        df.to_csv("20210304_harry_answers_predictions.csv", index=False)
+    def predictions_to_text(self, filename):
+        df = pd.read_csv(filename)
+        for index, row in df.iterrows():
+            print("\""+self.prediction_to_text(row['Answer']).lower()+"\"")
+
+    def prediction_to_text(self, prediction):
+        if isinstance(prediction, bool) or isinstance(prediction, int):
+            return prediction
+        elif isinstance(prediction, list):
+            return "\n".join([self.entity_to_text(entity.strip()) for entity in prediction])
+        elif not prediction.startswith("https://"):
+            return prediction
+        else:
+            #split list and for each entity get text representation
+            entities = re.split(",|\ \ |\n", prediction)
+            return "\n".join([self.entity_to_text(entity.strip()) for entity in entities])
+
+    def entity_to_text(self, entity):
+        if entity.startswith("https://deepset.ai/harry_potter/"):
+            triples = {Triple(subject=f"<{entity}>", predicate="<https://deepset.ai/harry_potter/name>", object="?uri")}
+            response = self.query_executor.execute(Query(question_type=QuestionType.ListQuestion, triples=triples))
+            if len(response) > 0:
+                entity = response[0]
+            entity = entity.replace("https://deepset.ai/harry_potter/", "").replace("_", " ").replace("-", " ")
+        elif entity.startswith("https://harrypotter.fandom.com/wiki/"):
+            entity = entity.replace("https://harrypotter.fandom.com/wiki/", "").replace("_", " ").replace("-", " ")
+        return entity
+
 
     def eval_on_all_data(self, top_k_graph, filename: str):
         df = pd.read_csv(filename, sep=",")
