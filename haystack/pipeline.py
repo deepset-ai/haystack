@@ -538,6 +538,54 @@ class RootNode:
     def run(self, **kwargs):
         return kwargs, "output_1"
 
+class JoinAnswers(BaseComponent):
+    """
+    A node to join documents outputted by multiple retriever nodes.
+
+    The node allows multiple join modes:
+    * concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
+    * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
+             `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
+    """
+
+    outgoing_edges = 1
+
+    def __init__(
+        self, join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None
+    ):
+        """
+        :param join_mode: `concatenate` to combine documents from multiple retrievers or `merge` to aggregate scores of
+                          individual documents.
+        :param weights: A node-wise list(length of list must be equal to the number of input nodes) of weights for
+                        adjusting document scores when using the `merge` join_mode. By default, equal weight is given
+                        to each retriever score. This param is not compatible with the `concatenate` join_mode.
+        :param top_k_join: Limit documents to top_k based on the resulting scores of the join.
+        """
+        assert join_mode in ["concatenate"], f"JoinAnswers node does not support '{join_mode}' join_mode."
+
+        assert not (
+            weights is not None and join_mode == "concatenate"
+        ), "Weights are not compatible with 'concatenate' join_mode."
+        self.join_mode = join_mode
+        self.weights = weights
+        self.top_k = top_k_join
+
+    def run(self, **kwargs):
+        inputs = kwargs["inputs"]
+
+        if self.join_mode == "concatenate":
+            answers = []
+            for input_from_node in inputs:
+                answers.extend(input_from_node["answers"])
+        else:
+            raise Exception(f"Invalid join_mode: {self.join_mode}")
+
+        # answers = sorted(answer_map.values(), key=lambda d: d.score, reverse=True)
+        # if self.top_k:
+        #     answers = answers[: self.top_k]
+        output = {"query": inputs[0]["query"], "answers": answers, "label": inputs[0].get("label", None)}
+        return output, "output_1"
+
 
 class JoinDocuments(BaseComponent):
     """
