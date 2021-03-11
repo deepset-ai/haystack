@@ -590,3 +590,16 @@ class JoinDocuments(BaseComponent):
             documents = documents[: self.top_k]
         output = {"query": inputs[0]["query"], "documents": documents, "label": inputs[0].get("label", None)}
         return output, "output_1"
+
+
+class QueryRouter(BaseComponent):
+    outgoing_edges = 2
+
+    def run(self, **kwargs):
+        query_executor = kwargs.get("query_executor")
+        if query_executor == "extractive_qa":
+            return kwargs, "output_1"
+        elif query_executor == "knowledge_graph":
+            return kwargs, "output_2"
+        else:
+            raise NotImplementedError(f"'{query_executor}' is not a valid query_executor")
