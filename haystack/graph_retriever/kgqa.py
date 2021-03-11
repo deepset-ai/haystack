@@ -160,7 +160,7 @@ class KGQARetriever(BaseGraphRetriever):
         meta = {"model": "GraphRetriever"}
         if True:
             meta["urls"] = str(self.prediction_to_urls(result))
-        return {"answer": text_answer, "meta": meta}
+        return {"answer": str(text_answer), "meta": meta}
 
     def filter_relations_from_entities(self):
         for predicate_name in self.predicate_names:
