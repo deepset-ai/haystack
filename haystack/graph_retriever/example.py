@@ -7,24 +7,24 @@ logger = logging.getLogger(__name__)
 
 
 def run_examples(kgqa_retriever: KGQARetriever, top_k_graph: int):
-    result = kgqa_retriever.retrieve(question_text="What is the hair color of Hermione?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Did Albus Dumbledore die?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Who has Blond hair?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Did Harry die?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="What is the patronus of Harry?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Who is the founder of house Gryffindor?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="How many members are in house Gryffindor?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Who are the members of house Gryffindor?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Who is the nephew of Fred Weasley?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Who is the father of Fred Weasley?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Is Professor McGonagall in house Gryffindor?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="In which house is Professor McGonagall?", top_k_graph=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="What is the hair color of Hermione?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Did Albus Dumbledore die?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Who has Blond hair?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Did Harry die?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="What is the patronus of Harry?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Who is the founder of house Gryffindor?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="How many members are in house Gryffindor?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Who are the members of house Gryffindor?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Who is the nephew of Fred Weasley?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Who is the father of Fred Weasley?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Is Professor McGonagall in house Gryffindor?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="In which house is Professor McGonagall?", top_k=top_k_graph)
     result = kgqa_retriever.retrieve(question_text="Which owner of the Marauders Map was born in Scotland?",
-                           top_k_graph=top_k_graph)
+                                     top_k=top_k_graph)
     result = kgqa_retriever.retrieve(question_text="What is the name of the daughter of Harry and Ginny?",
-                           top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="How many children does Harry Potter have?", top_k_graph=top_k_graph)
-    result = kgqa_retriever.retrieve(question_text="Does Harry Potter have a child?", top_k_graph=top_k_graph)
+                                     top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="How many children does Harry Potter have?", top_k=top_k_graph)
+    result = kgqa_retriever.retrieve(question_text="Does Harry Potter have a child?", top_k=top_k_graph)
 
 
 def run_experiments():

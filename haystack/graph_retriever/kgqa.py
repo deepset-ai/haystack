@@ -22,9 +22,10 @@ logger = logging.getLogger(__name__)
 class KGQARetriever(BaseGraphRetriever):
     def __init__(
         self,
-        knowledge_graph,
-        query_ranker_path,
-        alias_to_entity_and_prob_path,
+        knowledge_graph: GraphDBKnowledgeGraph,
+        query_ranker_path: str,
+        alias_to_entity_and_prob_path: str,
+        top_k: int = 10
     ):
         self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
         self.min_threshold: int = 2
@@ -88,7 +89,7 @@ class KGQARetriever(BaseGraphRetriever):
         number_of_correct_predictions = 0
         correct_predictions = []
         for index, row in df.iterrows():
-            predictions_for_query = self.retrieve(question_text=row['Question'], top_k_graph=top_k_graph)
+            predictions_for_query = self.retrieve(question_text=row['Question'], top_k=top_k_graph)
             if not predictions_for_query:
                 predictions_for_all_queries.append(None)
                 correct_predictions.append(0)
@@ -111,10 +112,12 @@ class KGQARetriever(BaseGraphRetriever):
         df['correct'] = correct_predictions
         df.to_csv("predictions.csv", index=False)
 
-    def run(self, query, top_k_graph, **kwargs):
-        return self.retrieve(question_text=query, top_k_graph=top_k_graph)
+    def run(self, query, top_k_graph: Optional[int] = None, **kwargs):
+        return self.retrieve(question_text=query, top_k=top_k_graph)
 
-    def retrieve(self, question_text: str, top_k_graph: int):
+    def retrieve(self, question_text: str, top_k: Optional[int] = None):
+        if top_k is None:
+            top_k = self.top_k
         logger.info(f"Processing question \"{question_text}\"")
         question: Question = Question(question_text=question_text)
         entities, relations, question_type = question.analyze(nlp=self.nlp,
@@ -125,10 +128,10 @@ class KGQARetriever(BaseGraphRetriever):
 
         triples = self.triple_generation(entities, relations, question_type)
         queries = self.query_generation(triples, question_type)
-        queries_with_scores = self.query_ranker.query_ranking(queries=queries, question=question.question_text, top_k_graph=top_k_graph)
+        queries_with_scores = self.query_ranker.query_ranking(queries=queries, question=question.question_text, top_k_graph=top_k)
         results = []
-        logger.info(f"Listing top {min(top_k_graph, len(queries_with_scores))} queries and answers (k={top_k_graph})")
-        for queries_with_score in queries_with_scores[:top_k_graph]:
+        logger.info(f"Listing top {min(top_k, len(queries_with_scores))} queries and answers (k={top_k})")
+        for queries_with_score in queries_with_scores[:top_k]:
             result = self.query_executor.execute(queries_with_score[0])
             logger.info(f"Score: {queries_with_score[1]} Query: {queries_with_score[0]}")
             logger.info(f"Answer: {result}")
@@ -250,7 +253,7 @@ class KGQARetriever(BaseGraphRetriever):
             else:
                 predictions.append("")
                 continue
-            prediction = self.retrieve(question_text=row['Question Text'], top_k_graph=top_k_graph)
+            prediction = self.retrieve(question_text=row['Question Text'], top_k=top_k_graph)
             predictions.append(prediction)
             print(f"Pred: {prediction}")
             print(
