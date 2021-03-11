@@ -7,11 +7,13 @@ import pandas as pd
 import spacy
 import itertools
 
+
 from haystack.graph_retriever.base import BaseGraphRetriever
 from haystack.graph_retriever.query import Query
 from haystack.graph_retriever.query_executor import QueryExecutor
 from haystack.graph_retriever.question import QuestionType, Question
 from haystack.graph_retriever.triple import Triple
+from haystack.graph_retriever.utils import compare_answers_fuzzy
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 
 from transformers import BartForConditionalGeneration, BartTokenizer
@@ -74,6 +76,7 @@ class KGQARetriever(BaseGraphRetriever):
             prediction = int(prediction)
 
         return answer == prediction
+
 
     def eval(self, filename, question_type, top_k_graph):
         """
@@ -264,6 +267,37 @@ class KGQARetriever(BaseGraphRetriever):
         df['prediction'] = predictions
         df.to_csv("20210304_harry_answers_predictions.csv", index=False)
 
+    def eval_on_all_data(self, top_k_graph, filename: str):
+        df = pd.read_csv(filename, sep=",")
+
+        for index, row in df.iterrows():
+            if index % 10 == 0:
+                logger.info(f"Predicting {index} item")
+            prediction = self.retrieve(question_text=row['Question Text'], top_k_graph=top_k_graph)
+
+            if not pd.isna(row["Short"]):
+                question_type = "Short"
+            elif not pd.isna(row["Multi Fact"]):
+                question_type = "Multi Fact"
+            elif not pd.isna(row["Numeric"]):
+                question_type = "Numeric"
+            elif not pd.isna(row["Boolean"]):
+                question_type = "Boolean"
+            elif not pd.isna(row["Open-Ended"]):
+                question_type = "Open-Ended"
+            else:
+                raise NotImplementedError
+
+            for i,p in enumerate(prediction):
+                res = compare_answers_fuzzy(answer1=row["Answer"],
+                                            answer2=p,
+                                            question_type=question_type)
+                df.loc[index,f"prediction_{i}"] = p
+                df.loc[index,f'pred_em_{i}'] = res["em"]
+                df.loc[index,f'pred_f1_{i}'] = res["f1"]
+
+        return df
+
 
 class Text2SparqlRetriever(BaseGraphRetriever):
     def __init__(self, knowledge_graph, model_name_or_path):
@@ -287,6 +321,7 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         return answers[:top_k_graph]
 
     def _query_kg(self, query):
+        # Bring generated query into Harry Potter KG form
         query = query.replace("}", " }")
         query = query.replace(")", " )")
         splits = query.split()
@@ -296,6 +331,8 @@ class Text2SparqlRetriever(BaseGraphRetriever):
                 s = s.replace("hp:", "<https://deepset.ai/harry_potter/")
                 s = s + ">"
             query += s + " "
+
+        # query KG
         try:
             results = self.knowledge_graph.query(query=query, index="hp-test")
         except Exception as e:
@@ -377,4 +414,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-
