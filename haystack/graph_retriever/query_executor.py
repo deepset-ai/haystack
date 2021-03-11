@@ -26,6 +26,7 @@ class QueryExecutor:
             result = [result_item["uri"]["value"] if "uri" in result_item else "" for result_item in response]
         elif query.question_type == QuestionType.BooleanQuestion and response is not None:
             result = response
+        logger.debug(f"Result from QueryExecutor: {result}")
         return result
 
     def has_result(self, triples: Set[Triple]):

@@ -114,11 +114,11 @@ class KGQARetriever(BaseGraphRetriever):
         df.to_csv("predictions.csv", index=False)
 
     def run(self, query, top_k_graph: Optional[int] = None, **kwargs):
-        results = self.retrieve(question_text=query, top_k=top_k_graph)
-        if results is None:
-            results = {}
-        results["query"] = query
-        results.update(**kwargs)
+        answers = self.retrieve(question_text=query, top_k=top_k_graph)
+
+        results = {"query": query,
+                   "answers": answers,
+                   **kwargs}
         return results, "output_1"
 
     def retrieve(self, question_text: str, top_k: Optional[int] = None):
@@ -143,12 +143,11 @@ class KGQARetriever(BaseGraphRetriever):
             logger.info(f"Answer: {result}")
             results.append(result)
 
-        if len(results) > 0:
-            return results
-        else:
-            logger.warning(
+        if len(results) == 0:
+            logger.debug(
                 "No query results. Are there any entities and relations in the question that are also in the knowledge graph?")
-            return None
+
+        return results
 
     def filter_relations_from_entities(self):
         for predicate_name in self.predicate_names:
