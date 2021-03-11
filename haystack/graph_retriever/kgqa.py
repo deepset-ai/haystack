@@ -29,6 +29,7 @@ class KGQARetriever(BaseGraphRetriever):
     ):
         self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
         self.min_threshold: int = 2
+        self.top_k = top_k
         self.query_ranker: QueryRanker = QueryRanker(query_ranker_path)
         self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
         # self.nlp = spacy.load('en_core_web_sm')
