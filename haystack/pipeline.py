@@ -8,6 +8,7 @@ import networkx as nx
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
+import traceback
 
 from haystack import BaseComponent
 from haystack.generator.base import BaseGenerator
@@ -120,7 +121,8 @@ class Pipeline(ABC):
                     logger.debug(f"Running node `{node_id}` with input `{node_input.keys()}`")
                     node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
                 except Exception as e:
-                    raise Exception(f"")
+                    tb = traceback.format_exc()
+                    raise Exception(f"Exception while running node `{node_id}` with input `{node_input.keys()}`: {e}, full stack trace: {tb}")
                 stack.pop(node_id)
                 next_nodes = self.get_next_nodes(node_id, stream_id)
                 for n in next_nodes:  # add successor nodes with corresponding inputs to the stack
@@ -254,6 +256,7 @@ class Pipeline(ABC):
 
             component_params = definitions[name]["params"]
             component_type = definitions[name]["type"]
+            logger.debug(f"Loading component `{name}` of type `{definitions[name]['type']}`")
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
