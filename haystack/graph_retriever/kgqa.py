@@ -20,10 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 class KGQARetriever(BaseGraphRetriever):
-    def __init__(self, knowledge_graph):
+    def __init__(
+        self,
+        knowledge_graph,
+        query_ranker_path,
+        alias_to_entity_and_prob_path,
+    ):
         self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
         self.min_threshold: int = 2
-        self.query_ranker: QueryRanker = QueryRanker("saved_models/lcquad_text_pair_classification_with_entity_labels_v2")
+        self.query_ranker: QueryRanker = QueryRanker(query_ranker_path)
         self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
         # self.nlp = spacy.load('en_core_web_sm')
         self.nlp = spacy.load('en_core_web_lg')
@@ -45,7 +50,7 @@ class KGQARetriever(BaseGraphRetriever):
         logger.info(
             f"Filtered down to {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects occuring at least {self.min_threshold} times.")
 
-        self.alias_to_entity_and_prob = json.load(open("alias_to_entity_and_prob.json"))
+        self.alias_to_entity_and_prob = json.load(open(alias_to_entity_and_prob_path))
         self.alias_to_entity_and_prob = self.filter_existing_entities()
 
     def compare_answers(self, answer, prediction, question_type: str):
