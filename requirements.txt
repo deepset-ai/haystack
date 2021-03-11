@@ -29,5 +29,5 @@ pymilvus
 #selenium
 #webdriver-manager
 spacy
-https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.0.0/en_core_web_lg-3.0.0-py3-none-any.whl
+#https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.0.0/en_core_web_lg-3.0.0-py3-none-any.whl
 SPARQLWrapper
