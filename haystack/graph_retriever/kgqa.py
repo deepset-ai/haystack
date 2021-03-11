@@ -114,7 +114,12 @@ class KGQARetriever(BaseGraphRetriever):
         df.to_csv("predictions.csv", index=False)
 
     def run(self, query, top_k_graph: Optional[int] = None, **kwargs):
-        return self.retrieve(question_text=query, top_k=top_k_graph)
+        results = self.retrieve(question_text=query, top_k=top_k_graph)
+        if results is None:
+            results = {}
+        results["query"] = query
+        results.update(**kwargs)
+        return results, "output_1"
 
     def retrieve(self, question_text: str, top_k: Optional[int] = None):
         if top_k is None:
