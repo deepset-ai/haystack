@@ -18,6 +18,9 @@ from haystack.translator.base import BaseTranslator
 from haystack.knowledge_graph.base import BaseKnowledgeGraph
 from haystack.graph_retriever.base import BaseGraphRetriever
 
+    import logging
+
+logger = logging.getLogger(__name__)
 
 class Pipeline(ABC):
     """
@@ -113,7 +116,11 @@ class Pipeline(ABC):
             predecessors = set(self.graph.predecessors(node_id))
             if predecessors.issubset(nodes_executed):  # only execute if predecessor nodes are executed
                 nodes_executed.add(node_id)
-                node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+                try:
+                    logger.debug(f"Running node `{node_id}` with input `{node_input.keys()}`")
+                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+                except Exception as e:
+                    raise Exception(f"")
                 stack.pop(node_id)
                 next_nodes = self.get_next_nodes(node_id, stream_id)
                 for n in next_nodes:  # add successor nodes with corresponding inputs to the stack
