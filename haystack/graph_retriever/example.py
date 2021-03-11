@@ -103,10 +103,10 @@ def run_experiments():
         module_logger = logging.getLogger(module)
         module_logger.setLevel(logging.ERROR)
 
-    kgqa_retriever = KGQARetriever(knowledge_graph=kg)
+    kgqa_retriever = KGQARetriever(knowledge_graph=kg, query_ranker_path="saved_models/lcquad_text_pair_classification_with_entity_labels_v2", alias_to_entity_and_prob_path="alias_to_entity_and_prob.json", token_and_relation_to_tfidf_path="token_and_relation_to_tfidf.json")
     top_k_graph = 1
 
-    kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt1.tsv", question_type="List", top_k_graph=top_k_graph)
+    kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt1.csv", question_type="List", top_k_graph=top_k_graph)
     # kgqa_retriever.predictions_to_text(filename="Infobox Labeling - Tabellenblatt1.csv")
     # run_examples(kgqa_retriever=kgqa_retriever, top_k_graph=top_k_graph)
     # train_relation_linking(filename="harrypotter_docs.csv")

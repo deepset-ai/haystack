@@ -25,6 +25,7 @@ class KGQARetriever(BaseGraphRetriever):
         knowledge_graph: GraphDBKnowledgeGraph,
         query_ranker_path: str,
         alias_to_entity_and_prob_path: str,
+        token_and_relation_to_tfidf_path: str,
         top_k: int = 10
     ):
         self.knowledge_graph: GraphDBKnowledgeGraph = knowledge_graph
@@ -33,7 +34,7 @@ class KGQARetriever(BaseGraphRetriever):
         self.top_k = top_k
         self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
         self.nlp = spacy.load('en_core_web_lg')
-        self.relation_tfidf = json.load(open("token_and_relation_to_tfidf.json"))
+        self.relation_tfidf = json.load(open(token_and_relation_to_tfidf_path))
 
         logger.info("Loading triples from knowledge graph...")
         self.subject_names = Counter(
@@ -62,8 +63,7 @@ class KGQARetriever(BaseGraphRetriever):
             # split multiple entities
             # strip whitespaces, lowercase, and remove namespace
             # convert answers to sets so that the order of the items does not matter
-
-            answer = [str(answer_item).strip().lower() for answer_item in re.split(",|\ \ ", str(answer))]
+            answer = [str(answer_item).strip().lower() for answer_item in re.split(",|\ \ |\n", str(answer))]
             answer = {answer_item.replace('https://harrypotter.fandom.com/wiki/', "").replace("_", " ").replace("-", " ") for answer_item in answer}
 
             prediction = [str(prediction_item).strip().lower() for prediction_item in prediction]
@@ -83,7 +83,7 @@ class KGQARetriever(BaseGraphRetriever):
         Calculate top_k accuracy given a tsv file with question and answer columns and store predictions
         Do this evaluation for one chosen type of questions (List, Boolean, Count)
         """
-        df = pd.read_csv(filename, sep="\t")
+        df = pd.read_csv(filename)
         df = df[df['Type'] == question_type]
         predictions_for_all_queries = []
         number_of_correct_predictions = 0
