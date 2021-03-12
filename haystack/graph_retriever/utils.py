@@ -4,10 +4,9 @@ import string
 import pandas as pd
 
 
-def eval_on_all_data(pipeline, top_k_graph, filename: str):
-    df = pd.read_csv(filename, sep=",")
-
-    for index, row in df.iterrows():
+def eval_on_all_data(pipeline, top_k_graph, input_df):
+    # iterating over each Question
+    for index, row in input_df.iterrows():
         if index % 10 == 0:
             print(f"Predicting the {index} item")
         prediction, _ = pipeline.run(query=row['Question Text'], top_k_graph=top_k_graph)
@@ -29,11 +28,11 @@ def eval_on_all_data(pipeline, top_k_graph, filename: str):
             res = compare_answers_fuzzy(answer1=row["Answer"],
                                         answer2=p["answer"],
                                         question_type=question_type)
-            df.loc[index, f"prediction_{i}"] = p["answer"]
-            df.loc[index, f'pred_em_{i}'] = res["em"]
-            df.loc[index, f'pred_f1_{i}'] = res["f1"]
+            input_df.loc[index, f"prediction_{i}"] = p["answer"]
+            input_df.loc[index, f'pred_em_{i}'] = res["em"]
+            input_df.loc[index, f'pred_f1_{i}'] = res["f1"]
 
-    return df
+    return input_df
 
 
 def compare_answers_fuzzy(answer1, answer2, question_type, extractive=True, list_f1_treshold = 0.7):
