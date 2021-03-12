@@ -145,7 +145,7 @@ class Pipeline(ABC):
         next_nodes = [
             next_node
             for _, next_node, data in current_node_edges
-            if not stream_id or data["label"] == stream_id
+            if not stream_id or data["label"] == stream_id or stream_id == "output_all"
         ]
         return next_nodes
 
@@ -660,4 +660,4 @@ class QueryRouter(BaseComponent):
         elif query_executor == "knowledge_graph":
             return kwargs, "output_2"
         else:
-            raise NotImplementedError(f"'{query_executor}' is not a valid query_executor")
+            return kwargs, "output_all"
