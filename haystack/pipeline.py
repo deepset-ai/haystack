@@ -118,7 +118,7 @@ class Pipeline(ABC):
             if predecessors.issubset(nodes_executed):  # only execute if predecessor nodes are executed
                 nodes_executed.add(node_id)
                 try:
-                    logger.debug(f"Running node `{node_id}` with input `{node_input.keys()}`")
+                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
                     node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
                 except Exception as e:
                     tb = traceback.format_exc()
