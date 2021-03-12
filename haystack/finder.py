@@ -141,6 +141,7 @@ class Finder:
         top_k_retriever: int = 10,
         top_k_reader: int = 10,
         return_preds: bool = False,
+        open_domain: bool = True
     ):
         """
         Evaluation of the whole pipeline by first evaluating the Retriever and then evaluating the Reader on the result
@@ -191,6 +192,11 @@ class Finder:
         :param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                              contains the keys "predictions" and "metrics".
         :type return_preds: bool
+        :param open_domain: If ``True``, the Retriever and the Reader will be evaluated by checking if the answer string to a question is
+                    contained in the retrieved docs and the string span extracted by the Reader (common approach in open-domain QA).
+                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
+                    are within ids explicitly stated in the labels. The Reader uses a stricter evaluation where
+                    the predicted span position must match the gold label span position even if the strings are the same.
         """
 
         if not self.reader or not self.retriever:
@@ -220,25 +226,37 @@ class Finder:
             relevant_docs_found = 0
             current_avg_precision = 0.0
             for doc_idx, doc in enumerate(retrieved_docs):
-                if doc.id in question.multiple_document_ids:
-                    relevant_docs_found += 1
-                    if not found_relevant_doc:
+                if not open_domain:
+                    if doc.id in question.multiple_document_ids:
+                        relevant_docs_found += 1
+                        if not found_relevant_doc:
+                            counts["correct_retrievals"] += 1
+                            counts["summed_reciprocal_rank_retriever"] += 1 / (doc_idx + 1)
+                        current_avg_precision += relevant_docs_found / (doc_idx + 1)
+                        found_relevant_doc = True
+                        if relevant_docs_found == number_relevant_docs:
+                            break
+                elif open_domain:
+                    if len(question.multiple_answers) > 1:
+                        logger.warning("More than one answer encountered for a question in the eval dataset. Open domain style evaluation using Finder.eval() currently only supports cases where there is one answer per question")
+                    answer = question.multiple_answers[0]
+                    if answer in doc.text:
+                        relevant_docs_found += 1
                         counts["correct_retrievals"] += 1
                         counts["summed_reciprocal_rank_retriever"] += 1 / (doc_idx + 1)
-                    current_avg_precision += relevant_docs_found / (doc_idx + 1)
-
-                    found_relevant_doc = True
-                    if relevant_docs_found == number_relevant_docs:
+                        current_avg_precision += relevant_docs_found / (doc_idx + 1)
+                        found_relevant_doc = True
                         break
+
             if found_relevant_doc:
                 all_relevant_docs = len(set(question.multiple_document_ids))
                 counts["summed_avg_precision_retriever"] += current_avg_precision / all_relevant_docs
-
-            if found_relevant_doc:
-                questions_with_docs.append({
-                    "question": question,
-                    "docs": retrieved_docs
-                })
+                questions_with_docs.append(
+                    {
+                        "question": question,
+                        "docs": retrieved_docs
+                    }
+                )
 
         retriever_total_time = time.time() - retriever_start_time
         counts["number_of_questions"] = q_idx + 1
@@ -261,7 +279,7 @@ class Finder:
             read_times.append(time.time() - single_reader_start)
             if return_preds:
                 predictions.append(predicted_answers)
-            counts = eval_counts_reader(question, predicted_answers, counts)
+            counts = eval_counts_reader(question, predicted_answers, counts, open_domain)
 
         counts["number_of_has_answer"] = counts["correct_retrievals"] - counts["number_of_no_answer"]
 
@@ -270,12 +288,24 @@ class Finder:
 
         self.reader.return_no_answers = previous_return_no_answers  # type: ignore
 
-        logger.info((f"{counts['correct_readings_topk']} out of {counts['number_of_questions']} questions were correctly"
-                     f" answered {(counts['correct_readings_topk']/counts['number_of_questions']):.2%})."))
-        logger.info((f"{counts['number_of_questions']-counts['correct_retrievals']} questions could not be answered due "
-                    f"to the retriever."))
-        logger.info((f"{counts['correct_retrievals']-counts['correct_readings_topk']} questions could not be answered "
-                    f"due to the reader."))
+        if not open_domain:
+            logger.info((f"{counts['correct_readings_topk']} out of {counts['number_of_questions']} questions were correctly"
+                         f" answered {(counts['correct_readings_topk']/counts['number_of_questions']):.2%})."))
+            logger.info((f"{counts['number_of_questions']-counts['correct_retrievals']} questions could not be answered due "
+                        f"to the retriever."))
+            logger.info((f"{counts['correct_retrievals']-counts['correct_readings_topk']} questions could not be answered "
+                        f"due to the reader."))
+        if open_domain:
+            top_1_em = counts["exact_matches_top1"] / counts["number_of_questions"]
+            top_1_f1 = counts["summed_f1_top1"] / counts["number_of_questions"]
+            top_k_em = counts["exact_matches_topk"] / counts["number_of_questions"]
+            top_k_f1 = counts["summed_f1_topk"] / counts["number_of_questions"]
+
+            logger.info("___Full Finder pipeline metrics___")
+            logger.info(f"Top-1 EM: {top_1_em}")
+            logger.info(f"Top-k EM: {top_k_em}")
+            logger.info(f"Top-1 F1: {top_1_f1}")
+            logger.info(f"Top-k F1: {top_k_f1}")
 
         eval_results = self.calc_eval_results(counts)
         eval_results["total_retrieve_time"] = retriever_total_time
