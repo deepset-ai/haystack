@@ -7,11 +7,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def eval_on_all_data(pipeline, top_k_graph, input_df):
+def eval_on_all_data(pipeline, top_k_graph, input_df, query_executor):
     # iterating over each Question
     for index, row in input_df.iterrows():
 
-        prediction, _ = pipeline.run(query=row['Question Text'], top_k_graph=top_k_graph)
+        prediction = pipeline.run(query=row['Question Text'], query_executor=query_executor, top_k_graph=top_k_graph)
 
         if not pd.isna(row["Short"]):
             question_type = "Short"

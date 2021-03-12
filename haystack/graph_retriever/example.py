@@ -5,6 +5,7 @@ import pandas as pd
 from haystack.graph_retriever.kgqa import KGQARetriever, Text2SparqlRetriever
 from haystack.graph_retriever.utils import eval_on_all_data
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
+from haystack import Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -23,20 +24,21 @@ def run_experiments():
         module_logger.setLevel(logging.ERROR)
 
     # settings
-    kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="xxx")
-    kg.index = "hp-test"
-    input_df = pd.read_csv("../../data/harry/2021 03 11 Questions Hackathon - streamlit_feedback.csv")
+    # kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="xxx")
+    # kg.index = "hp-test"
+    input_df = pd.read_csv("data/all_questions.csv")
     #input_df = pd.read_csv("../../data/harry/test.csv")
 
-    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path="../../models/kgqa/hp_v3.2")
+    # kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path="../../models/kgqa/hp_v3.2")
     # kgqa_retriever = KGQARetriever(knowledge_graph=kg,
     #                                query_ranker_path="saved_models/lcquad_text_pair_classification_with_entity_labels_v2",
     #                                alias_to_entity_and_prob_path="alias_to_entity_and_prob.json",
     #                                token_and_relation_to_tfidf_path="token_and_relation_to_tfidf.json")
     top_k_graph = 10
 
-    results = eval_on_all_data(kgqa_retriever, top_k_graph=top_k_graph, input_df=input_df)
-    results.to_csv("../../data/harry/t2spqrql_preds.csv", index=False)
+    p = Pipeline.load_from_yaml("config/pipelines.yaml")
+    results = eval_on_all_data(p, top_k_graph=top_k_graph, input_df=input_df, query_executor="both")
+    results.to_csv("data/results.csv", index=False)
 
     #
     # top_k_graph = 1
