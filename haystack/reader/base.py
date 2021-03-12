@@ -61,6 +61,7 @@ class BaseReader(BaseComponent):
             for doc in documents:
                 if doc.id == ans["document_id"]:
                     ans["meta"] = deepcopy(doc.meta)
+            ans["meta"]["model"] = "Reader"
 
         results.update(**kwargs)
         return results, "output_1"
