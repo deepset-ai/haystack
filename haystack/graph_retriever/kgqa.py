@@ -15,7 +15,6 @@ from haystack.graph_retriever.query_executor import QueryExecutor
 from haystack.graph_retriever.query_ranker import QueryRanker
 from haystack.graph_retriever.question import QuestionType, Question
 from haystack.graph_retriever.triple import Triple
-from haystack.graph_retriever.utils import compare_answers_fuzzy
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 
 from transformers import BartForConditionalGeneration, BartTokenizer
@@ -304,46 +303,16 @@ class KGQARetriever(BaseGraphRetriever):
         return entity
 
 
-    def eval_on_all_data(self, top_k_graph, filename: str):
-        df = pd.read_csv(filename, sep=",")
-
-        for index, row in df.iterrows():
-            if index % 10 == 0:
-                logger.info(f"Predicting {index} item")
-            prediction = self.retrieve(question_text=row['Question Text'], top_k_graph=top_k_graph)
-
-            if not pd.isna(row["Short"]):
-                question_type = "Short"
-            elif not pd.isna(row["Multi Fact"]):
-                question_type = "Multi Fact"
-            elif not pd.isna(row["Numeric"]):
-                question_type = "Numeric"
-            elif not pd.isna(row["Boolean"]):
-                question_type = "Boolean"
-            elif not pd.isna(row["Open-Ended"]):
-                question_type = "Open-Ended"
-            else:
-                raise NotImplementedError
-
-            for i,p in enumerate(prediction):
-                res = compare_answers_fuzzy(answer1=row["Answer"],
-                                            answer2=p,
-                                            question_type=question_type)
-                df.loc[index,f"prediction_{i}"] = p
-                df.loc[index,f'pred_em_{i}'] = res["em"]
-                df.loc[index,f'pred_f1_{i}'] = res["f1"]
-
-        return df
-
 
 class Text2SparqlRetriever(KGQARetriever):
     def __init__(self, knowledge_graph, model_name_or_path):
         self.knowledge_graph = knowledge_graph
+        self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
         self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
         self.tok = BartTokenizer.from_pretrained(model_name_or_path)
 
     def retrieve(self, question_text: str, top_k_graph: int):
-        inputs = self.tok([question_text], max_length=100,truncation=True, return_tensors='pt')
+        inputs = self.tok([question_text], max_length=100, truncation=True, return_tensors='pt')
         temp = self.model.generate(inputs['input_ids'],
                                    num_beams=top_k_graph+3,
                                    max_length=100,
@@ -353,10 +322,33 @@ class Text2SparqlRetriever(KGQARetriever):
         answers = []
         for s in sparql_list:
             ans = self._query_kg(query=s)
-            if ans is not None:
+            if len(ans) > 0:
                 answers.append(ans)
-        return answers[:top_k_graph]
 
+        # if there are no answers we still want to return something
+        if len(answers) == 0:
+            answers.append("")
+        results = answers[:top_k_graph]
+        results = [self.format_result(result) for result in results]
+        return results
+
+    def run(self, query, top_k_graph: Optional[int] = None, **kwargs):
+        answers = self.retrieve(question_text=query, top_k_graph=top_k_graph)
+
+        results = {"query": query,
+                   "answers": answers,
+                   **kwargs}
+        return results, "output_1"
+
+    def format_result(self, result):
+        """
+        Generate formatted dictionary output with text answer and additional info
+        """
+        text_answer = self.prediction_to_text(result)
+        meta = {"model": "Question2SparqlRetriever"}
+        if True:
+            meta["urls"] = str(self.prediction_to_urls(result))
+        return {"answer": str(text_answer), "meta": meta}
 
     def _query_kg(self, query):
         # Bring generated query into Harry Potter KG form
@@ -374,7 +366,7 @@ class Text2SparqlRetriever(KGQARetriever):
         try:
             response = self.knowledge_graph.query(query=query, index="hp-test")
         except Exception:
-            return None
+            return ""
 
         # unpack different answer styles
         if isinstance(response, list):
@@ -388,10 +380,6 @@ class Text2SparqlRetriever(KGQARetriever):
             result = []
             for x in response:
                 for k,v in x.items():
-                    result_uri = v["value"]
-                    result_uri = result_uri.split("/")[-1].replace("_", " ")
-                    result.append(result_uri)
-            result = "\n".join(result)
-
+                    result.append(v["value"])
         return result
 
