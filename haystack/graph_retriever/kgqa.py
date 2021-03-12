@@ -32,11 +32,11 @@ class KGQARetriever(BaseGraphRetriever):
         # self.nlp = spacy.load('en_core_web_trf')
 
         self.subject_names = Counter(
-            [result["s"]["value"] for result in self.knowledge_graph.get_all_subjects(index="hp-test")])
+            [result["s"]["value"] for result in self.knowledge_graph.get_all_subjects()])
         self.predicate_names = Counter(
-            [result["p"]["value"] for result in self.knowledge_graph.get_all_predicates(index="hp-test")])
+            [result["p"]["value"] for result in self.knowledge_graph.get_all_predicates()])
         self.object_names = Counter(
-            [result["o"]["value"] for result in self.knowledge_graph.get_all_objects(index="hp-test")])
+            [result["o"]["value"] for result in self.knowledge_graph.get_all_objects()])
         self.filter_relations_from_entities()
         logger.info(
             f"Loaded {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects.")
@@ -334,27 +334,24 @@ class Text2SparqlRetriever(BaseGraphRetriever):
 
         # query KG
         try:
-            results = self.knowledge_graph.query(query=query, index="hp-test")
-        except Exception as e:
-            # print(f"Wrong query with exception: {e}")
-            results = None
-        return results
+            response = self.knowledge_graph.query(query=query)
+        except Exception:
+            return ""
 
-    def eval_on_test_data(self, top_k_graph: int, filename: str):
-        # "https://deepset.ai/harry_potter/"
-        # https://harrypotter.fandom.com/wiki/
-        df = pd.read_csv(filename)
-        predictions = []
-        for index, row in df.iterrows():
-            ground_truth_answer = row['answer']
-            prediction = self.retrieve(question_text=row['question'], top_k_graph=top_k_graph)
-            predictions.append(prediction)
-            print(f"Pred: {prediction}")
-            print(
-                f"Label: {ground_truth_answer.replace('https://harrypotter.fandom.com/wiki/', 'https://deepset.ai/harry_potter/')}")
-
-        df['prediction'] = predictions
-        df.to_csv("predictions.csv", index=False)
+        # unpack different answer styles
+        if isinstance(response, list):
+            if len(response) == 0:
+                return ""
+        if isinstance(response, bool):
+            result = str(response)
+        elif "count" in response[0]:
+            result = str(int(response[0]["count"]["value"]))
+        else:
+            result = []
+            for x in response:
+                for k,v in x.items():
+                    result.append(v["value"])
+        return result
 
     def run_examples(self, top_k_graph: int):
         # result = self.retrieve(question_text="What is the hair color of Hermione?", top_k_graph=top_k_graph)
