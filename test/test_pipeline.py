@@ -175,7 +175,7 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     )
     document_store_with_docs.update_embeddings(dpr)
 
-    query = "Where does Carla lives?"
+    query = "Where does Carla live?"
 
     # test merge without weights
     join_node = JoinDocuments(join_mode="merge")

@@ -10,6 +10,7 @@ from rest_api.controller.router import router as api_router
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 logger = logging.getLogger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.DEBUG)
 
 
 def get_application() -> FastAPI:
@@ -31,7 +32,9 @@ app = get_application()
 logger.info("Open http://127.0.0.1:8000/docs to see Swagger API Documentation.")
 logger.info(
     """
-Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/query' --data '{"query": "What is the capital of Germany?"}'
+Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/query' --data '{"query": "Did Albus Dumbledore die?", "query_executor": "all"}'
+\n
+You can switch `query_executor` to one of 'all', 'knowledge_graph' or 'extractive_qa'
 """
 )
 

@@ -23,6 +23,7 @@ router = APIRouter()
 class Request(BaseModel):
     query: str
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
+    query_executor: Optional[str] = None
 
 
 class Answer(BaseModel):
@@ -45,10 +46,13 @@ class Response(BaseModel):
 
 PIPELINE_PATH = os.getenv("PIPELINE_PATH", "rest_api/pipelines.yaml")
 PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_PATH), pipeline_name="query")
+logger.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
+# PIPELINE.draw(path="api_pipeline.png")
 concurrency_limiter = RequestLimiter(4)
 
 
-@router.post("/query", response_model=Response)
+@router.post("/query")
+# @router.post("/query", response_model=Response)
 def query(request: Request):
     with concurrency_limiter.run():
         result = _process_request(PIPELINE, request)
@@ -68,7 +72,9 @@ def _process_request(pipeline, request) -> Response:
                 values = [values]
             filters[key] = values
 
-    result = pipeline.run(query=request.query, filters=filters)
+    if not request.query_executor:
+        request.query_executor = ""
+    result = pipeline.run(query=request.query, filters=filters, query_executor=request.query_executor)
 
     end_time = time.time()
     logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
