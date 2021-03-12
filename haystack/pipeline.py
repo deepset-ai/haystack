@@ -652,6 +652,9 @@ class JoinDocuments(BaseComponent):
 
 class QueryRouter(BaseComponent):
     outgoing_edges = 2
+    def __init__(self, routes, **kwargs):
+        # for now only dummy attribute as yml requires one, but we could adjust it to make the map from input terms to output edges more flexible
+        self.routes = routes
 
     def run(self, **kwargs):
         query_executor = kwargs.get("query_executor")
