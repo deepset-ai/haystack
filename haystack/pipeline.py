@@ -583,9 +583,16 @@ class JoinAnswers(BaseComponent):
             for input_from_node in inputs:
                 answers.extend(input_from_node["answers"])
         elif self.join_mode == "interweave":
-            answers = [answer for answer in itertools.chain(
+            answers_with_duplicates = [answer for answer in itertools.chain(
                 *itertools.zip_longest(
                     *[input_node_answers["answers"] for input_node_answers in inputs])) if answer is not None]
+            # Removing duplicates based on key "answer":
+            answers = []
+            answer_values = set()
+            for answer in answers_with_duplicates:
+                if answer["answer"] not in answer_values:
+                    answer_values.add(answer["answer"])
+                    answers.append(answer)
         else:
             raise Exception(f"Invalid join_mode: {self.join_mode}")
 
