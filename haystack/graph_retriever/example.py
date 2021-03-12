@@ -24,16 +24,21 @@ def run_experiments():
 
     # settings
     kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="xxx")
+    kg.index = "hp-test"
     input_df = pd.read_csv("../../data/harry/2021 03 11 Questions Hackathon - streamlit_feedback.csv")
     #input_df = pd.read_csv("../../data/harry/test.csv")
 
     kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path="../../models/kgqa/hp_v3.2")
+    # kgqa_retriever = KGQARetriever(knowledge_graph=kg,
+    #                                query_ranker_path="saved_models/lcquad_text_pair_classification_with_entity_labels_v2",
+    #                                alias_to_entity_and_prob_path="alias_to_entity_and_prob.json",
+    #                                token_and_relation_to_tfidf_path="token_and_relation_to_tfidf.json")
     top_k_graph = 10
 
     results = eval_on_all_data(kgqa_retriever, top_k_graph=top_k_graph, input_df=input_df)
-    results.to_csv("../../data/harry/t2spqrql_preds.csv",index=False)
+    results.to_csv("../../data/harry/t2spqrql_preds.csv", index=False)
 
-    # kgqa_retriever = KGQARetriever(knowledge_graph=kg, query_ranker_path="saved_models/lcquad_text_pair_classification_with_entity_labels_v2", alias_to_entity_and_prob_path="alias_to_entity_and_prob.json", token_and_relation_to_tfidf_path="token_and_relation_to_tfidf.json")
+    #
     # top_k_graph = 1
     # results = eval_on_all_data(kgqa_retriever, top_k_graph=top_k_graph, input_df=input_df)
     # results.to_csv("../../data/harry/modular_preds.csv",index=False)

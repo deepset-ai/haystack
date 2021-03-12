@@ -149,11 +149,9 @@ class KGQARetriever(BaseGraphRetriever):
         if len(results) == 0:
             logger.debug(
                 "No query results. Are there any entities and relations in the question that are also in the knowledge graph?")
-            return {"answer": "", "meta": {"model": "GraphRetriever"}}
+            return [{"answer": "", "meta": {"model": "GraphRetriever"}}]
 
-        print([self.format_result(result) for result in results])
         return [self.format_result(result) for result in results]
-        #return results
 
     def format_result(self, result):
         """
