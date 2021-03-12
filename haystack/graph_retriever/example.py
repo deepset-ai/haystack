@@ -6,10 +6,11 @@ from collections import Counter
 
 import pandas as pd
 
-from haystack.graph_retriever import KGQARetriever
+from haystack.graph_retriever.kgqa import KGQARetriever, Text2SparqlRetriever
 from haystack.graph_retriever.query import Query
 from haystack.graph_retriever.question import QuestionType, Question
 from haystack.graph_retriever.triple import Triple
+from haystack.graph_retriever.utils import eval_on_all_data
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 
 logger = logging.getLogger(__name__)
@@ -95,16 +96,25 @@ def train_relation_linking(kgqa_retriever: KGQARetriever, filename: str):
 
 
 def run_experiments():
-    kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="x-x-x")
+    kg = GraphDBKnowledgeGraph(host="34.255.232.122", username="admin", password="xxx")
 
     for module in ["farm.utils", "farm.infer", "farm.modeling.prediction_head", "farm.data_handler.processor"]:
         module_logger = logging.getLogger(module)
         module_logger.setLevel(logging.ERROR)
 
-    kgqa_retriever = KGQARetriever(knowledge_graph=kg, query_ranker_path="saved_models/lcquad_text_pair_classification_with_entity_labels_v2", alias_to_entity_and_prob_path="alias_to_entity_and_prob.json", token_and_relation_to_tfidf_path="token_and_relation_to_tfidf.json")
+    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path="../../models/kgqa/hp_v3.2")
     top_k_graph = 1
 
-    kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt1.csv", question_type="List", top_k_graph=top_k_graph)
+    df = eval_on_all_data(kgqa_retriever, top_k_graph=top_k_graph, filename="../../data/harry/2021 03 11 Questions Apple Hackathon - original.csv")
+    df.to_csv("../../data/harry/t2spqrql_preds.csv")
+
+    # kgqa_retriever = KGQARetriever(knowledge_graph=kg, query_ranker_path="saved_models/lcquad_text_pair_classification_with_entity_labels_v2", alias_to_entity_and_prob_path="alias_to_entity_and_prob.json", token_and_relation_to_tfidf_path="token_and_relation_to_tfidf.json")
+    # top_k_graph = 1
+    # df = eval_on_all_data(kgqa_retriever, top_k_graph=top_k_graph, filename="../../data/harry/test.csv")
+    # df.to_csv("../../data/harry/modular_preds.csv")
+
+
+    # kgqa_retriever.eval(filename="Infobox Labeling - Tabellenblatt1.csv", question_type="List", top_k_graph=top_k_graph)
     # kgqa_retriever.predictions_to_text(filename="Infobox Labeling - Tabellenblatt1.csv")
     # run_examples(kgqa_retriever=kgqa_retriever, top_k_graph=top_k_graph)
     # train_relation_linking(filename="harrypotter_docs.csv")
