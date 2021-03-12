@@ -1,15 +1,8 @@
-import itertools
-import json
 import logging
-import math
-from collections import Counter
 
 import pandas as pd
 
 from haystack.graph_retriever.kgqa import KGQARetriever, Text2SparqlRetriever
-from haystack.graph_retriever.query import Query
-from haystack.graph_retriever.question import QuestionType, Question
-from haystack.graph_retriever.triple import Triple
 from haystack.graph_retriever.utils import eval_on_all_data
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 
@@ -35,64 +28,6 @@ def run_examples(kgqa_retriever: KGQARetriever, top_k_graph: int):
                                      top_k=top_k_graph)
     result = kgqa_retriever.retrieve(question_text="How many children does Harry Potter have?", top_k=top_k_graph)
     result = kgqa_retriever.retrieve(question_text="Does Harry Potter have a child?", top_k=top_k_graph)
-
-
-def train_relation_linking(kgqa_retriever: KGQARetriever, filename: str):
-    df = pd.read_csv(filename)
-    df = df.head(n=10)
-
-    number_of_sentences = 0
-    document_frequency = Counter()  # each sentence corresponds to a document for idf calculation
-    relation_to_token_freq = dict()
-    for relation in kgqa_retriever.predicate_names:
-        relation_to_token_freq[relation] = Counter()
-    # "A sentence expresses relation r if it contains two co-occurring entities that are in relation r according to a knowledge base."
-    for index, row in df.iterrows():
-        document_text = row['document_text']
-        logging.getLogger("haystack.graph_retriever.question").setLevel(logging.WARNING)
-        logger.warning(f"Processing document {index + 1} out of {len(df)}")
-        for sentence in kgqa_retriever.nlp(document_text).sents:
-            number_of_sentences += 1
-            q = Question(question_text=sentence.text)
-            q.doc = kgqa_retriever.nlp(q.question_text)
-            entities = q.entity_linking(alias_to_entity_and_prob=kgqa_retriever.alias_to_entity_and_prob,
-                                        subject_names=kgqa_retriever.subject_names,
-                                        object_names=kgqa_retriever.object_names)
-
-            # sentences with too many entities are skipped because they dont help the training
-            if len(entities) > 7:
-                continue
-
-            tokens = [token.lemma_.lower() for token in sentence]
-            document_frequency.update(set(tokens))
-
-            # for all pairs of entities, check in which relations they co-occur
-            for (s, o) in itertools.permutations(entities, 2):
-                # get all relations
-                triples = {Triple(subject=s, predicate="?uri", object=o)}
-                response = kgqa_retriever.query_executor.execute(
-                    Query(question_type=QuestionType.ListQuestion, triples=triples))
-                for token in tokens:
-                    for relation in response:
-                        if relation in kgqa_retriever.predicate_names:
-                            relation_to_token_freq[relation][token] += 1
-
-    # relation_to_token_freq[relation][token] contains term frequency
-    # document_frequency[token] contains document frequency
-    #
-    # calculate idf for each token in vocabulary
-    # calculate tf for each relation and each token
-    #
-    token_and_relation_to_tfidf = dict()
-    for token in document_frequency:
-        if document_frequency[token] < 10:
-            continue
-        idf = math.log(number_of_sentences / document_frequency[token], 2)
-        for relation in kgqa_retriever.predicate_names:
-            tf = relation_to_token_freq[relation][token]
-            token_and_relation_to_tfidf[str((token, relation))] = tf * idf
-
-    json.dump(token_and_relation_to_tfidf, open("token_and_relation_to_tfidf.json", "w"))
 
 
 def run_experiments():

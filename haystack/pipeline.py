@@ -650,7 +650,7 @@ class JoinDocuments(BaseComponent):
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
         if self.top_k:
             documents = documents[: self.top_k]
-        output = {"query": inputs[0]["query"], "documents": documents, "label": inputs[0].get("label", None)}
+        output = {"query": inputs[0]["query"], "documents": documents, "label": inputs[0].get("labels", None)}
         return output, "output_1"
 
 

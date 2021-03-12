@@ -1,6 +1,7 @@
 from typing import List, Tuple, Dict, Any
-
 from haystack import MultiLabel
+from farm.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
+from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
 
 
 def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals: int):
@@ -66,48 +67,94 @@ def calculate_average_precision_and_reciprocal_rank(questions_with_docs: List[di
     return questions_with_correct_doc, summed_avg_precision_retriever, summed_reciprocal_rank_retriever
 
 
-def eval_counts_reader(question: MultiLabel, predicted_answers: Dict[str, Any], metric_counts: Dict[str, float]):
+def eval_counts_reader(question: MultiLabel, predicted_answers: Dict[str, Any], metric_counts: Dict[str, float], open_domain: bool, threshold: int=1):
     # Calculates evaluation metrics for one question and adds results to counter.
     # check if question is answerable
     if not question.no_answer:
         found_answer = False
         found_em = False
         best_f1 = 0
-        for answer_idx, answer in enumerate(predicted_answers["answers"]):
-            if answer["document_id"] in question.multiple_document_ids:
-                gold_spans = [{"offset_start": question.multiple_offset_start_in_docs[i],
-                               "offset_end": question.multiple_offset_start_in_docs[i] + len(question.multiple_answers[i]),
-                               "doc_id": question.multiple_document_ids[i]} for i in range(len(question.multiple_answers))]  # type: ignore
-                predicted_span = {"offset_start": answer["offset_start_in_doc"],
-                                  "offset_end": answer["offset_end_in_doc"],
-                                  "doc_id": answer["document_id"]}
-                best_f1_in_gold_spans = 0
-                for gold_span in gold_spans:
-                    if gold_span["doc_id"] == predicted_span["doc_id"]:
-                        # check if overlap between gold answer and predicted answer
-                        if not found_answer:
-                            metric_counts, found_answer = _count_overlap(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
+        if not open_domain:
+            for answer_idx, answer in enumerate(predicted_answers["answers"]):
+                if answer["document_id"] in question.multiple_document_ids:
+                    gold_spans = [{"offset_start": question.multiple_offset_start_in_docs[i],
+                                   "offset_end": question.multiple_offset_start_in_docs[i] + len(question.multiple_answers[i]),
+                                   "doc_id": question.multiple_document_ids[i]} for i in range(len(question.multiple_answers))]  # type: ignore
+                    predicted_span = {"offset_start": answer["offset_start_in_doc"],
+                                      "offset_end": answer["offset_end_in_doc"],
+                                      "doc_id": answer["document_id"]}
+                    best_f1_in_gold_spans = 0
+                    for gold_span in gold_spans:
+                        if gold_span["doc_id"] == predicted_span["doc_id"]:
+                            # check if overlap between gold answer and predicted answer
+                            if not found_answer:
+                                metric_counts, found_answer = _count_overlap(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
 
-                        # check for exact match
-                        if not found_em:
-                            metric_counts, found_em = _count_exact_match(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
+                            # check for exact match
+                            if not found_em:
+                                metric_counts, found_em = _count_exact_match(gold_span, predicted_span, metric_counts, answer_idx)  # type: ignore
 
-                        # calculate f1
-                        current_f1 = _calculate_f1(gold_span, predicted_span)  # type: ignore
-                        if current_f1 > best_f1_in_gold_spans:
-                            best_f1_in_gold_spans = current_f1
+                            # calculate f1
+                            current_f1 = _calculate_f1(gold_span, predicted_span)  # type: ignore
+                            if current_f1 > best_f1_in_gold_spans:
+                                best_f1_in_gold_spans = current_f1
+                    # top-1 f1
+                    if answer_idx == 0:
+                        metric_counts["summed_f1_top1"] += best_f1_in_gold_spans
+                        metric_counts["summed_f1_top1_has_answer"] += best_f1_in_gold_spans
+                    if best_f1_in_gold_spans > best_f1:
+                        best_f1 = best_f1_in_gold_spans
+
+                if found_em:
+                    break
+        if open_domain:
+            found_answer = False
+            found_em = False
+            best_f1 = 0
+            for pred_idx, pred in enumerate(predicted_answers["answers"]):
+                pred_text = pred["answer"]
+                gold_label = question.multiple_answers[0]
+                # No_answer predictions are handled at the bottom of this function
+                if pred_text is None:
+                    continue
+                curr_f1 = calculate_f1_str(gold_label, pred_text)
+                curr_em = calculate_em_str(gold_label, pred_text)
+
+                if curr_f1 > best_f1:
+                    best_f1 = curr_f1
+
+                # Update counts if one of our predictions has f1 word overlap with the answer over a threshold value
+                if curr_f1 > threshold and not found_answer:
+                    if pred_idx == 0:
+                        metric_counts["correct_readings_top1"] += 1
+                        metric_counts["correct_readings_top1_has_answer"] += 1
+                    # top-k answers
+                    metric_counts["correct_readings_topk"] += 1
+                    metric_counts["correct_readings_topk_has_answer"] += 1
+                    found_answer = True
+
+                # Update counts if one of our predictions is an exact match with the answer
+                if curr_em == 1 and not found_em:
+                    # top-1 answer
+                    if pred_idx == 0:
+                        metric_counts["exact_matches_top1"] += 1
+                        metric_counts["exact_matches_top1_has_answer"] += 1
+                    # top-k answers
+                    metric_counts["exact_matches_topk"] += 1
+                    metric_counts["exact_matches_topk_has_answer"] += 1
+                    found_em = True
+
                 # top-1 f1
-                if answer_idx == 0:
-                    metric_counts["summed_f1_top1"] += best_f1_in_gold_spans
-                    metric_counts["summed_f1_top1_has_answer"] += best_f1_in_gold_spans
-                if best_f1_in_gold_spans > best_f1:
-                    best_f1 = best_f1_in_gold_spans
+                if pred_idx == 0:
+                    metric_counts["summed_f1_top1"] += curr_f1
+                    metric_counts["summed_f1_top1_has_answer"] += curr_f1
 
-            if found_em:
-                break
-        # top-k answers: use best f1-score
-        metric_counts["summed_f1_topk"] += best_f1
-        metric_counts["summed_f1_topk_has_answer"] += best_f1
+                if found_em:
+                    break
+
+            # top-k answers: use best f1-score
+            metric_counts["summed_f1_topk"] += best_f1
+            metric_counts["summed_f1_topk_has_answer"] += best_f1
 
     # question not answerable
     else:
