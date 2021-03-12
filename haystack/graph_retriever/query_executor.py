@@ -18,7 +18,7 @@ class QueryExecutor:
         """
         return list of result string of executed sparql_query or Boolean if query has QuestionType BooleanQuestion
         """
-        response = self.knowledge_graph.query(query=query.get_sparql_query(), index="hp-test")
+        response = self.knowledge_graph.query(query=query.get_sparql_query())
         result = None
         if query.question_type == QuestionType.CountQuestion and response is not None:
             result = int(response[0]["count_result"]["value"])
