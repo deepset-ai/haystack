@@ -41,11 +41,11 @@ class KGQARetriever(BaseGraphRetriever):
 
         logger.info("Loading triples from knowledge graph...")
         self.subject_names = Counter(
-            [result["s"]["value"] for result in self.knowledge_graph.get_all_subjects(index="hp-test")])
+            [result["s"]["value"] for result in self.knowledge_graph.get_all_subjects()])
         self.predicate_names = Counter(
-            [result["p"]["value"] for result in self.knowledge_graph.get_all_predicates(index="hp-test")])
+            [result["p"]["value"] for result in self.knowledge_graph.get_all_predicates()])
         self.object_names = Counter(
-            [result["o"]["value"] for result in self.knowledge_graph.get_all_objects(index="hp-test")])
+            [result["o"]["value"] for result in self.knowledge_graph.get_all_objects()])
         self.filter_relations_from_entities()
         logger.info(
             f"Loaded {len(self.subject_names)} subjects, {len(self.predicate_names)} predicates and {len(self.object_names)} objects.")
@@ -363,7 +363,7 @@ class Text2SparqlRetriever(KGQARetriever):
 
         # query KG
         try:
-            response = self.knowledge_graph.query(query=query, index="hp-test")
+            response = self.knowledge_graph.query(query=query)
         except Exception:
             return ""
 
