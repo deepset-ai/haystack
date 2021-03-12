@@ -264,13 +264,13 @@ class KGQARetriever(BaseGraphRetriever):
         if isinstance(prediction, bool) or isinstance(prediction, int):
             return None
         elif isinstance(prediction, list):
-            return [entity.replace("https://deepset.ai/harry_potter/", "https://harrypotter.fandom.com/wiki/") for entity in prediction if entity.startswith("https://deepset.ai/harry_potter/")]
+            return [self.entity_to_url(entity) for entity in prediction if entity.startswith("https://deepset.ai/harry_potter/")]
         elif not prediction.startswith("https://"):
             return None
         else:
             #split list and for each entity get url
             entities = re.split(",|\ \ |\n", prediction)
-            return [entity.replace("https://deepset.ai/harry_potter/", "https://harrypotter.fandom.com/wiki/") for entity in entities if entity.startswith("https://deepset.ai/harry_potter/")]
+            return [self.entity_to_url(entity) for entity in entities if entity.startswith("https://deepset.ai/harry_potter/")]
 
     def predictions_to_text(self, filename):
         df = pd.read_csv(filename)
@@ -288,6 +288,14 @@ class KGQARetriever(BaseGraphRetriever):
             #split list and for each entity get text representation
             entities = re.split(",|\ \ |\n", prediction)
             return "\n".join([self.entity_to_text(entity.strip()) for entity in entities])
+
+    def entity_to_url(self, entity):
+        if entity.startswith("https://deepset.ai/harry_potter/"):
+            triples = {Triple(subject=f"<{entity}>", predicate="<https://deepset.ai/harry_potter/source_url>", object="?uri")}
+            response = self.query_executor.execute(Query(question_type=QuestionType.ListQuestion, triples=triples))
+            if len(response) > 0:
+                return response[0]
+        return entity
 
     def entity_to_text(self, entity):
         if entity.startswith("https://deepset.ai/harry_potter/"):

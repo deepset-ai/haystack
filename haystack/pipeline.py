@@ -1,3 +1,4 @@
+import itertools
 from abc import ABC
 import os
 from copy import deepcopy
@@ -565,7 +566,7 @@ class JoinAnswers(BaseComponent):
                         to each retriever score. This param is not compatible with the `concatenate` join_mode.
         :param top_k_join: Limit documents to top_k based on the resulting scores of the join.
         """
-        assert join_mode in ["concatenate"], f"JoinAnswers node does not support '{join_mode}' join_mode."
+        assert join_mode in ["concatenate","interweave"], f"JoinAnswers node does not support '{join_mode}' join_mode."
 
         assert not (
             weights is not None and join_mode == "concatenate"
@@ -581,6 +582,17 @@ class JoinAnswers(BaseComponent):
             answers = []
             for input_from_node in inputs:
                 answers.extend(input_from_node["answers"])
+        elif self.join_mode == "interweave":
+            answers_with_duplicates = [answer for answer in itertools.chain(
+                *itertools.zip_longest(
+                    *[input_node_answers["answers"] for input_node_answers in inputs])) if answer is not None]
+            # Removing duplicates based on key "answer":
+            answers = []
+            answer_values = set()
+            for answer in answers_with_duplicates:
+                if answer["answer"] not in answer_values:
+                    answer_values.add(answer["answer"])
+                    answers.append(answer)
         else:
             raise Exception(f"Invalid join_mode: {self.join_mode}")
 
