@@ -133,10 +133,6 @@ class Question:
         """
         Link verbs and nouns mentioned in a question to relations that exist in our knowledge base
         """
-        # todo train with distant supervision
-        #  "Distant supervision [62]: "We learn indicator words for each relation using text from Wikipedia where entity mentions were identified.
-        #  This allows deriving noisy training examples: A sentence expresses relation r if it contains two co-occurring entities that are in relation r according to a knowledge base.
-        #  For each relation, we rank the words by their tf-idf to learn, for example, that born is a good indicator for the relation place of birth."
         relations = set()
         for token in self.doc:
             if token.pos_ == "VERB" or token.pos_ == "NOUN" or token.pos_ == "PROPN":
@@ -145,13 +141,11 @@ class Question:
                 elif self.add_namespace_to_resource(token.text, brackets=False, capitalize=False) in predicate_names:
                     relations.add(token.text)
                 elif token.pos_ == "VERB":
-                    #pass
                     best_relation_result, highest_tfidf = self.best_relation(token.lemma_.lower(), predicate_names, relation_tfidf)
                     if best_relation_result and highest_tfidf > 800:
                         best_relation_result = best_relation_result.split("/")[-1]
-                        print(token.text, best_relation_result, str(highest_tfidf))
                         relations.add(best_relation_result)
-                    # todo fuzzy matching for relation names
+                    # fuzzy matching for relation names based on word vector similarity
                     #relation, score = self.find_most_similar_relation(token.lemma_, nlp, predicate_names)
                     #if score > 0.4:
                     #    logger.info(f"Adding relation {relation} for token {token.text}")
@@ -167,7 +161,6 @@ class Question:
                     best_relation_result, highest_tfidf = self.best_relation(token.lemma_.lower(), predicate_names, relation_tfidf)
                     if best_relation_result and highest_tfidf > 800:
                         best_relation_result = best_relation_result.split("/")[-1]
-                        print("added", token.text, best_relation_result, str(highest_tfidf))
                         relations.add(best_relation_result)
                     relation, score = self.find_most_similar_relation(token.lemma_, nlp, predicate_names)
                     if score > 0.4:
