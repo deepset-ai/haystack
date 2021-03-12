@@ -50,7 +50,7 @@ def eval_on_all_data(pipeline, top_k_graph, input_df):
         input_df.loc[index, f"best_prediction"] = prediction["answers"][0]["answer"]
         input_df.loc[index, f'em_top{top_k_graph}'] = best_res["em"]
         input_df.loc[index, f'f1_top{top_k_graph}'] = best_res["f1"]
-        if index % 10 == 0:
+        if index % 10 == 9:
             print(f"Predicting the {index} item")
             input_df.to_csv("tempcache.csv",index=False)
 
@@ -118,8 +118,8 @@ def _qa_f1(answer1, answer2):
     answer1 = re.sub(r'\b(a|an|the)\b', ' ', answer1)
     answer2 = re.sub(r'\b(a|an|the)\b', ' ', answer2)
     #remove punctuation
-    answer1 = ' '.join(ch for ch in answer1 if ch not in set(string.punctuation))
-    answer2 = ' '.join(ch for ch in answer2 if ch not in set(string.punctuation))
+    answer1 = re.sub(r"[,.;@#?!&$/]+", ' ', answer1)
+    answer2 = re.sub(r"[,.;@#?!&$/]+", ' ', answer2)
 
     ans1_tokens = answer1.split()
     ans2_tokens = answer2.split()
