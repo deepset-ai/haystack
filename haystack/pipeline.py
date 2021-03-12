@@ -113,9 +113,10 @@ class Pipeline(ABC):
         i = -1  # the last item is popped off the stack unless it is a join node with unprocessed predecessors
         while stack:
             # just a quickfix for allowing decision nodes + new stack
-            if len(list(stack.keys())) <= i:
+            try:
+                node_id = list(stack.keys())[i]
+            except IndexError:
                 break
-            node_id = list(stack.keys())[i]
             node_input = stack[node_id]
             predecessors = set(self.graph.predecessors(node_id))
             if predecessors.issubset(nodes_executed):  # only execute if predecessor nodes are executed
