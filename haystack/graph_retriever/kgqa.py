@@ -303,83 +303,82 @@ class KGQARetriever(BaseGraphRetriever):
         return entity
 
 
-# TODO Text2SparqlRetriever must not inherit from KGQARetriever (breaks pipeline's basecomponent)
-# class Text2SparqlRetriever(KGQARetriever):
-#     def __init__(self, knowledge_graph, model_name_or_path):
-#         self.knowledge_graph = knowledge_graph
-#         self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
-#         self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
-#         self.tok = BartTokenizer.from_pretrained(model_name_or_path)
-#
-#     def retrieve(self, question_text: str, top_k_graph: int):
-#         inputs = self.tok([question_text], max_length=100, truncation=True, return_tensors='pt')
-#         temp = self.model.generate(inputs['input_ids'],
-#                                    num_beams=top_k_graph+3,
-#                                    max_length=100,
-#                                    num_return_sequences=top_k_graph+3,
-#                                    early_stopping=True)
-#         sparql_list = [self.tok.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in temp]
-#         answers = []
-#         for s in sparql_list:
-#             ans = self._query_kg(query=s)
-#             if len(ans) > 0:
-#                 answers.append(ans)
-#
-#         # if there are no answers we still want to return something
-#         if len(answers) == 0:
-#             answers.append("")
-#         results = answers[:top_k_graph]
-#         results = [self.format_result(result) for result in results]
-#         return results
-#
-#     def run(self, query, top_k_graph: Optional[int] = None, **kwargs):
-#         answers = self.retrieve(question_text=query, top_k_graph=top_k_graph)
-#
-#         results = {"query": query,
-#                    "answers": answers,
-#                    **kwargs}
-#         return results, "output_1"
-#
-#     def format_result(self, result):
-#         """
-#         Generate formatted dictionary output with text answer and additional info
-#         """
-#         text_answer = self.prediction_to_text(result)
-#         meta = {"model": "Question2SparqlRetriever"}
-#         if True:
-#             meta["urls"] = str(self.prediction_to_urls(result))
-#         return {"answer": str(text_answer), "meta": meta}
-#
-#     def _query_kg(self, query):
-#         # Bring generated query into Harry Potter KG form
-#         query = query.replace("}", " }")
-#         query = query.replace(")", " )")
-#         splits = query.split()
-#         query = ""
-#         for s in splits:
-#             if s.startswith("hp:"):
-#                 s = s.replace("hp:", "<https://deepset.ai/harry_potter/")
-#                 s = s + ">"
-#             query += s + " "
-#
-#         # query KG
-#         try:
-#             response = self.knowledge_graph.query(query=query, index="hp-test")
-#         except Exception:
-#             return ""
-#
-#         # unpack different answer styles
-#         if isinstance(response, list):
-#             if len(response) == 0:
-#                 return ""
-#         if isinstance(response, bool):
-#             result = str(response)
-#         elif "count" in response[0]:
-#             result = str(int(response[0]["count"]["value"]))
-#         else:
-#             result = []
-#             for x in response:
-#                 for k,v in x.items():
-#                     result.append(v["value"])
-#         return result
+class Text2SparqlRetriever(KGQARetriever):
+    def __init__(self, knowledge_graph, model_name_or_path):
+        self.knowledge_graph = knowledge_graph
+        self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
+        self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
+        self.tok = BartTokenizer.from_pretrained(model_name_or_path)
+
+    def retrieve(self, question_text: str, top_k_graph: int):
+        inputs = self.tok([question_text], max_length=100, truncation=True, return_tensors='pt')
+        temp = self.model.generate(inputs['input_ids'],
+                                   num_beams=top_k_graph+3,
+                                   max_length=100,
+                                   num_return_sequences=top_k_graph+3,
+                                   early_stopping=True)
+        sparql_list = [self.tok.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in temp]
+        answers = []
+        for s in sparql_list:
+            ans = self._query_kg(query=s)
+            if len(ans) > 0:
+                answers.append(ans)
+
+        # if there are no answers we still want to return something
+        if len(answers) == 0:
+            answers.append("")
+        results = answers[:top_k_graph]
+        results = [self.format_result(result) for result in results]
+        return results
+
+    def run(self, query, top_k_graph: Optional[int] = None, **kwargs):
+        answers = self.retrieve(question_text=query, top_k_graph=top_k_graph)
+
+        results = {"query": query,
+                   "answers": answers,
+                   **kwargs}
+        return results, "output_1"
+
+    def format_result(self, result):
+        """
+        Generate formatted dictionary output with text answer and additional info
+        """
+        text_answer = self.prediction_to_text(result)
+        meta = {"model": "Question2SparqlRetriever"}
+        if True:
+            meta["urls"] = str(self.prediction_to_urls(result))
+        return {"answer": str(text_answer), "meta": meta}
+
+    def _query_kg(self, query):
+        # Bring generated query into Harry Potter KG form
+        query = query.replace("}", " }")
+        query = query.replace(")", " )")
+        splits = query.split()
+        query = ""
+        for s in splits:
+            if s.startswith("hp:"):
+                s = s.replace("hp:", "<https://deepset.ai/harry_potter/")
+                s = s + ">"
+            query += s + " "
+
+        # query KG
+        try:
+            response = self.knowledge_graph.query(query=query, index="hp-test")
+        except Exception:
+            return ""
+
+        # unpack different answer styles
+        if isinstance(response, list):
+            if len(response) == 0:
+                return ""
+        if isinstance(response, bool):
+            result = str(response)
+        elif "count" in response[0]:
+            result = str(int(response[0]["count"]["value"]))
+        else:
+            result = []
+            for x in response:
+                for k,v in x.items():
+                    result.append(v["value"])
+        return result
 
