@@ -46,7 +46,7 @@ class BaseReader(BaseComponent):
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, skip_incorrect_retrieval: bool = True, **kwargs):
+    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, skip_incorrect_retrieval: bool = False, **kwargs):
         if skip_incorrect_retrieval:
             if not kwargs.get("correct_retrieval"):
                 return {}, "output_1"
@@ -61,6 +61,7 @@ class BaseReader(BaseComponent):
             for doc in documents:
                 if doc.id == ans["document_id"]:
                     ans["meta"] = deepcopy(doc.meta)
+            ans["meta"]["model"] = "Reader"
 
         results.update(**kwargs)
         return results, "output_1"

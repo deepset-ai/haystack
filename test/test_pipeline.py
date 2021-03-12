@@ -4,7 +4,7 @@ import pytest
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.pipeline import TranslationWrapperPipeline, JoinDocuments, ExtractiveQAPipeline, Pipeline, FAQPipeline, \
-    DocumentSearchPipeline
+    DocumentSearchPipeline, RootNode
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
 
@@ -214,3 +214,54 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     p.add_node(component=reader, name="Reader", inputs=["Join"])
     results = p.run(query=query)
     assert results["answers"][0]["answer"] == "Berlin"
+
+
+def test_parallel_paths_in_pipeline_graph():
+    class A(RootNode):
+        def run(self, **kwargs):
+            kwargs["output"] = "A"
+            return kwargs, "output_1"
+
+    class B(RootNode):
+        def run(self, **kwargs):
+            kwargs["output"] += "B"
+            return kwargs, "output_1"
+
+    class C(RootNode):
+        def run(self, **kwargs):
+            kwargs["output"] += "C"
+            return kwargs, "output_1"
+
+    class D(RootNode):
+        def run(self, **kwargs):
+            kwargs["output"] += "D"
+            return kwargs, "output_1"
+
+    class E(RootNode):
+        def run(self, **kwargs):
+            kwargs["output"] += "E"
+            return kwargs, "output_1"
+
+    class JoinNode(RootNode):
+        def run(self, **kwargs):
+            kwargs["output"] = kwargs["inputs"][0]["output"] + kwargs["inputs"][1]["output"]
+            return kwargs, "output_1"
+
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=A(), inputs=["Query"])
+    pipeline.add_node(name="B", component=B(), inputs=["A"])
+    pipeline.add_node(name="C", component=C(), inputs=["B"])
+    pipeline.add_node(name="E", component=E(), inputs=["C"])
+    pipeline.add_node(name="D", component=D(), inputs=["B"])
+    pipeline.add_node(name="F", component=JoinNode(), inputs=["D", "E"])
+    output = pipeline.run(query="test")
+    assert output["output"] == "ABDABCE"
+
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=A(), inputs=["Query"])
+    pipeline.add_node(name="B", component=B(), inputs=["A"])
+    pipeline.add_node(name="C", component=C(), inputs=["B"])
+    pipeline.add_node(name="D", component=D(), inputs=["B"])
+    pipeline.add_node(name="E", component=JoinNode(), inputs=["C", "D"])
+    output = pipeline.run(query="test")
+    assert output["output"] == "ABDABC"

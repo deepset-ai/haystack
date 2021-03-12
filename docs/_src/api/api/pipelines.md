@@ -342,6 +342,36 @@ Wrap a given `pipeline` with the `input_translator` and `output_translator`.
 - `pipeline`: The pipeline object (e.g. ExtractiveQAPipeline) you want to "wrap".
 Note that pipelines with split or merge nodes are currently not supported.
 
+<a name="pipeline.JoinAnswers"></a>
+## JoinAnswers Objects
+
+```python
+class JoinAnswers(BaseComponent)
+```
+
+A node to join documents outputted by multiple retriever nodes.
+
+The node allows multiple join modes:
+* concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
+* merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
+         `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
+
+<a name="pipeline.JoinAnswers.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None)
+```
+
+**Arguments**:
+
+- `join_mode`: `concatenate` to combine documents from multiple retrievers or `merge` to aggregate scores of
+individual documents.
+- `weights`: A node-wise list(length of list must be equal to the number of input nodes) of weights for
+adjusting document scores when using the `merge` join_mode. By default, equal weight is given
+to each retriever score. This param is not compatible with the `concatenate` join_mode.
+- `top_k_join`: Limit documents to top_k based on the resulting scores of the join.
+
 <a name="pipeline.JoinDocuments"></a>
 ## JoinDocuments Objects
 
