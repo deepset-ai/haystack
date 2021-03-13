@@ -7,12 +7,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def eval_on_all_data(pipeline, top_k_graph, input_df):
+def eval_on_all_data(pipeline, top_k_graph, input_df, save_intermediate=False):
     # iterating over each Question
     for index, row in input_df.iterrows():
 
-        prediction, _ = pipeline.run(query=row['Question Text'], top_k_graph=top_k_graph)
+        # get prediction
+        prediction, _ = pipeline.run(query=row['Question Text'])
 
+        # get answer type (eval changes depending on answer type)
         if not pd.isna(row["Short"]):
             question_type = "Short"
         elif not pd.isna(row["Multi Fact"]):
@@ -26,21 +28,24 @@ def eval_on_all_data(pipeline, top_k_graph, input_df):
         else:
             raise NotImplementedError
 
-        best_res = {"em":0, "f1":0}
-        for i, p in enumerate(prediction["answers"]):
-            if not pd.isna(row["feedback_labels"]):
-                try:
-                    ground_truths = ast.literal_eval(row["feedback_labels"])
-                    if not isinstance(ground_truths, list):
-                        ground_truths = []
-                        logger.warning(f"Could not convert feedback into list: {row['feedback_labels']}")
-                except Exception:
-                    logger.warning(f"Could not convert feedback into list: {row['feedback_labels']}")
+       # construct groung truth from multiple annotations wherever possible
+        if not pd.isna(row["feedback_labels"]):
+            try:
+                ground_truths = ast.literal_eval(row["feedback_labels"])
+                if not isinstance(ground_truths, list):
                     ground_truths = []
-                ground_truths.append(row["Answer"])
-                ground_truths = list(set(ground_truths))
-            else:
-                ground_truths = [row["Answer"]]
+                    logger.warning(f"Could not convert feedback into list: {row['feedback_labels']}")
+            except Exception:
+                logger.warning(f"Could not convert feedback into list: {row['feedback_labels']}")
+                ground_truths = []
+            ground_truths.append(row["Answer"])
+            ground_truths = list(set(ground_truths))
+        else:
+            ground_truths = [row["Answer"]]
+
+        # compare predictions and ground truths
+        best_res = {"em": 0, "f1": 0}
+        for i, p in enumerate(prediction["answers"]):
             res = compare_answers_fuzzy(ground_truths=ground_truths,
                                         prediction=p["answer"],
                                         question_type=question_type)
@@ -52,7 +57,8 @@ def eval_on_all_data(pipeline, top_k_graph, input_df):
         input_df.loc[index, f'f1_top{top_k_graph}'] = best_res["f1"]
         if index % 10 == 9:
             print(f"Predicting the {index} item")
-            input_df.to_csv("tempcache.csv",index=False)
+            if save_intermediate:
+                input_df.to_csv("intermediate_results.csv",index=False)
 
     return input_df
 

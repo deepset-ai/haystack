@@ -144,7 +144,7 @@ class KGQARetriever(BaseGraphRetriever):
             result = self.query_executor.execute(queries_with_score[0])
             logger.info(f"Score: {queries_with_score[1]} Query: {queries_with_score[0]}")
             logger.info(f"Answer: {result}")
-            results.append(result)
+            results.append((result,queries_with_score[0].get_sparql_query()))
 
         if len(results) == 0:
             logger.debug(
@@ -157,11 +157,18 @@ class KGQARetriever(BaseGraphRetriever):
         """
         Generate formatted dictionary output with text answer and additional info
         """
-        text_answer = self.prediction_to_text(result)
-        meta = {"model": "GraphRetriever"}
-        if True:
-            meta["urls"] = str(self.prediction_to_urls(result))
-        return {"answer": str(text_answer), "meta": meta}
+        query = result[1]
+        prediction = result[0]
+        text_answer = str(self.prediction_to_text(prediction))
+        meta = {"model": self.__class__.__name__}
+        meta["urls"] = str(self.prediction_to_urls(prediction))
+        meta["sparql_query"] = query
+        if len(str(text_answer).split("\n")) > 4:
+            meta["long_answer_list"] = True
+        else:
+            meta["long_answer_list"] = False
+
+        return {"answer": text_answer, "meta": meta}
 
     def filter_relations_from_entities(self):
         for predicate_name in self.predicate_names:
@@ -302,50 +309,42 @@ class KGQARetriever(BaseGraphRetriever):
 
 
 class Text2SparqlRetriever(KGQARetriever):
-    def __init__(self, knowledge_graph, model_name_or_path):
+    def __init__(self, knowledge_graph, model_name_or_path, top_k: int = 1):
         self.knowledge_graph = knowledge_graph
         self.query_executor: QueryExecutor = QueryExecutor(knowledge_graph)
         self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
         self.tok = BartTokenizer.from_pretrained(model_name_or_path)
+        self.top_k = top_k
 
-    def retrieve(self, question_text: str, top_k_graph: int):
+    def retrieve(self, question_text: str):
         inputs = self.tok([question_text], max_length=100, truncation=True, return_tensors='pt')
         temp = self.model.generate(inputs['input_ids'],
-                                   num_beams=top_k_graph+3,
+                                   num_beams=self.top_k,
                                    max_length=100,
-                                   num_return_sequences=top_k_graph+3,
+                                   num_return_sequences=self.top_k,
                                    early_stopping=True)
         sparql_list = [self.tok.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in temp]
         answers = []
         for s in sparql_list:
-            ans = self._query_kg(query=s)
+            ans,query = self._query_kg(query=s)
             if len(ans) > 0:
-                answers.append(ans)
+                answers.append((ans,query))
 
         # if there are no answers we still want to return something
         if len(answers) == 0:
-            answers.append("")
-        results = answers[:top_k_graph]
+            answers.append(("",""))
+        results = answers[:self.top_k]
         results = [self.format_result(result) for result in results]
         return results
 
-    def run(self, query, top_k_graph: Optional[int] = None, **kwargs):
-        answers = self.retrieve(question_text=query, top_k_graph=top_k_graph)
+    def run(self, query, **kwargs):
+        answers = self.retrieve(question_text=query)
 
         results = {"query": query,
                    "answers": answers,
                    **kwargs}
         return results, "output_1"
 
-    def format_result(self, result):
-        """
-        Generate formatted dictionary output with text answer and additional info
-        """
-        text_answer = self.prediction_to_text(result)
-        meta = {"model": "Question2SparqlRetriever"}
-        if True:
-            meta["urls"] = str(self.prediction_to_urls(result))
-        return {"answer": str(text_answer), "meta": meta}
 
     def _query_kg(self, query):
         # Bring generated query into Harry Potter KG form
@@ -362,21 +361,25 @@ class Text2SparqlRetriever(KGQARetriever):
         # query KG
         try:
             response = self.knowledge_graph.query(query=query)
-        except Exception:
-            return ""
 
-        # unpack different answer styles
-        if isinstance(response, list):
-            if len(response) == 0:
-                return ""
-        if isinstance(response, bool):
-            result = str(response)
-        elif "count" in response[0]:
-            result = str(int(response[0]["count"]["value"]))
-        else:
-            result = []
-            for x in response:
-                for k,v in x.items():
-                    result.append(v["value"])
-        return result
+            # unpack different answer styles
+            if isinstance(response, list):
+                if len(response) == 0:
+                    result = ""
+                else:
+                    result = []
+                    for x in response:
+                        for k, v in x.items():
+                            result.append(v["value"])
+            elif isinstance(response, bool):
+                result = str(response)
+            elif "count" in response[0]:
+                result = str(int(response[0]["count"]["value"]))
+            else:
+                result = ""
+
+        except Exception:
+            result = ""
+
+        return result, query
 
