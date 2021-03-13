@@ -12,7 +12,7 @@ def eval_on_all_data(pipeline, top_k_graph, input_df, query_executor="both", sav
     for index, row in input_df.iterrows():
 
         # get prediction
-        prediction, _ = pipeline.run(query=row['Question Text'], query_executor=query_executor)
+        prediction = pipeline.run(query=row['Question Text'], query_executor=query_executor)
 
         # get answer type (eval changes depending on answer type)
         if not pd.isna(row["Short"]):

@@ -136,7 +136,8 @@ class Pipeline(ABC):
                         if "inputs" not in existing_input.keys():
                             updated_input = {"inputs": [existing_input, node_output]}
                         else:
-                            updated_input = existing_input["inputs"].append(node_output)
+                            existing_input["inputs"].append(node_output)
+                            updated_input = existing_input
                         stack[n] = updated_input
                     else:
                         stack[n] = node_output
