@@ -108,7 +108,7 @@ You should see the following:
 
 You can then try different queries against a pre-defined set of indexed articles related to Game of Thrones.
 
-**Note**: This demo starts the following containers:
+**Note**: The following containers are started as a part of this demo:
 
 * Haystack API: listens on port 8000
 * DocumentStore (Elasticsearch): listens on port 9200
