@@ -520,7 +520,7 @@ You will find the Swagger API documentation at
 
 ## :heart: Contributing
 
-We are very open to the community's contributions - be it the fix of a small typo or a completely new feature! You don't need to be a Haystack expert for providing meaningful improvements. To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
+We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
 
 We'd also like to invite you to our Slack community channels. Please join [here](https://haystack.deepset.ai/community/join)!
 
