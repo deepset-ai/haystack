@@ -314,7 +314,7 @@ doc = converter.convert(file_path=file, meta=None)
 
 **What**
 
-Cleaning and splitting your texts are crucial steps that will directly impact your search's speed and accuracy.
+Cleaning and splitting your texts are crucial steps that will directly impact the speed and accuracy of your search.
 The splitting of larger texts is especially important for achieving fast query speed. The longer the texts that the retriever passes to the reader, the slower your queries.
 
 **Available Options**
