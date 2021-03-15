@@ -122,7 +122,7 @@ If you're interested in learning more about Haystack and using it as part of you
 
 **1. Installing from a package**
 
-You can install the Haystack Python package by using [pip](https://github.com/pypa/pip).
+You can install Haystack by using [pip](https://github.com/pypa/pip).
 
 ```
     pip3 install farm-haystack
