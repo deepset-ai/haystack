@@ -458,7 +458,7 @@ reader.predict(question="Who is the father of Arya Starck?", documents=documents
 **What**
 
 To build modern search pipelines, you need two things: powerful building blocks and a flexible way to stick them together.
-The `Pipeline` class is built exactly for this purpose and enables many search scenarios beyond QA. The core idea: you can make a Directed Acyclic Graph (DAG) where each node is one "building block" (Reader, Retriever, Generator ...).
+The `Pipeline` class is built exactly for this purpose and enables many search scenarios beyond QA. The core idea: you can make a Directed Acyclic Graph (DAG) where each node is one "building block" (Reader, Retriever, Generator, and so on).
 
 **Available Options**
 
