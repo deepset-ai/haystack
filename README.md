@@ -165,7 +165,7 @@ We recommend Elasticsearch or FAISS but also have more light-weight options for 
 5.  **Reader**: Neural network (e.g., BERT or RoBERTA) that reads through texts in detail
     to find an answer. The Reader takes multiple passages of text as input and returns top-n answers. Models are trained via [FARM](https://github.com/deepset-ai/FARM) or [Transformers](https://github.com/huggingface/transformers) on SQuAD like tasks.  You can load a pre-trained model from [Hugging Face's model hub](https://huggingface.co/models) or fine-tune it on your domain data.
 6.  **Generator**: Neural network (e.g., RAG) that *generates* an answer for a given question conditioned on the retrieved documents from the retriever.
-6.  **Pipeline**: Stick building blocks together to highly custom pipelines that are represented as Directed Acyclic Graphs (DAG). Think of it as "Apache Airflow for the search".
+6.  **Pipeline**: Stick building blocks together to highly custom pipelines that are represented as Directed Acyclic Graphs (DAG). Think of it as "Apache Airflow for search".
 7.  **REST API**: Exposes a simple API based on fastAPI for running QA search, uploading files, and collecting user feedback for continuous learning.
 8.  **Haystack Annotate**: Create custom QA labels to improve your domain-specific models' performance. [Hosted version](https://annotate.deepset.ai/login) or [Docker images](https://github.com/deepset-ai/haystack/tree/master/annotation_tool).
 
