@@ -10,7 +10,7 @@ from rest_api.controller.router import router as api_router
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 logger = logging.getLogger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
-logging.getLogger("haystack").setLevel(logging.DEBUG)
+logging.getLogger("haystack").setLevel(logging.INFO)
 
 
 def get_application() -> FastAPI:
