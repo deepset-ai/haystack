@@ -571,7 +571,7 @@ class JoinAnswers(BaseComponent):
         self.top_k = top_k_join
 
     def run(self, **kwargs):
-        inputs = kwargs["inputs"]
+        inputs = kwargs.get("inputs") or [kwargs]
 
         if self.join_mode == "concatenate":
             answers = []
