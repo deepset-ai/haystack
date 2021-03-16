@@ -107,43 +107,37 @@ class Pipeline(ABC):
 
     def run(self, **kwargs):
         node_output = None
-        stack = {
+        queue = {
             self.root_node_id: {"pipeline_type": self.pipeline_type, **kwargs}
-        }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO stack
-        nodes_executed = set()
-        i = -1  # the last item is popped off the stack unless it is a join node with unprocessed predecessors
-        while stack:
-            # just a quickfix for allowing decision nodes + new stack
+        }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
+
+        while queue:
+            # just a quickfix for allowing decision nodes + new queue
             try:
-                node_id = list(stack.keys())[i]
+                node_id = list(queue.keys())[0]
             except IndexError:
                 break
-            node_input = stack[node_id]
-            predecessors = set(self.graph.predecessors(node_id))
-            if predecessors.issubset(nodes_executed):  # only execute if predecessor nodes are executed
-                nodes_executed.add(node_id)
-                try:
-                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
-                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
-                except Exception as e:
-                    tb = traceback.format_exc()
-                    raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
-                stack.pop(node_id)
-                next_nodes = self.get_next_nodes(node_id, stream_id)
-                for n in next_nodes:  # add successor nodes with corresponding inputs to the stack
-                    if stack.get(n):  # concatenate inputs if it's a join node
-                        existing_input = stack[n]
-                        if "inputs" not in existing_input.keys():
-                            updated_input = {"inputs": [existing_input, node_output]}
-                        else:
-                            existing_input["inputs"].append(node_output)
-                            updated_input = existing_input
-                        stack[n] = updated_input
+            node_input = queue[node_id]
+            try:
+                logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+            except Exception as e:
+                tb = traceback.format_exc()
+                raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
+            queue.pop(node_id)
+            next_nodes = self.get_next_nodes(node_id, stream_id)
+            for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
+                if queue.get(n):  # concatenate inputs if it's a join node
+                    existing_input = queue[n]
+                    if "inputs" not in existing_input.keys():
+                        updated_input = {"inputs": [existing_input, node_output]}
                     else:
-                        stack[n] = node_output
-                i = -1
-            else:  # attempt executing lower nodes in the stack as `node_id` has unprocessed predecessors
-                i -= 1
+                        existing_input["inputs"].append(node_output)
+                        updated_input = existing_input
+                    queue[n] = updated_input
+                else:
+                    queue[n] = node_output
+
         return node_output
 
     def get_next_nodes(self, node_id: str, stream_id: str):
