@@ -139,11 +139,11 @@ class KGQARetriever(BaseGraphRetriever):
         queries = self.query_generation(triples, question_type)
         queries_with_scores = self.query_ranker.query_ranking(queries=queries, question=question.question_text, top_k_graph=top_k)
         results = []
-        logger.info(f"Listing top {min(top_k, len(queries_with_scores))} queries and answers (k={top_k})")
+        logger.debug(f"Listing top {min(top_k, len(queries_with_scores))} queries and answers (k={top_k})")
         for queries_with_score in queries_with_scores[:top_k]:
             result = self.query_executor.execute(queries_with_score[0])
-            logger.info(f"Score: {queries_with_score[1]} Query: {queries_with_score[0]}")
-            logger.info(f"Answer: {result}")
+            logger.debug(f"Score: {queries_with_score[1]} Query: {queries_with_score[0]}")
+            logger.debug(f"Answer: {result}")
             results.append((result,queries_with_score[0].get_sparql_query()))
 
         if len(results) == 0:
@@ -219,7 +219,7 @@ class KGQARetriever(BaseGraphRetriever):
                         s_extend.add(Triple("?urix", triple1.predicate, "?uri"))
 
             s = s.union(s_extend)
-            logger.info(f"Generated {len(s)} triples")
+            logger.debug(f"Generated {len(s)} triples")
             return s
         else:
             s1: Set[Triple] = set([Triple(e1, p, e2) for e1 in entities for p in relations for e2 in entities if
@@ -240,7 +240,7 @@ class KGQARetriever(BaseGraphRetriever):
                             s_extend.add(Triple("?urix", triple1.predicate, "?uri"))
 
             s = s.union(s_extend)
-            logger.info(f"Generated {len(s)} triples")
+            logger.debug(f"Generated {len(s)} triples")
             return s
 
     def query_generation(self, triples: Set[Triple], question_type: QuestionType) -> List[Query]:
@@ -249,7 +249,7 @@ class KGQARetriever(BaseGraphRetriever):
         """
         queries: List[Query] = []
         for k in range(1, min(len(triples) + 1, 4)):
-            logger.info(
+            logger.debug(
                 f"Generating {sum(1 for _ in itertools.combinations(triples, k))} triple combinations for k={k}")
             for triple_combination in itertools.combinations(triples, k):
                 if not triple_combination:
@@ -259,12 +259,12 @@ class KGQARetriever(BaseGraphRetriever):
                         set(triple_combination)):
                     queries.append(Query(question_type=question_type, triples=set(triple_combination)))
 
-        logger.info(f"Number of queries before pruning: {len(queries)}")
+        logger.debug(f"Number of queries before pruning: {len(queries)}")
         if not question_type == QuestionType.BooleanQuestion:
             # select statement contains ?uri. therefore at least one triple in the where clause should also contain ?uri
             # and every triple should contain a subject, predicate or object that starts with "?"
             queries = [query for query in queries if query.has_variable_in_every_triple() and query.has_uri_variable()]
-        logger.info(f"Number of queries after pruning: {len(queries)}")
+        logger.debug(f"Number of queries after pruning: {len(queries)}")
         return queries
 
     def prediction_to_urls(self, prediction):
