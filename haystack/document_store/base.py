@@ -122,6 +122,10 @@ class BaseDocumentStore(BaseComponent):
         pass
 
     @abstractmethod
+    def delete_document_by_id(self, id: Union[List[str], str], index: Optional[str] = None):
+        pass
+
+    @abstractmethod
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         pass
 
