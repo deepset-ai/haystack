@@ -110,34 +110,38 @@ class Pipeline(ABC):
         queue = {
             self.root_node_id: {"pipeline_type": self.pipeline_type, **kwargs}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
-
+        i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
             # just a quickfix for allowing decision nodes + new queue
             try:
-                node_id = list(queue.keys())[0]
+                node_id = list(queue.keys())[i]
             except IndexError:
                 break
             node_input = queue[node_id]
-            try:
-                logger.debug(f"Running node `{node_id}` with input `{node_input}`")
-                node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
-            except Exception as e:
-                tb = traceback.format_exc()
-                raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
-            queue.pop(node_id)
-            next_nodes = self.get_next_nodes(node_id, stream_id)
-            for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
-                if queue.get(n):  # concatenate inputs if it's a join node
-                    existing_input = queue[n]
-                    if "inputs" not in existing_input.keys():
-                        updated_input = {"inputs": [existing_input, node_output]}
+            predecessors = set(nx.ancestors(self.graph, node_id))
+            if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
+                try:
+                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+                except Exception as e:
+                    tb = traceback.format_exc()
+                    raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
+                queue.pop(node_id)
+                next_nodes = self.get_next_nodes(node_id, stream_id)
+                for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
+                    if queue.get(n):  # concatenate inputs if it's a join node
+                        existing_input = queue[n]
+                        if "inputs" not in existing_input.keys():
+                            updated_input = {"inputs": [existing_input, node_output]}
+                        else:
+                            existing_input["inputs"].append(node_output)
+                            updated_input = existing_input
+                        queue[n] = updated_input
                     else:
-                        existing_input["inputs"].append(node_output)
-                        updated_input = existing_input
-                    queue[n] = updated_input
-                else:
-                    queue[n] = node_output
-
+                        queue[n] = node_output
+                i = 0
+            else:
+                i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
 
     def get_next_nodes(self, node_id: str, stream_id: str):
