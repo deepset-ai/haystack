@@ -4,7 +4,7 @@ from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
 import numpy as np
-from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text
+from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text, exc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
@@ -444,16 +444,15 @@ class SQLDocumentStore(BaseDocumentStore):
         :param id: Unique document identifier
         :param index: Index name to delete the document from.
         """
+        index = index or self.index
         try:
             document_to_delete = self.session.query(DocumentORM.id).filter_by(id, index=index)
             if not id:
                 raise Exception("Document could not be found")
-            self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_to_delete)).delete(synchronize_session=False)
+            self.session.delete(document_to_delete)
             self.session.commit()
-        except Exception as ex:
-            logger.error(f"Transaction rollback: {ex.__cause__}")
-            self.session.rollback()
-            raise ex
+        except exc as e:
+            raise e.DBAPIError("Database operation failed", e.message)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
