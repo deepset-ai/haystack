@@ -1,107 +1,88 @@
 from datetime import datetime
+from fastapi import APIRouter, HTTPException, Response
 from haystack.schema import Document
-from haystack.document_store import sql
-from rest_api.config import LOG_LEVEL
-from typing import Dict
-from fastapi import APIRouter, HTTPException
-import logging
+from haystack.document_store.sql import SQLDocumentStore
+from http import HTTPStatus
 
-sql = sql.SQLDocumentStore()
 now = datetime.now()
-SUCCESS: int = 200
-CREATED: int = 201
-
-logger = logging.getLogger('haystack')
-logger.setLevel(LOG_LEVEL)
-
 router = APIRouter()
 
 
-@router.post("/documents", status_code=CREATED)
-def create_document(payload: Dict[Document]):
+@router.post("/documents", status_code=HTTPStatus.CREATED.value, response_model=Document)
+def create_document(payload: Document, response: Response):
     """
     Creates a Document object
     :param payload: input from the client to create a document.
     """
-    logger.info("Constructing document object")
-    created_document = Document.from_dict(payload)
-    logger.info("Constructed!")
-    return {"created": created_document,
+    created_document = SQLDocumentStore.write_documents(payload.to_dict())
+    if response.status_code > 399:
+        status_code = response.status_code
+        raise HTTPException(status_code=status_code, detail="Something went wrong while creating document")
+    return {"status": "success",
+            "data": created_document,
             "created_at": now}
 
 
-@router.get("/documents", status_code=SUCCESS)
-def get_all_documents(start: int = 0, limit: int = 20):
+@router.get("/documents", status_code = HTTPStatus.OK.value, response_model = Document)
+def get_all_documents(response: Response):
     """
     Returns the documents which are available in the database
-    Supports pagination
-    :param start: used to set the starting point
-    :param limit: used to delimit the number of retrieved documents
     """
-    try:
-        logger.info("Retrieving documents")
-        retrieved_documents = sql.get_all_documents()
-        return retrieved_documents[start: start + limit]
-    except Exception as e:
-        if TimeoutError:
-            raise Exception("Request has timed out")
-        else:
-            raise Exception(f"Something went wrong while retrieving documents", e.message)
+    response_query = SQLDocumentStore.get_all_documents_generator()
+    if response.status_code > 399:
+        status_code = response.status_code
+        raise HTTPException(status_code=status_code, detail="Something went wrong while retrieving documents")
+    return {"status": "success",
+            "data": response_query}
 
 
-@router.get("/documents/{id}", status_code=SUCCESS)
-def get_document(id: str):
+@router.get("/documents/{id}", status_code=HTTPStatus.OK.value, response_model=Document)
+def get_document(id):
     """
     Returns a document given its id
     :param id: UUID pointing to the document to retrieve
     """
-    try:
-        retrieved_document = sql.get_document_by_id(id)
-        if not retrieved_document:
-            raise HTTPException(status_code=404, detail=f"No document with id {id} could be found")
-        return retrieved_document
-    except Exception as e:
-        if TimeoutError:
-            raise Exception("Request has timed out")
-        else:
-            raise Exception(f"Something went wrong while retrieving documents", e.message)
+    if id is not str:
+        raise HTTPException(status_code=400, detail=f"Wrong type of ID. ID = {type(id)}")
+    response_query = SQLDocumentStore.get_document_by_id(id)
+    if not response_query:
+        raise HTTPException(status_code=404, detail=f"No document with id {id} could be found")
+    return {"status": "success",
+            "data": response_query}
 
 
-@router.put("/documents/{id}", status_code=SUCCESS)
-def update_document(id: str, payload: Document):
+@router.put("/documents/{id}", status_code=HTTPStatus.OK.value, response_model=Document)
+def update_document(id, payload: Document, response: Response):
     """
     Updates an existing document with its metadata
     :param id: UUID pointing to the document to retrieve
     :param payload: input from the client to create a Document
     """
-    try:
-        if not id:
-            raise HTTPException(status_code=404, detail=f"No document with id {id} could be found")
-        sql.delete_document_by_id(id)
-        cursor = sql.SQLDocumentStore(update_existing_documents=True)
-        document_to_be_updated = cursor.write_documents(payload.to_dict())
-        return {"updated": document_to_be_updated,
-                "updated_at": now}
-    except Exception as e:
-        if TimeoutError:
-            raise Exception("Request has timed out")
-        else:
-            raise Exception(f"Something went wrong while deleting document id {id}", e.message)
+    if id is not str:
+        raise HTTPException(status_code=400, detail=f"Wrong type of ID. ID = {type(id)}")
+    document = SQLDocumentStore.delete_document_by_id(id)
+    if not document:
+        raise HTTPException(status_code=404, detail=f"No document with id {id} could be found")
+    document_to_be_updated = SQLDocumentStore.write_documents(payload.to_dict(), update_existing_documents=True)
+    if response.status_code > 399:
+        status_code = response.status_code
+        raise HTTPException(status_code=status_code, detail=f"Something went wrong while updating document {id}")
+    return {"status": "success",
+            "data": document_to_be_updated,
+            "updated_at": now}
 
 
-@router.delete("/documents/{id}", status_code=SUCCESS)
-def delete_document(id: str):
+@router.delete("/documents/{id}", status_code = HTTPStatus.OK.value, response_model = Document)
+def delete_document(id, response: Response):
     """
     Deletes a document given its id
     :param id: UUID pointing to the document to retrieve
     """
-    try:
-        if not id:
-            raise HTTPException(status_code=404, detail=f"No document with id {id} could be found")
-        sql.delete_document_by_id(id)
-        return {"deleted": id}
-    except Exception as e:
-        if TimeoutError:
-            raise Exception("Request has timed out")
-        else:
-            raise Exception(f"Something went wrong while deleting document id {id}", e.message)
+    if id is not str:
+        raise HTTPException(status_code=400, detail=f"Wrong type of ID. ID = {type(id)}")
+    SQLDocumentStore.delete_document_by_id(id)
+    if response.status_code > 399:
+        status_code = response.status_code
+        raise HTTPException(status_code=status_code, detail=f"Something went wrong while deleting document {id}")
+    return {"status": "success",
+            "deleted": id}
