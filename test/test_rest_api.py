@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from rest_api.controller.documents import router
+
 
 def get_test_client_and_override_dependencies():
     import os
@@ -78,3 +80,41 @@ def test_api(reader, document_store):
         answer = response_json["data"][0]["paragraphs"][0]["qas"][0]["answers"][0]["text"]
         assert context[answer_start:answer_start+len(answer)] == answer
 
+
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_file_upload(document_store):
+    assert document_store.get_document_count() == 0
+    client = get_test_client_and_override_dependencies(reader=None, document_store=document_store)
+    file_to_upload = {'file': Path("samples/pdf/sample_pdf_1.pdf").open('rb')}
+    response = client.post(url="/file-upload", files=file_to_upload)
+    assert 200 == response.status_code
+    assert document_store.get_document_count() > 0
+
+
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+def test_create_document():
+    client = TestClient(router)
+    test_input = "This is a simple test for Haystack"
+    response = client.post("/documents", data=test_input)
+    assert response.status_code == 200
+    assert response.json() is not None
+
+
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+def test_read_all_documents():
+    client = TestClient(router)
+    response = client.get("/documents")
+    assert response.status_code == 200
+
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+def test_read_invalid_document():
+    client = TestClient(router)
+    test_input = 0
+    response = client.get(f"/documents/{test_input}")
+    assert response.status_code == 400
+    assert response.json() == {"detail": f"Wrong type of ID. ID = {test_input}"}
