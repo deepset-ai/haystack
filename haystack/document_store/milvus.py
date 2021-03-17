@@ -163,7 +163,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         }
 
     def write_documents(
-            self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
+            self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, update_existing_documents = False
     ):
         """
         Add new documents to the DocumentStore.
