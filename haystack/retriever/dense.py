@@ -270,6 +270,7 @@ class DensePassageRetriever(BaseRetriever):
               train_filename: str,
               dev_filename: str = None,
               test_filename: str = None,
+              dev_split: float = 0,
               batch_size: int = 2,
               embed_title: bool = True,
               num_hard_negatives: int = 1,
@@ -294,6 +295,7 @@ class DensePassageRetriever(BaseRetriever):
         :param train_filename: training filename
         :param dev_filename: development set filename, file to be used by model in eval step of training
         :param test_filename: test set filename, file to be used by model in test step after training
+        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
         :param batch_size: total number of samples in 1 batch of data
         :param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
         :param num_hard_negatives: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
@@ -324,6 +326,7 @@ class DensePassageRetriever(BaseRetriever):
                                                  train_filename=train_filename,
                                                  dev_filename=dev_filename,
                                                  test_filename=test_filename,
+                                                 dev_split=dev_split,
                                                  embed_title=self.embed_title,
                                                  num_hard_negatives=num_hard_negatives,
                                                  num_positives=num_positives)
