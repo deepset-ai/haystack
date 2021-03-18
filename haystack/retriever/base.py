@@ -184,7 +184,8 @@ class BaseRetriever(BaseComponent):
         top_k_retriever: Optional[int] = None,
         **kwargs,
     ):
-        documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever)
+        index = kwargs.get("index", None)
+        documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever, index=index)
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {
