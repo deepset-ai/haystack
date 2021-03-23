@@ -46,7 +46,7 @@ class PDFToTextConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
-        encoding: str = "Latin1",
+        encoding: Optional[str] = "Latin1",
     ) -> Dict[str, Any]:
         """
         Extract text from a .pdf file using the pdftotext library (https://www.xpdfreader.com/pdftotext-man.html)
@@ -118,7 +118,7 @@ class PDFToTextConverter(BaseConverter):
         document = {"text": text, "meta": meta}
         return document
 
-    def _read_pdf(self, file_path: Path, layout: bool, encoding: str) -> List[str]:
+    def _read_pdf(self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1") -> List[str]:
         """
         Extract pages from the pdf file at file_path.
 
@@ -130,7 +130,7 @@ class PDFToTextConverter(BaseConverter):
             command = ["pdftotext", "-enc", encoding, "-layout", str(file_path), "-"]
         else:
             command = ["pdftotext", "-enc", encoding, str(file_path), "-"]
-        output = subprocess.run(command, stdout=subprocess.PIPE, shell=False)
+        output = subprocess.run(command, stdout=subprocess.PIPE, shell=False) # type: ignore
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")
         pages = pages[:-1]  # the last page in the split is always empty.
