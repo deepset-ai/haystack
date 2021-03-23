@@ -14,6 +14,7 @@ langdetect # for PDF conversions
 # optional: sentence-transformers
 python-multipart
 python-docx
+sqlalchemy>=1.4.2
 sqlalchemy_utils
 # for using FAISS with GPUs, install faiss-gpu
 faiss-cpu>=1.6.3

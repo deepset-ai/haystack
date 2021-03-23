@@ -71,6 +71,7 @@ class TikaConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         :param file_path: path of the file to convert
@@ -80,11 +81,12 @@ class TikaConverter(BaseConverter):
                                       does not have table parsing capability for finding answers. However, tables
                                       may also have long strings that could possible candidate for searching answers.
                                       The rows containing strings are thus retained in this option.
-       :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
+        :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
                                 (https://en.wikipedia.org/wiki/ISO_639-1) format.
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
+        :param encoding: Not applicable
 
         :return: a list of pages and the extracted meta data of the file.
         """
