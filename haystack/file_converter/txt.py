@@ -30,7 +30,7 @@ class TextConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
-        encoding: str = "utf-8",
+        encoding: Optional[str] = "utf-8",
     ) -> Dict[str, Any]:
         """
         Reads text from a txt file and executes optional preprocessing steps.
@@ -47,6 +47,7 @@ class TextConverter(BaseConverter):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
+        :param encoding: Select the file encoding (default is `utf-8`)
 
         :return: Dict of format {"text": "The text from file", "meta": meta}}
 
@@ -87,7 +88,7 @@ class TextConverter(BaseConverter):
                     f"been decoded in the correct text format."
                 )
 
-        text = "".join(pages)
+        text = "".join(cleaned_pages)
         document = {"text": text, "meta": meta}
         return document
 

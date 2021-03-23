@@ -16,6 +16,7 @@ class DocxToTextConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Extract text from a .docx file.
@@ -34,6 +35,7 @@ class DocxToTextConverter(BaseConverter):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
+        :param encoding: Not applicable
         """
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables
