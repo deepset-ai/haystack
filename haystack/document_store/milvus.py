@@ -298,7 +298,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :return:
         """
         if filters:
-            raise Exception("Query filters are not implemented for the MilvusDocumentStore.")
+            logger.warning("Query filters are not implemented for the MilvusDocumentStore.")
 
         index = index or self.index
         status, ok = self.milvus_server.has_collection(collection_name=index)
