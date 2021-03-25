@@ -309,7 +309,7 @@ class FARMReader(BaseReader):
         self.inferencer.batch_size = batch_size
         # make predictions on all document-query pairs
         predictions = self.inferencer.inference_from_objects(
-            objects=inputs, return_json=False, multiprocessing_chunksize=1
+            objects=inputs, return_json=False, multiprocessing_chunksize=10
         )
 
         # group predictions together
