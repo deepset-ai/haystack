@@ -37,8 +37,27 @@ class BasePreProcessor(BaseComponent):
     ) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
-    def run(self, document: dict, **kwargs): # type: ignore
-        documents = self.process(document)
-
+    def run(
+        self,
+        document: dict,
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        split_by: Optional[str] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
+        split_respect_sentence_boundary: Optional[bool] = None,
+        **kwargs,
+    ):
+        documents = self.process(
+            document=document,
+            clean_whitespace=clean_whitespace,
+            clean_header_footer=clean_header_footer,
+            clean_empty_lines=clean_empty_lines,
+            split_by=split_by,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            split_respect_sentence_boundary=split_respect_sentence_boundary,
+        )
         result = {"documents": documents, **kwargs}
         return result, "output_1"
