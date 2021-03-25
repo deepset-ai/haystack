@@ -89,3 +89,21 @@ class BaseConverter(BaseComponent):
 
         result = {"document": document, **kwargs}
         return result, "output_1"
+
+
+class FileTypeClassifier(BaseComponent):
+    outgoing_edges = 4
+
+    def run(self, file_path: Path, **kwargs):
+        output = {"file_path": file_path, **kwargs}
+        ext = file_path.name.split(".")[-1].lower()
+        if ext == "txt":
+            return output, "output_1"
+        elif ext == "pdf":
+            return output, "output_2"
+        elif ext == "md":
+            return output, "output_3"
+        elif ext == "docx":
+            return output, "output_4"
+        else:
+            raise Exception(f"Files with an extension '{ext}' are not supported.")
