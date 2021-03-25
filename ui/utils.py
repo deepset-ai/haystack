@@ -11,8 +11,8 @@ def format_request(question,filters=None,top_k_reader=5,top_k_retriever=5):
     if filters == None:
         return {
        "questions": [question],
-       #"top_k_retriever": top_k_retriever,
-       #"top_k_reader": top_k_reader
+       "top_k_retriever": top_k_retriever,
+       "top_k_reader": top_k_reader
        }
     return {
         "questions": [question],
@@ -39,11 +39,13 @@ def retrieve_doc(question,filters=None,top_k_reader=5,top_k_retriever=5):
            context = '...' + answers[i]['context'] + '...'
            meta_name = answers[i]['meta']['name']
            relevance = round(answers[i]['probability']*100,2)
-           result.append({'context':context,'answer':answer,'source':meta_name,'relevance':relevance})
+           document_id = answers[i]['document_id']
+           offset_start_in_doc = answers[i]['offset_start_in_doc']
+           result.append({'context':context,'answer':answer,'source':meta_name,'relevance':relevance, 'document_id':document_id,'offset_start_in_doc':offset_start_in_doc})
    return result, response_raw
 
 def feedback_doc(question,is_correct_answer,document_id,model_id,is_correct_document,answer,offset_start_in_doc):
-   # Query Haystack API
+   # Feedback Haystack API
    url = API_ENDPOINT + '/' + DOC_FEEDBACK
    req = {
          "question": question,
