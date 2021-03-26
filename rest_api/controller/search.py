@@ -8,6 +8,7 @@ import elasticapm
 from fastapi import APIRouter
 from fastapi import HTTPException
 
+from haystack.pipeline import ExtractiveQAPipeline
 from haystack import Finder
 from rest_api.config import DB_HOST, DB_PORT, DB_USER, DB_PW, DB_INDEX, DB_INDEX_FEEDBACK, DEFAULT_TOP_K_READER, \
     ES_CONN_SCHEME, TEXT_FIELD_NAME, SEARCH_FIELD_NAME, EMBEDDING_DIM, EMBEDDING_FIELD_NAME, EXCLUDE_META_DATA_FIELDS, \
@@ -116,17 +117,17 @@ FINDERS = {1: Finder(reader=reader, retriever=retriever)}
 doc_qa_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
 
 
-@router.post("/models/{model_id}/doc-qa", response_model=Answers, response_model_exclude_unset=True)
-def doc_qa(model_id: int, question_request: Question):
+@router.post("/models/doc-qa", response_model=Answers, response_model_exclude_unset=True)
+def doc_qa(question_request: Question):
     with doc_qa_limiter.run():
         start_time = time.time()
-        finder = FINDERS.get(model_id, None)
-        if not finder:
+        pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever)
+        if not pipeline:
             raise HTTPException(
-                status_code=404, detail=f"Could not get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+                status_code=404, detail=f"Could not get pipeline."
             )
 
-        results = search_documents(finder, question_request, start_time)
+        results = search_documents(pipeline, question_request, start_time)
 
         return {"results": results}
 
@@ -165,19 +166,20 @@ def faq_qa(model_id: int, request: Question):
     return {"results": results}
 
 
-@router.post("/models/{model_id}/query", response_model=Dict[str, Any], response_model_exclude_unset=True)
-def query(model_id: int, query_request: Dict[str, Any], top_k_reader: int = DEFAULT_TOP_K_READER):
+@router.post("/models/query", response_model=Dict[str, Any], response_model_exclude_unset=True)
+def query(query_request: Dict[str, Any], top_k_reader: int = DEFAULT_TOP_K_READER):
     with doc_qa_limiter.run():
         start_time = time.time()
-        finder = FINDERS.get(model_id, None)
-        if not finder:
+        pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever)
+        if not pipeline:
             raise HTTPException(
-                status_code=404, detail=f"Could not get Finder with ID {model_id}. Available IDs: {list(FINDERS.keys())}"
+                status_code=404, detail=f"Could not get pipeline"
             )
 
         question_request = Question.from_elastic_query_dsl(query_request, top_k_reader)
 
-        answers = search_documents(finder, question_request, start_time)
+        answers = search_documents(pipeline, question_request, start_time)
+
         response: Dict[str, Any] = {}
         if answers and len(answers) > 0:
             response = AnswersToIndividualQuestion.to_elastic_response_dsl(dict(answers[0]))
@@ -185,7 +187,7 @@ def query(model_id: int, query_request: Dict[str, Any], top_k_reader: int = DEFA
         return response
 
 
-def search_documents(finder, question_request, start_time) -> List[AnswersToIndividualQuestion]:
+def search_documents(pipeline, question_request, start_time) -> List[AnswersToIndividualQuestion]:
     results = []
     for question in question_request.questions:
         if question_request.filters:
@@ -200,13 +202,13 @@ def search_documents(finder, question_request, start_time) -> List[AnswersToIndi
             logger.info(f" [{datetime.now()}] Request: {question_request}")
         else:
             filters = {}
-
-        result = finder.get_answers(
-            question=question,
+        result = pipeline.run(
+            query=question,
             top_k_retriever=question_request.top_k_retriever,
             top_k_reader=question_request.top_k_reader,
-            filters=filters,
-        )
+            filters=filters
+            )
+
         results.append(result)
     elasticapm.set_custom_context({"results": results})
     end_time = time.time()

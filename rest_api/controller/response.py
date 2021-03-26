@@ -18,7 +18,7 @@ class Answer(BaseModel):
 
 
 class AnswersToIndividualQuestion(BaseModel):
-    question: str
+    question: Optional[str]
     answers: List[Optional[Answer]]
 
     @staticmethod
