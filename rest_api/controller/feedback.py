@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Dict, Union, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from rest_api.controller.search import PIPELINE
@@ -14,9 +14,6 @@ logger = logging.getLogger(__name__)
 # TODO make this generic for other pipelines with different naming
 retriever = PIPELINE.get_node(name="ESRetriever")
 document_store = retriever.document_store if retriever else None
-
-retriever = PIPELINE.get_node(name="DPRRetriever")
-faiss_document_store = retriever.document_store if retriever else None
 
 
 class ExtractiveQAFeedback(BaseModel):
@@ -103,9 +100,9 @@ def export_extractive_qa_feedback(
     for label in labels:
         document = document_store.get_document_by_id(label.document_id)
         if document is None:
-            document = faiss_document_store.get_document_by_id(label.document_id)
-            if document is None:
-                logger.error("Could not find document with id {label.document_id} for label id {label.id}")
+            raise HTTPException(
+                status_code=500, detail="Could not find document with id {label.document_id} for label id {label.id}"
+            )
 
         if full_document_context:
             context = document.text
