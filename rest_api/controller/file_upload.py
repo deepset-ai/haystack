@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import shutil
@@ -8,13 +9,13 @@ from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 from haystack.pipeline import Pipeline
-from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH
+from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 try:
-    INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name="indexing")
+    INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
 except KeyError:
     INDEXING_PIPELINE = None
     logger.info("Indexing Pipeline not found in the YAML configuration. File Upload API will not be available.")
@@ -26,6 +27,7 @@ os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)  # create directory for uploading f
 @router.post("/file-upload")
 def file_upload(
     file: UploadFile = File(...),
+    meta: Optional[str] = Form("null"),  # JSON serialized string
     remove_numeric_tables: Optional[bool] = Form(None),
     remove_whitespace: Optional[bool] = Form(None),
     remove_empty_lines: Optional[bool] = Form(None),
@@ -53,6 +55,7 @@ def file_upload(
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
+            meta=json.loads(meta) or {},
         )
     finally:
         file.file.close()
