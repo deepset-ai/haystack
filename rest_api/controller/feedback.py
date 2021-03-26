@@ -100,9 +100,8 @@ def export_doc_qa_feedback(
         labels = [l for l in labels if not (l.is_correct_document is True and l.is_correct_answer is False)]
 
     export_data = []
-    c = 0
+
     for label in labels:
-        c += 1
         document = document_store.get_document_by_id(label.document_id)
         if document is None:
             document = faiss_document_store.get_document_by_id(label.document_id)
