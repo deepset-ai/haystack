@@ -37,7 +37,7 @@ class BasePreProcessor(BaseComponent):
     ) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
-    def run(
+    def run(  # type: ignore
         self,
         document: dict,
         clean_whitespace: Optional[bool] = None,

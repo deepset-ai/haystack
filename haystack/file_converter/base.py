@@ -92,9 +92,12 @@ class BaseConverter(BaseComponent):
 
 
 class FileTypeClassifier(BaseComponent):
+    """
+    Route files in an Indexing Pipeline to corresponding file converters.
+    """
     outgoing_edges = 4
 
-    def run(self, file_path: Path, **kwargs):
+    def run(self, file_path: Path, **kwargs):  # type: ignore
         output = {"file_path": file_path, **kwargs}
         ext = file_path.name.split(".")[-1].lower()
         if ext == "txt":
