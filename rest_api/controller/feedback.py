@@ -19,12 +19,11 @@ retriever = PIPELINE.get_node(name="DPRRetriever")
 faiss_document_store = retriever.document_store if retriever else None
 
 
-class DocQAFeedback(BaseModel):
+class ExtractiveQAFeedback(BaseModel):
     question: str = Field(..., description="The question input by the user, i.e., the query.")
     is_correct_answer: bool = Field(..., description="Whether the answer is correct or not.")
     document_id: str = Field(..., description="The document in the query result for which feedback is given.")
     model_id: Optional[int] = Field(None, description="The model used for the query.")
-
     is_correct_document: bool = Field(
         ...,
         description="In case of negative feedback, there could be two cases; incorrect answer but correct "
@@ -41,12 +40,12 @@ class FilterRequest(BaseModel):
 
 
 @router.post("/feedback")
-def user_feedback(feedback: DocQAFeedback):
+def user_feedback(feedback: ExtractiveQAFeedback):
     document_store.write_labels([{"origin": "user-feedback", **feedback.dict()}])
 
 
 @router.post("/eval-feedback")
-def eval_doc_qa_feedback(filters: FilterRequest = None):
+def eval_extractive_qa_feedback(filters: FilterRequest = None):
     """
     Return basic accuracy metrics based on the user feedback.
     Which ratio of answers was correct? Which ratio of documents was correct?
@@ -83,7 +82,7 @@ def eval_doc_qa_feedback(filters: FilterRequest = None):
 
 
 @router.get("/export-feedback")
-def export_doc_qa_feedback(
+def export_extractive_qa_feedback(
     context_size: int = 100_000, full_document_context: bool = True, only_positive_labels: bool = False
 ):
     """
