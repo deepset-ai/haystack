@@ -20,7 +20,7 @@ def get_test_client_and_override_dependencies():
 @pytest.mark.slow
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_upload_and_query_api(reader, document_store_with_docs):
+def test_upload_and_query_api(reader, document_store):
     client = get_test_client_and_override_dependencies()
 
     file_to_upload = {'file': Path("samples/pdf/sample_pdf_1.pdf").open('rb')}
