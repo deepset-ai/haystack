@@ -9,6 +9,7 @@ from haystack.reader.farm import FARMReader
 from haystack.finder import Finder
 from haystack import Pipeline
 from farm.utils import initialize_device_settings
+from haystack.preprocessor import PreProcessor
 
 import logging
 import subprocess
@@ -39,8 +40,8 @@ def main():
     document_store = ElasticsearchDocumentStore()
     es_retriever = ElasticsearchRetriever(document_store=document_store)
     eval_retriever = EvalRetriever()
-    reader = FARMReader("deepset/roberta-base-squad2", top_k_per_candidate=4, num_processes=1)
-    eval_reader = EvalReader()
+    reader = FARMReader("deepset/roberta-base-squad2", top_k_per_candidate=4, num_processes=1, return_no_answer=True)
+    eval_reader = EvalReader(debug=True)
 
     # Download evaluation data, which is a subset of Natural Questions development set containing 50 documents
     doc_dir = "../data/nq"
@@ -49,9 +50,10 @@ def main():
 
     # Add evaluation data to Elasticsearch document store
     # We first delete the custom tutorial indices to not have duplicate elements
+    preprocessor = PreProcessor(split_length=500, split_overlap=0, split_respect_sentence_boundary=False, clean_empty_lines=False, clean_whitespace=False)
     document_store.delete_all_documents(index=doc_index)
     document_store.delete_all_documents(index=label_index)
-    document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index=doc_index, label_index=label_index)
+    document_store.add_eval_data(filename="../data/nq/nq_dev_subset_v2.json", doc_index=doc_index, label_index=label_index, preprocessor=preprocessor)
     labels = document_store.get_all_labels(index=label_index)
     q_to_l_dict = {x.question: x.answer for x in labels}
 
@@ -86,6 +88,9 @@ def print_eval_metrics(eval_retriever, eval_reader):
     reader_top_k_em = eval_reader.top_k_em
     reader_top_1_f1 = eval_reader.top_1_f1
     reader_top_k_f1 = eval_reader.top_k_f1
+    reader_top_1_no_answer = eval_reader.top_1_no_answer
+    reader_no_answer_count = eval_reader.no_answer_count
+    reader_has_answer_count = eval_reader.has_answer_count
     pipeline_top_1_em = eval_reader.top_1_em_count / total_queries
     pipeline_top_k_em = eval_reader.top_k_em_count / total_queries
     pipeline_top_1_f1 = eval_reader.top_1_f1_sum / total_queries
@@ -99,10 +104,17 @@ def print_eval_metrics(eval_retriever, eval_reader):
     print("Reader")
     print("-----------------")
     print(f"answer in retrieved docs: {correct_retrieval}")
+    if reader_no_answer_count:
+        print(f"(no_answer samples are always treated as correctly retrieved)")
+    print(f"has answer queries: {reader_has_answer_count}")
     print(f"top 1 EM: {reader_top_1_em}")
     print(f"top k EM: {reader_top_k_em}")
     print(f"top 1 F1: {reader_top_1_f1}")
     print(f"top k F1: {reader_top_k_f1}")
+    if reader_no_answer_count:
+        print()
+        print(f"no_answer queries: {reader_no_answer_count}")
+        print(f"top 1 no_answer accuracy: {reader_top_1_no_answer}")
     print()
     print("Pipeline")
     print("-----------------")
@@ -117,6 +129,7 @@ class EvalRetriever:
         self.correct_retrieval = 0
         self.query_count = 0
         self.recall = 0.0
+        self.no_answer_warning = False
         # self.log = []
 
     def run(self, documents, labels, **kwargs):
@@ -128,6 +141,12 @@ class EvalRetriever:
         correct_retrieval = False
         for t in texts:
             for label in labels:
+                if label == "":
+                    if not self.no_answer_warning:
+                        self.no_answer_warning = True
+                        logger.warning("There seem to be empty string labels in the dataset suggesting that there "
+                                       "are samples with is_impossible=True. "
+                                       "Retrieval of these samples is always treated as correct.")
                 if label.lower() in t.lower():
                     self.correct_retrieval += 1
                     correct_retrieval = True
@@ -140,36 +159,72 @@ class EvalRetriever:
 
 
 class EvalReader:
-    def __init__(self):
+    def __init__(self, debug=False):
         self.outgoing_edges = 1
         self.query_count = 0
+        self.no_answer_count = 0
+        self.has_answer_count = 0
+        self.top_1_no_answer_sum = 0
         self.top_1_em_count = 0
         self.top_k_em_count = 0
         self.top_1_f1_sum = 0
         self.top_k_f1_sum = 0
+        self.top_1_no_answer = 0
         self.top_1_em = 0.0
         self.top_k_em = 0.0
         self.top_1_f1 = 0.0
         self.top_k_f1 = 0.0
+        self.log = []
+        self.debug = debug
 
     def run(self, **kwargs):
         self.query_count += 1
         predictions = [p["answer"] for p in kwargs["answers"]]
+        predictions = [x if x else "" for x in predictions]
         # TODO figure out how to handle cases where Reader returns zero answers
         if predictions:
             gold_labels = kwargs["labels"]
-            self.top_1_em_count += calculate_em_str_multi(gold_labels, predictions[0])
-            self.top_1_f1_sum += calculate_f1_str_multi(gold_labels, predictions[0])
-            self.top_k_em_count += max([calculate_em_str_multi(gold_labels, p) for p in predictions])
-            self.top_k_f1_sum += max([calculate_f1_str_multi(gold_labels, p) for p in predictions])
-        self.update_metrics()
+
+            if "" in gold_labels:
+                self.no_answer_count += 1
+                if predictions[0] == "":
+                    self.top_1_no_answer_sum += 1
+                if self.debug:
+                    self.log.append({"predictions": predictions,
+                                     "gold_labels": gold_labels,
+                                     "top_1_no_answer": int(predictions[0] == ""),
+                                     })
+                self.update_no_answer_metrics()
+
+            else:
+                self.has_answer_count += 1
+                curr_top_1_em = calculate_em_str_multi(gold_labels, predictions[0])
+                curr_top_1_f1 = calculate_f1_str_multi(gold_labels, predictions[0])
+                curr_top_k_em = max([calculate_em_str_multi(gold_labels, p) for p in predictions])
+                curr_top_k_f1 = max([calculate_f1_str_multi(gold_labels, p) for p in predictions])
+
+                self.top_1_em_count += curr_top_1_em
+                self.top_1_f1_sum += curr_top_1_f1
+                self.top_k_em_count += curr_top_k_em
+                self.top_k_f1_sum += curr_top_k_f1
+                if self.debug:
+                    self.log.append({"predictions": predictions,
+                                     "gold_labels": gold_labels,
+                                     "top_k_f1": curr_top_k_f1,
+                                     "top_k_em": curr_top_k_em
+                                     })
+                self.update_has_answer_metrics()
+
         return {**kwargs}, "output_1"
 
-    def update_metrics(self):
-        self.top_1_em = self.top_1_em_count / self.query_count
-        self.top_k_em = self.top_k_em_count / self.query_count
-        self.top_1_f1 = self.top_1_f1_sum / self.query_count
-        self.top_k_f1 = self.top_k_f1_sum / self.query_count
+    def update_has_answer_metrics(self):
+        self.top_1_em = self.top_1_em_count / self.has_answer_count
+        self.top_k_em = self.top_k_em_count / self.has_answer_count
+        self.top_1_f1 = self.top_1_f1_sum / self.has_answer_count
+        self.top_k_f1 = self.top_k_f1_sum / self.has_answer_count
+
+    def update_no_answer_metrics(self):
+        self.top_1_no_answer = self.top_1_no_answer_sum / self.no_answer_count
 
 
 def calculate_em_str_multi(gold_labels, prediction):
