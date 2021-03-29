@@ -150,7 +150,7 @@ class EvalReader:
         self.top_1_em = 0.0
         self.top_k_em = 0.0
         self.top_1_f1 = 0.0
-        self.top_k_fi = 0.0
+        self.top_k_f1 = 0.0
 
     def run(self, **kwargs):
         self.query_count += 1
