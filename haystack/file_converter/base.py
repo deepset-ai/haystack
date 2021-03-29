@@ -95,18 +95,13 @@ class FileTypeClassifier(BaseComponent):
     """
     Route files in an Indexing Pipeline to corresponding file converters.
     """
-    outgoing_edges = 4
+    outgoing_edges = 5
 
     def run(self, file_path: Path, **kwargs):  # type: ignore
         output = {"file_path": file_path, **kwargs}
         ext = file_path.name.split(".")[-1].lower()
-        if ext == "txt":
-            return output, "output_1"
-        elif ext == "pdf":
-            return output, "output_2"
-        elif ext == "md":
-            return output, "output_3"
-        elif ext == "docx":
-            return output, "output_4"
-        else:
+        try:
+            index = ["txt", "pdf", "md", "docx", "html"].index(ext) + 1
+            return output, f"output_{index}"
+        except ValueError:
             raise Exception(f"Files with an extension '{ext}' are not supported.")
