@@ -16,6 +16,8 @@ logging.getLogger("haystack").setLevel(logging.INFO)
 def get_application() -> FastAPI:
     application = FastAPI(title="Haystack-API", debug=True, version="0.1")
 
+    # This middleware enables allow all cross-domain requests to the API from a browser. For production
+    # deployments, it could be made more restrictive.
     application.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
     )
