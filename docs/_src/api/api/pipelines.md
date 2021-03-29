@@ -40,7 +40,7 @@ must be specified explicitly as "QueryClassifier.output_2".
 #### get\_node
 
 ```python
- | get_node(name: str)
+ | get_node(name: str) -> Optional[BaseComponent]
 ```
 
 Get a node from the Pipeline.

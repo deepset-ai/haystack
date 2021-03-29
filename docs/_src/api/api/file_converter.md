@@ -68,6 +68,15 @@ in garbled text.
 
 Validate if the language of the text is one of valid languages.
 
+<a name="base.FileTypeClassifier"></a>
+## FileTypeClassifier Objects
+
+```python
+class FileTypeClassifier(BaseComponent)
+```
+
+Route files in an Indexing Pipeline to corresponding file converters.
+
 <a name="txt"></a>
 # Module txt
 

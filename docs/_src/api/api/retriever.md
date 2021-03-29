@@ -341,7 +341,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, optimizer_name: str = "TransformersAdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
+ | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, optimizer_name: str = "TransformersAdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
 ```
 
 train a DensePassageRetrieval model
@@ -352,6 +352,8 @@ train a DensePassageRetrieval model
 - `train_filename`: training filename
 - `dev_filename`: development set filename, file to be used by model in eval step of training
 - `test_filename`: test set filename, file to be used by model in test step after training
+- `max_processes`: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
+It can be set to 1 to disable the use of multiprocessing or make debugging easier.
 - `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None
 - `batch_size`: total number of samples in 1 batch of data
 - `embed_title`: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
