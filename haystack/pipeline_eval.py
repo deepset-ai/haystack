@@ -77,7 +77,11 @@ def main():
 
     eval_retriever.print()
     print()
+    es_retriever.print_time()
+    print()
     eval_reader.print(mode="reader")
+    print()
+    reader.print_time()
     print()
     eval_reader.print(mode="pipeline")
 
