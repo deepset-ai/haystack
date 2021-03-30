@@ -30,7 +30,7 @@ that are most relevant to the query.
 #### timing
 
 ```python
- | timing(fn)
+ | timing(fn, attr_name)
 ```
 
 Wrapper method used to time functions.
