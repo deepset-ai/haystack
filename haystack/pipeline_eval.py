@@ -75,62 +75,26 @@ def main():
                     )
         results.append(res)
 
-    # TODO: This might not be the best design especially in distributed pipelines
-    #  maybe per sample results should be passed on to a final node which does all the aggregation
-    #  and metric computation
-    print_eval_metrics(eval_retriever, eval_reader)
-
-def print_eval_metrics(eval_retriever, eval_reader):
-    total_queries = eval_retriever.query_count
-    retriever_recall = eval_retriever.recall
-    correct_retrieval = eval_retriever.correct_retrieval
-    reader_top_1_em = eval_reader.top_1_em
-    reader_top_k_em = eval_reader.top_k_em
-    reader_top_1_f1 = eval_reader.top_1_f1
-    reader_top_k_f1 = eval_reader.top_k_f1
-    reader_top_1_no_answer = eval_reader.top_1_no_answer
-    reader_no_answer_count = eval_reader.no_answer_count
-    reader_has_answer_count = eval_reader.has_answer_count
-    pipeline_top_1_em = eval_reader.top_1_em_count / total_queries
-    pipeline_top_k_em = eval_reader.top_k_em_count / total_queries
-    pipeline_top_1_f1 = eval_reader.top_1_f1_sum / total_queries
-    pipeline_top_k_f1 = eval_reader.top_k_f1_sum / total_queries
-
-    print("Retriever")
-    print("-----------------")
-    print(f"total queries: {total_queries}")
-    print(f"recall: {retriever_recall}")
+    eval_retriever.print()
     print()
-    print("Reader")
-    print("-----------------")
-    print(f"answer in retrieved docs: {correct_retrieval}")
-    if reader_no_answer_count:
-        print(f"(no_answer samples are always treated as correctly retrieved)")
-    print(f"has answer queries: {reader_has_answer_count}")
-    print(f"top 1 EM: {reader_top_1_em}")
-    print(f"top k EM: {reader_top_k_em}")
-    print(f"top 1 F1: {reader_top_1_f1}")
-    print(f"top k F1: {reader_top_k_f1}")
-    if reader_no_answer_count:
-        print()
-        print(f"no_answer queries: {reader_no_answer_count}")
-        print(f"top 1 no_answer accuracy: {reader_top_1_no_answer}")
+    eval_reader.print(mode="reader")
     print()
-    print("Pipeline")
-    print("-----------------")
-    print(f"top 1 EM: {pipeline_top_1_em}")
-    print(f"top k EM: {pipeline_top_k_em}")
-    print(f"top 1 F1: {pipeline_top_1_f1}")
-    print(f"top k F1: {pipeline_top_k_f1}")
+    eval_reader.print(mode="pipeline")
+
 
 class EvalRetriever:
-    def __init__(self):
+    def __init__(self, debug=False):
         self.outgoing_edges = 1
-        self.correct_retrieval = 0
+        self.correct_retrieval_count = 0
         self.query_count = 0
+        self.has_answer_count = 0
+        self.has_answer_correct = 0
+        self.has_answer_recall = 0
+        self.no_answer_count = 0
         self.recall = 0.0
         self.no_answer_warning = False
-        # self.log = []
+        self.debug = debug
+        self.log = []
 
     def run(self, documents, labels, **kwargs):
         # Open domain mode
@@ -138,33 +102,51 @@ class EvalRetriever:
         if type(labels) == str:
             labels = [labels]
         texts = [x.text for x in documents]
-        correct_retrieval = False
-        for t in texts:
-            for label in labels:
-                if label == "":
-                    if not self.no_answer_warning:
-                        self.no_answer_warning = True
-                        logger.warning("There seem to be empty string labels in the dataset suggesting that there "
-                                       "are samples with is_impossible=True. "
-                                       "Retrieval of these samples is always treated as correct.")
-                if label.lower() in t.lower():
-                    self.correct_retrieval += 1
-                    correct_retrieval = True
+        correct_retrieval = 0
+        if "" in labels:
+            self.no_answer_count += 1
+            correct_retrieval = 1
+            if not self.no_answer_warning:
+                self.no_answer_warning = True
+                logger.warning("There seem to be empty string labels in the dataset suggesting that there "
+                               "are samples with is_impossible=True. "
+                               "Retrieval of these samples is always treated as correct.")
+        else:
+            self.has_answer_count += 1
+            for t in texts:
+                for label in labels:
+                    if label.lower() in t.lower():
+                        correct_retrieval = 1
+                        self.has_answer_correct += 1
+                        break
+                if correct_retrieval:
                     break
-            if correct_retrieval:
-                break
-        self.recall = self.correct_retrieval / self.query_count
-        # self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs})
+        self.correct_retrieval_count += correct_retrieval
+        self.recall = self.correct_retrieval_count / self.query_count
+        self.has_answer_recall = self.has_answer_correct / self.has_answer_count
+        if self.debug:
+            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs})
         return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs}, "output_1"
+
+    def print(self):
+        print("Retriever")
+        print("-----------------")
+        if self.no_answer_count:
+            print(
+                f"has_answer recall: {self.has_answer_recall} ({self.has_answer_correct}/{self.has_answer_count})")
+            print(
+                f"no_answer recall:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
+        print(f"recall: {self.recall} ({self.correct_retrieval_count} / {self.query_count})")
 
 
 class EvalReader:
-    def __init__(self, debug=False):
+    def __init__(self, debug=False, skip_incorrect_retrieval=True):
         self.outgoing_edges = 1
         self.query_count = 0
+        self.correct_retrieval_count = 0
         self.no_answer_count = 0
         self.has_answer_count = 0
-        self.top_1_no_answer_sum = 0
+        self.top_1_no_answer_count = 0
         self.top_1_em_count = 0
         self.top_k_em_count = 0
         self.top_1_f1_sum = 0
@@ -176,19 +158,20 @@ class EvalReader:
         self.top_k_f1 = 0.0
         self.log = []
         self.debug = debug
+        self.skip_incorrect_retrieval = skip_incorrect_retrieval
 
     def run(self, **kwargs):
         self.query_count += 1
         predictions = [p["answer"] for p in kwargs["answers"]]
         predictions = [x if x else "" for x in predictions]
-        # TODO figure out how to handle cases where Reader returns zero answers
-        if predictions:
+        skip = self.skip_incorrect_retrieval and not kwargs.get("correct_retrieval")
+        if predictions and not skip:
+            self.correct_retrieval_count += 1
             gold_labels = kwargs["labels"]
-
             if "" in gold_labels:
                 self.no_answer_count += 1
                 if predictions[0] == "":
-                    self.top_1_no_answer_sum += 1
+                    self.top_1_no_answer_count += 1
                 if self.debug:
                     self.log.append({"predictions": predictions,
                                      "gold_labels": gold_labels,
@@ -224,7 +207,40 @@ class EvalReader:
         self.top_k_f1 = self.top_k_f1_sum / self.has_answer_count
 
     def update_no_answer_metrics(self):
-        self.top_1_no_answer = self.top_1_no_answer_sum / self.no_answer_count
+        self.top_1_no_answer = self.top_1_no_answer_count / self.no_answer_count
+
+    def print(self, mode):
+        if mode == "reader":
+            print("Reader")
+            print("-----------------")
+            # print(f"answer in retrieved docs: {correct_retrieval}")
+            print(f"has answer queries: {self.has_answer_count}")
+            print(f"top 1 EM: {self.top_1_em}")
+            print(f"top k EM: {self.top_k_em}")
+            print(f"top 1 F1: {self.top_1_f1}")
+            print(f"top k F1: {self.top_k_f1}")
+            if self.no_answer_count:
+                print()
+                print(f"no_answer queries: {self.no_answer_count}")
+                print(f"top 1 no_answer accuracy: {self.top_1_no_answer}")
+        elif mode == "pipeline":
+            print("Pipeline")
+            print("-----------------")
+
+            pipeline_top_1_em = (self.top_1_em_count + self.top_1_no_answer_count) / self.query_count
+            pipeline_top_k_em = (self.top_k_em_count + self.no_answer_count) / self.query_count
+            pipeline_top_1_f1 = (self.top_1_f1_sum + self.top_1_no_answer_count) / self.query_count
+            pipeline_top_k_f1 = (self.top_k_f1_sum + self.no_answer_count) / self.query_count
+
+            print(f"queries: {self.query_count}")
+            print(f"top 1 EM: {pipeline_top_1_em}")
+            print(f"top k EM: {pipeline_top_k_em}")
+            print(f"top 1 F1: {pipeline_top_1_f1}")
+            print(f"top k F1: {pipeline_top_k_f1}")
+            if self.no_answer_count:
+                print(
+                    "(top k results are likely inflated since the Reader always returns a no_answer prediction in its top k)"
+                )
 
 
 def calculate_em_str_multi(gold_labels, prediction):
