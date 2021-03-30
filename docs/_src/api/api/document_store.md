@@ -56,7 +56,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### add\_eval\_data
 
 ```python
- | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label", batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None, max_docs: Union[int, bool] = None)
+ | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label", batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None, max_docs: Union[int, bool] = None, open_domain: bool = None)
 ```
 
 Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
@@ -76,6 +76,8 @@ Currently the PreProcessor does not support split_by sentence, cleaning nor spli
 When set to None (default) preprocessing is disabled.
 - `max_docs`: Optional number of documents that will be loaded.
 When set to None (default) all available eval documents are used.
+- `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the
+same question might be found in different contexts.
 
 <a name="elasticsearch"></a>
 # Module elasticsearch
