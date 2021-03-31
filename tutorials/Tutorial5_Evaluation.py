@@ -143,7 +143,7 @@ def tutorial5_evaluation():
         p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
         results = []
 
-    for q, l in q_to_l_dict.items():
+        for q, l in q_to_l_dict.items():
             res = p.run(
                 query=q,
                 top_k_retriever=10,
