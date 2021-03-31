@@ -18,6 +18,7 @@ class BaseRetriever(BaseComponent):
     index_count = 0
     query_time = 0.0
     index_time = 0.0
+    retrieve_time = 0.0
 
     @abstractmethod
     def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:

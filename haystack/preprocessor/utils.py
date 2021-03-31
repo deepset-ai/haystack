@@ -106,7 +106,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
     yield docs, labels
 
 
-def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PreProcessor = None, open_domain=False):
+def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PreProcessor = None, open_domain: bool=False):
     """Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)"""
     docs = []
     labels = []
