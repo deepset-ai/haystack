@@ -106,7 +106,7 @@ def tutorial5_evaluation():
 
     # Here we initialize the nodes that perform evaluation
     eval_retriever = EvalRetriever()
-    eval_reader = EvalReader(debug=True)
+    eval_reader = EvalReader()
 
 
     ## Evaluate Retriever on its own in closed domain fashion
@@ -143,7 +143,7 @@ def tutorial5_evaluation():
         p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
         results = []
 
-        for i, (q, l) in enumerate(q_to_l_dict.items()):
+    for q, l in q_to_l_dict.items():
             res = p.run(
                 query=q,
                 top_k_retriever=10,
