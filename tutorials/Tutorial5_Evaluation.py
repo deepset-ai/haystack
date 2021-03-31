@@ -30,7 +30,7 @@ def tutorial5_evaluation():
     # 'retriever_reader_open' - evaluates retriever and reader in open domain fashion i.e. a document is considered
     #     correctly retrieved if it contains the answer string within it. The reader is evaluated based purely on the
     #     predicted string, regardless of which document this came from and the position of the extracted span.
-    style = "reader_closed"
+    style = "retriever_reader_open"
 
     # make sure these indices do not collide with existing ones, the indices will be wiped clean before data is inserted
     doc_index = "tutorial5_docs"
@@ -49,7 +49,7 @@ def tutorial5_evaluation():
 
     # Connect to Elasticsearch
     document_store = ElasticsearchDocumentStore(
-        host="localhost", username="", password="", index=doc_index,
+        host="localhost", username="", password="", index="document",
         create_index=False, embedding_field="emb",
         embedding_dim=768, excluded_meta_data=["emb"]
     )
