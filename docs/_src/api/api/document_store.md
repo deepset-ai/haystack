@@ -56,7 +56,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### add\_eval\_data
 
 ```python
- | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label", batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None, max_docs: Union[int, bool] = None, open_domain: bool = None)
+ | add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label", batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None, max_docs: Union[int, bool] = None, open_domain: bool = False)
 ```
 
 Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
