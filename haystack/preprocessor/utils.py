@@ -88,7 +88,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
             document_dict = json.loads(document)
-            cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(document_dict, preprocessor,open_domain)
+            cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(document_dict, preprocessor, open_domain)
             docs.extend(cur_docs)
             labels.extend(cur_labels)
             problematic_ids.extend(cur_problematic_ids)
@@ -129,7 +129,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             splits_dicts = preprocessor.process(cur_doc.to_dict())
             # we need to pull in _split_id into the document id for unique reference in labels
             # todo: PreProcessor should work on Documents instead of dicts
-            splits = []
+            splits: List[Document] = []
             offset = 0
             for d in splits_dicts:
                 id = f"{d['id']}-{d['meta']['_split_id']}"
@@ -162,7 +162,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                     #  and populate id in open_domain mode
                     if open_domain:
                         cur_ans_start = answer.get("answer_start", 0)
-                        cur_id = 0
+                        cur_id = '0'
                     else:
                         ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
                         if ans != ans_position:
