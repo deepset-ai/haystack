@@ -49,8 +49,7 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
             # Extracting paragraphs and their labels from a SQuAD document dict
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
                 document,
-                preprocessor,
-                open_domain=open_domain
+                preprocessor
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -108,6 +107,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
 
 
 def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PreProcessor = None, open_domain=False):
+    """Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)"""
     docs = []
     labels = []
     problematic_ids = []

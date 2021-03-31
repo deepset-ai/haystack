@@ -144,7 +144,7 @@ class BaseDocumentStore(BaseComponent):
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
                       batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None,
-                      max_docs: Union[int, bool] = None, open_domain: bool = None):
+                      max_docs: Union[int, bool] = None, open_domain: bool = False):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
         If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
