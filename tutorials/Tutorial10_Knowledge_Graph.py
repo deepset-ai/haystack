@@ -11,18 +11,8 @@ from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 logger = logging.getLogger(__name__)
 
 
-def graph_retrieval():
+def tutorial10_knowledge_graph():
     LAUNCH_GRAPHDB = False
-
-    logger = logging.getLogger(__name__)
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO)
-
-    for module in ["farm.utils", "farm.infer", "farm.modeling.prediction_head", "farm.data_handler.processor"]:
-        module_logger = logging.getLogger(module)
-        module_logger.setLevel(logging.ERROR)
 
     device, n_gpu = initialize_device_settings(use_cuda=True)
 
@@ -30,7 +20,7 @@ def graph_retrieval():
     if LAUNCH_GRAPHDB:
         logging.info("Starting GraphDB ...")
         status = subprocess.run(
-            ['docker run -d -p 7200:7200 --name graphdb-instance-lcquad ontotext/graphdb:9.7.0-se'], shell=True
+            ['docker run -d -p 7200:7200 --name graphdb-instance-lcquad docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11'], shell=True
         )
         if status.returncode:
             raise Exception("Failed to launch GraphDB. If you want to connect to an existing GraphDB instance"
@@ -39,11 +29,15 @@ def graph_retrieval():
 
 
     kg = GraphDBKnowledgeGraph(index="lcquad_full_wikidata")
-    kg.create_index(config_path="../../data/repo-config.ttl")
-    kg.import_from_ttl_file(index="lcquad_full_wikidata", path=Path("../../data/lcquad_example1.ttl"))
+    if LAUNCH_GRAPHDB:
+        kg.create_index(config_path=Path("../data/repo-config.ttl"))
+        kg.import_from_ttl_file(index="lcquad_full_wikidata", path=Path("../data/tutorial10_knowledge_graph.ttl"))
+    #print(kg.get_all_triples()[:10])
     kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path="../saved_models/lcquad_full_wikidata", top_k=1)
 
-    result = kgqa_retriever.retrieve(question_text="What is your question?")
+    result = kgqa_retriever.retrieve(question_text="What periodical literature does Delta Air Lines use as a moutpiece?")
+    # SPARQL query: select distinct ?obj where { wd:Q188920 wdt:P2813 ?obj . ?obj wdt:P31 wd:Q1002697 }
+    # Answer: wd:Q3486420
 
 if __name__ == "__main__":
-    graph_retrieval()
+    tutorial10_knowledge_graph()

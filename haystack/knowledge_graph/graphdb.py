@@ -23,14 +23,11 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         self.password = password
 
     def create_index(self, config_path: Path):
-        url = f"{self.url}/repositories"
-        headers = {"Content-Type: multipart/form-data"}
-        files = {'config': ('repo-config.ttl', open(config_path, "r", encoding="utf-8").read())}
+        url = f"{self.url}/rest/repositories"
+        files = {'config': open(config_path, "r", encoding="utf-8")}
         response = requests.post(
             url,
-            headers=headers,
             files=files,
-            auth=HTTPBasicAuth(self.username, self.password),
         )
         if response.status_code > 299:
             raise Exception(response.text)
