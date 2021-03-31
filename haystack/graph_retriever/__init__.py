@@ -1,1 +1,1 @@
-from haystack.graph_retriever.kgqa import KGQARetriever
+from haystack.graph_retriever.kgqa import Text2SparqlRetriever
