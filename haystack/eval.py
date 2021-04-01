@@ -117,6 +117,7 @@ class EvalReader:
         self.open_domain = open_domain
 
     def init_counts(self):
+        self.query_count
         self.correct_retrieval_count = 0
         self.no_answer_count = 0
         self.has_answer_count = 0
@@ -133,6 +134,7 @@ class EvalReader:
 
     def run(self, labels, answers, **kwargs):
         """Run this node on one sample and its labels"""
+        self.query_count += 1
         predictions = answers
         skip = self.skip_incorrect_retrieval and not kwargs.get("correct_retrieval")
         if predictions and not skip:
@@ -190,7 +192,7 @@ class EvalReader:
     def update_no_answer_metrics(self):
         self.top_1_no_answer = self.top_1_no_answer_count / self.no_answer_count
 
-    def print(self, mode, n_queries=None):
+    def print(self, mode):
         """Print the evaluation results"""
         if mode == "reader":
             print("Reader")
@@ -209,21 +211,12 @@ class EvalReader:
             print("Pipeline")
             print("-----------------")
 
-            pipeline_top_1_em = self.top_1_em_count + self.top_1_no_answer_count
-            pipeline_top_k_em = self.top_k_em_count + self.no_answer_count
-            pipeline_top_1_f1 = self.top_1_f1_sum + self.top_1_no_answer_count
-            pipeline_top_k_f1 = self.top_k_f1_sum + self.no_answer_count
+            pipeline_top_1_em = (self.top_1_em_count + self.top_1_no_answer_count) / self.query_count
+            pipeline_top_k_em = (self.top_k_em_count + self.no_answer_count) / self.query_count
+            pipeline_top_1_f1 = (self.top_1_f1_sum + self.top_1_no_answer_count) / self.query_count
+            pipeline_top_k_f1 = (self.top_k_f1_sum + self.no_answer_count) / self.query_count
 
-            if not n_queries:
-                print("Please set the n_queries argument in EvalReader.print() in order to get Pipeline level statistics."
-                      "The numbers shown below are the sum of each sample's EM and F1 scores.")
-            else:
-                pipeline_top_1_em /= n_queries
-                pipeline_top_k_em /= n_queries
-                pipeline_top_1_f1 /= n_queries
-                pipeline_top_k_f1 /= n_queries
-
-            print(f"queries: {n_queries}")
+            print(f"queries: {self.query_count}")
             print(f"top 1 EM: {pipeline_top_1_em}")
             print(f"top k EM: {pipeline_top_k_em}")
             print(f"top 1 F1: {pipeline_top_1_f1}")

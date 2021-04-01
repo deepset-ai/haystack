@@ -161,7 +161,7 @@ def tutorial5_evaluation():
         print()
         reader.print_time()
         print()
-        eval_reader.print(mode="pipeline", n_queries=n_queries)
+        eval_reader.print(mode="pipeline")
 
 
 if __name__ == "__main__":
