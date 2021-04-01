@@ -117,7 +117,7 @@ class EvalReader:
         self.open_domain = open_domain
 
     def init_counts(self):
-        self.query_count
+        self.query_count = 0
         self.correct_retrieval_count = 0
         self.no_answer_count = 0
         self.has_answer_count = 0
