@@ -194,7 +194,7 @@ def test_dpr_saving_and_loading(retriever, document_store):
     #     assert (p1.data.ne(p2.data).sum() == 0)
 
     # attributes
-    assert loaded_retriever.embed_title == True
+    assert loaded_retriever.processor.embed_title == True
     assert loaded_retriever.batch_size == 16
     assert loaded_retriever.max_seq_len_passage == 256
     assert loaded_retriever.max_seq_len_query == 64
