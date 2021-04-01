@@ -154,23 +154,25 @@ class DensePassageRetriever(BaseRetriever):
                                                      embed_title=embed_title,
                                                      num_hard_negatives=0,
                                                      num_positives=1)
+            prediction_head = TextSimilarityHead(similarity_function=similarity_function)
+            self.model = BiAdaptiveModel(
+                language_model1=self.query_encoder,
+                language_model2=self.passage_encoder,
+                prediction_heads=[prediction_head],
+                embeds_dropout_prob=0.1,
+                lm1_output_types=["per_sequence"],
+                lm2_output_types=["per_sequence"],
+                device=self.device,
+            )
         else:
             self.processor = TextSimilarityProcessor.load_from_dir(single_model_path)
             self.processor.max_seq_len_passage = max_seq_len_passage
             self.processor.max_seq_len_query = max_seq_len_query
             self.processor.embed_title = embed_title
+            self.processor.num_hard_negatives = 0
+            self.processor.num_positives = 1  # during indexing of documents only one embedding is created
             self.model = BiAdaptiveModel.load(single_model_path, device=self.device)
 
-        prediction_head = TextSimilarityHead(similarity_function=similarity_function)
-        self.model = BiAdaptiveModel(
-            language_model1=self.query_encoder,
-            language_model2=self.passage_encoder,
-            prediction_heads=[prediction_head],
-            embeds_dropout_prob=0.1,
-            lm1_output_types=["per_sequence"],
-            lm2_output_types=["per_sequence"],
-            device=self.device,
-        )
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
     def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
