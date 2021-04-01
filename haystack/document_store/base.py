@@ -144,7 +144,7 @@ class BaseDocumentStore(BaseComponent):
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
                       batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None,
-                      max_docs: Union[int, bool] = None):
+                      max_docs: Union[int, bool] = None, open_domain: bool = False):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
         If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
@@ -161,6 +161,8 @@ class BaseDocumentStore(BaseComponent):
                              When set to None (default) preprocessing is disabled.
         :param max_docs: Optional number of documents that will be loaded.
                          When set to None (default) all available eval documents are used.
+        :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the
+                            same question might be found in different contexts.
 
         """
         # TODO improve support for PreProcessor when adding eval data
@@ -182,7 +184,7 @@ class BaseDocumentStore(BaseComponent):
         file_path = Path(filename)
         if file_path.suffix == ".json":
             if batch_size is None:
-                docs, labels = eval_data_from_json(filename, max_docs=max_docs, preprocessor=preprocessor)
+                docs, labels = eval_data_from_json(filename, max_docs=max_docs, preprocessor=preprocessor, open_domain=open_domain)
                 self.write_documents(docs, index=doc_index)
                 self.write_labels(labels, index=label_index)
             else:
@@ -190,10 +192,10 @@ class BaseDocumentStore(BaseComponent):
                 logger.info(f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
                             f"Converting json to jsonl to: {jsonl_filename}")
                 squad_json_to_jsonl(filename, jsonl_filename)
-                self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size)
+                self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size, open_domain=open_domain)
 
         elif file_path.suffix == ".jsonl":
-            for docs, labels in eval_data_from_jsonl(filename, batch_size, max_docs=max_docs, preprocessor=preprocessor):
+            for docs, labels in eval_data_from_jsonl(filename, batch_size, max_docs=max_docs, preprocessor=preprocessor, open_domain=open_domain):
                 if docs:
                     self.write_documents(docs, index=doc_index)
                 if labels:

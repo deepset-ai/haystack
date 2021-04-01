@@ -22,13 +22,14 @@ logger = logging.getLogger(__name__)
 
 
 
-def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Tuple[List[Document], List[Label]]:
+def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool =False) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
 
     :param filename: Path to file in SQuAD format
-    :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents. 
+    :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+    :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
     :return: (List of Documents, List of Labels)
     """
 
@@ -46,7 +47,10 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
-            cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(document, preprocessor)
+            cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
+                document,
+                preprocessor
+            )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
             problematic_ids.extend(cur_problematic_ids)
@@ -57,7 +61,8 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
 
 
 def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
-                         max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Generator[Tuple[List[Document], List[Label]], None, None]:
+                         max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None,
+                         open_domain: bool = False) -> Generator[Tuple[List[Document], List[Label]], None, None]:
     """
     Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
@@ -68,6 +73,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
 
     :param filename: Path to file in SQuAD format
     :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+    :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
     :return: (List of Documents, List of Labels)
     """
 
@@ -82,7 +88,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
             document_dict = json.loads(document)
-            cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(document_dict, preprocessor)
+            cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(document_dict, preprocessor, open_domain)
             docs.extend(cur_docs)
             labels.extend(cur_labels)
             problematic_ids.extend(cur_problematic_ids)
@@ -100,7 +106,8 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
     yield docs, labels
 
 
-def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PreProcessor = None):
+def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PreProcessor = None, open_domain: bool=False):
+    """Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)"""
     docs = []
     labels = []
     problematic_ids = []
@@ -122,7 +129,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             splits_dicts = preprocessor.process(cur_doc.to_dict())
             # we need to pull in _split_id into the document id for unique reference in labels
             # todo: PreProcessor should work on Documents instead of dicts
-            splits = []
+            splits: List[Document] = []
             offset = 0
             for d in splits_dicts:
                 id = f"{d['id']}-{d['meta']['_split_id']}"
@@ -148,25 +155,34 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             if not qa.get("is_impossible", False):
                 for answer in qa["answers"]:
                     ans = answer["text"]
-                    ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
-                    if ans != ans_position:
-                        # do not use answer
-                        problematic_ids.append(qa.get("id","missing"))
-                        break
-                    # find corresponding document or split
-                    if len(splits) == 1:
-                        cur_id = splits[0].id
-                        cur_ans_start = answer["answer_start"]
+                    cur_ans_start = None
+                    # TODO The following block of code means that answer_start is never calculated
+                    #  and cur_id is always None for open_domain
+                    #  This can be rewritten so that this function could try to calculate offsets
+                    #  and populate id in open_domain mode
+                    if open_domain:
+                        cur_ans_start = answer.get("answer_start", 0)
+                        cur_id = '0'
                     else:
-                        for s in splits:
-                            # If answer start offset is contained in passage we assign the label to that passage
-                            if (answer["answer_start"] >= s.meta["_split_offset"]) and (answer["answer_start"] < (s.meta["_split_offset"] + len(s.text))):
-                                cur_id = s.id
-                                cur_ans_start = answer["answer_start"] - s.meta["_split_offset"]
-                                # If a document is splitting an answer we add the whole answer text to the document
-                                if s.text[cur_ans_start:cur_ans_start+len(ans)] != ans:
-                                    s.text = s.text[:cur_ans_start] + ans
-                                break
+                        ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
+                        if ans != ans_position:
+                            # do not use answer
+                            problematic_ids.append(qa.get("id","missing"))
+                            break
+                        # find corresponding document or split
+                        if len(splits) == 1:
+                            cur_id = splits[0].id
+                            cur_ans_start = answer["answer_start"]
+                        else:
+                            for s in splits:
+                                # If answer start offset is contained in passage we assign the label to that passage
+                                if (answer["answer_start"] >= s.meta["_split_offset"]) and (answer["answer_start"] < (s.meta["_split_offset"] + len(s.text))):
+                                    cur_id = s.id
+                                    cur_ans_start = answer["answer_start"] - s.meta["_split_offset"]
+                                    # If a document is splitting an answer we add the whole answer text to the document
+                                    if s.text[cur_ans_start:cur_ans_start+len(ans)] != ans:
+                                        s.text = s.text[:cur_ans_start] + ans
+                                    break
                     label = Label(
                         question=qa["question"],
                         answer=ans,
