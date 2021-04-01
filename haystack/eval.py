@@ -10,7 +10,19 @@ logger = logging.getLogger(__name__)
 
 
 class EvalRetriever:
+    """
+    This is a pipeline node that should be placed after a Retriever in order to assess its performance. Performance
+    metrics are stored in this class and updated as each sample passes through it. To view the results of the evaluation,
+    call EvalRetriever.print()
+    """
     def __init__(self, debug=False, open_domain=True):
+        """
+        :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
+                            When False, correct retrieval is evaluated based on document_id.
+        :type open_domain: bool
+        :param debug: When True, a record of each sample and its evaluation will be stored in EvalRetriever.log
+        :type debug: bool
+        """
         self.outgoing_edges = 1
         self.init_counts()
         self.no_answer_warning = False
@@ -28,6 +40,7 @@ class EvalRetriever:
         self.recall = 0.0
 
     def run(self, documents, labels: dict, **kwargs):
+        """Run this node on one sample and its labels"""
         self.query_count += 1
         retriever_labels = labels["retriever"]
         # TODO retriever_labels is currently a Multilabel object but should eventually be a RetrieverLabel object
@@ -69,6 +82,7 @@ class EvalRetriever:
             return False
 
     def print(self):
+        """Print the evaluation results"""
         print("Retriever")
         print("-----------------")
         if self.no_answer_count:
@@ -80,7 +94,21 @@ class EvalRetriever:
 
 
 class EvalReader:
-    def __init__(self, debug=False, skip_incorrect_retrieval=True, open_domain=True):
+    """
+    This is a pipeline node that should be placed after a Reader in order to assess the performance of the Reader
+    individually or to assess the extractive QA performance of the whole pipeline. Performance metrics are stored in
+    this class and updated as each sample passes through it. To view the results of the evaluation, call EvalReader.print()
+    """
+
+    def __init__(self, skip_incorrect_retrieval=True, open_domain=True, debug=False):
+        """
+        :param skip_incorrect_retrieval: When set to True, this eval will ignore the cases where the retriever returned no correct documents
+        :type skip_incorrect_retrieval: bool
+        :param open_domain: When True, extracted answers are evaluated purely on string similarity rather than the position of the extracted answer
+        :type open_domain: bool
+        :param debug: When True, a record of each sample and its evaluation will be stored in EvalReader.log
+        :type debug: bool
+        """
         self.outgoing_edges = 1
         self.init_counts()
         self.log = []
@@ -104,9 +132,10 @@ class EvalReader:
         self.top_1_f1 = 0.0
         self.top_k_f1 = 0.0
 
-    def run(self, labels, **kwargs):
+    def run(self, labels, answers, **kwargs):
+        """Run this node on one sample and its labels"""
         self.query_count += 1
-        predictions = kwargs["answers"]
+        predictions = answers
         skip = self.skip_incorrect_retrieval and not kwargs.get("correct_retrieval")
         if predictions and not skip:
             self.correct_retrieval_count += 1
@@ -139,7 +168,6 @@ class EvalReader:
                 self.top_k_em_count += top_k_em
                 self.top_k_f1_sum += top_k_f1
                 self.update_has_answer_metrics()
-
         return {**kwargs}, "output_1"
 
     def evaluate_extraction(self, gold_labels, predictions):
@@ -165,6 +193,7 @@ class EvalReader:
         self.top_1_no_answer = self.top_1_no_answer_count / self.no_answer_count
 
     def print(self, mode):
+        """Print the evaluation results"""
         if mode == "reader":
             print("Reader")
             print("-----------------")
