@@ -1,6 +1,22 @@
 <a name="base"></a>
 # Module base
 
+<a name="base.BaseReader"></a>
+## BaseReader Objects
+
+```python
+class BaseReader(BaseComponent)
+```
+
+<a name="base.BaseReader.timing"></a>
+#### timing
+
+```python
+ | timing(fn, attr_name)
+```
+
+Wrapper method used to time functions.
+
 <a name="farm"></a>
 # Module farm
 
