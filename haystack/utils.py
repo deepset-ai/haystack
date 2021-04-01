@@ -6,9 +6,27 @@ import pprint
 import pandas as pd
 from typing import Dict, Any, List
 from haystack.document_store.sql import DocumentORM
+import subprocess
+import time
 
 
 logger = logging.getLogger(__name__)
+
+
+def launch_es():
+    # Start an Elasticsearch server
+    # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
+    # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
+
+    logger.info("Starting Elasticsearch ...")
+    status = subprocess.run(
+        ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start Elasticsearch through Docker but this failed. "
+                       "It is likely that there is already an existing Elasticsearch instance running. ")
+    else:
+        time.sleep(15)
 
 
 def print_answers(results: dict, details: str = "all"):

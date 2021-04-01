@@ -44,8 +44,8 @@ class EvalRetriever:
         self.query_count += 1
         retriever_labels = labels["retriever"]
         # TODO retriever_labels is currently a Multilabel object but should eventually be a RetrieverLabel object
-        # If there is a no_answer annotation in the labels
-        if "" in retriever_labels.multiple_answers:
+        # If this sample is impossible to answer and expects a no_answer response
+        if retriever_labels.no_answer:
             self.no_answer_count += 1
             correct_retrieval = 1
             if not self.no_answer_warning:
@@ -53,7 +53,7 @@ class EvalRetriever:
                 logger.warning("There seem to be empty string labels in the dataset suggesting that there "
                                "are samples with is_impossible=True. "
                                "Retrieval of these samples is always treated as correct.")
-        # If there are zero no_answer annotations in the labels
+        # If there are answer span annotations in the labels
         else:
             self.has_answer_count += 1
             correct_retrieval = self.is_correctly_retrieved(retriever_labels, documents)
@@ -117,7 +117,6 @@ class EvalReader:
         self.open_domain = open_domain
 
     def init_counts(self):
-        self.query_count = 0
         self.correct_retrieval_count = 0
         self.no_answer_count = 0
         self.has_answer_count = 0
@@ -134,14 +133,13 @@ class EvalReader:
 
     def run(self, labels, answers, **kwargs):
         """Run this node on one sample and its labels"""
-        self.query_count += 1
         predictions = answers
         skip = self.skip_incorrect_retrieval and not kwargs.get("correct_retrieval")
         if predictions and not skip:
             self.correct_retrieval_count += 1
             multi_labels = labels["reader"]
-            # If there is a no_answer annotation in the labels
-            if "" in multi_labels.multiple_answers and 0 in multi_labels.multiple_offset_start_in_docs:
+            # If this sample is impossible to answer and expects a no_answer response
+            if multi_labels.no_answer:
                 self.no_answer_count += 1
                 if predictions[0]["answer"] is None:
                     self.top_1_no_answer_count += 1
@@ -151,7 +149,7 @@ class EvalReader:
                                      "top_1_no_answer": int(predictions[0] == ""),
                                      })
                 self.update_no_answer_metrics()
-            # If there are zero no_answer annotations in the labels
+            # If there are answer span annotations in the labels
             else:
                 self.has_answer_count += 1
                 predictions = [p for p in predictions if p["answer"]]
@@ -192,7 +190,7 @@ class EvalReader:
     def update_no_answer_metrics(self):
         self.top_1_no_answer = self.top_1_no_answer_count / self.no_answer_count
 
-    def print(self, mode):
+    def print(self, mode, n_queries=None):
         """Print the evaluation results"""
         if mode == "reader":
             print("Reader")
@@ -211,12 +209,21 @@ class EvalReader:
             print("Pipeline")
             print("-----------------")
 
-            pipeline_top_1_em = (self.top_1_em_count + self.top_1_no_answer_count) / self.query_count
-            pipeline_top_k_em = (self.top_k_em_count + self.no_answer_count) / self.query_count
-            pipeline_top_1_f1 = (self.top_1_f1_sum + self.top_1_no_answer_count) / self.query_count
-            pipeline_top_k_f1 = (self.top_k_f1_sum + self.no_answer_count) / self.query_count
+            pipeline_top_1_em = self.top_1_em_count + self.top_1_no_answer_count
+            pipeline_top_k_em = self.top_k_em_count + self.no_answer_count
+            pipeline_top_1_f1 = self.top_1_f1_sum + self.top_1_no_answer_count
+            pipeline_top_k_f1 = self.top_k_f1_sum + self.no_answer_count
 
-            print(f"queries: {self.query_count}")
+            if not n_queries:
+                print("Please set the n_queries argument in EvalReader.print() in order to get Pipeline level statistics."
+                      "The numbers shown below are the sum of each sample's EM and F1 scores.")
+            else:
+                pipeline_top_1_em /= n_queries
+                pipeline_top_k_em /= n_queries
+                pipeline_top_1_f1 /= n_queries
+                pipeline_top_k_f1 /= n_queries
+
+            print(f"queries: {n_queries}")
             print(f"top 1 EM: {pipeline_top_1_em}")
             print(f"top k EM: {pipeline_top_k_em}")
             print(f"top 1 F1: {pipeline_top_1_f1}")
@@ -233,6 +240,7 @@ def calculate_em_str_multi(gold_labels, prediction):
         if result == 1.0:
             return 1.0
     return 0.0
+
 
 def calculate_f1_str_multi(gold_labels, prediction):
     results = []

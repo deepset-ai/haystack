@@ -176,8 +176,8 @@ class BaseRetriever(BaseComponent):
     def run(self, pipeline_type: str, **kwargs): # type: ignore
         if pipeline_type == "Query":
             self.query_count += 1
-            run_query = self.timing(self.run_query, "query_time")
-            output, stream = run_query(**kwargs)
+            run_query_timed = self.timing(self.run_query, "query_time")
+            output, stream = run_query_timed(**kwargs)
         elif pipeline_type == "Indexing":
             self.index_count += len(kwargs["documents"])
             run_indexing = self.timing(self.run_indexing, "index_time")
