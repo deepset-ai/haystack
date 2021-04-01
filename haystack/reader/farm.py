@@ -560,7 +560,7 @@ class FARMReader(BaseReader):
                         "answer": ans.answer,
                         "score": ans.score,
                         # just a pseudo prob for now
-                        "probability": self._get_pseudo_prob(ans.score),
+                        "probability": ans.confidence,
                         "context": ans.context_window,
                         "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
                         "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
