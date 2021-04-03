@@ -58,10 +58,10 @@ class EvalRetriever:
             self.has_answer_count += 1
             correct_retrieval = self.is_correctly_retrieved(retriever_labels, documents)
             self.has_answer_correct += int(correct_retrieval)
+            self.has_answer_recall = self.has_answer_correct / self.has_answer_count
 
         self.correct_retrieval_count += correct_retrieval
         self.recall = self.correct_retrieval_count / self.query_count
-        self.has_answer_recall = self.has_answer_correct / self.has_answer_count
         if self.debug:
             self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs})
         return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs}, "output_1"
