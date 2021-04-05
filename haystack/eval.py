@@ -87,10 +87,10 @@ class EvalRetriever:
         print("-----------------")
         if self.no_answer_count:
             print(
-                f"has_answer recall: {self.has_answer_recall} ({self.has_answer_correct}/{self.has_answer_count})")
+                f"has_answer recall: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
             print(
                 f"no_answer recall:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
-        print(f"recall: {self.recall} ({self.correct_retrieval_count} / {self.query_count})")
+        print(f"recall: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
 
 
 class EvalReader:
@@ -199,14 +199,14 @@ class EvalReader:
             print("-----------------")
             # print(f"answer in retrieved docs: {correct_retrieval}")
             print(f"has answer queries: {self.has_answer_count}")
-            print(f"top 1 EM: {self.top_1_em}")
-            print(f"top k EM: {self.top_k_em}")
-            print(f"top 1 F1: {self.top_1_f1}")
-            print(f"top k F1: {self.top_k_f1}")
+            print(f"top 1 EM: {self.top_1_em:.4f}")
+            print(f"top k EM: {self.top_k_em:.4f}")
+            print(f"top 1 F1: {self.top_1_f1:.4f}")
+            print(f"top k F1: {self.top_k_f1:.4f}")
             if self.no_answer_count:
                 print()
                 print(f"no_answer queries: {self.no_answer_count}")
-                print(f"top 1 no_answer accuracy: {self.top_1_no_answer}")
+                print(f"top 1 no_answer accuracy: {self.top_1_no_answer:.4f}")
         elif mode == "pipeline":
             print("Pipeline")
             print("-----------------")
@@ -217,10 +217,10 @@ class EvalReader:
             pipeline_top_k_f1 = (self.top_k_f1_sum + self.no_answer_count) / self.query_count
 
             print(f"queries: {self.query_count}")
-            print(f"top 1 EM: {pipeline_top_1_em}")
-            print(f"top k EM: {pipeline_top_k_em}")
-            print(f"top 1 F1: {pipeline_top_1_f1}")
-            print(f"top k F1: {pipeline_top_k_f1}")
+            print(f"top 1 EM: {pipeline_top_1_em:.4f}")
+            print(f"top k EM: {pipeline_top_k_em:.4f}")
+            print(f"top 1 F1: {pipeline_top_1_f1:.4f}")
+            print(f"top k F1: {pipeline_top_k_f1:.4f}")
             if self.no_answer_count:
                 print(
                     "(top k results are likely inflated since the Reader always returns a no_answer prediction in its top k)"
