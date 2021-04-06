@@ -38,7 +38,7 @@ class Text2SparqlRetriever(BaseGraphRetriever):
 
         # if there are no answers we still want to return something
         if len(answers) == 0:
-            answers.append(("",""))
+            answers.append(("",query))
         results = answers[:self.top_k]
         results = [self.format_result(result) for result in results]
         return results
