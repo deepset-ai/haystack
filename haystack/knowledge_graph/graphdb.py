@@ -9,6 +9,10 @@ from haystack.knowledge_graph.base import BaseKnowledgeGraph
 
 
 class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
+    """
+        Knowledge graph store that runs on a GraphDB instance
+    """
+
     def __init__(
         self,
         host: str = "localhost",

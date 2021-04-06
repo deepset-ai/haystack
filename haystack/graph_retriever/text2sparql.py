@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 class Text2SparqlRetriever(BaseGraphRetriever):
+    """
+        Graph retriever that uses a pre-trained Bart model to translate natural language questions given in text form to queries in SPARQL format.
+        The generated SPARQL query is executed on a knowledge graph.
+    """
+
     def __init__(self, knowledge_graph, model_name_or_path, top_k: int = 1):
         self.knowledge_graph = knowledge_graph
         self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
