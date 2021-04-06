@@ -6,7 +6,7 @@ class BaseGraphRetriever(BaseComponent):
     knowledge_graph: BaseKnowledgeGraph
     outgoing_edges = 1
 
-    def retrieve(self, question_text, top_k):
+    def retrieve(self, question_text: str, top_k: int):
         raise NotImplementedError
 
     def eval(self):

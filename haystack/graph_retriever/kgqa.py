@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from haystack.graph_retriever.base import BaseGraphRetriever
 
@@ -14,8 +15,9 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         self.tok = BartTokenizer.from_pretrained(model_name_or_path)
         self.top_k = top_k
 
-    def retrieve(self, question_text: str):
-        logger.info("logging info...")
+    def retrieve(self, question_text: str, top_k: Optional[int] = None):
+        if top_k is None:
+            top_k = self.top_k
         inputs = self.tok([question_text], max_length=100, truncation=True, return_tensors='pt')
         temp = self.model.generate(inputs['input_ids'],
                                    num_beams=self.top_k,
