@@ -3,7 +3,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from haystack.graph_retriever.kgqa import Text2SparqlRetriever
+from haystack.graph_retriever.text2sparql import Text2SparqlRetriever
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from haystack.preprocessor.utils import fetch_archive_from_http
 
