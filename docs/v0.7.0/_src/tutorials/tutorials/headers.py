@@ -70,13 +70,5 @@ metaDescription: ""
 slug: "/docs/tutorial9"
 date: "2021-01-08"
 id: "tutorial9md"
---->""",
-    10: """<!---
-title: "Tutorial 10"
-metaTitle: "Knowledge Graph QA"
-metaDescription: ""
-slug: "/docs/tutorial10"
-date: "2021-04-06"
-id: "tutorial10md"
 --->"""
 }
