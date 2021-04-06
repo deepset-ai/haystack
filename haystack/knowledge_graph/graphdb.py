@@ -16,11 +16,13 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         username: str = "",
         password: str = "",
         index: Optional[str] = None,
+        prefixes: str = ""
     ):
         self.url = f"http://{host}:{port}"
         self.index = index
         self.username = username
         self.password = password
+        self.prefixes = prefixes
 
     def create_index(self, config_path: Path):
         url = f"{self.url}/rest/repositories"
@@ -31,6 +33,13 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         )
         if response.status_code > 299:
             raise Exception(response.text)
+
+    def delete_index(self):
+        url = f"{self.url}/rest/repositories/{self.index}"
+        response = requests.delete(url)
+        if response.status_code > 299:
+            raise Exception(response.text)
+
 
     def import_from_ttl_file(self, index: str, path: Path):
         url = f"{self.url}/repositories/{index}/statements"
@@ -70,7 +79,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         index = index or self.index
         sparql = SPARQLWrapper(f"{self.url}/repositories/{index}")
         sparql.setCredentials(self.username, self.password)
-        sparql.setQuery(query)
+        sparql.setQuery(self.prefixes+query)
         sparql.setReturnFormat(JSON)
         results = sparql.query().convert()
         # if query is a boolean query, return boolean instead of text result
