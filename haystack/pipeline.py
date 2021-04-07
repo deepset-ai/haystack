@@ -85,13 +85,14 @@ class Pipeline(ABC):
                 input_edge_name = "output_1"
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
 
-    def get_node(self, name: str):
+    def get_node(self, name: str) -> Optional[BaseComponent]:
         """
         Get a node from the Pipeline.
 
         :param name: The name of the node.
         """
-        component = self.graph.nodes[name]["component"]
+        graph_node = self.graph.nodes.get(name)
+        component = graph_node["component"] if graph_node else None
         return component
 
     def set_node(self, name: str, component):
@@ -219,7 +220,7 @@ class Pipeline(ABC):
         else:
             pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
             if not pipelines_in_yaml:
-                raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+                raise KeyError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
             pipeline_config = pipelines_in_yaml[0]
 
         definitions = {}  # definitions of each component from the YAML.
@@ -252,7 +253,7 @@ class Pipeline(ABC):
             if name in components.keys():  # check if component is already loaded.
                 return components[name]
 
-            component_params = definitions[name]["params"]
+            component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
             logger.debug(f"Loading component `{name}` of type `{definitions[name]['type']}`")
 
