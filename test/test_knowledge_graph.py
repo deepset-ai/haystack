@@ -2,24 +2,21 @@ from pathlib import Path
 
 import pytest
 
-from haystack.graph_retriever.text_to_sparql import Text2SparqlRetriever
+from haystack.graph_retriever import Text2SparqlRetriever
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
+from haystack.preprocessor.utils import fetch_archive_from_http
 
-
-@pytest.mark.graph
+@pytest.mark.graphdb
 def test_graph_retrieval(retriever_with_docs, document_store_with_docs):
-    # doc_dir = "../data/tutorial10_knowledge_graph/"
-    # s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/triples_and_config.zip"
-    # fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
-    #
-    # # Fetch a pre-trained BART model that translates natural language questions to SPARQL queries
-    # doc_dir = "../saved_models/tutorial10_knowledge_graph/"
-    # s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/saved_models/hp_v3.4.zip"
-    # fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
+    # TODO rename doc_dir
+    doc_dir = "../data/tutorial10_knowledge_graph/"
+    s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/triples_and_config.zip"
+    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
-    # status = subprocess.run(
-    #             ['docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11'], shell=True
-    #         )
+    # Fetch a pre-trained BART model that translates natural language questions to SPARQL queries
+    doc_dir = "../saved_models/tutorial10_knowledge_graph/"
+    s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/saved_models/hp_v3.4.zip"
+    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     kg = GraphDBKnowledgeGraph(index="tutorial_10_index")
     kg.create_index(config_path=Path("../data/tutorial10_knowledge_graph/repo-config.ttl"))

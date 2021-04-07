@@ -6,6 +6,7 @@ from sys import platform
 import pytest
 import requests
 from elasticsearch import Elasticsearch
+from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
 
 from haystack.document_store.milvus import MilvusDocumentStore
@@ -54,6 +55,8 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.tika)
         elif "elasticsearch" in item.nodeid:
             item.add_marker(pytest.mark.elasticsearch)
+        elif "graphdb" in item.nodeid:
+            item.add_marker(pytest.mark.graphdb)
         elif "pipeline" in item.nodeid:
             item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
@@ -94,6 +97,29 @@ def milvus_fixture():
         status = subprocess.run(['docker run -d --name milvus_cpu_0.10.5 -p 19530:19530 -p 19121:19121 '
                                  'milvusdb/milvus:0.10.5-cpu-d010621-4eda95'], shell=True)
         time.sleep(40)
+
+
+@pytest.fixture(scope="session")
+def graphdb_fixture():
+    # test if a GraphDB instance is already running. If not, download and start a GraphDB instance locally.
+    try:
+        kg = GraphDBKnowledgeGraph()
+        # TODO fail if not running GraphDB
+        raise RuntimeError
+    except:
+        print("Starting GraphDB ...")
+        status = subprocess.run(
+            ['docker rm haystack_test_graphdb'],
+            shell=True
+        )
+        status = subprocess.run(
+            ['docker run -d -p 7200:7200 --name haystack_test_graphdb docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11'],
+            shell=True
+        )
+        if status.returncode:
+            raise Exception(
+                "Failed to launch GraphDB. Please check docker container logs.")
+        time.sleep(30)
 
 
 @pytest.fixture(scope="session")

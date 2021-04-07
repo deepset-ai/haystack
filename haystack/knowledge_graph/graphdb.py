@@ -44,7 +44,6 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         if response.status_code > 299:
             raise Exception(response.text)
 
-
     def import_from_ttl_file(self, index: str, path: Path):
         url = f"{self.url}/repositories/{index}/statements"
         headers = {"Content-type": "application/x-turtle"}
