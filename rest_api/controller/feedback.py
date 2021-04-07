@@ -4,7 +4,6 @@ from typing import Dict, Union, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-
 from rest_api.controller.search import PIPELINE
 
 router = APIRouter()
@@ -106,6 +105,7 @@ def export_extractive_qa_feedback(
 
         if full_document_context:
             context = document.text
+            answer_start = label.offset_start_in_doc
         else:
             text = document.text
             # the final length of context(including the answer string) is 'context_size'.
@@ -122,6 +122,7 @@ def export_extractive_qa_feedback(
             start_pos = max(0, start_pos - additional_context_at_start)
             end_pos = min(len(text) - 1, end_pos + additional_context_at_end)
             context = text[start_pos:end_pos]
+            answer_start = label.offset_start_in_doc - start_pos
 
         if label.is_correct_answer is False and label.is_correct_document is False:  # No answer
             squad_label = {
@@ -144,7 +145,7 @@ def export_extractive_qa_feedback(
                                 "question": label.question,
                                 "id": label.id,
                                 "is_impossible": False,
-                                "answers": [{"text": label.answer, "answer_start": label.offset_start_in_doc}],
+                                "answers": [{"text": label.answer, "answer_start": answer_start}],
                             }
                         ],
                     }
