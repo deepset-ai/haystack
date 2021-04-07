@@ -13,11 +13,11 @@ from haystack.retriever.sparse import ElasticsearchRetriever
 def test_load_yaml(document_store_with_docs):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(Path("samples/pipeline/test_pipeline.yaml"),
-                                       pipeline_name="test_indexing_pipeline")
+                                       pipeline_name="indexing_pipeline")
     pipeline.run(file_path=Path("samples/pdf/sample_pdf_1.pdf"), top_k_retriever=10, top_k_reader=3)
 
     # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="test_query_pipeline")
+    pipeline = Pipeline.load_from_yaml(Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="query_pipeline")
     prediction = pipeline.run(query="Who made the PDF specification?", top_k_retriever=10, top_k_reader=3)
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0]["answer"] == "Adobe Systems"

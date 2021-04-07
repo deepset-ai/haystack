@@ -40,7 +40,7 @@ Add a new node to the pipeline.
 #### get\_node
 
 ```python
- | get_node(name: str)
+ | get_node(name: str) -> Optional[BaseComponent]
 ```
 
 Get a node from the Pipeline.

@@ -7,21 +7,9 @@ services:
     image: "deepset/haystack-cpu:latest"
     ports:
       - 8000:8000
-    volumes:
-      # Optional: mount your own models from disk into the container
-      - "./models:/home/user/models"
     environment:
-      # See rest_api/config.py for more variables that you can configure here.
-      - DB_HOST=elasticsearch
-      - USE_GPU=False
-      - TOP_K_PER_SAMPLE=3 # how many answers can come from the same small passage (reduce value for more variety of answers)
-      # Load a model from transformers' model hub or a local path into the FARMReader.
-      - READER_MODEL_PATH=deepset/roberta-base-squad2
-      # - READER_MODEL_PATH=home/user/models/roberta-base-squad2
-      # Alternative: If you want to use the TransformersReader (e.g. for loading a local model in transformers format):
-      # - READER_TYPE=TransformersReader
-      # - READER_MODEL_PATH=/home/user/models/roberta-base-squad2
-      # - READER_TOKENIZER=/home/user/models/roberta-base-squad2
+      # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
+      - ELASTICSEARCHDOCUMENTSTORE_PARAMS_HOST=elasticsearch
     restart: always
     depends_on:
       - elasticsearch
@@ -36,7 +24,9 @@ services:
     environment:
       - discovery.type=single-node
   ui:
-    image: "deepset/haystack-streamlit-ui"
+    build:
+      context: ui
+      dockerfile: Dockerfile
     ports:
       - 8501:8501
     environment:
