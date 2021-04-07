@@ -88,3 +88,6 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         meta["sparql_query"] = query
 
         return {"answer": prediction, "meta": meta}
+
+    def eval(self):
+        raise NotImplementedError

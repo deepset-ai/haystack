@@ -1,1 +1,1 @@
-from haystack.graph_retriever.text2sparql import Text2SparqlRetriever
+from haystack.graph_retriever.text_to_sparql import Text2SparqlRetriever

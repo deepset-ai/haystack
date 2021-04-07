@@ -51,7 +51,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         response = requests.post(
             url,
             headers=headers,
-            data=open(path, "r", encoding="utf-8").read(),
+            data=open(path, "r", encoding="utf-8").read().encode('utf-8'),
             auth=HTTPBasicAuth(self.username, self.password),
         )
         if response.status_code > 299:
