@@ -68,7 +68,7 @@ def tutorial10_knowledge_graph():
 
     # We can now ask questions that will be answered by our knowledge graph!
     # One limitation though: our pre-trained model can only generate questions about resources it has seen during training.
-    # Otherwise it cannot translate the name of the resource to the identifier used in the knowledge graph.
+    # Otherwise, it cannot translate the name of the resource to the identifier used in the knowledge graph.
     # E.g. "Harry" -> "hp:Harry_potter"
 
     question_text = "In which house is Harry Potter?"
