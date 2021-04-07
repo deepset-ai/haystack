@@ -105,7 +105,7 @@ def graphdb_fixture():
     try:
         kg = GraphDBKnowledgeGraph()
         # TODO fail if not running GraphDB
-        raise RuntimeError
+        kg.delete_index()
     except:
         print("Starting GraphDB ...")
         status = subprocess.run(
