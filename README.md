@@ -30,6 +30,9 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 <p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif"></p>
 
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdeepset-ai%2Fhaystack.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdeepset-ai%2Fhaystack?ref=badge_large)
+
 ## What to build with Haystack
 
 - **Ask questions in natural language** and find granular answers in your documents.
@@ -153,6 +156,7 @@ On Windows, you might need:
 ## Key Components
 
 ![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/concepts_haystack_handdrawn.png)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdeepset-ai%2Fhaystack.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdeepset-ai%2Fhaystack?ref=badge_shield)
 
 1.  **FileConverter**: Extracts pure text from files (pdf, docx, pptx, html, and many more).
 2.  **PreProcessor**: Cleans and splits the text into smaller chunks.
