@@ -7,7 +7,7 @@ from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from haystack.preprocessor.utils import fetch_archive_from_http
 
 @pytest.mark.graphdb
-def test_graph_retrieval(retriever_with_docs, document_store_with_docs):
+def test_graph_retrieval(graphdb_fixture):
     # TODO rename doc_dir
     doc_dir = "../data/tutorial10_knowledge_graph/"
     s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/triples_and_config.zip"
@@ -19,6 +19,7 @@ def test_graph_retrieval(retriever_with_docs, document_store_with_docs):
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     kg = GraphDBKnowledgeGraph(index="tutorial_10_index")
+    kg.delete_index()
     kg.create_index(config_path=Path("../data/tutorial10_knowledge_graph/repo-config.ttl"))
     kg.import_from_ttl_file(index="tutorial_10_index",
                             path=Path("../data/tutorial10_knowledge_graph/triples.ttl"))
