@@ -3,6 +3,8 @@ version: '0.7'
 components:    # define all the building-blocks for Pipeline
   - name: ElasticsearchDocumentStore
     type: ElasticsearchDocumentStore
+    params:
+      host: localhost
   - name: ESRetriever
     type: ElasticsearchRetriever
     params:
