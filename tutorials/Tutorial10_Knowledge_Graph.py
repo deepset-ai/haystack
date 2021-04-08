@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 def tutorial10_knowledge_graph():
     # Let's first fetch some triples that we want to store in our knowledge graph
     # Here: exemplary triples from the wizarding world
-    doc_dir = "../data/tutorial10_knowledge_graph/"
+    graph_dir = "../data/tutorial10_knowledge_graph/"
     s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/triples_and_config.zip"
-    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
+    fetch_archive_from_http(url=s3_url, output_dir=graph_dir)
 
-    # Fetch a pre-trained BART model that translates natural language questions to SPARQL queries
-    doc_dir = "../saved_models/tutorial10_knowledge_graph/"
+    # Fetch a pre-trained BART model that translates text queries to SPARQL queries
+    model_dir = "../saved_models/tutorial10_knowledge_graph/"
     s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/saved_models/hp_v3.4.zip"
-    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
+    fetch_archive_from_http(url=s3_url, output_dir=model_dir)
 
     LAUNCH_GRAPHDB = True
 
@@ -41,7 +41,6 @@ def tutorial10_knowledge_graph():
                             "then set LAUNCH_GRAPHDB in the script to False.")
         time.sleep(5)
 
-
     # Initialize a knowledge graph connected to GraphDB and use "tutorial_10_index" as the name of the index
     kg = GraphDBKnowledgeGraph(index="tutorial_10_index")
 
@@ -49,10 +48,10 @@ def tutorial10_knowledge_graph():
     kg.delete_index()
 
     # Create the index based on a configuration file
-    kg.create_index(config_path=Path("../data/tutorial10_knowledge_graph/repo-config.ttl"))
+    kg.create_index(config_path=Path(graph_dir+"repo-config.ttl"))
 
     # Import triples of subject, predicate, and object statements from a ttl file
-    kg.import_from_ttl_file(index="tutorial_10_index", path=Path("../data/tutorial10_knowledge_graph/triples.ttl"))
+    kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir+"triples.ttl"))
     logging.info(f"The last triple stored in the knowledge graph is: {kg.get_all_triples()[-1]}")
     logging.info(f"There are {len(kg.get_all_triples())} triples stored in the knowledge graph.")
 
@@ -63,29 +62,29 @@ def tutorial10_knowledge_graph():
     """
     kg.prefixes = prefixes
 
-    # Load a pre-trained model that translates natural language questions to SPARQL queries
-    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path="../saved_models/tutorial10_knowledge_graph/hp_v3.4")
+    # Load a pre-trained model that translates text queries to SPARQL queries
+    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path=model_dir+"hp_v3.4")
 
     # We can now ask questions that will be answered by our knowledge graph!
     # One limitation though: our pre-trained model can only generate questions about resources it has seen during training.
     # Otherwise, it cannot translate the name of the resource to the identifier used in the knowledge graph.
     # E.g. "Harry" -> "hp:Harry_potter"
 
-    question_text = "In which house is Harry Potter?"
-    logging.info(f"Translating the natural language question \"{question_text}\" to a SPARQL query and executing it on the knowledge graph...")
-    result = kgqa_retriever.retrieve(question_text=question_text)
+    query = "In which house is Harry Potter?"
+    logging.info(f"Translating the text query \"{query}\" to a SPARQL query and executing it on the knowledge graph...")
+    result = kgqa_retriever.retrieve(query=query)
     logging.info(result)
     # Correct SPARQL query: select ?a { hp:Harry_potter hp:house ?a . }
     # Correct answer: Gryffindor
 
     logging.info("Executing a SPARQL query with prefixed names of resources...")
-    result = kgqa_retriever._query_kg(query="select distinct ?sbj where { ?sbj hp:job hp:Keeper_of_keys_and_grounds . }")
+    result = kgqa_retriever._query_kg(sparql_query="select distinct ?sbj where { ?sbj hp:job hp:Keeper_of_keys_and_grounds . }")
     logging.info(result)
     # Paraphrased question: Who is the keeper of keys and grounds?
     # Correct answer: Rubeus Hagrid
 
     logging.info("Executing a SPARQL query with full names of resources...")
-    result = kgqa_retriever._query_kg(query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }")
+    result = kgqa_retriever._query_kg(sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }")
     logging.info(result)
     # Paraphrased question: What is the patronus of Hermione?
     # Correct answer: Otter

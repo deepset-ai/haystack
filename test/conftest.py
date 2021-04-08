@@ -104,7 +104,7 @@ def graphdb_fixture():
     # test if a GraphDB instance is already running. If not, download and start a GraphDB instance locally.
     try:
         kg = GraphDBKnowledgeGraph()
-        # TODO fail if not running GraphDB
+        # fail if not running GraphDB
         kg.delete_index()
     except:
         print("Starting GraphDB ...")
