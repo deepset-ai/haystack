@@ -4,6 +4,8 @@ import pandas as pd
 from haystack.schema import Document, Label, MultiLabel, BaseComponent
 from haystack.finder import Finder
 from haystack.pipeline import Pipeline
+from haystack.custom import TitleEmbeddingRetriever
+from haystack.custom import JoinDocumentsCustom
 
 pd.options.display.max_colwidth = 80
 

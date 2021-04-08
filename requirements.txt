@@ -29,3 +29,5 @@ pymilvus
 # Optional: For crawling
 #selenium
 #webdriver-manager
+sentence-transformers
+pytest
