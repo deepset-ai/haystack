@@ -23,12 +23,12 @@ Indexes documents for later queries.
 **Arguments**:
 
 - `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
+                  For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                  Optionally: Include meta data via {"text": "<the-actual-text>",
+                  "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                  It can be used for filtering and is accessible in the responses of the Finder.
 - `index`: Optional name of index where the documents shall be written to.
-If None, the DocumentStore's default index (self.index) will be used.
+              If None, the DocumentStore's default index (self.index) will be used.
 
 **Returns**:
 
@@ -47,9 +47,9 @@ Get documents from the document store.
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
-DocumentStore's default index (self.index) will be used.
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 
 <a name="base.BaseDocumentStore.add_eval_data"></a>
@@ -69,13 +69,13 @@ from disk and also indexed batchwise to the DocumentStore in order to prevent ou
 - `doc_index`: Elasticsearch index where evaluation documents should be stored
 - `label_index`: Elasticsearch index where labeled questions should be stored
 - `batch_size`: Optional number of documents that are loaded and processed at a time.
-When set to None (default) all documents are processed at once.
+                   When set to None (default) all documents are processed at once.
 - `preprocessor`: Optional PreProcessor to preprocess evaluation documents.
-It can be used for splitting documents into passages (and assigning labels to corresponding passages).
-Currently the PreProcessor does not support split_by sentence, cleaning nor split_overlap != 0.
-When set to None (default) preprocessing is disabled.
+                     It can be used for splitting documents into passages (and assigning labels to corresponding passages).
+                     Currently the PreProcessor does not support split_by sentence, cleaning nor split_overlap != 0.
+                     When set to None (default) preprocessing is disabled.
 - `max_docs`: Optional number of documents that will be loaded.
-When set to None (default) all available eval documents are used.
+                 When set to None (default) all available eval documents are used.
 
 <a name="elasticsearch"></a>
 # Module elasticsearch
@@ -96,9 +96,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
 
-* Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
-* You can either use an existing Elasticsearch index or create a new one via haystack
-* Retrievers operate on top of this DocumentStore to find the relevant documents for a query
+    * Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
+    * You can either use an existing Elasticsearch index or create a new one via haystack
+    * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
 
 **Arguments**:
 
@@ -109,30 +109,30 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 - `index`: Name of index in elasticsearch to use. If not existing yet, we will create one.
 - `search_fields`: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
 - `text_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
-If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+                   If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
 - `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
 - `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
 - `custom_mapping`: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
 - `analyzer`: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
-Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
-https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
+                 Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+                 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
 - `excluded_meta_data`: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
-Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+                           Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
 - `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
 - `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
 - `verify_certs`: Whether to be strict about ca certificates
 - `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
 - `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-documents. When set as True, any document with an existing ID gets updated.
-If set to False, an error is raised if the document ID of the document being
-added already exists.
+                                  documents. When set as True, any document with an existing ID gets updated.
+                                  If set to False, an error is raised if the document ID of the document being
+                                  added already exists.
 - `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
-If set to 'wait_for', continue only after changes are visible (slow, but safe).
-If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
-More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+                     If set to 'wait_for', continue only after changes are visible (slow, but safe).
+                     If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
+                     More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
-more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `timeout`: Number of seconds after which an ElasticSearch request times out.
 - `return_embedding`: To return document embedding
 
@@ -162,7 +162,7 @@ Fetch documents by specifying a list of text id strings
 ```
 
 Get values associated with a metadata key. The output is in the format:
-[{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
+    [{"value": "my-value-1", "count": 23}, {"value": "my-value-2", "count": 12}, ... ]
 
 **Arguments**:
 
@@ -170,7 +170,7 @@ Get values associated with a metadata key. The output is in the format:
 - `query`: narrow down the scope to documents matching the query string.
 - `filters`: narrow down the scope to documents that match the given filters.
 - `index`: Elasticsearch index where the meta values should be searched. If not supplied,
-self.index will be used.
+              self.index will be used.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
 #### write\_documents
@@ -191,12 +191,12 @@ they will automatically get UUIDs assigned. See the `Document` class for details
 **Arguments**:
 
 - `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
-should be changed to what you have set for self.text_field and self.name_field.
+                  For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                  Optionally: Include meta data via {"text": "<the-actual-text>",
+                  "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                  It can be used for filtering and is accessible in the responses of the Finder.
+                  Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
+                  should be changed to what you have set for self.text_field and self.name_field.
 - `index`: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
 - `batch_size`: Number of documents that are passed to Elasticsearch's bulk function at a time.
 
@@ -257,9 +257,9 @@ Get documents from the document store.
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
-DocumentStore's default index (self.index) will be used.
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
@@ -277,9 +277,9 @@ a large number of documents without having to load all documents in memory.
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
-DocumentStore's default index (self.index) will be used.
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
@@ -322,7 +322,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 
 - `query_emb`: Embedding of the query (e.g. gathered from DPR)
 - `filters`: Optional filters to narrow down the search space.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
@@ -355,11 +355,11 @@ This can be useful if want to add or change the embeddings for your documents (e
 - `retriever`: Retriever to use to update the embeddings.
 - `index`: Index name to update
 - `update_existing_embeddings`: Whether to update existing embeddings of the documents. If set to False,
-only documents without embeddings are processed. This mode can be used for
-incremental updating of embeddings, wherein, only newly indexed documents
-get processed.
+                                   only documents without embeddings are processed. This mode can be used for
+                                   incremental updating of embeddings, wherein, only newly indexed documents
+                                   get processed.
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
@@ -418,15 +418,15 @@ In-memory document store
 **Arguments**:
 
 - `index`: The documents are scoped to an index attribute that can be used when writing, querying,
-or deleting documents. This parameter sets the default value for document index.
+              or deleting documents. This parameter sets the default value for document index.
 - `label_index`: The default value of index attribute for the labels.
 - `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
 - `embedding_dim`: The size of the embedding vector.
 - `return_embedding`: To return document embedding
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
-more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
-Can be helpful to disable in production deployments to keep the logs clean.
+                     Can be helpful to disable in production deployments to keep the logs clean.
 
 <a name="memory.InMemoryDocumentStore.write_documents"></a>
 #### write\_documents
@@ -441,12 +441,12 @@ Indexes documents for later queries.
 **Arguments**:
 
 - `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta": {"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
+                   For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                   Optionally: Include meta data via {"text": "<the-actual-text>",
+                   "meta": {"name": "<some-document-name>, "author": "somebody", ...}}
+                   It can be used for filtering and is accessible in the responses of the Finder.
 - `index`: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
-separate index than the documents for search.
+               separate index than the documents for search.
 
 **Returns**:
 
@@ -492,7 +492,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 
 - `query_emb`: Embedding of the query (e.g. gathered from DPR)
 - `filters`: Optional filters to narrow down the search space.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
@@ -516,11 +516,11 @@ This can be useful if want to add or change the embeddings for your documents (e
 - `retriever`: Retriever to use to get embeddings for text
 - `index`: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
 - `update_existing_embeddings`: Whether to update existing embeddings of the documents. If set to False,
-only documents without embeddings are processed. This mode can be used for
-incremental updating of embeddings, wherein, only newly indexed documents
-get processed.
+                                   only documents without embeddings are processed. This mode can be used for
+                                   incremental updating of embeddings, wherein, only newly indexed documents
+                                   get processed.
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
@@ -558,9 +558,9 @@ documents.
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
-DocumentStore's default index (self.index) will be used.
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 
 <a name="memory.InMemoryDocumentStore.get_all_labels"></a>
@@ -613,13 +613,13 @@ An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL bac
 
 - `url`: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
 - `index`: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
-This parameter sets the default value for document index.
+              This parameter sets the default value for document index.
 - `label_index`: The default value of index attribute for the labels.
 - `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-documents. When set as True, any document with an existing ID gets updated.
-If set to False, an error is raised if the document ID of the document being
-added already exists. Using this parameter could cause performance degradation
-for document insertion.
+                                  documents. When set as True, any document with an existing ID gets updated.
+                                  If set to False, an error is raised if the document ID of the document being
+                                  added already exists. Using this parameter could cause performance degradation
+                                  for document insertion.
 
 <a name="sql.SQLDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -652,7 +652,7 @@ Fetch documents by specifying a list of text vector id strings
 
 - `vector_ids`: List of vector_id strings.
 - `index`: Name of the index to get the documents from. If None, the
-DocumentStore's default index (self.index) will be used.
+              DocumentStore's default index (self.index) will be used.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="sql.SQLDocumentStore.get_all_documents_generator"></a>
@@ -669,9 +669,9 @@ a large number of documents without having to load all documents in memory.
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
-DocumentStore's default index (self.index) will be used.
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
@@ -696,12 +696,12 @@ Indexes documents for later queries.
 **Arguments**:
 
 - `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-Optionally: Include meta data via {"text": "<the-actual-text>",
-"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
+                  For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                  Optionally: Include meta data via {"text": "<the-actual-text>",
+                  "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                  It can be used for filtering and is accessible in the responses of the Finder.
 - `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
-documents for evaluation can be indexed in a separate index than the documents for search.
+              documents for evaluation can be indexed in a separate index than the documents for search.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
@@ -814,36 +814,36 @@ the vector embeddings are indexed in a FAISS Index.
 **Arguments**:
 
 - `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
-deployment, Postgres is recommended.
+                deployment, Postgres is recommended.
 - `vector_dim`: the embedding vector size.
 - `faiss_index_factory_str`: Create a new FAISS index of the specified type.
-The type is determined from the given string following the conventions
-of the original FAISS index factory.
-Recommended options:
-- "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
-- "HNSW": Graph-based heuristic. If not further specified,
-we use a RAM intense, but more accurate config:
-HNSW256, efConstruction=256 and efSearch=256
-- "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
-Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
-For more details see:
-- Overview of indices https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
-- Guideline for choosing an index https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
-- FAISS Index factory https://github.com/facebookresearch/faiss/wiki/The-index-factory
-Benchmarks: XXX
+                                The type is determined from the given string following the conventions
+                                of the original FAISS index factory.
+                                Recommended options:
+                                - "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
+                                - "HNSW": Graph-based heuristic. If not further specified,
+                                          we use a RAM intense, but more accurate config:
+                                          HNSW256, efConstruction=256 and efSearch=256
+                                - "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
+                                                  Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
+                                For more details see:
+                                - Overview of indices https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
+                                - Guideline for choosing an index https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+                                - FAISS Index factory https://github.com/facebookresearch/faiss/wiki/The-index-factory
+                                Benchmarks: XXX
 - `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
-or one with docs that you used in Haystack before and want to load again.
+                    or one with docs that you used in Haystack before and want to load again.
 - `return_embedding`: To return document embedding
 - `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-documents. When set as True, any document with an existing ID gets updated.
-If set to False, an error is raised if the document ID of the document being
-added already exists.
+                                  documents. When set as True, any document with an existing ID gets updated.
+                                  If set to False, an error is raised if the document ID of the document being
+                                  added already exists.
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
-more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `embedding_field`: Name of field containing an embedding vector.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
-Can be helpful to disable in production deployments to keep the logs clean.
+                     Can be helpful to disable in production deployments to keep the logs clean.
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -857,7 +857,7 @@ Add new documents to the DocumentStore.
 **Arguments**:
 
 - `documents`: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
-them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
+                  them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
 - `index`: (SQL) index name for storing the docs and metadata
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
@@ -880,11 +880,11 @@ This can be useful if want to add or change the embeddings for your documents (e
 - `retriever`: Retriever to use to get embeddings for text
 - `index`: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
 - `update_existing_embeddings`: Whether to update existing embeddings of the documents. If set to False,
-only documents without embeddings are processed. This mode can be used for
-incremental updating of embeddings, wherein, only newly indexed documents
-get processed.
+                                   only documents without embeddings are processed. This mode can be used for
+                                   incremental updating of embeddings, wherein, only newly indexed documents
+                                   get processed.
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
@@ -905,9 +905,9 @@ a large number of documents without having to load all documents in memory.
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
-DocumentStore's default index (self.index) will be used.
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
@@ -954,7 +954,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 
 - `query_emb`: Embedding of the query (e.g. gathered from DPR)
 - `filters`: Optional filters to narrow down the search space.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name to query the document from.
 - `return_embedding`: To return document embedding
@@ -990,14 +990,14 @@ None
 
 Load a saved FAISS index from a file and connect to the SQL database.
 Note: In order to have a correct mapping from FAISS to SQL,
-make sure to use the same SQL DB that you used when calling `save()`.
+      make sure to use the same SQL DB that you used when calling `save()`.
 
 **Arguments**:
 
 - `faiss_file_path`: Stored FAISS index file. Can be created via calling `save()`
 - `sql_url`: Connection string to the SQL database that contains your docs and metadata.
 - `index`: Index name to load the FAISS index as. It must match the index name used for
-when creating the FAISS index.
+              when creating the FAISS index.
 
 **Returns**:
 
