@@ -313,7 +313,7 @@ def prepare_negative_passages(data_dir, filename_negative, n_docs):
 
 
 if __name__ == "__main__":
-    params, filenames = load_config(config_filename="config.json", ci=False)
-    #benchmark_indexing(**params, **filenames, update_json=True, save_markdown=False)
+    params, filenames = load_config(config_filename="config.json", ci=True)
+    benchmark_indexing(**params, **filenames, update_json=True, save_markdown=False)
     benchmark_querying(**params, **filenames, update_json=True, save_markdown=False)
 
