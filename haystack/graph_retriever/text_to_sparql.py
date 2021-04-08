@@ -40,13 +40,12 @@ class Text2SparqlRetriever(BaseGraphRetriever):
 
         # if there are no answers we still want to return something
         if len(answers) == 0:
-            answers.append(("", query))
+            answers.append(("", ""))
         results = answers[:self.top_k]
         results = [self.format_result(result) for result in results]
         return results
 
-    def _query_kg(self, sparql_query: str):
-        # query KG
+    def _query_kg(self, sparql_query):
         try:
             response = self.knowledge_graph.query(sparql_query=sparql_query)
 
