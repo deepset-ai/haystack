@@ -210,7 +210,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             only_documents_without_embedding=not update_existing_embeddings
         )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
@@ -315,7 +315,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         Delete all documents from the document store.
         """
         if filters:
-            raise Exception("filters are supported for deleting documents in FAISSDocumentStore.")
+            logger.warning("Filters are not supported for deleting documents in FAISSDocumentStore.")
         index = index or self.index
         if index in self.faiss_indexes.keys():
             self.faiss_indexes[index].reset()
@@ -341,7 +341,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :return:
         """
         if filters:
-            raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
+            logger.warning("Query filters are not implemented for the FAISSDocumentStore.")
 
         index = index or self.index
         if not self.faiss_indexes.get(index):

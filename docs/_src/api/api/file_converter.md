@@ -35,7 +35,7 @@ Base class for implementing file converts to transform input documents to text f
 
 ```python
  | @abstractmethod
- | convert(file_path: Path, meta: Optional[Dict[str, str]], remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]], remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
 ```
 
 Convert a file to a dictionary containing the text and any associated meta data.
@@ -57,6 +57,7 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
                         This option can be used to add test for encoding errors. If the extracted text is
                         not one of the valid languages, then it might likely be encoding error resulting
                         in garbled text.
+- `encoding`: Select the file encoding (default is `utf-8`)
 
 <a name="base.BaseConverter.validate_language"></a>
 #### validate\_language
@@ -66,6 +67,15 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
 ```
 
 Validate if the language of the text is one of valid languages.
+
+<a name="base.FileTypeClassifier"></a>
+## FileTypeClassifier Objects
+
+```python
+class FileTypeClassifier(BaseComponent)
+```
+
+Route files in an Indexing Pipeline to corresponding file converters.
 
 <a name="txt"></a>
 # Module txt
@@ -101,7 +111,7 @@ class TextConverter(BaseConverter)
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: str = "utf-8") -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
 ```
 
 Reads text from a txt file and executes optional preprocessing steps.
@@ -120,6 +130,7 @@ Reads text from a txt file and executes optional preprocessing steps.
                         This option can be used to add test for encoding errors. If the extracted text is
                         not one of the valid languages, then it might likely be encoding error resulting
                         in garbled text.
+- `encoding`: Select the file encoding (default is `utf-8`)
 
 **Returns**:
 
@@ -139,7 +150,7 @@ class DocxToTextConverter(BaseConverter)
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = None) -> Dict[str, Any]
 ```
 
 Extract text from a .docx file.
@@ -160,6 +171,7 @@ For compliance with other converters we nevertheless opted for keeping the metho
                         This option can be used to add test for encoding errors. If the extracted text is
                         not one of the valid languages, then it might likely be encoding error resulting
                         in garbled text.
+- `encoding`: Not applicable
 
 <a name="tika"></a>
 # Module tika
@@ -196,7 +208,7 @@ class TikaConverter(BaseConverter)
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = None) -> Dict[str, Any]
 ```
 
 **Arguments**:
@@ -204,15 +216,16 @@ class TikaConverter(BaseConverter)
 - `file_path`: path of the file to convert
 - `meta`: dictionary of meta data key-value pairs to append in the returned document.
 - `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-                               The tabular structures in documents might be noise for the reader model if it
-                               does not have table parsing capability for finding answers. However, tables
-                               may also have long strings that could possible candidate for searching answers.
-                               The rows containing strings are thus retained in this option.
+                              The tabular structures in documents might be noise for the reader model if it
+                              does not have table parsing capability for finding answers. However, tables
+                              may also have long strings that could possible candidate for searching answers.
+                              The rows containing strings are thus retained in this option.
 - `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                         (https://en.wikipedia.org/wiki/ISO_639-1) format.
-                         This option can be used to add test for encoding errors. If the extracted text is
-                         not one of the valid languages, then it might likely be encoding error resulting
-                         in garbled text.
+                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
+                        This option can be used to add test for encoding errors. If the extracted text is
+                        not one of the valid languages, then it might likely be encoding error resulting
+                        in garbled text.
+- `encoding`: Not applicable
 
 **Returns**:
 
@@ -252,7 +265,7 @@ class PDFToTextConverter(BaseConverter)
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: str = "Latin1") -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "Latin1") -> Dict[str, Any]
 ```
 
 Extract text from a .pdf file using the pdftotext library (https://www.xpdfreader.com/pdftotext-man.html)

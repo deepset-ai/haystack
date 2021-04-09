@@ -70,13 +70,13 @@ Or you can add decision nodes where only one "branch" is executed afterwards. Th
             else:
                 return (kwargs, "output_2")
 
-    pipe = Pipeline()
-    pipe.add_node(component=QueryClassifier(), name="QueryClassifier", inputs=["Query"])
-    pipe.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_1"])
-    pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_2"])
-    pipe.add_node(component=JoinDocuments(join_mode="concatenate"), name="JoinResults",
+    p = Pipeline()
+    p.add_node(component=QueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    p.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_1"])
+    p.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_2"])
+    p.add_node(component=JoinDocuments(join_mode="concatenate"), name="JoinResults",
                   inputs=["ESRetriever", "DPRRetriever"])
-    pipe.add_node(component=reader, name="QAReader", inputs=["JoinResults"])
+    p.add_node(component=reader, name="QAReader", inputs=["JoinResults"])
     res = p.run(query="What did Einstein work on?", top_k_retriever=1)
 ```
 

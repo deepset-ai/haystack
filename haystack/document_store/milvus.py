@@ -177,7 +177,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         add_vectors = False if document_objects[0].embedding is None else True
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)
-        with tqdm(total=len(document_objects), disable=self.progress_bar) as progress_bar:
+        with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 vector_ids = []
                 if add_vectors:
@@ -257,7 +257,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             only_documents_without_embedding=not update_existing_embeddings
         )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
@@ -298,7 +298,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :return:
         """
         if filters:
-            raise Exception("Query filters are not implemented for the MilvusDocumentStore.")
+            logger.warning("Query filters are not implemented for the MilvusDocumentStore.")
 
         index = index or self.index
         status, ok = self.milvus_server.has_collection(collection_name=index)

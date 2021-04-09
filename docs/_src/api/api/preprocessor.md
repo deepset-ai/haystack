@@ -92,7 +92,7 @@ the parameters passed into PreProcessor.__init__(). Takes a single document as i
 #### eval\_data\_from\_json
 
 ```python
-eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Tuple[List[Document], List[Label]]
+eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False) -> Tuple[List[Document], List[Label]]
 ```
 
 Read Documents + Labels from a SQuAD-style file.
@@ -102,6 +102,7 @@ Document and Labels can then be indexed to the DocumentStore and be used for eva
 
 - `filename`: Path to file in SQuAD format
 - `max_docs`: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+- `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
 
 **Returns**:
 
@@ -111,7 +112,7 @@ Document and Labels can then be indexed to the DocumentStore and be used for eva
 #### eval\_data\_from\_jsonl
 
 ```python
-eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Generator[Tuple[List[Document], List[Label]], None, None]
+eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False) -> Generator[Tuple[List[Document], List[Label]], None, None]
 ```
 
 Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
@@ -125,6 +126,7 @@ If batch_size is set to None, this method will yield all documents and labels.
 
 - `filename`: Path to file in SQuAD format
 - `max_docs`: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+- `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
 
 **Returns**:
 

@@ -13,7 +13,7 @@ class BaseRetriever(BaseComponent)
 
 ```python
  | @abstractmethod
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -30,7 +30,7 @@ that are most relevant to the query.
 #### timing
 
 ```python
- | timing(fn)
+ | timing(fn, attr_name)
 ```
 
 Wrapper method used to time functions.
@@ -83,7 +83,7 @@ class ElasticsearchRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: ElasticsearchDocumentStore, custom_query: str = None)
+ | __init__(document_store: ElasticsearchDocumentStore, top_k: int = 10, custom_query: str = None)
 ```
 
 **Arguments**:
@@ -121,12 +121,13 @@ class ElasticsearchRetriever(BaseRetriever)
                     |    self.retrieve(query="Why did the revenue increase?",
                     |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                     ```
+- `top_k`: How many documents to return per query.
 
 <a name="sparse.ElasticsearchRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -153,7 +154,7 @@ Helpful for benchmarking, testing and if you want to do QA on small documents wi
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -180,11 +181,23 @@ computations when text is passed on to a Reader for QA.
 
 It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 
+<a name="sparse.TfidfRetriever.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(document_store: BaseDocumentStore, top_k: int = 10)
+```
+
+**Arguments**:
+
+- `document_store`: an instance of a DocumentStore to retrieve documents from.
+- `top_k`: How many documents to return per query.
+
 <a name="sparse.TfidfRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -225,7 +238,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", progress_bar: bool = True)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", single_model_path: Optional[Union[Path, str]] = None, model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", progress_bar: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -253,9 +266,13 @@ The checkpoint format matches huggingface transformers' model format
 - `passage_embedding_model`: Local path or remote name of passage encoder checkpoint. The format equals the
                                 one used by hugging-face transformers' modelhub models
                                 Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+- `single_model_path`: Local path or remote name of a query and passage embedder in one single model. Those
+                          models are typically trained within FARM.
+                          Currently available remote names: TODO add FARM DPR model to HF modelhub
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
 - `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
+- `top_k`: How many documents to return per query.
 - `use_gpu`: Whether to use gpu or not
 - `batch_size`: Number of questions or passages to encode at once
 - `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
@@ -276,7 +293,7 @@ The checkpoint format matches huggingface transformers' model format
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -327,7 +344,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, optimizer_name: str = "TransformersAdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
+ | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, optimizer_name: str = "TransformersAdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
 ```
 
 train a DensePassageRetrieval model
@@ -338,6 +355,9 @@ train a DensePassageRetrieval model
 - `train_filename`: training filename
 - `dev_filename`: development set filename, file to be used by model in eval step of training
 - `test_filename`: test set filename, file to be used by model in test step after training
+- `max_processes`: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
+                      It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+- `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None
 - `batch_size`: total number of samples in 1 batch of data
 - `embed_title`: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
 - `num_hard_negatives`: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
@@ -396,7 +416,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10)
 ```
 
 **Arguments**:
@@ -419,12 +439,13 @@ class EmbeddingRetriever(BaseRetriever)
                          - ``'per_token'`` (individual token vectors)
 - `emb_extraction_layer`: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                              Default: -1 (very last layer).
+- `top_k`: How many documents to return per query.
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -441,7 +462,7 @@ that are most relevant to the query.
 #### embed
 
 ```python
- | embed(texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]
+ | embed(texts: Union[List[str], str]) -> List[np.ndarray]
 ```
 
 Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
@@ -475,7 +496,7 @@ Embeddings, one per input queries
 #### embed\_passages
 
 ```python
- | embed_passages(docs: List[Document]) -> Union[List[str], List[List[str]]]
+ | embed_passages(docs: List[Document]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()

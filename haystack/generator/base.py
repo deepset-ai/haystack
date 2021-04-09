@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import List, Optional, Dict
 
 from haystack import Document, BaseComponent
@@ -23,7 +23,7 @@ class BaseGenerator(BaseComponent):
         """
         pass
 
-    def run(self, query: str, documents: List[Document], top_k_generator: Optional[int] = None, **kwargs):
+    def run(self, query: str, documents: List[Document], top_k_generator: Optional[int] = None, **kwargs): # type: ignore
 
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k_generator)
