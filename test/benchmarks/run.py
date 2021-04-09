@@ -1,3 +1,9 @@
+# The benchmarks use
+# - a variant of the Natural Questions Dataset (https://ai.google.com/research/NaturalQuestions) from Google Research
+#   licensed under CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/)
+# - the SQuAD 2.0 Dataset (https://rajpurkar.github.io/SQuAD-explorer/) from  Rajpurkar et al.
+#   licensed under  CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/legalcode)
+
 from retriever import benchmark_indexing, benchmark_querying
 from reader import benchmark_reader
 from utils import load_config

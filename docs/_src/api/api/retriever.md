@@ -462,7 +462,7 @@ that are most relevant to the query.
 #### embed
 
 ```python
- | embed(texts: Union[List[str], str]) -> List[np.ndarray]
+ | embed(texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]
 ```
 
 Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
@@ -496,7 +496,7 @@ Embeddings, one per input queries
 #### embed\_passages
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
+ | embed_passages(docs: List[Document]) -> Union[List[str], List[List[str]]]
 ```
 
 Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
