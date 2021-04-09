@@ -4,14 +4,16 @@ from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
-from haystack.retriever.dense import DensePassageRetriever
+from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
+from farm.file_utils import http_get
+
 import logging
 import subprocess
 import time
 import json
-
+from typing import Union
 from pathlib import Path
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,7 @@ def get_document_store(document_store_type, similarity='dot_product'):
         if os.path.exists("haystack_test.db"):
             os.remove("haystack_test.db")
         document_store = SQLDocumentStore(url="sqlite:///haystack_test.db")
+        assert document_store.get_document_count() == 0
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore()
     elif document_store_type == "elasticsearch":
@@ -36,6 +39,7 @@ def get_document_store(document_store_type, similarity='dot_product'):
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="eval_document", similarity=similarity, timeout=3000)
+        assert document_store.get_document_count(index="eval_document") == 0
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
             index_type = "Flat"
@@ -55,10 +59,10 @@ def get_document_store(document_store_type, similarity='dot_product'):
         document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
                                             faiss_index_factory_str=index_type,
                                             similarity=similarity)
+        assert document_store.get_document_count() == 0
 
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
-    assert document_store.get_document_count() == 0
     return document_store
 
 def get_retriever(retriever_name, doc_store):
@@ -72,6 +76,11 @@ def get_retriever(retriever_name, doc_store):
                                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
                                       use_gpu=True,
                                       use_fast_tokenizers=False)
+    if retriever_name == "sentence_transformers":
+        return EmbeddingRetriever(document_store=doc_store,
+                                  embedding_model="nq-distilbert-base-v1",
+                                  use_gpu=True,
+                                  model_format="sentence_transformers")
 
 def get_reader(reader_name, reader_type, max_seq_len=384):
     reader_class = None
@@ -87,7 +96,7 @@ def index_to_doc_store(doc_store, docs, retriever, labels=None):
         doc_store.write_labels(labels, index=label_index)
     # these lines are not run if the docs.embedding field is already populated with precomputed embeddings
     # See the prepare_data() fn in the retriever benchmark script
-    elif callable(getattr(retriever, "embed_passages", None)) and docs[0].embedding is None:
+    if callable(getattr(retriever, "embed_passages", None)) and docs[0].embedding is None:
         doc_store.update_embeddings(retriever, index=doc_index)
 
 def load_config(config_filename, ci):
@@ -107,3 +116,25 @@ def load_config(config_filename, ci):
     return params, filenames
 
 
+def download_from_url(url: str, filepath:Union[str, Path]):
+    """
+    Download from a url to a local file. Skip already existing files.
+
+    :param url: Url
+    :param filepath: local path where the url content shall be stored
+    :return: local path of the downloaded file
+    """
+
+    logger.info(f"Downloading {url}")
+    # Create local folder
+    folder, filename = os.path.split(filepath)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    # Download file if not present locally
+    if os.path.exists(filepath):
+        logger.info(f"Skipping {url} (exists locally)")
+    else:
+        logger.info(f"Downloading {url} to {filepath} ")
+        with open(filepath, "wb") as file:
+            http_get(url=url, temp_file=file)
+    return filepath

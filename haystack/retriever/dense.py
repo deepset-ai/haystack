@@ -524,7 +524,7 @@ class EmbeddingRetriever(BaseRetriever):
                                                            top_k=top_k, index=index)
         return documents
 
-    def embed(self, texts: Union[List[str], str]) -> List[np.ndarray]:
+    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
         """
         Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
 
@@ -543,9 +543,9 @@ class EmbeddingRetriever(BaseRetriever):
             emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
             emb = [(r["vec"]) for r in emb]
         elif self.model_format == "sentence_transformers":
-            # text is single string, sentence-transformers needs a list of strings
+            # texts can be a list of strings or a list of [title, text]
             # get back list of numpy embedding vectors
-            emb = self.embedding_model.encode(texts)
+            emb = self.embedding_model.encode(texts, batch_size=200, show_progress_bar=False)
             emb = [r for r in emb]
         return emb
 
@@ -558,13 +558,15 @@ class EmbeddingRetriever(BaseRetriever):
         """
         return self.embed(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_passages(self, docs: List[Document]) -> Union[List[str], List[List[str]]]:
         """
         Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 
         :param docs: List of documents to embed
         :return: Embeddings, one per input passage
         """
-        texts = [d.text for d in docs]
-
-        return self.embed(texts)
+        if self.model_format == "sentence_transformers":
+            passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.text] for d in docs]  # type: ignore
+        else:
+            passages = [d.text for d in docs] # type: ignore
+        return self.embed(passages)
