@@ -56,7 +56,7 @@ to run it and connect to it using Haystack's `OpenDistroElasticsearchDocumentSto
 <label class="labelouter" for="tab-1-2">Milvus</label>
 <div class="tabcontent">
 
-Follow the [official documentation](https://www.milvus.io/docs/v0.10.5/milvus_docker-cpu.md) to start a Milvus instance via Docker
+Follow the [official documentation](https://www.milvus.io/docs/v1.0.0/milvus_docker-cpu.md) to start a Milvus instance via Docker
  
 You can initialize the Haystack object that will connect to this instance as follows:
 ```python
