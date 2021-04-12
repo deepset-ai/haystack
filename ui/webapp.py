@@ -4,7 +4,6 @@ from utils import feedback_doc
 from annotated_text import annotated_text
 import st_state_patch
 import pandas as pd
-import json
 
 def annotate_answer(answer,context):
     start_idx = context.find(answer)
