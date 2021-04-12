@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import List, Optional
 import logging
 from time import perf_counter
@@ -14,9 +14,14 @@ logger = logging.getLogger(__name__)
 class BaseRetriever(BaseComponent):
     document_store: BaseDocumentStore
     outgoing_edges = 1
+    query_count = 0
+    index_count = 0
+    query_time = 0.0
+    index_time = 0.0
+    retrieve_time = 0.0
 
     @abstractmethod
-    def retrieve(self, query: str, filters: dict = None, top_k: int = 10, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -28,16 +33,16 @@ class BaseRetriever(BaseComponent):
         """
         pass
 
-    def timing(self, fn):
+    def timing(self, fn, attr_name):
         """Wrapper method used to time functions. """
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            if "retrieve_time" not in self.__dict__:
-                self.retrieve_time = 0
+            if attr_name not in self.__dict__:
+                self.__dict__[attr_name] = 0
             tic = perf_counter()
             ret = fn(*args, **kwargs)
             toc = perf_counter()
-            self.retrieve_time += toc - tic
+            self.__dict__[attr_name] += toc - tic
             return ret
         return wrapper
 
@@ -80,7 +85,7 @@ class BaseRetriever(BaseComponent):
         # Extract all questions for evaluation
         filters = {"origin": [label_origin]}
 
-        timed_retrieve = self.timing(self.retrieve)
+        timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
         labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
 
@@ -168,11 +173,15 @@ class BaseRetriever(BaseComponent):
         else:
             return metrics
 
-    def run(self, pipeline_type: str, **kwargs):
+    def run(self, pipeline_type: str, **kwargs): # type: ignore
         if pipeline_type == "Query":
-            output, stream = self.run_query(**kwargs)
+            self.query_count += 1
+            run_query_timed = self.timing(self.run_query, "query_time")
+            output, stream = run_query_timed(**kwargs)
         elif pipeline_type == "Indexing":
-            output, stream = self.run_indexing(**kwargs)
+            self.index_count += len(kwargs["documents"])
+            run_indexing = self.timing(self.run_indexing, "index_time")
+            output, stream = run_indexing(**kwargs)
         else:
             raise Exception(f"Invalid pipeline_type '{pipeline_type}'.")
         return output, stream
@@ -184,10 +193,8 @@ class BaseRetriever(BaseComponent):
         top_k_retriever: Optional[int] = None,
         **kwargs,
     ):
-        if top_k_retriever:
-            documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever)
-        else:
-            documents = self.retrieve(query=query, filters=filters)
+        index = kwargs.get("index", None)
+        documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever, index=index)
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {
@@ -205,6 +212,21 @@ class BaseRetriever(BaseComponent):
             embeddings = self.embed_passages(document_objects)  # type: ignore
             for doc, emb in zip(documents, embeddings):
                 doc["embedding"] = emb
-
         output = {**kwargs, "documents": documents}
         return output, "output_1"
+
+    def print_time(self):
+        print("Retriever (Speed)")
+        print("---------------")
+        if not self.index_count:
+            print("No indexing performed via Retriever.run()")
+        else:
+            print(f"Documents indexed: {self.index_count}")
+            print(f"Index time: {self.index_time}s")
+            print(f"{self.query_time / self.query_count} seconds per document")
+        if not self.query_count:
+            print("No querying performed via Retriever.run()")
+        else:
+            print(f"Queries Performed: {self.query_count}")
+            print(f"Query time: {self.query_time}s")
+            print(f"{self.query_time / self.query_count} seconds per query")

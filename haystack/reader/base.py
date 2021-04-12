@@ -3,6 +3,9 @@ from scipy.special import expit
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import List, Optional, Sequence
+from functools import wraps
+from time import perf_counter
+
 
 from haystack import Document, BaseComponent
 
@@ -10,6 +13,8 @@ from haystack import Document, BaseComponent
 class BaseReader(BaseComponent):
     return_no_answers: bool
     outgoing_edges = 1
+    query_count = 0
+    query_time = 0
 
     @abstractmethod
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
@@ -46,9 +51,11 @@ class BaseReader(BaseComponent):
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, **kwargs):
+    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, **kwargs): # type: ignore
+        self.query_count += 1
         if documents:
-            results = self.predict(query=query, documents=documents, top_k=top_k_reader)
+            predict = self.timing(self.predict, "query_time")
+            results = predict(query=query, documents=documents, top_k=top_k_reader)
         else:
             results = {"answers": [], "query": query}
 
@@ -61,5 +68,28 @@ class BaseReader(BaseComponent):
 
         results.update(**kwargs)
         return results, "output_1"
+
+    def timing(self, fn, attr_name):
+        """Wrapper method used to time functions. """
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if attr_name not in self.__dict__:
+                self.__dict__[attr_name] = 0
+            tic = perf_counter()
+            ret = fn(*args, **kwargs)
+            toc = perf_counter()
+            self.__dict__[attr_name] += toc - tic
+            return ret
+        return wrapper
+
+    def print_time(self):
+        print("Reader (Speed)")
+        print("---------------")
+        if not self.query_count:
+            print("No querying performed via Retriever.run()")
+        else:
+            print(f"Queries Performed: {self.query_count}")
+            print(f"Query time: {self.query_time}s")
+            print(f"{self.query_time / self.query_count} seconds per query")
 
 

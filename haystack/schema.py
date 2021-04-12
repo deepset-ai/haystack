@@ -1,7 +1,7 @@
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
 import numpy as np
-
+from abc import abstractmethod
 
 class Document:
     def __init__(self, text: str,
@@ -247,3 +247,15 @@ class BaseComponent:
             raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
         instance = cls.subclasses[component_type](**kwargs)
         return instance
+
+    @abstractmethod
+    def run(self, *args: Any, **kwargs: Any):
+        """
+        Method that will be executed when the node in the graph is called.
+        The argument that are passed can vary between different types of nodes
+        (e.g. retriever nodes expect different args than a reader node)
+        See an example for an implementation in haystack/reader/base/BaseReader.py
+        :param kwargs:
+        :return:
+        """
+        pass

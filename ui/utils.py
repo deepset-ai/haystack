@@ -1,38 +1,22 @@
-import requests
-import streamlit as st
 import os
 
-API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
-MODEL_ID = "1"
-DOC_REQUEST = "doc-qa"
-DOC_FEEDBACK = "doc-qa-feedback"
+import requests
+import streamlit as st
 
-def format_request(question,filters=None,top_k_reader=5,top_k_retriever=5):
-    if filters == None:
-        return {
-       "questions": [question],
-       "top_k_retriever": top_k_retriever,
-       "top_k_reader": top_k_reader
-       }
-    return {
-        "questions": [question],
-        "filters": {
-            "option1":[filters]
-        },
-        "top_k_retriever": top_k_retriever,
-        "top_k_reader": top_k_reader
-    }    
- 
+API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000/")
+DOC_REQUEST = "query"
+DOC_FEEDBACK = "feedback"
+
 @st.cache(show_spinner=False)
 def retrieve_doc(question,filters=None,top_k_reader=5,top_k_retriever=5):
    # Query Haystack API
-   url = API_ENDPOINT +'/models/' + MODEL_ID + "/" + DOC_REQUEST
-   req = format_request(question,filters,top_k_reader=top_k_reader,top_k_retriever=top_k_retriever)
+   url = f"{API_ENDPOINT}/{DOC_REQUEST}"
+   req = {"query": query, "filters": filters, "top_k_retriever": top_k_retriever, "top_k_reader": top_k_reader}
    response_raw = requests.post(url,json=req).json()
    
    # Format response
    result = []
-   answers = response_raw['results'][0]['answers']
+   answers = response_raw["answers"]
    for i in range(len(answers)):
        answer = answers[i]['answer']
        if answer:
@@ -46,7 +30,7 @@ def retrieve_doc(question,filters=None,top_k_reader=5,top_k_retriever=5):
 
 def feedback_doc(question,is_correct_answer,document_id,model_id,is_correct_document,answer,offset_start_in_doc):
    # Feedback Haystack API
-   url = API_ENDPOINT + '/' + DOC_FEEDBACK
+   url = f"{API_ENDPOINT}/{DOC_FEEDBACK}"
    req = {
          "question": question,
          "is_correct_answer": is_correct_answer,

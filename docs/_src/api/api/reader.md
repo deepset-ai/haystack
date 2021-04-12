@@ -1,6 +1,22 @@
 <a name="base"></a>
 # Module base
 
+<a name="base.BaseReader"></a>
+## BaseReader Objects
+
+```python
+class BaseReader(BaseComponent)
+```
+
+<a name="base.BaseReader.timing"></a>
+#### timing
+
+```python
+ | timing(fn, attr_name)
+```
+
+Wrapper method used to time functions.
+
 <a name="farm"></a>
 # Module farm
 
@@ -23,7 +39,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True)
+ | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -43,6 +59,7 @@ If set to 0 (default), the no_answer logit is not changed.
 If a negative number, there is a lower chance of "no_answer" being predicted.
 If a positive number, there is an increased chance of "no_answer"
 - `return_no_answer`: Whether to include no_answer predictions in the results.
+- `top_k`: The maximum number of answers to return
 - `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
 Note that this is not the number of "final answers" you will receive
 (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
@@ -315,7 +332,7 @@ With this reader, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+ | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k: int = 10, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
 ```
 
 Load a QA model from Transformers.
@@ -337,6 +354,7 @@ See https://huggingface.co/models for full list of available models.
 - `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
                             The context usually helps users to understand if the answer really makes sense.
 - `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+- `top_k`: The maximum number of answers to return
 - `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
 Note that this is not the number of "final answers" you will receive
 (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)

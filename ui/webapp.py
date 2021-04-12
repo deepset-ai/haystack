@@ -5,7 +5,10 @@ from annotated_text import annotated_text
 import st_state_patch
 import pandas as pd
 
-def annotate_answer(answer,context):
+from utils import haystack_query
+
+
+def annotate_answer(answer, context):
     start_idx = context.find(answer)
     end_idx = start_idx+len(answer)
     annotated_text(context[:start_idx],(answer,"ANSWER","#8ef"),context[end_idx:])
@@ -100,5 +103,5 @@ if run_query:
                 st.success('Thanks for your feedback!')
             count+=1
     if debug:
-        st.subheader('REST API JSON response')
+        st.subheader("REST API JSON response")
         st.write(raw_json)

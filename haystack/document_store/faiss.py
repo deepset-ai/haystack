@@ -315,7 +315,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         Delete all documents from the document store.
         """
         if filters:
-            raise Exception("filters are supported for deleting documents in FAISSDocumentStore.")
+            logger.warning("Filters are not supported for deleting documents in FAISSDocumentStore.")
         index = index or self.index
         if index in self.faiss_indexes.keys():
             self.faiss_indexes[index].reset()
@@ -341,7 +341,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :return:
         """
         if filters:
-            raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
+            logger.warning("Query filters are not implemented for the FAISSDocumentStore.")
 
         index = index or self.index
         if not self.faiss_indexes.get(index):

@@ -26,28 +26,28 @@
 
 Haystack is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
 Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
-Haystack is built in modular fashion so that you can combine the best technology from other open source projects like Huggingface’s Transformers, Elasticsearch or Milvus.
+Haystack is built in a modular fashion so that you can combine the best technology from other open-source projects like Huggingface's Transformers, Elasticsearch, or Milvus.
 
 <p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif"></p>
 
 ## What to build with Haystack
 
-- **Ask questions in natural language** and find granular answers in your own documents.
-- Perform **semantic search** and retrieve documents according to meaning not keywords
-- Use **off-the-shelf models** or **fine-tune** them to your own domain.
-- Use **user feedback** to evaluate, benchmark and continuously improve your live models.
+- **Ask questions in natural language** and find granular answers in your documents.
+- Perform **semantic search** and retrieve documents according to meaning, not keywords
+- Use **off-the-shelf models** or **fine-tune** them to your domain.
+- Use **user feedback** to evaluate, benchmark, and continuously improve your live models.
 - Leverage existing **knowledge bases** and better handle the long tail of queries that **chatbots** receive.
 - **Automate processes** by automatically applying a list of questions to new documents and using the extracted answers.
 
 ## Core Features
 
--   **Latest models**: Utilize all latest transformer based models (e.g. BERT, RoBERTa, MiniLM) for extractive QA, generative QA and document retrieval.
--   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter or modeling framwework.
--   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g. Transformers, FARM, sentence-transformers)
--   **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS and a fastAPI REST API
--   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling ...
+-   **Latest models**: Utilize all latest transformer-based models (e.g., BERT, RoBERTa, MiniLM) for extractive QA, generative QA, and document retrieval.
+-   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter, or modeling framework.
+-   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g., Transformers, FARM, sentence-transformers)
+-   **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS, and a fastAPI REST API
+-   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling, etc.
 -   **Developer friendly**: Easy to debug, extend and modify.
--   **Customizable**: Fine-tune models to your own domain or implement your custom DocumentStore.
+-   **Customizable**: Fine-tune models to your domain or implement your custom DocumentStore.
 -   **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
 
 |  |  |
@@ -89,7 +89,7 @@ The quickest way to see what Haystack offers is to start a [Docker Compose](http
     # docker-compose up
 ```
 
-You should be able see the following in your terminal window as part of the log output:
+You should be able to see the following in your terminal window as part of the log output:
 
 ```
 ..
@@ -104,11 +104,11 @@ haystack-api_1   | [2021-01-01 10:21:58 +0000] [17] [INFO] Application startup c
 
 You should see the following:
 
-![image](https://github.com/deepset-ai/haystack/blob/master/docs/_src/img/streamlit_ui_screenshot.png)
+![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/streamlit_ui_screenshot.png)
 
 You can then try different queries against a pre-defined set of indexed articles related to Game of Thrones.
 
-**Note**: The following containers are started as part of this demo:
+**Note**: The following containers are started as a part of this demo:
 
 * Haystack API: listens on port 8000
 * DocumentStore (Elasticsearch): listens on port 9200
@@ -122,7 +122,7 @@ If you're interested in learning more about Haystack and using it as part of you
 
 **1. Installing from a package**
 
-You can install Haystack Python package by using [pip](https://github.com/pypa/pip).
+You can install Haystack by using [pip](https://github.com/pypa/pip).
 
 ```
     pip3 install farm-haystack
@@ -132,7 +132,7 @@ Please check our page [on PyPi](https://pypi.org/project/farm-haystack/) for mor
 
 **2. Installing from GitHub**
 
-You can also just clone it from GitHub — in case you'd like to work with the master branch and check the latest features:
+You can also clone it from GitHub — in case you'd like to work with the master branch and check the latest features:
 
 ```
     git clone https://github.com/deepset-ai/haystack.git
@@ -140,11 +140,11 @@ You can also just clone it from GitHub — in case you'd like to work with the m
     pip install --editable .
 ```
 
-To update your installation, just do a ``git pull``. The ``--editable`` flag will update changes immediately.
+To update your installation, do a ``git pull``. The ``--editable`` flag will update changes immediately.
 
 **3. Installing on Windows**
 
-On Windows you might need:
+On Windows, you might need:
 
 ```
     pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
@@ -154,22 +154,22 @@ On Windows you might need:
 
 ![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/concepts_haystack_handdrawn.png)
 
-1.  **FileConverter**: Extracts pure text from files (pdf, docx, pptx, html and many more).
-2.  **PreProcessor**: Cleans and splits texts into smaller chunks.
-3.  **DocumentStore**: Database storing the documents, metadata and vectors for our search.
-We recommend Elasticsearch or FAISS, but have also more light-weight options for fast prototyping (SQL or In-Memory).
+1.  **FileConverter**: Extracts pure text from files (pdf, docx, pptx, html, and many more).
+2.  **PreProcessor**: Cleans and splits the text into smaller chunks.
+3.  **DocumentStore**: Database storing the documents, metadata, and vectors for our search.
+We recommend Elasticsearch or FAISS but also have more light-weight options for fast prototyping (SQL or In-Memory).
 4.  **Retriever**: Fast algorithms that identify candidate documents for a given query from a large collection of documents.
-    Retrievers narrow down the search space significantly and are therefore key for scalable QA.
+    Retrievers narrow down the search space significantly and are therefore crucial for scalable QA.
     Haystack supports sparse methods (TF-IDF, BM25, custom Elasticsearch queries)
-    and state of the art dense methods (e.g. sentence-transformers and Dense Passage Retrieval)
-5.  **Reader**: Neural network (e.g. BERT or RoBERTA) that reads through texts in detail
-    to find an answer. The Reader takes multiple passages of text as input and returns top-n answers. Models are trained via [FARM](https://github.com/deepset-ai/FARM) or [Transformers](https://github.com/huggingface/transformers) on SQuAD like tasks.  You can just load a pretrained model from [Hugging Face's model hub](https://huggingface.co/models) or fine-tune it on your own domain data.
-6.  **Generator**: Neural network (e.g. RAG) that *generates* an answer for a given question conditioned on the retrieved documents from the retriever.
+    and state of the art dense methods (e.g., sentence-transformers and Dense Passage Retrieval)
+5.  **Reader**: Neural network (e.g., BERT or RoBERTA) that reads through texts in detail
+    to find an answer. The Reader takes multiple passages of text as input and returns top-n answers. Models are trained via [FARM](https://github.com/deepset-ai/FARM) or [Transformers](https://github.com/huggingface/transformers) on SQuAD like tasks.  You can load a pre-trained model from [Hugging Face's model hub](https://huggingface.co/models) or fine-tune it on your domain data.
+6.  **Generator**: Neural network (e.g., RAG) that *generates* an answer for a given question conditioned on the retrieved documents from the retriever.
 6.  **Pipeline**: Stick building blocks together to highly custom pipelines that are represented as Directed Acyclic Graphs (DAG). Think of it as "Apache Airflow for search".
-7.  **REST API**: Exposes a simple API based on fastAPI for running QA search, uploading files and collecting user feedback for continuous learning.
-8.  **Haystack Annotate**: Create custom QA labels to improve performance of your domain-specific models. [Hosted version](https://annotate.deepset.ai/login) or [Docker images](https://github.com/deepset-ai/haystack/tree/master/annotation_tool).
+7.  **REST API**: Exposes a simple API based on fastAPI for running QA search, uploading files, and collecting user feedback for continuous learning.
+8.  **Haystack Annotate**: Create custom QA labels to improve the performance of your domain-specific models. [Hosted version](https://annotate.deepset.ai/login) or [Docker images](https://github.com/deepset-ai/haystack/tree/master/annotation_tool).
 
-It's quite simple to begin experimenting with Haystack. We'd recommend to go through the [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) section below, but here's an example code structure describing how to approach Haystack with the DocumentStore based on Elasticsearch.
+It's quite simple to begin experimenting with Haystack. We'd recommend going through the [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) section below, but here's an example code structure describing how to approach Haystack with the DocumentStore based on Elasticsearch.
 
 ```python
 # Run elasticsearch, e.g. via docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.6.2
@@ -194,12 +194,12 @@ retriever = DensePassageRetriever(document_store=document_store,
                                 )
 document_store.update_embeddings(retriever)
 
-# Init Reader: Powerful, but slower neural model
+# Init Reader: Powerful but slower neural model
 # (Options: FARM or Transformers Framework; Extractive or generative models)
 reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
 
 # The Pipeline sticks together Reader + Retriever to a DAG
-# There's many different pipeline types and you can easily build your own
+# There are many different pipeline types, and you can easily build your own
 pipeline = ExtractiveQAPipeline(reader, retriever)
 
 # Voilá! Ask a question!
@@ -271,6 +271,12 @@ If you'd like to learn more about Haystack, feel free to go through the tutorial
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.py)
+-   Tutorial 10 - Knowledge Graph:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.py)
 
 ## How to use Haystack
 
@@ -285,7 +291,7 @@ Please also refer to our [documentation](https://haystack.deepset.ai/docs/introm
 **What**
 
 Different converters to extract text from your original files (pdf, docx, txt, html).
-While it's almost impossible to cover all types, layouts and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta information (e.g. page splits). The converters are easily extendable, so that you can customize them for your files if needed.
+While it's almost impossible to cover all types, layouts, and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta-information (e.g., page splits). The converters are easily extendable so that you can customize them for your files if needed.
 
 **Available options**
 
@@ -314,18 +320,18 @@ doc = converter.convert(file_path=file, meta=None)
 
 **What**
 
-Cleaning and splitting of your texts are crucial steps that will directly impact the speed and accuracy of your search.
+Cleaning and splitting your texts are crucial steps that will directly impact the speed and accuracy of your search.
 The splitting of larger texts is especially important for achieving fast query speed. The longer the texts that the retriever passes to the reader, the slower your queries.
 
 **Available Options**
 
 We provide a basic `PreProcessor` class that allows:
-- clean whitespace, headers, footer and empty lines
-- split by words, sentences or passages
+- clean whitespace, headers, footer, and empty lines
+- split by words, sentences, or passages
 - option for "overlapping" splits
 - option to never split within a sentence
 
-You can easily extend this class to your own custom requirements.
+You can easily extend this class to your custom requirements.
 
 **Example**
 
@@ -359,8 +365,8 @@ document_store.write_documents(docs)
 
 **What**
 
--  Store your texts, meta data and optionally embeddings
--  Documents should be chunked into smaller units (e.g. paragraphs)
+-  Store your texts, metadata, and optionally embeddings
+-  Documents should be chunked into smaller units (e.g., paragraphs)
     before indexing to make the results returned by the Retriever more
     granular and accurate.
 
@@ -395,7 +401,7 @@ document_store.query_by_embedding(query_emb, filters=None, top_k=5)
 
 **What**
 
-The Retriever is a fast "filter" that can quickly go through the full document store and pass a set of candidate documents to the Reader. It is an tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process. There are two fundamentally different categories of retrievers: sparse (e.g. TF-IDF, BM25) and dense (e.g. DPR, sentence-transformers).
+The Retriever is a fast "filter" that can quickly go through the entire document store and pass a set of candidate documents to the Reader. It is a tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to, and speeding up the querying process. There are two fundamentally different categories of retrievers: sparse (e.g., TF-IDF, BM25) and dense (e.g., DPR, sentence-transformers).
 
 **Available Options**
 
@@ -424,7 +430,7 @@ retriever.retrieve(query="Why did the revenue increase?")
 
 **What**
 
-Neural networks (i.e. mostly Transformer-based) that read through texts in detail to find an answer. Use diverse models like BERT, RoBERTa or
+Neural networks (i.e., mostly Transformer-based) that read through texts in detail to find an answer. Use diverse models like BERT, RoBERTa or
 XLNet trained via [FARM](https://github.com/deepset-ai/FARM) or on SQuAD-like datasets. The Reader takes multiple passages of text as input
 and returns top-n answers with corresponding confidence scores. Both readers can load either a local model or any public model from [Hugging
 Face's model hub](https://huggingface.co/models)
@@ -457,14 +463,14 @@ reader.predict(question="Who is the father of Arya Starck?", documents=documents
 
 **What**
 
-In order to build modern search pipelines, you need two things: powerful building blocks and a flexible way to stick them together.
-The `Pipeline` class is exactly build for this purpose and enables many search scenarios beyond QA. The core idea: you can build a Directed Acyclic Graph (DAG) where each node is one "building block" (Reader, Retriever, Generator ...).
+To build modern search pipelines, you need two things: powerful building blocks and a flexible way to stick them together.
+The `Pipeline` class is built exactly for this purpose and enables many search scenarios beyond QA. The core idea: you can make a Directed Acyclic Graph (DAG) where each node is one "building block" (Reader, Retriever, Generator, and so on).
 
 **Available Options**
 
-- Standard nodes: Reader, Retriever, Generator ...
+- Standard nodes: Reader, Retriever, Generator, etc.
 - Join nodes: For example, combine results of multiple retrievers via the `JoinDocuments` node
-- Decision Nodes: For example, classify an incoming query and depending on the results execute only certain branch of your graph
+- Decision Nodes: For example, classify an incoming query and, depending on the results, execute only a particular branch of your graph
 
 **Example**
 
@@ -477,7 +483,7 @@ p.add_node(component=reader, name="QAReader", inputs=["ESRetriever1"])
 res = p.run(query="What did Einstein work on?", top_k_retriever=1)
 
 ```
-You can **draw the DAG** to better inspect what you are building:
+You can **draw the DAG** to inspect better what you are building:
 ```python
 p.draw(path="custom_pipe.png")
 ```
@@ -489,7 +495,7 @@ p.draw(path="custom_pipe.png")
 
 **What**
 
-A simple REST API based on [FastAPI](https://fastapi.tiangolo.com/) is provided to:
+A simple REST API based on [FastAPI](https://fastapi.tiangolo.com/) to:
 
 -   search answers in texts ([extractive QA](https://github.com/deepset-ai/haystack/blob/master/rest_api/controller/search.py))
 -   search answers by comparing user question to existing questions
@@ -511,7 +517,7 @@ You will find the Swagger API documentation at
 ### 8) Labeling Tool
 
 -   Use the [hosted version](https://annotate.deepset.ai/login) (Beta) or deploy it yourself with the [Docker Images](https://github.com/deepset-ai/haystack/blob/master/annotation_tool).
--   Create labels with different techniques: Come up with questions (+ answers) while reading passages (SQuAD style) or have a set of predefined questions and look for answers in the document (~ Natural Questions).
+-   Create labels with different techniques: Come up with questions (+ answers) while reading passages (SQuAD style) or have a set of pre-defined questions and look for answers in the document (~ Natural Questions).
 -   Structure your work via organizations, projects, users
 -   Upload your documents or import labels from an existing SQuAD-style dataset
 
@@ -520,8 +526,7 @@ You will find the Swagger API documentation at
 
 ## :heart: Contributing
 
-We are very open to contributions from the community - be it the fix of a small typo or a completely new feature! You don't need to be an
-Haystack expert for providing meaningful improvements. To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
+We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
 
 We'd also like to invite you to our Slack community channels. Please join [here](https://haystack.deepset.ai/community/join)!
 
