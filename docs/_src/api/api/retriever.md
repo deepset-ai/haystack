@@ -48,14 +48,14 @@ position in the ranking of documents the correct document is.
 
 |  Returns a dict containing the following metrics:
 
-- "recall": Proportion of questions for which correct document is among retrieved documents
-- "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.
-Only considers the highest ranked relevant document.
-- "map": Mean of average precision for each question. Rewards retrievers that give relevant
-documents a higher rank. Considers all retrieved relevant documents. If ``open_domain=True``,
-average precision is normalized by the number of retrieved relevant documents per query.
-If ``open_domain=False``, average precision is normalized by the number of all relevant documents
-per query.
+    - "recall": Proportion of questions for which correct document is among retrieved documents
+    - "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.
+      Only considers the highest ranked relevant document.
+    - "map": Mean of average precision for each question. Rewards retrievers that give relevant
+      documents a higher rank. Considers all retrieved relevant documents. If ``open_domain=True``,
+      average precision is normalized by the number of retrieved relevant documents per query.
+      If ``open_domain=False``, average precision is normalized by the number of all relevant documents
+      per query.
 
 **Arguments**:
 
@@ -63,11 +63,11 @@ per query.
 - `doc_index`: Index/Table in DocumentStore where documents that are used for evaluation are stored
 - `top_k`: How many documents to return per query
 - `open_domain`: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
-contained in the retrieved docs (common approach in open-domain QA).
-If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
-are within ids explicitly stated in the labels.
+                    contained in the retrieved docs (common approach in open-domain QA).
+                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
+                    are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
-contains the keys "predictions" and "metrics".
+                     contains the keys "predictions" and "metrics".
 
 <a name="sparse"></a>
 # Module sparse
@@ -91,36 +91,36 @@ class ElasticsearchRetriever(BaseRetriever)
 - `document_store`: an instance of a DocumentStore to retrieve documents from.
 - `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
-Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-names must match with the filters dict supplied in self.retrieve().
-::
+                     Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+                     that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
+                     names must match with the filters dict supplied in self.retrieve().
+                     ::
 
-**An example custom_query:**
-```python
-|    {
-|        "size": 10,
-|        "query": {
-|            "bool": {
-|                "should": [{"multi_match": {
-|                    "query": ${query},                 // mandatory query placeholder
-|                    "type": "most_fields",
-|                    "fields": ["text", "title"]}}],
-|                "filter": [                                 // optional custom filters
-|                    {"terms": {"year": ${years}}},
-|                    {"terms": {"quarter": ${quarters}}},
-|                    {"range": {"date": {"gte": ${date}}}}
-|                    ],
-|            }
-|        },
-|    }
-```
+                         **An example custom_query:**
+                         ```python
+                        |    {
+                        |        "size": 10,
+                        |        "query": {
+                        |            "bool": {
+                        |                "should": [{"multi_match": {
+                        |                    "query": ${query},                 // mandatory query placeholder
+                        |                    "type": "most_fields",
+                        |                    "fields": ["text", "title"]}}],
+                        |                "filter": [                                 // optional custom filters
+                        |                    {"terms": {"year": ${years}}},
+                        |                    {"terms": {"quarter": ${quarters}}},
+                        |                    {"range": {"date": {"gte": ${date}}}}
+                        |                    ],
+                        |            }
+                        |        },
+                        |    }
+                         ```
 
-**For this custom_query, a sample retrieve() could be:**
-```python
-|    self.retrieve(query="Why did the revenue increase?",
-|                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
-```
+                     **For this custom_query, a sample retrieve() could be:**
+                     ```python
+                    |    self.retrieve(query="Why did the revenue increase?",
+                    |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                    ```
 
 <a name="sparse.ElasticsearchRetriever.retrieve"></a>
 #### retrieve
@@ -233,44 +233,44 @@ The checkpoint format matches huggingface transformers' model format
 
 **Example:**
 
-```python
-|    # remote model from FAIR
-|    DensePassageRetriever(document_store=your_doc_store,
-|                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-|                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
-|    # or from local path
-|    DensePassageRetriever(document_store=your_doc_store,
-|                          query_embedding_model="model_directory/question-encoder",
-|                          passage_embedding_model="model_directory/context-encoder")
-```
+        ```python
+        |    # remote model from FAIR
+        |    DensePassageRetriever(document_store=your_doc_store,
+        |                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        |                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
+        |    # or from local path
+        |    DensePassageRetriever(document_store=your_doc_store,
+        |                          query_embedding_model="model_directory/question-encoder",
+        |                          passage_embedding_model="model_directory/context-encoder")
+        ```
 
 **Arguments**:
 
 - `document_store`: An instance of DocumentStore from which to retrieve documents.
 - `query_embedding_model`: Local path or remote name of question encoder checkpoint. The format equals the
-one used by hugging-face transformers' modelhub models
-Currently available remote names: ``"facebook/dpr-question_encoder-single-nq-base"``
+                              one used by hugging-face transformers' modelhub models
+                              Currently available remote names: ``"facebook/dpr-question_encoder-single-nq-base"``
 - `passage_embedding_model`: Local path or remote name of passage encoder checkpoint. The format equals the
-one used by hugging-face transformers' modelhub models
-Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+                                one used by hugging-face transformers' modelhub models
+                                Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
 - `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
 - `use_gpu`: Whether to use gpu or not
 - `batch_size`: Number of questions or passages to encode at once
 - `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
-This is the approach used in the original paper and is likely to improve performance if your
-titles contain meaningful information for retrieval (topic, entities etc.) .
-The title is expected to be present in doc.meta["name"] and can be supplied in the documents
-before writing them to the DocumentStore like this:
-{"text": "my text", "meta": {"name": "my title"}}.
+                    This is the approach used in the original paper and is likely to improve performance if your
+                    titles contain meaningful information for retrieval (topic, entities etc.) .
+                    The title is expected to be present in doc.meta["name"] and can be supplied in the documents
+                    before writing them to the DocumentStore like this:
+                    {"text": "my text", "meta": {"name": "my title"}}.
 - `use_fast_tokenizers`: Whether to use fast Rust tokenizers
 - `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
-If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
+                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
 - `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
-Options: `dot_product` (Default) or `cosine`
+                            Options: `dot_product` (Default) or `cosine`
 - `progress_bar`: Whether to show a tqdm progress bar or not.
-Can be helpful to disable in production deployments to keep the logs clean.
+                     Can be helpful to disable in production deployments to keep the logs clean.
 
 <a name="dense.DensePassageRetriever.retrieve"></a>
 #### retrieve
@@ -407,18 +407,18 @@ class EmbeddingRetriever(BaseRetriever)
 - `use_gpu`: Whether to use gpu or not
 - `model_format`: Name of framework that was used for saving the model. Options:
 
-- ``'farm'``
-- ``'transformers'``
-- ``'sentence_transformers'``
+                     - ``'farm'``
+                     - ``'transformers'``
+                     - ``'sentence_transformers'``
 - `pooling_strategy`: Strategy for combining the embeddings from the model (for farm / transformers models only).
-Options:
+                         Options:
 
-- ``'cls_token'`` (sentence vector)
-- ``'reduce_mean'`` (sentence vector)
-- ``'reduce_max'`` (sentence vector)
-- ``'per_token'`` (individual token vectors)
+                         - ``'cls_token'`` (sentence vector)
+                         - ``'reduce_mean'`` (sentence vector)
+                         - ``'reduce_max'`` (sentence vector)
+                         - ``'per_token'`` (individual token vectors)
 - `emb_extraction_layer`: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
-Default: -1 (very last layer).
+                             Default: -1 (very last layer).
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
