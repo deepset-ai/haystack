@@ -815,8 +815,8 @@ the vector embeddings are indexed in a FAISS Index.
                                 Recommended options:
                                 - "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
                                 - "HNSW": Graph-based heuristic. If not further specified,
-                                          we use a RAM intense, but more accurate config:
-                                          HNSW256, efConstruction=256 and efSearch=256
+                                          we use the following config:
+                                          HNSW64, efConstruction=80 and efSearch=20
                                 - "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
                                                   Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
                                 For more details see:
