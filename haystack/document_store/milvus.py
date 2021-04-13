@@ -99,7 +99,8 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.index_file_size = index_file_size
 
         if similarity == "dot_product":
-            self.metric_type = MetricType.L2
+            self.metric_type = MetricType.IP
+            self.similarity = similarity
         else:
             raise ValueError("The Milvus document store can currently only support dot_product similarity. "
                              "Please set similarity=\"dot_product\"")
