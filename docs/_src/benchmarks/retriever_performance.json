@@ -22,32 +22,46 @@
     },
     "data": [
         {
-            "model": "DPR / ElasticSearch",
-            "n_docs": 100000,
-            "index_speed": 69.75508852811794,
-            "query_speed": 4.5992769354707805,
-            "map": 86.54564090434241
-        },
-        {
             "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "index_speed": 482.9993330442806,
-            "query_speed": 162.42378943468643,
-            "map": 56.25959153101251
+            "index_speed": 485.5602670200369,
+            "query_speed": 165.51512861040828,
+            "map": 56.259591531012504
+        },
+        {
+            "model": "DPR / ElasticSearch",
+            "n_docs": 100000,
+            "index_speed": 71.36964873196698,
+            "query_speed": 5.355677072083696,
+            "map": 86.54606328368973
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 100000,
-            "index_speed": 95.52108545730724,
-            "query_speed": 6.511162294559942,
-            "map": 86.54606328368972
+            "index_speed": 100.01184910084558,
+            "query_speed": 6.624479268751268,
+            "map": 86.54606328368973
         },
         {
-            "model": "DPR / FAISS (HSNW)",
+            "model": "DPR / FAISS (HNSW)",
             "n_docs": 100000,
-            "index_speed": 84.11829911061136,
-            "query_speed": 33.65729082116796,
-            "map": 85.07984377595874
+            "index_speed": 89.90389306648805,
+            "query_speed": 40.68196225525062,
+            "map": 84.33419639513305
+        },
+        {
+            "model": "DPR / Milvus (flat)",
+            "n_docs": 100000,
+            "index_speed": 116.00982709720004,
+            "query_speed": 28.30393009791128,
+            "map": 86.54606328368973
+        },
+        {
+            "model": "DPR / Milvus (HNSW)",
+            "n_docs": 100000,
+            "index_speed": 115.61076852516383,
+            "query_speed": 28.076443272229284,
+            "map": 86.54606328368973
         }
     ]
 }

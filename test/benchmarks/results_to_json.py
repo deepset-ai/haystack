@@ -44,7 +44,9 @@ def retriever(index_csv="retriever_index_results.csv", query_csv="retriever_quer
         "elasticsearch": "ElasticSearch",
         "faiss": "FAISS",
         "faiss_flat": "FAISS (flat)",
-        "faiss_hnsw": "FAISS (HSNW)"
+        "faiss_hnsw": "FAISS (HNSW)",
+        "milvus_flat": "Milvus (flat)",
+        "milvus_hnsw": "Milvus (HNSW)"
     }
 
     index = pd.read_csv(index_csv)

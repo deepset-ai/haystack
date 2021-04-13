@@ -51,8 +51,8 @@ class FAISSDocumentStore(SQLDocumentStore):
                                         Recommended options:
                                         - "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
                                         - "HNSW": Graph-based heuristic. If not further specified,
-                                                  we use a RAM intense, but more accurate config:
-                                                  HNSW256, efConstruction=256 and efSearch=256
+                                                  we use the following config:
+                                                  HNSW64, efConstruction=80 and efSearch=20
                                         - "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
                                                           Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
                                         For more details see:
@@ -103,7 +103,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
-            n_links = kwargs.get("n_links", 128)
+            n_links = kwargs.get("n_links", 64)
             index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
             index.hnsw.efSearch = kwargs.get("efSearch", 20)#20
             index.hnsw.efConstruction = kwargs.get("efConstruction", 80)#80
