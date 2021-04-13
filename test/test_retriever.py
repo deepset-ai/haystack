@@ -93,7 +93,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                             "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
                             "filter": [{"terms": {"year": ${years}}}]}}}""",
     )
-    results = retriever.run(query="test", filters={"years": ["2020", "2021"]})[0]["documents"]
+    results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
     assert len(results) == 4
 
     # test custom "term" query
@@ -108,7 +108,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                                 "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
                                 "filter": [{"term": {"year": ${years}}}]}}}""",
     )
-    results = retriever.run(query="test", filters={"years": "2021"})[0]["documents"]
+    results = retriever.retrieve(query="test", filters={"years": "2021"})
     assert len(results) == 3
 
 
@@ -194,10 +194,10 @@ def test_dpr_saving_and_loading(retriever, document_store):
     #     assert (p1.data.ne(p2.data).sum() == 0)
 
     # attributes
-    assert loaded_retriever.embed_title == True
+    assert loaded_retriever.processor.embed_title == True
     assert loaded_retriever.batch_size == 16
-    assert loaded_retriever.max_seq_len_passage == 256
-    assert loaded_retriever.max_seq_len_query == 64
+    assert loaded_retriever.processor.max_seq_len_passage == 256
+    assert loaded_retriever.processor.max_seq_len_query == 64
 
     # Tokenizer
     assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)

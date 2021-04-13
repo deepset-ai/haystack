@@ -30,7 +30,7 @@ class MilvusDocumentStore(SQLDocumentStore):
     does not allow these data types (yet).
 
     Usage:
-    1. Start a Milvus server (see https://milvus.io/docs/v0.10.5/install_milvus.md)
+    1. Start a Milvus server (see https://milvus.io/docs/v1.0.0/install_milvus.md)
     2. Init a MilvusDocumentStore in Haystack
     """
 
@@ -55,10 +55,10 @@ class MilvusDocumentStore(SQLDocumentStore):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
                         deployment, Postgres is recommended. If using MySQL then same server can also be used for
-                        Milvus metadata. For more details see https://milvus.io/docs/v0.10.5/data_manage.md.
+                        Milvus metadata. For more details see https://milvus.io/docs/v1.0.0/data_manage.md.
         :param milvus_url: Milvus server connection URL for storing and processing vectors.
                            Protocol, host and port will automatically be inferred from the URL.
-                           See https://milvus.io/docs/v0.10.5/install_milvus.md for instructions to start a Milvus instance.
+                           See https://milvus.io/docs/v1.0.0/install_milvus.md for instructions to start a Milvus instance.
         :param connection_pool: Connection pool type to connect with Milvus server. Default: "SingletonThread".
         :param index: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
         :param vector_dim: The embedding vector size. Default: 768.
@@ -67,24 +67,24 @@ class MilvusDocumentStore(SQLDocumentStore):
          Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
          As a rule of thumb, we would see a 30% ~ 50% increase in the search performance after changing the value of index_file_size from 1024 to 2048.
          Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
-         (From https://milvus.io/docs/v0.10.5/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
+         (From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
                            'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
                            However, you can normalize your embeddings and use `dot_product` to get the same results.
-                           See https://milvus.io/docs/v0.10.5/metric.md?Inner-product-(IP)#floating.
+                           See https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)#floating.
         :param index_type: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
                            Some popular options:
                            - FLAT (default): Exact method, slow
                            - IVF_FLAT, inverted file based heuristic, fast
                            - HSNW: Graph based, fast
                            - ANNOY: Tree based, fast
-                           See: https://milvus.io/docs/v0.10.5/index.md
+                           See: https://milvus.io/docs/v1.0.0/index.md
         :param index_param: Configuration parameters for the chose index_type needed at indexing time.
                             For example: {"nlist": 16384} as the number of cluster units to create for index_type IVF_FLAT.
-                            See https://milvus.io/docs/v0.10.5/index.md
+                            See https://milvus.io/docs/v1.0.0/index.md
         :param search_param: Configuration parameters for the chose index_type needed at query time
                              For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
-                             See https://milvus.io/docs/v0.10.5/index.md
+                             See https://milvus.io/docs/v1.0.0/index.md
         :param update_existing_documents: Whether to update any existing documents with the same ID when adding
                                           documents. When set as True, any document with an existing ID gets updated.
                                           If set to False, an error is raised if the document ID of the document being
@@ -178,7 +178,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         add_vectors = False if document_objects[0].embedding is None else True
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)
-        with tqdm(total=len(document_objects), disable=self.progress_bar) as progress_bar:
+        with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 vector_ids = []
                 if add_vectors:
@@ -258,7 +258,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             only_documents_without_embedding=not update_existing_embeddings
         )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
@@ -299,7 +299,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :return:
         """
         if filters:
-            raise Exception("Query filters are not implemented for the MilvusDocumentStore.")
+            logger.warning("Query filters are not implemented for the MilvusDocumentStore.")
 
         index = index or self.index
         status, ok = self.milvus_server.has_collection(collection_name=index)

@@ -5,14 +5,14 @@
 ## BasePreProcessor Objects
 
 ```python
-class BasePreProcessor()
+class BasePreProcessor(BaseComponent)
 ```
 
 <a name="base.BasePreProcessor.process"></a>
 #### process
 
 ```python
- | process(document: dict) -> List[dict]
+ | process(document: dict, clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True) -> List[dict]
 ```
 
 Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
@@ -31,35 +31,44 @@ class PreProcessor(BasePreProcessor)
 #### \_\_init\_\_
 
 ```python
- | __init__(clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True)
+ | __init__(clean_whitespace: bool = True, clean_header_footer: bool = False, clean_empty_lines: bool = True, split_by: str = "word", split_length: int = 1000, split_overlap: int = 0, split_respect_sentence_boundary: bool = True)
 ```
 
 **Arguments**:
 
 - `clean_header_footer`: Use heuristic to remove footers and headers across different pages by searching
-for the longest common string. This heuristic uses exact matches and therefore
-works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
-or similar.
+                             for the longest common string. This heuristic uses exact matches and therefore
+                             works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
+                             or similar.
 - `clean_whitespace`: Strip whitespaces before or after each line in the text.
 - `clean_empty_lines`: Remove more than two empty lines in the text.
 - `split_by`: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
 - `split_length`: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
-"sentence", then each output document will have 10 sentences.
+                   "sentence", then each output document will have 10 sentences.
 - `split_overlap`: Word overlap between two adjacent documents after a split.
-Setting this to a positive number essentially enables the sliding window approach.
-For example, if split_by -> `word`,
-split_length -> 5 & split_overlap -> 2, then the splits would be like:
-[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
-Set the value to None to ensure there is no overlap among the documents after splitting.
+                      Setting this to a positive number essentially enables the sliding window approach.
+                      For example, if split_by -> `word`,
+                      split_length -> 5 & split_overlap -> 2, then the splits would be like:
+                      [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
+                      Set the value to 0 to ensure there is no overlap among the documents after splitting.
 - `split_respect_sentence_boundary`: Whether to split in partial sentences if split_by -> `word`. If set
-to True, the individual split will always have complete sentences &
-the number of words will be <= split_length.
+                                        to True, the individual split will always have complete sentences &
+                                        the number of words will be <= split_length.
+
+<a name="preprocessor.PreProcessor.process"></a>
+#### process
+
+```python
+ | process(document: dict, clean_whitespace: Optional[bool] = None, clean_header_footer: Optional[bool] = None, clean_empty_lines: Optional[bool] = None, split_by: Optional[str] = None, split_length: Optional[int] = None, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = None) -> List[dict]
+```
+
+Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
 
 <a name="preprocessor.PreProcessor.clean"></a>
 #### clean
 
 ```python
- | clean(document: dict) -> dict
+ | clean(document: dict, clean_whitespace: bool, clean_header_footer: bool, clean_empty_lines: bool) -> dict
 ```
 
 Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
@@ -69,7 +78,7 @@ and empty lines. Its exact functionality is defined by the parameters passed int
 #### split
 
 ```python
- | split(document: dict) -> List[dict]
+ | split(document: dict, split_by: str, split_length: int, split_overlap: int, split_respect_sentence_boundary: bool) -> List[dict]
 ```
 
 Perform document splitting on a single document. This method can split on different units, at different lengths,
@@ -83,7 +92,7 @@ the parameters passed into PreProcessor.__init__(). Takes a single document as i
 #### eval\_data\_from\_json
 
 ```python
-eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Tuple[List[Document], List[Label]]
+eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False) -> Tuple[List[Document], List[Label]]
 ```
 
 Read Documents + Labels from a SQuAD-style file.
@@ -93,6 +102,7 @@ Document and Labels can then be indexed to the DocumentStore and be used for eva
 
 - `filename`: Path to file in SQuAD format
 - `max_docs`: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+- `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
 
 **Returns**:
 
@@ -102,7 +112,7 @@ Document and Labels can then be indexed to the DocumentStore and be used for eva
 #### eval\_data\_from\_jsonl
 
 ```python
-eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None) -> Generator[Tuple[List[Document], List[Label]], None, None]
+eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False) -> Generator[Tuple[List[Document], List[Label]], None, None]
 ```
 
 Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
@@ -116,6 +126,7 @@ If batch_size is set to None, this method will yield all documents and labels.
 
 - `filename`: Path to file in SQuAD format
 - `max_docs`: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+- `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
 
 **Returns**:
 

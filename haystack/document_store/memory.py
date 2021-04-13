@@ -3,6 +3,7 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import Dict, List, Optional, Union, Generator
 from uuid import uuid4
+import time
 
 import numpy as np
 from scipy.spatial.distance import cosine
@@ -87,6 +88,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         for label in label_objects:
             label_id = str(uuid4())
+            # create timestamps if not available yet
+            if not label.created_at:
+                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            if not label.updated_at:
+                label.updated_at = label.created_at
             self.indexes[index][label_id] = label
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
@@ -194,7 +200,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         document_count = len(result)
         logger.info(f"Updating embeddings for {document_count} docs ...")
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)

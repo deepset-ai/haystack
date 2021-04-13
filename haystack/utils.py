@@ -6,9 +6,27 @@ import pprint
 import pandas as pd
 from typing import Dict, Any, List
 from haystack.document_store.sql import DocumentORM
+import subprocess
+import time
 
 
 logger = logging.getLogger(__name__)
+
+
+def launch_es():
+    # Start an Elasticsearch server
+    # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
+    # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
+
+    logger.info("Starting Elasticsearch ...")
+    status = subprocess.run(
+        ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start Elasticsearch through Docker but this failed. "
+                       "It is likely that there is already an existing Elasticsearch instance running. ")
+    else:
+        time.sleep(15)
 
 
 def print_answers(results: dict, details: str = "all"):
@@ -70,7 +88,7 @@ def convert_labels_to_squad(labels_file: str):
     :param labels_file: path for export file from the labeling tool
     :return:
     """
-    with open(labels_file) as label_file:
+    with open(labels_file, encoding='utf-8') as label_file:
         labels = json.load(label_file)
 
     labels_grouped_by_documents = defaultdict(list)
@@ -112,7 +130,7 @@ def convert_labels_to_squad(labels_file: str):
 
         labels_in_squad_format["data"].append(squad_format_label)
 
-    with open("labels_in_squad_format.json", "w+") as outfile:
+    with open("labels_in_squad_format.json", "w+", encoding='utf-8') as outfile:
         json.dump(labels_in_squad_format, outfile)
 
 

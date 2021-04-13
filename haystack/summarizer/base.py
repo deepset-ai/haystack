@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from haystack import Document, BaseComponent
 
@@ -12,7 +12,7 @@ class BaseSummarizer(BaseComponent):
     outgoing_edges = 1
 
     @abstractmethod
-    def predict(self, documents: List[Document], generate_single_summary: bool = False) -> List[Document]:
+    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
         """
         Abstract method for creating a summary.
 
@@ -26,7 +26,7 @@ class BaseSummarizer(BaseComponent):
         """
         pass
 
-    def run(self, documents: List[Document], generate_single_summary: bool = False, **kwargs):
+    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None, **kwargs): # type: ignore
 
         results: Dict = {
             "documents": [],

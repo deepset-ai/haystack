@@ -8,6 +8,29 @@ from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 
 @pytest.mark.elasticsearch
+def test_init_elastic_client():
+    # defaults
+    _ = ElasticsearchDocumentStore()
+
+    # list of hosts + single port
+    _ = ElasticsearchDocumentStore(host=["localhost", "127.0.0.1"], port=9200)
+
+    # list of hosts + list of ports (wrong)
+    with pytest.raises(Exception):
+        _ = ElasticsearchDocumentStore(host=["localhost", "127.0.0.1"], port=[9200])
+
+    # list of hosts + list
+    _ = ElasticsearchDocumentStore(host=["localhost", "127.0.0.1"], port=[9200, 9200])
+
+    # only api_key
+    with pytest.raises(Exception):
+        _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test")
+
+    # api_key +  id
+    _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
+
+
+@pytest.mark.elasticsearch
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
@@ -218,7 +241,7 @@ def test_update_embeddings(document_store, retriever):
     assert len(documents) == 2
     for doc in documents:
         assert doc.meta["meta_field"] == "value_0"
-    np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding)
+    np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding, decimal=4)
 
     documents = document_store.get_all_documents(
         index="haystack_test_1",

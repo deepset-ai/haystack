@@ -1,6 +1,22 @@
 <a name="base"></a>
 # Module base
 
+<a name="base.BaseReader"></a>
+## BaseReader Objects
+
+```python
+class BaseReader(BaseComponent)
+```
+
+<a name="base.BaseReader.timing"></a>
+#### timing
+
+```python
+ | timing(fn, attr_name)
+```
+
+Wrapper method used to time functions.
+
 <a name="farm"></a>
 # Module farm
 
@@ -23,7 +39,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True)
+ | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -33,16 +49,17 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `context_window_size`: The size, in characters, of the window around the answer span that is used when
-displaying the context around the answer.
+                            displaying the context around the answer.
 - `batch_size`: Number of samples the model receives in one batch for inference.
-Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
-to a value so only a single batch is used.
+                   Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
+                   to a value so only a single batch is used.
 - `use_gpu`: Whether to use GPU (if available)
 - `no_ans_boost`: How much the no_answer logit is boosted/increased.
 If set to 0 (default), the no_answer logit is not changed.
 If a negative number, there is a lower chance of "no_answer" being predicted.
 If a positive number, there is an increased chance of "no_answer"
 - `return_no_answer`: Whether to include no_answer predictions in the results.
+- `top_k`: The maximum number of answers to return
 - `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
 Note that this is not the number of "final answers" you will receive
 (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
@@ -55,12 +72,12 @@ Note that this is not the number of "final answers" you will receive
 (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
 and that FARM includes no_answer in the sorted list of predictions.
 - `num_processes`: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
-multiprocessing. Set to None to let Inferencer determine optimum number. If you
-want to debug the Language Model, you might need to disable multiprocessing!
+                      multiprocessing. Set to None to let Inferencer determine optimum number. If you
+                      want to debug the Language Model, you might need to disable multiprocessing!
 - `max_seq_len`: Max sequence length of one input text for the model
 - `doc_stride`: Length of striding window for splitting long texts (used if ``len(text) > max_seq_len``)
 - `progress_bar`: Whether to show a tqdm progress bar or not.
-Can be helpful to disable in production deployments to keep the logs clean.
+                     Can be helpful to disable in production deployments to keep the logs clean.
 
 <a name="farm.FARMReader.train"></a>
 #### train
@@ -81,28 +98,28 @@ Fine-tune a model on a QA dataset. Options:
 - `dev_filename`: Filename of dev / eval data
 - `test_filename`: Filename of test data
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
-that gets split off from training data for eval.
+                  that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
 - `batch_size`: Number of samples the model receives in one batch for training
 - `n_epochs`: Number of iterations on the whole training data set
 - `learning_rate`: Learning rate of the optimizer
 - `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
 - `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
-Until that point LR is increasing linearly. After that it's decreasing again linearly.
-Options for different schedules are available in FARM.
+                          Until that point LR is increasing linearly. After that it's decreasing again linearly.
+                          Options for different schedules are available in FARM.
 - `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
 - `save_dir`: Path to store the final model
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
-Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
-Set to None to use all CPU cores minus one.
+                      Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
+                      Set to None to use all CPU cores minus one.
 - `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-Available options:
-None (Don't use AMP)
-"O0" (Normal FP32 training)
-"O1" (Mixed Precision => Recommended)
-"O2" (Almost FP16)
-"O3" (Pure FP16).
-See details on: https://nvidia.github.io/apex/amp.html
+                Available options:
+                None (Don't use AMP)
+                "O0" (Normal FP32 training)
+                "O1" (Mixed Precision => Recommended)
+                "O2" (Almost FP16)
+                "O3" (Pure FP16).
+                See details on: https://nvidia.github.io/apex/amp.html
 
 **Returns**:
 
@@ -162,20 +179,20 @@ Use loaded QA model to find answers for a query in the supplied list of Document
 
 Returns dictionaries containing answers sorted by (desc.) probability.
 Example:
-```python
-|{
-|    'query': 'Who is the father of Arya Stark?',
-|    'answers':[
-|                 {'answer': 'Eddard,',
-|                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-|                 'offset_answer_start': 147,
-|                 'offset_answer_end': 154,
-|                 'probability': 0.9787139466668613,
-|                 'score': None,
-|                 'document_id': '1337'
-|                 },...
-|              ]
-|}
+ ```python
+    |{
+    |    'query': 'Who is the father of Arya Stark?',
+    |    'answers':[
+    |                 {'answer': 'Eddard,',
+    |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
+    |                 'offset_answer_start': 147,
+    |                 'offset_answer_end': 154,
+    |                 'probability': 0.9787139466668613,
+    |                 'score': None,
+    |                 'document_id': '1337'
+    |                 },...
+    |              ]
+    |}
 ```
 
 **Arguments**:
@@ -197,9 +214,9 @@ Dict containing query and answers
 
 Performs evaluation on a SQuAD-formatted file.
 Returns a dict containing the following metrics:
-- "EM": exact match score
-- "f1": F1-Score
-- "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
+    - "EM": exact match score
+    - "f1": F1-Score
+    - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
 **Arguments**:
 
@@ -219,9 +236,9 @@ Returns a dict containing the following metrics:
 
 Performs evaluation on evaluation documents in the DocumentStore.
 Returns a dict containing the following metrics:
-- "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
-- "f1": Average overlap between predicted answers and their corresponding correct answers
-- "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
+      - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
+      - "f1": Average overlap between predicted answers and their corresponding correct answers
+      - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
 **Arguments**:
 
@@ -240,20 +257,20 @@ Returns a dict containing the following metrics:
 Use loaded QA model to find answers for a question in the supplied list of Document.
 Returns dictionaries containing answers sorted by (desc.) probability.
 Example:
-```python
-|{
-|    'question': 'Who is the father of Arya Stark?',
-|    'answers':[
-|                 {'answer': 'Eddard,',
-|                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-|                 'offset_answer_start': 147,
-|                 'offset_answer_end': 154,
-|                 'probability': 0.9787139466668613,
-|                 'score': None,
-|                 'document_id': '1337'
-|                 },...
-|              ]
-|}
+ ```python
+    |{
+    |    'question': 'Who is the father of Arya Stark?',
+    |    'answers':[
+    |                 {'answer': 'Eddard,',
+    |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
+    |                 'offset_answer_start': 147,
+    |                 'offset_answer_end': 154,
+    |                 'probability': 0.9787139466668613,
+    |                 'score': None,
+    |                 'document_id': '1337'
+    |                 },...
+    |              ]
+    |}
 ```
 
 **Arguments**:
@@ -279,19 +296,19 @@ can be loaded with in the `FARMReader` using the export path as `model_name_or_p
 
 Usage:
 
-`from haystack.reader.farm import FARMReader
-from pathlib import Path
-onnx_model_path = Path("roberta-onnx-model")
-FARMReader.convert_to_onnx(model_name="deepset/bert-base-cased-squad2", output_path=onnx_model_path)
-reader = FARMReader(onnx_model_path)`
+    `from haystack.reader.farm import FARMReader
+    from pathlib import Path
+    onnx_model_path = Path("roberta-onnx-model")
+    FARMReader.convert_to_onnx(model_name="deepset/bert-base-cased-squad2", output_path=onnx_model_path)
+    reader = FARMReader(onnx_model_path)`
 
 **Arguments**:
 
 - `model_name`: transformers model name
 - `output_path`: Path to output the converted model
 - `convert_to_float16`: Many models use float32 precision by default. With the half precision of float16,
-inference is faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs,
-float32 could still be be more performant.
+                           inference is faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs,
+                           float32 could still be be more performant.
 - `quantize`: convert floating point number to integers
 - `task_type`: Type of task for the model. Available options: "question_answering" or "embeddings".
 - `opset_version`: ONNX opset version
@@ -315,7 +332,7 @@ With this reader, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+ | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k: int = 10, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
 ```
 
 Load a QA model from Transformers.
@@ -335,8 +352,9 @@ See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
-The context usually helps users to understand if the answer really makes sense.
+                            The context usually helps users to understand if the answer really makes sense.
 - `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+- `top_k`: The maximum number of answers to return
 - `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
 Note that this is not the number of "final answers" you will receive
 (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
@@ -359,20 +377,20 @@ Use loaded QA model to find answers for a query in the supplied list of Document
 Returns dictionaries containing answers sorted by (desc.) probability.
 Example:
 
-```python
-|{
-|    'query': 'Who is the father of Arya Stark?',
-|    'answers':[
-|                 {'answer': 'Eddard,',
-|                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-|                 'offset_answer_start': 147,
-|                 'offset_answer_end': 154,
-|                 'probability': 0.9787139466668613,
-|                 'score': None,
-|                 'document_id': '1337'
-|                 },...
-|              ]
-|}
+ ```python
+    |{
+    |    'query': 'Who is the father of Arya Stark?',
+    |    'answers':[
+    |                 {'answer': 'Eddard,',
+    |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
+    |                 'offset_answer_start': 147,
+    |                 'offset_answer_end': 154,
+    |                 'probability': 0.9787139466668613,
+    |                 'score': None,
+    |                 'document_id': '1337'
+    |                 },...
+    |              ]
+    |}
 ```
 
 **Arguments**:

@@ -27,12 +27,12 @@ It is an tool for sifting out the obvious negative cases, saving the Reader from
 Note that not all Retrievers can be paired with every DocumentStore.
 Here are the combinations which are supported:
 
-| | Memory | Elasticsearch | SQL | FAISS |
-| --- | --- | --- | ---- | ---- |
-| BM25 | N | Y | N | N |
-| TF-IDF | Y | Y | Y | N |
-| Embedding | Y | Y | N | Y |
-| DPR | Y | Y | N | Y |
+| | Memory | Elasticsearch | SQL | FAISS | Milvus |
+| --- | --- | --- | ---- | ---- | ---- |
+| BM25 | N | Y | N | N | N |
+| TF-IDF | Y | Y | Y | N | N |
+| Embedding | Y | Y | N | Y | Y |
+| DPR | Y | Y | N | Y | Y |
 
 See [Optimization](/docs/latest/optimizationmd) for suggestions on how to choose top-k values.
 
@@ -63,8 +63,7 @@ Where:
 
 * `idf` is the inverse of the fraction of documents containing the word.
 
-In practice, both terms are usually log normalised. If you’d like to learn more about the exact details of the algorithm,
-have a look at [this video](https://www.youtube.com/watch?v=hNXwhF0OZ_o).
+In practice, both terms are usually log normalised.
 
 ### Initialisation
 

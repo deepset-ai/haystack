@@ -84,7 +84,7 @@ i.e. the model can easily adjust to domain documents even after training has fin
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: RAGeneratorType = RAGeneratorType.TOKEN, top_k_answers: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True)
+ | __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: RAGeneratorType = RAGeneratorType.TOKEN, top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True)
 ```
 
 Load a RAG model from Transformers along with passage_embedding_model.
@@ -93,12 +93,12 @@ See https://huggingface.co/transformers/model_doc/rag.html for more details
 **Arguments**:
 
 - `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
-'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
-See https://huggingface.co/models for full list of available models.
+                           'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
+                           See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `retriever`: `DensePassageRetriever` used to embedded passage
 - `generator_type`: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
-- `top_k_answers`: Number of independently generated text to return
+- `top_k`: Number of independently generated text to return
 - `max_length`: Maximum length of generated text
 - `min_length`: Minimum length of generated text
 - `num_beams`: Number of beams for beam search. 1 means no beam search.
