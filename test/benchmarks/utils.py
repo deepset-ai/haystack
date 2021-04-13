@@ -3,6 +3,7 @@ from haystack.document_store.sql import SQLDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_store.milvus import MilvusDocumentStore, IndexType
 from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
@@ -39,6 +40,16 @@ def get_document_store(document_store_type, similarity='dot_product'):
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="eval_document", similarity=similarity, timeout=3000)
+    elif document_store_type in ("milvus_flat", "milvus_hnsw"):
+        if document_store_type == "milvus_flat":
+            index_type = IndexType.FLAT
+            index_param = None
+            search_param = None
+        elif document_store_type == "milvus_hnsw":
+            index_type = IndexType.HNSW
+            index_param = {"M": 64, "efConstruction": 80}
+            search_param = {"ef": 20}
+        document_store = MilvusDocumentStore(similarity=similarity, index_type=index_type, index_param=index_param, search_param=search_param)
         assert document_store.get_document_count(index="eval_document") == 0
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
@@ -54,7 +65,7 @@ def get_document_store(document_store_type, similarity='dot_product'):
             shell=True)
         time.sleep(6)
         status = subprocess.run(
-            ['docker exec -it haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
+            ['docker exec haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
         time.sleep(1)
         document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
                                             faiss_index_factory_str=index_type,

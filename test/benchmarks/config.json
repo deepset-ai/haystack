@@ -3,6 +3,14 @@
     "full": {
       "retriever_doc_stores": [
         [
+          "dpr",
+          "milvus_flat"
+        ],
+        [
+          "dpr",
+          "milvus_hnsw"
+        ],
+        [
           "elastic",
           "elasticsearch"
         ],
