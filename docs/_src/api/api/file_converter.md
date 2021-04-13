@@ -20,15 +20,15 @@ Base class for implementing file converts to transform input documents to text f
 **Arguments**:
 
 - `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-                              The tabular structures in documents might be noise for the reader model if it
-                              does not have table parsing capability for finding answers. However, tables
-                              may also have long strings that could possible candidate for searching answers.
-                              The rows containing strings are thus retained in this option.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
 - `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
-                        This option can be used to add test for encoding errors. If the extracted text is
-                        not one of the valid languages, then it might likely be encoding error resulting
-                        in garbled text.
+(https://en.wikipedia.org/wiki/ISO_639-1) format.
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
 
 <a name="base.BaseConverter.convert"></a>
 #### convert
@@ -77,15 +77,15 @@ class TextConverter(BaseConverter)
 **Arguments**:
 
 - `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-                              The tabular structures in documents might be noise for the reader model if it
-                              does not have table parsing capability for finding answers. However, tables
-                              may also have long strings that could possible candidate for searching answers.
-                              The rows containing strings are thus retained in this option.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
 - `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
-                        This option can be used to add test for encoding errors. If the extracted text is
-                        not one of the valid languages, then it might likely be encoding error resulting
-                        in garbled text.
+(https://en.wikipedia.org/wiki/ISO_639-1) format.
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
 
 <a name="txt.TextConverter.convert"></a>
 #### convert
@@ -152,15 +152,15 @@ class TikaConverter(BaseConverter)
 
 - `tika_url`: URL of the Tika server
 - `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-                              The tabular structures in documents might be noise for the reader model if it
-                              does not have table parsing capability for finding answers. However, tables
-                              may also have long strings that could possible candidate for searching answers.
-                              The rows containing strings are thus retained in this option.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
 - `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
-                        This option can be used to add test for encoding errors. If the extracted text is
-                        not one of the valid languages, then it might likely be encoding error resulting
-                        in garbled text.
+(https://en.wikipedia.org/wiki/ISO_639-1) format.
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
 
 <a name="tika.TikaConverter.convert"></a>
 #### convert
@@ -197,15 +197,15 @@ class PDFToTextConverter(BaseConverter)
 **Arguments**:
 
 - `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-                              The tabular structures in documents might be noise for the reader model if it
-                              does not have table parsing capability for finding answers. However, tables
-                              may also have long strings that could possible candidate for searching answers.
-                              The rows containing strings are thus retained in this option.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
 - `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
-                        This option can be used to add test for encoding errors. If the extracted text is
-                        not one of the valid languages, then it might likely be encoding error resulting
-                        in garbled text.
+(https://en.wikipedia.org/wiki/ISO_639-1) format.
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
 
 <a name="pdf.PDFToTextConverter.convert"></a>
 #### convert
@@ -220,11 +220,11 @@ Extract text from a .pdf file using the pdftotext library (https://www.xpdfreade
 
 - `file_path`: Path to the .pdf file you want to convert
 - `meta`: Optional dictionary with metadata that shall be attached to all resulting documents.
-             Can be any custom keys and values.
+Can be any custom keys and values.
 - `encoding`: Encoding that will be passed as -enc parameter to pdftotext. "Latin 1" is the default encoding
-                 of pdftotext. While this works well on many PDFs, it might be needed to switch to "UTF-8" or
-                 others if your doc contains special characters (e.g. German Umlauts, Cyrillic characters ...).
-                 Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
-                 "xef\xac\x81c" (see test cases). That's why we keep "Latin 1" as default here.
-                 (See list of available encodings by running `pdftotext -listencodings` in the terminal)
+of pdftotext. While this works well on many PDFs, it might be needed to switch to "UTF-8" or
+others if your doc contains special characters (e.g. German Umlauts, Cyrillic characters ...).
+Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
+"xef\xac\x81c" (see test cases). That's why we keep "Latin 1" as default here.
+(See list of available encodings by running `pdftotext -listencodings` in the terminal)
 

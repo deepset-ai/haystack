@@ -93,8 +93,8 @@ See https://huggingface.co/transformers/model_doc/rag.html for more details
 **Arguments**:
 
 - `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
-                           'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
-                           See https://huggingface.co/models for full list of available models.
+'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
+See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `retriever`: `DensePassageRetriever` used to embedded passage
 - `generator_type`: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
