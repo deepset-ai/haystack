@@ -5,9 +5,6 @@ from annotated_text import annotated_text
 import st_state_patch
 import pandas as pd
 
-from utils import haystack_query
-
-
 def annotate_answer(answer, context):
     start_idx = context.find(answer)
     end_idx = start_idx+len(answer)

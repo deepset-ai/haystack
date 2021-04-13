@@ -3,15 +3,17 @@ import os
 import requests
 import streamlit as st
 
-API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000/")
+API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
 DOC_REQUEST = "query"
 DOC_FEEDBACK = "feedback"
 
 @st.cache(show_spinner=False)
-def retrieve_doc(question,filters=None,top_k_reader=5,top_k_retriever=5):
+def retrieve_doc(query,filters=None,top_k_reader=5,top_k_retriever=5):
    # Query Haystack API
    url = f"{API_ENDPOINT}/{DOC_REQUEST}"
+   print(url)
    req = {"query": query, "filters": filters, "top_k_retriever": top_k_retriever, "top_k_reader": top_k_reader}
+   print(req)
    response_raw = requests.post(url,json=req).json()
    
    # Format response
@@ -32,7 +34,7 @@ def feedback_doc(question,is_correct_answer,document_id,model_id,is_correct_docu
    # Feedback Haystack API
    url = f"{API_ENDPOINT}/{DOC_FEEDBACK}"
    req = {
-         "question": question,
+         "query": query,
          "is_correct_answer": is_correct_answer,
          "document_id":  document_id,
          "model_id": model_id,
