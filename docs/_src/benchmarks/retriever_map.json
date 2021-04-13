@@ -19,23 +19,23 @@
     "data": [
         {
             "model": "DPR / ElasticSearch",
-            "n_docs": 1000,
-            "map": 92.95105322830888
-        },
-        {
-            "model": "DPR / ElasticSearch",
             "n_docs": 10000,
-            "map": 89.87097014904354
+            "map": 89.87097014904356
         },
         {
-            "model": "DPR / ElasticSearch",
+            "model": "BM25 / ElasticSearch",
             "n_docs": 100000,
-            "map": 86.54564090434241
+            "map": 56.259591531012504
+        },
+        {
+            "model": "BM25 / ElasticSearch",
+            "n_docs": 10000,
+            "map": 66.33019927857616
         },
         {
             "model": "DPR / ElasticSearch",
-            "n_docs": 500000,
-            "map": 80.86137228234089
+            "n_docs": 1000,
+            "map": 92.95105322830891
         },
         {
             "model": "BM25 / ElasticSearch",
@@ -43,24 +43,29 @@
             "map": 74.20444712972909
         },
         {
-            "model": "BM25 / ElasticSearch",
-            "n_docs": 10000,
-            "map": 66.20627317806674
-        },
-        {
-            "model": "BM25 / ElasticSearch",
+            "model": "DPR / ElasticSearch",
             "n_docs": 100000,
-            "map": 56.25959153101251
+            "map": 86.54606328368973
         },
         {
             "model": "BM25 / ElasticSearch",
             "n_docs": 500000,
-            "map": 45.59452709000341
+            "map": 45.60339705629754
+        },
+        {
+            "model": "DPR / ElasticSearch",
+            "n_docs": 500000,
+            "map": 80.86137228234091
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 1000,
-            "map": 92.95105322830888
+            "map": 92.95105322830891
+        },
+        {
+            "model": "DPR / FAISS (flat)",
+            "n_docs": 500000,
+            "map": 80.86137228234091
         },
         {
             "model": "DPR / FAISS (flat)",
@@ -70,32 +75,67 @@
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 100000,
-            "map": 86.54606328368972
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 500000,
-            "map": 80.8613722823409
-        },
-        {
-            "model": "DPR / FAISS (HSNW)",
-            "n_docs": 1000,
-            "map": 92.95105322830888
+            "map": 86.54606328368973
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 10000,
-            "map": 89.69941373746582
+            "map": 89.49563682134192
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 100000,
-            "map": 85.07984377595874
+            "map": 84.33419639513305
         },
         {
             "model": "DPR / FAISS (HSNW)",
             "n_docs": 500000,
-            "map": 76.91475821598232
+            "map": 75.73315903145605
+        },
+        {
+            "model": "DPR / FAISS (HSNW)",
+            "n_docs": 1000,
+            "map": 92.95105322830891
+        },
+        {
+            "model": "DPR / Milvus (flat)",
+            "n_docs": 1000,
+            "map": 92.95105322830891
+        },
+        {
+            "model": "DPR / Milvus (flat)",
+            "n_docs": 10000,
+            "map": 89.87097014904354
+        },
+        {
+            "model": "DPR / Milvus (flat)",
+            "n_docs": 100000,
+            "map": 86.54606328368973
+        },
+        {
+            "model": "DPR / Milvus (flat)",
+            "n_docs": 500000,
+            "map": 80.86137228234091
+        },
+        {
+            "model": "DPR / Milvus (HNSW)",
+            "n_docs": 1000,
+            "map": 92.95105322830891
+        },
+        {
+            "model": "DPR / Milvus (HNSW)",
+            "n_docs": 10000,
+            "map": 89.87097014904354
+        },
+        {
+            "model": "DPR / Milvus (HNSW)",
+            "n_docs": 500000,
+            "map": 74.85616575291942
+        },
+        {
+            "model": "DPR / Milvus (HNSW)",
+            "n_docs": 100000,
+            "map": 86.54606328368973
         }
     ]
 }
