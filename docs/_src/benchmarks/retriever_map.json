@@ -8,7 +8,10 @@
         "BM25 / ElasticSearch",
         "DPR / ElasticSearch",
         "DPR / FAISS (flat)",
-        "DPR / FAISS (HSNW)"
+        "DPR / FAISS (HNSW)",
+        "DPR / Milvus (flat)",
+        "DPR / Milvus (HNSW)"
+
     ],
     "axis": [
         {
@@ -78,22 +81,22 @@
             "map": 86.54606328368973
         },
         {
-            "model": "DPR / FAISS (HSNW)",
+            "model": "DPR / FAISS (HNSW)",
             "n_docs": 10000,
             "map": 89.49563682134192
         },
         {
-            "model": "DPR / FAISS (HSNW)",
+            "model": "DPR / FAISS (HNSW)",
             "n_docs": 100000,
             "map": 84.33419639513305
         },
         {
-            "model": "DPR / FAISS (HSNW)",
+            "model": "DPR / FAISS (HNSW)",
             "n_docs": 500000,
             "map": 75.73315903145605
         },
         {
-            "model": "DPR / FAISS (HSNW)",
+            "model": "DPR / FAISS (HNSW)",
             "n_docs": 1000,
             "map": 92.95105322830891
         },

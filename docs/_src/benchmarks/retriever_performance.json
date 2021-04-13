@@ -43,7 +43,7 @@
             "map": 86.54606328368973
         },
         {
-            "model": "DPR / FAISS (HSNW)",
+            "model": "DPR / FAISS (HNSW)",
             "n_docs": 100000,
             "index_speed": 89.90389306648805,
             "query_speed": 40.68196225525062,
