@@ -4,7 +4,7 @@ import time
 from copy import deepcopy
 from string import Template
 from typing import List, Optional, Union, Dict, Any, Generator
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import numpy as np
@@ -26,6 +26,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         password: str = "",
         api_key_id: Optional[str] = None,
         api_key: Optional[str] = None,
+        aws4auth = None,
         index: str = "document",
         label_index: str = "label",
         search_fields: Union[str, list] = "text",
@@ -60,6 +61,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param password: password (standard authentication via http_auth)
         :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
         :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
         :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
         :param search_fields: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
@@ -94,7 +96,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
-                                           api_key=api_key, api_key_id=api_key_id, scheme=scheme,
+                                           api_key=api_key, api_key_id=api_key_id, aws4auth=aws4auth, scheme=scheme,
                                            ca_certs=ca_certs, verify_certs=verify_certs,timeout=timeout)
 
         # configure mappings to ES fields that will be used for querying / displaying results
@@ -134,6 +136,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              password: str,
                              api_key_id: Optional[str],
                              api_key: Optional[str],
+                             aws4auth,
                              scheme: str,
                              ca_certs: Optional[str],
                              verify_certs: bool,
@@ -156,6 +159,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             # api key authentication
             client = Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
                                         scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
+        elif aws4auth:
+            # aws elasticsearch with IAM
+            # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
+            client = Elasticsearch(
+                hosts=hosts, http_auth=aws4auth, connection_class=RequestsHttpConnection, use_ssl=True, verify_certs=True, timeout=timeout)
         else:
             # standard http_auth
             client = Elasticsearch(hosts=hosts, http_auth=(username, password),
