@@ -33,6 +33,8 @@ Haystack’s Readers are:
 <div class="tabcontent">
 
 ```python
+from haystack.reader import FARMReader
+
 model = "deepset/roberta-base-squad2"
 reader = FARMReader(model, use_gpu=True)
 ```
@@ -46,6 +48,8 @@ reader = FARMReader(model, use_gpu=True)
 <div class="tabcontent">
 
 ```python
+from haystack.reader import TransformersReader
+
 model = "deepset/roberta-base-squad2"
 reader = TransformersReader(model, use_gpu=1)
 ```
@@ -83,6 +87,8 @@ To get you started, we have a few recommendations for you to try out.
 **An optimised variant of BERT and a great starting point.**
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("deepset/roberta-base-squad2")
 ```
 
@@ -101,6 +107,8 @@ reader = FARMReader("deepset/roberta-base-squad2")
 **A cleverly distilled model that sacrifices a little accuracy for speed.**
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("deepset/minilm-uncased-squad2")
 ```
 
@@ -119,6 +127,8 @@ reader = FARMReader("deepset/minilm-uncased-squad2")
 **Large, powerful, SotA model.**
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
 ```
 
@@ -149,6 +159,8 @@ reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
 **An optimised variant of BERT and a great starting point.**
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("deepset/roberta-base-squad2")
 ```
 
@@ -167,6 +179,8 @@ reader = TransformersReader("deepset/roberta-base-squad2")
 **A cleverly distilled model that sacrifices a little accuracy for speed.**
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("deepset/minilm-uncased-squad2")
 ```
 
@@ -185,6 +199,8 @@ reader = TransformersReader("deepset/minilm-uncased-squad2")
 **Large, powerful, SotA model.**
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("ahotrod/albert_xxlargev1_squad2_512")
 ```
 
@@ -251,6 +267,8 @@ Haystack also has a close integration with FARM which means that you can further
 See our tutorials for an end-to-end example or below for a shortened example.
 
 ```python
+from haystack.reader import FARMReader
+
 # Initialise Reader
 model = "deepset/roberta-base-squad2"
 reader = FARMReader(model)
@@ -294,6 +312,8 @@ These can be set when the Reader is initialized.
 <div class="tabcontent">
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader(... max_seq_len=384, doc_stride=128 ...)
 ```
 
@@ -306,6 +326,8 @@ reader = FARMReader(... max_seq_len=384, doc_stride=128 ...)
 <div class="tabcontent">
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...)
 ```
 
@@ -316,5 +338,3 @@ reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...)
 
 Predictions are made on each individual passage and the process of aggregation picks the best candidates across all passages.
 If you’d like to learn more about what is happening behind the scenes, have a look at [this](https://medium.com/deepset-ai/modern-question-answering-systems-explained-4d0913744097) article.
-
-<!-- _comment: !! Diagram from Blog !! -->

@@ -16,6 +16,8 @@ The core idea is that you can build a Directed Acyclic Graph (DAG) where each no
 Here's a simple example for a standard Open-Domain QA Pipeline: 
 
 ```python
+from haystack import Pipeline
+
 p = Pipeline()
 p.add_node(component=retriever, name="ESRetriever1", inputs=["Query"])
 p.add_node(component=reader, name="QAReader", inputs=["ESRetriever1"])
@@ -72,6 +74,8 @@ For another example YAML config, check out [this file](https://github.com/deepse
 ### Multiple retrievers
 You can now also use multiple Retrievers and join their results: 
 ```python
+from haystack import Pipeline
+
 p = Pipeline()
 p.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
 p.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["Query"])
