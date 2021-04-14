@@ -24,6 +24,9 @@ You can use a Translator node in your pipeline to
 
 You can use the Translator component directly to translate your query or document(s): 
 ```python
+from haystack.schema import Document
+from haystack.translator import TransformersTranslator
+
 DOCS = [
         Document(
             text="""Heinz von Foerster was an Austrian American scientist 

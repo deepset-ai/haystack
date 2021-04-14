@@ -28,6 +28,8 @@ See [this page](https://www.elastic.co/guide/en/elasticsearch/reference/current/
 for the full list of language specific analyzers.
 
 ```python
+from haystack.document_store import ElasticsearchDocumentStore
+
 document_store = ElasticsearchDocumentStore(analyzer="thai")
 ```
 
@@ -40,6 +42,9 @@ Below is a simplified example.
 See [our tutorial](/docs/latest/tutorial9md) and also the [API reference](/docs/latest/apiretrievermd#train) for `DensePassageRetriever.train()` for more details.
 
 ```python
+from haystack.retriever import DensePassageRetriever
+
+dense_passage_retriever = DensePassageRetriever(document_store)
 dense_passage_retriever.train(self,
                               data_dir: str,
                               train_filename: str,
@@ -72,6 +77,8 @@ there are a couple QA models that are directly usable in Haystack.
 <div class="tabcontentinner">
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("illuin/camembert-base-fquad")
 ```
 
@@ -84,6 +91,8 @@ reader = FARMReader("illuin/camembert-base-fquad")
 <div class="tabcontentinner">
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 ```
 
@@ -96,6 +105,8 @@ reader = FARMReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 <div class="tabcontentinner">
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("deepset/xlm-roberta-large-squad2")
 ```
 
@@ -120,6 +131,8 @@ reader = FARMReader("deepset/xlm-roberta-large-squad2")
 <div class="tabcontentinner">
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("illuin/camembert-base-fquad")
 ```
 
@@ -132,6 +145,8 @@ reader = TransformersReader("illuin/camembert-base-fquad")
 <div class="tabcontentinner">
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 ```
 
@@ -144,6 +159,8 @@ reader = TransformersReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 <div class="tabcontentinner">
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("deepset/xlm-roberta-large-squad2")
 ```
 

@@ -67,11 +67,15 @@ In practice, both terms are usually log normalised.
 ### Initialisation
 
 ```python
+from haystack.document_store import InMemoryDocumentStore
+from haystack.retriever.sparse import TfidfRetriever
+from haystack.pipeline import ExtractiveQAPipeline
+
 document_store = InMemoryDocumentStore()
 ...
 retriever = TfidfRetriever(document_store)
 ...
-finder = Finder(reader, retriever)
+p = ExtractiveQAPipeline(reader, retriever)
 ```
 
 <div class="recommendation">
@@ -96,11 +100,15 @@ It improves upon its predecessor in two main aspects:
 ### Initialisation
 
 ```python
+from haystack.document_store import ElasticsearchDocumentStore
+from haystack.retriever import ElasticsearchRetriever
+from haystack.pipeline import ExtractiveQAPipeline
+
 document_store = ElasticsearchDocumentStore()
 ...
 retriever = ElasticsearchRetriever(document_store)
 ...
-finder = Finder(reader, retriever)
+p = ExtractiveQAPipeline(reader, retriever)
 ```
 
 <div class="recommendation">
@@ -157,6 +165,10 @@ as is done in the code example below.
 </div>
 
 ```python
+from haystack.document_store import FAISSDocumentStore
+from haystack.retriever import DensePassageRetriever
+from haystack.pipeline import ExtractiveQAPipeline
+
 document_store = FAISSDocumentStore(similarity="dot_product")
 ...
 retriever = DensePassageRetriever(
@@ -165,7 +177,7 @@ retriever = DensePassageRetriever(
     passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base"
 )
 ...
-finder = Finder(reader, retriever)
+finder = ExtractiveQAPipeline(reader, retriever)
 ```
 
 <div class="recommendation">
@@ -209,12 +221,16 @@ as is done in the code example below.
 ### Initialisation
 
 ```python
+from haystack.document_store import ElasticsearchDocumentStore
+from haystack.retriever import EmbeddingRetriever
+from haystack.pipeline import ExtractiveQAPipeline
+
 document_store = ElasticsearchDocumentStore(similarity="cosine")
 ...
 retriever = EmbeddingRetriever(document_store=document_store,
                                embedding_model="deepset/sentence_bert")
 ...
-finder = Finder(reader, retriever)
+p = ExtractiveQAPipeline(reader, retriever)
 ```
 
 <div class="recommendation">

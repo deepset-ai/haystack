@@ -51,6 +51,8 @@ Please refer to [the API docs](/docs/latest/file_convertersmd) to see which conv
 <div class="tabcontent">
 
 ```python
+from haystack.file_converter import PDFToTextConverter
+
 converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["de","en"])
 doc = converter.convert(file_path=file, meta=None)
 ```
@@ -64,6 +66,8 @@ doc = converter.convert(file_path=file, meta=None)
 <div class="tabcontent">
 
 ```python
+from haystack.file_converter import DocxToTextConverter
+
 converter = DocxToTextConverter(remove_numeric_tables=True, valid_languages=["de","en"])
 doc = converter.convert(file_path=file, meta=None)
 ```
@@ -81,6 +85,8 @@ Haystack also has a `convert_files_to_dicts()` utility function that will conver
 all txt or pdf files in a given folder into this dictionary format.
 
 ```python
+from haystack.preprocessor.utils import convert_files_to_dicts
+
 docs = convert_files_to_dicts(dir_path=doc_dir)
 ```
 
@@ -99,6 +105,8 @@ performs various cleaning steps and splits them into multiple smaller documents.
 For suggestions on how best to split your documents, see [Optimization](/docs/latest/optimizationmd)
 
 ```python
+from haystack.preprocessor import PreProcessor
+
 doc = converter.convert(file_path=file, meta=None)
 processor = PreProcessor(
     clean_empty_lines=True,
