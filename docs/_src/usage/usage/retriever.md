@@ -9,8 +9,8 @@ id: "retrievermd"
 
 # Retriever
 
-The Retriever is a lightweight filter that can quickly go through the full document store and pass a set of candidate documents to the Reader.
-It is an tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process.
+The Retriever is a lightweight filter that can quickly go through the full document store and pass on a set of candidate documents that are relevant to the query.
+When used in combination with a Reader, it is a tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process.
 
 <div class="recommendation">
 
@@ -45,7 +45,6 @@ TF-IDF is a commonly used baseline for information retrieval that exploits two k
 
 
 * documents that have more lexical overlap with the query are more likely to be relevant
-
 
 * words that occur in fewer documents are more significant than words that occur in many documents
 

@@ -15,6 +15,12 @@ Haystack includes a suite of tools to:
 * normalize white space
 * split text into smaller pieces to optimize retrieval
 
+<div class="recommendation">
+
+Check out our [preprocessing tutorial](/docs/latest/tutorial8md) if you'd like to start working with code examples already!
+
+</div>
+
 These data preprocessing steps can have a big impact on the systems performance
 and effective handling of data is key to getting the most out of Haystack.
 

@@ -35,7 +35,6 @@ Haystack’s Readers are:
 ```python
 model = "deepset/roberta-base-squad2"
 reader = FARMReader(model, use_gpu=True)
-finder = Finder(reader, retriever)
 ```
 
 </div> 
@@ -49,17 +48,10 @@ finder = Finder(reader, retriever)
 ```python
 model = "deepset/roberta-base-squad2"
 reader = TransformersReader(model, use_gpu=1)
-finder = Finder(reader, retriever)
 ```
 
 </div> 
 </div>
-
-</div>
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
 
 </div>
 
@@ -314,7 +306,7 @@ reader = FARMReader(... max_seq_len=384, doc_stride=128 ...)
 <div class="tabcontent">
 
 ```python
-reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...
+reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...)
 ```
 
 </div> 
