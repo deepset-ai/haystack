@@ -2,7 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
-import faiss
+try:
+    import faiss
+except ImportError:
+    faiss = None
 import numpy as np
 
 from haystack import Document
