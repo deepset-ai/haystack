@@ -35,7 +35,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         sql_url: str = "sqlite:///",
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
-        faiss_index: Optional[faiss.swigfaiss.Index] = None,
+        faiss_index: Optional["faiss.swigfaiss.Index"] = None,
         return_embedding: bool = False,
         update_existing_documents: bool = False,
         index: str = "document",
@@ -84,7 +84,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.faiss_indexes[index] = faiss_index
         else:
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs
+                vector_dim=self.vector_dim,
+                index_factory=faiss_index_factory_str,
+                metric_type=faiss.METRIC_INNER_PRODUCT,
+                **kwargs
             )
 
         self.return_embedding = return_embedding
@@ -102,7 +105,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             index=index
         )
 
-    def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric_type=faiss.METRIC_INNER_PRODUCT, **kwargs):
+    def _create_new_index(self, vector_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
         if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
@@ -134,7 +137,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         index = index or self.index
         if not self.faiss_indexes.get(index):
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim, index_factory=self.faiss_index_factory_str
+                vector_dim=self.vector_dim,
+                index_factory=self.faiss_index_factory_str,
+                metric_type=faiss.METRIC_INNER_PRODUCT,
             )
 
         field_map = self._create_document_field_map()
