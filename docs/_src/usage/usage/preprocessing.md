@@ -95,6 +95,20 @@ docs = convert_files_to_dicts(dir_path=doc_dir)
 
 </div>
 
+## Web Crawler
+
+In Haystack, you will find a web crawler that will help you scrape text from websites and save it to file. 
+See the API documentation for more details.
+
+```python
+from haystack.connector import Crawler
+
+crawler = Crawler()
+docs = crawler.crawl(urls=["https://haystack.deepset.ai/docs/latest/get_startedmd"],
+                     output_dir="crawled_files",
+                     filter_urls= ["haystack\.deepset\.ai\/docs\/"])
+```
+
 ## PreProcessor
 
 While each of the above conversion methods produce documents that are already in the format expected by the Document Store,
