@@ -240,6 +240,47 @@ you might like to try ALBERT XXL which has set SoTA performance on SQuAD 2.0.
 
 </div>
 
+
+## Confidence Scores
+
+When printing the full results of a Reader, 
+you will see that each prediction is accompanied 
+by a value in the range of 0 to 1 reflecting the model's confidence in that prediction
+
+In the output of `print_answers()`, you will find the model confidence in dictionary key called `probability`.
+
+```python
+from haystack.utils import print_answers
+
+print_answers(prediction, details="all")
+```
+
+```python
+{   
+    'answers': [   
+        {   'answer': 'Eddard',
+            'context': 's Nymeria after a legendary warrior queen. '
+                       'She travels with her father, Eddard, to '
+                       "King's Landing when he is made Hand of the "
+                       'King. Before she leaves,',
+            'probability': 0.9899835586547852,
+            ...
+        },
+    ]
+}
+```
+
+In order to align this probability score with the model's accuracy, finetuning needs to be performed
+on a specific dataset. Have a look at this [FARM tutorial](https://github.com/deepset-ai/FARM/blob/master/examples/question_answering_confidence.py)
+to see how this is done. 
+Note that a finetuned confidence score is specific to the domain that its finetuned on. 
+There is no guarantee that this performance can transfer to a new domain.
+
+Having a confidence score is particularly useful in cases where you need Haystack to work with a certain accuracy threshold.
+Many of our users have built systems where predictions below a certain confidence value are routed
+on to a fallback system.
+
+
 <!-- farm-vs-trans: -->
 ## Deeper Dive: FARM vs Transformers
 
