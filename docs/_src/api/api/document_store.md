@@ -837,7 +837,6 @@ deployment, Postgres is recommended.
                                 - Guideline for choosing an index https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
                                 - FAISS Index factory https://github.com/facebookresearch/faiss/wiki/The-index-factory
                                 Benchmarks: XXX
-
 - `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
 or one with docs that you used in Haystack before and want to load again.
 - `return_embedding`: To return document embedding
