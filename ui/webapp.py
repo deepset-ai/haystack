@@ -99,6 +99,7 @@ if run_query:
                 raw_json_feedback = feedback_doc(question,"false",result['document_id'],1,"true",result['answer'],result['offset_start_in_doc'])
                 st.success('Thanks for your feedback!')
             count+=1
+        st.write("___")
     if debug:
         st.subheader("REST API JSON response")
         st.write(raw_json)

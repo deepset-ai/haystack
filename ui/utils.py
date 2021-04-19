@@ -11,9 +11,7 @@ DOC_FEEDBACK = "feedback"
 def retrieve_doc(query,filters=None,top_k_reader=5,top_k_retriever=5):
    # Query Haystack API
    url = f"{API_ENDPOINT}/{DOC_REQUEST}"
-   print(url)
    req = {"query": query, "filters": filters, "top_k_retriever": top_k_retriever, "top_k_reader": top_k_reader}
-   print(req)
    response_raw = requests.post(url,json=req).json()
    
    # Format response
@@ -34,7 +32,7 @@ def feedback_doc(question,is_correct_answer,document_id,model_id,is_correct_docu
    # Feedback Haystack API
    url = f"{API_ENDPOINT}/{DOC_FEEDBACK}"
    req = {
-         "query": query,
+         "question": question,
          "is_correct_answer": is_correct_answer,
          "document_id":  document_id,
          "model_id": model_id,
