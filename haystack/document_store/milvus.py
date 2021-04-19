@@ -520,3 +520,13 @@ class MilvusDocumentStore(SQLDocumentStore):
             return list()
 
         return vectors
+
+    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the count of embeddings in the document store.
+        """
+        if filters:
+            raise Exception("filters are not supported for get_embedding_count in MilvusDocumentStore.")
+        index = index or self.index
+        _, embedding_count = self.milvus_server.count_entities(index)
+        return embedding_count

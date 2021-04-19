@@ -490,6 +490,32 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         return self.get_document_count(index=index)
 
+    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the count of embeddings in the document store.
+        """
+
+        index = index or self.index
+
+        body: dict = {"query": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}
+        if filters:
+            filter_clause = []
+            for key, values in filters.items():
+                if type(values) != list:
+                    raise ValueError(
+                        f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                        'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+            body["query"]["bool"]["filter"] = filter_clause
+
+        result = self.client.count(index=index, body=body)
+        count = result["count"]
+        return count
+
     def get_all_documents(
         self,
         index: Optional[str] = None,

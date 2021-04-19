@@ -199,6 +199,14 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
 
         index = index or self.index
+
+        if update_existing_embeddings is True:
+            if filters is None:
+                self.faiss_indexes[index].reset()
+                self.reset_vector_ids(index)
+            else:
+                raise Exception("update_existing_embeddings is not supported with filters.")
+
         if not self.faiss_indexes.get(index):
             raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
 
@@ -289,6 +297,14 @@ class FAISSDocumentStore(SQLDocumentStore):
                 if doc.meta and doc.meta.get("vector_id") is not None:
                     doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
         return documents
+
+    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the count of embeddings in the document store.
+        """
+        if filters:
+            raise Exception("filters are not supported for get_embedding_count in FAISSDocumentStore")
+        return self.faiss_indexes[index].ntotal
 
     def train_index(
         self,
