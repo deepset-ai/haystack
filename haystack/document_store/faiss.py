@@ -298,7 +298,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                     doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
         return documents
 
-    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """

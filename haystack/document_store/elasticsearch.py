@@ -490,7 +490,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         return self.get_document_count(index=index)
 
-    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
