@@ -1,11 +1,11 @@
----
+<!---
 title: "Document Store"
 metaTitle: "Document Store"
 metaDescription: ""
 slug: "/docs/documentstore"
 date: "2020-09-03"
 id: "documentstoremd"
----
+--->
 
 
 # DocumentStores
