@@ -2,7 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
-import faiss
+try:
+    import faiss
+except ImportError:
+    faiss = None
 import numpy as np
 
 from haystack import Document
@@ -32,7 +35,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         sql_url: str = "sqlite:///",
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
-        faiss_index: Optional[faiss.swigfaiss.Index] = None,
+        faiss_index: Optional["faiss.swigfaiss.Index"] = None,
         return_embedding: bool = False,
         update_existing_documents: bool = False,
         index: str = "document",
@@ -51,8 +54,8 @@ class FAISSDocumentStore(SQLDocumentStore):
                                         Recommended options:
                                         - "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
                                         - "HNSW": Graph-based heuristic. If not further specified,
-                                                  we use a RAM intense, but more accurate config:
-                                                  HNSW256, efConstruction=256 and efSearch=256
+                                                  we use the following config:
+                                                  HNSW64, efConstruction=80 and efSearch=20
                                         - "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
                                                           Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
                                         For more details see:
@@ -81,7 +84,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.faiss_indexes[index] = faiss_index
         else:
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs
+                vector_dim=self.vector_dim,
+                index_factory=faiss_index_factory_str,
+                metric_type=faiss.METRIC_INNER_PRODUCT,
+                **kwargs
             )
 
         self.return_embedding = return_embedding
@@ -99,11 +105,11 @@ class FAISSDocumentStore(SQLDocumentStore):
             index=index
         )
 
-    def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric_type=faiss.METRIC_INNER_PRODUCT, **kwargs):
+    def _create_new_index(self, vector_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
         if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
-            n_links = kwargs.get("n_links", 128)
+            n_links = kwargs.get("n_links", 64)
             index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
             index.hnsw.efSearch = kwargs.get("efSearch", 20)#20
             index.hnsw.efConstruction = kwargs.get("efConstruction", 80)#80
@@ -131,7 +137,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         index = index or self.index
         if not self.faiss_indexes.get(index):
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim, index_factory=self.faiss_index_factory_str
+                vector_dim=self.vector_dim,
+                index_factory=self.faiss_index_factory_str,
+                metric_type=faiss.METRIC_INNER_PRODUCT,
             )
 
         field_map = self._create_document_field_map()
