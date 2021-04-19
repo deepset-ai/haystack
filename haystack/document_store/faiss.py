@@ -304,6 +304,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         if filters:
             raise Exception("filters are not supported for get_embedding_count in FAISSDocumentStore")
+        index = index or self.index
         return self.faiss_indexes[index].ntotal
 
     def train_index(
