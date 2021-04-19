@@ -29,6 +29,39 @@ def launch_es():
         time.sleep(15)
 
 
+def launch_milvus():
+    # Start a Milvus server
+    # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
+    # your environment (eg., in Colab notebooks)
+    logger.info("Starting Milvus ...")
+    setup_milvus_config()
+    status = subprocess.run(
+        ['sudo docker run -d --name milvus_cpu_1.0.0 \
+          -p 19530:19530 \
+          -p 19121:19121 \
+          -v /home/$USER/milvus/db:/var/lib/milvus/db \
+          -v /home/$USER/milvus/conf:/var/lib/milvus/conf \
+          -v /home/$USER/milvus/logs:/var/lib/milvus/logs \
+          -v /home/$USER/milvus/wal:/var/lib/milvus/wal \
+          milvusdb/milvus:1.0.0-cpu-d030521-1ea92e'
+        ],
+        shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start Milvus through Docker but this failed. "
+                       "It is likely that there is already an existing Milvus instance running. ")
+    else:
+        time.sleep(15)
+
+
+def setup_milvus_config():
+    logger.warning("Automatic Milvus config creation not yet implemented. "
+                   "If you are starting Milvus using launch_milvus(), "
+                   "make sure you have a properly populated milvus/conf folder. "
+                   "See (https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md) for more details.")
+    pass
+
+
 def print_answers(results: dict, details: str = "all"):
     answers = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
