@@ -78,12 +78,6 @@ retriever = TfidfRetriever(document_store)
 p = ExtractiveQAPipeline(reader, retriever)
 ```
 
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
-
 ## BM25 (Recommended)
 
 ### Description
@@ -110,12 +104,6 @@ retriever = ElasticsearchRetriever(document_store)
 ...
 p = ExtractiveQAPipeline(reader, retriever)
 ```
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
 
 See [this](https://www.elastic.co/blog/practical-bm25-part-2-the-bm25-algorithm-and-its-variables) blog post for more details about the algorithm.
 
@@ -186,14 +174,6 @@ finder = ExtractiveQAPipeline(reader, retriever)
 
 </div>
 
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
-
-
-
 <!-- _comment: !! Training in future? !! -->
 <!-- _comment: !! Talk more about benchmarks, SoTA, results !! -->
 ## Embedding Retrieval
@@ -232,12 +212,6 @@ retriever = EmbeddingRetriever(document_store=document_store,
 ...
 p = ExtractiveQAPipeline(reader, retriever)
 ```
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
 
 ## Deeper Dive: Dense vs Sparse
 
