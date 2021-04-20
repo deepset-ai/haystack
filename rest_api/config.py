@@ -7,3 +7,4 @@ INDEXING_PIPELINE_NAME = os.getenv("INDEXING_PIPELINE_NAME", "indexing")
 FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", "./file-upload")
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+ROOT_PATH = os.getenv("ROOT_PATH", "/")
