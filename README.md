@@ -63,6 +63,7 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 | :telescope: [Roadmap](https://haystack.deepset.ai/docs/latest/roadmapmd) | Public roadmap of Haystack |
 | :pray: [Slack](https://haystack.deepset.ai/community/join) | Join our community on Slack |
 | :bird: [Twitter](https://twitter.com/deepset_ai) | Follow us on Twitter for news and updates |
+| :hammer_and_pick: [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack) | Questions tagged Haystack |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
 ## Quick Demo
