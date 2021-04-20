@@ -6,6 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from rest_api.controller.errors.http_error import http_error_handler
 from rest_api.controller.router import router as api_router
+from rest_api.config import ROOT_PATH
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ logging.getLogger("haystack").setLevel(logging.INFO)
 
 
 def get_application() -> FastAPI:
-    application = FastAPI(title="Haystack-API", debug=True, version="0.1")
+    application = FastAPI(title="Haystack-API", debug=True, version="0.1", root_path=ROOT_PATH)
 
     # This middleware enables allow all cross-domain requests to the API from a browser. For production
     # deployments, it could be made more restrictive.
