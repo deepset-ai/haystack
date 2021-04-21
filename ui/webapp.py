@@ -1,9 +1,14 @@
+import os
+import sys
 import streamlit as st
 from utils import retrieve_doc
 from utils import feedback_doc
 from annotated_text import annotated_text
-import st_state_patch
 import pandas as pd
+# streamlit does not support any states out of the box. On every button click, streamlit reload the whole page 
+# and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned 
+# here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
+import SessionState
 
 def annotate_answer(answer, context):
     start_idx = context.find(answer)
@@ -17,12 +22,12 @@ def random_questions(df):
      return random_question, random_answer
 
 # Define state
-state_question = st.State()
-state_run_query = st.State()
+state_question = SessionState.get(random_question='Who is the father of Arya Starck?', random_answer='', next_question='false', run_query='false')
 
 # Initalize variables
 eval_mode = False
 random_question = "Who is the father of Arya Starck?"
+eval_labels = os.getenv("EVAL_FILE", "eval_labels_example.csv")
 
 # UI search bar and sidebar      
 st.write("# Haystack Demo")
@@ -34,7 +39,10 @@ debug = st.sidebar.checkbox("Show debug info")
 
 # load csv into pandas dataframe
 if eval_mode:
-    df = pd.read_csv("eval_labels_example.csv", sep=";")
+    try:
+        df = pd.read_csv(eval_labels, sep=";")
+    except Exception:
+        sys.exit('The eval file was not found. Please check the README for more information.')
     if state_question and hasattr(state_question, 'next_question') and hasattr(state_question, 'random_question') and state_question.next_question:
         random_question = state_question.random_question
         random_answer = state_question.random_answer
@@ -51,18 +59,18 @@ if eval_mode:
        state_question.random_question = random_question
        state_question.random_answer = random_answer
        state_question.next_question = "true"
-       state_run_query.run_query = "false"
+       state_question.run_query = "false"
     else:
        state_question.next_question = "false"
 
 # Search bar
 question = st.text_input("Please provide your query:",value=random_question)
-if state_run_query and state_run_query.run_query:
-    run_query = state_run_query.run_query
+if state_question and state_question.run_query:
+    run_query = state_question.run_query
     st.button("Run")
 else:
     run_query = st.button("Run")
-    state_run_query.run_query = run_query
+    state_question.run_query = run_query
 
 raw_json_feedback = ""
 
