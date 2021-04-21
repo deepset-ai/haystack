@@ -205,7 +205,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 self.faiss_indexes[index].reset()
                 self.reset_vector_ids(index)
             else:
-                raise Exception("update_existing_embeddings is not supported with filters.")
+                raise Exception("update_existing_embeddings=True is not supported with filters.")
 
         if not self.faiss_indexes.get(index):
             raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
