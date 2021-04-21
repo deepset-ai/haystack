@@ -29,7 +29,9 @@ def test_load_yaml(document_store_with_docs):
 
 @pytest.mark.slow
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize(
+    "retriever_with_docs, document_store_with_docs", [("elasticsearch", "elasticsearch")], indirect=True
+)
 def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
     pipeline = Pipeline()
     pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["Query"])
@@ -42,6 +44,10 @@ def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
 
     with pytest.raises(Exception):
         pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["InvalidNode"])
+
+    with pytest.raises(Exception):
+        pipeline = Pipeline()
+        pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["InvalidNode"])
 
 
 @pytest.mark.slow
