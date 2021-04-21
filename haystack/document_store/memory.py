@@ -220,6 +220,14 @@ class InMemoryDocumentStore(BaseDocumentStore):
         documents = self.get_all_documents(index=index, filters=filters)
         return len(documents)
 
+    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the count of embeddings in the document store.
+        """
+        documents = self.get_all_documents(filters=filters, index=index)
+        embedding_count = sum(doc.embedding is not None for doc in documents)
+        return embedding_count
+
     def get_label_count(self, index: Optional[str] = None) -> int:
         """
         Return the number of labels in the document store
