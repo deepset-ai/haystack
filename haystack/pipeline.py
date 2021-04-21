@@ -24,7 +24,7 @@ from haystack.graph_retriever.base import BaseGraphRetriever
 logger = logging.getLogger(__name__)
 
 
-class Pipeline(ABC):
+class Pipeline:
     """
     Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
 
@@ -65,6 +65,9 @@ class Pipeline(ABC):
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
+            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node_id, \
+                f"The '{name}' node can only input from {self.root_node_id}. " \
+                f"Set the 'inputs' parameter to ['{self.root_node_id}']"
             self.graph.add_edge(self.root_node_id, name, label="output_1")
             return
 
