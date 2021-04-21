@@ -5,6 +5,7 @@ from elasticsearch import Elasticsearch
 from conftest import get_document_store
 from haystack import Document, Label
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store.faiss import FAISSDocumentStore
 
 
 @pytest.mark.elasticsearch
@@ -274,18 +275,33 @@ def test_update_embeddings(document_store, retriever):
     np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
 
     # test updating with filters
-    document_store.update_embeddings(
-        retriever, index="haystack_test_1", batch_size=3, filters={"meta_field": ["value_0", "value_1"]}
-    )
-    doc_after_update = document_store.get_all_documents(index="haystack_test_1", filters={"meta_field": ["value_7"]})[0]
-    embedding_after_update = doc_after_update.embedding
-    np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
+    if isinstance(document_store, FAISSDocumentStore):
+        with pytest.raises(Exception):
+            document_store.update_embeddings(
+                retriever, index="haystack_test_1", update_existing_embeddings=True, filters={"meta_field": ["value"]}
+            )
+    else:
+        document_store.update_embeddings(
+            retriever, index="haystack_test_1", batch_size=3, filters={"meta_field": ["value_0", "value_1"]}
+        )
+        doc_after_update = document_store.get_all_documents(index="haystack_test_1", filters={"meta_field": ["value_7"]})[0]
+        embedding_after_update = doc_after_update.embedding
+        np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
 
     # test update all embeddings
     document_store.update_embeddings(retriever, index="haystack_test_1", batch_size=3, update_existing_embeddings=True)
+    assert document_store.get_embedding_count(index="haystack_test_1") == 11
     doc_after_update = document_store.get_all_documents(index="haystack_test_1", filters={"meta_field": ["value_7"]})[0]
     embedding_after_update = doc_after_update.embedding
     np.testing.assert_raises(AssertionError, np.testing.assert_array_equal, embedding_before_update, embedding_after_update)
+
+    # test update embeddings for newly added docs
+    documents = []
+    for i in range(12, 15):
+        documents.append({"text": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
+    document_store.write_documents(documents, index="haystack_test_1")
+    document_store.update_embeddings(retriever, index="haystack_test_1", batch_size=3, update_existing_embeddings=False)
+    assert document_store.get_embedding_count(index="haystack_test_1") == 14
 
 
 @pytest.mark.elasticsearch

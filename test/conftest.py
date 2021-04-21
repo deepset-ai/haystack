@@ -347,6 +347,10 @@ def get_document_store(document_store_type, embedding_field="embedding"):
             embedding_field=embedding_field,
             index="haystack_test",
         )
+        _, collections = document_store.milvus_server.list_collections()
+        for collection in collections:
+            if collection.startswith("haystack_test"):
+                document_store.milvus_server.drop_collection(collection)
         return document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
