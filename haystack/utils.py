@@ -82,6 +82,27 @@ def print_answers(results: dict, details: str = "all"):
         pp.pprint(results)
 
 
+def print_documents(results: dict, max_text_len: int=None):
+    print(f"Query: {results['query']}")
+    pp = pprint.PrettyPrinter(indent=4)
+    for d in results["documents"]:
+        print()
+        new_text = d["text"][:max_text_len]
+        if len(new_text) != len(d["text"]):
+            new_text += "..."
+        results = {
+            "name": d["meta"]["name"],
+            "text": new_text
+        }
+        pp.pprint(results)
+
+
+def print_answers_gen(results: dict):
+    print(f"Query: {results['query']}")
+    for a in results["answers"]:
+        print(f"Answer: {a['answer']}")
+
+
 def export_answers_to_csv(agg_results: list, output_file):
     """
     Exports answers coming from finder.get_answers() to a CSV file
