@@ -48,14 +48,11 @@ By default, this will give you the latest version of the master branch. Use regu
 
 Note: On Windows add the arg `-f https://download.pytorch.org/whl/torch_stable.html` to install PyTorch correctly
 
-<!-- _comment: !! Have a tab for docker!! -->
-<!-- -comment: !! Have a hello world example!! -->
 ## The Building Blocks of Haystack
 
-Here’s a sample of some Haystack code showing the most important components.
-For a working code example, check out our starter tutorial.
+Here’s a sample of some Haystack code showing a question answering system using a retriever and a reader.
+For a working code example, check out our [starter tutorial](/docs/latest/tutorial1md).
 
-<!-- _comment: !!link!! -->
 ```python
 # DocumentStore: holds all your data
 document_store = ElasticsearchDocumentStore()
@@ -71,12 +68,12 @@ retriever = ElasticsearchRetriever(document_store)
 model_name = "deepset/roberta-base-squad2"
 reader = FARMReader(model_name)
 
-# Finder: Combines Reader and Retriever
-finder = Finder(reader, retriever)
+# Pipeline: Combines all the components
+pipe = ExtractiveQAPipeline(reader, retriever)
 
 # Voilà! Ask a question!
 question = "Who is the father of Sansa Stark?"
-prediction = finder.get_answers(question)
+prediction = pipe.run(query=question)
 print_answers(prediction)
 ```
 
@@ -103,12 +100,19 @@ This splitting can have a big impact on speed and performance.
 
 **Tip:** If Haystack is running very slowly, you might want to try splitting your text into smaller Documents.
 If you want an improvement to performance, you might want to try concatenating text to make larger Documents.
+See [Optimization](/docs/latest/optimizationmd) for more details.
+
 
 </div>
 
-## Running Queries
+## Running Search Queries
 
-**Querying** involves searching for an answer to a given question within the full document store.
+There are many different flavours of search that can be created using Haystack.
+But to give just one example of what can be achieved, let's look more closely at 
+an Open Domain Question Answering (ODQA) Pipeline.
+
+
+**Querying** in an ODQA system involves searching for an answer to a given question within the full document store.
 This process will:
 
 
@@ -123,15 +127,16 @@ This process will:
 Usually, there are tight time constraints on querying and so it needs to be a lightweight operation.
 When documents are loaded, Haystack will precompute any of the results that might be useful at query time.
 
-In Haystack, querying is performed with a `Finder` object which connects the reader to the retriever.
+In Haystack, querying is performed with a `Pipeline` object which connects the reader to the retriever.
 
 ```python
-# The Finder sticks together reader and retriever in a pipeline to answer our questions.
-finder = Finder(reader, retriever)
+# Pipeline: Combines all the components
+pipe = ExtractiveQAPipeline(reader, retriever)
 
 # Voilà! Ask a question!
 question = "Who is the father of Sansa Stark?"
-prediction = finder.get_answers(question)
+prediction = pipe.run(query=question)
+print_answers(prediction)
 ```
 
 When the query is complete, you can expect to see results that look something like this:
@@ -146,8 +151,16 @@ When the query is complete, you can expect to see results that look something li
 ]
 ```
 
-<div class="recommendation">
+##Custom Search Pipelines
 
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
+Haystack providers many different building blocks for you to mix and match.
+They include:
+- Readers
+- Retrievers (sparse and dense)
+- DocumentStores
+- Summarizers
+- Generators
+- Translators
 
-</div>
+These can all be combined in the configuration that you want.
+Have a look at our [Pipelines page](/docs/latest/pipelinesmd) to see what's possible!

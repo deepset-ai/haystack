@@ -9,8 +9,8 @@ id: "retrievermd"
 
 # Retriever
 
-The Retriever is a lightweight filter that can quickly go through the full document store and pass a set of candidate documents to the Reader.
-It is an tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process.
+The Retriever is a lightweight filter that can quickly go through the full document store and pass on a set of candidate documents that are relevant to the query.
+When used in combination with a Reader, it is a tool for sifting out the obvious negative cases, saving the Reader from doing more work than it needs to and speeding up the querying process.
 
 <div class="recommendation">
 
@@ -46,7 +46,6 @@ TF-IDF is a commonly used baseline for information retrieval that exploits two k
 
 * documents that have more lexical overlap with the query are more likely to be relevant
 
-
 * words that occur in fewer documents are more significant than words that occur in many documents
 
 Given a query, a tf-idf score is computed for each document as follows:
@@ -68,18 +67,16 @@ In practice, both terms are usually log normalised.
 ### Initialisation
 
 ```python
+from haystack.document_store import InMemoryDocumentStore
+from haystack.retriever.sparse import TfidfRetriever
+from haystack.pipeline import ExtractiveQAPipeline
+
 document_store = InMemoryDocumentStore()
 ...
 retriever = TfidfRetriever(document_store)
 ...
-finder = Finder(reader, retriever)
+p = ExtractiveQAPipeline(reader, retriever)
 ```
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
 
 ## BM25 (Recommended)
 
@@ -97,18 +94,16 @@ It improves upon its predecessor in two main aspects:
 ### Initialisation
 
 ```python
+from haystack.document_store import ElasticsearchDocumentStore
+from haystack.retriever import ElasticsearchRetriever
+from haystack.pipeline import ExtractiveQAPipeline
+
 document_store = ElasticsearchDocumentStore()
 ...
 retriever = ElasticsearchRetriever(document_store)
 ...
-finder = Finder(reader, retriever)
+p = ExtractiveQAPipeline(reader, retriever)
 ```
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
 
 See [this](https://www.elastic.co/blog/practical-bm25-part-2-the-bm25-algorithm-and-its-variables) blog post for more details about the algorithm.
 
@@ -158,6 +153,10 @@ as is done in the code example below.
 </div>
 
 ```python
+from haystack.document_store import FAISSDocumentStore
+from haystack.retriever import DensePassageRetriever
+from haystack.pipeline import ExtractiveQAPipeline
+
 document_store = FAISSDocumentStore(similarity="dot_product")
 ...
 retriever = DensePassageRetriever(
@@ -166,7 +165,7 @@ retriever = DensePassageRetriever(
     passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base"
 )
 ...
-finder = Finder(reader, retriever)
+finder = ExtractiveQAPipeline(reader, retriever)
 ```
 
 <div class="recommendation">
@@ -174,14 +173,6 @@ finder = Finder(reader, retriever)
 **Training DPR:** Haystack supports training of your own DPR model! Check out the [tutorial](/docs/latest/tutorial9md) to see how this is done!
 
 </div>
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
-
-
 
 <!-- _comment: !! Training in future? !! -->
 <!-- _comment: !! Talk more about benchmarks, SoTA, results !! -->
@@ -210,19 +201,17 @@ as is done in the code example below.
 ### Initialisation
 
 ```python
+from haystack.document_store import ElasticsearchDocumentStore
+from haystack.retriever import EmbeddingRetriever
+from haystack.pipeline import ExtractiveQAPipeline
+
 document_store = ElasticsearchDocumentStore(similarity="cosine")
 ...
 retriever = EmbeddingRetriever(document_store=document_store,
                                embedding_model="deepset/sentence_bert")
 ...
-finder = Finder(reader, retriever)
+p = ExtractiveQAPipeline(reader, retriever)
 ```
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
 
 ## Deeper Dive: Dense vs Sparse
 
