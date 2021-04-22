@@ -53,9 +53,9 @@ See the up-to-date list of available models on
 **Example**
 
 ```python
-|     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions.
-|            The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by
-|            the shutoffs which were expected to last through at least midday tomorrow.")]
+|     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
+|            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
+|            "the shutoffs which were expected to last through at least midday tomorrow.")]
 |
 |     # Summarize
 |     summary = summarizer.predict(
@@ -71,7 +71,7 @@ See the up-to-date list of available models on
 |        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
 |        ...
 |        "meta": {
-|          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ....
+|          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ..."
 |              },
 |        ...
 |      },
@@ -85,8 +85,8 @@ See the up-to-date list of available models on
 ```
 
 Load a Summarization model from Transformers.
-See the up-to-date list of available models on
-`huggingface.co/models <https://huggingface.co/models?filter=summarization>`__
+See the up-to-date list of available models at
+https://huggingface.co/models?filter=summarization
 
 **Arguments**:
 
