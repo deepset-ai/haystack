@@ -33,7 +33,13 @@ p.draw(path="custom_pipe.png")
 ### YAML File Definitions
 
 For your convenience, there is also the option of defining and loading pipelines in YAML files.
-For example, you can define an save a simple Retriever Reader pipeline by saving the following to a file:
+Having your pipeline available in a YAML is particularly useful when 
+you move between experimentation and production environments. 
+Just export the YAML from your notebook / IDE and import it into your production environment. 
+It also helps with version control of pipelines, allows you to share your pipeline easily with colleagues, 
+and simplifies the configuration of pipeline parameters in production.
+
+For example, you can define and save a simple Retriever Reader pipeline by saving the following to a file:
 
 ```yaml
 version: '0.7'

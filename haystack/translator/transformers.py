@@ -74,11 +74,8 @@ class TransformersTranslator(BaseTranslator):
         """
         Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
         :param query: The query string to translate
-        :type query: str
         :param documents: The documents to translate
-        :type documents: List[Document] or List[Dict]
         :param dict_key:
-        :type dict_key:
         """
         if not query and not documents:
             raise AttributeError("Translator need query or documents to perform translation")

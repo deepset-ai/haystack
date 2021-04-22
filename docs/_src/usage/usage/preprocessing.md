@@ -98,7 +98,7 @@ docs = convert_files_to_dicts(dir_path=doc_dir)
 ## Web Crawler
 
 In Haystack, you will find a web crawler that will help you scrape text from websites and save it to file. 
-See the API documentation for more details.
+See the [API documentation](https://haystack.deepset.ai/docs/latest/apicrawlermd) for more details.
 
 ```python
 from haystack.connector import Crawler
