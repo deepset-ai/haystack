@@ -31,3 +31,4 @@ services:
       - 8501:8501
     environment:
       - API_ENDPOINT=http://haystack-api:8000
+      - EVAL_FILE=eval_labels_example.csv
