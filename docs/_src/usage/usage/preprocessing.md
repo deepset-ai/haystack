@@ -15,6 +15,12 @@ Haystack includes a suite of tools to:
 * normalize white space
 * split text into smaller pieces to optimize retrieval
 
+<div class="recommendation">
+
+Check out our [preprocessing tutorial](/docs/latest/tutorial8md) if you'd like to start working with code examples already!
+
+</div>
+
 These data preprocessing steps can have a big impact on the systems performance
 and effective handling of data is key to getting the most out of Haystack.
 
@@ -45,6 +51,8 @@ Please refer to [the API docs](/docs/latest/file_convertersmd) to see which conv
 <div class="tabcontent">
 
 ```python
+from haystack.file_converter import PDFToTextConverter
+
 converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["de","en"])
 doc = converter.convert(file_path=file, meta=None)
 ```
@@ -58,6 +66,8 @@ doc = converter.convert(file_path=file, meta=None)
 <div class="tabcontent">
 
 ```python
+from haystack.file_converter import DocxToTextConverter
+
 converter = DocxToTextConverter(remove_numeric_tables=True, valid_languages=["de","en"])
 doc = converter.convert(file_path=file, meta=None)
 ```
@@ -75,6 +85,8 @@ Haystack also has a `convert_files_to_dicts()` utility function that will conver
 all txt or pdf files in a given folder into this dictionary format.
 
 ```python
+from haystack.preprocessor.utils import convert_files_to_dicts
+
 docs = convert_files_to_dicts(dir_path=doc_dir)
 ```
 
@@ -82,6 +94,20 @@ docs = convert_files_to_dicts(dir_path=doc_dir)
 </div>
 
 </div>
+
+## Web Crawler
+
+In Haystack, you will find a web crawler that will help you scrape text from websites and save it to file. 
+See the [API documentation](https://haystack.deepset.ai/docs/latest/apicrawlermd) for more details.
+
+```python
+from haystack.connector import Crawler
+
+crawler = Crawler()
+docs = crawler.crawl(urls=["https://haystack.deepset.ai/docs/latest/get_startedmd"],
+                     output_dir="crawled_files",
+                     filter_urls= ["haystack\.deepset\.ai\/docs\/"])
+```
 
 ## PreProcessor
 
@@ -93,6 +119,8 @@ performs various cleaning steps and splits them into multiple smaller documents.
 For suggestions on how best to split your documents, see [Optimization](/docs/latest/optimizationmd)
 
 ```python
+from haystack.preprocessor import PreProcessor
+
 doc = converter.convert(file_path=file, meta=None)
 processor = PreProcessor(
     clean_empty_lines=True,

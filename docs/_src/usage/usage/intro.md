@@ -9,27 +9,27 @@ id: "intromd"
 
 # What is Haystack?
 
-Haystack is an **open-source framework** for building **end-to-end question answering systems** for large document collections.
-Recent advances in NLP have enabled the application of QA to real world settings
+Haystack is an **open-source framework** for building **search systems** that work intelligently over large document collections.
+Recent advances in NLP have enabled the application of question answering, retrieval and summarization to real world settings
 and Haystack is designed to be the bridge between research and industry.
 
 
 * **Latest NLP models**: Utilize all transformer based models (BERT, RoBERTa, MiniLM, DPR ...) and smoothly switch when new ones get published
 
-* **Flexible databases**: Load data into and query from a range of databases such as Elasticsearch, FAISS, SQL and more
+* **Flexible databases**: Load data into and query from a range of databases such as Elasticsearch, Milvus, FAISS, SQL and more
 
 * **Scalability**: Production-ready deployments that scale to millions of documents
 
-* **End-to-End**: All tooling you need to implement, evaluate, improve and run a QA system
+* **End-to-End**: All tooling you need to implement, evaluate, improve and run a search system
 
 * **Domain adaptation**: Fine-tune models to your own domain & improve them continuously via user feedback
 
-<!-- _comment: !!Image!! -->
-## Technology
+## Retriever-Reader
 
-Haystack is powered by a Retriever-Reader pipeline in order to optimise for both speed and accuracy.
-
-
+The most common system built with Haystack is the Retriever-Reader Pipeline which is designed to optimize for both
+speed and performance on the task of Open Domain Question Answering.
+In practice, this is a great back bone for creating a search system that can handle detailed full sentence queries.
+ 
 
 ![image](./../../img/retriever_reader.png)
 

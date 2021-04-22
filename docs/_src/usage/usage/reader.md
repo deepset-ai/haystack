@@ -33,9 +33,10 @@ Haystack’s Readers are:
 <div class="tabcontent">
 
 ```python
+from haystack.reader import FARMReader
+
 model = "deepset/roberta-base-squad2"
 reader = FARMReader(model, use_gpu=True)
-finder = Finder(reader, retriever)
 ```
 
 </div> 
@@ -47,19 +48,14 @@ finder = Finder(reader, retriever)
 <div class="tabcontent">
 
 ```python
+from haystack.reader import TransformersReader
+
 model = "deepset/roberta-base-squad2"
 reader = TransformersReader(model, use_gpu=1)
-finder = Finder(reader, retriever)
 ```
 
 </div> 
 </div>
-
-</div>
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
 
 </div>
 
@@ -91,6 +87,8 @@ To get you started, we have a few recommendations for you to try out.
 **An optimised variant of BERT and a great starting point.**
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("deepset/roberta-base-squad2")
 ```
 
@@ -109,6 +107,8 @@ reader = FARMReader("deepset/roberta-base-squad2")
 **A cleverly distilled model that sacrifices a little accuracy for speed.**
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("deepset/minilm-uncased-squad2")
 ```
 
@@ -127,6 +127,8 @@ reader = FARMReader("deepset/minilm-uncased-squad2")
 **Large, powerful, SotA model.**
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
 ```
 
@@ -157,6 +159,8 @@ reader = FARMReader("ahotrod/albert_xxlargev1_squad2_512")
 **An optimised variant of BERT and a great starting point.**
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("deepset/roberta-base-squad2")
 ```
 
@@ -175,6 +179,8 @@ reader = TransformersReader("deepset/roberta-base-squad2")
 **A cleverly distilled model that sacrifices a little accuracy for speed.**
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("deepset/minilm-uncased-squad2")
 ```
 
@@ -193,6 +199,8 @@ reader = TransformersReader("deepset/minilm-uncased-squad2")
 **Large, powerful, SotA model.**
 
 ```python
+from haystack.reader import TransformersReader
+
 reader = TransformersReader("ahotrod/albert_xxlargev1_squad2_512")
 ```
 
@@ -232,6 +240,47 @@ you might like to try ALBERT XXL which has set SoTA performance on SQuAD 2.0.
 
 </div>
 
+
+## Confidence Scores
+
+When printing the full results of a Reader, 
+you will see that each prediction is accompanied 
+by a value in the range of 0 to 1 reflecting the model's confidence in that prediction
+
+In the output of `print_answers()`, you will find the model confidence in dictionary key called `probability`.
+
+```python
+from haystack.utils import print_answers
+
+print_answers(prediction, details="all")
+```
+
+```python
+{   
+    'answers': [   
+        {   'answer': 'Eddard',
+            'context': 's Nymeria after a legendary warrior queen. '
+                       'She travels with her father, Eddard, to '
+                       "King's Landing when he is made Hand of the "
+                       'King. Before she leaves,',
+            'probability': 0.9899835586547852,
+            ...
+        },
+    ]
+}
+```
+
+In order to align this probability score with the model's accuracy, finetuning needs to be performed
+on a specific dataset. Have a look at this [FARM tutorial](https://github.com/deepset-ai/FARM/blob/master/examples/question_answering_confidence.py)
+to see how this is done. 
+Note that a finetuned confidence score is specific to the domain that its finetuned on. 
+There is no guarantee that this performance can transfer to a new domain.
+
+Having a confidence score is particularly useful in cases where you need Haystack to work with a certain accuracy threshold.
+Many of our users have built systems where predictions below a certain confidence value are routed
+on to a fallback system.
+
+
 <!-- farm-vs-trans: -->
 ## Deeper Dive: FARM vs Transformers
 
@@ -259,6 +308,8 @@ Haystack also has a close integration with FARM which means that you can further
 See our tutorials for an end-to-end example or below for a shortened example.
 
 ```python
+from haystack.reader import FARMReader
+
 # Initialise Reader
 model = "deepset/roberta-base-squad2"
 reader = FARMReader(model)
@@ -302,6 +353,8 @@ These can be set when the Reader is initialized.
 <div class="tabcontent">
 
 ```python
+from haystack.reader import FARMReader
+
 reader = FARMReader(... max_seq_len=384, doc_stride=128 ...)
 ```
 
@@ -314,7 +367,9 @@ reader = FARMReader(... max_seq_len=384, doc_stride=128 ...)
 <div class="tabcontent">
 
 ```python
-reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...
+from haystack.reader import TransformersReader
+
+reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...)
 ```
 
 </div> 
@@ -324,5 +379,3 @@ reader = TransformersReader(... max_seq_len=384, doc_stride=128 ...
 
 Predictions are made on each individual passage and the process of aggregation picks the best candidates across all passages.
 If you’d like to learn more about what is happening behind the scenes, have a look at [this](https://medium.com/deepset-ai/modern-question-answering-systems-explained-4d0913744097) article.
-
-<!-- _comment: !! Diagram from Blog !! -->

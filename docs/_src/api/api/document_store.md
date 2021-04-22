@@ -657,7 +657,7 @@ Fetch documents by specifying a list of text vector id strings
 
 - `vector_ids`: List of vector_id strings.
 - `index`: Name of the index to get the documents from. If None, the
-              DocumentStore's default index (self.index) will be used.
+DocumentStore's default index (self.index) will be used.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="sql.SQLDocumentStore.get_all_documents_generator"></a>
@@ -829,7 +829,6 @@ the vector embeddings are indexed in a FAISS Index.
                                 - "HNSW": Graph-based heuristic. If not further specified,
                                           we use the following config:
                                           HNSW64, efConstruction=80 and efSearch=20
-
                                 - "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
                                                   Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
                                 For more details see:

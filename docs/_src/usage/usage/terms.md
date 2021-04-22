@@ -24,14 +24,6 @@ Can have a variety of backends such as Elasticsearch, SQL or FAISS.
 **FARM** - An open-source transfer learning [framework](https://github.com/deepset-ai/FARM) by deepset.
 FARM’s question answering models are used in Haystack’s Readers.
 
-**Finder** - The component in Haystack that connects the Retriever to the Reader.
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>
-
 **Indexing** - To store data in a database in a way that optimises retrieval time.
 The exact steps involved in indexing depend on what kind of retrieval method is chosen.
 
