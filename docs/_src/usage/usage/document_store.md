@@ -1,11 +1,11 @@
----
+<!---
 title: "Document Store"
 metaTitle: "Document Store"
 metaDescription: ""
 slug: "/docs/documentstore"
 date: "2020-09-03"
 id: "documentstoremd"
----
+--->
 
 
 # DocumentStores
@@ -40,6 +40,8 @@ docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2
 Next you can initialize the Haystack object that will connect to this instance.
 
 ```python
+from haystack.document_store import ElasticsearchDocumentStore
+
 document_store = ElasticsearchDocumentStore()
 ```
 
@@ -60,6 +62,8 @@ Follow the [official documentation](https://www.milvus.io/docs/v1.0.0/milvus_doc
  
 You can initialize the Haystack object that will connect to this instance as follows:
 ```python
+from haystack.document_store import MilvusDocumentStore
+
 document_store = MilvusDocumentStore()
 ```
 
@@ -73,6 +77,8 @@ document_store = MilvusDocumentStore()
 
 The `FAISSDocumentStore` requires no external setup. Start it by simply using this line. 
 ```python
+from haystack.document_store import FAISSDocumentStore
+
 document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 ```
 
@@ -86,6 +92,8 @@ document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 
 The `InMemoryDocumentStore()` requires no external setup. Start it by simply using this line.
 ```python
+from haystack.document_store import InMemoryDocumentStore
+
 document_store = InMemoryDocumentStore()
 ```
 
@@ -101,6 +109,8 @@ The `SQLDocumentStore` requires SQLite, PostgresQL or MySQL to be installed and 
 Note that SQLite already comes packaged with most operating systems. 
 
 ```python
+from haystack.document_store import SQLDocumentStore
+
 document_store = SQLDocumentStore()
 ```
 
@@ -121,6 +131,8 @@ See [Preprocessing](/docs/latest/preprocessingmd) for more information on the cl
 [//]: # (Add link to preprocessing section)
 
 ```python
+from haystack.document_store import ElasticsearchDocumentStore
+
 document_store = ElasticsearchDocumentStore()
 dicts = [
     {
