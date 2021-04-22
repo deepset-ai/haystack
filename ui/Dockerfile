@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y curl git pkg-config cmake
 # copy code
 COPY utils.py /home/user/
 COPY webapp.py /home/user/
+COPY eval_labels_example.csv /home/user/
+COPY SessionState.py /home/user/
 
 # install as a package
 COPY requirements.txt /home/user/
