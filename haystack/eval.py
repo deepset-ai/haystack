@@ -27,7 +27,7 @@ class EvalRetriever:
         self.init_counts()
         self.no_answer_warning = False
         self.debug = debug
-        self.log = []
+        self.log: List = []
         self.open_domain = open_domain
 
     def init_counts(self):
@@ -111,7 +111,7 @@ class EvalReader:
         """
         self.outgoing_edges = 1
         self.init_counts()
-        self.log = []
+        self.log: List = []
         self.debug = debug
         self.skip_incorrect_retrieval = skip_incorrect_retrieval
         self.open_domain = open_domain
