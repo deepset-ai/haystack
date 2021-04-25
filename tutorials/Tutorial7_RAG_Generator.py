@@ -57,7 +57,7 @@ def tutorial7_rag_generator():
     generator = RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
         use_gpu=True,
-        top_k=1,
+        top_k_answers=2,
         max_length=200,
         min_length=2,
         embed_title=True,
