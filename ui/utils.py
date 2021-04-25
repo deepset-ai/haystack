@@ -6,6 +6,7 @@ import streamlit as st
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
 DOC_REQUEST = "query"
 DOC_FEEDBACK = "feedback"
+DOC_UPLOAD = "file_upload"
 
 @st.cache(show_spinner=False)
 def retrieve_doc(query,filters=None,top_k_reader=5,top_k_retriever=5):
@@ -41,4 +42,39 @@ def feedback_doc(question,is_correct_answer,document_id,model_id,is_correct_docu
          "offset_start_in_doc": offset_start_in_doc
          }
    response_raw = requests.post(url,json=req).json()
+   return response_raw
+
+
+def upload_doc(
+   file,
+   split_overlap=None,
+   meta=None,
+   split_respect_sentence_boundary=None,
+   split_length=None,
+   remove_numeric_tables=None,
+   remove_empty_lines=None,
+   remove_header_footer=None,
+   remove_whitespace=None,
+   valid_languages=None,
+   split_by=None):
+   # Feedback Haystack API
+   url = f"{API_ENDPOINT}/{DOC_UPLOAD}"
+   custom_header = {
+      "accept": "application/json",
+      "Content-Type": "multipart/form-data"
+      }
+   req = {
+         "file": file,
+         "split_overlap": split_overlap,
+         "meta":  meta,
+         "split_respect_sentence_boundary": split_respect_sentence_boundary,
+         "split_length": split_length,
+         "remove_numeric_tables": remove_numeric_tables,
+         "remove_empty_lines": remove_empty_lines,
+         "remove_header_footer": remove_header_footer,
+         "remove_whitespace": remove_whitespace,
+         "valid_languages": valid_languages,
+         "split_by":split_by
+         }
+   response_raw = requests.post(url,json=req, headers = custom_header).json()
    return response_raw

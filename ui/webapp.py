@@ -3,6 +3,7 @@ import sys
 import streamlit as st
 from utils import retrieve_doc
 from utils import feedback_doc
+from utils import upload_doc
 from annotated_text import annotated_text
 import pandas as pd
 # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page 
@@ -36,6 +37,15 @@ top_k_reader = st.sidebar.slider("Max. number of answers",min_value=1,max_value=
 top_k_retriever = st.sidebar.slider("Max. number of documents from retriever",min_value=1,max_value=10,value=3,step=1)
 eval_mode = st.sidebar.checkbox("Evalution mode")
 debug = st.sidebar.checkbox("Show debug info")
+
+st.sidebar.write("## File Upload:")
+data_file = st.sidebar.file_uploader("",type=['pdf','txt','docx'])
+# Upload file
+if data_file:
+    raw_json = upload_doc(data_file)
+    if debug:
+        st.subheader("REST API JSON response")
+        st.write(raw_json)
 
 # load csv into pandas dataframe
 if eval_mode:
