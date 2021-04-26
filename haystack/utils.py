@@ -86,7 +86,7 @@ def print_answers(results: dict, details: str = "all"):
             for a in results["answers"]:
                 print(f"Answer: {a['answer']}")
         else:
-            pp.print(results)
+            pp.pprint(results)
 
 
 
