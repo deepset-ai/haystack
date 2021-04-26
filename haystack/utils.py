@@ -81,7 +81,7 @@ def print_answers(results: dict, details: str = "all"):
             pp.pprint(results)
     # This fall back case is when the answers come from a Generator
     except:
-        if details != "all":
+        if details == "minimal":
             print(f"Query: {results['query']}")
             for a in results["answers"]:
                 print(f"Answer: {a['answer']}")

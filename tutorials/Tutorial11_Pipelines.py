@@ -81,7 +81,7 @@ res = p_generator.run(
     query="Who is the father of Arya Stark?",
     top_k_retriever=10
 )
-print_answers_gen(res)
+print_answers(res, details="minimal")
 
 # We are setting this to False so that in later pipelines,
 # we get a cleaner printout
