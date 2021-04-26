@@ -19,12 +19,16 @@ DOCUMENTS = [
 ]
 
 
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-def test_faiss_index_save_and_load(document_store):
+def test_faiss_index_save_and_load(tmp_path):
+    document_store = FAISSDocumentStore(
+        sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
+        index="haystack_test",
+    )
+    document_store.delete_all_documents()
     document_store.write_documents(DOCUMENTS)
 
     # test saving the index
-    document_store.save("haystack_test_faiss")
+    document_store.save(tmp_path / "haystack_test_faiss")
 
     # clear existing faiss_index
     document_store.faiss_indexes[document_store.index].reset()
@@ -34,11 +38,15 @@ def test_faiss_index_save_and_load(document_store):
 
     # test loading the index
     new_document_store = FAISSDocumentStore.load(
-        sql_url="sqlite://", faiss_file_path="haystack_test_faiss", index=document_store.index
+        sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
+        faiss_file_path=tmp_path / "haystack_test_faiss",
+        index=document_store.index
     )
 
     # check faiss index is restored
     assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
+    # check if documents are restored
+    assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
