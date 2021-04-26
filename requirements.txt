@@ -30,3 +30,4 @@ pymilvus
 #selenium
 #webdriver-manager
 SPARQLWrapper
+mmh3

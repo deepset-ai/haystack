@@ -1,16 +1,23 @@
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
+
+import mmh3
 import numpy as np
 from abc import abstractmethod
 
+
 class Document:
-    def __init__(self, text: str,
-                 id: Optional[str] = None,
-                 score: Optional[float] = None,
-                 probability: Optional[float] = None,
-                 question: Optional[str] = None,
-                 meta: Dict[str, Any] = None,
-                 embedding: Optional[np.ndarray] = None):
+    def __init__(
+        self,
+        text: str,
+        id: Optional[str] = None,
+        score: Optional[float] = None,
+        probability: Optional[float] = None,
+        question: Optional[str] = None,
+        meta: Dict[str, Any] = None,
+        embedding: Optional[np.ndarray] = None,
+        id_hash_keys: Optional[List[str]] = None
+    ):
         """
         Object used to represent documents / passages in a standardized way within Haystack.
         For example, this is what the retriever will return from the DocumentStore,
@@ -26,20 +33,26 @@ class Document:
         :param question: Question text for FAQs.
         :param meta: Meta fields for a document like name, url, or author.
         :param embedding: Vector encoding of the text
+        :param id_hash_keys: Hash keys to be used for document id generation
         """
 
         self.text = text
-        # Create a unique ID (either new one, or one from user input)
-        if id:
-            self.id = str(id)
-        else:
-            self.id = str(uuid4())
-
         self.score = score
         self.probability = probability
         self.question = question
         self.meta = meta or {}
         self.embedding = embedding
+        self.id_hash_keys = id_hash_keys
+
+        # Create a unique ID (either new one, or one from user input)
+        if id:
+            self.id = str(id)
+        else:
+            self.id = self._get_id()
+
+    def _get_id(self):
+        final_hash_key = ":".join(self.id_hash_keys) if self.id_hash_keys else self.text
+        return '{:02x}'.format(mmh3.hash128(final_hash_key, signed=False))
 
     def to_dict(self, field_map={}):
         inv_field_map = {v:k for k, v in field_map.items()}
