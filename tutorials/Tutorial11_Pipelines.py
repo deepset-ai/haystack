@@ -1,4 +1,4 @@
-from haystack.utils import print_answers, print_answers_gen, print_documents
+from haystack.utils import print_answers, print_documents
 from pprint import pprint
 from haystack.preprocessor.utils import fetch_archive_from_http, convert_files_to_dicts
 from haystack.preprocessor.cleaning import clean_wiki_text
@@ -10,8 +10,6 @@ from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader import FARMReader
 from haystack.pipeline import ExtractiveQAPipeline, DocumentSearchPipeline, GenerativeQAPipeline, JoinDocuments
 from haystack.generator import RAGenerator
-
-
 
 
 #Download and prepare data - 517 Wikipedia articles for Game of Thrones
@@ -94,7 +92,7 @@ document_store.return_embedding = False
 ##############################
 
 p_extractive_premade.draw("pipeline_extractive_premade.png")
-p_retrieval.draw("pipeline_retrievaal.png")
+p_retrieval.draw("pipeline_retrieval.png")
 p_generator.draw("pipeline_generator.png")
 
 ####################
@@ -136,8 +134,13 @@ res = p_ensemble.run(
 )
 print_answers(res, details="minimal")
 
-# Classification Pipeline
-#########################
+# Query Classification Pipeline
+###############################
+
+# Decision Nodes help you route your data so that only certain branches of your `Pipeline` are run.
+# Though this looks very similar to the ensembled pipeline shown above,
+# the key difference is that only one of the retrievers is run for each request.
+# By contrast both retrievers are always run in the ensembled approach.
 
 class QueryClassifier():
     outgoing_edges = 2
