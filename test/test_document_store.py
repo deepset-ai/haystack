@@ -1,8 +1,6 @@
 import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
-from elasticsearch.helpers.errors import BulkIndexError
-from sqlalchemy.exc import IntegrityError
 
 from conftest import get_document_store
 from haystack import Document, Label
@@ -46,7 +44,7 @@ def test_write_with_duplicate_doc_ids(document_store):
             id_hash_keys=["key1"]
         )
     ]
-    with pytest.raises(IntegrityError or BulkIndexError):
+    with pytest.raises(Exception):
         document_store.write_documents(documents)
 
 
