@@ -1,3 +1,4 @@
+import inspect
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
 import numpy as np
@@ -227,6 +228,7 @@ class BaseComponent:
 
     outgoing_edges: int
     subclasses: dict = {}
+    pipeline_config: dict = {}
 
     def __init_subclass__(cls, **kwargs):
         """ This automatically keeps track of all available subclasses.
@@ -259,3 +261,20 @@ class BaseComponent:
         :return:
         """
         pass
+
+    def set_pipeline_config(self, **kwargs):
+        """
+        Save the init parameters of a component that later can be used with exporting
+        YAML configuration of a Pipeline.
+
+        :param kwargs: all parameters passed to the __init__() of the Component.
+        """
+        if not self.pipeline_config:
+            self.pipeline_config = {"params": {}, "type": type(self).__name__}
+            parameters = inspect.signature(type(self)).parameters
+            for k, v in kwargs.items():
+                if parameters[k].default != v:
+                    if isinstance(v, BaseComponent):
+                        self.pipeline_config["params"][k] = v.pipeline_config
+                    elif v is not None:
+                        self.pipeline_config["params"][k] = v
