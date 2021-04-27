@@ -32,7 +32,7 @@ Similar to Haystack's ElasticsearchDocumentStore, the only additional setting ne
 
 ```kg = GraphDBKnowledgeGraph(index="tutorial_10_index")```
 
-Indices can be deleted and created with ```delete_index()``` and ```create_index(config_path)```.
+Indices can be deleted and created with ```GraphDBKnowledgeGraph.delete_index()``` and ```GraphDBKnowledgeGraph.create_index(config_path)```.
 ```config_path``` needs to point to a .ttl file that contains configuration settings (see [GraphDB documentation](https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically) for details or use the file from our [tutorial](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.py)). It starts with something like:
 
 ```
@@ -51,7 +51,7 @@ Indices can be deleted and created with ```delete_index()``` and ```create_index
 ...
 ```
 
-GraphDBKnowledgeGraph can load an existing knowledge graph represented in the form of a .ttl file with the method ```import_from_ttl_file(index, path)```, where path points to a ttl file starting with something like:
+GraphDBKnowledgeGraph can load an existing knowledge graph represented in the form of a .ttl file with the method ```GraphDBKnowledgeGraph.import_from_ttl_file(index, path)```, where path points to a ttl file starting with something like:
 
 ```
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -65,21 +65,21 @@ hp:Gryffindor hp:founder hp:Godric_gryffindor .
 ...
 ```
 
-```get_all_triples()``` returns all loaded triples in the form of subject, predicate, and object. It is helpful to check whether the loading of a .ttl file was successful.
+```GraphDBKnowledgeGraph.get_all_triples()``` returns all loaded triples in the form of subject, predicate, and object. It is helpful to check whether the loading of a .ttl file was successful.
 
-```query(sparql_query)``` executes SPARQL queries on the knowledge graph. However, we usually do not want to use this method directly but use it through a retriever.
+```GraphDBKnowledgeGraph.query(sparql_query)``` executes SPARQL queries on the knowledge graph. However, we usually do not want to use this method directly but use it through a retriever.
 
 ## Text2SparqlRetriever
 Text2SparqlRetriever can execute SPARQL queries translated from text but also any other custom SPARQL queries. Currently, it is the only implementation of the BaseGraphRetriever class.
 Internally, Text2SparqlRetriever uses a pre-trained BART model to translate text questions to queries in SPARQL format.
 
-```retrieve(query)``` can be called with a text query, which is then automatically translated to a SPARQL query.
+```Text2SparqlRetriever.retrieve(query)``` can be called with a text query, which is then automatically translated to a SPARQL query.
 
-```_query_kg(sparql_query)``` can be called with a SPARQL query.
+```Text2SparqlRetriever._query_kg(sparql_query)``` can be called with a SPARQL query.
 
 ## Trying Question Answering on Knowledge Graphs with Custom Data
 If you want to use your custom data you would first need to have your custom knowledge graph in the format of a .ttl file.
-You can load your custom graph and execute SPARQL queries with ```_query_kg(sparql_query)```. To allow the use of abbreviations of namespaces, GraphDBKnowledgeGraph needs to know about them:
+You can load your custom graph and execute SPARQL queries with ```Text2SparqlRetriever._query_kg(sparql_query)```. To allow the use of abbreviations of namespaces, GraphDBKnowledgeGraph needs to know about them:
 
 ```
 prefixes = """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -91,13 +91,13 @@ kg.prefixes = prefixes
 
 If you suspect you are having issues because of abbreviations of namespaces not mapped correctly, you can always try to execute a SPARQL query with the full namespace:
 
-```_query_kg(sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }")```
+```Text2SparqlRetriever._query_kg(sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }")```
 
 instead of using the abbreviated form:
 
-```_query_kg(sparql_query="select distinct ?obj where { hp:Hermione_granger hp:patronus ?obj . }")```
+```Text2SparqlRetriever._query_kg(sparql_query="select distinct ?obj where { hp:Hermione_granger hp:patronus ?obj . }")```
 
-If you would like to translate text queries to SPARQL queries for your custom data and use ```retrieve(query)```, there is significantly more effort necessary.
+If you would like to translate text queries to SPARQL queries for your custom data and use ```Text2SparqlRetriever.retrieve(query)```, there is significantly more effort necessary.
 We provide an exemplary pre-trained model in our [tutorial](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.py).
 One limitation is that this pre-trained model can only generate questions about resources it has seen during training.
 Otherwise, it cannot translate the name of the resource to the identifier used in the knowledge graph.
