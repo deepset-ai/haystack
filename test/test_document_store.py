@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
+from elasticsearch.helpers.errors import BulkIndexError
+from sqlalchemy.exc import IntegrityError
 
 from conftest import get_document_store
 from haystack import Document, Label
@@ -29,6 +31,23 @@ def test_init_elastic_client():
 
     # api_key +  id
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "sql", "milvus"], indirect=True)
+def test_write_with_duplicate_doc_ids(document_store):
+    documents = [
+        Document(
+            text="Doc1",
+            id_hash_keys=["key1"]
+        ),
+        Document(
+            text="Doc2",
+            id_hash_keys=["key1"]
+        )
+    ]
+    with pytest.raises(IntegrityError or BulkIndexError):
+        document_store.write_documents(documents)
 
 
 @pytest.mark.elasticsearch
