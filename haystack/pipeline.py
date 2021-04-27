@@ -301,7 +301,7 @@ class Pipeline:
 
         pipeline_name = self.pipeline_type.lower()
         pipeline_type = self.pipeline_type
-        pipelines = {pipeline_name: {"name": pipeline_name, "type": pipeline_type, "nodes": []}}
+        pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": pipeline_type, "nodes": []}}
 
         components = {}
         for node in nodes:
