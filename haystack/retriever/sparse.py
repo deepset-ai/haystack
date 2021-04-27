@@ -52,6 +52,12 @@ class ElasticsearchRetriever(BaseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         """
+
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         self.document_store: ElasticsearchDocumentStore = document_store
         self.top_k = top_k
         self.custom_query = custom_query

@@ -22,6 +22,11 @@ class TextConverter(BaseConverter):
                                 in garbled text.
         """
 
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(

@@ -22,6 +22,12 @@ class PDFToTextConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
+
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         verify_installation = subprocess.run(["pdftotext -v"], shell=True)
         if verify_installation.returncode == 127:
             raise Exception(

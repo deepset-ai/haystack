@@ -44,6 +44,12 @@ class PreProcessor(BasePreProcessor):
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
         """
+
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         try:
             nltk.data.find('tokenizers/punkt')
         except LookupError:

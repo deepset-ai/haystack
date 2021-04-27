@@ -33,7 +33,12 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         :param prefixes: definitions of namespaces with a new line after each namespace, e.g., PREFIX hp: <https://deepset.ai/harry_potter/>
         
         """
-        
+
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         self.url = f"http://{host}:{port}"
         self.index = index
         self.username = username

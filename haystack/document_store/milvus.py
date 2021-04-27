@@ -94,6 +94,12 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
+
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)
         self.vector_dim = vector_dim
         self.index_file_size = index_file_size

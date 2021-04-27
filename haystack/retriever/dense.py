@@ -98,6 +98,11 @@ class DensePassageRetriever(BaseRetriever):
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
 
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         self.document_store = document_store
         self.batch_size = batch_size
         self.progress_bar = progress_bar
@@ -461,6 +466,12 @@ class EmbeddingRetriever(BaseRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         """
+
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         self.document_store = document_store
         self.model_format = model_format
         self.pooling_strategy = pooling_strategy

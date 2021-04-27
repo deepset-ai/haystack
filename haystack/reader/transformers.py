@@ -57,6 +57,12 @@ class TransformersReader(BaseReader):
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 
         """
+
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=use_gpu, revision=model_version)
         self.context_window_size = context_window_size
         self.top_k = top_k

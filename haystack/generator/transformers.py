@@ -94,6 +94,11 @@ class RAGenerator(BaseGenerator):
         :param use_gpu: Whether to use GPU (if available)
         """
 
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.min_length = min_length

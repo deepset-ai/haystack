@@ -94,6 +94,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param return_embedding: To return document embedding
 
         """
+        # save init parameters to enable export of component config as YAML
         args = locals()
         args.pop("self")
         self.set_pipeline_config(**args)

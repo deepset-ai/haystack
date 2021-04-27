@@ -27,6 +27,12 @@ class BaseConverter(BaseComponent):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
+
+        # save init parameters to enable export of component config as YAML
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
+
         self.remove_numeric_tables = remove_numeric_tables
         self.valid_languages = valid_languages
 
