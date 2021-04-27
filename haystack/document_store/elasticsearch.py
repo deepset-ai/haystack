@@ -94,6 +94,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param return_embedding: To return document embedding
 
         """
+        args = locals()
+        args.pop("self")
+        self.set_pipeline_config(**args)
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
                                            api_key=api_key, api_key_id=api_key_id, aws4auth=aws4auth, scheme=scheme,

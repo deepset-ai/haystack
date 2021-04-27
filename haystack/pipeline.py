@@ -291,6 +291,39 @@ class Pipeline:
                 param_name = key.replace(env_prefix, "").lower()
                 definition["params"][param_name] = value
 
+    def export_yaml_config(self, path: Path):
+        """
+        Save a YAML configuration for the Pipeline.
+
+        :param path: path of the output YAML file.
+        """
+        nodes = self.graph.nodes
+
+        pipeline_name = self.pipeline_type.lower()
+        pipeline_type = self.pipeline_type
+        pipelines = {pipeline_name: {"name": pipeline_name, "type": pipeline_type, "nodes": []}}
+
+        components = {}
+        for node in nodes:
+            if node == self.root_node_id:
+                continue
+            comp_instance = self.graph.nodes.get(node)["component"]
+            comp_name = comp_instance.pipeline_config["type"]
+            components[comp_name] = {"name": comp_name, "type": comp_instance.pipeline_config["type"], "params": {}}
+            for key, value in comp_instance.pipeline_config["params"].items():
+                if isinstance(value, dict):
+                    components[comp_name]["params"][key] = value["type"]  # add reference
+                    components[value["type"]] = {"name": value["type"], "type": value["type"], "params": value["params"]}
+                else:
+                    components[comp_name]["params"][key] = value
+
+            pipelines[pipeline_name]["nodes"].append({"name": comp_name, "inputs": list(self.graph.predecessors(node))})
+
+        config = {"components": list(components.values()), "pipelines": list(pipelines.values())}
+
+        with open(path, 'w') as outfile:
+            yaml.dump(config, outfile, default_flow_style=False)
+
 
 class BaseStandardPipeline(ABC):
     pipeline: Pipeline
