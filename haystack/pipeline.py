@@ -180,7 +180,7 @@ class Pipeline:
         Here's a sample configuration:
 
             ```yaml
-            |   version: '0.7'
+            |   version: '0.8'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -307,19 +307,20 @@ class Pipeline:
         for node in nodes:
             if node == self.root_node_id:
                 continue
-            comp_instance = self.graph.nodes.get(node)["component"]
-            comp_name = comp_instance.pipeline_config["type"]
-            components[comp_name] = {"name": comp_name, "type": comp_instance.pipeline_config["type"], "params": {}}
-            for key, value in comp_instance.pipeline_config["params"].items():
+            component_instance = self.graph.nodes.get(node)["component"]
+            component_type = component_instance.pipeline_config["type"]
+            component_params = component_instance.pipeline_config["params"]
+            components[node] = {"name": node, "type": component_type, "params": {}}
+            for key, value in component_params.items():
                 if isinstance(value, dict):
-                    components[comp_name]["params"][key] = value["type"]  # add reference
+                    components[node]["params"][key] = value["type"]  # add reference
                     components[value["type"]] = {"name": value["type"], "type": value["type"], "params": value["params"]}
                 else:
-                    components[comp_name]["params"][key] = value
+                    components[node]["params"][key] = value
 
-            pipelines[pipeline_name]["nodes"].append({"name": comp_name, "inputs": list(self.graph.predecessors(node))})
+            pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
 
-        config = {"components": list(components.values()), "pipelines": list(pipelines.values())}
+        config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
 
         with open(path, 'w') as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
