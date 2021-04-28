@@ -94,9 +94,12 @@ class FARMReader(BaseReader):
         """
 
         # save init parameters to enable export of component config as YAML
-        args = locals()
-        args.pop("self")
-        self.set_pipeline_config(**args)
+        self.set_pipeline_config(
+            model_name_or_path=model_name_or_path, model_version=model_version, context_window_size=context_window_size,
+            batch_size=batch_size, use_gpu=use_gpu, no_ans_boost=no_ans_boost, return_no_answer=return_no_answer,
+            top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
+            num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
+        )
 
         self.return_no_answers = return_no_answer
         self.top_k = top_k

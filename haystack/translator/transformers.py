@@ -57,9 +57,10 @@ class TransformersTranslator(BaseTranslator):
         """
 
         # save init parameters to enable export of component config as YAML
-        args = locals()
-        args.pop("self")
-        self.set_pipeline_config(**args)
+        self.set_pipeline_config(
+            model_name_or_path=model_name_or_path, tokenizer_name=tokenizer_name, max_seq_len=max_seq_len,
+            clean_up_tokenization_spaces=clean_up_tokenization_spaces,
+        )
 
         self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces

@@ -24,9 +24,7 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         """
 
         # save init parameters to enable export of component config as YAML
-        args = locals()
-        args.pop("self")
-        self.set_pipeline_config(**args)
+        self.set_pipeline_config(knowledge_graph=knowledge_graph, model_name_or_path=model_name_or_path, top_k=top_k)
 
         self.knowledge_graph = knowledge_graph
         # TODO We should extend this to any seq2seq models and use the AutoModel class

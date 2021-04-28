@@ -96,9 +96,12 @@ class MilvusDocumentStore(SQLDocumentStore):
         """
 
         # save init parameters to enable export of component config as YAML
-        args = locals()
-        args.pop("self")
-        self.set_pipeline_config(**args)
+        self.set_pipeline_config(
+            sql_url=sql_url, milvus_url=milvus_url, connection_pool=connection_pool, index=index, vector_dim=vector_dim,
+            index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
+            search_param=search_param, update_existing_documents=update_existing_documents,
+            return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
+        )
 
         self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)
         self.vector_dim = vector_dim

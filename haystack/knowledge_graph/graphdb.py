@@ -35,9 +35,9 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
 
         # save init parameters to enable export of component config as YAML
-        args = locals()
-        args.pop("self")
-        self.set_pipeline_config(**args)
+        self.set_pipeline_config(
+            host=host, port=port, username=username, password=password, index=index, prefixes=prefixes
+        )
 
         self.url = f"http://{host}:{port}"
         self.index = index

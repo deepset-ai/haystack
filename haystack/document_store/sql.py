@@ -90,9 +90,9 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         # save init parameters to enable export of component config as YAML
-        args = locals()
-        args.pop("self")
-        self.set_pipeline_config(**args)
+        self.set_pipeline_config(
+            url=url, index=index, label_index=label_index, update_existing_documents=update_existing_documents
+        )
 
         engine = create_engine(url)
         ORMBase.metadata.create_all(engine)

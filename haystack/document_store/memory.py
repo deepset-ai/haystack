@@ -46,9 +46,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
 
         # save init parameters to enable export of component config as YAML
-        args = locals()
-        args.pop("self")
-        self.set_pipeline_config(**args)
+        self.set_pipeline_config(
+            index=index, label_index=label_index, embedding_field=embedding_field, embedding_dim=embedding_dim,
+            return_embedding=return_embedding, similarity=similarity, progress_bar=progress_bar,
+        )
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index
