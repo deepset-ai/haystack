@@ -312,8 +312,8 @@ class Pipeline:
             component_params = component_instance.pipeline_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
             for key, value in component_params.items():
-                if isinstance(value, dict):
-                    components[node]["params"][key] = value["type"]  # add reference
+                if isinstance(value, dict) and "type" in value.keys():  # the parameter is a Component
+                    components[node]["params"][key] = value["type"]
                     components[value["type"]] = {"name": value["type"], "type": value["type"], "params": value["params"]}
                 else:
                     components[node]["params"][key] = value
