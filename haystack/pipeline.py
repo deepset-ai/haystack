@@ -1,3 +1,4 @@
+import inspect
 import logging
 import os
 import traceback
@@ -291,11 +292,12 @@ class Pipeline:
                 param_name = key.replace(env_prefix, "").lower()
                 definition["params"][param_name] = value
 
-    def export_yaml_config(self, path: Path):
+    def save_to_yaml(self, path: Path, return_defaults: bool = False):
         """
-        Save a YAML configuration for the Pipeline.
+        Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
 
         :param path: path of the output YAML file.
+        :param return_defaults: whether to output parameters that have the default values.
         """
         nodes = self.graph.nodes
 
@@ -311,13 +313,27 @@ class Pipeline:
             component_type = component_instance.pipeline_config["type"]
             component_params = component_instance.pipeline_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
+            component_signature = inspect.signature(type(component_instance)).parameters
             for key, value in component_params.items():
+                # A parameter for a Component could be another Component. For instance, a Retriever has
+                # the DocumentStore as a parameter.
+                # Component configs must be a dict with a "type" key. The "type" keys distinguishes between
+                # other parameters like "custom_mapping" that are dicts.
+                # This currently only checks for the case single-level nesting case, wherein, "a Component has another
+                # Component as a parameter". For deeper nesting cases, this function should be made recursive.
                 if isinstance(value, dict) and "type" in value.keys():  # the parameter is a Component
                     components[node]["params"][key] = value["type"]
-                    components[value["type"]] = {"name": value["type"], "type": value["type"], "params": value["params"]}
+                    sub_component_signature = inspect.signature(BaseComponent.subclasses[value["type"]]).parameters
+                    params = {
+                        k: v for k, v in value["params"].items()
+                        if sub_component_signature[k].default != v or return_defaults is True
+                    }
+                    components[value["type"]] = {"name": value["type"], "type": value["type"], "params": params}
                 else:
-                    components[node]["params"][key] = value
+                    if component_signature[key].default != value or return_defaults is True:
+                        components[node]["params"][key] = value
 
+            # create the Pipeline definition with how the Component are connected
             pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
 
         config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}

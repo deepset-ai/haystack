@@ -26,7 +26,7 @@ def test_load_and_save_yaml(document_store_with_docs, tmp_path):
         Pipeline.load_from_yaml(path=Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="invalid")
 
     # test config export
-    pipeline.export_yaml_config(tmp_path/"test.yaml")
+    pipeline.save_to_yaml(tmp_path / "test.yaml")
     with open(tmp_path/"test.yaml", "r", encoding='utf-8') as stream:
         saved_yaml = stream.read()
     expected_yaml = '''

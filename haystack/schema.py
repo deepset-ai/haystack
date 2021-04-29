@@ -1,8 +1,8 @@
-import inspect
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
 import numpy as np
 from abc import abstractmethod
+
 
 class Document:
     def __init__(self, text: str,
@@ -271,10 +271,8 @@ class BaseComponent:
         """
         if not self.pipeline_config:
             self.pipeline_config = {"params": {}, "type": type(self).__name__}
-            parameters = inspect.signature(type(self)).parameters
             for k, v in kwargs.items():
-                if parameters[k].default != v:
-                    if isinstance(v, BaseComponent):
-                        self.pipeline_config["params"][k] = v.pipeline_config
-                    elif v is not None:
-                        self.pipeline_config["params"][k] = v
+                if isinstance(v, BaseComponent):
+                    self.pipeline_config["params"][k] = v.pipeline_config
+                elif v is not None:
+                    self.pipeline_config["params"][k] = v
