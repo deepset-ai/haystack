@@ -29,23 +29,79 @@ def launch_es():
         time.sleep(15)
 
 
-def print_answers(results: dict, details: str = "all"):
-    answers = results["answers"]
-    pp = pprint.PrettyPrinter(indent=4)
-    if details != "all":
-        if details == "minimal":
-            keys_to_keep = set(["answer", "context"])
-        elif details == "medium":
-            keys_to_keep = set(["answer", "context", "score"])
-        else:
-            keys_to_keep = answers.keys()
-
-        # filter the results
-        filtered_answers = []
-        for ans in answers:
-            filtered_answers.append({k: ans[k] for k in keys_to_keep})
-        pp.pprint(filtered_answers)
+def launch_milvus():
+    # Start a Milvus server
+    # You can start Milvus on your local machine instance using Docker. If Docker is not readily available in
+    # your environment (eg., in Colab notebooks)
+    logger.info("Starting Milvus ...")
+    logger.warning("Automatic Milvus config creation not yet implemented. "
+                   "If you are starting Milvus using launch_milvus(), "
+                   "make sure you have a properly populated milvus/conf folder. "
+                   "See (https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md) for more details.")
+    status = subprocess.run(
+        ['sudo docker run -d --name milvus_cpu_1.0.0 \
+          -p 19530:19530 \
+          -p 19121:19121 \
+          -v /home/$USER/milvus/db:/var/lib/milvus/db \
+          -v /home/$USER/milvus/conf:/var/lib/milvus/conf \
+          -v /home/$USER/milvus/logs:/var/lib/milvus/logs \
+          -v /home/$USER/milvus/wal:/var/lib/milvus/wal \
+          milvusdb/milvus:1.0.0-cpu-d030521-1ea92e'
+        ],
+        shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start Milvus through Docker but this failed. "
+                       "It is likely that there is already an existing Milvus instance running. ")
     else:
+        time.sleep(15)
+
+
+def print_answers(results: dict, details: str = "all"):
+    # TODO: unify the output format of Generator and Reader so that this function doesn't have the try/except
+    #  Or implement a class method like PredReader.print() and PredGenerator.print() that handles all this functionality.
+    # This default case is when the answers come from a Reader
+    try:
+        answers = results["answers"]
+        pp = pprint.PrettyPrinter(indent=4)
+        if details != "all":
+            if details == "minimal":
+                keys_to_keep = set(["answer", "context"])
+            elif details == "medium":
+                keys_to_keep = set(["answer", "context", "score"])
+            else:
+                keys_to_keep = answers.keys()
+
+            # filter the results
+            filtered_answers = []
+            for ans in answers:
+                filtered_answers.append({k: ans[k] for k in keys_to_keep})
+            pp.pprint(filtered_answers)
+        else:
+            pp.pprint(results)
+    # This fall back case is when the answers come from a Generator
+    except:
+        if details == "minimal":
+            print(f"Query: {results['query']}")
+            for a in results["answers"]:
+                print(f"Answer: {a['answer']}")
+        else:
+            pp.pprint(results)
+
+
+
+def print_documents(results: dict, max_text_len: int=None):
+    print(f"Query: {results['query']}")
+    pp = pprint.PrettyPrinter(indent=4)
+    for d in results["documents"]:
+        print()
+        new_text = d["text"][:max_text_len]
+        if len(new_text) != len(d["text"]):
+            new_text += "..."
+        results = {
+            "name": d["meta"]["name"],
+            "text": new_text
+        }
         pp.pprint(results)
 
 
