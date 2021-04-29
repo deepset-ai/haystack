@@ -60,7 +60,7 @@ class TikaConverter(BaseConverter):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(
+        self.set_config(
             tika_url=tika_url, remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
         )
 

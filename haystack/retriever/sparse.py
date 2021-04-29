@@ -54,7 +54,7 @@ class ElasticsearchRetriever(BaseRetriever):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
+        self.set_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
 
         self.document_store: ElasticsearchDocumentStore = document_store
         self.top_k = top_k
@@ -124,7 +124,7 @@ class TfidfRetriever(BaseRetriever):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(document_store=document_store, top_k=top_k)
+        self.set_config(document_store=document_store, top_k=top_k)
 
         self.vectorizer = TfidfVectorizer(
             lowercase=True,

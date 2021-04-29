@@ -99,7 +99,7 @@ class DensePassageRetriever(BaseRetriever):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(
+        self.set_config(
             document_store=document_store, query_embedding_model=query_embedding_model,
             passage_embedding_model=passage_embedding_model, single_model_path=single_model_path,
             model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
@@ -473,7 +473,7 @@ class EmbeddingRetriever(BaseRetriever):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(
+        self.set_config(
             document_store=document_store, embedding_model=embedding_model, model_version=model_version,
             use_gpu=use_gpu, model_format=model_format, pooling_strategy=pooling_strategy,
             emb_extraction_layer=emb_extraction_layer, top_k=top_k,

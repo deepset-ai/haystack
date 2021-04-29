@@ -59,7 +59,7 @@ class TransformersReader(BaseReader):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(
+        self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
             context_window_size=context_window_size, use_gpu=use_gpu, top_k=top_k, doc_stride=doc_stride,
             top_k_per_candidate=top_k_per_candidate, return_no_answers=return_no_answers, max_seq_len=max_seq_len,

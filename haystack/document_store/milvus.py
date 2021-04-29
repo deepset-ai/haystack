@@ -96,7 +96,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(
+        self.set_config(
             sql_url=sql_url, milvus_url=milvus_url, connection_pool=connection_pool, index=index, vector_dim=vector_dim,
             index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
             search_param=search_param, update_existing_documents=update_existing_documents,

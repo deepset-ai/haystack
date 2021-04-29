@@ -82,7 +82,7 @@ class TransformersSummarizer(BaseSummarizer):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(
+        self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
             max_length=max_length, min_length=min_length, use_gpu=use_gpu,
             clean_up_tokenization_spaces=clean_up_tokenization_spaces,

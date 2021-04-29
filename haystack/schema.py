@@ -262,7 +262,7 @@ class BaseComponent:
         """
         pass
 
-    def set_pipeline_config(self, **kwargs):
+    def set_config(self, **kwargs):
         """
         Save the init parameters of a component that later can be used with exporting
         YAML configuration of a Pipeline.

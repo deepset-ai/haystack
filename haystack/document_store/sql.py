@@ -90,7 +90,7 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_pipeline_config(
+        self.set_config(
             url=url, index=index, label_index=label_index, update_existing_documents=update_existing_documents
         )
 
