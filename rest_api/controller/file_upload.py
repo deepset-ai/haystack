@@ -44,6 +44,10 @@ def file_upload(
         file_path = Path(FILE_UPLOAD_PATH) / f"{uuid.uuid4().hex}_{file.filename}"
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        meta = json.loads(meta) or {}
+        meta["name"] = file.filename
+
         INDEXING_PIPELINE.run(
             file_path=file_path,
             remove_numeric_tables=remove_numeric_tables,
@@ -55,7 +59,7 @@ def file_upload(
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
-            meta=json.loads(meta) or {},
+            meta=meta,
         )
     finally:
         file.file.close()
