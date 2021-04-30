@@ -88,6 +88,12 @@ class SQLDocumentStore(BaseDocumentStore):
                                           added already exists. Using this parameter could cause performance degradation
                                           for document insertion.
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            url=url, index=index, label_index=label_index, update_existing_documents=update_existing_documents
+        )
+
         engine = create_engine(url)
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
