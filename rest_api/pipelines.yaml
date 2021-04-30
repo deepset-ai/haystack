@@ -20,6 +20,9 @@ components:    # define all the building-blocks for Pipeline
     type: PDFToTextConverter
   - name: Preprocessor
     type: PreProcessor
+    params:
+      split_by: word
+      split_length: 1000
   - name: FileTypeClassifier
     type: FileTypeClassifier
 
