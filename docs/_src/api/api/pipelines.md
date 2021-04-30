@@ -5,7 +5,7 @@
 ## Pipeline Objects
 
 ```python
-class Pipeline(ABC)
+class Pipeline()
 ```
 
 Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
