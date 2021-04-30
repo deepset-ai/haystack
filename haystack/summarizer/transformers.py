@@ -81,6 +81,14 @@ class TransformersSummarizer(BaseSummarizer):
                                         Important: The summary will depend on the order of the supplied documents!
         """
 
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
+            max_length=max_length, min_length=min_length, use_gpu=use_gpu,
+            clean_up_tokenization_spaces=clean_up_tokenization_spaces,
+            separator_for_single_summary=separator_for_single_summary, generate_single_summary=generate_single_summary,
+        )
+
         # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
         if tokenizer is None:
             tokenizer = model_name_or_path

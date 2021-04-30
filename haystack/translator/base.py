@@ -1,10 +1,10 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, Dict, List, Mapping, Optional, Union
 
-from haystack import Document
+from haystack import Document, BaseComponent
 
 
-class BaseTranslator(ABC):
+class BaseTranslator(BaseComponent):
     """
     Abstract class for a Translator component that translates either a query or a doc from language A to language B.
     """
@@ -24,7 +24,7 @@ class BaseTranslator(ABC):
         """
         pass
 
-    def run(
+    def run(  # type: ignore
         self,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
