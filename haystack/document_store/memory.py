@@ -44,6 +44,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            index=index, label_index=label_index, embedding_field=embedding_field, embedding_dim=embedding_dim,
+            return_embedding=return_embedding, similarity=similarity, progress_bar=progress_bar,
+        )
+
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index
         self.label_index: str = label_index

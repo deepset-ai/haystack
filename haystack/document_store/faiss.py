@@ -77,6 +77,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            sql_url=sql_url, vector_dim=vector_dim, faiss_index_factory_str=faiss_index_factory_str,
+            faiss_index=faiss_index, return_embedding=return_embedding,
+            update_existing_documents=update_existing_documents, index=index, similarity=similarity,
+            embedding_field=embedding_field, progress_bar=progress_bar
+        )
+
         self.vector_dim = vector_dim
         self.faiss_index_factory_str = faiss_index_factory_str
         self.faiss_indexes: Dict[str, faiss.swigfaiss.Index] = {}
