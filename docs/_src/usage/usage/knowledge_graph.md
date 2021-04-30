@@ -104,5 +104,5 @@ Otherwise, it cannot translate the name of the resource to the identifier used i
 For example, it can translate "Harry" to "hp:Harry_potter" only because we trained it to do so.
 
 Unfortunately, our pre-trained model for translating text queries does not work with your custom data.
-Instead, you need to train your own model. It needs to be trained according to the [seq2seq example for summarization with BART in transformers](https://github.com/huggingface/transformers/tree/master/examples/seq2seq).
+Instead, you need to train your own model. It needs to be trained according to the [seq2seq example for summarization with BART in transformers](https://github.com/huggingface/transformers/tree/master/examples/legacy/seq2seq).
 Haystack currently does not support the training of text2sparql models. We dont have concrete plans to extend the funtionality, but we are more than open to contributions. Don't hesitate to reach out! 
