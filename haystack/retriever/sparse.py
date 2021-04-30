@@ -52,6 +52,10 @@ class ElasticsearchRetriever(BaseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
+
         self.document_store: ElasticsearchDocumentStore = document_store
         self.top_k = top_k
         self.custom_query = custom_query
@@ -118,6 +122,10 @@ class TfidfRetriever(BaseRetriever):
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param top_k: How many documents to return per query.
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(document_store=document_store, top_k=top_k)
+
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
             stop_words=None,
