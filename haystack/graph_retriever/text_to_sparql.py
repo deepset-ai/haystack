@@ -22,7 +22,10 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         :param model_name_or_path: Name of or path to a pre-trained BartForConditionalGeneration model.
         :param top_k: How many SPARQL queries to generate per text query.
         """
-        
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(knowledge_graph=knowledge_graph, model_name_or_path=model_name_or_path, top_k=top_k)
+
         self.knowledge_graph = knowledge_graph
         # TODO We should extend this to any seq2seq models and use the AutoModel class
         self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)

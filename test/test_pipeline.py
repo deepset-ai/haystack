@@ -10,10 +10,9 @@ from haystack.retriever.sparse import ElasticsearchRetriever
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_load_yaml(document_store_with_docs):
+def test_load_and_save_yaml(document_store_with_docs, tmp_path):
     # test correct load of indexing pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(Path("samples/pipeline/test_pipeline.yaml"),
-                                       pipeline_name="indexing_pipeline")
+    pipeline = Pipeline.load_from_yaml(Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="indexing_pipeline")
     pipeline.run(file_path=Path("samples/pdf/sample_pdf_1.pdf"), top_k_retriever=10, top_k_reader=3)
 
     # test correct load of query pipeline from yaml
@@ -25,6 +24,40 @@ def test_load_yaml(document_store_with_docs):
     # test invalid pipeline name
     with pytest.raises(Exception):
         Pipeline.load_from_yaml(path=Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="invalid")
+
+    # test config export
+    pipeline.save_to_yaml(tmp_path / "test.yaml")
+    with open(tmp_path/"test.yaml", "r", encoding='utf-8') as stream:
+        saved_yaml = stream.read()
+    expected_yaml = '''
+        components:
+        - name: ESRetriever
+          params:
+            document_store: ElasticsearchDocumentStore
+          type: ElasticsearchRetriever
+        - name: ElasticsearchDocumentStore
+          params:
+            index: haystack_test_document
+            label_index: haystack_test_label
+          type: ElasticsearchDocumentStore
+        - name: Reader
+          params:
+            model_name_or_path: deepset/roberta-base-squad2
+            no_ans_boost: -10
+          type: FARMReader
+        pipelines:
+        - name: query
+          nodes:
+          - inputs:
+            - Query
+            name: ESRetriever
+          - inputs:
+            - ESRetriever
+            name: Reader
+          type: Query
+        version: '0.8'
+    '''
+    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
 
 @pytest.mark.slow
