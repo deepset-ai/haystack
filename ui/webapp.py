@@ -52,10 +52,10 @@ data_file = st.sidebar.file_uploader("", type=["pdf", "txt", "docx"])
 # Upload file
 if data_file:
     raw_json = upload_doc(data_file)
-    st.write(raw_json)
+    st.sidebar.write(raw_json)
     if debug:
         st.subheader("REST API JSON response")
-        st.write(raw_json)
+        st.sidebar.write(raw_json)
 
 # load csv into pandas dataframe
 if eval_mode:
