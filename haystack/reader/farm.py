@@ -54,7 +54,7 @@ class FARMReader(BaseReader):
         max_seq_len: int = 256,
         doc_stride: int = 128,
         progress_bar: bool = True,
-        duplicate_filtering: int = -1
+        duplicate_filtering: int = 0
     ):
 
         """
