@@ -132,7 +132,7 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
             index="haystack_test_eval_document",
         )
     assert eval_retriever.recall == 1.0
-    assert eval_reader.top_k_f1 == 0.7
+    assert round(eval_reader.top_k_f1, 4) == 0.8333
     assert eval_reader.top_k_em == 0.5
 
 
