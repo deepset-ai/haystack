@@ -2,6 +2,8 @@ import json
 import pandas as pd
 from tqdm import tqdm
 
+tqdm.pandas()
+
 COLUMN_NAMES = ["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"]
 
 class SquadData:
@@ -79,62 +81,70 @@ class SquadData:
         return c
 
     def df_to_data(self, df):
-        df_answers = df.groupby(["title", "context", "question", "id",  "is_impossible"])
+        print("Converting data frame to squad format data")
 
+        # Aggregate the answers of each question
+        print("Aggregating the answers of each question")
+        df_grouped_answers = df.groupby(["title", "context", "question", "id",  "is_impossible"])
+        df_aggregated_answers = df[["title", "context", "question", "id",  "is_impossible"]].drop_duplicates().reset_index()
+        answers = df_grouped_answers.progress_apply(self.aggregate_answers).rename("answers")
+        answers = pd.DataFrame(answers).reset_index()
+        df_aggregated_answers = pd.merge(df_aggregated_answers, answers)
+
+        # Aggregate the questions of each passage
+        print("Aggregating the questions of each paragraphs of each document")
+        df_grouped_questions = df_aggregated_answers.groupby(["title", "context"])
+        df_aggregated_questions = df[["title", "context"]].drop_duplicates().reset_index()
+        questions = df_grouped_questions.progress_apply(self.aggregate_questions).rename("qas")
+        questions = pd.DataFrame(questions).reset_index()
+        df_aggregated_questions = pd.merge(df_aggregated_questions, questions)
+
+        print("Aggregating the paragraphs of each document")
+        df_grouped_paragraphs = df_aggregated_questions.groupby(["title"])
+        df_aggregated_paragraphs = df[["title"]].drop_duplicates().reset_index()
+        paragraphs = df_grouped_paragraphs.progress_apply(self.aggregate_passages).rename("paragraphs")
+        paragraphs = pd.DataFrame(paragraphs).reset_index()
+        df_aggregated_paragraphs = pd.merge(df_aggregated_paragraphs, paragraphs)
+
+        df_aggregated_paragraphs = df_aggregated_paragraphs[["title", "paragraphs"]]
+        ret = df_aggregated_paragraphs.to_dict("records")
+
+        return ret
+
+    @staticmethod
+    def aggregate_passages(x):
+        x = x[["context", "qas"]]
+        ret = x.to_dict("records")
+        return ret
+
+    @staticmethod
+    def aggregate_questions(x):
+        x = x[["question", "id", "answers", "is_impossible"]]
+        ret = x.to_dict("records")
+        return ret
 
     @staticmethod
     def aggregate_answers(x):
-        print()
+        x = x[["answer_text", "answer_start"]]
+        x = x.rename(columns={"answer_text": "text"})
 
+        # Span anwser
+        try:
+            x["answer_start"] = x["answer_start"].astype(int)
+            ret = x.to_dict("records")
 
-    # def df_to_data(self, df):
-    #     ret = []
-    #     df_grouped_title = df.groupby("title")
-    #     for title, df_title in tqdm(df_grouped_title):
-    #         ret.append(
-    #             {
-    #                 "title": title,
-    #                 "paragraphs": self._paragraphs_from_df(df_title)
-    #             }
-    #         )
-    #     return ret
-    #
-    # def _paragraphs_from_df(self, df_title):
-    #     ret = []
-    #     df_grouped_context = df_title.groupby("context")
-    #     for context, df_context in df_grouped_context:
-    #         ret.append(
-    #             {
-    #                 "context": context,
-    #                 "qas": self._qas_from_df(df_context)
-    #             }
-    #         )
-    #     return ret
-    #
-    # def _qas_from_df(self, df_context):
-    #     ret = []
-    #     df_grouped_question = df_context.groupby(["question", "id", "is_impossible"])
-    #     for (question, id, is_impossible), df_question in df_grouped_question:
-    #         ret.append(
-    #             {
-    #                 "question": question,
-    #                 "id": id,
-    #                 "is_impossible": is_impossible,
-    #                 "answers": self._answers_from_df(df_question)
-    #             }
-    #         )
-    #     return ret
-    #
-    # def _answers_from_df(self, df_question):
-    #     df_question = df_question[df_question["is_impossible"] == False]
-    #     df_question = df_question[["answer_text", "answer_start"]]
-    #     df_question = df_question.rename(columns={"answer_text": "text"})
-    #     df_question["answer_start"] = df_question["answer_start"].astype(int)
-    #     ret = df_question.to_dict("records")
-    #     return ret
+        # No answer
+        except ValueError:
+            ret = []
+
+        return ret
 
 if __name__ == "__main__":
-    sd = SquadData.from_file("../data/squad20/dev-v2.0.json")
+    sd = SquadData.from_file("../data/squad20/train-v2.0.json")
     df = sd.to_df()
-    data = sd.df_to_data(df)
-    print()
+    data_round_trip = sd.df_to_data(df)
+    sd_round_trip = SquadData(data_round_trip)
+
+    print(sd.count("answers"))
+    print(sd_round_trip.count("answers"))
+
