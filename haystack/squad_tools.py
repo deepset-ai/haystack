@@ -1,6 +1,11 @@
 import json
 import pandas as pd
 from tqdm import tqdm
+import logging
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 tqdm.pandas()
 
@@ -81,10 +86,12 @@ class SquadData:
         return c
 
     def df_to_data(self, df):
-        print("Converting data frame to squad format data")
+
+        df = df[:100]
+        logger.info("Converting data frame to squad format data")
 
         # Aggregate the answers of each question
-        print("Aggregating the answers of each question")
+        logger.info("Aggregating the answers of each question")
         df_grouped_answers = df.groupby(["title", "context", "question", "id",  "is_impossible"])
         df_aggregated_answers = df[["title", "context", "question", "id",  "is_impossible"]].drop_duplicates().reset_index()
         answers = df_grouped_answers.progress_apply(self.aggregate_answers).rename("answers")
@@ -92,14 +99,14 @@ class SquadData:
         df_aggregated_answers = pd.merge(df_aggregated_answers, answers)
 
         # Aggregate the questions of each passage
-        print("Aggregating the questions of each paragraphs of each document")
+        logger.info("Aggregating the questions of each paragraphs of each document")
         df_grouped_questions = df_aggregated_answers.groupby(["title", "context"])
         df_aggregated_questions = df[["title", "context"]].drop_duplicates().reset_index()
         questions = df_grouped_questions.progress_apply(self.aggregate_questions).rename("qas")
         questions = pd.DataFrame(questions).reset_index()
         df_aggregated_questions = pd.merge(df_aggregated_questions, questions)
 
-        print("Aggregating the paragraphs of each document")
+        logger.info("Aggregating the paragraphs of each document")
         df_grouped_paragraphs = df_aggregated_questions.groupby(["title"])
         df_aggregated_paragraphs = df[["title"]].drop_duplicates().reset_index()
         paragraphs = df_grouped_paragraphs.progress_apply(self.aggregate_passages).rename("paragraphs")
@@ -141,10 +148,9 @@ class SquadData:
 
 if __name__ == "__main__":
     sd = SquadData.from_file("../data/squad20/train-v2.0.json")
-    df = sd.to_df()
-    data_round_trip = sd.df_to_data(df)
-    sd_round_trip = SquadData(data_round_trip)
-
+    sd_round_trip = SquadData(sd.df_to_data(sd.to_df()))
+    sd_round_round_trip = SquadData(sd_round_trip.df_to_data(sd_round_trip.to_df()))
+    
     print(sd.count("answers"))
     print(sd_round_trip.count("answers"))
-
+    print(sd_round_round_trip.count("answers"))
