@@ -96,11 +96,12 @@ class BaseRetriever(BaseComponent):
         # Collect questions and corresponding answers/document_ids in a dict
         question_label_dict = {}
         for label in labels:
+            key_tuple = (label.multiple_document_ids[0], label.question)
             if open_domain:
-                question_label_dict[label.question] = label.multiple_answers
+                question_label_dict[key_tuple] = label.multiple_answers
             else:
                 deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
-                question_label_dict[label.question] = deduplicated_doc_ids
+                question_label_dict[key_tuple] = deduplicated_doc_ids
 
         predictions = []
 
@@ -129,7 +130,7 @@ class BaseRetriever(BaseComponent):
                     summed_avg_precision += current_avg_precision / relevant_docs_found
         # Option 2: Strict evaluation by document ids that are listed in the labels
         else:
-            for question, gold_ids in tqdm(question_label_dict.items()):
+            for (_, question), gold_ids in tqdm(question_label_dict.items()):
                 retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 if return_preds:
                     predictions.append({"question": question, "retrieved_docs": retrieved_docs})
