@@ -180,11 +180,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                         scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
                                         timeout=timeout)
 
-            # Test connection
+        # Test connection
         try:
-            status = client.ping()
-            if not status:
-                raise ConnectionError(f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
+            # ping uses a HEAD request on the root URI. In some cases, the user might not have permissions for that,
+            # resulting in a HTTP Forbidden 403 response.
+            if username in ["", "elastic"]:
+                status = client.ping()
+                if not status:
+                    raise ConnectionError(
+                        f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance "
+                        f"at `{hosts}` and that it has finished the initial ramp up (can take > 30s)."
+                    )
         except Exception:
             raise ConnectionError(
                 f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
