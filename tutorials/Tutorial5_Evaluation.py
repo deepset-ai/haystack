@@ -57,6 +57,7 @@ def tutorial5_evaluation():
     # We first delete the custom tutorial indices to not have duplicate elements
     # and also split our documents into shorter passages using the PreProcessor
     preprocessor = PreProcessor(
+        split_by="word",
         split_length=500,
         split_overlap=0,
         split_respect_sentence_boundary=False,
@@ -75,7 +76,7 @@ def tutorial5_evaluation():
     # Let's prepare the labels that we need for the retriever and the reader
     labels = document_store.get_all_labels_aggregated(index=label_index)
     q_to_l_dict = {
-        l.question: {
+        (l.multiple_document_ids[0], l.question): {
             "retriever": l,
             "reader": l
         } for l in labels
@@ -89,7 +90,7 @@ def tutorial5_evaluation():
     # Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
     # DPR still outperforms Elastic's BM25 by a small margin here.
     # retriever = DensePassageRetriever(document_store=document_store,
-    #                                   query_embedding_model="facebook/dpr-qPreProuestion_encoder-single-nq-base",
+    #                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
     #                                   passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
     #                                   use_gpu=True,
     #                                   embed_title=True,
@@ -142,7 +143,7 @@ def tutorial5_evaluation():
         p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
         results = []
 
-        for q, l in q_to_l_dict.items():
+        for (_, q), l in q_to_l_dict.items():
             res = p.run(
                 query=q,
                 top_k_retriever=10,
@@ -162,6 +163,8 @@ def tutorial5_evaluation():
         reader.print_time()
         print()
         eval_reader.print(mode="pipeline")
+    else:
+        raise Exception()
 
 
 if __name__ == "__main__":
