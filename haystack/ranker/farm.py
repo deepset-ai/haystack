@@ -1,26 +1,18 @@
 import logging
 import multiprocessing
 from pathlib import Path
-from typing import List, Optional, Union, Dict, Any
-from collections import defaultdict
-from time import perf_counter
+from typing import List, Optional, Union
 
-import numpy as np
 from farm.data_handler.data_silo import DataSilo
-from farm.data_handler.processor import SquadProcessor, TextPairClassificationProcessor
-from farm.data_handler.dataloader import NamedDataLoader
-from farm.data_handler.inputs import QAInput, Question
+from farm.data_handler.processor import TextPairClassificationProcessor
 from farm.infer import Inferencer
 from farm.modeling.optimization import initialize_optimizer
 from farm.modeling.adaptive_model import BaseAdaptiveModel, AdaptiveModel
 from farm.train import Trainer
-from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
-from scipy.special import expit
 import shutil
 
 from haystack import Document
-from haystack.document_store.base import BaseDocumentStore
 from haystack.ranker.base import BaseRanker
 
 logger = logging.getLogger(__name__)
@@ -43,8 +35,6 @@ class FARMRanker(BaseRanker):
             model_version: Optional[str] = None,
             batch_size: int = 50,
             use_gpu: bool = True,
-            no_ans_boost: float = 0.0,
-            return_no_answer: bool = False,
             top_k: int = 10,
             top_k_per_candidate: int = 3,
             top_k_per_sample: int = 1,
@@ -97,12 +87,11 @@ class FARMRanker(BaseRanker):
             num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
         )
 
-        self.return_no_answers = return_no_answer
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
 
         self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
-                                          task_type="question_answering", max_seq_len=max_seq_len,
+                                          task_type="text_classification", max_seq_len=max_seq_len,
                                           doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
                                           disable_tqdm=not progress_bar,
                                           strict=False)
@@ -187,7 +176,7 @@ class FARMRanker(BaseRanker):
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
         label_list = ["start_token", "end_token"]
-        metric = "squad"
+        metric = "f1_macro"
         processor = TextPairClassificationProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
             max_seq_len=max_seq_len,
@@ -198,6 +187,7 @@ class FARMRanker(BaseRanker):
             dev_split=dev_split,
             test_filename=test_filename,
             data_dir=Path(data_dir),
+            delimiter="\t"
         )
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
@@ -264,67 +254,6 @@ class FARMRanker(BaseRanker):
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
-        """
-        Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
-
-        Returns list of dictionaries containing answers sorted by (desc.) probability
-
-        :param query_doc_list: List of dictionaries containing queries with their retrieved documents
-        :param top_k: The maximum number of answers to return for each query
-        :param batch_size: Number of samples the model receives in one batch for inference
-        :return: List of dictionaries containing query and answers
-        """
-
-        if top_k is None:
-            top_k = self.top_k
-        # convert input to FARM format
-        inputs = []
-        number_of_docs = []
-        labels = []
-
-        # build input objects for inference_from_objects
-        for query_with_docs in query_doc_list:
-            documents = query_with_docs["docs"]
-            query = query_with_docs["question"]
-            labels.append(query)
-            number_of_docs.append(len(documents))
-
-            for doc in documents:
-                cur = QAInput(doc_text=doc.text,
-                              questions=Question(text=query.question,
-                                                 uid=doc.id))
-                inputs.append(cur)
-
-        self.inferencer.batch_size = batch_size
-        # make predictions on all document-query pairs
-        predictions = self.inferencer.inference_from_objects(
-            objects=inputs, return_json=False, multiprocessing_chunksize=10
-        )
-
-        # group predictions together
-        grouped_predictions = []
-        left_idx = 0
-        right_idx = 0
-        for number in number_of_docs:
-            right_idx = left_idx + number
-            grouped_predictions.append(predictions[left_idx:right_idx])
-            left_idx = right_idx
-
-        result = []
-        for idx, group in enumerate(grouped_predictions):
-            answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k)
-            query = group[0].question
-            cur_label = labels[idx]
-            result.append({
-                "query": query,
-                "no_ans_gap": max_no_ans_gap,
-                "answers": answers,
-                "label": cur_label
-            })
-
-        return result
-
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use loaded ranker model to re-rank the supplied list of Document.
@@ -347,12 +276,22 @@ class FARMRanker(BaseRanker):
         #                                     uid=doc.id))
         #    inputs.append(cur)
 
-        # TODO calculate similarity of query and document for top_k documents with TextPairClassificationProcessor
-        # get scores from TextPairClassification model
-        predictions = self.inferencer.inference_from_objects(
-            objects=inputs, return_json=False, multiprocessing_chunksize=1
-        )
+        # calculate similarity of query and document for top_k documents with TextPairClassificationProcessor
+        #
+        #predictions = self.inferencer.inference_from_objects(
+        #    objects=inputs, return_json=False, multiprocessing_chunksize=1
+        #)
+        #basic_texts = [
+        #    {"text": ("how many times have real madrid won the champions league in a row",
+        #              "They have also won the competition the most times in a row, winning it five times from 1956 to 1960")},
+        #    {"text": ("how many times have real madrid won the champions league in a row", "Retrieved March 27 , 2018 .")},
+        #]
+        basic_texts = [{"text": (query, doc.text)} for doc in documents]
 
-        # TODO rank documents according to scores
+        result = self.inferencer.inference_from_dicts(dicts=basic_texts)
+        similarity_scores = [r["predictions"][0]["probability"] for r in result]
 
-        return documents
+        # rank documents according to scores
+        sorted_scores_and_documents = sorted(zip(similarity_scores, documents))
+        sorted_documents = [doc for _, doc in sorted_scores_and_documents]
+        return sorted_documents[:top_k]
