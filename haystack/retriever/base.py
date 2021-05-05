@@ -96,12 +96,12 @@ class BaseRetriever(BaseComponent):
         # Collect questions and corresponding answers/document_ids in a dict
         question_label_dict = {}
         for label in labels:
-            key_tuple = (label.multiple_document_ids[0], label.question)
+            id_question_tuple = (label.multiple_document_ids[0], label.question)
             if open_domain:
-                question_label_dict[key_tuple] = label.multiple_answers
+                question_label_dict[id_question_tuple] = label.multiple_answers
             else:
                 deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
-                question_label_dict[key_tuple] = deduplicated_doc_ids
+                question_label_dict[id_question_tuple] = deduplicated_doc_ids
 
         predictions = []
 
