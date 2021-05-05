@@ -20,7 +20,6 @@ def tutorial5_evaluation():
     ##############################################
     # Settings
     ##############################################
-
     # Choose from Evaluation style from ['retriever_closed', 'reader_closed', 'retriever_reader_open']
     # 'retriever_closed' - evaluates only the retriever, based on whether the gold_label document is retrieved.
     # 'reader_closed' - evaluates only the reader in a closed domain fashion i.e. the reader is given one query
@@ -164,7 +163,7 @@ def tutorial5_evaluation():
         print()
         eval_reader.print(mode="pipeline")
     else:
-        raise Exception()
+        raise ValueError(f'style={style} is not a valid option. Choose from retriever_closed, reader_closed, retriever_reader_open')
 
 
 if __name__ == "__main__":
