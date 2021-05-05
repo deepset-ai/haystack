@@ -78,15 +78,15 @@ class BaseDocumentStore(BaseComponent):
         # Collect all answers to a question in a dict
         question_ans_dict: dict = {}
         for l in all_labels:
-            key_tuple = (l.id, l.question)
+            id_question_tuple = (l.id, l.question)
             # only aggregate labels with correct answers, as only those can be currently used in evaluation
             if not l.is_correct_answer:
                 continue
 
-            if key_tuple in question_ans_dict:
-                question_ans_dict[key_tuple].append(l)
+            if id_question_tuple in question_ans_dict:
+                question_ans_dict[id_question_tuple].append(l)
             else:
-                question_ans_dict[key_tuple] = [l]
+                question_ans_dict[id_question_tuple] = [l]
 
         # Aggregate labels
         for q, ls in question_ans_dict.items():
