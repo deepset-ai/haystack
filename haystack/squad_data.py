@@ -17,7 +17,7 @@ COLUMN_NAMES = ["title", "context", "question", "id", "answer_text", "answer_sta
 
 class SquadData:
     """This class is designed to manipulate data that is in SQuAD format"""
-    def __init__(self, squad_data: Union[Dict, List]):
+    def __init__(self, squad_data):
         """
         :param squad_data: SQuAD format data, either as a dict with a `data` key, or just a list of SQuAD documents
         """
