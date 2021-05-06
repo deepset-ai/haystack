@@ -34,8 +34,17 @@ class BaseRanker(BaseComponent):
         else:
             results = []
 
-        results.update(**kwargs)
-        return results, "output_1"
+        #results.update(**kwargs)
+        #documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever, index=index)
+        document_ids = [doc.id for doc in results]
+        logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        output = {
+            "query": query,
+            "documents": results,
+            **kwargs
+        }
+
+        return output, "output_1"
 
     def timing(self, fn, attr_name):
         """Wrapper method used to time functions. """
@@ -95,96 +104,97 @@ class BaseRanker(BaseComponent):
         :param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                              contains the keys "predictions" and "metrics".
         """
-
-        # Extract all questions for evaluation
-        filters = {"origin": [label_origin]}
-
-        timed_retrieve = self.timing(self.retrieve, "retrieve_time")
-
-        labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
-
-        correct_retrievals = 0
-        summed_avg_precision = 0.0
-        summed_reciprocal_rank = 0.0
-
-        # Collect questions and corresponding answers/document_ids in a dict
-        question_label_dict = {}
-        for label in labels:
-            if open_domain:
-                question_label_dict[label.question] = label.multiple_answers
-            else:
-                deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
-                question_label_dict[label.question] = deduplicated_doc_ids
-
-        predictions = []
-
-        # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
-        logger.info("Performing eval queries...")
-        if open_domain:
-            for question, gold_answers in tqdm(question_label_dict.items()):
-                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
-                if return_preds:
-                    predictions.append({"question": question, "retrieved_docs": retrieved_docs})
-                # check if correct doc in retrieved docs
-                found_relevant_doc = False
-                relevant_docs_found = 0
-                current_avg_precision = 0.0
-                for doc_idx, doc in enumerate(retrieved_docs):
-                    for gold_answer in gold_answers:
-                        if gold_answer in doc.text:
-                            relevant_docs_found += 1
-                            if not found_relevant_doc:
-                                correct_retrievals += 1
-                                summed_reciprocal_rank += 1 / (doc_idx + 1)
-                            current_avg_precision += relevant_docs_found / (doc_idx + 1)
-                            found_relevant_doc = True
-                            break
-                if found_relevant_doc:
-                    summed_avg_precision += current_avg_precision / relevant_docs_found
-        # Option 2: Strict evaluation by document ids that are listed in the labels
-        else:
-            for question, gold_ids in tqdm(question_label_dict.items()):
-                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
-                if return_preds:
-                    predictions.append({"question": question, "retrieved_docs": retrieved_docs})
-                # check if correct doc in retrieved docs
-                found_relevant_doc = False
-                relevant_docs_found = 0
-                current_avg_precision = 0.0
-                for doc_idx, doc in enumerate(retrieved_docs):
-                    for gold_id in gold_ids:
-                        if str(doc.id) == gold_id:
-                            relevant_docs_found += 1
-                            if not found_relevant_doc:
-                                correct_retrievals += 1
-                                summed_reciprocal_rank += 1 / (doc_idx + 1)
-                            current_avg_precision += relevant_docs_found / (doc_idx + 1)
-                            found_relevant_doc = True
-                            break
-                if found_relevant_doc:
-                    all_relevant_docs = len(set(gold_ids))
-                    summed_avg_precision += current_avg_precision / all_relevant_docs
-        # Metrics
-        number_of_questions = len(question_label_dict)
-        recall = correct_retrievals / number_of_questions
-        mean_reciprocal_rank = summed_reciprocal_rank / number_of_questions
-        mean_avg_precision = summed_avg_precision / number_of_questions
-
-        logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
-                     f" the top-{top_k} candidate passages selected by the retriever."))
-
-        metrics =  {
-            "recall": recall,
-            "map": mean_avg_precision,
-            "mrr": mean_reciprocal_rank,
-            "retrieve_time": self.retrieve_time,
-            "n_questions": number_of_questions,
-            "top_k": top_k
-        }
-
-        if return_preds:
-            return {"metrics": metrics, "predictions": predictions}
-        else:
-            return metrics
+        raise NotImplementedError
+        # # Extract all questions for evaluation
+        # filters = {"origin": [label_origin]}
+        #
+        # # TODO self.predict vs. self.retrieve don't have the same signature
+        # timed_retrieve = self.timing(self.predict, "retrieve_time")
+        #
+        # labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
+        #
+        # correct_retrievals = 0
+        # summed_avg_precision = 0.0
+        # summed_reciprocal_rank = 0.0
+        #
+        # # Collect questions and corresponding answers/document_ids in a dict
+        # question_label_dict = {}
+        # for label in labels:
+        #     if open_domain:
+        #         question_label_dict[label.question] = label.multiple_answers
+        #     else:
+        #         deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
+        #         question_label_dict[label.question] = deduplicated_doc_ids
+        #
+        # predictions = []
+        #
+        # # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
+        # logger.info("Performing eval queries...")
+        # if open_domain:
+        #     for question, gold_answers in tqdm(question_label_dict.items()):
+        #         retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
+        #         if return_preds:
+        #             predictions.append({"question": question, "retrieved_docs": retrieved_docs})
+        #         # check if correct doc in retrieved docs
+        #         found_relevant_doc = False
+        #         relevant_docs_found = 0
+        #         current_avg_precision = 0.0
+        #         for doc_idx, doc in enumerate(retrieved_docs):
+        #             for gold_answer in gold_answers:
+        #                 if gold_answer in doc.text:
+        #                     relevant_docs_found += 1
+        #                     if not found_relevant_doc:
+        #                         correct_retrievals += 1
+        #                         summed_reciprocal_rank += 1 / (doc_idx + 1)
+        #                     current_avg_precision += relevant_docs_found / (doc_idx + 1)
+        #                     found_relevant_doc = True
+        #                     break
+        #         if found_relevant_doc:
+        #             summed_avg_precision += current_avg_precision / relevant_docs_found
+        # # Option 2: Strict evaluation by document ids that are listed in the labels
+        # else:
+        #     for question, gold_ids in tqdm(question_label_dict.items()):
+        #         retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
+        #         if return_preds:
+        #             predictions.append({"question": question, "retrieved_docs": retrieved_docs})
+        #         # check if correct doc in retrieved docs
+        #         found_relevant_doc = False
+        #         relevant_docs_found = 0
+        #         current_avg_precision = 0.0
+        #         for doc_idx, doc in enumerate(retrieved_docs):
+        #             for gold_id in gold_ids:
+        #                 if str(doc.id) == gold_id:
+        #                     relevant_docs_found += 1
+        #                     if not found_relevant_doc:
+        #                         correct_retrievals += 1
+        #                         summed_reciprocal_rank += 1 / (doc_idx + 1)
+        #                     current_avg_precision += relevant_docs_found / (doc_idx + 1)
+        #                     found_relevant_doc = True
+        #                     break
+        #         if found_relevant_doc:
+        #             all_relevant_docs = len(set(gold_ids))
+        #             summed_avg_precision += current_avg_precision / all_relevant_docs
+        # # Metrics
+        # number_of_questions = len(question_label_dict)
+        # recall = correct_retrievals / number_of_questions
+        # mean_reciprocal_rank = summed_reciprocal_rank / number_of_questions
+        # mean_avg_precision = summed_avg_precision / number_of_questions
+        #
+        # logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
+        #              f" the top-{top_k} candidate passages selected by the retriever."))
+        #
+        # metrics = {
+        #     "recall": recall,
+        #     "map": mean_avg_precision,
+        #     "mrr": mean_reciprocal_rank,
+        #     "retrieve_time": self.retrieve_time,
+        #     "n_questions": number_of_questions,
+        #     "top_k": top_k
+        # }
+        #
+        # if return_preds:
+        #     return {"metrics": metrics, "predictions": predictions}
+        # else:
+        #     return metrics
 
 

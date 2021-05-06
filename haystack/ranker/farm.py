@@ -7,7 +7,7 @@ from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import TextPairClassificationProcessor
 from farm.infer import Inferencer
 from farm.modeling.optimization import initialize_optimizer
-from farm.modeling.adaptive_model import BaseAdaptiveModel, AdaptiveModel
+from farm.modeling.adaptive_model import BaseAdaptiveModel
 from farm.train import Trainer
 from farm.utils import set_all_seeds, initialize_device_settings
 import shutil
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class FARMRanker(BaseRanker):
     """
-    Transformer based model for Document Reranking using the TextPairClassifier of FARM framework (https://github.com/deepset-ai/FARM).
+    Transformer based model for Document Re-ranking using the TextPairClassifier of FARM framework (https://github.com/deepset-ai/FARM).
     While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interface remains the same.
 
     |  With a FARMRanker, you can:
@@ -36,11 +36,8 @@ class FARMRanker(BaseRanker):
             batch_size: int = 50,
             use_gpu: bool = True,
             top_k: int = 10,
-            top_k_per_candidate: int = 3,
-            top_k_per_sample: int = 1,
             num_processes: Optional[int] = None,
             max_seq_len: int = 256,
-            doc_stride: int = 128,
             progress_bar: bool = True
     ):
 
@@ -53,28 +50,11 @@ class FARMRanker(BaseRanker):
                            Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
                            to a value so only a single batch is used.
         :param use_gpu: Whether to use GPU (if available)
-        :param no_ans_boost: How much the no_answer logit is boosted/increased.
-        If set to 0 (default), the no_answer logit is not changed.
-        If a negative number, there is a lower chance of "no_answer" being predicted.
-        If a positive number, there is an increased chance of "no_answer"
-        :param return_no_answer: Whether to include no_answer predictions in the results.
-        :param top_k: The maximum number of answers to return
-        :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
-        Note that this is not the number of "final answers" you will receive
-        (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
-        and that FARM includes no_answer in the sorted list of predictions.
-        :param top_k_per_sample: How many answers to extract from each small text passage that the model can process at once
-        (one "candidate doc" is usually split into many smaller "passages").
-        You usually want a very small value here, as it slows down inference
-        and you don't gain much of quality by having multiple answers from one passage.
-        Note that this is not the number of "final answers" you will receive
-        (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
-        and that FARM includes no_answer in the sorted list of predictions.
+        :param top_k: The maximum number of documents to return
         :param num_processes: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
                               multiprocessing. Set to None to let Inferencer determine optimum number. If you
                               want to debug the Language Model, you might need to disable multiprocessing!
         :param max_seq_len: Max sequence length of one input text for the model
-        :param doc_stride: Length of striding window for splitting long texts (used if ``len(text) > max_seq_len``)
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
@@ -82,17 +62,15 @@ class FARMRanker(BaseRanker):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version,
-            batch_size=batch_size, use_gpu=use_gpu,
-            top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
-            num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
+            batch_size=batch_size, use_gpu=use_gpu, top_k=top_k,
+            num_processes=num_processes, max_seq_len=max_seq_len, progress_bar=progress_bar,
         )
 
         self.top_k = top_k
-        self.top_k_per_candidate = top_k_per_candidate
 
         self.inferencer = Inferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
                                           task_type="text_classification", max_seq_len=max_seq_len,
-                                          doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
+                                          num_processes=num_processes, revision=model_version,
                                           disable_tqdm=not progress_bar,
                                           strict=False)
 
@@ -162,7 +140,7 @@ class FARMRanker(BaseRanker):
 
         set_all_seeds(seed=42)
 
-        # For these variables, by default, we use the value set when initializing the FARMReader.
+        # For these variables, by default, we use the value set when initializing the FARMRanker.
         # These can also be manually set when train() is called if you want a different value at train vs inference
         if use_gpu is None:
             use_gpu = self.use_gpu
@@ -175,7 +153,7 @@ class FARMRanker(BaseRanker):
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
-        label_list = ["start_token", "end_token"]
+        label_list = ["0", "1"]
         metric = "f1_macro"
         processor = TextPairClassificationProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
@@ -204,7 +182,6 @@ class FARMRanker(BaseRanker):
         # 3. Create an optimizer and pass the already initialized model
         model, optimizer, lr_schedule = initialize_optimizer(
             model=model,
-            # model=self.inferencer.model,
             learning_rate=learning_rate,
             schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
@@ -233,13 +210,10 @@ class FARMRanker(BaseRanker):
     def update_parameters(
             self,
             max_seq_len: Optional[int] = None,
-            doc_stride: Optional[int] = None,
     ):
         """
         Hot update parameters of a loaded Ranker. It may not to be safe when processing concurrent requests.
         """
-        if doc_stride is not None:
-            self.inferencer.processor.doc_stride = doc_stride
         if max_seq_len is not None:
             self.inferencer.processor.max_seq_len = max_seq_len
             self.max_seq_len = max_seq_len
@@ -254,6 +228,19 @@ class FARMRanker(BaseRanker):
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
+    def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
+        """
+        Use loaded Ranker model to, for a list of queries, rank each query's supplied list of Document.
+
+        Returns list of dictionary of query and list of document sorted by (desc.) similarity with query
+
+        :param query_doc_list: List of dictionaries containing queries with their retrieved documents
+        :param top_k: The maximum number of answers to return for each query
+        :param batch_size: Number of samples the model receives in one batch for inference
+        :return: List of dictionaries containing query and ranked list of Document
+        """
+        raise NotImplementedError
+
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use loaded ranker model to re-rank the supplied list of Document.
@@ -261,35 +248,17 @@ class FARMRanker(BaseRanker):
         Returns list of Document sorted by (desc.) TextPairClassification similarity with the query.
 
         :param query: Query string
-        :param documents: List of Document in which to search for the answer
-        :param top_k: The maximum number of answers to return
+        :param documents: List of Document to be re-ranked
+        :param top_k: The maximum number of documents to return
         :return: List of Document
         """
         if top_k is None:
             top_k = self.top_k
 
-        # convert input to FARM format
-        inputs = []
-        # for doc in documents:
-        #    cur = QAInput(doc_text=doc.text,
-        #                  questions=Question(text=query,
-        #                                     uid=doc.id))
-        #    inputs.append(cur)
-
-        # calculate similarity of query and document for top_k documents with TextPairClassificationProcessor
-        #
-        #predictions = self.inferencer.inference_from_objects(
-        #    objects=inputs, return_json=False, multiprocessing_chunksize=1
-        #)
-        #basic_texts = [
-        #    {"text": ("how many times have real madrid won the champions league in a row",
-        #              "They have also won the competition the most times in a row, winning it five times from 1956 to 1960")},
-        #    {"text": ("how many times have real madrid won the champions league in a row", "Retrieved March 27 , 2018 .")},
-        #]
-        basic_texts = [{"text": (query, doc.text)} for doc in documents]
-
-        result = self.inferencer.inference_from_dicts(dicts=basic_texts)
-        similarity_scores = [r["predictions"][0]["probability"] for r in result]
+        # calculate similarity of query and each document
+        query_and_docs = [{"text": (query, doc.text)} for doc in documents]
+        result = self.inferencer.inference_from_dicts(dicts=query_and_docs)
+        similarity_scores = [pred["probability"] for preds in result for pred in preds["predictions"]]
 
         # rank documents according to scores
         sorted_scores_and_documents = sorted(zip(similarity_scores, documents))
