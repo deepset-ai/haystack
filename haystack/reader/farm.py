@@ -504,6 +504,7 @@ class FARMReader(BaseReader):
                         else:
                             # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
                             if len(aggregated_per_question[id_question_tuple]["answers"]) >= 6:
+                                logger.warning(f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.question}, label_id: {label.id})")
                                 continue
                             aggregated_per_question[id_question_tuple]["answers"].append({
                                         "text": label.answer,
