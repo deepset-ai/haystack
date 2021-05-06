@@ -7,6 +7,8 @@ import random
 
 from haystack.schema import Document, Label
 
+from farm.data_handler.utils import read_squad_file
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -245,6 +247,9 @@ class SquadData:
         return self.df["title"].unique().tolist()
 
 if __name__ == "__main__":
+    # Download the SQuAD dataset if it isn't at target directory
+    read_squad_file( "../data/squad20/train-v2.0.json")
+
     filename1 = "../data/squad20/train-v2.0.json"
     filename2 = "../data/squad20/dev-v2.0.json"
 
@@ -261,7 +266,7 @@ if __name__ == "__main__":
     sd.set_data(sample2)
 
     # Save this sample of 100
-    sd.save("sample.json")
+    sd.save("../data/squad20/sample.json")
 
     paragraphs = sd.get_all_paragraphs()
     questions = sd.get_all_questions()
@@ -276,4 +281,4 @@ if __name__ == "__main__":
 
     print(n_qs)
     print(n_as)
-    print(n_qs)
+    print(n_ps)
