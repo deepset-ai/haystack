@@ -176,7 +176,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 hosts=hosts, http_auth=aws4auth, connection_class=RequestsHttpConnection, use_ssl=True, verify_certs=True, timeout=timeout)
         else:
             # standard http_auth
-            client = Elasticsearch(hosts=hosts, http_auth=(username, password),
+            client = Elasticsearch(hosts=host, port=port, http_auth=(username, password),
                                         scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
                                         timeout=timeout)
 
