@@ -2,6 +2,9 @@ import pytest
 from haystack.document_store.base import BaseDocumentStore
 from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.finder import Finder
+from haystack.eval import EvalReader, EvalRetriever
+from haystack import Pipeline
+
 
 
 @pytest.mark.parametrize("batch_size", [None, 20])
@@ -89,6 +92,48 @@ def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, 
     assert results["mrr"] == 1.0
     if not open_domain:
         assert results["map"] == 1.0
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
+def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
+    # add eval data (SQUAD format)
+    document_store.add_eval_data(
+        filename="samples/squad/tiny.json",
+        doc_index="haystack_test_eval_document",
+        label_index="haystack_test_feedback",
+    )
+
+    labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
+    q_to_l_dict = {
+        l.question: {
+            "retriever": l,
+            "reader": l
+        } for l in labels
+    }
+
+    eval_retriever = EvalRetriever()
+    eval_reader = EvalReader()
+
+    assert document_store.get_document_count(index="haystack_test_eval_document") == 2
+    p = Pipeline()
+    p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+    p.add_node(component=eval_retriever, name="EvalRetriever", inputs=["ESRetriever"])
+    p.add_node(component=reader, name="QAReader", inputs=["EvalRetriever"])
+    p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
+    for q, l in q_to_l_dict.items():
+        res = p.run(
+            query=q,
+            top_k_retriever=10,
+            labels=l,
+            top_k_reader=10,
+            index="haystack_test_eval_document",
+        )
+    assert eval_retriever.recall == 1.0
+    assert round(eval_reader.top_k_f1, 4) == 0.8333
+    assert eval_reader.top_k_em == 0.5
 
 
 @pytest.mark.elasticsearch

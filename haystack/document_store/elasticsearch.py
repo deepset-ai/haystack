@@ -4,7 +4,7 @@ import time
 from copy import deepcopy
 from string import Template
 from typing import List, Optional, Union, Dict, Any, Generator
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import numpy as np
@@ -26,6 +26,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         password: str = "",
         api_key_id: Optional[str] = None,
         api_key: Optional[str] = None,
+        aws4auth = None,
         index: str = "document",
         label_index: str = "label",
         search_fields: Union[str, list] = "text",
@@ -60,6 +61,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param password: password (standard authentication via http_auth)
         :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
         :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
         :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
         :param search_fields: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
@@ -92,9 +94,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param return_embedding: To return document embedding
 
         """
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            host=host, port=port, username=username, password=password, api_key_id=api_key_id, api_key=api_key,
+            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields, text_field=text_field,
+            name_field=name_field, embedding_field=embedding_field, embedding_dim=embedding_dim,
+            custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
+            ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
+            update_existing_documents=update_existing_documents, refresh_type=refresh_type, similarity=similarity,
+            timeout=timeout, return_embedding=return_embedding,
+        )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
-                                           api_key=api_key, api_key_id=api_key_id, scheme=scheme,
+                                           api_key=api_key, api_key_id=api_key_id, aws4auth=aws4auth, scheme=scheme,
                                            ca_certs=ca_certs, verify_certs=verify_certs,timeout=timeout)
 
         # configure mappings to ES fields that will be used for querying / displaying results
@@ -134,6 +146,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              password: str,
                              api_key_id: Optional[str],
                              api_key: Optional[str],
+                             aws4auth,
                              scheme: str,
                              ca_certs: Optional[str],
                              verify_certs: bool,
@@ -154,19 +167,30 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         if api_key:
             # api key authentication
+            client = Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
+                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
+        elif aws4auth:
+            # aws elasticsearch with IAM
+            # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
+            client = Elasticsearch(
+                hosts=hosts, http_auth=aws4auth, connection_class=RequestsHttpConnection, use_ssl=True, verify_certs=True, timeout=timeout)
+        else:
+            # standard http_auth
             client = Elasticsearch(hosts=hosts, http_auth=(username, password),
                                         scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
                                         timeout=timeout)
-        else:
-            # standard http_auth
-            client = Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
-                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
 
-            # Test connection
+        # Test connection
         try:
-            status = client.ping()
-            if not status:
-                raise ConnectionError(f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
+            # ping uses a HEAD request on the root URI. In some cases, the user might not have permissions for that,
+            # resulting in a HTTP Forbidden 403 response.
+            if username in ["", "elastic"]:
+                status = client.ping()
+                if not status:
+                    raise ConnectionError(
+                        f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance "
+                        f"at `{hosts}` and that it has finished the initial ramp up (can take > 30s)."
+                    )
         except Exception:
             raise ConnectionError(
                 f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
@@ -481,6 +505,32 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         Return the number of labels in the document store
         """
         return self.get_document_count(index=index)
+
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
+        """
+        Return the count of embeddings in the document store.
+        """
+
+        index = index or self.index
+
+        body: dict = {"query": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}
+        if filters:
+            filter_clause = []
+            for key, values in filters.items():
+                if type(values) != list:
+                    raise ValueError(
+                        f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                        'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
+                filter_clause.append(
+                    {
+                        "terms": {key: values}
+                    }
+                )
+            body["query"]["bool"]["filter"] = filter_clause
+
+        result = self.client.count(index=index, body=body)
+        count = result["count"]
+        return count
 
     def get_all_documents(
         self,

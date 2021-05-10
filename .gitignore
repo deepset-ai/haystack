@@ -149,6 +149,7 @@ tutorials/cache
 tutorials/mlruns
 tutorials/model
 models
+saved_models
 *_build
 
 .DS_Store

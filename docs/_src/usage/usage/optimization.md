@@ -49,16 +49,9 @@ However, passing more documents to the `Reader` will create a larger workload fo
 
 These parameters can easily be tweaked as follows if using a `Finder`:
 ``` python
-answers = finder.get_answers(retriever_top_k=10,
-                             reader_top_k=5)
+answers = pipeline.run(query="What did Einstein work on?", top_k_retriever=10, top_k_reader=5)
 ```
 or like this if directly calling the `Retriever`:
 ``` python
 retrieved_docs = retriever.retrieve(top_k=10)
 ```
-
-<div class="recommendation">
-
-**Tip:** The Finder class is being deprecated and has been replaced by a more powerful [Pipelines class](/docs/latest/pipelinesmd).
-
-</div>

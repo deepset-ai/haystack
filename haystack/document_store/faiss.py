@@ -2,7 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
-import faiss
+try:
+    import faiss
+except ImportError:
+    faiss = None
 import numpy as np
 
 from haystack import Document
@@ -32,7 +35,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         sql_url: str = "sqlite:///",
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
-        faiss_index: Optional[faiss.swigfaiss.Index] = None,
+        faiss_index: Optional["faiss.swigfaiss.Index"] = None,
         return_embedding: bool = False,
         update_existing_documents: bool = False,
         index: str = "document",
@@ -51,8 +54,8 @@ class FAISSDocumentStore(SQLDocumentStore):
                                         Recommended options:
                                         - "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
                                         - "HNSW": Graph-based heuristic. If not further specified,
-                                                  we use a RAM intense, but more accurate config:
-                                                  HNSW256, efConstruction=256 and efSearch=256
+                                                  we use the following config:
+                                                  HNSW64, efConstruction=80 and efSearch=20
                                         - "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
                                                           Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
                                         For more details see:
@@ -74,6 +77,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            sql_url=sql_url, vector_dim=vector_dim, faiss_index_factory_str=faiss_index_factory_str,
+            faiss_index=faiss_index, return_embedding=return_embedding,
+            update_existing_documents=update_existing_documents, index=index, similarity=similarity,
+            embedding_field=embedding_field, progress_bar=progress_bar
+        )
+
         self.vector_dim = vector_dim
         self.faiss_index_factory_str = faiss_index_factory_str
         self.faiss_indexes: Dict[str, faiss.swigfaiss.Index] = {}
@@ -81,7 +93,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.faiss_indexes[index] = faiss_index
         else:
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim, index_factory=faiss_index_factory_str, **kwargs
+                vector_dim=self.vector_dim,
+                index_factory=faiss_index_factory_str,
+                metric_type=faiss.METRIC_INNER_PRODUCT,
+                **kwargs
             )
 
         self.return_embedding = return_embedding
@@ -99,11 +114,11 @@ class FAISSDocumentStore(SQLDocumentStore):
             index=index
         )
 
-    def _create_new_index(self, vector_dim: int, index_factory: str = "Flat", metric_type=faiss.METRIC_INNER_PRODUCT, **kwargs):
+    def _create_new_index(self, vector_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
         if index_factory == "HNSW" and metric_type == faiss.METRIC_INNER_PRODUCT:
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
-            n_links = kwargs.get("n_links", 128)
+            n_links = kwargs.get("n_links", 64)
             index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
             index.hnsw.efSearch = kwargs.get("efSearch", 20)#20
             index.hnsw.efConstruction = kwargs.get("efConstruction", 80)#80
@@ -131,7 +146,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         index = index or self.index
         if not self.faiss_indexes.get(index):
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim, index_factory=self.faiss_index_factory_str
+                vector_dim=self.vector_dim,
+                index_factory=self.faiss_index_factory_str,
+                metric_type=faiss.METRIC_INNER_PRODUCT,
             )
 
         field_map = self._create_document_field_map()
@@ -191,6 +208,14 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
 
         index = index or self.index
+
+        if update_existing_embeddings is True:
+            if filters is None:
+                self.faiss_indexes[index].reset()
+                self.reset_vector_ids(index)
+            else:
+                raise Exception("update_existing_embeddings=True is not supported with filters.")
+
         if not self.faiss_indexes.get(index):
             raise ValueError("Couldn't find a FAISS index. Try to init the FAISSDocumentStore() again ...")
 
@@ -210,7 +235,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             only_documents_without_embedding=not update_existing_embeddings
         )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
@@ -282,6 +307,15 @@ class FAISSDocumentStore(SQLDocumentStore):
                     doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
         return documents
 
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
+        """
+        Return the count of embeddings in the document store.
+        """
+        if filters:
+            raise Exception("filters are not supported for get_embedding_count in FAISSDocumentStore")
+        index = index or self.index
+        return self.faiss_indexes[index].ntotal
+
     def train_index(
         self,
         documents: Optional[Union[List[dict], List[Document]]],
@@ -315,7 +349,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         Delete all documents from the document store.
         """
         if filters:
-            raise Exception("filters are supported for deleting documents in FAISSDocumentStore.")
+            logger.warning("Filters are not supported for deleting documents in FAISSDocumentStore.")
         index = index or self.index
         if index in self.faiss_indexes.keys():
             self.faiss_indexes[index].reset()
@@ -341,7 +375,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :return:
         """
         if filters:
-            raise Exception("Query filters are not implemented for the FAISSDocumentStore.")
+            logger.warning("Query filters are not implemented for the FAISSDocumentStore.")
 
         index = index or self.index
         if not self.faiss_indexes.get(index):

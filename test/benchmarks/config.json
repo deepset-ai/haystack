@@ -3,7 +3,19 @@
     "full": {
       "retriever_doc_stores": [
         [
+          "dpr",
+          "milvus_flat"
+        ],
+        [
+          "dpr",
+          "milvus_hnsw"
+        ],
+        [
           "elastic",
+          "elasticsearch"
+        ],
+        [
+          "sentence_transformers",
           "elasticsearch"
         ],
         [
@@ -41,7 +53,7 @@
     }
   },
   "filenames": {
-    "data_s3_url": "s3://ext-haystack-retriever-eval/",
+    "data_s3_url": "https://ext-haystack-retriever-eval.s3-eu-west-1.amazonaws.com/",
     "data_dir": "../../data/retriever/",
     "filename_gold": "nq2squad-dev.json",
     "filenames_negative": {

@@ -27,6 +27,10 @@ class BaseConverter(BaseComponent):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+
         self.remove_numeric_tables = remove_numeric_tables
         self.valid_languages = valid_languages
 
@@ -37,6 +41,7 @@ class BaseConverter(BaseComponent):
         meta: Optional[Dict[str, str]],
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = "utf-8",
     ) -> Dict[str, Any]:
         """
         Convert a file to a dictionary containing the text and any associated meta data.
@@ -56,6 +61,7 @@ class BaseConverter(BaseComponent):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
+        :param encoding: Select the file encoding (default is `utf-8`)
         """
         pass
 
@@ -76,14 +82,8 @@ class BaseConverter(BaseComponent):
         else:
             return False
 
-    def run(
-        self,
-        file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
-        remove_numeric_tables: Optional[bool] = None,
-        valid_languages: Optional[List[str]] = None,
-        **kwargs
-    ):
+    def run(self, file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, # type: ignore
+        valid_languages: Optional[List[str]] = None, **kwargs): # type: ignore
         document = self.convert(
             file_path=file_path,
             meta=meta,
@@ -93,3 +93,19 @@ class BaseConverter(BaseComponent):
 
         result = {"document": document, **kwargs}
         return result, "output_1"
+
+
+class FileTypeClassifier(BaseComponent):
+    """
+    Route files in an Indexing Pipeline to corresponding file converters.
+    """
+    outgoing_edges = 5
+
+    def run(self, file_path: Path, **kwargs):  # type: ignore
+        output = {"file_path": file_path, **kwargs}
+        ext = file_path.name.split(".")[-1].lower()
+        try:
+            index = ["txt", "pdf", "md", "docx", "html"].index(ext) + 1
+            return output, f"output_{index}"
+        except ValueError:
+            raise Exception(f"Files with an extension '{ext}' are not supported.")

@@ -56,6 +56,12 @@ class TransformersTranslator(BaseTranslator):
         :param clean_up_tokenization_spaces: Whether or not to clean up the tokenization spaces. (default True)
         """
 
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            model_name_or_path=model_name_or_path, tokenizer_name=tokenizer_name, max_seq_len=max_seq_len,
+            clean_up_tokenization_spaces=clean_up_tokenization_spaces,
+        )
+
         self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         tokenizer_name = tokenizer_name or model_name_or_path
@@ -73,6 +79,9 @@ class TransformersTranslator(BaseTranslator):
     ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
         """
         Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
+        :param query: The query string to translate
+        :param documents: The documents to translate
+        :param dict_key:
         """
         if not query and not documents:
             raise AttributeError("Translator need query or documents to perform translation")

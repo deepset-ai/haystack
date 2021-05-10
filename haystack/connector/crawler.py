@@ -142,19 +142,15 @@ class Crawler(BaseComponent):
             if base_url:
                 data['meta']['base_url'] = base_url
             data['text'] = text
-            with open(file_path, 'w') as f:
+            with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(str(data))
             paths.append(file_path)
 
         return paths
 
-    def run(self,
-            output_dir: Union[str, Path, None] = None,
-            urls: Optional[List[str]] = None,
-            crawler_depth: Optional[int] = None,
-            filter_urls: Optional[List] = None,
-            overwrite_existing_files: Optional[bool] = None,
-            **kwargs) -> Tuple[Dict, str]:
+    def run(self, output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, # type: ignore
+            crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, # type: ignore
+            overwrite_existing_files: Optional[bool] = None, **kwargs) -> Tuple[Dict, str]: # type: ignore
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 

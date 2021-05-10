@@ -1,4 +1,4 @@
-farm==0.6.2
+farm==0.7.1
 --find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn
@@ -14,6 +14,7 @@ langdetect # for PDF conversions
 # optional: sentence-transformers
 python-multipart
 python-docx
+sqlalchemy>=1.4.2
 sqlalchemy_utils
 # for using FAISS with GPUs, install faiss-gpu
 faiss-cpu>=1.6.3
@@ -28,3 +29,4 @@ pymilvus
 # Optional: For crawling
 #selenium
 #webdriver-manager
+SPARQLWrapper

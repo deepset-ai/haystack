@@ -1,0 +1,50 @@
+version: '0.7'
+
+components:    # define all the building-blocks for Pipeline
+  - name: ElasticsearchDocumentStore
+    type: ElasticsearchDocumentStore
+    params:
+      host: localhost
+  - name: ESRetriever
+    type: ElasticsearchRetriever
+    params:
+      document_store: ElasticsearchDocumentStore    # params can reference other components defined in the YAML
+      top_k: 5
+  - name: Reader       # custom-name for the component; helpful for visualization & debugging
+    type: FARMReader    # Haystack Class name for the component
+    params:
+      model_name_or_path: deepset/roberta-base-squad2
+  - name: TextFileConverter
+    type: TextConverter
+  - name: PDFFileConverter
+    type: PDFToTextConverter
+  - name: Preprocessor
+    type: PreProcessor
+    params:
+      split_by: word
+      split_length: 1000
+  - name: FileTypeClassifier
+    type: FileTypeClassifier
+
+pipelines:
+  - name: query    # a sample extractive-qa Pipeline
+    type: Query
+    nodes:
+      - name: ESRetriever
+        inputs: [Query]
+      - name: Reader
+        inputs: [ESRetriever]
+
+  - name: indexing
+    type: Indexing
+    nodes:
+      - name: FileTypeClassifier
+        inputs: [File]
+      - name: TextFileConverter
+        inputs: [FileTypeClassifier.output_1]
+      - name: PDFFileConverter
+        inputs: [FileTypeClassifier.output_2]
+      - name: Preprocessor
+        inputs: [PDFFileConverter, TextFileConverter]
+      - name: ElasticsearchDocumentStore
+        inputs: [Preprocessor]

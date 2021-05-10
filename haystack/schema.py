@@ -1,6 +1,7 @@
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
 import numpy as np
+from abc import abstractmethod
 
 
 class Document:
@@ -227,6 +228,7 @@ class BaseComponent:
 
     outgoing_edges: int
     subclasses: dict = {}
+    pipeline_config: dict = {}
 
     def __init_subclass__(cls, **kwargs):
         """ This automatically keeps track of all available subclasses.
@@ -247,3 +249,30 @@ class BaseComponent:
             raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
         instance = cls.subclasses[component_type](**kwargs)
         return instance
+
+    @abstractmethod
+    def run(self, *args: Any, **kwargs: Any):
+        """
+        Method that will be executed when the node in the graph is called.
+        The argument that are passed can vary between different types of nodes
+        (e.g. retriever nodes expect different args than a reader node)
+        See an example for an implementation in haystack/reader/base/BaseReader.py
+        :param kwargs:
+        :return:
+        """
+        pass
+
+    def set_config(self, **kwargs):
+        """
+        Save the init parameters of a component that later can be used with exporting
+        YAML configuration of a Pipeline.
+
+        :param kwargs: all parameters passed to the __init__() of the Component.
+        """
+        if not self.pipeline_config:
+            self.pipeline_config = {"params": {}, "type": type(self).__name__}
+            for k, v in kwargs.items():
+                if isinstance(v, BaseComponent):
+                    self.pipeline_config["params"][k] = v.pipeline_config
+                elif v is not None:
+                    self.pipeline_config["params"][k] = v

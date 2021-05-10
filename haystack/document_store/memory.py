@@ -44,6 +44,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            index=index, label_index=label_index, embedding_field=embedding_field, embedding_dim=embedding_dim,
+            return_embedding=return_embedding, similarity=similarity, progress_bar=progress_bar,
+        )
+
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index
         self.label_index: str = label_index
@@ -200,7 +207,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         document_count = len(result)
         logger.info(f"Updating embeddings for {document_count} docs ...")
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
@@ -219,6 +226,14 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         documents = self.get_all_documents(index=index, filters=filters)
         return len(documents)
+
+    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the count of embeddings in the document store.
+        """
+        documents = self.get_all_documents(filters=filters, index=index)
+        embedding_count = sum(doc.embedding is not None for doc in documents)
+        return embedding_count
 
     def get_label_count(self, index: Optional[str] = None) -> int:
         """

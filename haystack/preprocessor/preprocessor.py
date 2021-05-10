@@ -44,7 +44,19 @@ class PreProcessor(BasePreProcessor):
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
         """
-        nltk.download("punkt")
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            clean_whitespace=clean_whitespace, clean_header_footer=clean_header_footer,
+            clean_empty_lines=clean_empty_lines, split_by=split_by, split_length=split_length,
+            split_overlap=split_overlap, split_respect_sentence_boundary=split_respect_sentence_boundary,
+        )
+
+        try:
+            nltk.data.find('tokenizers/punkt')
+        except LookupError:
+            nltk.download('punkt')
+            
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
@@ -147,11 +159,18 @@ class PreProcessor(BasePreProcessor):
         if not split_length:
             raise Exception("split_length needs be set when using split_by.")
 
-        if split_respect_sentence_boundary and split_by not in("word","sentence"):
-            raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with"
-                                      " split_by='word' or split_by='sentence'.")
+        if split_respect_sentence_boundary and split_by != "word":
+            raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
 
         text = document["text"]
+
+        if split_by == "word":
+            # Check if splitting by word causes cleaning of multiple whitespaces as a side effect
+            if len(document["text"]) != len(" ".join(document["text"].split())):
+                logger.warning(f"During PreProcessor.split(), white space normalization has occurred. This can cause "
+                               f"issues during evaluation if an answer span contains multiple whitespaces. "
+                               f"This problem may be solved by initializing the PreProcessor with split_by=\'passage\'"
+                               f"(Problematic doc_id: {document.get('id', None)}, beginning of doc: {document['text'][:100]})")
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits

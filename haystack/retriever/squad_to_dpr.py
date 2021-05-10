@@ -73,6 +73,7 @@ from haystack.retriever.base import BaseRetriever
 from tqdm import tqdm
 import json
 
+logger = logging.getLogger(__name__)
 
 class HaystackDocumentStore:
     def __init__(self,
@@ -96,7 +97,7 @@ class HaystackDocumentStore:
     def __prepare_ElasticsearchDocumentStore():
         es = Elasticsearch(['http://localhost:9200/'], verify_certs=True)
         if not es.ping():
-            logging.info("Starting Elasticsearch ...")
+            logger.info("Starting Elasticsearch ...")
             status = subprocess.run(
                 ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
             )
@@ -139,8 +140,8 @@ def add_is_impossible(squad_data: dict, json_file_path: Path):
                 question["is_impossible"] = False
 
     squad_data["data"] = squad_articles
-    with open(new_path, "w") as filo:
-        json.dump(squad_data, filo, indent=4)
+    with open(new_path, "w", encoding='utf-8') as filo:
+        json.dump(squad_data, filo, indent=4, ensure_ascii=False)
 
     return new_path, squad_data
 
@@ -167,7 +168,7 @@ def create_dpr_training_dataset(squad_data: dict, retriever: BaseRetriever,
     n_non_added_questions = 0
     n_questions = 0
     for idx_article, article in enumerate(tqdm(squad_data, unit="article")):
-        article_title = article["title"]
+        article_title = article.get("title", "")
         for paragraph in article["paragraphs"]:
             context = paragraph["context"]
             for question in paragraph["qas"]:
@@ -178,10 +179,7 @@ def create_dpr_training_dataset(squad_data: dict, retriever: BaseRetriever,
                                                                 question=question["question"],
                                                                 answers=answers,
                                                                 n_ctxs=num_hard_negative_ctxs)
-                positive_ctxs = [{
-                    "title": f"{article_title}_{i}",
-                    "text": c
-                } for i, c in enumerate([context for _ in question["answers"]])]
+                positive_ctxs = [{"title": article_title,"text": context,  "passage_id": ""}]
 
                 if not hard_negative_ctxs or not positive_ctxs:
                     logging.error(
@@ -193,12 +191,13 @@ def create_dpr_training_dataset(squad_data: dict, retriever: BaseRetriever,
                     "answers": answers,
                     "positive_ctxs": positive_ctxs,
                     "negative_ctxs": [],
-                    "hard_negative_ctxs": hard_negative_ctxs
+                    "hard_negative_ctxs": hard_negative_ctxs,
                 }
                 n_questions += 1
                 yield dict_DPR
 
-    print(f"Number of not added questions : {n_non_added_questions} / {n_questions}")
+    logger.info(f"Number of skipped questions: {n_non_added_questions}")
+    logger.info(f"Number of added questions:   {n_questions}")
 
 
 def save_dataset(iter_dpr: Iterator, dpr_output_filename: Path,
@@ -219,8 +218,8 @@ def save_dataset(iter_dpr: Iterator, dpr_output_filename: Path,
     else:
         dataset_splits = {dpr_output_filename: iter_dpr}
     for path, set_iter in dataset_splits.items():
-        with open(path, "w") as json_ds:
-            json.dump(list(set_iter), json_ds, indent=4)
+        with open(path, "w", encoding='utf-8') as json_ds:
+            json.dump(list(set_iter), json_ds, indent=4, ensure_ascii=False)
 
 
 def get_hard_negative_contexts(retriever: BaseRetriever, question: str, answers: List[str],
@@ -228,12 +227,12 @@ def get_hard_negative_contexts(retriever: BaseRetriever, question: str, answers:
     list_hard_neg_ctxs = []
     retrieved_docs = retriever.retrieve(query=question, top_k=n_ctxs, index="document")
     for retrieved_doc in retrieved_docs:
-        retrieved_doc_id = retrieved_doc.meta["name"]
+        retrieved_doc_id = retrieved_doc.meta.get("name", "")
         retrieved_doc_text = retrieved_doc.text
         if any([True if answer.lower() in retrieved_doc_text.lower() else False
                 for answer in answers]):
             continue
-        list_hard_neg_ctxs.append({"title": retrieved_doc_id, "text": retrieved_doc_text})
+        list_hard_neg_ctxs.append({"title": retrieved_doc_id, "text": retrieved_doc_text, "passage_id": ""})
 
     return list_hard_neg_ctxs
 
@@ -242,7 +241,7 @@ def load_squad_file(squad_file_path: Path):
     if not squad_file_path.exists():
         raise FileNotFoundError
 
-    with open(squad_file_path) as squad_file:
+    with open(squad_file_path, encoding='utf-8') as squad_file:
         squad_data = json.load(squad_file)
 
     # squad_data["data"] = squad_data["data"][:10]  # sample
@@ -255,11 +254,14 @@ def load_squad_file(squad_file_path: Path):
     return squad_file_path, squad_data["data"]
 
 
-def main(squad_input_filename: Path, dpr_output_filename: Path,
+def main(squad_input_filename: Path,
+         dpr_output_filename: Path,
+         preprocessor,
          document_store_type_config: Tuple[str, Dict] = ("ElasticsearchDocumentStore", {}),
          retriever_type_config: Tuple[str, Dict] = ("ElasticsearchRetriever", {}),
          num_hard_negative_ctxs: int = 30,
-         split_dataset: bool = False):
+         split_dataset: bool = False,
+         ):
     tqdm.write(f"Using SQuAD-like file {squad_input_filename}")
 
     # 1. Load squad file data
@@ -315,8 +317,11 @@ if __name__ == '__main__':
                         )
 
     args = parser.parse_args()
-
-    preprocessor = PreProcessor(split_length=100, split_overlap=0, clean_empty_lines=False,
+    
+    preprocessor = PreProcessor(split_length=100,
+                                split_overlap=0,
+                                clean_empty_lines=False,
+                                split_respect_sentence_boundary=False,
                                 clean_whitespace=False)
     squad_input_filename = Path(args.squad_input_filename)
     dpr_output_filename = Path(args.dpr_output_filename)
@@ -335,8 +340,9 @@ if __name__ == '__main__':
 
     main(squad_input_filename=squad_input_filename,
          dpr_output_filename=dpr_output_filename,
+         preprocessor=preprocessor,
          document_store_type_config=("ElasticsearchDocumentStore", store_dpr_config),
-         retriever_type_config=("DensePassageRetriever", retriever_dpr_config),  # dpr
-         # retriever_type_config=("ElasticsearchRetriever", retriever_bm25_config),  # bm25
+         #retriever_type_config=("DensePassageRetriever", retriever_dpr_config),  # dpr
+         retriever_type_config=("ElasticsearchRetriever", retriever_bm25_config),  # bm25
          num_hard_negative_ctxs=num_hard_negative_ctxs,
          split_dataset=split_dataset)

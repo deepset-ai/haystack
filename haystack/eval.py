@@ -1,6 +1,246 @@
 from typing import List, Tuple, Dict, Any
+import logging
 
 from haystack import MultiLabel
+
+from farm.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
+from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
+
+logger = logging.getLogger(__name__)
+
+
+class EvalRetriever:
+    """
+    This is a pipeline node that should be placed after a Retriever in order to assess its performance. Performance
+    metrics are stored in this class and updated as each sample passes through it. To view the results of the evaluation,
+    call EvalRetriever.print(). Note that results from this Node may differ from that when calling Retriever.eval()
+    since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
+    open vs closed domain eval (https://haystack.deepset.ai/docs/latest/tutorial5md).
+    """
+    def __init__(self, debug: bool=False, open_domain: bool=True):
+        """
+        :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
+                            When False, correct retrieval is evaluated based on document_id.
+        :param debug: When True, a record of each sample and its evaluation will be stored in EvalRetriever.log
+        """
+        self.outgoing_edges = 1
+        self.init_counts()
+        self.no_answer_warning = False
+        self.debug = debug
+        self.log: List = []
+        self.open_domain = open_domain
+
+    def init_counts(self):
+        self.correct_retrieval_count = 0
+        self.query_count = 0
+        self.has_answer_count = 0
+        self.has_answer_correct = 0
+        self.has_answer_recall = 0
+        self.no_answer_count = 0
+        self.recall = 0.0
+
+    def run(self, documents, labels: dict, **kwargs):
+        """Run this node on one sample and its labels"""
+        self.query_count += 1
+        retriever_labels = labels["retriever"]
+        # TODO retriever_labels is currently a Multilabel object but should eventually be a RetrieverLabel object
+        # If this sample is impossible to answer and expects a no_answer response
+        if retriever_labels.no_answer:
+            self.no_answer_count += 1
+            correct_retrieval = 1
+            if not self.no_answer_warning:
+                self.no_answer_warning = True
+                logger.warning("There seem to be empty string labels in the dataset suggesting that there "
+                               "are samples with is_impossible=True. "
+                               "Retrieval of these samples is always treated as correct.")
+        # If there are answer span annotations in the labels
+        else:
+            self.has_answer_count += 1
+            correct_retrieval = self.is_correctly_retrieved(retriever_labels, documents)
+            self.has_answer_correct += int(correct_retrieval)
+            self.has_answer_recall = self.has_answer_correct / self.has_answer_count
+
+        self.correct_retrieval_count += correct_retrieval
+        self.recall = self.correct_retrieval_count / self.query_count
+        if self.debug:
+            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs})
+        return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs}, "output_1"
+
+    def is_correctly_retrieved(self, retriever_labels, predictions):
+        if self.open_domain:
+            for label in retriever_labels.multiple_answers:
+                for p in predictions:
+                    if label.lower() in p.text.lower():
+                        return True
+            return False
+        else:
+            prediction_ids = [p.id for p in predictions]
+            label_ids = retriever_labels.multiple_document_ids
+            for l in label_ids:
+                if l in prediction_ids:
+                    return True
+            return False
+
+    def print(self):
+        """Print the evaluation results"""
+        print("Retriever")
+        print("-----------------")
+        if self.no_answer_count:
+            print(
+                f"has_answer recall: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
+            print(
+                f"no_answer recall:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
+        print(f"recall: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
+
+
+class EvalReader:
+    """
+    This is a pipeline node that should be placed after a Reader in order to assess the performance of the Reader
+    individually or to assess the extractive QA performance of the whole pipeline. Performance metrics are stored in
+    this class and updated as each sample passes through it. To view the results of the evaluation, call EvalReader.print().
+    Note that results from this Node may differ from that when calling Reader.eval()
+    since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
+    open vs closed domain eval (https://haystack.deepset.ai/docs/latest/tutorial5md).
+    """
+
+    def __init__(self, skip_incorrect_retrieval: bool=True, open_domain: bool=True, debug: bool=False):
+        """
+        :param skip_incorrect_retrieval: When set to True, this eval will ignore the cases where the retriever returned no correct documents
+        :param open_domain: When True, extracted answers are evaluated purely on string similarity rather than the position of the extracted answer
+        :param debug: When True, a record of each sample and its evaluation will be stored in EvalReader.log
+        """
+        self.outgoing_edges = 1
+        self.init_counts()
+        self.log: List = []
+        self.debug = debug
+        self.skip_incorrect_retrieval = skip_incorrect_retrieval
+        self.open_domain = open_domain
+
+    def init_counts(self):
+        self.query_count = 0
+        self.correct_retrieval_count = 0
+        self.no_answer_count = 0
+        self.has_answer_count = 0
+        self.top_1_no_answer_count = 0
+        self.top_1_em_count = 0
+        self.top_k_em_count = 0
+        self.top_1_f1_sum = 0
+        self.top_k_f1_sum = 0
+        self.top_1_no_answer = 0
+        self.top_1_em = 0.0
+        self.top_k_em = 0.0
+        self.top_1_f1 = 0.0
+        self.top_k_f1 = 0.0
+
+    def run(self, labels, answers, **kwargs):
+        """Run this node on one sample and its labels"""
+        self.query_count += 1
+        predictions = answers
+        skip = self.skip_incorrect_retrieval and not kwargs.get("correct_retrieval")
+        if predictions and not skip:
+            self.correct_retrieval_count += 1
+            multi_labels = labels["reader"]
+            # If this sample is impossible to answer and expects a no_answer response
+            if multi_labels.no_answer:
+                self.no_answer_count += 1
+                if predictions[0]["answer"] is None:
+                    self.top_1_no_answer_count += 1
+                if self.debug:
+                    self.log.append({"predictions": predictions,
+                                     "gold_labels": multi_labels,
+                                     "top_1_no_answer": int(predictions[0] == ""),
+                                     })
+                self.update_no_answer_metrics()
+            # If there are answer span annotations in the labels
+            else:
+                self.has_answer_count += 1
+                predictions = [p for p in predictions if p["answer"]]
+                top_1_em, top_1_f1, top_k_em, top_k_f1 = self.evaluate_extraction(multi_labels, predictions)
+                if self.debug:
+                    self.log.append({"predictions": predictions,
+                                     "gold_labels": multi_labels,
+                                     "top_k_f1": top_k_f1,
+                                     "top_k_em": top_k_em
+                                     })
+
+                self.top_1_em_count += top_1_em
+                self.top_1_f1_sum += top_1_f1
+                self.top_k_em_count += top_k_em
+                self.top_k_f1_sum += top_k_f1
+                self.update_has_answer_metrics()
+        return {**kwargs}, "output_1"
+
+    def evaluate_extraction(self, gold_labels, predictions):
+        if self.open_domain:
+            gold_labels_list = gold_labels.multiple_answers
+            predictions_str = [p["answer"] for p in predictions]
+            top_1_em = calculate_em_str_multi(gold_labels_list, predictions_str[0])
+            top_1_f1 = calculate_f1_str_multi(gold_labels_list, predictions_str[0])
+            top_k_em = max([calculate_em_str_multi(gold_labels_list, p) for p in predictions_str])
+            top_k_f1 = max([calculate_f1_str_multi(gold_labels_list, p) for p in predictions_str])
+        else:
+            logger.error("Closed Domain Reader Evaluation not yet implemented")
+            return 0,0,0,0
+        return top_1_em, top_1_f1, top_k_em, top_k_f1
+
+    def update_has_answer_metrics(self):
+        self.top_1_em = self.top_1_em_count / self.has_answer_count
+        self.top_k_em = self.top_k_em_count / self.has_answer_count
+        self.top_1_f1 = self.top_1_f1_sum / self.has_answer_count
+        self.top_k_f1 = self.top_k_f1_sum / self.has_answer_count
+
+    def update_no_answer_metrics(self):
+        self.top_1_no_answer = self.top_1_no_answer_count / self.no_answer_count
+
+    def print(self, mode):
+        """Print the evaluation results"""
+        if mode == "reader":
+            print("Reader")
+            print("-----------------")
+            # print(f"answer in retrieved docs: {correct_retrieval}")
+            print(f"has answer queries: {self.has_answer_count}")
+            print(f"top 1 EM: {self.top_1_em:.4f}")
+            print(f"top k EM: {self.top_k_em:.4f}")
+            print(f"top 1 F1: {self.top_1_f1:.4f}")
+            print(f"top k F1: {self.top_k_f1:.4f}")
+            if self.no_answer_count:
+                print()
+                print(f"no_answer queries: {self.no_answer_count}")
+                print(f"top 1 no_answer accuracy: {self.top_1_no_answer:.4f}")
+        elif mode == "pipeline":
+            print("Pipeline")
+            print("-----------------")
+
+            pipeline_top_1_em = (self.top_1_em_count + self.top_1_no_answer_count) / self.query_count
+            pipeline_top_k_em = (self.top_k_em_count + self.no_answer_count) / self.query_count
+            pipeline_top_1_f1 = (self.top_1_f1_sum + self.top_1_no_answer_count) / self.query_count
+            pipeline_top_k_f1 = (self.top_k_f1_sum + self.no_answer_count) / self.query_count
+
+            print(f"queries: {self.query_count}")
+            print(f"top 1 EM: {pipeline_top_1_em:.4f}")
+            print(f"top k EM: {pipeline_top_k_em:.4f}")
+            print(f"top 1 F1: {pipeline_top_1_f1:.4f}")
+            print(f"top k F1: {pipeline_top_k_f1:.4f}")
+            if self.no_answer_count:
+                print(
+                    "(top k results are likely inflated since the Reader always returns a no_answer prediction in its top k)"
+                )
+
+
+def calculate_em_str_multi(gold_labels, prediction):
+    for gold_label in gold_labels:
+        result = calculate_em_str(gold_label, prediction)
+        if result == 1.0:
+            return 1.0
+    return 0.0
+
+
+def calculate_f1_str_multi(gold_labels, prediction):
+    results = []
+    for gold_label in gold_labels:
+        result = calculate_f1_str(gold_label, prediction)
+        results.append(result)
+    return max(results)
 
 
 def calculate_reader_metrics(metric_counts: Dict[str, float], correct_retrievals: int):
@@ -212,13 +452,14 @@ def _count_exact_match(
 
     if (gold_span["offset_start"] == predicted_span["offset_start"]) and \
        (gold_span["offset_end"] == predicted_span["offset_end"]):
-        # top-1 answer
-        if answer_idx == 0:
-            metric_counts["exact_matches_top1"] += 1
-            metric_counts["exact_matches_top1_has_answer"] += 1
-        # top-k answers
-        metric_counts["exact_matches_topk"] += 1
-        metric_counts["exact_matches_topk_has_answer"] += 1
+        if metric_counts:
+            # top-1 answer
+            if answer_idx == 0:
+                metric_counts["exact_matches_top1"] += 1
+                metric_counts["exact_matches_top1_has_answer"] += 1
+            # top-k answers
+            metric_counts["exact_matches_topk"] += 1
+            metric_counts["exact_matches_topk_has_answer"] += 1
         found_em = True
 
     return metric_counts, found_em

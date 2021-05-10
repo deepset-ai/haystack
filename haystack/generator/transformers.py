@@ -67,7 +67,7 @@ class RAGenerator(BaseGenerator):
             model_version: Optional[str] = None,
             retriever: Optional[DensePassageRetriever] = None,
             generator_type: RAGeneratorType = RAGeneratorType.TOKEN,
-            top_k_answers: int = 2,
+            top_k: int = 2,
             max_length: int = 200,
             min_length: int = 2,
             num_beams: int = 2,
@@ -85,7 +85,7 @@ class RAGenerator(BaseGenerator):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param retriever: `DensePassageRetriever` used to embedded passage
         :param generator_type: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
-        :param top_k_answers: Number of independently generated text to return
+        :param top_k: Number of independently generated text to return
         :param max_length: Maximum length of generated text
         :param min_length: Minimum length of generated text
         :param num_beams: Number of beams for beam search. 1 means no beam search.
@@ -93,6 +93,13 @@ class RAGenerator(BaseGenerator):
         :param prefix: The prefix used by the generator's tokenizer.
         :param use_gpu: Whether to use GPU (if available)
         """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            model_name_or_path=model_name_or_path, model_version=model_version, retriever=retriever,
+            generator_type=generator_type, top_k=top_k, max_length=max_length, min_length=min_length,
+            num_beams=num_beams, embed_title=embed_title, prefix=prefix, use_gpu=use_gpu,
+        )
 
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
@@ -103,11 +110,11 @@ class RAGenerator(BaseGenerator):
         self.prefix = prefix
         self.retriever = retriever
 
-        if top_k_answers > self.num_beams:
-            top_k_answers = self.num_beams
-            logger.warning(f'top_k_answers value should not be greater than num_beams, hence setting it to {num_beams}')
+        if top_k > self.num_beams:
+            top_k = self.num_beams
+            logger.warning(f'top_k value should not be greater than num_beams, hence setting it to {num_beams}')
 
-        self.top_k_answers = top_k_answers
+        self.top_k = top_k
 
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -211,12 +218,11 @@ class RAGenerator(BaseGenerator):
         if len(documents) == 0:
             raise AttributeError("generator need documents to predict the answer")
 
-        top_k_answers = top_k if top_k is not None else self.top_k_answers
+        top_k = top_k if top_k is not None else self.top_k
 
-        if top_k_answers > self.num_beams:
-            top_k_answers = self.num_beams
-            logger.warning(f'top_k value should not be greater than num_beams, '
-                           f'hence setting it to {top_k_answers}')
+        if top_k > self.num_beams:
+            top_k = self.num_beams
+            logger.warning(f'top_k value should not be greater than num_beams, hence setting it to {top_k}')
 
         # Flatten the documents so easy to reference
         flat_docs_dict: Dict[str, Any] = {}
@@ -258,7 +264,7 @@ class RAGenerator(BaseGenerator):
             context_input_ids=context_input_ids,
             context_attention_mask=context_attention_mask,
             doc_scores=doc_scores,
-            num_return_sequences=top_k_answers,
+            num_return_sequences=top_k,
             num_beams=self.num_beams,
             max_length=self.max_length,
             min_length=self.min_length,

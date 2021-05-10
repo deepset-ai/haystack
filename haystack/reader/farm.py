@@ -47,12 +47,14 @@ class FARMReader(BaseReader):
         use_gpu: bool = True,
         no_ans_boost: float = 0.0,
         return_no_answer: bool = False,
+        top_k: int = 10,
         top_k_per_candidate: int = 3,
         top_k_per_sample: int = 1,
         num_processes: Optional[int] = None,
         max_seq_len: int = 256,
         doc_stride: int = 128,
-        progress_bar: bool = True
+        progress_bar: bool = True,
+        duplicate_filtering: int = 0
     ):
 
         """
@@ -71,6 +73,7 @@ class FARMReader(BaseReader):
         If a negative number, there is a lower chance of "no_answer" being predicted.
         If a positive number, there is an increased chance of "no_answer"
         :param return_no_answer: Whether to include no_answer predictions in the results.
+        :param top_k: The maximum number of answers to return
         :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
         Note that this is not the number of "final answers" you will receive
         (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
@@ -89,14 +92,27 @@ class FARMReader(BaseReader):
         :param doc_stride: Length of striding window for splitting long texts (used if ``len(text) > max_seq_len``)
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_filtering: Answers are filtered based on their position. Both start and end position of the answers are considered.
+                                    The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
         """
 
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            model_name_or_path=model_name_or_path, model_version=model_version, context_window_size=context_window_size,
+            batch_size=batch_size, use_gpu=use_gpu, no_ans_boost=no_ans_boost, return_no_answer=return_no_answer,
+            top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
+            num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
+            duplicate_filtering=duplicate_filtering
+        )
+
         self.return_no_answers = return_no_answer
+        self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = QAInferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
                                             task_type="question_answering", max_seq_len=max_seq_len,
                                             doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
-                                            disable_tqdm=progress_bar)
+                                            disable_tqdm=not progress_bar,
+                                            strict=False)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
@@ -104,6 +120,10 @@ class FARMReader(BaseReader):
             self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
         except:
             logger.warning("Could not set `top_k_per_sample` in FARM. Please update FARM version.")
+        try:
+            self.inferencer.model.prediction_heads[0].duplicate_filtering = duplicate_filtering
+        except:
+            logger.warning("Could not set `duplicate_filtering` in FARM. Please update FARM version.")
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
@@ -230,7 +250,7 @@ class FARMReader(BaseReader):
             evaluate_every=evaluate_every,
             device=device,
             use_amp=use_amp,
-            disable_tqdm=self.progress_bar
+            disable_tqdm=not self.progress_bar
         )
 
 
@@ -283,6 +303,8 @@ class FARMReader(BaseReader):
         :return: List of dictionaries containing query and answers
         """
 
+        if top_k is None:
+            top_k = self.top_k
         # convert input to FARM format
         inputs = []
         number_of_docs = []
@@ -304,7 +326,7 @@ class FARMReader(BaseReader):
         self.inferencer.batch_size = batch_size
         # make predictions on all document-query pairs
         predictions = self.inferencer.inference_from_objects(
-            objects=inputs, return_json=False, multiprocessing_chunksize=1
+            objects=inputs, return_json=False, multiprocessing_chunksize=10
         )
 
         # group predictions together
@@ -357,7 +379,8 @@ class FARMReader(BaseReader):
         :param top_k: The maximum number of answers to return
         :return: Dict containing query and answers
         """
-
+        if top_k is None:
+            top_k = self.top_k
         # convert input to FARM format
         inputs = []
         for doc in documents:
@@ -553,7 +576,7 @@ class FARMReader(BaseReader):
                         "answer": ans.answer,
                         "score": ans.score,
                         # just a pseudo prob for now
-                        "probability": self._get_pseudo_prob(ans.score),
+                        "probability": ans.confidence,
                         "context": ans.context_window,
                         "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
                         "offset_end": ans.offset_answer_end - ans.offset_context_window_start,

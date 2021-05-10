@@ -4,6 +4,10 @@ WORKDIR /home/user
 
 RUN apt-get update && apt-get install -y curl git pkg-config cmake
 
+# Install PDF converter
+RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && \
+tar -xvf xpdf-tools-linux-4.03.tar.gz && cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
+
 # copy code
 COPY haystack /home/user/haystack
 
@@ -27,4 +31,4 @@ COPY rest_api /home/user/rest_api
 EXPOSE 8000
 
 # cmd for running the API
-CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180", "--preload"]
+CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]
