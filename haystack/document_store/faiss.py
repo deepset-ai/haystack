@@ -348,12 +348,24 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         Delete all documents from the document store.
         """
+        logger.warning(
+                """DEPRECATION WARNINGS: 
+                1. delete_all_documents() method is deprecated, please use delete_documents method
+                For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
+                """
+        )
+        self.delete_documents(index, filters)
+
+    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete all documents from the document store.
+        """
         if filters:
             logger.warning("Filters are not supported for deleting documents in FAISSDocumentStore.")
         index = index or self.index
         if index in self.faiss_indexes.keys():
             self.faiss_indexes[index].reset()
-        super().delete_all_documents(index=index)
+        super().delete_documents(index=index)
 
     def query_by_embedding(
         self,
