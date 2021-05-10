@@ -314,9 +314,18 @@ def test_delete_all_documents(document_store_with_docs):
 
 
 @pytest.mark.elasticsearch
+def test_delete_documents(document_store_with_docs):
+    assert len(document_store_with_docs.get_all_documents()) == 3
+
+    document_store_with_docs.delete_documents()
+    documents = document_store_with_docs.get_all_documents()
+    assert len(documents) == 0
+
+
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
-    document_store_with_docs.delete_all_documents(filters={"meta_field": ["test1", "test2"]})
+    document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2"]})
     documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 1
     assert documents[0].meta["meta_field"] == "test3"
@@ -416,7 +425,7 @@ def test_multilabel(document_store):
     assert len(multi_labels) == 0
 
     # clean up
-    document_store.delete_all_documents(index="haystack_test_multilabel")
+    document_store.delete_documents(index="haystack_test_multilabel")
 
 
 @pytest.mark.elasticsearch
@@ -480,7 +489,7 @@ def test_multilabel_no_answer(document_store):
            == len(multi_labels[0].multiple_offset_start_in_docs)
 
     # clean up
-    document_store.delete_all_documents(index="haystack_test_multilabel_no_answer")
+    document_store.delete_documents(index="haystack_test_multilabel_no_answer")
 
 
 @pytest.mark.elasticsearch

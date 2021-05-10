@@ -357,8 +357,24 @@ class MilvusDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
+        logger.warning(
+                """DEPRECATION WARNINGS: 
+                1. delete_all_documents() method is deprecated, please use delete_documents method
+                For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
+                """
+        )
+        self.delete_documents(index, filters)
+
+    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete all documents (from SQL AND Milvus).
+        :param index: (SQL) index name for storing the docs and metadata
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :return: None
+        """
         index = index or self.index
-        super().delete_all_documents(index=index, filters=filters)
+        super().delete_documents(index=index, filters=filters)
         status, ok = self.milvus_server.has_collection(collection_name=index)
         if status.code != Status.SUCCESS:
             raise RuntimeError(f'Milvus has collection check failed: {status}')
