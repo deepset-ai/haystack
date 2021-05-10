@@ -26,16 +26,14 @@ class BaseRanker(BaseComponent):
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         pass
 
-    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, **kwargs): # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, **kwargs): # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
-            results = predict(query=query, documents=documents, top_k=top_k_reader)
+            results = predict(query=query, documents=documents, top_k=top_k)
         else:
             results = []
 
-        #results.update(**kwargs)
-        #documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever, index=index)
         document_ids = [doc.id for doc in results]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {
@@ -60,7 +58,7 @@ class BaseRanker(BaseComponent):
         return wrapper
 
     def print_time(self):
-        print("Reader (Speed)")
+        print("Ranker (Speed)")
         print("---------------")
         if not self.query_count:
             print("No querying performed via Retriever.run()")

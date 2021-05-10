@@ -93,6 +93,26 @@ class EvalRetriever:
         print(f"recall: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
 
 
+class EvalRanker(EvalRetriever):
+    """
+    This is a pipeline node that should be placed after a Ranker in order to assess its performance. Performance
+    metrics are stored in this class and updated as each sample passes through it. To view the results of the evaluation,
+    call EvalRanker.print(). Note that results from this Node may differ from that when calling Ranker.eval()
+    since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
+    open vs closed domain eval (https://haystack.deepset.ai/docs/latest/tutorial5md).
+    """
+    def print(self):
+        """Print the evaluation results"""
+        print("Ranker")
+        print("-----------------")
+        if self.no_answer_count:
+            print(
+                f"has_answer recall: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
+            print(
+                f"no_answer recall:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
+        print(f"recall: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
+
+
 class EvalReader:
     """
     This is a pipeline node that should be placed after a Reader in order to assess the performance of the Reader
