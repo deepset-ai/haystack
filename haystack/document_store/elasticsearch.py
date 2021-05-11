@@ -180,11 +180,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                         scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
                                         timeout=timeout)
 
-            # Test connection
+        # Test connection
         try:
-            status = client.ping()
-            if not status:
-                raise ConnectionError(f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
+            # ping uses a HEAD request on the root URI. In some cases, the user might not have permissions for that,
+            # resulting in a HTTP Forbidden 403 response.
+            if username in ["", "elastic"]:
+                status = client.ping()
+                if not status:
+                    raise ConnectionError(
+                        f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance "
+                        f"at `{hosts}` and that it has finished the initial ramp up (can take > 30s)."
+                    )
         except Exception:
             raise ConnectionError(
                 f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
@@ -927,15 +933,31 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
+        logger.warning(
+                """DEPRECATION WARNINGS: 
+                1. delete_all_documents() method is deprecated, please use delete_documents method
+                For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
+                """
+        )
+        self.delete_documents(index, filters)
+
+    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete documents in an index. All documents are deleted if no filters are passed.
+
+        :param index: Index name to delete the document from.
+        :param filters: Optional filters to narrow down the documents to be deleted.
+        :return: None
+        """
         index = index or self.index
         query: Dict[str, Any] = {"query": {}}
         if filters:
             filter_clause = []
             for key, values in filters.items():
                 filter_clause.append(
-                    {
-                        "terms": {key: values}
-                    }
+                        {
+                            "terms": {key: values}
+                        }
                 )
                 query["query"]["bool"] = {"filter": filter_clause}
         else:
