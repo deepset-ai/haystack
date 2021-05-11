@@ -305,6 +305,7 @@ class DensePassageRetriever(BaseRetriever):
               weight_decay: float = 0.0,
               num_warmup_steps: int = 100,
               grad_acc_steps: int = 1,
+              use_amp: str = None,
               optimizer_name: str = "TransformersAdamW",
               optimizer_correct_bias: bool = True,
               save_dir: str = "../saved_models/dpr",
@@ -332,6 +333,12 @@ class DensePassageRetriever(BaseRetriever):
         :param epsilon: epsilon parameter of optimizer
         :param weight_decay: weight decay parameter of optimizer
         :param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
+        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
+                    "O0" (FP32)
+                    "O1" (Mixed Precision)
+                    "O2" (Almost FP16)
+                    "O3" (Pure FP16).
+                    For more information, refer to: https://nvidia.github.io/apex/amp.html
         :param optimizer_name: what optimizer to use (default: TransformersAdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
@@ -364,7 +371,8 @@ class DensePassageRetriever(BaseRetriever):
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
-            device=self.device
+            device=self.device,
+            use_amp=use_amp
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -377,6 +385,7 @@ class DensePassageRetriever(BaseRetriever):
             lr_schedule=lr_schedule,
             evaluate_every=evaluate_every,
             device=self.device,
+            use_amp=use_amp
         )
 
         # 7. Let it grow! Watch the tracked metrics live on the public mlflow server: https://public-mlflow.deepset.ai
