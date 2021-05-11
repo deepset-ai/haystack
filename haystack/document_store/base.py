@@ -61,22 +61,40 @@ class BaseDocumentStore(BaseComponent):
 
     def get_all_labels_aggregated(self,
                                   index: Optional[str] = None,
-                                  filters: Optional[Dict[str, List[str]]] = None) -> List[MultiLabel]:
+                                  filters: Optional[Dict[str, List[str]]] = None,
+                                  open_domain=False,
+                                  group_by_meta=None) -> List[MultiLabel]:
         aggregated_labels = []
         all_labels = self.get_all_labels(index=index, filters=filters)
 
         # Collect all answers to a question in a dict
         question_ans_dict: dict = {}
         for l in all_labels:
-            id_question_tuple = (l.id, l.question)
+            # This group_by_id determines the key by which we aggregate labels. Its contents depend on
+            # whether we are in an open / closed domain setting,
+            # or if there are fields in the meta data that we should group by (set using group_by_meta)
+            group_by_id = None
+            if open_domain:
+                group_by_id = [l.question]
+            else:
+                group_by_id = [l.document_id, l.question]
+            if group_by_meta:
+                if type(group_by_meta) == str:
+                    group_by_meta = [group_by_meta]
+                for meta_key in group_by_meta:
+                    curr_meta = l.meta.get(meta_key, None)
+                    if curr_meta:
+                        group_by_id.append(curr_meta)
+            group_by_id = tuple(group_by_id)
+
             # only aggregate labels with correct answers, as only those can be currently used in evaluation
             if not l.is_correct_answer:
                 continue
 
-            if id_question_tuple in question_ans_dict:
-                question_ans_dict[id_question_tuple].append(l)
+            if group_by_id in question_ans_dict:
+                question_ans_dict[group_by_id].append(l)
             else:
-                question_ans_dict[id_question_tuple] = [l]
+                question_ans_dict[group_by_id] = [l]
 
         # Aggregate labels
         for q, ls in question_ans_dict.items():
