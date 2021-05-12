@@ -261,6 +261,6 @@ class FARMRanker(BaseRanker):
         similarity_scores = [pred["probability"] for preds in result for pred in preds["predictions"]]
 
         # rank documents according to scores
-        sorted_scores_and_documents = sorted(zip(similarity_scores, documents))
+        sorted_scores_and_documents = sorted(zip(similarity_scores, documents), reverse=True)
         sorted_documents = [doc for _, doc in sorted_scores_and_documents]
         return sorted_documents[:top_k]

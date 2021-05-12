@@ -17,7 +17,7 @@ class EvalRetriever:
     since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
     open vs closed domain eval (https://haystack.deepset.ai/docs/latest/tutorial5md).
     """
-    def __init__(self, debug: bool=False, open_domain: bool=True):
+    def __init__(self, debug: bool=False, open_domain: bool=True, k: int=10):
         """
         :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
                             When False, correct retrieval is evaluated based on document_id.
@@ -29,6 +29,7 @@ class EvalRetriever:
         self.debug = debug
         self.log: List = []
         self.open_domain = open_domain
+        self.k = k
 
     def init_counts(self):
         self.correct_retrieval_count = 0
@@ -69,12 +70,12 @@ class EvalRetriever:
     def is_correctly_retrieved(self, retriever_labels, predictions):
         if self.open_domain:
             for label in retriever_labels.multiple_answers:
-                for p in predictions:
+                for p in predictions[:self.k]:
                     if label.lower() in p.text.lower():
                         return True
             return False
         else:
-            prediction_ids = [p.id for p in predictions]
+            prediction_ids = [p.id for p in predictions[:self.k]]
             label_ids = retriever_labels.multiple_document_ids
             for l in label_ids:
                 if l in prediction_ids:
@@ -87,10 +88,10 @@ class EvalRetriever:
         print("-----------------")
         if self.no_answer_count:
             print(
-                f"has_answer recall: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
+                f"has_answer recall@{self.k}: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
             print(
                 f"no_answer recall:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
-        print(f"recall: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
+        print(f"recall@{self.k}: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
 
 
 class EvalRanker(EvalRetriever):
@@ -107,10 +108,10 @@ class EvalRanker(EvalRetriever):
         print("-----------------")
         if self.no_answer_count:
             print(
-                f"has_answer recall: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
+                f"has_answer recall@{self.k}: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
             print(
                 f"no_answer recall:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
-        print(f"recall: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
+        print(f"recall@{self.k}: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
 
 
 class EvalReader:
