@@ -105,8 +105,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
         )
 
-        credentials = auth.AuthClientPassword(username, password)
-
         if username and password:
             secret = AuthClientPassword(username, password)
             self.weaviate_client = client.Client(url=weaviate_url,
@@ -190,6 +188,19 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                 },
                                 {
                                     "dataType": [
+                                        "string"
+                                    ],
+                                    "description": "Question Field",
+                                    "moduleConfig": {
+                                        "text2vec-transformers": {
+                                            "skip": False,
+                                            "vectorizePropertyName": False
+                                        }
+                                    },
+                                    "name": self.faq_question_field
+                                },
+                                {
+                                    "dataType": [
                                         "text"
                                     ],
                                     "description": "Document Text",
@@ -240,6 +251,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         # By default, the result json will have the following fields
         id = result.get("id")
         embedding = result.get("vector")
+        score = None
+        probability = None
 
         # Weaviate Get method returns the data items in properties key,
         # Weaviate query doesn't have a properties key.
@@ -256,13 +269,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if name:
             meta_data["name"] = name
 
-        score = result.get("_additional").get('certainty') if result.get("_additional").get('certainty') else None
-        if score:
-            probability = score
-        else:
-            probability = None
+        if result.get("_additional"):
+            score = result.get("_additional").get('certainty') if result.get("_additional").get('certainty') else None
+            if score:
+                probability = score
 
-        id = result.get("_additional").get('id') if result.get("_additional").get('id') else None
+            id = result.get("_additional").get('id') if result.get("_additional").get('id') else None
 
         if return_embedding:
             if not embedding:
@@ -299,7 +311,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
          'vector': []}'''
         index = index or self.index
         result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
-        document = self._convert_weaviate_result_to_document(result)
+        document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
@@ -337,19 +349,26 @@ class WeaviateDocumentStore(BaseDocumentStore):
             for document_batch in batched_documents:
                 docs_batch = ObjectsBatchRequest()
                 for idx, doc in enumerate(document_batch):
-                    vector = None
-                    _ = doc.pop("score", None)
-                    _ = doc.pop("probability", None)
-                    if "meta" in doc.keys():
-                        doc["meta"] = str(doc.get("meta"))
-                    doc_id = str(doc.pop("id"))
-                    if doc[self.embedding_field] is not None:
-                        if type(doc[self.embedding_field]) == np.ndarray:
-                            vector = doc.pop[self.embedding_field].tolist()
-                    vector = doc.pop(self.embedding_field)
-                    docs_batch.add(doc, class_name=self.index, uuid=doc_id, vector=vector)
+                    _doc = {
+                        **doc.to_dict(field_map=self._create_document_field_map())
+                    }
+                    _ = _doc.pop("score", None)
+                    _ = _doc.pop("probability", None)
+                    if "meta" in _doc.keys():
+                        _doc["meta"] = str(_doc.get("meta"))
+                    doc_id = str(_doc.pop("id"))
+                    vector = _doc.pop(self.embedding_field)
+                    if _doc.get(self.faq_question_field) is None:
+                        _doc.pop(self.faq_question_field)
+                    if vector:
+                        docs_batch.add(_doc, class_name=self.index, uuid=doc_id, vector=vector)
+                    else:
+                        docs_batch.add(_doc, class_name=self.index, uuid=doc_id)
 
-                self.weaviate_client.batch.create(docs_batch)
+                outputs = self.weaviate_client.batch.create(docs_batch)
+                for output in outputs:
+                    if output.get('result').get('errors'):
+                        print(output.get('result').get('errors'))
                 progress_bar.update(batch_size)
         progress_bar.close()
 
@@ -422,11 +441,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if only_documents_without_embedding:
             raise OSError()
 
-        result = self.weaviate_client.query.get(class_name=self.index, properties=[])\
-            .with_where(where_filter)\
+        result = self.weaviate_client.query.get(class_name=self.index, properties=[self.text_field,"_additional {id, certainty}"])\
             .with_limit(batch_size)\
             .do()
-        yield from result
+        yield from result.get("data").get("Get").get(self.index)
 
     def get_all_documents_generator(
         self,
@@ -497,7 +515,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         results = query_output.get("data").get("Get").get(self.index)
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result)
+            doc = self._convert_weaviate_result_to_document(result, return_embedding=True)
             documents.append(doc)
 
         return documents
@@ -539,7 +557,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         results = query_output.get("data").get("Get").get(self.index)
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result)
+            doc = self._convert_weaviate_result_to_document(result, return_embedding=True)
             documents.append(doc)
 
         return documents

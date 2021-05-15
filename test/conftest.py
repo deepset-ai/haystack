@@ -106,8 +106,8 @@ def weaviate_fixture():
     # test if a Milvus server is already running. If not, start Milvus docker container locally.
     # Make sure you have given > 6GB memory to docker engine
     try:
-        milvus_server = weaviate.Client(url='http://localhost:8080', timeout_config=(5, 15))
-        milvus_server.is_ready()
+        weaviate_server = weaviate.Client(url='http://localhost:8080', timeout_config=(5, 15))
+        weaviate_server.is_ready()
     except:
         print("Starting Weaviate servers ...")
         status = subprocess.run(
@@ -336,7 +336,7 @@ def get_retriever(retriever_type, document_store):
     return retriever
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
+@pytest.fixture(params=["weaviate"])
 def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
@@ -344,7 +344,7 @@ def document_store_with_docs(request, test_docs_xs):
     document_store.delete_all_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus", "weaviate"])
+@pytest.fixture(params=["weaviate"])
 def document_store(request, test_docs_xs):
     document_store = get_document_store(request.param)
     yield document_store
@@ -387,9 +387,10 @@ def get_document_store(document_store_type, embedding_field="embedding"):
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
             weaviate_url="http://localhost:8080",
-            index="Haystack_test"
+            index="Haystacktest"
         )
-        document_store.weaviate_client.schema.delete_class("Haystack_test")
+        document_store.weaviate_client.schema.delete_class("Haystacktest")
+        return document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
