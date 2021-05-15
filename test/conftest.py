@@ -109,7 +109,7 @@ def weaviate_fixture():
         milvus_server = weaviate.Client(url='http://localhost:8080', timeout_config=(5, 15))
         milvus_server.is_ready()
     except:
-        print("Starting Weaviate ...")
+        print("Starting Weaviate servers ...")
         status = subprocess.run(
             ['docker rm haystack_test_weaviate'],
             shell=True
