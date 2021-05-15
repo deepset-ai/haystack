@@ -267,7 +267,8 @@ class MilvusDocumentStore(SQLDocumentStore):
             only_documents_without_embedding=not update_existing_embeddings
         )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=not self.progress_bar) as progress_bar:
+        with tqdm(total=document_count, disable=not self.progress_bar, position=0, unit=" docs",
+                  desc="Updating Embedding") as progress_bar:
             for document_batch in batched_documents:
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
@@ -284,8 +285,8 @@ class MilvusDocumentStore(SQLDocumentStore):
                     vector_id_map[doc.id] = vector_id
 
                 self.update_vector_ids(vector_id_map, index=index)
+                progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
-        progress_bar.close()
 
         self.milvus_server.flush([index])
         self.milvus_server.compact(collection_name=index)

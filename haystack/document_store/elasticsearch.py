@@ -9,6 +9,7 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import numpy as np
 from scipy.special import expit
+from tqdm import tqdm
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
@@ -893,8 +894,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
+        document_count = self.get_document_count(index=index)
         if update_existing_embeddings:
-            logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
+            logger.info(f"Updating embeddings for all {document_count} docs ...")
         else:
             logger.info(f"Updating embeddings for new docs without embeddings ...")
 
@@ -905,25 +907,30 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             only_documents_without_embedding=not update_existing_embeddings
         )
 
-        for result_batch in get_batches_from_generator(result, batch_size):
-            document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
-            embeddings = retriever.embed_passages(document_batch)  # type: ignore
-            assert len(document_batch) == len(embeddings)
+        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
 
-            if embeddings[0].shape[0] != self.embedding_dim:
-                raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                                   f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                                   "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
-            doc_updates = []
-            for doc, emb in zip(document_batch, embeddings):
-                update = {"_op_type": "update",
-                          "_index": index,
-                          "_id": doc.id,
-                          "doc": {self.embedding_field: emb.tolist()},
-                          }
-                doc_updates.append(update)
+        with tqdm(total=document_count, position=0, unit=" docs", desc="Updating Embedding") as progress_bar:
+            for result_batch in get_batches_from_generator(result, batch_size):
+                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
+                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                assert len(document_batch) == len(embeddings)
 
-            bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
+                if embeddings[0].shape[0] != self.embedding_dim:
+                    raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                                       f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
+                                       "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
+                doc_updates = []
+                for doc, emb in zip(document_batch, embeddings):
+                    update = {"_op_type": "update",
+                              "_index": index,
+                              "_id": doc.id,
+                              "doc": {self.embedding_field: emb.tolist()},
+                              }
+                    doc_updates.append(update)
+
+                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
+                progress_bar.set_description_str("Documents Processed")
+                progress_bar.update(batch_size)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
