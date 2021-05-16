@@ -42,6 +42,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             text_field: str = "text",
             name_field: str = "name",
             faq_question_field = "question",
+            meta_field = "meta",
             similarity: str = "dot_product",
             index_type: str = "hnsw",
             custom_schema: Optional[dict] = None,
@@ -64,6 +65,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
         :param faq_question_field: Name of field containing the question in case of FAQ-Style QA
+        :param meta_field : Name of field to store all the meta data (key value pairs) in the Document object
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
@@ -86,7 +88,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.set_config(
             weaviate_url=weaviate_url, timeout_config=timeout_config, username=username, password=password,
             index=index, vector_dim=vector_dim, text_field=text_field, name_field=name_field,
-            faq_question_field=faq_question_field, similarity=similarity, index_type=index_type,
+            faq_question_field=faq_question_field, meta_field=meta_field, similarity=similarity, index_type=index_type,
             custom_schema=custom_schema, module_name=module_name, update_existing_documents=update_existing_documents,
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
         )
@@ -119,6 +121,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.text_field = text_field
         self.name_field = name_field
         self.faq_question_field = faq_question_field
+        self.meta_field = meta_field
         self.similarity = similarity
         self.index_type = index_type
         self.custom_schema = custom_schema
@@ -208,7 +211,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                             "vectorizePropertyName": False
                                         }
                                     },
-                                    "name": "meta"
+                                    "name": self.meta_field
                                 }
                             ],
                             "vectorIndexConfig": {
@@ -250,30 +253,35 @@ class WeaviateDocumentStore(BaseDocumentStore):
         text = props.get(self.text_field)
         question = props.get(self.faq_question_field)
 
-        # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in props.items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
-        name = meta_data.pop(self.name_field, None)
-        if name:
-            meta_data["name"] = name
-
         # Weaviate creates "_additional" key for semantic search
-        if result.get("_additional"):
-            score = result.get("_additional").get('certainty') if result.get("_additional").get('certainty') else None
+        if props.get("_additional"):
+            score = props.get("_additional").get('certainty') if props.get("_additional").get('certainty') else None
             if score:
                 probability = score
+            id = props.get("_additional").get('id') if props.get("_additional").get('id') else None
+            props.pop("_additional", None)
 
-            id = result.get("_additional").get('id') if result.get("_additional").get('id') else None
+        # We put all additional data of the doc into meta_data and return it in the API
+        meta_data = {k:v for k,v in props.items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
+        meta = meta_data.pop(self.meta_field, None)
+        if meta:
+            import ast
+            meta = ast.literal_eval(meta)
+            name = meta_data.pop(self.name_field, None)
+            if name:
+                meta[self.name_field] = name
 
         if return_embedding:
-            if not embedding:
-                embedding = result.get("_additional").get("vector")
+            #if not embedding:
+                # TODO: Not sure if _additional can have vector
+                #embedding = result.get("_additional").get("vector")
             if embedding:
                 embedding = np.asarray(embedding, dtype=np.float32)
 
         document = Document(
             id=id,
             text=text,
-            meta=meta_data,
+            meta=meta,
             score=score,
             probability=probability,
             question=question,
@@ -307,6 +315,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         docs = []
+        #TODO: better implementation with multiple where filters instead of chatty call below?
         for id in ids:
             docs.append(self.get_document_by_id(id))
         return docs
@@ -354,10 +363,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     else:
                         docs_batch.add(_doc, class_name=self.index, uuid=doc_id)
 
-                outputs = self.weaviate_client.batch.create(docs_batch)
-                for output in outputs:
-                    if output.get('result').get('errors'):
-                        print(output.get('result').get('errors'))
+                # Ingest a batch of documents
+                results = self.weaviate_client.batch.create(docs_batch)
+                # Weaviate returns errors for every failed document in the batch
+                if results is not None:
+                    for result in results:
+                        if 'result' in result and 'errors' in result['result'] \
+                                and 'error' in result['result']['errors']:
+                            for message in result['result']['errors']['error']:
+                                logger.error(f"{message['message']}")
                 progress_bar.update(batch_size)
         progress_bar.close()
 
@@ -410,10 +424,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Return all documents in a specific index in the document store
         """
         index = index or self.index
+        properties = [self.text_field, self.faq_question_field, self.name_field, self.meta_field, "_additional {id, certainty}"]
+
         if filters:
             raise OSError("Filters are not supported currently in WeaviateDocumentStore!")
 
-        result = self.weaviate_client.query.get(class_name=index, properties=[self.text_field,"_additional {id, certainty}"])\
+        result = self.weaviate_client.query.get(class_name=index, properties=properties)\
             .with_limit(batch_size)\
             .do()
         yield from result.get("data").get("Get").get(index)
@@ -471,6 +487,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             logger.warning("Query filters are not implemented for the WeaviateDocumentStore.")
 
         index = index or self.index
+        properties = [self.text_field, self.faq_question_field, self.name_field, self.meta_field, "_additional {id, certainty}"]
 
         if custom_query:
             query_output = self.weaviate_client.query.raw(custom_query)
@@ -479,7 +496,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 "concepts" : [query]
             }
             query_output = self.weaviate_client.query\
-                .get(class_name=index, properties=[self.text_field,"_additional {id, certainty}"])\
+                .get(class_name=index, properties=properties)\
                 .with_near_text(query_string)\
                 .with_limit(top_k)\
                 .do()
@@ -515,13 +532,14 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
         index = index or self.index
+        properties = [self.text_field, self.faq_question_field, self.name_field, self.meta_field, "_additional {id, certainty}"]
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
         query_string = {
             "vector" : query_emb
         }
         query_output = self.weaviate_client.query\
-            .get(class_name=index, properties=[self.text_field,"_additional {id, certainty}"])\
+            .get(class_name=index, properties=properties)\
             .with_near_vector(query_string)\
             .with_limit(top_k)\
             .do()
