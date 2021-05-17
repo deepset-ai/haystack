@@ -32,6 +32,23 @@ def test_init_elastic_client():
 
 
 @pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "sql", "milvus"], indirect=True)
+def test_write_with_duplicate_doc_ids(document_store):
+    documents = [
+        Document(
+            text="Doc1",
+            id_hash_keys=["key1"]
+        ),
+        Document(
+            text="Doc2",
+            id_hash_keys=["key1"]
+        )
+    ]
+    with pytest.raises(Exception):
+        document_store.write_documents(documents)
+
+
+@pytest.mark.elasticsearch
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
@@ -41,19 +58,22 @@ def test_get_all_documents_without_filters(document_store_with_docs):
 
 
 @pytest.mark.elasticsearch
-def test_get_all_document_filter_duplicate_value(document_store):
+def test_get_all_document_filter_duplicate_text_value(document_store):
     documents = [
         Document(
             text="Doc1",
-            meta={"f1": "0"}
+            meta={"f1": "0"},
+            id_hash_keys=["Doc1", "1"]
         ),
         Document(
             text="Doc1",
-            meta={"f1": "1", "meta_id": "0"}
+            meta={"f1": "1", "meta_id": "0"},
+            id_hash_keys=["Doc1", "2"]
         ),
         Document(
             text="Doc2",
-            meta={"f3": "0"}
+            meta={"f3": "0"},
+            id_hash_keys=["Doc2", "3"]
         )
     ]
     document_store.write_documents(documents)

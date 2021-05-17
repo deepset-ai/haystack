@@ -81,6 +81,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         for document in documents_objects:
+            if document.id in self.indexes[index]:
+                # TODO Make error type consistent across document stores and add user options to deal with duplicate documents (ignore, overwrite, fail)
+                raise ValueError(f"Duplicate Documents: write_documents() failed - Document with id '{document.id} already exists in index '{index}'")
             self.indexes[index][document.id] = document
 
     def _create_document_field_map(self):
