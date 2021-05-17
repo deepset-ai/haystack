@@ -25,7 +25,7 @@ nltk
 more_itertools
 networkx
 # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
-pymilvus
+pymilvus>=1.1.0
 # Optional: For crawling
 #selenium
 #webdriver-manager
