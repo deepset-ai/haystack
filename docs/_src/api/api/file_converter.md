@@ -87,26 +87,6 @@ Route files in an Indexing Pipeline to corresponding file converters.
 class TextConverter(BaseConverter)
 ```
 
-<a name="txt.TextConverter.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = None)
-```
-
-**Arguments**:
-
-- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-                              The tabular structures in documents might be noise for the reader model if it
-                              does not have table parsing capability for finding answers. However, tables
-                              may also have long strings that could possible candidate for searching answers.
-                              The rows containing strings are thus retained in this option.
-- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
-                        This option can be used to add test for encoding errors. If the extracted text is
-                        not one of the valid languages, then it might likely be encoding error resulting
-                        in garbled text.
-
 <a name="txt.TextConverter.convert"></a>
 #### convert
 
