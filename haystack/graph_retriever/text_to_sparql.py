@@ -15,6 +15,17 @@ class Text2SparqlRetriever(BaseGraphRetriever):
     """
 
     def __init__(self, knowledge_graph, model_name_or_path, top_k: int = 1):
+        """
+        Init the Retriever by providing a knowledge graph and a pre-trained BART model
+
+        :param knowledge_graph: An instance of BaseKnowledgeGraph on which to execute SPARQL queries.
+        :param model_name_or_path: Name of or path to a pre-trained BartForConditionalGeneration model.
+        :param top_k: How many SPARQL queries to generate per text query.
+        """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(knowledge_graph=knowledge_graph, model_name_or_path=model_name_or_path, top_k=top_k)
+
         self.knowledge_graph = knowledge_graph
         # TODO We should extend this to any seq2seq models and use the AutoModel class
         self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
@@ -22,6 +33,13 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         self.top_k = top_k
 
     def retrieve(self, query: str, top_k: Optional[int] = None):
+        """
+        Translate a text query to SPARQL and execute it on the knowledge graph to retrieve a list of answers
+        
+        :param query: Text query that shall be translated to SPARQL and then executed on the knowledge graph
+        :param top_k: How many SPARQL queries to generate per text query.
+        """
+        
         if top_k is None:
             top_k = self.top_k
         inputs = self.tok([query], max_length=100, truncation=True, return_tensors='pt')
@@ -46,6 +64,12 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         return results
 
     def _query_kg(self, sparql_query):
+        """
+        Execute a single SPARQL query on the knowledge graph to retrieve an answer and unpack different answer styles for boolean queries, count queries, and list queries
+        
+        :param sparql_query: SPARQL query that shall be executed on the knowledge graph
+        """
+        
         try:
             response = self.knowledge_graph.query(sparql_query=sparql_query)
 
@@ -73,7 +97,10 @@ class Text2SparqlRetriever(BaseGraphRetriever):
     def format_result(self, result):
         """
         Generate formatted dictionary output with text answer and additional info
+        
+        :param result: The result of a SPARQL query as retrieved from the knowledge graph
         """
+        
         query = result[1]
         prediction = result[0]
         prediction_meta = {"model": self.__class__.__name__, "sparql_query": query}

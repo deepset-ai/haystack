@@ -78,5 +78,13 @@ metaDescription: ""
 slug: "/docs/tutorial10"
 date: "2021-04-06"
 id: "tutorial10md"
+--->""",
+    11: """<!---
+title: "Tutorial 11"
+metaTitle: "Pipelines"
+metaDescription: ""
+slug: "/docs/tutorial11"
+date: "2021-04-06"
+id: "tutorial11md"
 --->"""
 }
