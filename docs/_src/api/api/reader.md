@@ -39,7 +39,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True)
+ | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0)
 ```
 
 **Arguments**:
@@ -78,6 +78,8 @@ and that FARM includes no_answer in the sorted list of predictions.
 - `doc_stride`: Length of striding window for splitting long texts (used if ``len(text) > max_seq_len``)
 - `progress_bar`: Whether to show a tqdm progress bar or not.
                      Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_filtering`: Answers are filtered based on their position. Both start and end position of the answers are considered.
+                            The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
 
 <a name="farm.FARMReader.train"></a>
 #### train
