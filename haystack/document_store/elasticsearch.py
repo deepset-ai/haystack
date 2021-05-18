@@ -9,7 +9,7 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import numpy as np
 from scipy.special import expit
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document, Label
@@ -909,7 +909,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
 
-        with tqdm(total=document_count, position=0, unit=" docs", desc="Updating Embedding") as progress_bar:
+        with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
@@ -929,7 +929,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     doc_updates.append(update)
 
                 bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
-                progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
