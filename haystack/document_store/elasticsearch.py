@@ -894,11 +894,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
-        document_count = self.get_document_count(index=index)
         if update_existing_embeddings:
+            document_count = self.get_document_count(index=index)
             logger.info(f"Updating embeddings for all {document_count} docs ...")
         else:
-            logger.info(f"Updating embeddings for new docs without embeddings ...")
+            document_count = self.get_document_without_embedding_count(index=index, filters=filters)
+            logger.info(f"Updating embeddings for {document_count} docs without embeddings ...")
 
         result = self._get_all_documents_in_index(
             index=index,
@@ -973,6 +974,29 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
+    def get_document_without_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None,
+                                             index: Optional[str] = None) -> int:
+        """
+        Return the number of documents without embedding in the document store.
+        """
+        index = index or self.index
+        body: dict = {"query": {"bool": {"must_not": [{"exists": {"field": self.embedding_field}}]}}}
+        if filters:
+            filter_clause = []
+            for key, values in filters.items():
+                if type(values) != list:
+                    raise ValueError(
+                            f'Wrong filter format for key "{key}":Please provide a list of allowed values for each key.'
+                            'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
+                filter_clause.append(
+                        {
+                            "terms": {key: values}
+                        }
+                )
+            body["query"]["bool"]["filter"] = filter_clause
+
+        result = self.client.count(index=index, body=body)
+        return result["count"]
 
 class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
     """
