@@ -73,7 +73,7 @@ class BaseDocumentStore(BaseComponent):
                                   index: Optional[str] = None,
                                   filters: Optional[Dict[str, List[str]]] = None,
                                   open_domain=False,
-                                  group_by_meta=None) -> List[MultiLabel]:
+                                  aggregate_by_meta=None) -> List[MultiLabel]:
         aggregated_labels = []
         all_labels = self.get_all_labels(index=index, filters=filters)
 
@@ -88,10 +88,10 @@ class BaseDocumentStore(BaseComponent):
                 group_by_id = [l.question]
             else:
                 group_by_id = [l.document_id, l.question]
-            if group_by_meta:
-                if type(group_by_meta) == str:
-                    group_by_meta = [group_by_meta]
-                for meta_key in group_by_meta:
+            if aggregate_by_meta:
+                if type(aggregate_by_meta) == str:
+                    aggregate_by_meta = [aggregate_by_meta]
+                for meta_key in aggregate_by_meta:
                     curr_meta = l.meta.get(meta_key, None)
                     if curr_meta:
                         group_by_id.append(curr_meta)
@@ -129,6 +129,9 @@ class BaseDocumentStore(BaseComponent):
             # construct Aggregated_label
             for i, l in enumerate(ls):
                 if i == 0:
+                    # Keep only the label metadata that we are aggregating by
+                    meta_new = {k: v for k, v in l.meta.items() if k in aggregate_by_meta}
+
                     agg_label = MultiLabel(question=l.question,
                                            multiple_answers=[l.answer],
                                            is_correct_answer=l.is_correct_answer,
@@ -138,7 +141,7 @@ class BaseDocumentStore(BaseComponent):
                                            multiple_offset_start_in_docs=[l.offset_start_in_doc],
                                            no_answer=l.no_answer,
                                            model_id=l.model_id,
-                                           )
+                                           meta=meta_new)
                 else:
                     agg_label.multiple_answers.append(l.answer)
                     agg_label.multiple_document_ids.append(l.document_id)
