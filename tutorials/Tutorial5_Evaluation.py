@@ -74,12 +74,6 @@ def tutorial5_evaluation():
 
     # Let's prepare the labels that we need for the retriever and the reader
     labels = document_store.get_all_labels_aggregated(index=label_index)
-    q_to_l_dict = {
-        (l.multiple_document_ids[0], l.question): {
-            "retriever": l,
-            "reader": l
-        } for l in labels
-    }
 
     # Initialize Retriever
     retriever = ElasticsearchRetriever(document_store=document_store)
@@ -142,17 +136,16 @@ def tutorial5_evaluation():
         p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
         results = []
 
-        for (_, q), l in q_to_l_dict.items():
+        for l in labels:
             res = p.run(
-                query=q,
+                query=l.question,
                 top_k_retriever=10,
-                labels=l,
+                labels={"reader": l, "retriever": l},
                 top_k_reader=10,
                 index=doc_index,
             )
             results.append(res)
 
-        n_queries = len(labels)
         eval_retriever.print()
         print()
         retriever.print_time()
