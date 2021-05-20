@@ -41,6 +41,10 @@ class EvalDocuments:
         self.has_answer_recall = 0
         self.no_answer_count = 0
         self.recall = 0.0
+        self.mean_reciprocal_rank = 0.0
+        self.has_answer_mean_reciprocal_rank = 0.0
+        self.reciprocal_rank_sum = 0.0
+        self.has_answer_reciprocal_rank_sum = 0.0
 
     def run(self, documents, labels: dict, **kwargs):
         """Run this node on one sample and its labels"""
@@ -51,6 +55,8 @@ class EvalDocuments:
         if retriever_labels.no_answer:
             self.no_answer_count += 1
             correct_retrieval = 1
+            retrieved_reciprocal_rank = 1
+            self.reciprocal_rank_sum += 1
             if not self.no_answer_warning:
                 self.no_answer_warning = True
                 logger.warning("There seem to be empty string labels in the dataset suggesting that there "
@@ -59,30 +65,39 @@ class EvalDocuments:
         # If there are answer span annotations in the labels
         else:
             self.has_answer_count += 1
-            correct_retrieval = self.is_correctly_retrieved(retriever_labels, documents)
+            retrieved_reciprocal_rank = self.reciprocal_rank_retrieved(retriever_labels, documents)
+            self.reciprocal_rank_sum += retrieved_reciprocal_rank
+            correct_retrieval = True if retrieved_reciprocal_rank > 0 else False
             self.has_answer_correct += int(correct_retrieval)
+            self.has_answer_reciprocal_rank_sum += retrieved_reciprocal_rank
             self.has_answer_recall = self.has_answer_correct / self.has_answer_count
+            self.has_answer_mean_reciprocal_rank = self.has_answer_reciprocal_rank_sum / self.has_answer_count
 
         self.correct_retrieval_count += correct_retrieval
         self.recall = self.correct_retrieval_count / self.query_count
+        self.mean_reciprocal_rank = self.reciprocal_rank_sum / self.query_count
+
         if self.debug:
-            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs})
-        return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, **kwargs}, "output_1"
+            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank, **kwargs})
+        return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank, **kwargs}, "output_1"
 
     def is_correctly_retrieved(self, retriever_labels, predictions):
+        return self.reciprocal_rank_retrieved(retriever_labels, predictions) > 0
+
+    def reciprocal_rank_retrieved(self, retriever_labels, predictions):
         if self.open_domain:
             for label in retriever_labels.multiple_answers:
-                for p in predictions[:self.k]:
+                for rank, p in enumerate(predictions[:self.k]):
                     if label.lower() in p.text.lower():
-                        return True
+                        return 1/(rank+1)
             return False
         else:
             prediction_ids = [p.id for p in predictions[:self.k]]
             label_ids = retriever_labels.multiple_document_ids
-            for l in label_ids:
-                if l in prediction_ids:
-                    return True
-            return False
+            for rank, p in enumerate(prediction_ids):
+                if p in label_ids:
+                    return 1/(rank+1)
+            return 0
 
     def print(self):
         """Print the evaluation results"""
@@ -92,8 +107,13 @@ class EvalDocuments:
             print(
                 f"has_answer recall@{self.k}: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
             print(
-                f"no_answer recall:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
+                f"no_answer recall@{self.k}:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
+            print(
+                f"has_answer mean_reciprocal_rank@{self.k}: {self.has_answer_mean_reciprocal_rank:.4f}")
+            print(
+                f"no_answer mean_reciprocal_rank@{self.k}:  1.0000 (no_answer samples are always treated as correctly retrieved at rank 1)")
         print(f"recall@{self.k}: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
+        print(f"mean_reciprocal_rank@{self.k}: {self.mean_reciprocal_rank:.4f}")
 
 
 class EvalAnswers:
