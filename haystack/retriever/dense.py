@@ -3,7 +3,7 @@ from typing import List, Union, Optional
 import torch
 import numpy as np
 from pathlib import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
@@ -240,16 +240,19 @@ class DensePassageRetriever(BaseRetriever):
         else:
             disable_tqdm = not self.progress_bar
 
-        for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+        with tqdm(total=len(data_loader)*self.batch_size, unit=" Docs", desc=f"Create embeddings", position=1,
+                  leave=False, disable=disable_tqdm) as progress_bar:
+            for batch in data_loader:
+                batch = {key: batch[key].to(self.device) for key in batch}
 
-            # get logits
-            with torch.no_grad():
-                query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
-                if query_embeddings is not None:
-                    all_embeddings["query"].append(query_embeddings.cpu().numpy())
-                if passage_embeddings is not None:
-                    all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
+                # get logits
+                with torch.no_grad():
+                    query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
+                    if query_embeddings is not None:
+                        all_embeddings["query"].append(query_embeddings.cpu().numpy())
+                    if passage_embeddings is not None:
+                        all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
+                progress_bar.update(self.batch_size)
 
         if all_embeddings["passages"]:
             all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])

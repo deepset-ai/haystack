@@ -603,3 +603,29 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
     assert len(documents) == 1
     assert documents[0].text == "test"
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
+
+
+@pytest.mark.elasticsearch
+def test_get_document_count_only_documents_without_embedding_arg():
+    documents = [
+        {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32), "meta_field_for_count": "a"},
+        {"text": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64), "meta_field_for_count": "b"},
+        {"text": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
+        {"text": "text4", "id": "4", "meta_field_for_count": "b"},
+        {"text": "text5", "id": "5", "meta_field_for_count": "b"},
+        {"text": "text6", "id": "6", "meta_field_for_count": "c"},
+        {"text": "text7", "id": "7", "embedding": np.random.rand(768).astype(np.float64), "meta_field_for_count": "c"},
+    ]
+
+    _index: str = "haystack_test_count"
+    document_store = ElasticsearchDocumentStore(index=_index)
+    document_store.delete_documents(index=_index)
+
+    document_store.write_documents(documents)
+
+    assert document_store.get_document_count() == 7
+    assert document_store.get_document_count(only_documents_without_embedding=True) == 3
+    assert document_store.get_document_count(only_documents_without_embedding=True,
+                                             filters={"meta_field_for_count": ["c"]}) == 1
+    assert document_store.get_document_count(only_documents_without_embedding=True,
+                                             filters={"meta_field_for_count": ["b"]}) == 2
