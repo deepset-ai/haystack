@@ -476,13 +476,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         body = {"doc": meta}
         self.client.update(index=self.index, id=id, body=body, refresh=self.refresh_type)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None,
+                           only_documents_without_embedding: bool = False) -> int:
         """
         Return the number of documents in the document store.
         """
         index = index or self.index
 
         body: dict = {"query": {"bool": {}}}
+        if only_documents_without_embedding:
+            body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
+
         if filters:
             filter_clause = []
             for key, values in filters.items():
@@ -621,7 +625,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             body["query"]["bool"]["filter"] = filter_clause
 
         if only_documents_without_embedding:
-            body["query"]["bool"] = {"must_not": {"exists": {"field": self.embedding_field}}}
+            body['query']['bool']['must_not'] = [{"must_not": {"exists": {"field": self.embedding_field}}}]
 
         result = scan(self.client, query=body, index=index, size=batch_size, scroll="1d")
         yield from result
@@ -898,7 +902,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             document_count = self.get_document_count(index=index)
             logger.info(f"Updating embeddings for all {document_count} docs ...")
         else:
-            document_count = self.get_document_without_embedding_count(index=index, filters=filters)
+            document_count = self.get_document_count(index=index, filters=filters,
+                                                     only_documents_without_embedding=True)
             logger.info(f"Updating embeddings for {document_count} docs without embeddings ...")
 
         result = self._get_all_documents_in_index(
@@ -973,30 +978,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
             time.sleep(2)
-
-    def get_document_without_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None,
-                                             index: Optional[str] = None) -> int:
-        """
-        Return the number of documents without embedding in the document store.
-        """
-        index = index or self.index
-        body: dict = {"query": {"bool": {"must_not": [{"exists": {"field": self.embedding_field}}]}}}
-        if filters:
-            filter_clause = []
-            for key, values in filters.items():
-                if type(values) != list:
-                    raise ValueError(
-                            f'Wrong filter format for key "{key}":Please provide a list of allowed values for each key.'
-                            'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
-                filter_clause.append(
-                        {
-                            "terms": {key: values}
-                        }
-                )
-            body["query"]["bool"]["filter"] = filter_clause
-
-        result = self.client.count(index=index, body=body)
-        return result["count"]
 
 class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
     """

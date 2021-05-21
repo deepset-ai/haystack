@@ -586,7 +586,7 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
 
 
 @pytest.mark.elasticsearch
-def test_get_document_without_embedding_count():
+def test_get_document_count_only_documents_without_embedding_arg():
     documents = [
         {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32), "meta_field_for_count": "a"},
         {"text": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64), "meta_field_for_count": "b"},
@@ -604,6 +604,8 @@ def test_get_document_without_embedding_count():
     document_store.write_documents(documents)
 
     assert document_store.get_document_count() == 7
-    assert document_store.get_document_without_embedding_count() == 3
-    assert document_store.get_document_without_embedding_count(filters={"meta_field_for_count": ["c"]}) == 1
-    assert document_store.get_document_without_embedding_count(filters={"meta_field_for_count": ["b"]}) == 2
+    assert document_store.get_document_count(only_documents_without_embedding=True) == 3
+    assert document_store.get_document_count(only_documents_without_embedding=True,
+                                             filters={"meta_field_for_count": ["c"]}) == 1
+    assert document_store.get_document_count(only_documents_without_embedding=True,
+                                             filters={"meta_field_for_count": ["b"]}) == 2
