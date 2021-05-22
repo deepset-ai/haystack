@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import pytest
 
@@ -426,6 +428,27 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
     answers = output["answers"]
     assert len(answers) == 2
     assert "berlin" in answers[0]["answer"]
+
+
+@pytest.mark.slow
+@pytest.mark.generator
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
+@pytest.mark.vector_dim(128)
+def test_lfqa_pipeline(document_store, retriever, eli5_generator):
+    # reuse existing DOCS but regenerate embeddings with retribert
+    docs: List[Document] = []
+    for idx, d in enumerate(DOCS_WITH_EMBEDDINGS):
+        docs.append(Document(d.text, str(idx)))
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever)
+    query = "Tell me about Berlin?"
+    pipeline = GenerativeQAPipeline(retriever=retriever, generator=eli5_generator)
+    output = pipeline.run(query=query, top_k_generator=1, top_k_retriever=1)
+    answers = output["answers"]
+    assert len(answers) == 1
+    assert "Germany" in answers[0]
 
 
 # Keeping few (retriever,document_store) combination to reduce test time
