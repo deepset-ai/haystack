@@ -6,6 +6,8 @@ from abc import ABC
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Optional, Dict
+import urllib.request
+import pickle
 
 import networkx as nx
 import yaml
@@ -592,6 +594,29 @@ class RootNode:
     def run(self, **kwargs):
         return kwargs, "output_1"
 
+
+class QueryClassifier:
+        outgoing_edges = 2
+        query_vectorizer = pickle.load(
+            urllib.request.urlopen(
+                "https://raw.githubusercontent.com/shahrukhx01/ocr-test/main/query_vectorizer.pickle"
+            )
+        ) 
+        model = pickle.load(
+            urllib.request.urlopen(
+                "https://raw.githubusercontent.com/shahrukhx01/ocr-test/main/query_classifier.pickle"
+            )
+        ) 
+        
+        
+        def run(self, **kwargs):
+            query_vector = self.query_vectorizer.transform([kwargs["query"]])
+            is_question: bool = self.model.predict(query_vector)[0]
+            if is_question:
+                return (kwargs, "output_1")
+
+            else:
+                return (kwargs, "output_2")
 
 class JoinDocuments(BaseComponent):
     """
