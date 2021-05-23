@@ -69,7 +69,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,  # type: ignore
                         duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries.
@@ -140,7 +140,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:  # type: ignore
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]

@@ -305,7 +305,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:  # type: ignore
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         query = {"query": {"ids": {"values": ids}}}
@@ -458,7 +458,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 label.updated_at = label.created_at
 
             _label = {
-                "_op_type": "index" if self.update_existing_documents else "create",
+                "_op_type": "index" if self.duplicate_documents == "overwrite" else "create",
                 "_index": index,
                 **label.to_dict()
             }  # type: Dict[str, Any]

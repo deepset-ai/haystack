@@ -23,7 +23,7 @@ class BaseDocumentStore(BaseComponent):
 
     @abstractmethod
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        duplicate_documents: Optional[str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries.
 
@@ -34,6 +34,7 @@ class BaseDocumentStore(BaseComponent):
                           It can be used for filtering and is accessible in the responses of the Finder.
         :param index: Optional name of index where the documents shall be written to.
                       If None, the DocumentStore's default index (self.index) will be used.
+        :param batch_size: Number of documents that are passed to bulk function at a time.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip (default option): Ignore the duplicates documents
