@@ -36,9 +36,10 @@ class BaseDocumentStore(BaseComponent):
                       If None, the DocumentStore's default index (self.index) will be used.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip: (Default option): Ignore the duplicates documents
-                                    overwrite: Overwrite the documents if exist
-                                    fail: Thrown exception if document exists.
+                                    skip (default option): Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
 
         :return: None
         """

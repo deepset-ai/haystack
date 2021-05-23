@@ -45,10 +45,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ('skip','overwrite','fail')
-                                    skip: (Default option): Ignore the duplicates documents
-                                    overwrite: Overwrite the documents if exist
-                                    fail: Thrown exception if document exists.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip (default option): Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -83,9 +84,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
                       separate index than the documents for search.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip: (Default option): Ignore the duplicates documents
-                                    overwrite: Overwrite the documents if exist
-                                    fail: Thrown exception if document exists.
+                                    skip (default option): Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
