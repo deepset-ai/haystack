@@ -12,6 +12,7 @@ from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.utils import get_batches_from_generator
+from haystack.document_store.base import DuplicateDocumentError
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +47,10 @@ class MilvusDocumentStore(SQLDocumentStore):
             index_type: IndexType = IndexType.FLAT,
             index_param: Optional[Dict[str, Any]] = None,
             search_param: Optional[Dict[str, Any]] = None,
-            update_existing_documents: bool = False,
             return_embedding: bool = False,
             embedding_field: str = "embedding",
             progress_bar: bool = True,
+            duplicate_documents: str = 'skip',
             **kwargs,
     ):
         """
@@ -85,21 +86,23 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param search_param: Configuration parameters for the chose index_type needed at query time
                              For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
                              See https://milvus.io/docs/v1.0.0/index.md
-        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
-                                          documents. When set as True, any document with an existing ID gets updated.
-                                          If set to False, an error is raised if the document ID of the document being
-                                          added already exists.
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip (default option): Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
             sql_url=sql_url, milvus_url=milvus_url, connection_pool=connection_pool, index=index, vector_dim=vector_dim,
             index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
-            search_param=search_param, update_existing_documents=update_existing_documents,
+            search_param=search_param, duplicate_documents=duplicate_documents,
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
         )
 
@@ -122,10 +125,10 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
+        self.duplicate_documents = duplicate_documents
 
         super().__init__(
             url=sql_url,
-            update_existing_documents=update_existing_documents,
             index=index
         )
 
@@ -162,9 +165,8 @@ class MilvusDocumentStore(SQLDocumentStore):
             self.index: self.embedding_field,
         }
 
-    def write_documents(
-            self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
-    ):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -172,9 +174,19 @@ class MilvusDocumentStore(SQLDocumentStore):
                                   them right away in Milvus. If not, you can later call update_embeddings() to create & index them.
         :param index: (SQL) index name for storing the docs and metadata
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip (default option): Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return:
         """
         index = index or self.index
+        duplicate_documents = duplicate_documents or self.duplicate_documents
+        assert duplicate_documents in self.duplicate_documents_options, \
+            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
         self._create_collection_and_index_if_not_exist(index)
         field_map = self._create_document_field_map()
 
@@ -183,6 +195,16 @@ class MilvusDocumentStore(SQLDocumentStore):
             return
 
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+        document_objects = self.drop_duplicate_documents(document_objects)
+
+        if duplicate_documents in ('fail', 'skip'):
+            _documents = self.get_documents_by_id(ids=[doc.id for doc in document_objects], index=index)
+            _ids_exist_in_db = [doc.id for doc in _documents]
+            if duplicate_documents == "skip":
+                document_objects = list(filter(lambda doc: doc.id not in _ids_exist_in_db, document_objects))
+            else:
+                raise DuplicateDocumentError(f"Document with ids '{', '.join(_ids_exist_in_db)} already exists"
+                                             f" in Database.")
 
         add_vectors = False if document_objects[0].embedding is None else True
 
@@ -203,7 +225,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                             raise AttributeError(f'Format of supplied document embedding {type(doc.embedding)} is not '
                                                  f'supported. Please use list or numpy.ndarray')
 
-                    if self.update_existing_documents:
+                    if duplicate_documents == 'overwrite':
                         existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
                         self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
 
@@ -218,12 +240,12 @@ class MilvusDocumentStore(SQLDocumentStore):
                         meta["vector_id"] = vector_ids[idx]
                     docs_to_write_in_sql.append(doc)
 
-                super().write_documents(docs_to_write_in_sql, index=index)
+                super().write_documents(docs_to_write_in_sql, index=index, duplicate_documents=duplicate_documents)
                 progress_bar.update(batch_size)
         progress_bar.close()
 
         self.milvus_server.flush([index])
-        if self.update_existing_documents:
+        if duplicate_documents == 'overwrite':
             self.milvus_server.compact(collection_name=index)
 
     def update_embeddings(

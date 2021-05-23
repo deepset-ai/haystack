@@ -73,7 +73,6 @@ class SQLDocumentStore(BaseDocumentStore):
         url: str = "sqlite://",
         index: str = "document",
         label_index: str = "label",
-        duplicate_documents: str = 'skip',
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -92,7 +91,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents
+            url=url, index=index, label_index=label_index
         )
 
         engine = create_engine(url)
@@ -101,7 +100,6 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session = Session()
         self.index: str = index
         self.label_index = label_index
-        self.duplicate_documents = duplicate_documents
         if getattr(self, "similarity", None) is None:
             self.similarity = None
         self.use_windowed_query = True
@@ -267,9 +265,8 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return labels
 
-    def write_documents(
-        self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
-    ):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries.
 
@@ -281,6 +278,12 @@ class SQLDocumentStore(BaseDocumentStore):
         :param index: add an optional index attribute to documents. It can be later used for filtering. For instance,
                       documents for evaluation can be indexed in a separate index than the documents for search.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip (default option): Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
 
         :return: None
         """
@@ -300,7 +303,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
                 doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
-                if self.duplicate_documents == "overwrite":
+                if duplicate_documents == "overwrite":
                     # First old meta data cleaning is required
                     self.session.query(MetaORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)

@@ -109,10 +109,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise ValueError("The FAISS document store can currently only support dot_product similarity. "
                              "Please set similarity=\"dot_product\"")
         self.progress_bar = progress_bar
+        self.duplicate_documents = duplicate_documents
 
         super().__init__(
             url=sql_url,
-            duplicate_documents=duplicate_documents,
             index=index
         )
 
@@ -199,7 +199,8 @@ class FAISSDocumentStore(SQLDocumentStore):
                     vector_id += 1
                 docs_to_write_in_sql.append(doc)
 
-            super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
+            super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
+                                                            duplicate_documents=duplicate_documents)
 
     def _create_document_field_map(self) -> Dict:
         return {
