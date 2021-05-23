@@ -10,7 +10,7 @@ from scipy.spatial.distance import cosine
 from tqdm import tqdm
 
 from haystack import Document, Label
-from haystack.document_store.base import BaseDocumentStore
+from haystack.document_store.base import BaseDocumentStore, DuplicateDocumentError
 from haystack.retriever.base import BaseRetriever
 from haystack.utils import get_batches_from_generator
 
@@ -31,6 +31,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return_embedding: bool = False,
         similarity: str = "dot_product",
         progress_bar: bool = True,
+        duplicate_documents: str = 'skip',
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -43,12 +44,18 @@ class InMemoryDocumentStore(BaseDocumentStore):
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ('skip','overwrite','fail')
+                                    skip: (Default option): Ignore the duplicates documents
+                                    overwrite: Overwrite the documents if exist
+                                    fail: Thrown exception if document exists.
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            index=index, label_index=label_index, embedding_field=embedding_field, embedding_dim=embedding_dim,
-            return_embedding=return_embedding, similarity=similarity, progress_bar=progress_bar,
+                index=index, label_index=label_index, embedding_field=embedding_field, embedding_dim=embedding_dim,
+                return_embedding=return_embedding, similarity=similarity, progress_bar=progress_bar,
+                duplicate_documents=duplicate_documents,
         )
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
@@ -59,8 +66,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.return_embedding = return_embedding
         self.similarity = similarity
         self.progress_bar = progress_bar
+        self.duplicate_documents = duplicate_documents
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries.
 
@@ -72,18 +81,33 @@ class InMemoryDocumentStore(BaseDocumentStore):
                           It can be used for filtering and is accessible in the responses of the Finder.
         :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
                       separate index than the documents for search.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: (Default option): Ignore the duplicates documents
+                                    overwrite: Overwrite the documents if exist
+                                    fail: Thrown exception if document exists.
+        :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
         index = index or self.index
+        duplicate_documents = duplicate_documents or self.duplicate_documents
+        assert duplicate_documents in self.duplicate_documents_options, \
+            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
         field_map = self._create_document_field_map()
         documents = deepcopy(documents)
-        documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+        documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in
+                             documents]
 
         for document in documents_objects:
             if document.id in self.indexes[index]:
-                # TODO Make error type consistent across document stores and add user options to deal with duplicate documents (ignore, overwrite, fail)
-                raise ValueError(f"Duplicate Documents: write_documents() failed - Document with id '{document.id} already exists in index '{index}'")
+                if duplicate_documents == "fail":
+                    raise DuplicateDocumentError(f"Document with id '{document.id} already "
+                                                 f"exists in index '{index}'")
+                elif duplicate_documents == "skip":
+                    logger.warning(f"Duplicate Documents: Document with id '{document.id} already exists in index "
+                                   f"'{index}'")
+                    continue
             self.indexes[index][document.id] = document
 
     def _create_document_field_map(self):

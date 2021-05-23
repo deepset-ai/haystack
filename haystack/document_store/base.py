@@ -19,9 +19,11 @@ class BaseDocumentStore(BaseComponent):
     index: Optional[str]
     label_index: Optional[str]
     similarity: Optional[str]
+    duplicate_documents_options: List[str] = ['skip', 'overwrite', 'fail']
 
     @abstractmethod
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries.
 
@@ -32,6 +34,11 @@ class BaseDocumentStore(BaseComponent):
                           It can be used for filtering and is accessible in the responses of the Finder.
         :param index: Optional name of index where the documents shall be written to.
                       If None, the DocumentStore's default index (self.index) will be used.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: (Default option): Ignore the duplicates documents
+                                    overwrite: Overwrite the documents if exist
+                                    fail: Thrown exception if document exists.
 
         :return: None
         """
@@ -214,3 +221,26 @@ class BaseDocumentStore(BaseComponent):
     def run(self, documents: List[dict], index: Optional[str] = None, **kwargs):  # type: ignore
         self.write_documents(documents=documents, index=index)
         return kwargs, "output_1"
+
+    def drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
+        """
+         Drop duplicates documents based on same hash ID
+
+         :param documents: A list of Haystack Document objects.
+         :return: A list of Haystack Document objects.
+        """
+        _hash_ids: list = []
+        _documents: List[Document] = []
+
+        for document in documents:
+            if document.id in _hash_ids:
+                continue
+            _documents.append(document)
+            _hash_ids.append(document.id)
+
+        return _documents
+
+
+class DuplicateDocumentError(Exception):
+    """Exception for Duplicate document"""
+    pass
