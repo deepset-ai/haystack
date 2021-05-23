@@ -165,18 +165,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self.drop_duplicate_documents(document_objects)
-
-        if duplicate_documents in ('fail', 'skip'):
-            _documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=[doc.id for doc in document_objects],
-                                                                             index=index)
-            _ids_exist_in_db = [doc.id for doc in _documents]
-            if duplicate_documents == "skip":
-                document_objects = list(filter(lambda doc: doc.id not in _ids_exist_in_db, document_objects))
-            else:
-                raise DuplicateDocumentError(f"Document with ids '{', '.join(_ids_exist_in_db)} already exists"
-                                             f" in Database.")
-
+        document_objects = self.handle_duplicate_documents(document_objects, duplicate_documents)
         add_vectors = False if document_objects[0].embedding is None else True
 
         if self.duplicate_documents == "overwrite" and add_vectors:

@@ -223,6 +223,11 @@ class BaseDocumentStore(BaseComponent):
         self.write_documents(documents=documents, index=index)
         return kwargs, "output_1"
 
+    @abstractmethod
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
+                            batch_size: int = 10_000) -> List[Document]:
+        pass
+
     def drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
         """
          Drop duplicates documents based on same hash ID
@@ -235,11 +240,39 @@ class BaseDocumentStore(BaseComponent):
 
         for document in documents:
             if document.id in _hash_ids:
+                logger.warning(f"Duplicate Documents: Document with id '{document.id}' already exists in index "
+                               f"'{self.index}'")
                 continue
             _documents.append(document)
             _hash_ids.append(document.id)
 
         return _documents
+
+    def handle_duplicate_documents(self, documents: List[Document], duplicate_documents: Optional[str] = None):
+        """
+        Handle duplicates documents
+
+        :param documents: A list of Haystack Document objects.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip (default option): Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :return: A list of Haystack Document objects.
+       """
+        if duplicate_documents in ('skip', 'fail'):
+            documents = self.drop_duplicate_documents(documents)
+            documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=self.index)
+            ids_exist_in_db = [doc.id for doc in documents_found]
+
+            if len(ids_exist_in_db) > 0 and duplicate_documents == 'fail':
+                raise DuplicateDocumentError(f"Document with ids '{', '.join(ids_exist_in_db)} already exists"
+                                             f" in index = '{self.index}'.")
+
+            documents = list(filter(lambda doc: doc.id not in ids_exist_in_db, documents))
+
+        return documents
 
 
 class DuplicateDocumentError(Exception):
