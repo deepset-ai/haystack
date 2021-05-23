@@ -19,7 +19,7 @@ class BaseDocumentStore(BaseComponent):
     index: Optional[str]
     label_index: Optional[str]
     similarity: Optional[str]
-    duplicate_documents_options: List[str] = ['skip', 'overwrite', 'fail']
+    duplicate_documents_options: tuple = ('skip', 'overwrite', 'fail')
 
     @abstractmethod
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
