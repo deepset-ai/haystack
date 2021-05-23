@@ -73,6 +73,7 @@ class SQLDocumentStore(BaseDocumentStore):
         url: str = "sqlite://",
         index: str = "document",
         label_index: str = "label",
+        duplicate_documents: str = "skip"
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -91,7 +92,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            url=url, index=index, label_index=label_index
+                url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents
         )
 
         engine = create_engine(url)
@@ -100,6 +101,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session = Session()
         self.index: str = index
         self.label_index = label_index
+        self.duplicate_documents = duplicate_documents
         if getattr(self, "similarity", None) is None:
             self.similarity = None
         self.use_windowed_query = True
@@ -289,6 +291,7 @@ class SQLDocumentStore(BaseDocumentStore):
         """
 
         index = index or self.index
+        duplicate_documents = duplicate_documents or self.duplicate_documents
         if len(documents) == 0:
             return
         # Make sure we comply to Document class format
@@ -297,6 +300,7 @@ class SQLDocumentStore(BaseDocumentStore):
         else:
             document_objects = documents
 
+        document_objects = self.handle_duplicate_documents(document_objects, duplicate_documents)
         for i in range(0, len(document_objects), batch_size):
             for doc in document_objects[i: i + batch_size]:
                 meta_fields = doc.meta or {}
