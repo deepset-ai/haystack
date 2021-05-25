@@ -83,19 +83,19 @@ class BaseDocumentStore(BaseComponent):
             # This group_by_id determines the key by which we aggregate labels. Its contents depend on
             # whether we are in an open / closed domain setting,
             # or if there are fields in the meta data that we should group by (set using group_by_meta)
-            group_by_id = None
+            group_by_id_list: list = []
             if open_domain:
-                group_by_id = [l.question]
+                group_by_id_list = [l.question]
             else:
-                group_by_id = [l.document_id, l.question]
+                group_by_id_list = [l.document_id, l.question]
             if aggregate_by_meta:
                 if type(aggregate_by_meta) == str:
                     aggregate_by_meta = [aggregate_by_meta]
                 for meta_key in aggregate_by_meta:
                     curr_meta = l.meta.get(meta_key, None)
                     if curr_meta:
-                        group_by_id.append(curr_meta)
-            group_by_id = tuple(group_by_id)
+                        group_by_id_list.append(curr_meta)
+            group_by_id = tuple(group_by_id_list)
 
             # only aggregate labels with correct answers, as only those can be currently used in evaluation
             if not l.is_correct_answer:
