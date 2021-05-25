@@ -23,6 +23,7 @@ class EvalDocuments:
         :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
                             When False, correct retrieval is evaluated based on document_id.
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
+        :param k: calculate eval metrics for top k results, e.g., recall@k
         """
         self.outgoing_edges = 1
         self.init_counts()
