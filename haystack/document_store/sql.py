@@ -73,7 +73,7 @@ class SQLDocumentStore(BaseDocumentStore):
         url: str = "sqlite://",
         index: str = "document",
         label_index: str = "label",
-        update_existing_documents: bool = False,
+        duplicate_documents: str = "overwrite"
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -82,16 +82,17 @@ class SQLDocumentStore(BaseDocumentStore):
         :param index: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents. 
                       This parameter sets the default value for document index.
         :param label_index: The default value of index attribute for the labels.
-        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
-                                          documents. When set as True, any document with an existing ID gets updated.
-                                          If set to False, an error is raised if the document ID of the document being
-                                          added already exists. Using this parameter could cause performance degradation
-                                          for document insertion.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            url=url, index=index, label_index=label_index, update_existing_documents=update_existing_documents
+                url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents
         )
 
         engine = create_engine(url)
@@ -100,7 +101,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session = Session()
         self.index: str = index
         self.label_index = label_index
-        self.update_existing_documents = update_existing_documents
+        self.duplicate_documents = duplicate_documents
         if getattr(self, "similarity", None) is None:
             self.similarity = None
         self.use_windowed_query = True
@@ -266,9 +267,8 @@ class SQLDocumentStore(BaseDocumentStore):
 
         return labels
 
-    def write_documents(
-        self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
-    ):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries.
 
@@ -280,11 +280,18 @@ class SQLDocumentStore(BaseDocumentStore):
         :param index: add an optional index attribute to documents. It can be later used for filtering. For instance,
                       documents for evaluation can be indexed in a separate index than the documents for search.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
 
         :return: None
         """
 
         index = index or self.index
+        duplicate_documents = duplicate_documents or self.duplicate_documents
         if len(documents) == 0:
             return
         # Make sure we comply to Document class format
@@ -293,13 +300,14 @@ class SQLDocumentStore(BaseDocumentStore):
         else:
             document_objects = documents
 
+        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         for i in range(0, len(document_objects), batch_size):
             for doc in document_objects[i: i + batch_size]:
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
                 doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
-                if self.update_existing_documents:
+                if duplicate_documents == "overwrite":
                     # First old meta data cleaning is required
                     self.session.query(MetaORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)
