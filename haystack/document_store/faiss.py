@@ -13,7 +13,7 @@ from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.utils import get_batches_from_generator
 from scipy.special import expit
-
+from haystack.document_store.base import DuplicateDocumentError
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +37,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional["faiss.swigfaiss.Index"] = None,
         return_embedding: bool = False,
-        update_existing_documents: bool = False,
         index: str = "document",
         similarity: str = "dot_product",
         embedding_field: str = "embedding",
         progress_bar: bool = True,
+        duplicate_documents: str = 'overwrite',
         **kwargs,
     ):
         """
@@ -66,23 +66,25 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param faiss_index: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                             or one with docs that you used in Haystack before and want to load again.
         :param return_embedding: To return document embedding
-        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
-                                          documents. When set as True, any document with an existing ID gets updated.
-                                          If set to False, an error is raised if the document ID of the document being
-                                          added already exists.
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
             sql_url=sql_url, vector_dim=vector_dim, faiss_index_factory_str=faiss_index_factory_str,
             faiss_index=faiss_index, return_embedding=return_embedding,
-            update_existing_documents=update_existing_documents, index=index, similarity=similarity,
+            duplicate_documents=duplicate_documents, index=index, similarity=similarity,
             embedding_field=embedding_field, progress_bar=progress_bar
         )
 
@@ -107,10 +109,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise ValueError("The FAISS document store can currently only support dot_product similarity. "
                              "Please set similarity=\"dot_product\"")
         self.progress_bar = progress_bar
+        self.duplicate_documents = duplicate_documents
 
         super().__init__(
             url=sql_url,
-            update_existing_documents=update_existing_documents,
             index=index
         )
 
@@ -130,9 +132,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             index = faiss.index_factory(vector_dim, index_factory, metric_type)
         return index
 
-    def write_documents(
-        self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
-    ):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -140,10 +141,21 @@ class FAISSDocumentStore(SQLDocumentStore):
                           them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
         :param index: (SQL) index name for storing the docs and metadata
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return:
         """
 
         index = index or self.index
+        duplicate_documents = duplicate_documents or self.duplicate_documents
+        assert duplicate_documents in self.duplicate_documents_options, \
+            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
+
         if not self.faiss_indexes.get(index):
             self.faiss_indexes[index] = self._create_new_index(
                 vector_dim=self.vector_dim,
@@ -153,11 +165,11 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-
+        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         add_vectors = False if document_objects[0].embedding is None else True
 
-        if self.update_existing_documents and add_vectors:
-            logger.warning("You have enabled `update_existing_documents` feature and "
+        if self.duplicate_documents == "overwrite" and add_vectors:
+            logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
                            "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
                            "Please call `update_embeddings` method to repopulate `faiss_index`")
 
@@ -176,7 +188,8 @@ class FAISSDocumentStore(SQLDocumentStore):
                     vector_id += 1
                 docs_to_write_in_sql.append(doc)
 
-            super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index)
+            super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
+                                                            duplicate_documents=duplicate_documents)
 
     def _create_document_field_map(self) -> Dict:
         return {
