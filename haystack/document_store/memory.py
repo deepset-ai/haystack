@@ -31,7 +31,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return_embedding: bool = False,
         similarity: str = "dot_product",
         progress_bar: bool = True,
-        duplicate_documents: str = 'skip',
+        duplicate_documents: str = 'overwrite',
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -46,7 +46,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -84,7 +84,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                       separate index than the documents for search.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.

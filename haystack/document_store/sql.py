@@ -73,7 +73,7 @@ class SQLDocumentStore(BaseDocumentStore):
         url: str = "sqlite://",
         index: str = "document",
         label_index: str = "label",
-        duplicate_documents: str = "skip"
+        duplicate_documents: str = "overwrite"
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -84,7 +84,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param label_index: The default value of index attribute for the labels.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -282,7 +282,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -300,7 +300,7 @@ class SQLDocumentStore(BaseDocumentStore):
         else:
             document_objects = documents
 
-        document_objects = self.handle_duplicate_documents(document_objects, duplicate_documents)
+        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         for i in range(0, len(document_objects), batch_size):
             for doc in document_objects[i: i + batch_size]:
                 meta_fields = doc.meta or {}

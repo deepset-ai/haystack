@@ -50,7 +50,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             return_embedding: bool = False,
             embedding_field: str = "embedding",
             progress_bar: bool = True,
-            duplicate_documents: str = 'skip',
+            duplicate_documents: str = 'overwrite',
             **kwargs,
     ):
         """
@@ -92,7 +92,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -176,7 +176,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -195,7 +195,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             return
 
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self.handle_duplicate_documents(document_objects, duplicate_documents)
+        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         add_vectors = False if document_objects[0].embedding is None else True
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)

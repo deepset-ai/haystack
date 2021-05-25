@@ -6,6 +6,7 @@ from typing import Optional, Dict, List, Union
 import numpy as np
 
 from haystack import Document, Label, MultiLabel, BaseComponent
+from haystack.errors import DuplicateDocumentError
 from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
@@ -37,7 +38,7 @@ class BaseDocumentStore(BaseComponent):
         :param batch_size: Number of documents that are passed to bulk function at a time.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -229,7 +230,7 @@ class BaseDocumentStore(BaseComponent):
                             batch_size: int = 10_000) -> List[Document]:
         pass
 
-    def drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
+    def _drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
         """
          Drop duplicates documents based on same hash ID
 
@@ -249,7 +250,7 @@ class BaseDocumentStore(BaseComponent):
 
         return _documents
 
-    def handle_duplicate_documents(self, documents: List[Document], duplicate_documents: Optional[str] = None):
+    def _handle_duplicate_documents(self, documents: List[Document], duplicate_documents: Optional[str] = None):
         """
         Handle duplicates documents
 
@@ -263,7 +264,7 @@ class BaseDocumentStore(BaseComponent):
         :return: A list of Haystack Document objects.
        """
         if duplicate_documents in ('skip', 'fail'):
-            documents = self.drop_duplicate_documents(documents)
+            documents = self._drop_duplicate_documents(documents)
             documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=self.index)
             ids_exist_in_db = [doc.id for doc in documents_found]
 
@@ -274,8 +275,3 @@ class BaseDocumentStore(BaseComponent):
             documents = list(filter(lambda doc: doc.id not in ids_exist_in_db, documents))
 
         return documents
-
-
-class DuplicateDocumentError(Exception):
-    """Exception for Duplicate document"""
-    pass

@@ -47,7 +47,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         similarity="dot_product",
         timeout=30,
         return_embedding: bool = False,
-        duplicate_documents: str = 'skip',
+        duplicate_documents: str = 'overwrite',
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -91,7 +91,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param return_embedding: To return document embedding
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -374,7 +374,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param batch_size: Number of documents that are passed to Elasticsearch's bulk function at a time.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -393,7 +393,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self.handle_duplicate_documents(document_objects, duplicate_documents)
+        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         documents_to_index = []
         for doc in document_objects:
             _doc = {

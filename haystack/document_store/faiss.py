@@ -41,7 +41,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         similarity: str = "dot_product",
         embedding_field: str = "embedding",
         progress_bar: bool = True,
-        duplicate_documents: str = 'skip',
+        duplicate_documents: str = 'overwrite',
         **kwargs,
     ):
         """
@@ -74,7 +74,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -143,7 +143,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
+                                    skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
@@ -165,11 +165,11 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self.handle_duplicate_documents(document_objects, duplicate_documents)
+        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         add_vectors = False if document_objects[0].embedding is None else True
 
         if self.duplicate_documents == "overwrite" and add_vectors:
-            logger.warning("You have enabled `update_existing_documents` feature and "
+            logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
                            "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
                            "Please call `update_embeddings` method to repopulate `faiss_index`")
 
