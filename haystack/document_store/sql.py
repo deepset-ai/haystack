@@ -471,18 +471,21 @@ class SQLDocumentStore(BaseDocumentStore):
         :return: None
         """
         index = index or self.index
-        document_ids_to_delete = self.session.query(DocumentORM.id).filter_by(index=index)
+
         if filters:
             # documents_query = documents_query.join(MetaORM)
+            document_ids_to_delete = self.session.query(DocumentORM.id).filter_by(index=index)
             for key, values in filters.items():
                 document_ids_to_delete = document_ids_to_delete.filter(
                         MetaORM.name == key,
                         MetaORM.value.in_(values),
                         DocumentORM.id == MetaORM.document_id
                 )
+            self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(
+                    synchronize_session=False)
+        else:
+            self.session.query(DocumentORM).filter_by(index=index).delete(synchronize_session=False)
 
-        self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(
-                synchronize_session=False)
         self.session.commit()
 
     def _get_or_create(self, session, model, **kwargs):
