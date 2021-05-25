@@ -44,8 +44,9 @@ def test_write_with_duplicate_doc_ids(document_store):
             id_hash_keys=["key1"]
         )
     ]
+    document_store.write_documents(documents, duplicate_documents="skip")
     with pytest.raises(Exception):
-        document_store.write_documents(documents)
+        document_store.write_documents(documents, duplicate_documents="fail")
 
 
 @pytest.mark.elasticsearch
@@ -168,15 +169,14 @@ def test_update_existing_documents(document_store, update_existing_documents):
         {"text": "text1_new", "id": "1", "meta_field_for_count": "a"},
     ]
 
-    document_store.update_existing_documents = update_existing_documents
     document_store.write_documents(original_docs)
     assert document_store.get_document_count() == 1
 
     if update_existing_documents:
-        document_store.write_documents(updated_docs)
+        document_store.write_documents(updated_docs, duplicate_documents="overwrite")
     else:
         with pytest.raises(Exception):
-            document_store.write_documents(updated_docs)
+            document_store.write_documents(updated_docs, duplicate_documents="fail")
 
     stored_docs = document_store.get_all_documents()
     assert len(stored_docs) == 1
