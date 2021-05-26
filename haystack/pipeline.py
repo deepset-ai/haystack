@@ -7,6 +7,9 @@ from copy import deepcopy
 from pathlib import Path
 from typing import List, Optional, Dict
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.ensemble import GradientBoostingClassifier
+
 import networkx as nx
 import yaml
 from networkx import DiGraph
@@ -591,6 +594,39 @@ class RootNode:
 
     def run(self, **kwargs):
         return kwargs, "output_1"
+
+
+class QueryClassifier(BaseComponent):
+    """
+    A node to choose between two nodes based on query classification result.
+    """
+
+    outgoing_edges = 2
+
+    def __init__(
+        self, query_classifier: GradientBoostingClassifier, query_vectorizer: TfidfVectorizer
+    ):
+        """
+        :param query_classifier: Gradient boosting based binary classifier to classify between question vs statement queries.
+        Classifier's pickle hosted at `https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle`
+        :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query. Vectorizer's pickle hosted at
+        `https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle`
+        """
+        assert (
+            query_classifier is not None or query_vectorizer is not None
+        ), "Either query classifier or query are not loaded properly"
+
+        self.query_classifier = query_classifier
+        self.query_vectorizer = query_vectorizer
+
+    def run(self, **kwargs):
+        query_vector = self.query_vectorizer.transform([kwargs["query"]])
+
+        is_question: bool = self.query_classifier.predict(query_vector)[0]
+        if is_question:
+            return (kwargs, "output_1")
+        else:
+            return (kwargs, "output_2")
 
 
 class JoinDocuments(BaseComponent):
