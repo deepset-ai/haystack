@@ -131,7 +131,7 @@ processor = PreProcessor(
     split_respect_sentence_boundary=True,
     split_overlap=0
 )
-docs = processor.process(d)
+docs = processor.process(doc)
 ```
 
 * `clean_empty_lines` will normalize 3 or more consecutive empty lines to be just a two empty lines

@@ -92,8 +92,8 @@ def test_update_docs(document_store, retriever, batch_size):
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["milvus", "faiss"], indirect=True)
-def test_update_exiting_docs(document_store, retriever):
-    document_store.update_existing_documents = True
+def test_update_existing_docs(document_store, retriever):
+    document_store.duplicate_documents = "overwrite"
     old_document = Document(text="text_1")
     # initial write
     document_store.write_documents([old_document])

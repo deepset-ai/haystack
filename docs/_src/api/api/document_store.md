@@ -399,6 +399,24 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 None
 
+<a name="elasticsearch.ElasticsearchDocumentStore.delete_documents"></a>
+#### delete\_documents
+
+```python
+ | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete documents in an index. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
+
 <a name="elasticsearch.OpenDistroElasticsearchDocumentStore"></a>
 ## OpenDistroElasticsearchDocumentStore Objects
 
@@ -614,6 +632,24 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 None
 
+<a name="memory.InMemoryDocumentStore.delete_documents"></a>
+#### delete\_documents
+
+```python
+ | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete documents in an index. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
+
 <a name="sql"></a>
 # Module sql
 
@@ -803,6 +839,24 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 None
 
+<a name="sql.SQLDocumentStore.delete_documents"></a>
+#### delete\_documents
+
+```python
+ | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete documents in an index. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
+
 <a name="faiss"></a>
 # Module faiss
 
@@ -963,6 +1017,15 @@ None
 
 ```python
  | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete all documents from the document store.
+
+<a name="faiss.FAISSDocumentStore.delete_documents"></a>
+#### delete\_documents
+
+```python
+ | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete all documents from the document store.
@@ -1177,6 +1240,25 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 
 ```python
  | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete all documents (from SQL AND Milvus).
+
+**Arguments**:
+
+- `index`: (SQL) index name for storing the docs and metadata
+- `filters`: Optional filters to narrow down the search space.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
+
+<a name="milvus.MilvusDocumentStore.delete_documents"></a>
+#### delete\_documents
+
+```python
+ | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete all documents (from SQL AND Milvus).

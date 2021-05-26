@@ -9,8 +9,9 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import numpy as np
 from scipy.special import expit
+from tqdm.auto import tqdm
 
-from haystack.document_store.base import BaseDocumentStore
+from haystack.document_store.base import BaseDocumentStore, DuplicateDocumentError
 from haystack import Document, Label
 from haystack.utils import get_batches_from_generator
 
@@ -42,11 +43,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         ca_certs: Optional[str] = None,
         verify_certs: bool = True,
         create_index: bool = True,
-        update_existing_documents: bool = False,
         refresh_type: str = "wait_for",
         similarity="dot_product",
         timeout=30,
         return_embedding: bool = False,
+        duplicate_documents: str = 'overwrite',
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -79,11 +80,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
         :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
         :param verify_certs: Whether to be strict about ca certificates
-        :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
-        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
-                                          documents. When set as True, any document with an existing ID gets updated.
-                                          If set to False, an error is raised if the document ID of the document being
-                                          added already exists.
+        :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                              If set to 'wait_for', continue only after changes are visible (slow, but safe).
                              If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
@@ -92,6 +89,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         :param timeout: Number of seconds after which an ElasticSearch request times out.
         :param return_embedding: To return document embedding
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
 
         """
         # save init parameters to enable export of component config as YAML
@@ -101,7 +104,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             name_field=name_field, embedding_field=embedding_field, embedding_dim=embedding_dim,
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
-            update_existing_documents=update_existing_documents, refresh_type=refresh_type, similarity=similarity,
+            duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
             timeout=timeout, return_embedding=return_embedding,
         )
 
@@ -136,7 +139,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             self._create_document_index(index)
             self._create_label_index(label_index)
 
-        self.update_existing_documents = update_existing_documents
+        self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
 
     def _init_elastic_client(self,
@@ -302,7 +305,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:  # type: ignore
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         query = {"query": {"ids": {"values": ids}}}
@@ -348,9 +351,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             bucket["value"] = bucket.pop("key")
         return buckets
 
-    def write_documents(
-        self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,  batch_size: int = 10_000
-    ):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        batch_size: int = 10_000,duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -370,6 +372,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                           should be changed to what you have set for self.text_field and self.name_field.
         :param index: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
         :param batch_size: Number of documents that are passed to Elasticsearch's bulk function at a time.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
 
@@ -378,17 +387,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         if index is None:
             index = self.index
+        duplicate_documents = duplicate_documents or self.duplicate_documents
+        assert duplicate_documents in self.duplicate_documents_options, \
+            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
+        field_map = self._create_document_field_map()
+        document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         documents_to_index = []
-        for document in documents:
-            # Make sure we comply to Document class format
-            if isinstance(document, dict):
-                doc = Document.from_dict(document, field_map=self._create_document_field_map())
-            else:
-                doc = document
-
+        for doc in document_objects:
             _doc = {
-                "_op_type": "index" if self.update_existing_documents else "create",
+                "_op_type": "index" if duplicate_documents == 'overwrite' else "create",
                 "_index": index,
                 **doc.to_dict(field_map=self._create_document_field_map())
             }  # type: Dict[str, Any]
@@ -449,7 +458,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 label.updated_at = label.created_at
 
             _label = {
-                "_op_type": "index" if self.update_existing_documents else "create",
+                "_op_type": "index" if self.duplicate_documents == "overwrite" else "create",
                 "_index": index,
                 **label.to_dict()
             }  # type: Dict[str, Any]
@@ -475,13 +484,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         body = {"doc": meta}
         self.client.update(index=self.index, id=id, body=body, refresh=self.refresh_type)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None,
+                           only_documents_without_embedding: bool = False) -> int:
         """
         Return the number of documents in the document store.
         """
         index = index or self.index
 
         body: dict = {"query": {"bool": {}}}
+        if only_documents_without_embedding:
+            body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
+
         if filters:
             filter_clause = []
             for key, values in filters.items():
@@ -620,7 +633,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             body["query"]["bool"]["filter"] = filter_clause
 
         if only_documents_without_embedding:
-            body["query"]["bool"] = {"must_not": {"exists": {"field": self.embedding_field}}}
+            body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
 
         result = scan(self.client, query=body, index=index, size=batch_size, scroll="1d")
         yield from result
@@ -894,9 +907,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
         if update_existing_embeddings:
-            logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
+            document_count = self.get_document_count(index=index)
+            logger.info(f"Updating embeddings for all {document_count} docs ...")
         else:
-            logger.info(f"Updating embeddings for new docs without embeddings ...")
+            document_count = self.get_document_count(index=index, filters=filters,
+                                                     only_documents_without_embedding=True)
+            logger.info(f"Updating embeddings for {document_count} docs without embeddings ...")
 
         result = self._get_all_documents_in_index(
             index=index,
@@ -905,25 +921,29 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             only_documents_without_embedding=not update_existing_embeddings
         )
 
-        for result_batch in get_batches_from_generator(result, batch_size):
-            document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
-            embeddings = retriever.embed_passages(document_batch)  # type: ignore
-            assert len(document_batch) == len(embeddings)
+        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
 
-            if embeddings[0].shape[0] != self.embedding_dim:
-                raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                                   f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                                   "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
-            doc_updates = []
-            for doc, emb in zip(document_batch, embeddings):
-                update = {"_op_type": "update",
-                          "_index": index,
-                          "_id": doc.id,
-                          "doc": {self.embedding_field: emb.tolist()},
-                          }
-                doc_updates.append(update)
+        with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
+            for result_batch in get_batches_from_generator(result, batch_size):
+                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
+                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                assert len(document_batch) == len(embeddings)
 
-            bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
+                if embeddings[0].shape[0] != self.embedding_dim:
+                    raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                                       f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
+                                       "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()")
+                doc_updates = []
+                for doc, emb in zip(document_batch, embeddings):
+                    update = {"_op_type": "update",
+                              "_index": index,
+                              "_id": doc.id,
+                              "doc": {self.embedding_field: emb.tolist()},
+                              }
+                    doc_updates.append(update)
+
+                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
+                progress_bar.update(batch_size)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
@@ -966,7 +986,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
             time.sleep(2)
-
 
 class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
     """
