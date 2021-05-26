@@ -140,7 +140,7 @@ def tutorial5_evaluation():
             res = p.run(
                 query=l.question,
                 top_k_retriever=10,
-                labels={"reader": l, "retriever": l},
+                labels=l,
                 top_k_reader=10,
                 index=doc_index,
             )
