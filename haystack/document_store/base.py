@@ -152,7 +152,10 @@ class BaseDocumentStore(BaseComponent):
             for i, l in enumerate(ls):
                 if i == 0:
                     # Keep only the label metadata that we are aggregating by
-                    meta_new = {k: v for k, v in l.meta.items() if k in aggregate_by_meta}
+                    if aggregate_by_meta:
+                        meta_new = {k: v for k, v in l.meta.items() if k in aggregate_by_meta}
+                    else:
+                        meta_new = {}
 
                     agg_label = MultiLabel(question=l.question,
                                            multiple_answers=[l.answer],
