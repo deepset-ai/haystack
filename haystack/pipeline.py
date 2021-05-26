@@ -6,6 +6,8 @@ from abc import ABC
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Optional, Dict
+import urllib.request
+import pickle
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import GradientBoostingClassifier
@@ -604,18 +606,22 @@ class QueryClassifier(BaseComponent):
     outgoing_edges = 2
 
     def __init__(
-        self, query_classifier: GradientBoostingClassifier, query_vectorizer: TfidfVectorizer
+        self, 
+        query_classifier: Optional[GradientBoostingClassifier] = pickle.load(
+            urllib.request.urlopen(
+                "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle"
+            )
+        ), 
+        query_vectorizer: Optional[TfidfVectorizer] = pickle.load(
+            urllib.request.urlopen(
+                "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
+            )
+        )
     ):
         """
         :param query_classifier: Gradient boosting based binary classifier to classify between question vs statement queries.
-        Classifier's pickle hosted at `https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle`
-        :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query. Vectorizer's pickle hosted at
-        `https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle`
+        :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query.
         """
-        assert (
-            query_classifier is not None or query_vectorizer is not None
-        ), "Either query classifier or query are not loaded properly"
-
         self.query_classifier = query_classifier
         self.query_vectorizer = query_vectorizer
 
