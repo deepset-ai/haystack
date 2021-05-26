@@ -607,23 +607,24 @@ class QueryClassifier(BaseComponent):
 
     def __init__(
         self, 
-        query_classifier: Optional[GradientBoostingClassifier] = pickle.load(
-            urllib.request.urlopen(
-                "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle"
-            )
-        ), 
-        query_vectorizer: Optional[TfidfVectorizer] = pickle.load(
-            urllib.request.urlopen(
-                "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
-            )
-        )
+        query_classifier: Optional[GradientBoostingClassifier] = None, 
+        query_vectorizer: Optional[TfidfVectorizer] = None
     ):
         """
         :param query_classifier: Gradient boosting based binary classifier to classify between question vs statement queries.
         :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query.
         """
-        self.query_classifier = query_classifier
-        self.query_vectorizer = query_vectorizer
+        self.query_classifier = query_classifier or pickle.load(
+            urllib.request.urlopen(
+                "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle"            
+           )
+        )
+
+        self.query_vectorizer = query_vectorizer or pickle.load(
+            urllib.request.urlopen(
+                "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"            
+           )
+        )
 
     def run(self, **kwargs):
         query_vector = self.query_vectorizer.transform([kwargs["query"]])
