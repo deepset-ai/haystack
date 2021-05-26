@@ -18,12 +18,12 @@ class EvalDocuments:
     a look at our evaluation tutorial for more info about open vs closed domain eval (
     https://haystack.deepset.ai/docs/latest/tutorial5md).
     """
-    def __init__(self, debug: bool=False, open_domain: bool=True, k: int=10, name="EvalDocuments"):
+    def __init__(self, debug: bool=False, open_domain: bool=True, top_k: int=10, name="EvalDocuments"):
         """
         :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
                             When False, correct retrieval is evaluated based on document_id.
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
-        :param k: calculate eval metrics for top k results, e.g., recall@k
+        :param top_k: calculate eval metrics for top k results, e.g., recall@k
         """
         self.outgoing_edges = 1
         self.init_counts()
@@ -31,7 +31,7 @@ class EvalDocuments:
         self.debug = debug
         self.log: List = []
         self.open_domain = open_domain
-        self.k = k
+        self.top_k = top_k
         self.name = name
 
     def init_counts(self):
@@ -88,12 +88,12 @@ class EvalDocuments:
     def reciprocal_rank_retrieved(self, retriever_labels, predictions):
         if self.open_domain:
             for label in retriever_labels.multiple_answers:
-                for rank, p in enumerate(predictions[:self.k]):
+                for rank, p in enumerate(predictions[:self.top_k]):
                     if label.lower() in p.text.lower():
                         return 1/(rank+1)
             return False
         else:
-            prediction_ids = [p.id for p in predictions[:self.k]]
+            prediction_ids = [p.id for p in predictions[:self.top_k]]
             label_ids = retriever_labels.multiple_document_ids
             for rank, p in enumerate(prediction_ids):
                 if p in label_ids:
@@ -106,15 +106,15 @@ class EvalDocuments:
         print("-----------------")
         if self.no_answer_count:
             print(
-                f"has_answer recall@{self.k}: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
+                f"has_answer recall@{self.top_k}: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
             print(
-                f"no_answer recall@{self.k}:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
+                f"no_answer recall@{self.top_k}:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
             print(
-                f"has_answer mean_reciprocal_rank@{self.k}: {self.has_answer_mean_reciprocal_rank:.4f}")
+                f"has_answer mean_reciprocal_rank@{self.top_k}: {self.has_answer_mean_reciprocal_rank:.4f}")
             print(
-                f"no_answer mean_reciprocal_rank@{self.k}:  1.0000 (no_answer samples are always treated as correctly retrieved at rank 1)")
-        print(f"recall@{self.k}: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
-        print(f"mean_reciprocal_rank@{self.k}: {self.mean_reciprocal_rank:.4f}")
+                f"no_answer mean_reciprocal_rank@{self.top_k}:  1.0000 (no_answer samples are always treated as correctly retrieved at rank 1)")
+        print(f"recall@{self.top_k}: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
+        print(f"mean_reciprocal_rank@{self.top_k}: {self.mean_reciprocal_rank:.4f}")
 
 
 class EvalAnswers:

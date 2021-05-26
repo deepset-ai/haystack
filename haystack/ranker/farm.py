@@ -150,7 +150,7 @@ class FARMRanker(BaseRanker):
         device, n_gpu = initialize_device_settings(use_cuda=use_gpu, use_amp=use_amp)
 
         if not save_dir:
-            save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
+            save_dir = f"saved_models/{self.inferencer.model.language_model.name}"
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
         label_list = ["0", "1"]
