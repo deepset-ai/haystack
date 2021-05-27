@@ -72,7 +72,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_labels_aggregated(self,
                                   index: Optional[str] = None,
                                   filters: Optional[Dict[str, List[str]]] = None,
-                                  open_domain: bool=False,
+                                  open_domain: bool=True,
                                   aggregate_by_meta: Optional[Union[str, list]]=None) -> List[MultiLabel]:
         """
         Return all labels in the DocumentStore, aggregated into MultiLabel objects.

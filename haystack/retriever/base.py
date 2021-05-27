@@ -108,7 +108,7 @@ class BaseRetriever(BaseComponent):
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
         logger.info("Performing eval queries...")
         if open_domain:
-            for question, gold_answers in tqdm(question_label_dict.items()):
+            for (_, question), gold_answers in tqdm(question_label_dict.items()):
                 retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 if return_preds:
                     predictions.append({"question": question, "retrieved_docs": retrieved_docs})

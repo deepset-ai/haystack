@@ -107,12 +107,6 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     )
 
     labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
-    q_to_l_dict = {
-        l.question: {
-            "retriever": l,
-            "reader": l
-        } for l in labels
-    }
 
     eval_retriever = EvalRetriever()
     eval_reader = EvalReader()
@@ -123,9 +117,9 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     p.add_node(component=eval_retriever, name="EvalRetriever", inputs=["ESRetriever"])
     p.add_node(component=reader, name="QAReader", inputs=["EvalRetriever"])
     p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
-    for q, l in q_to_l_dict.items():
+    for l in labels:
         res = p.run(
-            query=q,
+            query=l.question,
             top_k_retriever=10,
             labels=l,
             top_k_reader=10,
