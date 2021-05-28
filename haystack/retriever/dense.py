@@ -1,4 +1,5 @@
 import logging
+from abc import abstractmethod
 from typing import List, Union, Optional
 import torch
 import numpy as np
@@ -484,6 +485,7 @@ class EmbeddingRetriever(BaseRetriever):
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
+        :param progress_bar: If true displays progress bar during embedding.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -550,6 +552,7 @@ class EmbeddingRetriever(BaseRetriever):
 
 class _EmbeddingEncoder:
 
+    @abstractmethod
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """
         Create embeddings for a list of queries.
@@ -559,6 +562,7 @@ class _EmbeddingEncoder:
         """
         pass
 
+    @abstractmethod
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
         """
         Create embeddings for a list of passages.
