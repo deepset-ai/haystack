@@ -7,7 +7,7 @@ import pytest
 import requests
 from elasticsearch import Elasticsearch
 
-from haystack.generator.seq2seq import BartEli5Generator
+from haystack.generator.transformers import BartEli5Generator
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
 
