@@ -164,7 +164,9 @@ class FAISSDocumentStore(SQLDocumentStore):
             )
 
         field_map = self._create_document_field_map()
-        document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+        
+        logger.info("Creating document_objects...")
+        document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in tqdm(documents)]
         document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         add_vectors = False if document_objects[0].embedding is None else True
 
@@ -172,9 +174,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
                            "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
                            "Please call `update_embeddings` method to repopulate `faiss_index`")
-
+        
+        logger.info("Writing document batches...")
         vector_id = self.faiss_indexes[index].ntotal
-        for i in range(0, len(document_objects), batch_size):
+        for i in tqdm(list(range(0, len(document_objects), batch_size))):
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                 embeddings_to_index = np.array(embeddings, dtype="float32")
