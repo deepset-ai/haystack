@@ -6,7 +6,7 @@ from haystack.reader.farm import FARMReader
 from haystack import Pipeline
 from farm.utils import initialize_device_settings
 from haystack.preprocessor import PreProcessor
-from haystack.eval import EvalReader, EvalRetriever
+from haystack.eval import EvalAnswers, EvalDocuments
 
 import logging
 import subprocess
@@ -37,9 +37,9 @@ def main():
 
     document_store = ElasticsearchDocumentStore()
     es_retriever = ElasticsearchRetriever(document_store=document_store)
-    eval_retriever = EvalRetriever(open_domain=open_domain)
+    eval_retriever = EvalDocuments(open_domain=open_domain)
     reader = FARMReader("deepset/roberta-base-squad2", top_k_per_candidate=4, num_processes=1, return_no_answer=True)
-    eval_reader = EvalReader(debug=True, open_domain=open_domain)
+    eval_reader = EvalAnswers(debug=True, open_domain=open_domain)
 
     # Download evaluation data, which is a subset of Natural Questions development set containing 50 documents
     doc_dir = "../data/nq"
@@ -68,9 +68,9 @@ def main():
     # Here is the pipeline definition
     p = Pipeline()
     p.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    p.add_node(component=eval_retriever, name="EvalRetriever", inputs=["ESRetriever"])
-    p.add_node(component=reader, name="QAReader", inputs=["EvalRetriever"])
-    p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
+    p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
+    p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
+    p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
 
     results = []
     for i, (q, l) in enumerate(q_to_l_dict.items()):
