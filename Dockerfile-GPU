@@ -16,6 +16,8 @@ RUN update-alternatives --set python3 /usr/bin/python3.7
 RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && \
 tar -xvf xpdf-tools-linux-4.03.tar.gz && cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
 
+RUN apt-get install libpoppler-cpp-dev pkg-config -y --fix-missing
+
 # copy code
 COPY haystack /home/user/haystack
 
