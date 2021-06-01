@@ -2,7 +2,7 @@ from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.preprocessor.utils import fetch_archive_from_http
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.retriever.dense import DensePassageRetriever
-from haystack.eval import EvalReader, EvalRetriever
+from haystack.eval import EvalAnswers, EvalDocuments
 from haystack.reader.farm import FARMReader
 from haystack.preprocessor import PreProcessor
 from haystack.utils import launch_es
@@ -98,8 +98,8 @@ def tutorial5_evaluation():
     )
 
     # Here we initialize the nodes that perform evaluation
-    eval_retriever = EvalRetriever()
-    eval_reader = EvalReader()
+    eval_retriever = EvalDocuments()
+    eval_reader = EvalAnswers()
 
 
     ## Evaluate Retriever on its own in closed domain fashion
@@ -131,9 +131,9 @@ def tutorial5_evaluation():
         # Here is the pipeline definition
         p = Pipeline()
         p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-        p.add_node(component=eval_retriever, name="EvalRetriever", inputs=["ESRetriever"])
-        p.add_node(component=reader, name="QAReader", inputs=["EvalRetriever"])
-        p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
+        p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
+        p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
+        p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
         results = []
 
         for l in labels:
