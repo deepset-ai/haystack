@@ -75,12 +75,14 @@ class BaseDocumentStore(BaseComponent):
                                   open_domain: bool=True,
                                   aggregate_by_meta: Optional[Union[str, list]]=None) -> List[MultiLabel]:
         """
-        Return all labels in the DocumentStore, aggregated into MultiLabel objects.
+        Return all labels in the DocumentStore, aggregated into MultiLabel objects. 
+        This aggregation step helps, for example, if you collected multiple possible answers for one question and you
+        want now all answers bundled together in one place for evaluation.
         How they are aggregated is defined by the open_domain and aggregate_by_meta parameters.
-        If the questions are being asked to a single document (i.e. SQuAD style), you should set open_domain=False.
-        If the questions are being asked to your full collection of documents, you should set open_domain=True.
+        If the questions are being asked to a single document (i.e. SQuAD style), you should set open_domain=False to aggregate by question and document.
+        If the questions are being asked to your full collection of documents, you should set open_domain=True to aggregate just by question.
         If the questions are being asked to a subslice of your document set (e.g. product review use cases),
-        you should set open_domain=True and populate aggregate_by_meta with the names of Label meta fields.
+        you should set open_domain=True and populate aggregate_by_meta with the names of Label meta fields to aggregate by question and your custom meta fields.
         For example, in a product review use case, you might set aggregate_by_meta=["product_id"] so that Labels
         with the same question but different answers from different documents are aggregated into the one MultiLabel
         object, provided that they have the same product_id (to be found in Label.meta["product_id"])
@@ -93,7 +95,7 @@ class BaseDocumentStore(BaseComponent):
                             When False, labels are aggregated in a closed domain fashion based on the question text
                             and also the id of the document that the label is tied to. In this setting, this function
                             might return multiple MultiLabel objects with the same question string.
-        :param aggregate_by_meta: The names of the Label meta fields by which to aggregate.
+        :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
 
         """
         aggregated_labels = []
