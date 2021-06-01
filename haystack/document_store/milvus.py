@@ -169,7 +169,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         }
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, index_param: Optional[Dict[str, Any]] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -187,6 +187,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :return:
         """
         index = index or self.index
+        index_param = index_param or self.index_param
         duplicate_documents = duplicate_documents or self.duplicate_documents
         assert duplicate_documents in self.duplicate_documents_options, \
             f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
@@ -240,6 +241,13 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.milvus_server.flush([index])
         if duplicate_documents == 'overwrite':
             self.milvus_server.compact(collection_name=index)
+
+        # Milvus index creating should happen after the creation of the collection and after the insertion
+        # of documents for maximum efficiency.
+        # See (https://github.com/milvus-io/milvus/discussions/4939#discussioncomment-809303)
+        status = self.milvus_server.create_index(index, self.index_type, index_param)
+        if status.code != Status.SUCCESS:
+            raise RuntimeError(f'Index creation on Milvus server failed: {status}')
 
     def update_embeddings(
         self,
