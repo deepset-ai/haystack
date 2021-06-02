@@ -67,8 +67,7 @@ class EvalDocuments:
 
         if len(documents) < top_k_eval_documents and not self.too_few_docs_warning:
             logger.warning(f"EvalDocuments is being provided less candidate documents than top_k_eval_documents "
-                           f"(currently set to {top_k_eval_documents}). Either increase top_k_retriever or "
-                           f"decrease top_eval_documents to get consistent metrics.")
+                           f"(currently set to {top_k_eval_documents}).")
             self.too_few_docs_warning = True
 
         # TODO retriever_labels is currently a Multilabel object but should eventually be a RetrieverLabel object
