@@ -723,10 +723,18 @@ class RootNode:
 class SklearnQueryClassifier(BaseComponent):
     """
     A node to choose between two nodes based on query classification result using Sklearn GradientBoosted models.
-    This node by default classifies between keyword and question/statement queries. If you want to
-    classify between question queries and statement queries then use the following `query_classifier` <S3 link> and
-    `query_vectorizer` <S3 link> from S3 or else you can load another query classifier from local
-    file.
+
+    This node by default classifies between keyword and question/statement queries, read more about the dataset it was trained
+    on here:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
+
+    If you want to classify between question queries and statement queries then use the following:
+    `query_classifier`: https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle
+    `query_vectorizer` https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle
+    from S3 or else you can load another query classifier from local file.
+
+    Read more about the dataset it was trained on here:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt.
     """
 
     outgoing_edges = 2
@@ -762,10 +770,16 @@ class SklearnQueryClassifier(BaseComponent):
 class TransformersQueryClassifier(BaseComponent):
     """
     A node to choose between two nodes based on query classification result using Transformer models.
-    This node by default classifies between keyword and question/statement queries. If you want to
-    classify between question queries and statement queries then use the following `query_classifier` from huggingface
+    This node by default classifies between keyword and question/statement queries, read more about the dataset
+    it was trained on here:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
+
+    If you want to classify between question queries and statement queries then use the following `query_classifier` from huggingface
     hub: `shahrukhx01/question-vs-statement-classifier` or else you can load another query classifier from either local
     file or huggingface hub.
+
+    Read more about the dataset it was trained on here:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt..
     """
 
     outgoing_edges = 2
