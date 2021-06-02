@@ -41,12 +41,13 @@ def retriever(index_csv="retriever_index_results.csv", query_csv="retriever_quer
     name_cleaning = {
         "dpr": "DPR",
         "elastic": "BM25",
-        "elasticsearch": "ElasticSearch",
+        "elasticsearch": "Elasticsearch",
         "faiss": "FAISS",
         "faiss_flat": "FAISS (flat)",
         "faiss_hnsw": "FAISS (HNSW)",
         "milvus_flat": "Milvus (flat)",
-        "milvus_hnsw": "Milvus (HNSW)"
+        "milvus_hnsw": "Milvus (HNSW)",
+        "sentence_transformers": "Sentence Transformers"
     }
 
     index = pd.read_csv(index_csv)
