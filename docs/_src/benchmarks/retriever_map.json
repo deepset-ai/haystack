@@ -36,16 +36,6 @@
             "map": 66.26543444531747
         },
         {
-            "model": "BM25 / Elasticsearch",
-            "n_docs": 100000,
-            "map": 56.200268351678716
-        },
-        {
-            "model": "BM25 / Elasticsearch",
-            "n_docs": 100000,
-            "map": 56.25299537353825
-        },
-        {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 1000,
             "map": 90.06638620360428
@@ -104,6 +94,11 @@
             "model": "DPR / Elasticsearch",
             "n_docs": 500000,
             "map": 80.86137228234091
+        },
+        {
+            "model": "BM25 / Elasticsearch",
+            "n_docs": 100000,
+            "map": 56.25299537353825
         },
         {
             "model": "BM25 / Elasticsearch",
