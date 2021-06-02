@@ -164,14 +164,6 @@ class PreProcessor(BasePreProcessor):
 
         text = document["text"]
 
-        if split_by == "word":
-            # Check if splitting by word causes cleaning of multiple whitespaces as a side effect
-            if len(document["text"]) != len(" ".join(document["text"].split())):
-                logger.warning(f"During PreProcessor.split(), white space normalization has occurred. This can cause "
-                               f"issues during evaluation if an answer span contains multiple whitespaces. "
-                               f"This problem may be solved by initializing the PreProcessor with split_by=\'passage\'"
-                               f"(Problematic doc_id: {document.get('id', None)}, beginning of doc: {document['text'][:100]})")
-
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
             sentences = nltk.tokenize.sent_tokenize(text)
@@ -228,7 +220,7 @@ class PreProcessor(BasePreProcessor):
                 segments = windowed(elements, n=split_length, step=split_length)
             text_splits = []
             for seg in segments:
-                txt = " ".join([t for t in seg if t])
+                txt = " ".join([t for t in seg if t is not None])
                 if len(txt) > 0:
                     text_splits.append(txt)
 
