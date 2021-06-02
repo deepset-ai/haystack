@@ -449,6 +449,7 @@ class FARMReader(BaseReader):
             label_index: str = "label",
             doc_index: str = "eval_document",
             label_origin: str = "gold_label",
+            calibrate_confidence_scores: bool = False
     ):
         """
         Performs evaluation on evaluation documents in the DocumentStore.
@@ -461,6 +462,8 @@ class FARMReader(BaseReader):
         :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
+        :param label_origin: Field name where the gold labels are stored
+        :param calibrate_confidence_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
         """
 
         if self.top_k_per_candidate != 4:
@@ -543,7 +546,7 @@ class FARMReader(BaseReader):
 
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
 
-        eval_results = evaluator.eval(self.inferencer.model)
+        eval_results = evaluator.eval(self.inferencer.model, calibrate_confidence_scores=calibrate_confidence_scores)
         toc = perf_counter()
         reader_time = toc - tic
         results = {
@@ -602,6 +605,30 @@ class FARMReader(BaseReader):
         answers = answers[:top_k]
 
         return answers, max_no_ans_gap
+
+    def calibrate_confidence_scores(
+            self,
+            document_store: BaseDocumentStore,
+            device: str,
+            label_index: str = "label",
+            doc_index: str = "eval_document",
+            label_origin: str = "gold_label"
+    ):
+        """
+        Calibrates confidence scores on evaluation documents in the DocumentStore.
+
+        :param document_store: DocumentStore containing the evaluation documents
+        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :param label_index: Index/Table name where labeled questions are stored
+        :param doc_index: Index/Table name where documents that are used for evaluation are stored
+        :param label_origin: Field name where the gold labels are stored
+        """
+        self.eval(document_store=document_store,
+                  device=device,
+                  label_index=label_index,
+                  doc_index=doc_index,
+                  label_origin=label_origin,
+                  calibrate_confidence_scores=True)
 
     @staticmethod
     def _get_pseudo_prob(score: float):
