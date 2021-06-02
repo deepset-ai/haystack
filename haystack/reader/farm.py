@@ -449,7 +449,7 @@ class FARMReader(BaseReader):
             label_index: str = "label",
             doc_index: str = "eval_document",
             label_origin: str = "gold_label",
-            calibrate_confidence_scores: bool = False
+            calibrate_conf_scores: bool = False
     ):
         """
         Performs evaluation on evaluation documents in the DocumentStore.
@@ -463,7 +463,7 @@ class FARMReader(BaseReader):
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
-        :param calibrate_confidence_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
+        :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
         """
 
         if self.top_k_per_candidate != 4:
@@ -546,7 +546,7 @@ class FARMReader(BaseReader):
 
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
 
-        eval_results = evaluator.eval(self.inferencer.model, calibrate_confidence_scores=calibrate_confidence_scores)
+        eval_results = evaluator.eval(self.inferencer.model, calibrate_conf_scores=calibrate_conf_scores)
         toc = perf_counter()
         reader_time = toc - tic
         results = {
@@ -628,7 +628,7 @@ class FARMReader(BaseReader):
                   label_index=label_index,
                   doc_index=doc_index,
                   label_origin=label_origin,
-                  calibrate_confidence_scores=True)
+                  calibrate_conf_scores=True)
 
     @staticmethod
     def _get_pseudo_prob(score: float):
