@@ -49,7 +49,8 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
             # Extracting paragraphs and their labels from a SQuAD document dict
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
                 document,
-                preprocessor
+                preprocessor,
+                open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)

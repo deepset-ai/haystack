@@ -119,6 +119,7 @@ class Pipeline:
         while queue:
             node_id = list(queue.keys())[i]
             node_input = queue[node_id]
+            node_input["node_id"] = node_id
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
