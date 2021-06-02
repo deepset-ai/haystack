@@ -35,7 +35,7 @@ class EvalDocuments:
         self.name = name
         self.too_few_docs_warning = False
         self.inconsistent_top_k_warning = False
-        self.top_k_used = None
+        self.top_k_used = 0
 
     def init_counts(self):
         self.correct_retrieval_count = 0
