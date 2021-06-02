@@ -430,13 +430,15 @@ def test_multilabel(document_store):
         ),
     ]
     document_store.write_labels(labels, index="haystack_test_multilabel")
-    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel")
+    multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=True)
+    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=False)
     labels = document_store.get_all_labels(index="haystack_test_multilabel")
 
-    assert len(multi_labels) == 1
+    assert len(multi_labels_open) == 1
+    assert len(multi_labels) == 3
     assert len(labels) == 5
 
-    assert len(multi_labels[0].multiple_answers) == 3
+    assert len(multi_labels[0].multiple_answers) == 2
     assert len(multi_labels[0].multiple_answers) \
            == len(multi_labels[0].multiple_document_ids) \
            == len(multi_labels[0].multiple_offset_start_in_docs)
