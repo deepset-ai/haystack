@@ -30,6 +30,7 @@ Alternatively, [this example](https://github.com/deepset-ai/FARM/blob/master/exa
 ### Description
 
 The FARMRanker consists of a Transformer-based model for document re-ranking using the TextPairClassifier of [FARM](https://github.com/deepset-ai/FARM).
+Given a text pair of query and passage, the TextPairClassifier either predicts label "1" if the pair is similar or label "0" if they are dissimilar (accompanied with a probability).
 While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interface remains the same.
 With a FARMRanker, you can:
 * Directly get predictions (re-ranked version of the supplied list of Document) via predict() if supplying a pre-trained model
