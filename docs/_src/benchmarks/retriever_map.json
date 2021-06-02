@@ -5,10 +5,13 @@
     "description": "Here you can see how the mean avg. precision (mAP) of the retriever decays as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
     "columns": [
         "n_docs",
-        "BM25 / ElasticSearch",
-        "DPR / ElasticSearch",
+        "BM25 / Elasticsearch",
+        "DPR / Elasticsearch",
         "DPR / FAISS (flat)",
-        "DPR / FAISS (HNSW)"
+        "DPR / FAISS (HNSW)",
+        "DPR / Milvus (flat)",
+        "DPR / Milvus (HNSW)",
+        "Sentence Transformers / Elasticsearch"
     ],
     "axis": [
         {
@@ -18,37 +21,37 @@
     ],
     "data": [
         {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 1000,
             "map": 92.95105322830891
         },
         {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 10000,
             "map": 89.87097014904354
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 10000,
             "map": 66.26543444531747
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 100000,
             "map": 56.200268351678716
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 100000,
             "map": 56.25299537353825
         },
         {
-            "model": "Sentence Transformers / ElasticSearch",
+            "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 1000,
             "map": 90.06638620360428
         },
         {
-            "model": "Sentence Transformers / ElasticSearch",
+            "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 10000,
             "map": 87.11255142468549
         },
@@ -93,27 +96,27 @@
             "map": 88.24421129104469
         },
         {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 100000,
             "map": 86.54606328368976
         },
         {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 500000,
             "map": 80.86137228234091
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 500000,
             "map": 45.595090262466535
         },
         {
-            "model": "Sentence Transformers / ElasticSearch",
+            "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 100000,
             "map": 82.74686664920836
         },
         {
-            "model": "Sentence Transformers / ElasticSearch",
+            "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 500000,
             "map": 76.49564526892904
         },
@@ -158,7 +161,7 @@
             "map": 73.57986207906387
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 1000,
             "map": 74.20444712972909
         }

@@ -5,10 +5,13 @@
     "description": "Here you can see how the query speed of different Retriever / DocumentStore combinations scale as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
     "columns": [
         "n_docs",
-        "BM25 / ElasticSearch",
-        "DPR / ElasticSearch",
+        "BM25 / Elasticsearch",
+        "DPR / Elasticsearch",
         "DPR / FAISS (flat)",
-        "DPR / FAISS (HNSW)"
+        "DPR / FAISS (HNSW)",
+        "DPR / Milvus (flat)",
+        "DPR / Milvus (HNSW)",
+        "Sentence Transformers / Elasticsearch"
     ],
     "axis": [
         {
@@ -18,37 +21,37 @@
     ],
     "data": [
         {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 1000,
             "query_speed": 34.22768858415144
         },
         {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 10000,
             "query_speed": 22.197089725786853
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 10000,
             "query_speed": 127.11481826852273
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 100000,
             "query_speed": 164.213361442627
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 100000,
             "query_speed": 103.0884393334727
         },
         {
-            "model": "Sentence Transformers / ElasticSearch",
+            "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 1000,
             "query_speed": 47.51341215808855
         },
         {
-            "model": "Sentence Transformers / ElasticSearch",
+            "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 10000,
             "query_speed": 29.74515869340777
         },
@@ -93,27 +96,27 @@
             "query_speed": 40.072871546542935
         },
         {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 100000,
             "query_speed": 5.192368815242574
         },
         {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 500000,
             "query_speed": 1.0337466563959614
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 500000,
             "query_speed": 78.95037031647355
         },
         {
-            "model": "Sentence Transformers / ElasticSearch",
+            "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 100000,
             "query_speed": 6.385621466857457
         },
         {
-            "model": "Sentence Transformers / ElasticSearch",
+            "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 500000,
             "query_speed": 1.4175454254854258
         },
@@ -158,7 +161,7 @@
             "query_speed": 37.15717318924075
         },
         {
-            "model": "BM25 / ElasticSearch",
+            "model": "BM25 / Elasticsearch",
             "n_docs": 1000,
             "query_speed": 282.95914917837337
         }
