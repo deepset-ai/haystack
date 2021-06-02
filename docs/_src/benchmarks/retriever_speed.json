@@ -36,16 +36,6 @@
             "query_speed": 127.11481826852273
         },
         {
-            "model": "BM25 / Elasticsearch",
-            "n_docs": 100000,
-            "query_speed": 164.213361442627
-        },
-        {
-            "model": "BM25 / Elasticsearch",
-            "n_docs": 100000,
-            "query_speed": 103.0884393334727
-        },
-        {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 1000,
             "query_speed": 47.51341215808855
@@ -104,6 +94,11 @@
             "model": "DPR / Elasticsearch",
             "n_docs": 500000,
             "query_speed": 1.0337466563959614
+        },
+        {
+            "model": "BM25 / Elasticsearch",
+            "n_docs": 100000,
+            "query_speed": 103.0884393334727
         },
         {
             "model": "BM25 / Elasticsearch",
