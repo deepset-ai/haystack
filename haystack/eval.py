@@ -34,7 +34,6 @@ class EvalDocuments:
         self.top_k_eval_documents = top_k_eval_documents
         self.name = name
         self.too_few_docs_warning = False
-        self.inconsistent_top_k_warning = False
         self.top_k_used = 0
 
     def init_counts(self):
@@ -59,11 +58,12 @@ class EvalDocuments:
 
         if not self.top_k_used:
             self.top_k_used = top_k_eval_documents
-        elif self.top_k_used != top_k_eval_documents and not self.inconsistent_top_k_warning:
+        elif self.top_k_used != top_k_eval_documents:
                 logger.warning(f"EvalDocuments was already run once with top_k_eval_documents={self.top_k_used} but is "
-                               f"being run again with top_k_eval_documents={self.top_k_eval_documents}. This will lead "
-                               f"to unreliable evaluation metrics")
-                self.inconsistent_top_k_warning = True
+                               f"being run again with top_k_eval_documents={self.top_k_eval_documents}. "
+                               f"The evaluation counter is being reset from this point so that the evaluation "
+                               f"metrics are interpretable.")
+                self.init_counts()
 
         if len(documents) < top_k_eval_documents and not self.too_few_docs_warning:
             logger.warning(f"EvalDocuments is being provided less candidate documents than top_k_eval_documents "
