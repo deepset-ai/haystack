@@ -421,7 +421,6 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
     def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        print("Test")
         output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
