@@ -272,9 +272,9 @@ print_answers(prediction, details="all")
 
 In order to align this probability score with the model's accuracy, finetuning needs to be performed
 on a specific dataset. 
-To this end, the reader has a `calibrate_confidence_scores()` method. 
-This method needs the has the same input parameters as the `eval()` method because the calibration of confidence scores is performed on a dataset that comes with gold labels.
-The calibration therefore needs a DocumentStore containing labeled questions and evaluation documents.
+To this end, the reader has a method `calibrate_confidence_scores(document_store, device, label_index, doc_index, label_origin)`.
+The parameters of this method are the same as for the `eval()` method because the calibration of confidence scores is performed on a dataset that comes with gold labels.
+The calibration calls the `eval()` method internally and therefore needs a DocumentStore containing labeled questions and evaluation documents.
 
 Have a look at this [FARM tutorial](https://github.com/deepset-ai/FARM/blob/master/examples/question_answering_confidence.py)
 to see how to compare calibrated confidence scores with uncalibrated confidence scores within FARM. 
