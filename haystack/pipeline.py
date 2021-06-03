@@ -5,7 +5,7 @@ import traceback
 from abc import ABC
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Any
 import urllib.request
 import pickle
 
@@ -747,10 +747,10 @@ class SklearnQueryClassifier(BaseComponent):
     def __init__(
         self,
         query_classifier: Union[
-            Path, str
+            str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
         query_vectorizer: Union[
-            Path, str
+            str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
     ):
         """
@@ -758,9 +758,24 @@ class SklearnQueryClassifier(BaseComponent):
         queries or statement vs question queries.
         :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query.
         """
+        if (
+            (not isinstance(query_classifier, Path))
+            and (not isinstance(query_classifier, str))
+        ) or (
+            (not isinstance(query_vectorizer, Path))
+            and (not isinstance(query_vectorizer, str))
+        ):
+            raise TypeError(
+                "query_classifier and query_classifier must either be of type Path or str"
+            )
+
         if isinstance(query_classifier, Path):
             file_url = urllib.request.pathname2url(r"{}".format(query_classifier))
             query_classifier = f"file:{file_url}"
+
+        if isinstance(query_vectorizer, Path):
+            file_url = urllib.request.pathname2url(r"{}".format(query_vectorizer))
+            query_vectorizer = f"file:{file_url}"
 
         self.query_classifier = pickle.load(urllib.request.urlopen(query_classifier))
 
