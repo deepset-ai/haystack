@@ -729,9 +729,14 @@ class SklearnQueryClassifier(BaseComponent):
     https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
 
     If you want to classify between question queries and statement queries then use the following:
-    `query_classifier`: https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle
-    `query_vectorizer` https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle
-    from S3 or else you can load another query classifier from local file.
+
+    `query_classifier`:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle
+
+    `query_vectorizer`
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle
+
+    Or else you can load another query classifier from local file.
 
     Read more about the dataset it was trained on here:
     https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt.
@@ -753,6 +758,10 @@ class SklearnQueryClassifier(BaseComponent):
         queries or statement vs question queries.
         :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query.
         """
+        if isinstance(query_classifier, Path):
+            file_url = urllib.request.pathname2url(r"{}".format(query_classifier))
+            query_classifier = f"file:{file_url}"
+
         self.query_classifier = pickle.load(urllib.request.urlopen(query_classifier))
 
         self.query_tokenizer = pickle.load(urllib.request.urlopen(query_vectorizer))
@@ -775,7 +784,11 @@ class TransformersQueryClassifier(BaseComponent):
     https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
 
     If you want to classify between question queries and statement queries then use the following `query_classifier` from huggingface
-    hub: `shahrukhx01/question-vs-statement-classifier` or else you can load another query classifier from either local
+    hub:
+
+    `shahrukhx01/question-vs-statement-classifier`
+
+    Or else you can load another query classifier from either local
     file or huggingface hub.
 
     Read more about the dataset it was trained on here:
