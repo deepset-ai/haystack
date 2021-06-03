@@ -493,33 +493,35 @@ class FARMReader(BaseReader):
                 "context": doc.text
             }
             # get all questions / answers
-            aggregated_per_question: Dict[str, Any] = defaultdict(list)
+            aggregated_per_question: Dict[tuple, Any] = defaultdict(list)
+            id_question_tuple = (label.id, label.question)
             if doc_id in aggregated_per_doc:
                 for label in aggregated_per_doc[doc_id]:
                     # add to existing answers
-                    if label.question in aggregated_per_question.keys():
+                    if id_question_tuple in aggregated_per_question.keys():
                         if label.offset_start_in_doc == 0 and label.answer == "":
                             continue
                         else:
                             # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
-                            if len(aggregated_per_question[label.question]["answers"]) >= 6:
+                            if len(aggregated_per_question[id_question_tuple]["answers"]) >= 6:
+                                logger.warning(f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.question}, label_id: {label.id})")
                                 continue
-                            aggregated_per_question[label.question]["answers"].append({
+                            aggregated_per_question[id_question_tuple]["answers"].append({
                                         "text": label.answer,
                                         "answer_start": label.offset_start_in_doc})
-                            aggregated_per_question[label.question]["is_impossible"] = False
+                            aggregated_per_question[id_question_tuple]["is_impossible"] = False
                     # create new one
                     else:
                         # We don't need to create an answer dict if is_impossible / no_answer
                         if label.offset_start_in_doc == 0 and label.answer == "":
-                            aggregated_per_question[label.question] = {
+                            aggregated_per_question[id_question_tuple] = {
                                 "id": str(hash(str(doc_id) + label.question)),
                                 "question": label.question,
                                 "answers": [],
                                 "is_impossible": True
                             }
                         else:
-                            aggregated_per_question[label.question] = {
+                            aggregated_per_question[id_question_tuple] = {
                                 "id": str(hash(str(doc_id)+label.question)),
                                 "question": label.question,
                                 "answers": [{

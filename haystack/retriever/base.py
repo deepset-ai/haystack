@@ -87,7 +87,7 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters)
+        labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters, open_domain=open_domain)
 
         correct_retrievals = 0
         summed_avg_precision = 0.0
@@ -96,18 +96,19 @@ class BaseRetriever(BaseComponent):
         # Collect questions and corresponding answers/document_ids in a dict
         question_label_dict = {}
         for label in labels:
+            id_question_tuple = (label.multiple_document_ids[0], label.question)
             if open_domain:
-                question_label_dict[label.question] = label.multiple_answers
+                question_label_dict[id_question_tuple] = label.multiple_answers
             else:
                 deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
-                question_label_dict[label.question] = deduplicated_doc_ids
+                question_label_dict[id_question_tuple] = deduplicated_doc_ids
 
         predictions = []
 
         # Option 1: Open-domain evaluation by checking if the answer string is in the retrieved docs
         logger.info("Performing eval queries...")
         if open_domain:
-            for question, gold_answers in tqdm(question_label_dict.items()):
+            for (_, question), gold_answers in tqdm(question_label_dict.items()):
                 retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 if return_preds:
                     predictions.append({"question": question, "retrieved_docs": retrieved_docs})
@@ -129,7 +130,7 @@ class BaseRetriever(BaseComponent):
                     summed_avg_precision += current_avg_precision / relevant_docs_found
         # Option 2: Strict evaluation by document ids that are listed in the labels
         else:
-            for question, gold_ids in tqdm(question_label_dict.items()):
+            for (_, question), gold_ids in tqdm(question_label_dict.items()):
                 retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
                 if return_preds:
                     predictions.append({"question": question, "retrieved_docs": retrieved_docs})

@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict, Any
 import logging
 
-from haystack import MultiLabel
+from haystack import MultiLabel, Label
 
 from farm.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
 from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
@@ -50,7 +50,8 @@ class EvalDocuments:
     def run(self, documents, labels: dict, **kwargs):
         """Run this node on one sample and its labels"""
         self.query_count += 1
-        retriever_labels = labels["retriever"]
+        retriever_labels = get_label(labels, kwargs["node_id"])
+
         # TODO retriever_labels is currently a Multilabel object but should eventually be a RetrieverLabel object
         # If this sample is impossible to answer and expects a no_answer response
         if retriever_labels.no_answer:
@@ -163,7 +164,7 @@ class EvalAnswers:
         skip = self.skip_incorrect_retrieval and not kwargs.get("correct_retrieval")
         if predictions and not skip:
             self.correct_retrieval_count += 1
-            multi_labels = labels["reader"]
+            multi_labels = get_label(labels, kwargs["node_id"])
             # If this sample is impossible to answer and expects a no_answer response
             if multi_labels.no_answer:
                 self.no_answer_count += 1
@@ -250,6 +251,13 @@ class EvalAnswers:
                     "(top k results are likely inflated since the Reader always returns a no_answer prediction in its top k)"
                 )
 
+def get_label(labels, node_id):
+    if type(labels) in [Label, MultiLabel]:
+        ret = labels
+    # If labels is a dict, then fetch the value using node_id (e.g. "EvalRetriever") as the key
+    else:
+        ret = labels[node_id]
+    return ret
 
 def calculate_em_str_multi(gold_labels, prediction):
     for gold_label in gold_labels:
