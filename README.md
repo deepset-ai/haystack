@@ -4,17 +4,11 @@
     <a href="https://github.com/deepset-ai/haystack/actions">
         <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
     </a>
-    <a href="http://mypy-lang.org/">
-        <img alt="Checked with MyPy" src="https://camo.githubusercontent.com/34b3a249cd6502d0a521ab2f42c8830b7cfd03fa/687474703a2f2f7777772e6d7970792d6c616e672e6f72672f7374617469632f6d7970795f62616467652e737667">
-    </a>
     <a href="https://haystack.deepset.ai/docs/intromd">
         <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
     </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
         <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
-    </a>
-    <a href="https://github.com/deepset-ai/haystack/blob/master/LICENSE">
-        <img alt="License" src="https://img.shields.io/github/license/deepset-ai/haystack.svg?color=blue">
     </a>
     <a href="https://github.com/deepset-ai/haystack/commits/master">
         <img alt="Last commit" src="https://img.shields.io/github/last-commit/deepset-ai/haystack">
@@ -22,6 +16,12 @@
     <a href="https://pepy.tech/project/farm-haystack">
         <img alt="Downloads" src="https://pepy.tech/badge/farm-haystack/month">
     </a>
+    <a href="https://apply.workable.com/deepset/">
+        <img alt="Jobs" src="https://img.shields.io/badge/Jobs-We're%20hiring-blue">
+    </a>
+        <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
+        <img alt="Twitter" src="https://img.shields.io/twitter/follow/deepset_ai?style=social">
+    </a>    
 </p>
 
 Haystack is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
