@@ -421,6 +421,7 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
     def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
+        print("Test")
         output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
@@ -622,9 +623,13 @@ class JoinDocuments(BaseComponent):
         assert not (
             weights is not None and join_mode == "concatenate"
         ), "Weights are not compatible with 'concatenate' join_mode."
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(join_mode=join_mode, weights=weights, top_k_join=top_k_join)
+
         self.join_mode = join_mode
         self.weights = weights
-        self.top_k = top_k_join
+        self.top_k_join = top_k_join
 
     def run(self, **kwargs):
         inputs = kwargs["inputs"]
@@ -651,7 +656,7 @@ class JoinDocuments(BaseComponent):
             raise Exception(f"Invalid join_mode: {self.join_mode}")
 
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
-        if self.top_k:
-            documents = documents[: self.top_k]
+        if self.top_k_join:
+            documents = documents[: self.top_k_join]
         output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"
