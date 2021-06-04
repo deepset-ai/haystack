@@ -1,11 +1,18 @@
-from haystack.document_store import MilvusDocumentStore
+"""
+This script performs the same query benchmarking as `retriever.py` but with less of the loops that iterate
+over all the parameters so that it is easier to inspect what is happening
+"""
+
+
+from haystack.document_store import MilvusDocumentStore, FAISSDocumentStore
 from haystack.retriever import DensePassageRetriever
 from retriever import prepare_data
 import datetime
 from pprint import pprint
 from milvus import IndexType
+from utils import get_document_store
 
-def main(index_type, n_docs=100_000, similarity="dot_product"):
+def benchmark_querying(index_type, n_docs=100_000, similarity="dot_product"):
 
     doc_index = "document"
     label_index = "label"
@@ -21,18 +28,23 @@ def main(index_type, n_docs=100_000, similarity="dot_product"):
         add_precomputed=True
     )
 
-    if index_type == "flat":
-        doc_store = MilvusDocumentStore(index=doc_index, similarity=similarity)
-    elif index_type == "hnsw":
-        index_param = {"M": 64, "efConstruction": 80}
-        search_param = {"ef": 20}
-        doc_store = MilvusDocumentStore(
-            index=doc_index,
-            index_type=IndexType.HNSW,
-            index_param=index_param,
-            search_param=search_param,
-            similarity=similarity
-        )
+    doc_store = get_document_store(
+        document_store_type=index_type,
+        similarity=similarity
+    )
+
+    # if index_type == "milvus_flat":
+    #     doc_store = MilvusDocumentStore(index=doc_index, similarity=similarity)
+    # elif index_type == "milvus_hnsw":
+    #     index_param = {"M": 64, "efConstruction": 80}
+    #     search_param = {"ef": 20}
+    #     doc_store = MilvusDocumentStore(
+    #         index=doc_index,
+    #         index_type=IndexType.HNSW,
+    #         index_param=index_param,
+    #         search_param=search_param,
+    #         similarity=similarity
+    #     )
 
     doc_store.write_documents(documents=docs, index=doc_index)
     doc_store.write_labels(labels=labels, index=label_index)
@@ -65,7 +77,9 @@ def main(index_type, n_docs=100_000, similarity="dot_product"):
 
 if __name__ == "__main__":
     similarity = "l2"
-    n_docs = 100_000
+    n_docs = 1000
 
-    main(index_type="flat", similarity=similarity, n_docs=n_docs)
-    main(index_type="hnsw", similarity=similarity, n_docs=n_docs)
+    benchmark_querying(index_type="milvus_flat", similarity=similarity, n_docs=n_docs)
+    benchmark_querying(index_type="milvus_hnsw", similarity=similarity, n_docs=n_docs)
+    benchmark_querying(index_type="faiss_flat", similarity=similarity, n_docs=n_docs)
+    benchmark_querying(index_type="faiss_hnsw", similarity=similarity, n_docs=n_docs)
