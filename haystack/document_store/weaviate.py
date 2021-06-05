@@ -33,20 +33,19 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def __init__(
             self,
-            weaviate_url: str = "http://localhost:8080",
+            host: Union[str, List[str]] = "http://localhost",
+            port: Union[int, List[int]] = 8080,
             timeout_config: tuple = (5, 15),
             username: str = None,
             password: str = None,
             index: str = "Document",
-            vector_dim: int = 768,
+            embedding_dim: int = 768,
             text_field: str = "text",
             name_field: str = "name",
             faq_question_field = "question",
-            meta_field = "meta",
             similarity: str = "dot_product",
             index_type: str = "hnsw",
             custom_schema: Optional[dict] = None,
-            module_name: str = "text2vec-transformers",
             update_existing_documents: bool = False,
             return_embedding: bool = False,
             embedding_field: str = "embedding",
@@ -54,18 +53,18 @@ class WeaviateDocumentStore(BaseDocumentStore):
             **kwargs,
     ):
         """
-        :param weaviate_url: Weaviate server connection URL for storing and processing documents and vectors.
+        :param host: Weaviate server connection URL for storing and processing documents and vectors.
                              For more details, refer "https://www.semi.technology/developers/weaviate/current/getting-started/installation.html"
+        :param port: port of Weaviate instance
         :param timeout_config: Weaviate Timeout config as a tuple of (retries, time out seconds).
         :param username: username (standard authentication via http_auth)
         :param password: password (standard authentication via http_auth)
         :param index: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
-        :param vector_dim: The embedding vector size. Default: 768.
+        :param embedding_dim: The embedding vector size. Default: 768.
         :param text_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
         :param faq_question_field: Name of field containing the question in case of FAQ-Style QA
-        :param meta_field : Name of field to store all the meta data (key value pairs) in the Document object
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
@@ -86,14 +85,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            weaviate_url=weaviate_url, timeout_config=timeout_config, username=username, password=password,
-            index=index, vector_dim=vector_dim, text_field=text_field, name_field=name_field,
-            faq_question_field=faq_question_field, meta_field=meta_field, similarity=similarity, index_type=index_type,
-            custom_schema=custom_schema, module_name=module_name, update_existing_documents=update_existing_documents,
+            host=host, port=port, timeout_config=timeout_config, username=username, password=password,
+            index=index, embedding_dim=embedding_dim, text_field=text_field, name_field=name_field,
+            faq_question_field=faq_question_field, similarity=similarity, index_type=index_type,
+            custom_schema=custom_schema, update_existing_documents=update_existing_documents,
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
         )
 
         # Connect to Weaviate server using python binding
+        weaviate_url =f"{host}:{port}"
         if username and password:
             secret = AuthClientPassword(username, password)
             self.weaviate_client = client.Client(url=weaviate_url,
@@ -117,15 +117,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 f"at `{weaviate_url}` and that it has finished the initial ramp up (can take > 30s)."
             )
         self.index = index
-        self.vector_dim = vector_dim
+        self.embedding_dim = embedding_dim
         self.text_field = text_field
         self.name_field = name_field
         self.faq_question_field = faq_question_field
-        self.meta_field = meta_field
         self.similarity = similarity
         self.index_type = index_type
         self.custom_schema = custom_schema
-        self.module_name = module_name
         self.update_existing_documents = update_existing_documents
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
@@ -133,14 +131,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         self._create_schema_and_index_if_not_exist(self.index)
 
-    #def __del__(self):
-        #return self.milvus_server.close()
-
     def _create_schema_and_index_if_not_exist(
         self,
         index: Optional[str] = None,
     ):
-        """Create a new index(schema/class in Weaviate)for storing documents in case if an index (schema) with the name doesn't exist already."""
+        """Create a new index (schema/class in Weaviate) for storing documents in case if an index (schema) with the name doesn't exist already."""
         index = index or self.index
 
         if self.custom_schema:
@@ -150,28 +145,17 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     "classes": [
                         {
                             "class": index,
-                            "description": "Haystack default class",
+                            "description": "Haystack index, it's a class in Weaviate",
                             "invertedIndexConfig": {
                                 "cleanupIntervalSeconds": 60
                             },
-                            "moduleConfig": {
-                                "text2vec-transformers": {
-                                    "poolingStrategy": "masked_mean",
-                                    "vectorizeClassName": False
-                                }
-                            },
+                            "vectorizer": "none",
                             "properties": [
                                 {
                                     "dataType": [
                                         "string"
                                     ],
                                     "description": "Name Field",
-                                    "moduleConfig": {
-                                        "text2vec-transformers": {
-                                            "skip": False,
-                                            "vectorizePropertyName": False
-                                        }
-                                    },
                                     "name": self.name_field
                                 },
                                 {
@@ -179,12 +163,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                         "string"
                                     ],
                                     "description": "Question Field",
-                                    "moduleConfig": {
-                                        "text2vec-transformers": {
-                                            "skip": False,
-                                            "vectorizePropertyName": False
-                                        }
-                                    },
                                     "name": self.faq_question_field
                                 },
                                 {
@@ -192,36 +170,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                         "text"
                                     ],
                                     "description": "Document Text",
-                                    "moduleConfig": {
-                                        "text2vec-transformers": {
-                                            "skip": True,
-                                            "vectorizePropertyName": True
-                                        }
-                                    },
                                     "name": self.text_field
                                 },
-                                {
-                                    "dataType": [
-                                        "string"
-                                    ],
-                                    "description": "Document meta",
-                                    "moduleConfig": {
-                                        "text2vec-transformers": {
-                                            "skip": False,
-                                            "vectorizePropertyName": False
-                                        }
-                                    },
-                                    "name": self.meta_field
-                                }
                             ],
-                            "vectorIndexConfig": {
-                                "cleanupIntervalSeconds": 300,
-                                "maxConnections": 64,
-                                "efConstruction": 128,
-                                "vectorCacheMaxObjects": 500000
-                            },
-                            "vectorIndexType": self.index_type,
-                            "vectorizer": self.module_name
                         }
                     ]
                 }
@@ -244,8 +195,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         id = result.get("id")
         embedding = result.get("vector")
 
-        # If properties key is present, the fields are in this key.
-        # otherwise, a direct lookup in result dict
+        # If properties key is present, get all the document fields from it.
+        # otherwise, a direct lookup in result root dict
         props = result.get("properties")
         if not props:
             props = result
@@ -263,25 +214,14 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {k:v for k,v in props.items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
-        meta = meta_data.pop(self.meta_field, None)
-        if meta:
-            import ast
-            meta = ast.literal_eval(meta)
-            name = meta_data.pop(self.name_field, None)
-            if name:
-                meta[self.name_field] = name
 
-        if return_embedding:
-            #if not embedding:
-                # TODO: Not sure if _additional can have vector
-                #embedding = result.get("_additional").get("vector")
-            if embedding:
-                embedding = np.asarray(embedding, dtype=np.float32)
+        if return_embedding and embedding:
+            embedding = np.asarray(embedding, dtype=np.float32)
 
         document = Document(
             id=id,
             text=text,
-            meta=meta,
+            meta=meta_data,
             score=score,
             probability=probability,
             question=question,
@@ -320,6 +260,50 @@ class WeaviateDocumentStore(BaseDocumentStore):
             docs.append(self.get_document_by_id(id))
         return docs
 
+    def _get_current_properties(self, index: str) -> List[str]:
+        """Get all the existing properties in the schema"""
+        cur_properties = []
+        for class_item in self.weaviate_client.schema.get()['classes']:
+            if class_item['class'] == index:
+                cur_properties = [item['name'] for item in class_item['properties']]
+
+        return cur_properties
+
+    def _build_filter_clause(self, filters:Dict[str, List[str]]) -> dict:
+        """Transform Haystack filter conditions to Weaviate where filter clauses"""
+        weaviate_filters = []
+        for key, value in filters.items():
+            weaviate_filter = {
+                "path": [key],
+                "operator": "Equal",
+                "valueString": value
+            }
+            weaviate_filters.append(weaviate_filter)
+        if len(weaviate_filters) > 1:
+            filter_dict = {
+                "operator": "Or",
+                "operands": weaviate_filters
+            }
+        else:
+            filter_dict = weaviate_filters[0]
+
+        return filter_dict
+
+    def _update_schema(self, new_prop:str):
+        """Updates the schema with a new property"""
+        property_dict = {
+            "dataType": [
+                "string"
+            ],
+            "description": f"dynamic property {new_prop}",
+            "name": new_prop
+        }
+        self.weaviate_client.schema.property.create(self.index, property_dict)
+
+    def _check_document(self, cur_props: List[str], doc: dict) -> List[str]:
+        """Find the properties in the document that don't exist in the existing schema"""
+        return [item for item in doc.keys() if item not in cur_props]
+
     def write_documents(
             self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
     ):
@@ -340,6 +324,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
             logger.warning("Calling DocumentStore.write_documents() with empty list")
             return
 
+        # Auto schema feature https://github.com/semi-technologies/weaviate/issues/1539
+        # Get and cache current properties in the schema
+        current_properties = self._get_current_properties(index)
+
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)
@@ -352,16 +340,28 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     }
                     _ = _doc.pop("score", None)
                     _ = _doc.pop("probability", None)
+
+                    # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
+                    # we "unnest" all value within "meta"
                     if "meta" in _doc.keys():
-                        _doc["meta"] = str(_doc.get("meta"))
+                        for k, v in _doc["meta"].items():
+                            _doc[k] = v
+                        _doc.pop("meta")
+
                     doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
                     if _doc.get(self.faq_question_field) is None:
                         _doc.pop(self.faq_question_field)
-                    if vector:
-                        docs_batch.add(_doc, class_name=self.index, uuid=doc_id, vector=vector)
-                    else:
-                        docs_batch.add(_doc, class_name=self.index, uuid=doc_id)
+
+                    # Check if additional properties are in the document, if so,
+                    # append the schema with all the additional properties
+                    missing_props = self._check_document(current_properties, _doc)
+                    if missing_props:
+                        for property in missing_props:
+                            self._update_schema(property)
+                            current_properties.append(property)
+
+                    docs_batch.add(_doc, class_name=self.index, uuid=doc_id, vector=vector)
 
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create(docs_batch)
@@ -379,15 +379,22 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
-        body = {"meta": meta}
-        self.weaviate_client.data_object.update(body, class_name=self.index, uuid=id)
+        self.weaviate_client.data_object.update(meta, class_name=self.index, uuid=id)
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         """
         Return the number of documents in the document store.
         """
-        #TODO: Figuring out how to do this using weaviate python client
-        pass
+        doc_count = 0
+        result = self.weaviate_client.query.aggregate(index)\
+                .with_fields("meta { count }")\
+                .do()
+
+        if "data" in result:
+            if "Aggregate" in result.get('data'):
+                doc_count = result.get('data').get('Aggregate').get(index)[0]['meta']['count']
+
+        return doc_count
 
     def get_all_documents(
         self,
@@ -424,14 +431,19 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Return all documents in a specific index in the document store
         """
         index = index or self.index
-        properties = [self.text_field, self.faq_question_field, self.name_field, self.meta_field, "_additional {id, certainty}"]
+
+        # Build the properties to retrieve from Weaviate
+        properties = self._get_current_properties(index)
+        properties.append("_additional {id, certainty}")
 
         if filters:
-            raise OSError("Filters are not supported currently in WeaviateDocumentStore!")
-
-        result = self.weaviate_client.query.get(class_name=index, properties=properties)\
-            .with_limit(batch_size)\
-            .do()
+            filter_dict = self._build_filter_clause(filters=filters)
+            result = self.weaviate_client.query.get(class_name=index, properties=properties)\
+                .with_where(filter_dict)\
+                .do()
+        else:
+            result = self.weaviate_client.query.get(class_name=index, properties=properties)\
+                .do()
         yield from result.get("data").get("Get").get(index)
 
     def get_all_documents_generator(
@@ -483,18 +495,27 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
 
-        if filters:
-            logger.warning("Query filters are not implemented for the WeaviateDocumentStore.")
-
         index = index or self.index
-        properties = [self.text_field, self.faq_question_field, self.name_field, self.meta_field, "_additional {id, certainty}"]
+
+        # Build the properties to retrieve from Weaviate
+        properties = self._get_current_properties(index)
+        properties.append("_additional {id, certainty}")
+
+        query_string = {
+            "concepts": [query]
+        }
 
         if custom_query:
             query_output = self.weaviate_client.query.raw(custom_query)
+        elif filters:
+            filter_dict = self._build_filter_clause(filters)
+            query_output = self.weaviate_client.query\
+                .get(class_name=index, properties=properties)\
+                .with_where(filter_dict)\
+                .with_near_text(query_string)\
+                .with_limit(top_k)\
+                .do()
         else:
-            query_string = {
-                "concepts" : [query]
-            }
             query_output = self.weaviate_client.query\
                 .get(class_name=index, properties=properties)\
                 .with_near_text(query_string)\
@@ -526,23 +547,32 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param return_embedding: To return document embedding
         :return:
         """
-        if filters:
-            logger.warning("Query filters are not implemented for the WeaviateDocumentStore.")
-
         if return_embedding is None:
             return_embedding = self.return_embedding
         index = index or self.index
-        properties = [self.text_field, self.faq_question_field, self.name_field, self.meta_field, "_additional {id, certainty}"]
+
+        # Build the properties to retrieve from Weaviate
+        properties = self._get_current_properties(index)
+        properties.append("_additional {id, certainty}")
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
         query_string = {
             "vector" : query_emb
         }
-        query_output = self.weaviate_client.query\
-            .get(class_name=index, properties=properties)\
-            .with_near_vector(query_string)\
-            .with_limit(top_k)\
-            .do()
+        if filters:
+            filter_dict = self._build_filter_clause(filters)
+            query_output = self.weaviate_client.query\
+                .get(class_name=index, properties=properties)\
+                .with_where(filter_dict)\
+                .with_near_vector(query_string)\
+                .with_limit(top_k)\
+                .do()
+        else:
+            query_output = self.weaviate_client.query\
+                .get(class_name=index, properties=properties)\
+                .with_near_vector(query_string)\
+                .with_limit(top_k)\
+                .do()
 
         results = query_output.get("data").get("Get").get(self.index)
         documents = []
@@ -575,9 +605,35 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
-        raise RuntimeError("Weaviate store produces embeddings by default based on the configuration in "
-                           "schema. Update embeddings isn't implemented for this store!")
+        if index is None:
+            index = self.index
 
+        if not self.embedding_field:
+            raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
+
+        if update_existing_embeddings:
+            logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
+        else:
+            logger.info(f"Updating embeddings for new docs without embeddings ...")
+
+        result = self._get_all_documents_in_index(
+            index=index,
+            filters=filters,
+            batch_size=batch_size,
+            only_documents_without_embedding=not update_existing_embeddings
+        )
+
+        for result_batch in get_batches_from_generator(result, batch_size):
+            document_batch = [self._convert_weaviate_result_to_document(hit, return_embedding=False) for hit in result_batch]
+            embeddings = retriever.embed_passages(document_batch)  # type: ignore
+            assert len(document_batch) == len(embeddings)
+
+            if embeddings[0].shape[0] != self.embedding_dim:
+                raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                                   f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
+                                   "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
+            for doc, emb in zip(document_batch, embeddings):
+                self.weaviate_client.data_object.update({}, index, doc.id, emb.tolist())
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
@@ -589,4 +645,3 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         index = index or self.index
         self.weaviate_client.schema.delete_class(index)
-
