@@ -381,6 +381,8 @@ def get_document_store(document_store_type, embedding_field="embedding"):
             weaviate_url="http://localhost:8080",
             index="Haystacktest"
         )
+        document_store.weaviate_client.schema.delete_all()
+        document_store._create_schema_and_index_if_not_exist()
         return document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")

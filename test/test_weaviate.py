@@ -4,11 +4,6 @@ from haystack import Document
 from conftest import get_document_store
 import uuid
 
-#1 Property names can't have _ or numbers
-#2 Mandatory to pass a vector to create documents
-#3 Only string properties are supported for now
-#4 Only simple string filters
-
 embedding_dim = 768
 
 DOCUMENTS = [
@@ -27,19 +22,6 @@ DOCUMENTS_XS = [
         # Document object for a doc
         Document(text="My name is Christelle and I live in Paris", meta={"metafield": "test3", "name": "filename3"}, embedding=np.random.rand(embedding_dim).astype(np.float32))
     ]
-
-'''
-
-document_store = WeaviateDocumentStore(
-    weaviate_url="http://localhost:8080",
-    index="Haystacktest"
-)
-document_store.write_documents(documents)
-#assert len(list(document_store.get_all_documents(batch_size=2))) == 5
-#print(document_store.get_document_by_id("548dd341-b348-4fd9-976c-63e29c450cda"))
-#print(document_store.query("text"))
-print(document_store.query_by_embedding(np.random.rand(768).astype(np.float32), top_k=1))
-#document_store.delete_all_documents()'''
 
 @pytest.fixture(params=["weaviate"])
 def document_store_with_docs(request):
@@ -190,18 +172,87 @@ def test_write_document_index(document_store):
         {"text": "text2", "id": uuid.uuid4(), "embedding": np.random.rand(embedding_dim).astype(np.float32)},
     ]
 
-    document_store.write_documents([documents[0]], index="Hayone")
-    assert len(document_store.get_all_documents(index="Hayone")) == 1
+    document_store.write_documents([documents[0]], index="Haystackone")
+    assert len(document_store.get_all_documents(index="Haystackone")) == 1
 
-    document_store.write_documents([documents[1]], index="Haytwo")
-    assert len(document_store.get_all_documents(index="Haytwo")) == 1
+    document_store.write_documents([documents[1]], index="Haystacktwo")
+    assert len(document_store.get_all_documents(index="Haystacktwo")) == 1
 
-    assert len(document_store.get_all_documents(index="Hayone")) == 1
+    assert len(document_store.get_all_documents(index="Haystackone")) == 1
     assert len(document_store.get_all_documents()) == 0
 
-    document_store.delete_all_documents("Hayone")
-    document_store.delete_all_documents("Haytwo")
+'''@pytest.mark.parametrize("retriever", ["dpr", "embedding"], indirect=True)
+@pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
+def test_update_embeddings(document_store, retriever):
+    documents = []
+    for i in range(6):
+        documents.append({"text": f"text_{i}", "id": str(uuid.uuid4()), "metafield": f"value_{i}", "embedding": np.random.rand(embedding_dim).astype(np.float32)})
+    documents.append({"text": "text_0", "id": str(uuid.uuid4()), "metafield": "value_0", "embedding": np.random.rand(embedding_dim).astype(np.float32)})
 
+    document_store.write_documents(documents, index="HaystackTestOne")
+    document_store.update_embeddings(retriever, index="HaystackTestOne", batch_size=3)
+    documents = document_store.get_all_documents(index="HaystackTestOne", return_embedding=True)
+    assert len(documents) == 7
+    for doc in documents:
+        assert type(doc.embedding) is np.ndarray
 
+    documents = document_store.get_all_documents(
+        index="HaystackTestOne",
+        filters={"metafield": ["value_0"]},
+        return_embedding=True,
+    )
+    assert len(documents) == 2
+    for doc in documents:
+        assert doc.meta["metafield"] == "value_0"
+    np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding, decimal=4)
 
+    documents = document_store.get_all_documents(
+        index="HaystackTestOne",
+        filters={"metafield": ["value_1", "value_5"]},
+        return_embedding=True,
+    )
+    np.testing.assert_raises(
+        AssertionError,
+        np.testing.assert_array_equal,
+        documents[0].embedding,
+        documents[1].embedding
+    )
+
+    doc = {"text": "text_7", "id": str(uuid.uuid4()), "metafield": "value_7",
+           "embedding": retriever.embed_queries(texts=["a random string"])[0]}
+    document_store.write_documents([doc], index="HaystackTestOne")
+
+    doc_before_update = document_store.get_all_documents(index="HaystackTestOne", filters={"metafield": ["value_7"]})[0]
+    embedding_before_update = doc_before_update.embedding
+
+    document_store.update_embeddings(
+        retriever, index="HaystackTestOne", batch_size=3, filters={"metafield": ["value_0", "value_1"]}
+    )
+    doc_after_update = document_store.get_all_documents(index="HaystackTestOne", filters={"metafield": ["value_7"]})[0]
+    embedding_after_update = doc_after_update.embedding
+    np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
+
+    # test update all embeddings
+    document_store.update_embeddings(retriever, index="HaystackTestOne", batch_size=3, update_existing_embeddings=True)
+    assert document_store.get_document_count(index="HaystackTestOne") == 8
+    doc_after_update = document_store.get_all_documents(index="HaystackTestOne", filters={"metafield": ["value_7"]})[0]
+    embedding_after_update = doc_after_update.embedding
+    np.testing.assert_raises(AssertionError, np.testing.assert_array_equal, embedding_before_update, embedding_after_update)
+'''
+
+@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_delete_all_documents(document_store_with_docs):
+    assert len(document_store_with_docs.get_all_documents()) == 3
+
+    document_store_with_docs.delete_all_documents()
+    documents = document_store_with_docs.get_all_documents()
+    assert len(documents) == 0
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_delete_documents_with_filters(document_store_with_docs):
+    document_store_with_docs.delete_all_documents(filters={"metafield": ["test1", "test2"]})
+    documents = document_store_with_docs.get_all_documents()
+    assert len(documents) == 1
+    assert documents[0].meta["metafield"] == "test3"
 

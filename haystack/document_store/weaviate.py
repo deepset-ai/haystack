@@ -210,6 +210,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             if score:
                 probability = score
             id = props.get("_additional").get('id') if props.get("_additional").get('id') else None
+            embedding = props.get("_additional").get('vector') if props.get("_additional").get('vector') else None
             props.pop("_additional", None)
 
         # We put all additional data of the doc into meta_data and return it in the API
@@ -254,11 +255,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
-        docs = []
         #TODO: better implementation with multiple where filters instead of chatty call below?
-        for id in ids:
-            docs.append(self.get_document_by_id(id))
-        return docs
+        documents = [self.get_document_by_id(id) for id in ids]
+        return documents
 
     def _get_current_properties(self, index: str) -> List[str]:
         """Get all the existing properties in the schema"""
@@ -443,7 +442,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty}")
+        properties.append("_additional {id, certainty, vector}")
 
         if filters:
             filter_dict = self._build_filter_clause(filters=filters)
@@ -514,7 +513,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty}")
+        properties.append("_additional {id, certainty, vector}")
 
         query_string = {
             "concepts": [query]
@@ -568,7 +567,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty}")
+        properties.append("_additional {id, certainty, vector}")
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
         query_string = {
@@ -607,14 +606,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
-        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+        This can be useful if want to change the embeddings for your documents (e.g. after changing the retriever config).
 
         :param retriever: Retriever to use to update the embeddings.
         :param index: Index name to update
-        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
-                                           only documents without embeddings are processed. This mode can be used for
-                                           incremental updating of embeddings, wherein, only newly indexed documents
-                                           get processed.
+        :param update_existing_embeddings: Weaviate mandates an embedding while creating the document itself.
+        This option must be always true for weaviate and it will update the embeddings for all the documents.
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
@@ -624,18 +621,17 @@ class WeaviateDocumentStore(BaseDocumentStore):
             index = self.index
 
         if not self.embedding_field:
-            raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
+            raise RuntimeError("Specify the arg `embedding_field` when initializing WeaviateDocumentStore()")
 
         if update_existing_embeddings:
             logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
         else:
-            logger.info(f"Updating embeddings for new docs without embeddings ...")
+            raise RuntimeError("All the documents in Weaviate store have an embedding by default. Only update is allowed!")
 
         result = self._get_all_documents_in_index(
             index=index,
             filters=filters,
             batch_size=batch_size,
-            only_documents_without_embedding=not update_existing_embeddings
         )
 
         for result_batch in get_batches_from_generator(result, batch_size):
@@ -648,7 +644,27 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                    f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
             for doc, emb in zip(document_batch, embeddings):
-                self.weaviate_client.data_object.update({}, index, doc.id, emb.tolist())
+                # This doc processing will not required once weaviate's update
+                # method works. To be improved.
+                _doc = {
+                    **doc.to_dict(field_map=self._create_document_field_map())
+                }
+                _ = _doc.pop("score", None)
+                _ = _doc.pop("probability", None)
+
+                if "meta" in _doc.keys():
+                    for k, v in _doc["meta"].items():
+                        _doc[k] = v
+                    _doc.pop("meta")
+
+                doc_id = str(_doc.pop("id"))
+                _ = _doc.pop(self.embedding_field)
+                keys_to_remove = [k for k,v in _doc.items() if v is None]
+                for key in keys_to_remove:
+                    _doc.pop(key)
+
+                # TODO: Weaviate's update throws an error while passing a vector now, have to improve this later
+                self.weaviate_client.data_object.replace(_doc, class_name=index, uuid=doc_id, vector=emb)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
@@ -659,4 +675,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :return: None
         """
         index = index or self.index
-        self.weaviate_client.schema.delete_class(index)
+        if filters:
+            docs_to_delete = self.get_all_documents(index, filters=filters)
+            for doc in docs_to_delete:
+                self.weaviate_client.data_object.delete(doc.id)
+        else:
+            self.weaviate_client.schema.delete_class(index)
+            self._create_schema_and_index_if_not_exist(index)
