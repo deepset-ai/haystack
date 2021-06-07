@@ -5,7 +5,11 @@ import traceback
 from abc import ABC
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union, Any
+import pickle
+import urllib
+
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 
 import networkx as nx
 import yaml
@@ -626,6 +630,8 @@ class SklearnQueryClassifier(BaseComponent):
         query_vectorizer: Union[
             str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
+        output_1_name: str = "semantic_query",
+        output_2_name: str = "keywords"
     ):
         """
         :param query_classifier: Gradient boosting based binary classifier to classify between keyword vs statement/question
@@ -654,6 +660,10 @@ class SklearnQueryClassifier(BaseComponent):
         self.query_classifier = pickle.load(urllib.request.urlopen(query_classifier))
 
         self.query_tokenizer = pickle.load(urllib.request.urlopen(query_vectorizer))
+
+        self.output_1_name = output_1_name
+
+        self.output_2_name = output_2_name
 
     def run(self, **kwargs):
         query_vector = self.query_tokenizer.transform([kwargs["query"]])
@@ -694,6 +704,8 @@ class TransformersQueryClassifier(BaseComponent):
         query_tokenizer: Union[
             Path, str
         ] = "shahrukhx01/bert-mini-finetune-question-detection",
+        output_1_name: str = "semantic_query",
+        output_2_name: str = "keywords"
     ):
         """
         :param query_classifier: Transformer based fine tuned mini bert model for query classification
@@ -705,6 +717,10 @@ class TransformersQueryClassifier(BaseComponent):
         self.query_classification_pipeline = TextClassificationPipeline(
             model=model, tokenizer=tokenizer
         )
+
+        self.output_1_name = output_1_name
+
+        self.output_2_name = output_2_name
 
     def run(self, **kwargs):
 
