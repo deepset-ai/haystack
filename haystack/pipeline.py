@@ -779,12 +779,8 @@ class JoinDocuments(BaseComponent):
             raise Exception(f"Invalid join_mode: {self.join_mode}")
 
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
-<<<<<<< HEAD
-        if self.top_k:
-            documents = documents[: self.top_k]
-=======
+
         if self.top_k_join:
             documents = documents[: self.top_k_join]
->>>>>>> 14b7f758886881d281d4a5392c5638b65ea649c3
         output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"
