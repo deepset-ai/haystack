@@ -593,6 +593,130 @@ class RootNode:
         return kwargs, "output_1"
 
 
+class SklearnQueryClassifier(BaseComponent):
+    """
+    A node to choose between two nodes based on query classification result using Sklearn GradientBoosted models.
+
+    This node by default classifies between keyword and question/statement queries, read more about the dataset it was trained
+    on here:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
+
+    If you want to classify between question queries and statement queries then use the following:
+
+    `query_classifier`:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle
+
+    `query_vectorizer`
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle
+
+    Or else you can load another query classifier from local file.
+
+    Read more about the dataset it was trained on here:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt.
+    """
+
+    outgoing_edges = 2
+
+    def __init__(
+        self,
+        query_classifier: Union[
+            str, Any
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
+        query_vectorizer: Union[
+            str, Any
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
+    ):
+        """
+        :param query_classifier: Gradient boosting based binary classifier to classify between keyword vs statement/question
+        queries or statement vs question queries.
+        :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query.
+        """
+        if (
+            (not isinstance(query_classifier, Path))
+            and (not isinstance(query_classifier, str))
+        ) or (
+            (not isinstance(query_vectorizer, Path))
+            and (not isinstance(query_vectorizer, str))
+        ):
+            raise TypeError(
+                "query_classifier and query_classifier must either be of type Path or str"
+            )
+
+        if isinstance(query_classifier, Path):
+            file_url = urllib.request.pathname2url(r"{}".format(query_classifier))
+            query_classifier = f"file:{file_url}"
+
+        if isinstance(query_vectorizer, Path):
+            file_url = urllib.request.pathname2url(r"{}".format(query_vectorizer))
+            query_vectorizer = f"file:{file_url}"
+
+        self.query_classifier = pickle.load(urllib.request.urlopen(query_classifier))
+
+        self.query_tokenizer = pickle.load(urllib.request.urlopen(query_vectorizer))
+
+    def run(self, **kwargs):
+        query_vector = self.query_tokenizer.transform([kwargs["query"]])
+
+        is_question: bool = self.query_classifier.predict(query_vector)[0]
+        if is_question:
+            return (kwargs, "output_1")
+        else:
+            return (kwargs, "output_2")
+
+
+class TransformersQueryClassifier(BaseComponent):
+    """
+    A node to choose between two nodes based on query classification result using Transformer models.
+    This node by default classifies between keyword and question/statement queries, read more about the dataset
+    it was trained on here:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
+
+    If you want to classify between question queries and statement queries then use the following `query_classifier` from huggingface
+    hub:
+
+    `shahrukhx01/question-vs-statement-classifier`
+
+    Or else you can load another query classifier from either local
+    file or huggingface hub.
+
+    Read more about the dataset it was trained on here:
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt..
+    """
+
+    outgoing_edges = 2
+
+    def __init__(
+        self,
+        query_classifier: Union[
+            Path, str
+        ] = "shahrukhx01/bert-mini-finetune-question-detection",
+        query_tokenizer: Union[
+            Path, str
+        ] = "shahrukhx01/bert-mini-finetune-question-detection",
+    ):
+        """
+        :param query_classifier: Transformer based fine tuned mini bert model for query classification
+        :param query_tokenizer: Transformer based text tokenizer for mini bert model
+        """
+        model = AutoModelForSequenceClassification.from_pretrained(query_classifier)
+        tokenizer = AutoTokenizer.from_pretrained(query_tokenizer)
+
+        self.query_classification_pipeline = TextClassificationPipeline(
+            model=model, tokenizer=tokenizer
+        )
+
+    def run(self, **kwargs):
+
+        query_class: bool = (
+            self.query_classification_pipeline(kwargs["query"])[0]["label"] == "LABEL_1"
+        )
+
+        if query_class:
+            return (kwargs, "output_1")
+        else:
+            return (kwargs, "output_2")
+
+
 class JoinDocuments(BaseComponent):
     """
     A node to join documents outputted by multiple retriever nodes.
