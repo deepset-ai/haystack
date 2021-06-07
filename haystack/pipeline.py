@@ -119,6 +119,7 @@ class Pipeline:
         while queue:
             node_id = list(queue.keys())[i]
             node_input = queue[node_id]
+            node_input["node_id"] = node_id
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
@@ -745,9 +746,13 @@ class JoinDocuments(BaseComponent):
         assert not (
             weights is not None and join_mode == "concatenate"
         ), "Weights are not compatible with 'concatenate' join_mode."
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(join_mode=join_mode, weights=weights, top_k_join=top_k_join)
+
         self.join_mode = join_mode
         self.weights = weights
-        self.top_k = top_k_join
+        self.top_k_join = top_k_join
 
     def run(self, **kwargs):
         inputs = kwargs["inputs"]
@@ -774,7 +779,12 @@ class JoinDocuments(BaseComponent):
             raise Exception(f"Invalid join_mode: {self.join_mode}")
 
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
+<<<<<<< HEAD
         if self.top_k:
             documents = documents[: self.top_k]
+=======
+        if self.top_k_join:
+            documents = documents[: self.top_k_join]
+>>>>>>> 14b7f758886881d281d4a5392c5638b65ea649c3
         output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"

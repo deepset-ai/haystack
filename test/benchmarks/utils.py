@@ -25,7 +25,7 @@ reader_types = ["farm"]
 doc_index = "eval_document"
 label_index = "label"
 
-def get_document_store(document_store_type, similarity='dot_product'):
+def get_document_store(document_store_type, similarity='dot_product', index="document"):
     """ TODO This method is taken from test/conftest.py but maybe should be within Haystack.
     Perhaps a class method of DocStore that just takes string for type of DocStore"""
     if document_store_type == "sql":
@@ -49,7 +49,13 @@ def get_document_store(document_store_type, similarity='dot_product'):
             index_type = IndexType.HNSW
             index_param = {"M": 64, "efConstruction": 80}
             search_param = {"ef": 20}
-        document_store = MilvusDocumentStore(similarity=similarity, index_type=index_type, index_param=index_param, search_param=search_param)
+        document_store = MilvusDocumentStore(
+            similarity=similarity,
+            index_type=index_type,
+            index_param=index_param,
+            search_param=search_param,
+            index=index
+        )
         assert document_store.get_document_count(index="eval_document") == 0
     elif document_store_type in("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
@@ -67,9 +73,12 @@ def get_document_store(document_store_type, similarity='dot_product'):
         status = subprocess.run(
             ['docker exec haystack-postgres psql -U postgres -c "CREATE DATABASE haystack;"'], shell=True)
         time.sleep(1)
-        document_store = FAISSDocumentStore(sql_url="postgresql://postgres:password@localhost:5432/haystack",
-                                            faiss_index_factory_str=index_type,
-                                            similarity=similarity)
+        document_store = FAISSDocumentStore(
+            sql_url="postgresql://postgres:password@localhost:5432/haystack",
+            faiss_index_factory_str=index_type,
+            similarity=similarity,
+            index=index
+        )
         assert document_store.get_document_count() == 0
 
     else:

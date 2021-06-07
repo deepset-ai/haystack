@@ -258,7 +258,7 @@ class FARMRanker(BaseRanker):
         # calculate similarity of query and each document
         query_and_docs = [{"text": (query, doc.text)} for doc in documents]
         result = self.inferencer.inference_from_dicts(dicts=query_and_docs)
-        similarity_scores = [pred["probability"] for preds in result for pred in preds["predictions"]]
+        similarity_scores = [pred["probability"] if pred["label"] == "1" else 1-pred["probability"] for preds in result for pred in preds["predictions"]]
 
         # rank documents according to scores
         sorted_scores_and_documents = sorted(zip(similarity_scores, documents),

@@ -109,7 +109,9 @@ class Label:
                  no_answer: Optional[bool] = None,
                  model_id: Optional[int] = None,
                  created_at: Optional[str] = None,
-                 updated_at: Optional[str] = None):
+                 updated_at: Optional[str] = None,
+                 meta: Optional[dict] = None
+                 ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
         This includes labels from dataset like SQuAD, annotations from labeling tools,
@@ -150,6 +152,10 @@ class Label:
         self.offset_start_in_doc = offset_start_in_doc
         self.no_answer = no_answer
         self.model_id = model_id
+        if not meta:
+            self.meta = dict()
+        else:
+            self.meta = meta
 
     @classmethod
     def from_dict(cls, dict):
@@ -200,7 +206,9 @@ class MultiLabel:
                  multiple_document_ids: List[Any],
                  multiple_offset_start_in_docs: List[Any],
                  no_answer: Optional[bool] = None,
-                 model_id: Optional[int] = None):
+                 model_id: Optional[int] = None,
+                 meta: dict = None
+                 ):
         """
         Object used to aggregate multiple possible answers for the same question
 
@@ -225,6 +233,10 @@ class MultiLabel:
         self.multiple_offset_start_in_docs = multiple_offset_start_in_docs
         self.no_answer = no_answer
         self.model_id = model_id
+        if not meta:
+            self.meta = dict()
+        else:
+            self.meta = meta
 
     @classmethod
     def from_dict(cls, dict):

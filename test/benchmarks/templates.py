@@ -44,10 +44,13 @@ RETRIEVER_MAP_TEMPLATE = {
   "description": "Here you can see how the mean avg. precision (mAP) of the retriever decays as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
   "columns": [
     "n_docs",
-    "BM25 / ElasticSearch",
-    "DPR / ElasticSearch",
+    "BM25 / Elasticsearch",
+    "DPR / Elasticsearch",
     "DPR / FAISS (flat)",
-    "DPR / FAISS (HSNW)"
+    "DPR / FAISS (HNSW)",
+    "DPR / Milvus (flat)",
+    "DPR / Milvus (HNSW)",
+    "Sentence Transformers / Elasticsearch"
   ],
   "axis": [
      { "x": "Number of docs", "y": "mAP" }
@@ -62,10 +65,13 @@ RETRIEVER_SPEED_TEMPLATE = {
     "description": "Here you can see how the query speed of different Retriever / DocumentStore combinations scale as the number of documents increases. The set up is the same as the above querying benchmark except that a varying number of negative documents are used to fill the document store.",
     "columns": [
         "n_docs",
-        "BM25 / ElasticSearch",
-        "DPR / ElasticSearch",
+        "BM25 / Elasticsearch",
+        "DPR / Elasticsearch",
         "DPR / FAISS (flat)",
-        "DPR / FAISS (HSNW)"
+        "DPR / FAISS (HNSW)",
+        "DPR / Milvus (flat)",
+        "DPR / Milvus (HNSW)",
+        "Sentence Transformers / Elasticsearch"
     ],
    "axis": [
      { "x": "Number of docs",
