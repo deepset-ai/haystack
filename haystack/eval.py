@@ -59,11 +59,11 @@ class EvalDocuments:
         if not self.top_k_used:
             self.top_k_used = top_k_eval_documents
         elif self.top_k_used != top_k_eval_documents:
-                logger.warning(f"EvalDocuments was already run once with top_k_eval_documents={self.top_k_used} but is "
-                               f"being run again with top_k_eval_documents={self.top_k_eval_documents}. "
-                               f"The evaluation counter is being reset from this point so that the evaluation "
-                               f"metrics are interpretable.")
-                self.init_counts()
+            logger.warning(f"EvalDocuments was last run with top_k_eval_documents={self.top_k_used} but is "
+                           f"being run again with top_k_eval_documents={self.top_k_eval_documents}. "
+                           f"The evaluation counter is being reset from this point so that the evaluation "
+                           f"metrics are interpretable.")
+            self.init_counts()
 
         if len(documents) < top_k_eval_documents and not self.too_few_docs_warning:
             logger.warning(f"EvalDocuments is being provided less candidate documents than top_k_eval_documents "
@@ -96,6 +96,8 @@ class EvalDocuments:
         self.correct_retrieval_count += correct_retrieval
         self.recall = self.correct_retrieval_count / self.query_count
         self.mean_reciprocal_rank = self.reciprocal_rank_sum / self.query_count
+        
+        self.top_k_used = top_k_eval_documents
 
         if self.debug:
             self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank, **kwargs})
