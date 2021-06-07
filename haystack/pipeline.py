@@ -5,21 +5,12 @@ import traceback
 from abc import ABC
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Dict, Union, Any
-import urllib.request
-import pickle
-
+from typing import List, Optional, Dict
 
 import networkx as nx
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-
-from transformers import (
-    TextClassificationPipeline,
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-)
 
 from haystack import BaseComponent
 from haystack.generator.base import BaseGenerator
@@ -52,9 +43,7 @@ class Pipeline:
             self.root_node_id = "File"
             self.graph.add_node("File", component=RootNode())
         else:
-            raise Exception(
-                f"pipeline_type '{pipeline_type}' is not valid. Supported types are 'Query' & 'Indexing'."
-            )
+            raise Exception(f"pipeline_type '{pipeline_type}' is not valid. Supported types are 'Query' & 'Indexing'.")
 
         self.pipeline_type = pipeline_type
         self.components: dict = {}
@@ -77,32 +66,23 @@ class Pipeline:
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node_id, (
-                f"The '{name}' node can only input from {self.root_node_id}. "
+            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node_id, \
+                f"The '{name}' node can only input from {self.root_node_id}. " \
                 f"Set the 'inputs' parameter to ['{self.root_node_id}']"
-            )
             self.graph.add_edge(self.root_node_id, name, label="output_1")
             return
 
         for i in inputs:
             if "." in i:
                 [input_node_name, input_edge_name] = i.split(".")
-                assert (
-                    "output_" in input_edge_name
-                ), f"'{input_edge_name}' is not a valid edge name."
-                outgoing_edges_input_node = self.graph.nodes[input_node_name][
-                    "component"
-                ].outgoing_edges
-                assert (
-                    int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node
-                ), (
+                assert "output_" in input_edge_name, f"'{input_edge_name}' is not a valid edge name."
+                outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
+                assert int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node, (
                     f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
                     f"{outgoing_edges_input_node} outgoing edge(s)."
                 )
             else:
-                outgoing_edges_input_node = self.graph.nodes[i][
-                    "component"
-                ].outgoing_edges
+                outgoing_edges_input_node = self.graph.nodes[i]["component"].outgoing_edges
                 assert outgoing_edges_input_node == 1, (
                     f"Adding an edge from {i} to {name} is ambiguous as {i} has {outgoing_edges_input_node} edges. "
                     f"Please specify the output explicitly."
@@ -140,26 +120,16 @@ class Pipeline:
             node_id = list(queue.keys())[i]
             node_input = queue[node_id]
             predecessors = set(nx.ancestors(self.graph, node_id))
-            if predecessors.isdisjoint(
-                set(queue.keys())
-            ):  # only execute if predecessor nodes are executed
+            if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
-                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(
-                        **node_input
-                    )
+                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
                 except Exception as e:
                     tb = traceback.format_exc()
-                    raise Exception(
-                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}"
-                    )
+                    raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
                 queue.pop(node_id)
                 next_nodes = self.get_next_nodes(node_id, stream_id)
-                for (
-                    n
-                ) in (
-                    next_nodes
-                ):  # add successor nodes with corresponding inputs to the queue
+                for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
                     if queue.get(n):  # concatenate inputs if it's a join node
                         existing_input = queue[n]
                         if "inputs" not in existing_input.keys():
@@ -193,23 +163,16 @@ class Pipeline:
         try:
             import pygraphviz
         except ImportError:
-            raise ImportError(
-                f"Could not import `pygraphviz`. Please install via: \n"
-                f"pip install pygraphviz\n"
-                f"(You might need to run this first: apt install libgraphviz-dev graphviz )"
-            )
+            raise ImportError(f"Could not import `pygraphviz`. Please install via: \n"
+                              f"pip install pygraphviz\n"
+                              f"(You might need to run this first: apt install libgraphviz-dev graphviz )")
 
         graphviz = to_agraph(self.graph)
         graphviz.layout("dot")
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(
-        cls,
-        path: Path,
-        pipeline_name: Optional[str] = None,
-        overwrite_with_env_variables: bool = True,
-    ):
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -252,24 +215,18 @@ class Pipeline:
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        with open(path, "r", encoding="utf-8") as stream:
+        with open(path, "r", encoding='utf-8') as stream:
             data = yaml.safe_load(stream)
 
         if pipeline_name is None:
             if len(data["pipelines"]) == 1:
                 pipeline_config = data["pipelines"][0]
             else:
-                raise Exception(
-                    "The YAML contains multiple pipelines. Please specify the pipeline name to load."
-                )
+                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
         else:
-            pipelines_in_yaml = list(
-                filter(lambda p: p["name"] == pipeline_name, data["pipelines"])
-            )
+            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
             if not pipelines_in_yaml:
-                raise KeyError(
-                    f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file."
-                )
+                raise KeyError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
             pipeline_config = pipelines_in_yaml[0]
 
         definitions = {}  # definitions of each component from the YAML.
@@ -284,14 +241,8 @@ class Pipeline:
         components: dict = {}  # instances of component objects.
         for node_config in pipeline_config["nodes"]:
             name = node_config["name"]
-            component = cls._load_or_get_component(
-                name=name, definitions=definitions, components=components
-            )
-            pipeline.add_node(
-                component=component,
-                name=node_config["name"],
-                inputs=node_config.get("inputs", []),
-            )
+            component = cls._load_or_get_component(name=name, definitions=definitions, components=components)
+            pipeline.add_node(component=component, name=node_config["name"], inputs=node_config.get("inputs", []))
 
         return pipeline
 
@@ -310,29 +261,17 @@ class Pipeline:
 
             component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
-            logger.debug(
-                f"Loading component `{name}` of type `{definitions[name]['type']}`"
-            )
+            logger.debug(f"Loading component `{name}` of type `{definitions[name]['type']}`")
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
                 # DocumentStore defined in the YAML. All references should be recursively resolved.
-                if (
-                    isinstance(value, str) and value in definitions.keys()
-                ):  # check if the param value is a reference to another component.
-                    if (
-                        value not in components.keys()
-                    ):  # check if the referenced component is already loaded.
-                        cls._load_or_get_component(
-                            name=value, definitions=definitions, components=components
-                        )
-                    component_params[key] = components[
-                        value
-                    ]  # substitute reference (string) with the component object.
+                if isinstance(value, str) and value in definitions.keys():  # check if the param value is a reference to another component.
+                    if value not in components.keys():  # check if the referenced component is already loaded.
+                        cls._load_or_get_component(name=value, definitions=definitions, components=components)
+                    component_params[key] = components[value]  # substitute reference (string) with the component object.
 
-            instance = BaseComponent.load_from_args(
-                component_type=component_type, **component_params
-            )
+            instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
             components[name] = instance
         except Exception as e:
             raise Exception(f"Failed loading pipeline component '{name}': {e}")
@@ -364,9 +303,7 @@ class Pipeline:
 
         pipeline_name = self.pipeline_type.lower()
         pipeline_type = self.pipeline_type
-        pipelines: dict = {
-            pipeline_name: {"name": pipeline_name, "type": pipeline_type, "nodes": []}
-        }
+        pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": pipeline_type, "nodes": []}}
 
         components = {}
         for node in nodes:
@@ -384,43 +321,24 @@ class Pipeline:
                 # other parameters like "custom_mapping" that are dicts.
                 # This currently only checks for the case single-level nesting case, wherein, "a Component has another
                 # Component as a parameter". For deeper nesting cases, this function should be made recursive.
-                if (
-                    isinstance(value, dict) and "type" in value.keys()
-                ):  # the parameter is a Component
+                if isinstance(value, dict) and "type" in value.keys():  # the parameter is a Component
                     components[node]["params"][key] = value["type"]
-                    sub_component_signature = inspect.signature(
-                        BaseComponent.subclasses[value["type"]]
-                    ).parameters
+                    sub_component_signature = inspect.signature(BaseComponent.subclasses[value["type"]]).parameters
                     params = {
-                        k: v
-                        for k, v in value["params"].items()
-                        if sub_component_signature[k].default != v
-                        or return_defaults is True
+                        k: v for k, v in value["params"].items()
+                        if sub_component_signature[k].default != v or return_defaults is True
                     }
-                    components[value["type"]] = {
-                        "name": value["type"],
-                        "type": value["type"],
-                        "params": params,
-                    }
+                    components[value["type"]] = {"name": value["type"], "type": value["type"], "params": params}
                 else:
-                    if (
-                        component_signature[key].default != value
-                        or return_defaults is True
-                    ):
+                    if component_signature[key].default != value or return_defaults is True:
                         components[node]["params"][key] = value
 
             # create the Pipeline definition with how the Component are connected
-            pipelines[pipeline_name]["nodes"].append(
-                {"name": node, "inputs": list(self.graph.predecessors(node))}
-            )
+            pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
 
-        config = {
-            "components": list(components.values()),
-            "pipelines": list(pipelines.values()),
-            "version": "0.8",
-        }
+        config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
 
-        with open(path, "w") as outfile:
+        with open(path, 'w') as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
 
 
@@ -484,18 +402,9 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: int = 10,
-        top_k_reader: int = 10,
-    ):
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_reader: int = 10):
         output = self.pipeline.run(
-            query=query,
-            filters=filters,
-            top_k_retriever=top_k_retriever,
-            top_k_reader=top_k_reader,
+            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_reader=top_k_reader
         )
         return output
 
@@ -510,15 +419,8 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: Optional[int] = None,
-    ):
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever
-        )
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
+        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
@@ -534,22 +436,17 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         """
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
-        self.pipeline.add_node(
-            component=generator, name="Generator", inputs=["Retriever"]
-        )
+        self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
 
     def run(
         self,
         query: str,
         filters: Optional[Dict] = None,
         top_k_retriever: Optional[int] = None,
-        top_k_generator: Optional[int] = None,
+        top_k_generator: Optional[int] = None
     ):
         output = self.pipeline.run(
-            query=query,
-            filters=filters,
-            top_k_retriever=top_k_retriever,
-            top_k_generator=top_k_generator,
+            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_generator=top_k_generator
         )
         return output
 
@@ -564,9 +461,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         """
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
-        self.pipeline.add_node(
-            component=summarizer, name="Summarizer", inputs=["Retriever"]
-        )
+        self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
 
     def run(
         self,
@@ -586,10 +481,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
                                         With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
         """
         output = self.pipeline.run(
-            query=query,
-            filters=filters,
-            top_k_retriever=top_k_retriever,
-            generate_single_summary=generate_single_summary,
+            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_single_summary=generate_single_summary
         )
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
@@ -625,15 +517,8 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: Optional[int] = None,
-    ):
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever
-        )
+    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
+        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
         documents = output["documents"]
 
         results: Dict = {"query": query, "answers": []}
@@ -666,7 +551,7 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         self,
         input_translator: BaseTranslator,
         output_translator: BaseTranslator,
-        pipeline: BaseStandardPipeline,
+        pipeline: BaseStandardPipeline
     ):
         """
         Wrap a given `pipeline` with the `input_translator` and `output_translator`.
@@ -678,9 +563,7 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         """
 
         self.pipeline = Pipeline()
-        self.pipeline.add_node(
-            component=input_translator, name="InputTranslator", inputs=["Query"]
-        )
+        self.pipeline.add_node(component=input_translator, name="InputTranslator", inputs=["Query"])
 
         graph = pipeline.pipeline.graph
         previous_node_name = ["InputTranslator"]
@@ -691,22 +574,12 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
 
             # TODO: Do not work properly for Join Node and Answer format
             if graph.nodes[node]["inputs"] and len(graph.nodes[node]["inputs"]) > 1:
-                raise AttributeError(
-                    "Split and merge nodes are not supported currently"
-                )
+                raise AttributeError("Split and merge nodes are not supported currently")
 
-            self.pipeline.add_node(
-                name=node,
-                component=graph.nodes[node]["component"],
-                inputs=previous_node_name,
-            )
+            self.pipeline.add_node(name=node, component=graph.nodes[node]["component"], inputs=previous_node_name)
             previous_node_name = [node]
 
-        self.pipeline.add_node(
-            component=output_translator,
-            name="OutputTranslator",
-            inputs=previous_node_name,
-        )
+        self.pipeline.add_node(component=output_translator, name="OutputTranslator", inputs=previous_node_name)
 
     def run(self, **kwargs):
         output = self.pipeline.run(**kwargs)
@@ -718,130 +591,6 @@ class RootNode:
 
     def run(self, **kwargs):
         return kwargs, "output_1"
-
-
-class SklearnQueryClassifier(BaseComponent):
-    """
-    A node to choose between two nodes based on query classification result using Sklearn GradientBoosted models.
-
-    This node by default classifies between keyword and question/statement queries, read more about the dataset it was trained
-    on here:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
-
-    If you want to classify between question queries and statement queries then use the following:
-
-    `query_classifier`:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle
-
-    `query_vectorizer`
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle
-
-    Or else you can load another query classifier from local file.
-
-    Read more about the dataset it was trained on here:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt.
-    """
-
-    outgoing_edges = 2
-
-    def __init__(
-        self,
-        query_classifier: Union[
-            str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
-        query_vectorizer: Union[
-            str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
-    ):
-        """
-        :param query_classifier: Gradient boosting based binary classifier to classify between keyword vs statement/question
-        queries or statement vs question queries.
-        :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query.
-        """
-        if (
-            (not isinstance(query_classifier, Path))
-            and (not isinstance(query_classifier, str))
-        ) or (
-            (not isinstance(query_vectorizer, Path))
-            and (not isinstance(query_vectorizer, str))
-        ):
-            raise TypeError(
-                "query_classifier and query_classifier must either be of type Path or str"
-            )
-
-        if isinstance(query_classifier, Path):
-            file_url = urllib.request.pathname2url(r"{}".format(query_classifier))
-            query_classifier = f"file:{file_url}"
-
-        if isinstance(query_vectorizer, Path):
-            file_url = urllib.request.pathname2url(r"{}".format(query_vectorizer))
-            query_vectorizer = f"file:{file_url}"
-
-        self.query_classifier = pickle.load(urllib.request.urlopen(query_classifier))
-
-        self.query_tokenizer = pickle.load(urllib.request.urlopen(query_vectorizer))
-
-    def run(self, **kwargs):
-        query_vector = self.query_tokenizer.transform([kwargs["query"]])
-
-        is_question: bool = self.query_classifier.predict(query_vector)[0]
-        if is_question:
-            return (kwargs, "output_1")
-        else:
-            return (kwargs, "output_2")
-
-
-class TransformersQueryClassifier(BaseComponent):
-    """
-    A node to choose between two nodes based on query classification result using Transformer models.
-    This node by default classifies between keyword and question/statement queries, read more about the dataset
-    it was trained on here:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
-
-    If you want to classify between question queries and statement queries then use the following `query_classifier` from huggingface
-    hub:
-
-    `shahrukhx01/question-vs-statement-classifier`
-
-    Or else you can load another query classifier from either local
-    file or huggingface hub.
-
-    Read more about the dataset it was trained on here:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt..
-    """
-
-    outgoing_edges = 2
-
-    def __init__(
-        self,
-        query_classifier: Union[
-            Path, str
-        ] = "shahrukhx01/bert-mini-finetune-question-detection",
-        query_tokenizer: Union[
-            Path, str
-        ] = "shahrukhx01/bert-mini-finetune-question-detection",
-    ):
-        """
-        :param query_classifier: Transformer based fine tuned mini bert model for query classification
-        :param query_tokenizer: Transformer based text tokenizer for mini bert model
-        """
-        model = AutoModelForSequenceClassification.from_pretrained(query_classifier)
-        tokenizer = AutoTokenizer.from_pretrained(query_tokenizer)
-
-        self.query_classification_pipeline = TextClassificationPipeline(
-            model=model, tokenizer=tokenizer
-        )
-
-    def run(self, **kwargs):
-
-        query_class: bool = (
-            self.query_classification_pipeline(kwargs["query"])[0]["label"] == "LABEL_1"
-        )
-
-        if query_class:
-            return (kwargs, "output_1")
-        else:
-            return (kwargs, "output_2")
 
 
 class JoinDocuments(BaseComponent):
@@ -857,10 +606,7 @@ class JoinDocuments(BaseComponent):
     outgoing_edges = 1
 
     def __init__(
-        self,
-        join_mode: str = "concatenate",
-        weights: Optional[List[float]] = None,
-        top_k_join: Optional[int] = None,
+        self, join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None
     ):
         """
         :param join_mode: `concatenate` to combine documents from multiple retrievers or `merge` to aggregate scores of
@@ -870,10 +616,7 @@ class JoinDocuments(BaseComponent):
                         to each retriever score. This param is not compatible with the `concatenate` join_mode.
         :param top_k_join: Limit documents to top_k based on the resulting scores of the join.
         """
-        assert join_mode in [
-            "concatenate",
-            "merge",
-        ], f"JoinDocuments node does not support '{join_mode}' join_mode."
+        assert join_mode in ["concatenate", "merge"], f"JoinDocuments node does not support '{join_mode}' join_mode."
 
         assert not (
             weights is not None and join_mode == "concatenate"
@@ -895,12 +638,10 @@ class JoinDocuments(BaseComponent):
             if self.weights:
                 weights = self.weights
             else:
-                weights = [1 / len(inputs)] * len(inputs)
+                weights = [1/len(inputs)] * len(inputs)
             for input_from_node, weight in zip(inputs, weights):
                 for doc in input_from_node["documents"]:
-                    if document_map.get(
-                        doc.id
-                    ):  # document already exists; update score
+                    if document_map.get(doc.id):  # document already exists; update score
                         document_map[doc.id].score += doc.score * weight
                     else:  # add the document in map
                         document_map[doc.id] = deepcopy(doc)
@@ -911,9 +652,5 @@ class JoinDocuments(BaseComponent):
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
         if self.top_k:
             documents = documents[: self.top_k]
-        output = {
-            "query": inputs[0]["query"],
-            "documents": documents,
-            "labels": inputs[0].get("labels", None),
-        }
+        output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"
