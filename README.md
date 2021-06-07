@@ -4,17 +4,11 @@
     <a href="https://github.com/deepset-ai/haystack/actions">
         <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
     </a>
-    <a href="http://mypy-lang.org/">
-        <img alt="Checked with MyPy" src="https://camo.githubusercontent.com/34b3a249cd6502d0a521ab2f42c8830b7cfd03fa/687474703a2f2f7777772e6d7970792d6c616e672e6f72672f7374617469632f6d7970795f62616467652e737667">
-    </a>
     <a href="https://haystack.deepset.ai/docs/intromd">
         <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
     </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
         <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
-    </a>
-    <a href="https://github.com/deepset-ai/haystack/blob/master/LICENSE">
-        <img alt="License" src="https://img.shields.io/github/license/deepset-ai/haystack.svg?color=blue">
     </a>
     <a href="https://github.com/deepset-ai/haystack/commits/master">
         <img alt="Last commit" src="https://img.shields.io/github/last-commit/deepset-ai/haystack">
@@ -22,6 +16,12 @@
     <a href="https://pepy.tech/project/farm-haystack">
         <img alt="Downloads" src="https://pepy.tech/badge/farm-haystack/month">
     </a>
+    <a href="https://apply.workable.com/deepset/">
+        <img alt="Jobs" src="https://img.shields.io/badge/Jobs-We're%20hiring-blue">
+    </a>
+        <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
+        <img alt="Twitter" src="https://img.shields.io/twitter/follow/deepset_ai?style=social">
+    </a>    
 </p>
 
 Haystack is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
@@ -164,12 +164,13 @@ We recommend Elasticsearch or FAISS but also have more light-weight options for 
     Retrievers narrow down the search space significantly and are therefore crucial for scalable QA.
     Haystack supports sparse methods (TF-IDF, BM25, custom Elasticsearch queries)
     and state of the art dense methods (e.g., sentence-transformers and Dense Passage Retrieval)
-5.  **Reader**: Neural network (e.g., BERT or RoBERTA) that reads through texts in detail
+5.  **Ranker**: Neural network (e.g., BERT or RoBERTA) that re-ranks top-k retrieved documents. The Ranker is an optional component and uses a TextPairClassification model under the hood. This model calculates semantic similarity of each of the top-k retrieved documents with the query.
+6.  **Reader**: Neural network (e.g., BERT or RoBERTA) that reads through texts in detail
     to find an answer. The Reader takes multiple passages of text as input and returns top-n answers. Models are trained via [FARM](https://github.com/deepset-ai/FARM) or [Transformers](https://github.com/huggingface/transformers) on SQuAD like tasks.  You can load a pre-trained model from [Hugging Face's model hub](https://huggingface.co/models) or fine-tune it on your domain data.
-6.  **Generator**: Neural network (e.g., RAG) that *generates* an answer for a given question conditioned on the retrieved documents from the retriever.
-6.  **Pipeline**: Stick building blocks together to highly custom pipelines that are represented as Directed Acyclic Graphs (DAG). Think of it as "Apache Airflow for search".
-7.  **REST API**: Exposes a simple API based on fastAPI for running QA search, uploading files, and collecting user feedback for continuous learning.
-8.  **Haystack Annotate**: Create custom QA labels to improve the performance of your domain-specific models. [Hosted version](https://annotate.deepset.ai/login) or [Docker images](https://github.com/deepset-ai/haystack/tree/master/annotation_tool).
+7.  **Generator**: Neural network (e.g., RAG) that *generates* an answer for a given question conditioned on the retrieved documents from the retriever.
+8.  **Pipeline**: Stick building blocks together to highly custom pipelines that are represented as Directed Acyclic Graphs (DAG). Think of it as "Apache Airflow for search".
+9.  **REST API**: Exposes a simple API based on fastAPI for running QA search, uploading files, and collecting user feedback for continuous learning.
+10.  **Haystack Annotate**: Create custom QA labels to improve the performance of your domain-specific models. [Hosted version](https://annotate.deepset.ai/login) or [Docker images](https://github.com/deepset-ai/haystack/tree/master/annotation_tool).
 
 It's quite simple to begin experimenting with Haystack. We'd recommend going through the [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) section below, but here's an example code structure describing how to approach Haystack with the DocumentStore based on Elasticsearch.
 

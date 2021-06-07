@@ -247,7 +247,7 @@ When printing the full results of a Reader,
 you will see that each prediction is accompanied 
 by a value in the range of 0 to 1 reflecting the model's confidence in that prediction
 
-In the output of `print_answers()`, you will find the model confidence in dictionary key called `probability`.
+In the output of `print_answers()`, you will find the model confidence in dictionary key called `confidence`.
 
 ```python
 from haystack.utils import print_answers
@@ -263,7 +263,7 @@ print_answers(prediction, details="all")
                        'She travels with her father, Eddard, to '
                        "King's Landing when he is made Hand of the "
                        'King. Before she leaves,',
-            'probability': 0.9899835586547852,
+            'confidence': 0.9899835586547852,
             ...
         },
     ]
@@ -271,9 +271,14 @@ print_answers(prediction, details="all")
 ```
 
 In order to align this probability score with the model's accuracy, finetuning needs to be performed
-on a specific dataset. Have a look at this [FARM tutorial](https://github.com/deepset-ai/FARM/blob/master/examples/question_answering_confidence.py)
-to see how this is done. 
-Note that a finetuned confidence score is specific to the domain that its finetuned on. 
+on a specific dataset. 
+To this end, the reader has a method `calibrate_confidence_scores(document_store, device, label_index, doc_index, label_origin)`.
+The parameters of this method are the same as for the `eval()` method because the calibration of confidence scores is performed on a dataset that comes with gold labels.
+The calibration calls the `eval()` method internally and therefore needs a DocumentStore containing labeled questions and evaluation documents.
+
+Have a look at this [FARM tutorial](https://github.com/deepset-ai/FARM/blob/master/examples/question_answering_confidence.py)
+to see how to compare calibrated confidence scores with uncalibrated confidence scores within FARM. 
+Note that a finetuned confidence score is specific to the domain that it is finetuned on. 
 There is no guarantee that this performance can transfer to a new domain.
 
 Having a confidence score is particularly useful in cases where you need Haystack to work with a certain accuracy threshold.

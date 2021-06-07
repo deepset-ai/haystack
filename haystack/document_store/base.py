@@ -6,6 +6,7 @@ from typing import Optional, Dict, List, Union
 import numpy as np
 
 from haystack import Document, Label, MultiLabel, BaseComponent
+from haystack.errors import DuplicateDocumentError
 from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
@@ -19,9 +20,11 @@ class BaseDocumentStore(BaseComponent):
     index: Optional[str]
     label_index: Optional[str]
     similarity: Optional[str]
+    duplicate_documents_options: tuple = ('skip', 'overwrite', 'fail')
 
     @abstractmethod
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None):
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries.
 
@@ -32,6 +35,13 @@ class BaseDocumentStore(BaseComponent):
                           It can be used for filtering and is accessible in the responses of the Finder.
         :param index: Optional name of index where the documents shall be written to.
                       If None, the DocumentStore's default index (self.index) will be used.
+        :param batch_size: Number of documents that are passed to bulk function at a time.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
 
         :return: None
         """
@@ -61,21 +71,64 @@ class BaseDocumentStore(BaseComponent):
 
     def get_all_labels_aggregated(self,
                                   index: Optional[str] = None,
-                                  filters: Optional[Dict[str, List[str]]] = None) -> List[MultiLabel]:
+                                  filters: Optional[Dict[str, List[str]]] = None,
+                                  open_domain: bool=True,
+                                  aggregate_by_meta: Optional[Union[str, list]]=None) -> List[MultiLabel]:
+        """
+        Return all labels in the DocumentStore, aggregated into MultiLabel objects. 
+        This aggregation step helps, for example, if you collected multiple possible answers for one question and you
+        want now all answers bundled together in one place for evaluation.
+        How they are aggregated is defined by the open_domain and aggregate_by_meta parameters.
+        If the questions are being asked to a single document (i.e. SQuAD style), you should set open_domain=False to aggregate by question and document.
+        If the questions are being asked to your full collection of documents, you should set open_domain=True to aggregate just by question.
+        If the questions are being asked to a subslice of your document set (e.g. product review use cases),
+        you should set open_domain=True and populate aggregate_by_meta with the names of Label meta fields to aggregate by question and your custom meta fields.
+        For example, in a product review use case, you might set aggregate_by_meta=["product_id"] so that Labels
+        with the same question but different answers from different documents are aggregated into the one MultiLabel
+        object, provided that they have the same product_id (to be found in Label.meta["product_id"])
+
+        :param index: Name of the index to get the labels from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the labels to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param open_domain: When True, labels are aggregated purely based on the question text alone.
+                            When False, labels are aggregated in a closed domain fashion based on the question text
+                            and also the id of the document that the label is tied to. In this setting, this function
+                            might return multiple MultiLabel objects with the same question string.
+        :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
+
+        """
         aggregated_labels = []
         all_labels = self.get_all_labels(index=index, filters=filters)
 
         # Collect all answers to a question in a dict
         question_ans_dict: dict = {}
         for l in all_labels:
+            # This group_by_id determines the key by which we aggregate labels. Its contents depend on
+            # whether we are in an open / closed domain setting,
+            # or if there are fields in the meta data that we should group by (set using group_by_meta)
+            group_by_id_list: list = []
+            if open_domain:
+                group_by_id_list = [l.question]
+            else:
+                group_by_id_list = [l.document_id, l.question]
+            if aggregate_by_meta:
+                if type(aggregate_by_meta) == str:
+                    aggregate_by_meta = [aggregate_by_meta]
+                for meta_key in aggregate_by_meta:
+                    curr_meta = l.meta.get(meta_key, None)
+                    if curr_meta:
+                        group_by_id_list.append(curr_meta)
+            group_by_id = tuple(group_by_id_list)
+
             # only aggregate labels with correct answers, as only those can be currently used in evaluation
             if not l.is_correct_answer:
                 continue
 
-            if l.question in question_ans_dict:
-                question_ans_dict[l.question].append(l)
+            if group_by_id in question_ans_dict:
+                question_ans_dict[group_by_id].append(l)
             else:
-                question_ans_dict[l.question] = [l]
+                question_ans_dict[group_by_id] = [l]
 
         # Aggregate labels
         for q, ls in question_ans_dict.items():
@@ -100,6 +153,12 @@ class BaseDocumentStore(BaseComponent):
             # construct Aggregated_label
             for i, l in enumerate(ls):
                 if i == 0:
+                    # Keep only the label metadata that we are aggregating by
+                    if aggregate_by_meta:
+                        meta_new = {k: v for k, v in l.meta.items() if k in aggregate_by_meta}
+                    else:
+                        meta_new = {}
+
                     agg_label = MultiLabel(question=l.question,
                                            multiple_answers=[l.answer],
                                            is_correct_answer=l.is_correct_answer,
@@ -109,7 +168,7 @@ class BaseDocumentStore(BaseComponent):
                                            multiple_offset_start_in_docs=[l.offset_start_in_doc],
                                            no_answer=l.no_answer,
                                            model_id=l.model_id,
-                                           )
+                                           meta=meta_new)
                 else:
                     agg_label.multiple_answers.append(l.answer)
                     agg_label.multiple_document_ids.append(l.document_id)
@@ -204,10 +263,64 @@ class BaseDocumentStore(BaseComponent):
         else:
             logger.error("File needs to be in json or jsonl format.")
 
-    @abstractmethod
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None, **kwargs): # type: ignore
+    @abstractmethod
+    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        pass
+
+    def run(self, documents: List[dict], index: Optional[str] = None, **kwargs):  # type: ignore
         self.write_documents(documents=documents, index=index)
         return kwargs, "output_1"
+
+    @abstractmethod
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
+                            batch_size: int = 10_000) -> List[Document]:
+        pass
+
+    def _drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
+        """
+         Drop duplicates documents based on same hash ID
+
+         :param documents: A list of Haystack Document objects.
+         :return: A list of Haystack Document objects.
+        """
+        _hash_ids: list = []
+        _documents: List[Document] = []
+
+        for document in documents:
+            if document.id in _hash_ids:
+                logger.warning(f"Duplicate Documents: Document with id '{document.id}' already exists in index "
+                               f"'{self.index}'")
+                continue
+            _documents.append(document)
+            _hash_ids.append(document.id)
+
+        return _documents
+
+    def _handle_duplicate_documents(self, documents: List[Document], duplicate_documents: Optional[str] = None):
+        """
+        Handle duplicates documents
+
+        :param documents: A list of Haystack Document objects.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip (default option): Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :return: A list of Haystack Document objects.
+       """
+        if duplicate_documents in ('skip', 'fail'):
+            documents = self._drop_duplicate_documents(documents)
+            documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=self.index)
+            ids_exist_in_db = [doc.id for doc in documents_found]
+
+            if len(ids_exist_in_db) > 0 and duplicate_documents == 'fail':
+                raise DuplicateDocumentError(f"Document with ids '{', '.join(ids_exist_in_db)} already exists"
+                                             f" in index = '{self.index}'.")
+
+            documents = list(filter(lambda doc: doc.id not in ids_exist_in_db, documents))
+
+        return documents

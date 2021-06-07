@@ -2,7 +2,7 @@ import pytest
 from haystack.document_store.base import BaseDocumentStore
 from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.finder import Finder
-from haystack.eval import EvalReader, EvalRetriever
+from haystack.eval import EvalAnswers, EvalDocuments
 from haystack import Pipeline
 
 
@@ -107,25 +107,19 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     )
 
     labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
-    q_to_l_dict = {
-        l.question: {
-            "retriever": l,
-            "reader": l
-        } for l in labels
-    }
 
-    eval_retriever = EvalRetriever()
-    eval_reader = EvalReader()
+    eval_retriever = EvalDocuments()
+    eval_reader = EvalAnswers()
 
     assert document_store.get_document_count(index="haystack_test_eval_document") == 2
     p = Pipeline()
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-    p.add_node(component=eval_retriever, name="EvalRetriever", inputs=["ESRetriever"])
-    p.add_node(component=reader, name="QAReader", inputs=["EvalRetriever"])
-    p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
-    for q, l in q_to_l_dict.items():
+    p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
+    p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
+    p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
+    for l in labels:
         res = p.run(
-            query=q,
+            query=l.question,
             top_k_retriever=10,
             labels=l,
             top_k_reader=10,

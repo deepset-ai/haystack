@@ -2,7 +2,7 @@ from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.preprocessor.utils import fetch_archive_from_http
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.retriever.dense import DensePassageRetriever
-from haystack.eval import EvalReader, EvalRetriever
+from haystack.eval import EvalAnswers, EvalDocuments
 from haystack.reader.farm import FARMReader
 from haystack.preprocessor import PreProcessor
 from haystack.utils import launch_es
@@ -20,7 +20,6 @@ def tutorial5_evaluation():
     ##############################################
     # Settings
     ##############################################
-
     # Choose from Evaluation style from ['retriever_closed', 'reader_closed', 'retriever_reader_open']
     # 'retriever_closed' - evaluates only the retriever, based on whether the gold_label document is retrieved.
     # 'reader_closed' - evaluates only the reader in a closed domain fashion i.e. the reader is given one query
@@ -57,6 +56,7 @@ def tutorial5_evaluation():
     # We first delete the custom tutorial indices to not have duplicate elements
     # and also split our documents into shorter passages using the PreProcessor
     preprocessor = PreProcessor(
+        split_by="word",
         split_length=500,
         split_overlap=0,
         split_respect_sentence_boundary=False,
@@ -74,12 +74,6 @@ def tutorial5_evaluation():
 
     # Let's prepare the labels that we need for the retriever and the reader
     labels = document_store.get_all_labels_aggregated(index=label_index)
-    q_to_l_dict = {
-        l.question: {
-            "retriever": l,
-            "reader": l
-        } for l in labels
-    }
 
     # Initialize Retriever
     retriever = ElasticsearchRetriever(document_store=document_store)
@@ -89,7 +83,7 @@ def tutorial5_evaluation():
     # Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
     # DPR still outperforms Elastic's BM25 by a small margin here.
     # retriever = DensePassageRetriever(document_store=document_store,
-    #                                   query_embedding_model="facebook/dpr-qPreProuestion_encoder-single-nq-base",
+    #                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
     #                                   passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
     #                                   use_gpu=True,
     #                                   embed_title=True,
@@ -104,8 +98,8 @@ def tutorial5_evaluation():
     )
 
     # Here we initialize the nodes that perform evaluation
-    eval_retriever = EvalRetriever()
-    eval_reader = EvalReader()
+    eval_retriever = EvalDocuments()
+    eval_reader = EvalAnswers()
 
 
     ## Evaluate Retriever on its own in closed domain fashion
@@ -137,14 +131,14 @@ def tutorial5_evaluation():
         # Here is the pipeline definition
         p = Pipeline()
         p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-        p.add_node(component=eval_retriever, name="EvalRetriever", inputs=["ESRetriever"])
-        p.add_node(component=reader, name="QAReader", inputs=["EvalRetriever"])
-        p.add_node(component=eval_reader, name="EvalReader", inputs=["QAReader"])
+        p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
+        p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
+        p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
         results = []
 
-        for q, l in q_to_l_dict.items():
+        for l in labels:
             res = p.run(
-                query=q,
+                query=l.question,
                 top_k_retriever=10,
                 labels=l,
                 top_k_reader=10,
@@ -152,7 +146,6 @@ def tutorial5_evaluation():
             )
             results.append(res)
 
-        n_queries = len(labels)
         eval_retriever.print()
         print()
         retriever.print_time()
@@ -162,6 +155,8 @@ def tutorial5_evaluation():
         reader.print_time()
         print()
         eval_reader.print(mode="pipeline")
+    else:
+        raise ValueError(f'style={style} is not a valid option. Choose from retriever_closed, reader_closed, retriever_reader_open')
 
 
 if __name__ == "__main__":

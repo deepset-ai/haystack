@@ -22,46 +22,53 @@
     },
     "data": [
         {
-            "model": "BM25 / ElasticSearch",
-            "n_docs": 100000,
-            "index_speed": 485.5602670200369,
-            "query_speed": 165.51512861040828,
-            "map": 56.259591531012504
-        },
-        {
-            "model": "DPR / ElasticSearch",
+            "model": "DPR / Elasticsearch",
             "n_docs": 100000,
             "index_speed": 71.36964873196698,
-            "query_speed": 5.355677072083696,
-            "map": 86.54606328368973
+            "query_speed": 5.192368815242574,
+            "map": 86.54606328368976
+        },
+        {
+            "model": "BM25 / Elasticsearch",
+            "n_docs": 100000,
+            "index_speed": 485.5602670200369,
+            "query_speed": 103.0884393334727,
+            "map": 56.25299537353825
+        },
+        {
+            "model": "Sentence Transformers / Elasticsearch",
+            "n_docs": 100000,
+            "index_speed": 119.52937722555107,
+            "query_speed": 6.385621466857457,
+            "map": 82.74686664920836
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 100000,
             "index_speed": 100.01184910084558,
-            "query_speed": 6.624479268751268,
+            "query_speed": 6.6270933964840415,
             "map": 86.54606328368973
         },
         {
             "model": "DPR / FAISS (HNSW)",
             "n_docs": 100000,
             "index_speed": 89.90389306648805,
-            "query_speed": 40.68196225525062,
+            "query_speed": 39.7839528511866,
             "map": 84.33419639513305
         },
         {
             "model": "DPR / Milvus (flat)",
             "n_docs": 100000,
             "index_speed": 116.00982709720004,
-            "query_speed": 28.30393009791128,
+            "query_speed": 28.57264344960955,
             "map": 86.54606328368973
         },
         {
             "model": "DPR / Milvus (HNSW)",
             "n_docs": 100000,
             "index_speed": 115.61076852516383,
-            "query_speed": 28.076443272229284,
-            "map": 86.54606328368973
+            "query_speed": 38.80526238789059,
+            "map": 81.63864883662649
         }
     ]
 }

@@ -91,7 +91,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.7'
+    |   version: '0.8'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -126,6 +126,20 @@ Here's a sample configuration:
                                      to change index name param for an ElasticsearchDocumentStore, an env
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
+
+<a name="pipeline.Pipeline.save_to_yaml"></a>
+#### save\_to\_yaml
+
+```python
+ | save_to_yaml(path: Path, return_defaults: bool = False)
+```
+
+Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
+
+**Arguments**:
+
+- `path`: path of the output YAML file.
+- `return_defaults`: whether to output parameters that have the default values.
 
 <a name="pipeline.BaseStandardPipeline"></a>
 ## BaseStandardPipeline Objects
