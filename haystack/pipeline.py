@@ -5,7 +5,11 @@ import traceback
 from abc import ABC
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union, Any
+import pickle
+import urllib
+
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 
 import networkx as nx
 import yaml
@@ -594,6 +598,174 @@ class RootNode:
         return kwargs, "output_1"
 
 
+class SklearnQueryClassifier(BaseComponent):
+    """
+    A node to classify an incoming query into one of two categories using a lightweight sklearn model. Depending on the result, the query flows to a different branch in your pipeline
+    and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
+
+    Example:
+     ```python
+        |{
+        |pipe = Pipeline()
+        |pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+        |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
+        |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+
+        |# Keyword queries will use the ElasticRetriever
+        |pipe.run("kubernetes aws")
+
+        |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
+        |pipe.run("How to manage kubernetes on aws")
+
+     ```
+
+    Models:
+
+    Pass your own `Sklearn` binary classification model or use one of the following pretrained ones:
+    1) Keywords vs. Questions/Statements (Default)
+       query_classifier="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle"
+       query_vectorizer="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
+       output_1 => question/statement
+       output_2 => keyword query
+       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
+
+
+    2) Questions vs. Statements
+    `query_classifier`="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle"`
+    `query_vectorizer`="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle"`
+     output_1 => question
+     output_2 => statement
+     [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
+
+     See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
+
+    """
+
+    outgoing_edges = 2
+
+    def __init__(
+        self,
+        model_name_or_path: Union[
+            str, Any
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
+        vectorizer_name_or_path: Union[
+            str, Any
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
+    ):
+        """
+        :param model_name_or_path: Gradient boosting based binary classifier to classify between keyword vs statement/question
+        queries or statement vs question queries.
+        :param vectorizer_name_or_path: A ngram based Tfidf vectorizer for extracting features from query.
+        """
+        if (
+            (not isinstance(model_name_or_path, Path))
+            and (not isinstance(model_name_or_path, str))
+        ) or (
+            (not isinstance(vectorizer_name_or_path, Path))
+            and (not isinstance(vectorizer_name_or_path, str))
+        ):
+            raise TypeError(
+                "query_classifier and query_classifier must either be of type Path or str"
+            )
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(model_name_or_path=model_name_or_path, vectorizer_name_or_path=vectorizer_name_or_path)
+
+        if isinstance(model_name_or_path, Path):
+            file_url = urllib.request.pathname2url(r"{}".format(model_name_or_path))
+            model_name_or_path = f"file:{file_url}"
+
+        if isinstance(vectorizer_name_or_path, Path):
+            file_url = urllib.request.pathname2url(r"{}".format(vectorizer_name_or_path))
+            vectorizer_name_or_path = f"file:{file_url}"
+
+        self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
+        self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
+
+
+    def run(self, **kwargs):
+        query_vector = self.vectorizer.transform([kwargs["query"]])
+
+        is_question: bool = self.model.predict(query_vector)[0]
+        if is_question:
+            return (kwargs, "output_1")
+        else:
+            return (kwargs, "output_2")
+
+
+class TransformersQueryClassifier(BaseComponent):
+    """
+    A node to classify an incoming query into one of two categories using a (small) BERT transformer model. Depending on the result, the query flows to a different branch in your pipeline
+    and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
+
+    Example:
+     ```python
+        |{
+        |pipe = Pipeline()
+        |pipe.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+        |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
+        |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+
+        |# Keyword queries will use the ElasticRetriever
+        |pipe.run("kubernetes aws")
+
+        |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
+        |pipe.run("How to manage kubernetes on aws")
+
+     ```
+
+    Models:
+
+    Pass your own `Transformer` binary classification model from file/huggingface or use one of the following pretrained ones hosted on Huggingface:
+    1) Keywords vs. Questions/Statements (Default)
+       model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
+       output_1 => question/statement
+       output_2 => keyword query
+       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
+
+
+    2) Questions vs. Statements
+    `model_name_or_path`="shahrukhx01/question-vs-statement-classifier"
+     output_1 => question
+     output_2 => statement
+     [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
+
+     See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
+    """
+
+    outgoing_edges = 2
+
+    def __init__(
+        self,
+        model_name_or_path: Union[
+            Path, str
+        ] = "shahrukhx01/bert-mini-finetune-question-detection"
+    ):
+        """
+        :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
+        """
+        # save init parameters to enable export of component config as YAML
+        self.set_config(model_name_or_path=model_name_or_path)
+
+        model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+
+        self.query_classification_pipeline = TextClassificationPipeline(
+            model=model, tokenizer=tokenizer
+        )
+
+    def run(self, **kwargs):
+
+        is_question: bool = (
+            self.query_classification_pipeline(kwargs["query"])[0]["label"] == "LABEL_1"
+        )
+
+        if is_question:
+            return (kwargs, "output_1")
+        else:
+            return (kwargs, "output_2")
+
+
 class JoinDocuments(BaseComponent):
     """
     A node to join documents outputted by multiple retriever nodes.
@@ -655,6 +827,7 @@ class JoinDocuments(BaseComponent):
             raise Exception(f"Invalid join_mode: {self.join_mode}")
 
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
+
         if self.top_k_join:
             documents = documents[: self.top_k_join]
         output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
