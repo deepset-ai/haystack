@@ -389,7 +389,7 @@ class Seq2SeqGenerator(BaseGenerator):
         self.model.eval()
 
     @classmethod
-    def _register_converters(cls, model_name_or_path: str, custom_converter: Callable):
+    def _register_converters(cls, model_name_or_path: str, custom_converter: Optional[Callable]):
         # init if empty
         if not cls._model_input_converters:
             cls._model_input_converters["yjernite/bart_eli5"] = _BartEli5Converter()
@@ -450,7 +450,7 @@ class Seq2SeqGenerator(BaseGenerator):
         return {"query": query, "answers": generated_answers}
 
 
-class _BartEli5Converter(Callable):
+class _BartEli5Converter:
     """
        A sequence-to-sequence model input converter (https://huggingface.co/yjernite/bart_eli5) based on the
        BART architecture fine-tuned on ELI5 dataset (https://arxiv.org/abs/1907.09190).
