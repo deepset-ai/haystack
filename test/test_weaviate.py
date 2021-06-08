@@ -33,6 +33,12 @@ def document_store_with_docs(request):
     yield document_store
     document_store.delete_all_documents()
 
+@pytest.fixture(params=["weaviate"])
+def document_store(request):
+    document_store = get_document_store(request.param)
+    yield document_store
+    document_store.delete_all_documents()
+
 @pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()

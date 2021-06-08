@@ -327,15 +327,14 @@ def get_retriever(retriever_type, document_store):
     return retriever
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_all_documents()
 
-
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store(request, test_docs_xs):
     document_store = get_document_store(request.param)
     yield document_store
