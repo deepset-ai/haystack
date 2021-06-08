@@ -23,6 +23,7 @@ class PreProcessor(BasePreProcessor):
         split_length: int = 1000,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
+        language: str = "english",
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -43,6 +44,7 @@ class PreProcessor(BasePreProcessor):
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
+        :param language: the language used by "nltk.tokenize.sent_tokenize".
         """
 
         # save init parameters to enable export of component config as YAML
@@ -56,7 +58,7 @@ class PreProcessor(BasePreProcessor):
             nltk.data.find('tokenizers/punkt')
         except LookupError:
             nltk.download('punkt')
-            
+
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
@@ -64,6 +66,7 @@ class PreProcessor(BasePreProcessor):
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
+        self.language = language
 
     def process(
         self,
@@ -166,7 +169,7 @@ class PreProcessor(BasePreProcessor):
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
-            sentences = nltk.tokenize.sent_tokenize(text)
+            sentences = nltk.tokenize.sent_tokenize(text, language=self.language)
             word_count = 0
             list_splits = []
             current_slice: List[str] = []
@@ -207,7 +210,7 @@ class PreProcessor(BasePreProcessor):
             if split_by == "passage":
                 elements = text.split("\n\n")
             elif split_by == "sentence":
-                elements = nltk.tokenize.sent_tokenize(text)
+                elements = nltk.tokenize.sent_tokenize(text, language=self.language)
             elif split_by == "word":
                 elements = text.split(" ")
             else:
