@@ -8,13 +8,14 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from haystack import Pipeline
-from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, QUERY_PIPELINE_NAME
-from rest_api.controller.utils import RequestLimiter
+from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, PIPELINES_DIR
+from rest_api.controller.utils import RequestLimiter, PipelineHelper
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
 logger = logging.getLogger("haystack")
 
 router = APIRouter()
+pipeline_helper = PipelineHelper(PIPELINES_DIR)
 
 
 class Request(BaseModel):
@@ -41,7 +42,8 @@ class Response(BaseModel):
     answers: List[Answer]
 
 
-PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
+active_pipeline, active_pipeline_path = pipeline_helper.get_active_pipeline()
+PIPELINE = Pipeline.load_from_yaml(Path(active_pipeline_path), pipeline_name=active_pipeline)
 logger.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
 concurrency_limiter = RequestLimiter(4)
 
