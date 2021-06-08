@@ -618,6 +618,14 @@ class SklearnQueryClassifier(BaseComponent):
 
     Read more about the dataset it was trained on here:
     https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt.
+
+    Outputs:
+    The output "output_1" is interpreted as query is a "statement/question" query when using keyword vs
+    question/statement classifier
+    The output "output_2" is interpreted as query is a "keyword" query when using keyword vs question/statement
+    classifier
+    The output "output_1" is interpreted as query is a "question" when using question vs statement classifier
+    The output "output_2" is interpreted as query is a "statement" when using question vs statement classifier
     """
 
     outgoing_edges = 2
@@ -629,9 +637,7 @@ class SklearnQueryClassifier(BaseComponent):
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
         query_vectorizer: Union[
             str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
-        output_1_name: str = "semantic_query",
-        output_2_name: str = "keywords"
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
     ):
         """
         :param query_classifier: Gradient boosting based binary classifier to classify between keyword vs statement/question
@@ -661,9 +667,6 @@ class SklearnQueryClassifier(BaseComponent):
 
         self.query_tokenizer = pickle.load(urllib.request.urlopen(query_vectorizer))
 
-        self.output_1_name = output_1_name
-
-        self.output_2_name = output_2_name
 
     def run(self, **kwargs):
         query_vector = self.query_tokenizer.transform([kwargs["query"]])
@@ -691,7 +694,15 @@ class TransformersQueryClassifier(BaseComponent):
     file or huggingface hub.
 
     Read more about the dataset it was trained on here:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt..
+    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt.
+
+    Outputs:
+    The output "output_1" is interpreted as query is a "statement/question" query when using keyword vs
+    question/statement classifier
+    The output "output_2" is interpreted as query is a "keyword" query when using keyword vs question/statement
+    classifier
+    The output "output_1" is interpreted as query is a "question" when using question vs statement classifier
+    The output "output_2" is interpreted as query is a "statement" when using question vs statement classifier
     """
 
     outgoing_edges = 2
@@ -703,9 +714,7 @@ class TransformersQueryClassifier(BaseComponent):
         ] = "shahrukhx01/bert-mini-finetune-question-detection",
         query_tokenizer: Union[
             Path, str
-        ] = "shahrukhx01/bert-mini-finetune-question-detection",
-        output_1_name: str = "semantic_query",
-        output_2_name: str = "keywords"
+        ] = "shahrukhx01/bert-mini-finetune-question-detection"
     ):
         """
         :param query_classifier: Transformer based fine tuned mini bert model for query classification
@@ -718,17 +727,13 @@ class TransformersQueryClassifier(BaseComponent):
             model=model, tokenizer=tokenizer
         )
 
-        self.output_1_name = output_1_name
-
-        self.output_2_name = output_2_name
-
     def run(self, **kwargs):
 
-        query_class: bool = (
+        is_question: bool = (
             self.query_classification_pipeline(kwargs["query"])[0]["label"] == "LABEL_1"
         )
 
-        if query_class:
+        if is_question:
             return (kwargs, "output_1")
         else:
             return (kwargs, "output_2")
