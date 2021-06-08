@@ -725,7 +725,7 @@ class TransformersQueryClassifier(BaseComponent):
 
     2) Questions vs. Statements
     `query_classifier`="shahrukhx01/question-vs-statement-classifier"
-    `query_vectorizer`="shahrukhx01/question-vs-statement-classifier"`
+    `query_vectorizer`="shahrukhx01/question-vs-statement-classifier"
      output_1 => question
      output_2 => statement
      [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
