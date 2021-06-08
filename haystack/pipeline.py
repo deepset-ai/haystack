@@ -668,6 +668,8 @@ class SklearnQueryClassifier(BaseComponent):
                 "query_classifier and query_classifier must either be of type Path or str"
             )
 
+        self.set_config(model_name_or_path)
+
         if isinstance(model_name_or_path, Path):
             file_url = urllib.request.pathname2url(r"{}".format(model_name_or_path))
             model_name_or_path = f"file:{file_url}"
@@ -676,15 +678,14 @@ class SklearnQueryClassifier(BaseComponent):
             file_url = urllib.request.pathname2url(r"{}".format(vectorizer_name_or_path))
             vectorizer_name_or_path = f"file:{file_url}"
 
-        self.query_classifier = pickle.load(urllib.request.urlopen(model_name_or_path))
-
-        self.query_tokenizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
+        self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
+        self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
 
 
     def run(self, **kwargs):
-        query_vector = self.query_tokenizer.transform([kwargs["query"]])
+        query_vector = self.vectorizer.transform([kwargs["query"]])
 
-        is_question: bool = self.query_classifier.predict(query_vector)[0]
+        is_question: bool = self.model.predict(query_vector)[0]
         if is_question:
             return (kwargs, "output_1")
         else:
@@ -742,6 +743,9 @@ class TransformersQueryClassifier(BaseComponent):
         """
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
         """
+
+        self.set_config(model_name_or_path)
+
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
