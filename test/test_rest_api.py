@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 def get_test_client_and_override_dependencies():
     import os
+    os.environ["PIPELINES_DIR"] = "samples/pipeline"
     os.environ["PIPELINE_YAML_PATH"] = "samples/pipeline/test_pipeline.yaml"
     os.environ["QUERY_PIPELINE_NAME"] = "query_pipeline"
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_pipeline"
