@@ -298,18 +298,18 @@ class Seq2SeqGenerator(BaseGenerator):
 
     _model_input_converters: Dict[str, Callable] = dict()
     """
-        A generic sequence-to-sequence generator based on HuggingFace.
+        A generic sequence-to-sequence generator based on HuggingFace's transformers.
 
         Text generation is supported by so called auto-regressive language models like GPT2,
         XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
-        GenerationMixin can be used by Seq2SeqGenerator
+        GenerationMixin can be used by Seq2SeqGenerator.
 
         Moreover, as language models prepare model input in their specific encoding, each model
         specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
-        accompanying model input converter. By default, we provide model input converters
-        for a few well-known seq2seq language models (e.g. ELI5). It is the responsibility of
-        Seq2SeqGenerator user to ensure an appropriate model input converter is either already
-        registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
+        accompanying model input converter that takes care of prefixes, separator tokens etc.
+        By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5). 
+        It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter 
+        is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
 
         For mode details on custom model input converters refer to _BartEli5Converter
 
@@ -356,7 +356,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
 
         :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5
-        and others (e.g. `t5-base`)
+        and others (e.g. `yjernite/bart_eli5`)
         :input_converter: an optional Callable to prepare model input for the underlying language model specified in
         model_name_or_path parameter
         :param top_k: Number of independently generated text to return
@@ -453,8 +453,12 @@ class Seq2SeqGenerator(BaseGenerator):
 class _BartEli5Converter(Callable):
     """
        A sequence-to-sequence model input converter (https://huggingface.co/yjernite/bart_eli5) based on the
-       BART architecture fine-tuned on ELI5 dataset (https://arxiv.org/abs/1907.09190)
-
+       BART architecture fine-tuned on ELI5 dataset (https://arxiv.org/abs/1907.09190).
+       
+       The converter takes documents and a query as input and formats them into a single sequence
+       that a seq2seq model can use it as input for its generation step. 
+       This includes model-specific prefixes, separation tokens and the actual conversion into tensors.
+       
        For more details refer to Yacine Jernite's excellent LFQA contributions at https://yjernite.github.io/lfqa.html
     """
 
