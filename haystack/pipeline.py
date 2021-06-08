@@ -645,40 +645,40 @@ class SklearnQueryClassifier(BaseComponent):
 
     def __init__(
         self,
-        query_classifier: Union[
+        model_name_or_path: Union[
             str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
-        query_vectorizer: Union[
+        vectorizer_name_or_path: Union[
             str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
     ):
         """
-        :param query_classifier: Gradient boosting based binary classifier to classify between keyword vs statement/question
+        :param model_name_or_path: Gradient boosting based binary classifier to classify between keyword vs statement/question
         queries or statement vs question queries.
-        :param query_vectorizer: A ngram based Tfidf vectorizer for extracting features from query.
+        :param vectorizer_name_or_path: A ngram based Tfidf vectorizer for extracting features from query.
         """
         if (
-            (not isinstance(query_classifier, Path))
-            and (not isinstance(query_classifier, str))
+            (not isinstance(model_name_or_path, Path))
+            and (not isinstance(model_name_or_path, str))
         ) or (
-            (not isinstance(query_vectorizer, Path))
-            and (not isinstance(query_vectorizer, str))
+            (not isinstance(vectorizer_name_or_path, Path))
+            and (not isinstance(vectorizer_name_or_path, str))
         ):
             raise TypeError(
                 "query_classifier and query_classifier must either be of type Path or str"
             )
 
-        if isinstance(query_classifier, Path):
-            file_url = urllib.request.pathname2url(r"{}".format(query_classifier))
-            query_classifier = f"file:{file_url}"
+        if isinstance(model_name_or_path, Path):
+            file_url = urllib.request.pathname2url(r"{}".format(model_name_or_path))
+            model_name_or_path = f"file:{file_url}"
 
-        if isinstance(query_vectorizer, Path):
-            file_url = urllib.request.pathname2url(r"{}".format(query_vectorizer))
-            query_vectorizer = f"file:{file_url}"
+        if isinstance(vectorizer_name_or_path, Path):
+            file_url = urllib.request.pathname2url(r"{}".format(vectorizer_name_or_path))
+            vectorizer_name_or_path = f"file:{file_url}"
 
-        self.query_classifier = pickle.load(urllib.request.urlopen(query_classifier))
+        self.query_classifier = pickle.load(urllib.request.urlopen(model_name_or_path))
 
-        self.query_tokenizer = pickle.load(urllib.request.urlopen(query_vectorizer))
+        self.query_tokenizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
 
 
     def run(self, **kwargs):
@@ -716,16 +716,14 @@ class TransformersQueryClassifier(BaseComponent):
 
     Pass your own `Transformer` binary classification model from file/huggingface or use one of the following pretrained ones hosted on Huggingface:
     1) Keywords vs. Questions/Statements (Default)
-       query_classifier="shahrukhx01/bert-mini-finetune-question-detection"
-       query_vectorizer="shahrukhx01/bert-mini-finetune-question-detection"
+       model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
        output_1 => question/statement
        output_2 => keyword query
        [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
 
 
     2) Questions vs. Statements
-    `query_classifier`="shahrukhx01/question-vs-statement-classifier"
-    `query_vectorizer`="shahrukhx01/question-vs-statement-classifier"
+    `model_name_or_path`="shahrukhx01/question-vs-statement-classifier"
      output_1 => question
      output_2 => statement
      [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
@@ -737,19 +735,15 @@ class TransformersQueryClassifier(BaseComponent):
 
     def __init__(
         self,
-        query_classifier: Union[
-            Path, str
-        ] = "shahrukhx01/bert-mini-finetune-question-detection",
-        query_tokenizer: Union[
+        model_name_or_path: Union[
             Path, str
         ] = "shahrukhx01/bert-mini-finetune-question-detection"
     ):
         """
-        :param query_classifier: Transformer based fine tuned mini bert model for query classification
-        :param query_tokenizer: Transformer based text tokenizer for mini bert model
+        :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
         """
-        model = AutoModelForSequenceClassification.from_pretrained(query_classifier)
-        tokenizer = AutoTokenizer.from_pretrained(query_tokenizer)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
         self.query_classification_pipeline = TextClassificationPipeline(
             model=model, tokenizer=tokenizer
