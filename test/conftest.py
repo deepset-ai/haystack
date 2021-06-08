@@ -64,6 +64,8 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
             item.add_marker(pytest.mark.slow)
+        elif "weaviate" in item.nodeid:
+            item.add_marker(pytest.mark.weaviate)
 
 
 @pytest.fixture(scope="session")

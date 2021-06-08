@@ -523,7 +523,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def query(
         self,
-        query: Optional[str],
+        query: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
@@ -536,6 +536,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
+        :param custom_query: Custom query that will executed using query.raw method, for more details refer
+                            https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         index = index or self.index
@@ -544,10 +546,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         properties = self._get_current_properties(index)
         properties.append("_additional {id, certainty, vector}")
 
-        query_string = {
-            "concepts": [query]
-        }
-
         if custom_query:
             query_output = self.weaviate_client.query.raw(custom_query)
         elif filters:
@@ -555,15 +553,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
             query_output = self.weaviate_client.query\
                 .get(class_name=index, properties=properties)\
                 .with_where(filter_dict)\
-                .with_near_text(query_string)\
                 .with_limit(top_k)\
                 .do()
         else:
-            query_output = self.weaviate_client.query\
-                .get(class_name=index, properties=properties)\
-                .with_near_text(query_string)\
-                .with_limit(top_k)\
-                .do()
+            raise NotImplementedError("Weaviate does not support inverted index text query. However, "
+                                      "it allows to search by filters example : {'text': 'some text'} or "
+                                      "use a custom GraphQL query in text format!")
 
         results = []
         if query_output and "data" in query_output and "Get" in query_output.get("data"):
