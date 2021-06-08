@@ -74,21 +74,22 @@ The quickest way to see what Haystack offers is to start a [Docker Compose](http
 **1. Update/install Docker and Docker Compose, then launch Docker**
 
 ```
-    # apt-get update && apt-get install docker && apt-get install docker-compose
-    # service docker start
+    apt-get update && apt-get install docker && apt-get install docker-compose
+    service docker start
 ```
 
 **2. Clone Haystack repository**
 
 ```
-    # git clone https://github.com/deepset-ai/haystack.git
+    git clone https://github.com/deepset-ai/haystack.git
 ```
 
-**3. Launch demo app**
+**3. Pull images & launch demo app**
 
 ```
-    # cd haystack
-    # docker-compose up
+    cd haystack
+    docker-compose pull
+    docker-compose up
 ```
 
 You should be able to see the following in your terminal window as part of the log output:
