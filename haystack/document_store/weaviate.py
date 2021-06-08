@@ -192,7 +192,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         score = None
         probability = None
-        text = None
+        text = ""
         question = None
 
         id = result.get("id")
@@ -200,7 +200,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # If properties key is present, get all the document fields from it.
         # otherwise, a direct lookup in result root dict
-        props:dict = result.get("properties")
+        props = result.get("properties")
         if not props:
             props = result
 
@@ -211,12 +211,14 @@ class WeaviateDocumentStore(BaseDocumentStore):
             question = props.get(self.faq_question_field)
 
         # Weaviate creates "_additional" key for semantic search
-        if props.get("_additional"):
-            score = props.get("_additional").get('certainty') if "certainty" in props.get("_additional") else None
-            if score:
+        if "_additional" in props:
+            if "certainty" in props["_additional"]:
+                score = props["_additional"]['certainty']
                 probability = score
-            id = props.get("_additional").get('id') if "id" in props.get("_additional") else None
-            embedding = props.get("_additional").get('vector') if "vector" in props.get("_additional") else None
+            if "id" in props["_additional"]:
+                id = props["_additional"]['id']
+            if "vector" in props["_additional"]:
+                embedding = props["_additional"]['vector']
             props.pop("_additional", None)
 
         # We put all additional data of the doc into meta_data and return it in the API
@@ -254,9 +256,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
           'text': 'text_5'},
          'vector': []}'''
         index = index or self.index
+        document = None
         result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
         if result:
-            return self._convert_weaviate_result_to_document(result, return_embedding=True)
+            document = self._convert_weaviate_result_to_document(result, return_embedding=True)
+        return document
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
                             batch_size: int = 10_000) -> List[Document]:
@@ -284,6 +288,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def _build_filter_clause(self, filters:Dict[str, List[str]]) -> dict:
         """Transform Haystack filter conditions to Weaviate where filter clauses"""
         weaviate_filters = []
+        weaviate_filter = {}
         for key, values in filters.items():
             for value in values:
                 weaviate_filter = {
@@ -297,10 +302,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 "operator": "Or",
                 "operands": weaviate_filters
             }
+            return filter_dict
         else:
-            filter_dict = weaviate_filters[0]
-
-        return filter_dict
+            return weaviate_filter
 
     def _update_schema(self, new_prop:str, index: Optional[str] = None):
         """Updates the schema with a new property"""
@@ -484,7 +488,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             if result.get("data").get("Get").get(index):
                 all_docs = result.get("data").get("Get").get(index)
 
-        return all_docs
+        yield from all_docs
 
     def get_all_documents_generator(
         self,
