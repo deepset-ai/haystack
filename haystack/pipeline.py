@@ -600,32 +600,45 @@ class RootNode:
 
 class SklearnQueryClassifier(BaseComponent):
     """
-    A node to choose between two nodes based on query classification result using Sklearn GradientBoosted models.
+    A node to classify an incoming query into one of two categories using a lightweight sklearn model. Depending on the result, the query flows to a different branch in your pipeline 
+    and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node. 
+    
+    Example:
+     ```python
+        |{
+        |pipe = Pipeline()
+        |pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+        |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
+        |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+        
+        |# Keyword queries will use the ElasticRetriever
+        |pipe.run("kubernetes aws")
+        
+        |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
+        |pipe.run("How to manage kubernetes on aws")
 
-    This node by default classifies between keyword and question/statement queries, read more about the dataset it was trained
-    on here:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt
+     ```
 
-    If you want to classify between question queries and statement queries then use the following:
+    Models: 
+    
+    Pass your own `Sklearn` binary classification model or use one of the following pretrained ones: 
+    1) Keywords vs. Questions/Statements (Default)
+       query_classifier="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle"
+       query_vectorizer="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
+       output_1 => question/statement 
+       output_2 => keyword query
+       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
+       
+    
+    2) Questions vs. Statements
+    `query_classifier`="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle"`
+    `query_vectorizer`="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle"`
+     output_1 => question 
+     output_2 => statement 
+     [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)   
+     
+     See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines. 
 
-    `query_classifier`:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle
-
-    `query_vectorizer`
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle
-
-    Or else you can load another query classifier from local file.
-
-    Read more about the dataset it was trained on here:
-    https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt.
-
-    Outputs:
-    The output "output_1" is interpreted as query is a "statement/question" query when using keyword vs
-    question/statement classifier
-    The output "output_2" is interpreted as query is a "keyword" query when using keyword vs question/statement
-    classifier
-    The output "output_1" is interpreted as query is a "question" when using question vs statement classifier
-    The output "output_2" is interpreted as query is a "statement" when using question vs statement classifier
     """
 
     outgoing_edges = 2
