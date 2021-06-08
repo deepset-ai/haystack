@@ -668,7 +668,8 @@ class SklearnQueryClassifier(BaseComponent):
                 "query_classifier and query_classifier must either be of type Path or str"
             )
 
-        self.set_config(model_name_or_path)
+        # save init parameters to enable export of component config as YAML
+        self.set_config(model_name_or_path=model_name_or_path, vectorizer_name_or_path=vectorizer_name_or_path)
 
         if isinstance(model_name_or_path, Path):
             file_url = urllib.request.pathname2url(r"{}".format(model_name_or_path))
@@ -743,8 +744,8 @@ class TransformersQueryClassifier(BaseComponent):
         """
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
         """
-
-        self.set_config(model_name_or_path)
+        # save init parameters to enable export of component config as YAML
+        self.set_config(model_name_or_path=model_name_or_path)
 
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
