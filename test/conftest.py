@@ -7,7 +7,7 @@ import pytest
 import requests
 from elasticsearch import Elasticsearch
 
-from haystack.generator.transformers import BartEli5Generator
+from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
 
@@ -210,7 +210,7 @@ def rag_generator():
 
 @pytest.fixture(scope="module")
 def eli5_generator():
-    return BartEli5Generator()
+    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
 
 
 @pytest.fixture(scope="module")

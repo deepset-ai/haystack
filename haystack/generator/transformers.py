@@ -1,5 +1,5 @@
 import logging
-from abc import abstractmethod
+from collections.abc import Callable
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -295,13 +295,24 @@ class RAGenerator(BaseGenerator):
 
 
 class Seq2SeqGenerator(BaseGenerator):
+
+    _model_input_converters: Dict[str, Callable] = dict()
     """
-        A generic sequence-to-sequence generator based on HuggingFace. Subclasses should
-        implement prepare_model_input abstract method
+        A generic sequence-to-sequence generator based on HuggingFace.
 
         Text generation is supported by so called auto-regressive language models like GPT2,
         XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
         GenerationMixin can be used by Seq2SeqGenerator
+
+        Moreover, as language models prepare model input in their specific encoding, each model
+        specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
+        accompanying model input converter. By default, we provide model input converters
+        for a few well-known seq2seq language models (e.g. ELI5). It is the responsibility of
+        Seq2SeqGenerator user to ensure an appropriate model input converter is either already
+        registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
+
+        For mode details on custom model input converters refer to _BartEli5Converter
+
 
         See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
         as well as https://huggingface.co/blog/how-to-generate
@@ -334,6 +345,7 @@ class Seq2SeqGenerator(BaseGenerator):
     def __init__(
             self,
             model_name_or_path: str,
+            input_converter: Optional[Callable] = None,
             top_k: int = 1,
             max_length: int = 200,
             min_length: int = 2,
@@ -345,6 +357,8 @@ class Seq2SeqGenerator(BaseGenerator):
 
         :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5
         and others (e.g. `t5-base`)
+        :input_converter: an optional Callable to prepare model input for the underlying language model specified in
+        model_name_or_path parameter
         :param top_k: Number of independently generated text to return
         :param max_length: Maximum length of generated text
         :param min_length: Minimum length of generated text
@@ -368,13 +382,25 @@ class Seq2SeqGenerator(BaseGenerator):
         else:
             self.device = torch.device("cpu")
 
+        Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
+
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path).to(self.device)
         self.model.eval()
 
-    @abstractmethod
-    def prepare_model_input(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
-        pass
+    @classmethod
+    def _register_converters(cls, model_name_or_path: str, custom_converter: Callable):
+        # init if empty
+        if not cls._model_input_converters:
+            cls._model_input_converters["yjernite/bart_eli5"] = _BartEli5Converter()
+
+        # register user provided custom converter
+        if model_name_or_path and custom_converter:
+            cls._model_input_converters[model_name_or_path] = custom_converter
+
+    @classmethod
+    def _get_converter(cls, model_name_or_path: str):
+        return cls._model_input_converters.get(model_name_or_path)
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
@@ -397,7 +423,12 @@ class Seq2SeqGenerator(BaseGenerator):
             top_k = self.num_beams
             logger.warning(f'top_k value should not be greater than num_beams, hence setting it to {top_k}')
 
-        query_and_docs_encoded = self.prepare_model_input(query, documents, top_k)
+        converter: Callable = Seq2SeqGenerator._get_converter(self.model_name_or_path)
+        if not converter:
+            raise KeyError(f"Seq2SeqGenerator doesn't have input converter registered for {self.model_name_or_path}. "
+                           f"Provide custom converter for {self.model_name_or_path} in Seq2SeqGenerator initialization")
+
+        query_and_docs_encoded = converter(self.tokenizer, query, documents, top_k).to(self.device)
 
         generated_answers_encoded = self.model.generate(
             input_ids=query_and_docs_encoded["input_ids"],
@@ -419,62 +450,19 @@ class Seq2SeqGenerator(BaseGenerator):
         return {"query": query, "answers": generated_answers}
 
 
-class BartEli5Generator(Seq2SeqGenerator):
+class _BartEli5Converter(Callable):
     """
-       A sequence-to-sequence model (https://huggingface.co/yjernite/bart_eli5) based on the BART architecture
-       fine-tuned on ELI5 dataset (https://arxiv.org/abs/1907.09190)
+       A sequence-to-sequence model input converter (https://huggingface.co/yjernite/bart_eli5) based on the
+       BART architecture fine-tuned on ELI5 dataset (https://arxiv.org/abs/1907.09190)
 
        For more details refer to Yacine Jernite's excellent LFQA contributions at https://yjernite.github.io/lfqa.html
-
-       **Example**
-
-       ```python
-       |     query = "Why is Dothraki language important?"
-       |
-       |     # Retrieve related documents from retriever
-       |     retrieved_docs = retriever.retrieve(query=query)
-       |
-       |     # Now generate answer from query and retrieved documents
-       |     generator.predict(
-       |        query=query,
-       |        documents=retrieved_docs,
-       |        top_k=1
-       |     )
-       |
-       |     # Answer
-       |
-       |     {'answers': [" The Dothraki language is a constructed fictional language. It's important because George R.R. Martin wrote it."],
-       |      'query': 'Why is Dothraki language important?'}
-       |
-       ```
     """
 
-    def __init__(
-            self,
-            model_name_or_path: str = "yjernite/bart_eli5",
-            top_k: int = 1,
-            max_length: int = 200,
-            min_length: int = 2,
-            num_beams: int = 8,
-            use_gpu: bool = True,
-    ):
-        """
-
-        :param model_name_or_path: ELI5 BART model from HF hub 'yjernite/bart_eli5'
-        :param top_k: Number of independently generated text to return
-        :param max_length: Maximum length of generated text
-        :param min_length: Minimum length of generated text
-        :param num_beams: Number of beams for beam search. 1 means no beam search.
-        :param use_gpu: Whether to use GPU (if available)
-        """
-        super(BartEli5Generator, self).__init__(model_name_or_path, top_k, max_length,
-                                                min_length, num_beams, use_gpu)
-
-    def prepare_model_input(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+    def __call__(self, tokenizer, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         conditioned_doc = "<P> " + " <P> ".join([d.text for d in documents])
 
         # concatenate question and support document into BART input
         query_and_docs = "question: {} context: {}".format(query, conditioned_doc)
 
-        return self.tokenizer([(query_and_docs, "A")], truncation=True,
-                              padding=True, return_tensors="pt").to(self.device)
+        return tokenizer([(query_and_docs, "A")], truncation=True,
+                         padding=True, return_tensors="pt")
