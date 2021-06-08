@@ -32,6 +32,24 @@ from haystack.summarizer.transformers import TransformersSummarizer
 from haystack.translator import TransformersTranslator
 
 
+def pytest_addoption(parser):
+    parser.addoption("--document_store_type", action="store", default="all")
+
+
+def pytest_generate_tests(metafunc):
+    mark = metafunc.definition.get_closest_marker('parametrize')
+    # parametrize document_store fixture if it's in the test function argument list
+    # but does not have an explicit parametrize annotation e.g
+    # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
+    if (not mark or 'document_store' not in mark.args[0]) and 'document_store' in metafunc.fixturenames:
+        document_store_type = metafunc.config.option.document_store_type
+        if "all" in document_store_type:
+            document_store_type = "elasticsearch, faiss, memory, milvus, weaviate"
+
+        document_store_types = [item.strip() for item in document_store_type.split(",")]
+        metafunc.parametrize("document_store", document_store_types, indirect=True)
+
+
 def _sql_session_rollback(self, attr):
     """
     Inject SQLDocumentStore at runtime to do a session rollback each time it is called. This allows to catch
@@ -348,7 +366,8 @@ def document_store_with_docs(request, test_docs_xs):
     yield document_store
     document_store.delete_all_documents()
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
+
+@pytest.fixture
 def document_store(request, test_docs_xs):
     vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
     document_store = get_document_store(request.param, vector_dim.args[0])
