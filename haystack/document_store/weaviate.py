@@ -46,10 +46,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
             similarity: str = "dot_product",
             index_type: str = "hnsw",
             custom_schema: Optional[dict] = None,
-            update_existing_documents: bool = False,
             return_embedding: bool = False,
             embedding_field: str = "embedding",
             progress_bar: bool = True,
+            duplicate_documents: str = 'overwrite',
             **kwargs,
     ):
         """
@@ -73,14 +73,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
         :param module_name : Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
                             For more details, See https://www.semi.technology/developers/weaviate/current/modules/
-        :param update_existing_documents: Whether to update any existing documents with the same ID when adding
-                                          documents. When set as True, any document with an existing ID gets updated.
-                                          If set to False, an error is raised if the document ID of the document being
-                                          added already exists.
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents:Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already exists.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -88,8 +89,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
             host=host, port=port, timeout_config=timeout_config, username=username, password=password,
             index=index, embedding_dim=embedding_dim, text_field=text_field, name_field=name_field,
             faq_question_field=faq_question_field, similarity=similarity, index_type=index_type,
-            custom_schema=custom_schema, update_existing_documents=update_existing_documents,
-            return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
+            custom_schema=custom_schema,return_embedding=return_embedding, embedding_field=embedding_field,
+            progress_bar=progress_bar, duplicate_documents=duplicate_documents
         )
 
         # Connect to Weaviate server using python binding
@@ -124,10 +125,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.similarity = similarity
         self.index_type = index_type
         self.custom_schema = custom_schema
-        self.update_existing_documents = update_existing_documents
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
+        self.duplicate_documents = duplicate_documents
 
         self._create_schema_and_index_if_not_exist(self.index)
 
@@ -191,26 +192,31 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         score = None
         probability = None
+        text = None
+        question = None
 
         id = result.get("id")
         embedding = result.get("vector")
 
         # If properties key is present, get all the document fields from it.
         # otherwise, a direct lookup in result root dict
-        props = result.get("properties")
+        props:dict = result.get("properties")
         if not props:
             props = result
 
-        text = props.get(self.text_field)
-        question = props.get(self.faq_question_field)
+        if props.get(self.text_field) is not None:
+            text = str(props.get(self.text_field))
+
+        if props.get(self.faq_question_field) is not None:
+            question = props.get(self.faq_question_field)
 
         # Weaviate creates "_additional" key for semantic search
         if props.get("_additional"):
-            score = props.get("_additional").get('certainty') if props.get("_additional").get('certainty') else None
+            score = props.get("_additional").get('certainty') if "certainty" in props.get("_additional") else None
             if score:
                 probability = score
-            id = props.get("_additional").get('id') if props.get("_additional").get('id') else None
-            embedding = props.get("_additional").get('vector') if props.get("_additional").get('vector') else None
+            id = props.get("_additional").get('id') if "id" in props.get("_additional") else None
+            embedding = props.get("_additional").get('vector') if "vector" in props.get("_additional") else None
             props.pop("_additional", None)
 
         # We put all additional data of the doc into meta_data and return it in the API
@@ -249,18 +255,25 @@ class WeaviateDocumentStore(BaseDocumentStore):
          'vector': []}'''
         index = index or self.index
         result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
-        document = self._convert_weaviate_result_to_document(result, return_embedding=True)
-        return document
+        if result:
+            return self._convert_weaviate_result_to_document(result, return_embedding=True)
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
+                            batch_size: int = 10_000) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
+        documents = []
         #TODO: better implementation with multiple where filters instead of chatty call below?
-        documents = [self.get_document_by_id(id) for id in ids]
+        for id in ids:
+            result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+            if result:
+                document = self._convert_weaviate_result_to_document(result, return_embedding=True)
+                documents.append(document)
         return documents
 
-    def _get_current_properties(self, index: str) -> List[str]:
+    def _get_current_properties(self, index: Optional[str] = None) -> List[str]:
         """Get all the existing properties in the schema"""
+        index = index or self.index
         cur_properties = []
         for class_item in self.weaviate_client.schema.get()['classes']:
             if class_item['class'] == index:
@@ -289,8 +302,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         return filter_dict
 
-    def _update_schema(self, new_prop:str, index: str):
+    def _update_schema(self, new_prop:str, index: Optional[str] = None):
         """Updates the schema with a new property"""
+        index = index or self.index
         property_dict = {
             "dataType": [
                 "string"
@@ -305,8 +319,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         return [item for item in doc.keys() if item not in cur_props]
 
     def write_documents(
-            self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000
-    ):
+            self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+            batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -314,11 +328,22 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         configured with a module. If a module is configured, the embedding is automatically generated by Weaviate.
         :param index: index name for storing the docs and metadata
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :return:
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :raises DuplicateDocumentError: Exception trigger on duplicate document
+        :return: None
         """
         index = index or self.index
         self._create_schema_and_index_if_not_exist(index)
         field_map = self._create_document_field_map()
+
+        duplicate_documents = duplicate_documents or self.duplicate_documents
+        assert duplicate_documents in self.duplicate_documents_options, \
+            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
         if len(documents) == 0:
             logger.warning("Calling DocumentStore.write_documents() with empty list")
@@ -329,6 +354,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         current_properties = self._get_current_properties(index)
 
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
@@ -430,7 +456,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def _get_all_documents_in_index(
         self,
-        index: str,
+        index: Optional[str],
         filters: Optional[Dict[str, List[str]]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
@@ -508,7 +534,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
-
         index = index or self.index
 
         # Build the properties to retrieve from Weaviate
@@ -536,7 +561,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 .with_limit(top_k)\
                 .do()
 
-        results = query_output.get("data").get("Get").get(index)
+        results = []
+        if query_output and "data" in query_output and "Get" in query_output.get("data"):
+            if query_output.get("data").get("Get").get(index):
+                results = query_output.get("data").get("Get").get(index)
+
         documents = []
         for result in results:
             doc = self._convert_weaviate_result_to_document(result, return_embedding=True)
@@ -588,10 +617,14 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 .with_limit(top_k)\
                 .do()
 
-        results = query_output.get("data").get("Get").get(index)
+        results = []
+        if query_output and "data" in query_output and "Get" in query_output.get("data"):
+            if query_output.get("data").get("Get").get(index):
+                results = query_output.get("data").get("Get").get(index)
+
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=True)
+            doc = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
             documents.append(doc)
 
         return documents

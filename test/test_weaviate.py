@@ -6,21 +6,24 @@ import uuid
 
 embedding_dim = 768
 
+def get_uuid():
+    return str(uuid.uuid4())
+
 DOCUMENTS = [
-    {"text": "text1", "key": "a", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
-    {"text": "text2", "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
-    {"text": "text3", "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
-    {"text": "text4", "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
-    {"text": "text5", "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
+    {"text": "text1", "id":get_uuid(), "key": "a", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
+    {"text": "text2", "id":get_uuid(), "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
+    {"text": "text3", "id":get_uuid(), "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
+    {"text": "text4", "id":get_uuid(), "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
+    {"text": "text5", "id":get_uuid(), "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
 ]
 
 DOCUMENTS_XS = [
         # current "dict" format for a document
-        {"text": "My name is Carla and I live in Berlin", "meta": {"metafield": "test1", "name": "filename1"}, "embedding": np.random.rand(embedding_dim).astype(np.float32)},
+        {"text": "My name is Carla and I live in Berlin", "id":get_uuid(), "meta": {"metafield": "test1", "name": "filename1"}, "embedding": np.random.rand(embedding_dim).astype(np.float32)},
         # meta_field at the top level for backward compatibility
-        {"text": "My name is Paul and I live in New York", "metafield": "test2", "name": "filename2", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
+        {"text": "My name is Paul and I live in New York", "id":get_uuid(), "metafield": "test2", "name": "filename2", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
         # Document object for a doc
-        Document(text="My name is Christelle and I live in Paris", meta={"metafield": "test3", "name": "filename3"}, embedding=np.random.rand(embedding_dim).astype(np.float32))
+        Document(text="My name is Christelle and I live in Paris", id=get_uuid(), meta={"metafield": "test3", "name": "filename3"}, embedding=np.random.rand(embedding_dim).astype(np.float32))
     ]
 
 @pytest.fixture(params=["weaviate"])
@@ -89,16 +92,19 @@ def test_get_all_document_filter_duplicate_value(document_store):
         Document(
             text="Doc1",
             meta={"fone": "f0"},
+            id = get_uuid(),
             embedding= np.random.rand(embedding_dim).astype(np.float32)
         ),
         Document(
             text="Doc1",
             meta={"fone": "f1", "metaid": "0"},
+            id = get_uuid(),
             embedding = np.random.rand(embedding_dim).astype(np.float32)
         ),
         Document(
             text="Doc2",
             meta={"fthree": "f0"},
+            id = get_uuid(),
             embedding=np.random.rand(embedding_dim).astype(np.float32)
         )
     ]
@@ -113,6 +119,25 @@ def test_get_all_documents_generator(document_store):
     document_store.write_documents(DOCUMENTS)
     assert len(list(document_store.get_all_documents_generator(batch_size=2))) == 5
 
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
+def test_write_with_duplicate_doc_ids(document_store):
+    id = get_uuid()
+    documents = [
+        Document(
+            text="Doc1",
+            id=id,
+            embedding=np.random.rand(embedding_dim).astype(np.float32)
+        ),
+        Document(
+            text="Doc2",
+            id=id,
+            embedding=np.random.rand(embedding_dim).astype(np.float32)
+        )
+    ]
+    document_store.write_documents(documents, duplicate_documents="skip")
+    with pytest.raises(Exception):
+        document_store.write_documents(documents, duplicate_documents="fail")
 
 @pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
 @pytest.mark.parametrize("update_existing_documents", [True, False])
@@ -131,10 +156,10 @@ def test_update_existing_documents(document_store, update_existing_documents):
     assert document_store.get_document_count() == 1
 
     if update_existing_documents:
-        document_store.write_documents(updated_docs)
+        document_store.write_documents(updated_docs, duplicate_documents="overwrite")
     else:
         with pytest.raises(Exception):
-            document_store.write_documents(updated_docs)
+            document_store.write_documents(updated_docs, duplicate_documents="fail")
 
     stored_docs = document_store.get_all_documents()
     assert len(stored_docs) == 1
@@ -145,10 +170,10 @@ def test_update_existing_documents(document_store, update_existing_documents):
 
 @pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
 def test_write_document_meta(document_store):
-    uid1 = str(uuid.uuid4())
-    uid2 = str(uuid.uuid4())
-    uid3 = str(uuid.uuid4())
-    uid4 = str(uuid.uuid4())
+    uid1 = get_uuid()
+    uid2 = get_uuid()
+    uid3 = get_uuid()
+    uid4 = get_uuid()
     documents = [
         {"text": "dict_without_meta", "id": uid1, "embedding": np.random.rand(embedding_dim).astype(np.float32)},
         {"text": "dict_with_meta", "metafield": "test2", "name": "filename2", "id": uid2, "embedding": np.random.rand(embedding_dim).astype(np.float32)},
@@ -181,7 +206,7 @@ def test_write_document_index(document_store):
     assert len(document_store.get_all_documents(index="Haystackone")) == 1
     assert len(document_store.get_all_documents()) == 0
 
-'''@pytest.mark.parametrize("retriever", ["dpr", "embedding"], indirect=True)
+@pytest.mark.parametrize("retriever", ["dpr", "embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
@@ -238,7 +263,32 @@ def test_update_embeddings(document_store, retriever):
     doc_after_update = document_store.get_all_documents(index="HaystackTestOne", filters={"metafield": ["value_7"]})[0]
     embedding_after_update = doc_after_update.embedding
     np.testing.assert_raises(AssertionError, np.testing.assert_array_equal, embedding_before_update, embedding_after_update)
-'''
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_query_by_embedding(document_store_with_docs):
+    docs = document_store_with_docs.query_by_embedding(np.random.rand(embedding_dim).astype(np.float32))
+    assert len(docs) == 3
+
+    docs = document_store_with_docs.query_by_embedding(np.random.rand(embedding_dim).astype(np.float32),
+                                                       top_k=1)
+    assert len(docs) == 1
+
+    docs = document_store_with_docs.query_by_embedding(np.random.rand(embedding_dim).astype(np.float32),
+                                                       filters = {"name": ['filename2']})
+    assert len(docs) == 1
+
+'''@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_query(document_store_with_docs):
+    query_text = 'live'
+    docs = document_store_with_docs.query(query_text)
+    assert len(docs) == 3
+
+    docs = document_store_with_docs.query(query_text, top_k=1)
+    assert len(docs) == 1
+
+    docs = document_store_with_docs.query(query_text, filters = {"name": ['filename2']})
+    assert len(docs) == 1'''
 
 @pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
 def test_delete_all_documents(document_store_with_docs):
@@ -248,7 +298,6 @@ def test_delete_all_documents(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 0
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
     document_store_with_docs.delete_all_documents(filters={"metafield": ["test1", "test2"]})
