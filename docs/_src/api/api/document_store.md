@@ -15,7 +15,7 @@ Base class for implementing Document Stores.
 
 ```python
  | @abstractmethod
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
 ```
 
 Indexes documents for later queries.
@@ -29,6 +29,13 @@ Indexes documents for later queries.
                   It can be used for filtering and is accessible in the responses of the Finder.
 - `index`: Optional name of index where the documents shall be written to.
               If None, the DocumentStore's default index (self.index) will be used.
+- `batch_size`: Number of documents that are passed to bulk function at a time.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
 
 **Returns**:
 
@@ -51,6 +58,37 @@ Get documents from the document store.
 - `filters`: Optional filters to narrow down the documents to return.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
+
+<a name="base.BaseDocumentStore.get_all_labels_aggregated"></a>
+#### get\_all\_labels\_aggregated
+
+```python
+ | get_all_labels_aggregated(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, open_domain: bool = True, aggregate_by_meta: Optional[Union[str, list]] = None) -> List[MultiLabel]
+```
+
+Return all labels in the DocumentStore, aggregated into MultiLabel objects.
+This aggregation step helps, for example, if you collected multiple possible answers for one question and you
+want now all answers bundled together in one place for evaluation.
+How they are aggregated is defined by the open_domain and aggregate_by_meta parameters.
+If the questions are being asked to a single document (i.e. SQuAD style), you should set open_domain=False to aggregate by question and document.
+If the questions are being asked to your full collection of documents, you should set open_domain=True to aggregate just by question.
+If the questions are being asked to a subslice of your document set (e.g. product review use cases),
+you should set open_domain=True and populate aggregate_by_meta with the names of Label meta fields to aggregate by question and your custom meta fields.
+For example, in a product review use case, you might set aggregate_by_meta=["product_id"] so that Labels
+with the same question but different answers from different documents are aggregated into the one MultiLabel
+object, provided that they have the same product_id (to be found in Label.meta["product_id"])
+
+**Arguments**:
+
+- `index`: Name of the index to get the labels from. If None, the
+              DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the labels to return.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `open_domain`: When True, labels are aggregated purely based on the question text alone.
+                    When False, labels are aggregated in a closed domain fashion based on the question text
+                    and also the id of the document that the label is tied to. In this setting, this function
+                    might return multiple MultiLabel objects with the same question string.
+- `aggregate_by_meta`: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
 
 <a name="base.BaseDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
@@ -93,7 +131,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, update_existing_documents: bool = False, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False)
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite')
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -128,11 +166,7 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 - `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
 - `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
 - `verify_certs`: Whether to be strict about ca certificates
-- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
-- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-                                  documents. When set as True, any document with an existing ID gets updated.
-                                  If set to False, an error is raised if the document ID of the document being
-                                  added already exists.
+- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
 - `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                      If set to 'wait_for', continue only after changes are visible (slow, but safe).
                      If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
@@ -141,6 +175,12 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `timeout`: Number of seconds after which an ElasticSearch request times out.
 - `return_embedding`: To return document embedding
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -182,7 +222,7 @@ Get values associated with a metadata key. The output is in the format:
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
 ```
 
 Indexes documents for later queries in Elasticsearch.
@@ -205,6 +245,16 @@ they will automatically get UUIDs assigned. See the `Document` class for details
                   should be changed to what you have set for self.text_field and self.name_field.
 - `index`: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
 - `batch_size`: Number of documents that are passed to Elasticsearch's bulk function at a time.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+
+**Raises**:
+
+- `DuplicateDocumentError`: Exception trigger on duplicate document
 
 **Returns**:
 
@@ -237,7 +287,7 @@ Update the metadata dictionary of a document by specifying its string id
 #### get\_document\_count
 
 ```python
- | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int
+ | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False) -> int
 ```
 
 Return the number of documents in the document store.
@@ -445,7 +495,7 @@ In-memory document store
 #### \_\_init\_\_
 
 ```python
- | __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True)
+ | __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True, duplicate_documents: str = 'overwrite')
 ```
 
 **Arguments**:
@@ -460,12 +510,18 @@ In-memory document store
            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
                      Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
 
 <a name="memory.InMemoryDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, duplicate_documents: Optional[str] = None)
 ```
 
 Indexes documents for later queries.
@@ -480,6 +536,16 @@ Indexes documents for later queries.
                    It can be used for filtering and is accessible in the responses of the Finder.
 - `index`: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
                separate index than the documents for search.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                             Parameter options : ( 'skip','overwrite','fail')
+                             skip: Ignore the duplicates documents
+                             overwrite: Update any existing documents with the same ID when adding documents.
+                             fail: an error is raised if the document ID of the document being added already
+                             exists.
+
+**Raises**:
+
+- `DuplicateDocumentError`: Exception trigger on duplicate document
 
 **Returns**:
 
@@ -664,7 +730,7 @@ class SQLDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", update_existing_documents: bool = False)
+ | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", duplicate_documents: str = "overwrite")
 ```
 
 An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -675,11 +741,12 @@ An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL bac
 - `index`: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
               This parameter sets the default value for document index.
 - `label_index`: The default value of index attribute for the labels.
-- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-                                  documents. When set as True, any document with an existing ID gets updated.
-                                  If set to False, an error is raised if the document ID of the document being
-                                  added already exists. Using this parameter could cause performance degradation
-                                  for document insertion.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
 
 <a name="sql.SQLDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -741,7 +808,7 @@ Return all labels in the document store
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
 ```
 
 Indexes documents for later queries.
@@ -756,6 +823,12 @@ Indexes documents for later queries.
 - `index`: add an optional index attribute to documents. It can be later used for filtering. For instance,
               documents for evaluation can be indexed in a separate index than the documents for search.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
 
 **Returns**:
 
@@ -879,7 +952,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, update_existing_documents: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -905,22 +978,24 @@ the vector embeddings are indexed in a FAISS Index.
 - `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                     or one with docs that you used in Haystack before and want to load again.
 - `return_embedding`: To return document embedding
-- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-                                  documents. When set as True, any document with an existing ID gets updated.
-                                  If set to False, an error is raised if the document ID of the document being
-                                  added already exists.
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `embedding_field`: Name of field containing an embedding vector.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
                      Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
 ```
 
 Add new documents to the DocumentStore.
@@ -931,6 +1006,16 @@ Add new documents to the DocumentStore.
                   them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
 - `index`: (SQL) index name for storing the docs and metadata
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+
+**Raises**:
+
+- `DuplicateDocumentError`: Exception trigger on duplicate document
 
 **Returns**:
 
@@ -1121,7 +1206,7 @@ Usage:
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, update_existing_documents: bool = False, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1158,20 +1243,22 @@ Note that an overly large index_file_size value may cause failure to load a segm
 - `search_param`: Configuration parameters for the chose index_type needed at query time
                      For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
                      See https://milvus.io/docs/v1.0.0/index.md
-- `update_existing_documents`: Whether to update any existing documents with the same ID when adding
-                                  documents. When set as True, any document with an existing ID gets updated.
-                                  If set to False, an error is raised if the document ID of the document being
-                                  added already exists.
 - `return_embedding`: To return document embedding.
 - `embedding_field`: Name of field containing an embedding vector.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
                      Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
 
 <a name="milvus.MilvusDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, index_param: Optional[Dict[str, Any]] = None)
 ```
 
 Add new documents to the DocumentStore.
@@ -1182,6 +1269,16 @@ Add new documents to the DocumentStore.
                           them right away in Milvus. If not, you can later call update_embeddings() to create & index them.
 - `index`: (SQL) index name for storing the docs and metadata
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+
+**Raises**:
+
+- `DuplicateDocumentError`: Exception trigger on duplicate document
 
 **Returns**:
 
