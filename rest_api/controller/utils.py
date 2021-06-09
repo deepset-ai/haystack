@@ -42,6 +42,15 @@ class PipelineHelper:
         self.yaml_files_path = Path(yaml_files_path)
         self.pipelines: list = []
 
+    def parse_yaml_file(self, yaml_file: str) -> dict:
+        """
+        Parse yaml file return python dict object
+        :param yaml_file: Path to yaml file
+        :return: Dict object
+        """
+        with open(yaml_file, "r", encoding='utf8') as stream:
+            return yaml.safe_load(stream)
+
     def load_files(self) -> List[dict]:
         """
         Load yaml files from directory
@@ -52,10 +61,9 @@ class PipelineHelper:
             raise ValueError(f"{self.yaml_files_path} is not valid directory.")
 
         for yaml_file in self.yaml_files_path.glob('*.yaml'):
-            with open(yaml_file.absolute(), "r", encoding='utf8') as stream:
-                _dict: dict = yaml.safe_load(stream)
-                _dict['file_name'] = yaml_file.name
-                list_of_dicts.append(_dict)
+            _dict: dict = self.parse_yaml_file(str(yaml_file.absolute()))
+            _dict['file_name'] = yaml_file.name
+            list_of_dicts.append(_dict)
 
         return list_of_dicts
 
