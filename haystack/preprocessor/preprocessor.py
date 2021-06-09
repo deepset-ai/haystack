@@ -3,7 +3,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Generator, Set
+from typing import List, Optional, Generator, Set, Union
 
 import nltk
 from more_itertools import windowed
@@ -65,7 +65,38 @@ class PreProcessor(BasePreProcessor):
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
 
-    def process(
+    def process(self,
+        documents: Union[dict, List[dict]],
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        split_by: Optional[str] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
+        split_respect_sentence_boundary: Optional[bool] = None,
+    ) -> List[dict]:
+        kwargs = {
+            "clean_whitespace": clean_whitespace,
+            "clean_header_footer": clean_header_footer,
+            "clean_empty_lines": clean_empty_lines,
+            "split_by": split_by,
+            "split_length": split_length,
+            "split_overlap": split_overlap,
+            "split_respect_sentence_boundary": split_respect_sentence_boundary
+        }
+
+        if type(documents) == dict:
+            return self._process_single(
+                document=documents,
+                **kwargs
+            )
+        elif type(documents) == list:
+            return self._process_batch(
+                documents=documents,
+                **kwargs
+            )
+
+    def _process_single(
         self,
         document: dict,
         clean_whitespace: Optional[bool] = None,
@@ -109,8 +140,12 @@ class PreProcessor(BasePreProcessor):
         )
         return split_documents
 
-    def process_batch(self, documents: List[dict]):
-        nested_docs = [self.process(d) for d in documents]
+    def _process_batch(
+        self,
+        documents: List[dict],
+        **kwargs
+    ) -> List[dict]:
+        nested_docs = [self.process(d, **kwargs) for d in documents]
         return [d for x in nested_docs for d in x]
 
     def clean(
