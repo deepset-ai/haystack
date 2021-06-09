@@ -109,6 +109,10 @@ class PreProcessor(BasePreProcessor):
         )
         return split_documents
 
+    def process_batch(self, documents: List[dict]):
+        nested_docs = [self.process(d) for d in documents]
+        return [d for x in nested_docs for d in x]
+
     def clean(
         self,
         document: dict,
