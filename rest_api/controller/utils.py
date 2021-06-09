@@ -103,11 +103,11 @@ class PipelineHelper:
 
         return self.pipelines
 
-    def activate_pipeline(self, name: str):
+    def activate_pipeline(self, name: str) -> bool:
         """
         Activate the pipeline by name
-        :param name:
-        :return:
+        :param name: pipeline name
+        :return:Bool
         """
         pipeline = self.get_pipelines(name)
         if len(pipeline) > 0:
