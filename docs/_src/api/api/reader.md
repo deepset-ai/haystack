@@ -233,7 +233,7 @@ Returns a dict containing the following metrics:
 #### eval
 
 ```python
- | eval(document_store: BaseDocumentStore, device: str, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
+ | eval(document_store: BaseDocumentStore, device: str, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -248,6 +248,25 @@ Returns a dict containing the following metrics:
 - `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
+- `label_origin`: Field name where the gold labels are stored
+- `calibrate_conf_scores`: Whether to calibrate the temperature for temperature scaling of the confidence scores
+
+<a name="farm.FARMReader.calibrate_confidence_scores"></a>
+#### calibrate\_confidence\_scores
+
+```python
+ | calibrate_confidence_scores(document_store: BaseDocumentStore, device: str, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
+```
+
+Calibrates confidence scores on evaluation documents in the DocumentStore.
+
+**Arguments**:
+
+- `document_store`: DocumentStore containing the evaluation documents
+- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+- `label_index`: Index/Table name where labeled questions are stored
+- `doc_index`: Index/Table name where documents that are used for evaluation are stored
+- `label_origin`: Field name where the gold labels are stored
 
 <a name="farm.FARMReader.predict_on_texts"></a>
 #### predict\_on\_texts
