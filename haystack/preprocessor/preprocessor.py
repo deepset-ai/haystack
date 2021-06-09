@@ -65,7 +65,8 @@ class PreProcessor(BasePreProcessor):
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
 
-    def process(self,
+    def process(
+        self,
         documents: Union[dict, List[dict]],
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
@@ -75,6 +76,11 @@ class PreProcessor(BasePreProcessor):
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
     ) -> List[dict]:
+
+        """
+        Perform document cleaning and splitting. Can takes a single document or a list of documents as input and returns a list of documents.
+        """
+
         kwargs = {
             "clean_whitespace": clean_whitespace,
             "clean_header_footer": clean_header_footer,
@@ -85,20 +91,24 @@ class PreProcessor(BasePreProcessor):
             "split_respect_sentence_boundary": split_respect_sentence_boundary
         }
 
+        ret = []
+
         if type(documents) == dict:
-            return self._process_single(
-                document=documents,
-                **kwargs
-            )
+            ret = self._process_single(
+                document=None,
+                **kwargs                #type: ignore
+        )
         elif type(documents) == list:
-            return self._process_batch(
-                documents=documents,
+            ret = self._process_batch(
+                documents=list(documents),
                 **kwargs
             )
 
+        return ret
+
     def _process_single(
         self,
-        document: dict,
+        document,
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
@@ -107,9 +117,7 @@ class PreProcessor(BasePreProcessor):
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
     ) -> List[dict]:
-        """
-        Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
-        """
+
         if clean_whitespace is None:
             clean_whitespace = self.clean_whitespace
         if clean_header_footer is None:
