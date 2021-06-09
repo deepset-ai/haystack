@@ -591,7 +591,7 @@ class EmbeddingRetriever(BaseRetriever):
         """
         return self.embed(texts)
 
-    def embed_passages(self, docs: List[Document]) -> Union[List[str], List[List[str]]]:
+    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
         """
         Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 
