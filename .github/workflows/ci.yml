@@ -16,7 +16,7 @@ jobs:
           python-version: 3.7
       - name: Test with mypy
         run: |
-          pip install mypy
+          pip install mypy types-Markdown types-requests types-PyYAML
           mypy haystack --ignore-missing-imports
 
   build-cache:
