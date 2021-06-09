@@ -36,7 +36,8 @@ document_store = ElasticsearchDocumentStore(analyzer="thai")
 The models used in dense retrievers are language specific. 
 Be sure to check language of the model used in your EmbeddingRetriever. 
 The default model that is loaded in the DensePassageRetriever is for English.
-We are currently working on training a German DensePassageRetriever model and know other teams who work on further languages.
+
+We have created a [German DensePassageRetriever model](https://deepset.ai/germanquad) and know other teams who work on further languages.
 If you have a language model and a question answering dataset in your own language, you can also train a DPR model using Haystack!
 Below is a simplified example.
 See [our tutorial](/docs/latest/tutorial9md) and also the [API reference](/docs/latest/apiretrievermd#train) for `DensePassageRetriever.train()` for more details.
@@ -70,6 +71,20 @@ there are a couple QA models that are directly usable in Haystack.
 <div class="tabcontent">
 
 <div class="tabs innertabslanguage">
+
+<div class="tabinner">
+<input type="radio" id="tab-5-1" name="tab-group-5" checked>
+<label class="labelinner" for="tab-5-1">German</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import FARMReader
+
+reader = FARMReader("deepset/gelectra-large-germanquad")
+```
+
+</div>
+</div>
 
 <div class="tabinner">
 <input type="radio" id="tab-5-1" name="tab-group-5" checked>
@@ -125,6 +140,21 @@ reader = FARMReader("deepset/xlm-roberta-large-squad2")
 
 <div class="tabs innertabslanguage">
 
+<div class="tabinner">
+<input type="radio" id="tab-5-1" name="tab-group-5" checked>
+<label class="labelinner" for="tab-5-1">German</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import TransformersReader
+
+reader = TransformersReader("deepset/gelectra-large-germanquad")
+```
+
+</div>
+</div>
+
+
 <div class="tabinner2">
 <input type="radio" id="tab-6-1" name="tab-group-6" checked>
 <label class="labelinner" for="tab-6-1">French</label>
@@ -173,6 +203,8 @@ reader = TransformersReader("deepset/xlm-roberta-large-squad2")
 </div>
 
 </div>
+
+We are the creators of the **German** model and you can find out more about it [here](https://deepset.ai/germanquad)
 
 The **French** and **Italian models** are both monolingual language models trained on French and Italian versions of the SQuAD dataset
 and their authors report decent results in their model cards
