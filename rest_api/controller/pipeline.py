@@ -22,13 +22,16 @@ def get_pipelines():
 def get_pipelines_by_name(name: str):
     pipelines: list = pipeline_helper.get_pipelines(name)
     if len(pipelines) == 0:
-        raise HTTPException(status_code=404, detail="Pipeline not found")
+        raise HTTPException(status_code=404, detail="Pipeline not found.")
     return pipelines
 
 
 @router.post('/pipelines/{name}/activate')
 def activate_pipelines(name: str):
-    return pipeline_helper.activate_pipeline(name)
+    if pipeline_helper.activate_pipeline(name) is False:
+        raise HTTPException(status_code=406, detail=f"{name} pipeline does not exist.")
+
+    return {'status': True}
 
 
 @router.post("/pipelines")
