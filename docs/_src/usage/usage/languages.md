@@ -13,6 +13,20 @@ Haystack is well suited to open-domain QA on languages other than English.
 While our defaults are tuned for English,
 you will find some tips and tricks here for using Haystack in your language. 
 
+##Preprocessor
+
+<div class="recommendation">
+
+**Note**
+
+This feature will be implemented by [this PR.](https://github.com/deepset-ai/haystack/pull/1160)
+
+</div>
+
+The PreProcessor's sentence tokenization is language specific. 
+If you are using the PreProcessor on a language other than English,
+make sure to set the `language` argument when initializing it.
+
 ##Retrievers
 
 The sparse retriever methods themselves(BM25, TF-IDF) are language agnostic.
