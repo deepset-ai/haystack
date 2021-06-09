@@ -18,6 +18,9 @@ copies of your documents in your database.
 The easiest way to avoid this is to call `DocumentStore.delete_documents()` after initialization
 to ensure that you are working with an empty DocumentStore.
 
+DocumentStores also have a `duplicate_documents` argument in their `__init__()` and `write_documents` methods
+where you can define whether you'd like skip writing duplicates, overwrite existing duplicates or raise an error when there are duplicates.
+
 **How can I make sure that my GPU is being engaged when I use Haystack?**
 
 You will want to ensure that a CUDA enabled GPU is being engaged when Haystack is running (you can check by running `nvidia-smi -l` on your command line).
