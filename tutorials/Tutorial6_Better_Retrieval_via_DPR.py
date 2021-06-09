@@ -67,3 +67,7 @@ def tutorial6_better_retrieval_via_dpr():
 
 if __name__ == "__main__":
     tutorial6_better_retrieval_via_dpr()
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/

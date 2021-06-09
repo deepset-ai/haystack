@@ -6,7 +6,6 @@
 #
 # If you are interested in more feature-rich Elasticsearch, then please refer to the Tutorial 1.
 
-
 from haystack import Finder
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
@@ -111,3 +110,7 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
 
 if __name__ == "__main__":
     tutorial3_basic_qa_pipeline_without_elasticsearch()
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/
