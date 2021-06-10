@@ -127,7 +127,7 @@ document_store = SQLDocumentStore()
 The `WeaviateDocumentStore` requires a running Weaviate Server. 
 You can start a basice instance like this (see Weaviate docs for details): 
 ```
-    docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.3.0
+    docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.4.0
 ```
   
 Afterwards, you can use it in Haystack:
