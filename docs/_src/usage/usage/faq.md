@@ -80,3 +80,11 @@ When indexing, retrieving or querying for documents from a DocumentStore, you ca
 This can be specified in almost all methods of `DocumentStore` as well as `Retriever.retrieve()`.
 Ensure that you are performing these operations on the one index! 
 Note that this also applies at evaluation where labels are written into their own separate DocumentStore index.
+
+**What is the difference between the FARMReader and the TransformersReader?**
+
+In short, the FARMReader using a QA pipeline implementation that comes from our own 
+[FARM framework](https://github.com/deepset-ai/FARM) that we can more easily update and also optimize for performance. 
+By contrast, the TransformersReader uses a QA pipeline implementation that comes from HuggingFace's [Transformers](https://github.com/huggingface/transformers).
+See [this section](https://haystack.deepset.ai/docs/latest/readermd#Deeper-Dive-FARM-vs-Transformers) 
+for a more details about their differences!
