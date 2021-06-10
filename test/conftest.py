@@ -117,7 +117,7 @@ def weaviate_fixture():
             shell=True
         )
         status = subprocess.run(
-            ['docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.3.0'],
+            ['docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.4.0'],
             shell=True
         )
         if status.returncode:
