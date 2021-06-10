@@ -9,6 +9,9 @@ from elasticsearch import Elasticsearch
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
 
+import weaviate
+from haystack.document_store.weaviate import WeaviateDocumentStore
+
 from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
 
@@ -61,6 +64,8 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
             item.add_marker(pytest.mark.slow)
+        elif "weaviate" in item.nodeid:
+            item.add_marker(pytest.mark.weaviate)
 
 
 @pytest.fixture(scope="session")
@@ -98,6 +103,27 @@ def milvus_fixture():
                                  'milvusdb/milvus:0.10.5-cpu-d010621-4eda95'], shell=True)
         time.sleep(40)
 
+@pytest.fixture(scope="session")
+def weaviate_fixture():
+    # test if a Weaviate server is already running. If not, start Weaviate docker container locally.
+    # Make sure you have given > 6GB memory to docker engine
+    try:
+        weaviate_server = weaviate.Client(url='http://localhost:8080', timeout_config=(5, 15))
+        weaviate_server.is_ready()
+    except:
+        print("Starting Weaviate servers ...")
+        status = subprocess.run(
+            ['docker rm haystack_test_weaviate'],
+            shell=True
+        )
+        status = subprocess.run(
+            ['docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.4.0'],
+            shell=True
+        )
+        if status.returncode:
+            raise Exception(
+                "Failed to launch Weaviate. Please check docker container logs.")
+        time.sleep(60)
 
 @pytest.fixture(scope="session")
 def graphdb_fixture():
@@ -310,7 +336,6 @@ def document_store_with_docs(request, test_docs_xs):
     yield document_store
     document_store.delete_all_documents()
 
-
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store(request, test_docs_xs):
     document_store = get_document_store(request.param)
@@ -351,6 +376,14 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         for collection in collections:
             if collection.startswith("haystack_test"):
                 document_store.milvus_server.drop_collection(collection)
+        return document_store
+    elif document_store_type == "weaviate":
+        document_store = WeaviateDocumentStore(
+            weaviate_url="http://localhost:8080",
+            index="Haystacktest"
+        )
+        document_store.weaviate_client.schema.delete_all()
+        document_store._create_schema_and_index_if_not_exist()
         return document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
