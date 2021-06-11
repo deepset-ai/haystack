@@ -50,3 +50,7 @@ def tutorial2_finetune_a_model_on_your_data():
 
 if __name__ == "__main__":
     tutorial2_finetune_a_model_on_your_data()
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/
