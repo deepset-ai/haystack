@@ -13,6 +13,28 @@ from haystack.preprocessor.base import BasePreProcessor
 logger = logging.getLogger(__name__)
 
 
+iso639_to_nltk = {
+    "ru": "russian",
+    "sl": "slovene",
+    "es": "spanish",
+    "sv": "swedish",
+    "tr": "turkish",
+    "cs": "czech",
+    "da": "danish",
+    "nl": "dutch",
+    "en": "english",
+    "et": "estonian",
+    "fi": "finnish",
+    "fr": "french",
+    "de": "german",
+    "el": "greek",
+    "it": "italian",
+    "no": "norwegian",
+    "pl": "polish",
+    "pt": "portuguese",
+}
+
+
 class PreProcessor(BasePreProcessor):
     def __init__(
         self,
@@ -23,7 +45,7 @@ class PreProcessor(BasePreProcessor):
         split_length: int = 1000,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
-        language: str = "english",
+        language: str = "en",
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -66,7 +88,7 @@ class PreProcessor(BasePreProcessor):
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
-        self.language = language
+        self.language = iso639_to_nltk.get(language, language)
 
     def process(
         self,
