@@ -5,7 +5,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy
 import torch
-from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, \
+    AutoModelForSeq2SeqLM, PreTrainedTokenizer, BatchEncoding
 
 from haystack import Document
 from haystack.generator.base import BaseGenerator
@@ -296,7 +297,6 @@ class RAGenerator(BaseGenerator):
 
 class Seq2SeqGenerator(BaseGenerator):
 
-    _model_input_converters: Dict[str, Callable] = dict()
     """
         A generic sequence-to-sequence generator based on HuggingFace's transformers.
 
@@ -342,6 +342,8 @@ class Seq2SeqGenerator(BaseGenerator):
         ```
     """
 
+    _model_input_converters: Dict[str, Callable] = dict()
+
     def __init__(
             self,
             model_name_or_path: str,
@@ -353,12 +355,12 @@ class Seq2SeqGenerator(BaseGenerator):
             use_gpu: bool = True,
     ):
         """
-
-
-        :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5
-        and others (e.g. `yjernite/bart_eli5`)
-        :input_converter: an optional Callable to prepare model input for the underlying language model specified in
-        model_name_or_path parameter
+        :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
+        :param input_converter: an optional Callable to prepare model input for the underlying language model
+                                specified in model_name_or_path parameter. The required __call__ method signature for
+                                the Callable is:
+                                __call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
+                                top_k: Optional[int] = None) -> BatchEncoding:
         :param top_k: Number of independently generated text to return
         :param max_length: Maximum length of generated text
         :param min_length: Minimum length of generated text
@@ -421,14 +423,21 @@ class Seq2SeqGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f'top_k value should not be greater than num_beams, hence setting it to {top_k}')
+            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {top_k}")
 
         converter: Callable = Seq2SeqGenerator._get_converter(self.model_name_or_path)
         if not converter:
             raise KeyError(f"Seq2SeqGenerator doesn't have input converter registered for {self.model_name_or_path}. "
                            f"Provide custom converter for {self.model_name_or_path} in Seq2SeqGenerator initialization")
 
-        query_and_docs_encoded = converter(self.tokenizer, query, documents, top_k).to(self.device)
+        try:
+            query_and_docs_encoded: BatchEncoding = converter(tokenizer=self.tokenizer, query=query,
+                                                              documents=documents, top_k=top_k).to(self.device)
+        except TypeError as e:
+            raise TypeError(f"Language model input converter {converter} provided in Seq2SeqGenerator.__init__() does "
+                            f"not have a valid __call__ method signature. The required Callable __call__ signature is: "
+                            f"__call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document], "
+                            f"top_k: Optional[int] = None) -> BatchEncoding:")
 
         generated_answers_encoded = self.model.generate(
             input_ids=query_and_docs_encoded["input_ids"],
@@ -462,7 +471,8 @@ class _BartEli5Converter:
        For more details refer to Yacine Jernite's excellent LFQA contributions at https://yjernite.github.io/lfqa.html
     """
 
-    def __call__(self, tokenizer, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+    def __call__(self, tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
+                 top_k: Optional[int] = None) -> BatchEncoding:
         conditioned_doc = "<P> " + " <P> ".join([d.text for d in documents])
 
         # concatenate question and support document into BART input
