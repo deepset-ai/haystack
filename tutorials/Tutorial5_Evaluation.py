@@ -161,3 +161,7 @@ def tutorial5_evaluation():
 
 if __name__ == "__main__":
     tutorial5_evaluation()
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/

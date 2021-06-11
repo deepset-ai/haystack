@@ -120,3 +120,7 @@ def tutorial7_rag_generator():
 
 if __name__ == "__main__":
     tutorial7_rag_generator()
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/

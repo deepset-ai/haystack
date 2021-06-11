@@ -19,14 +19,12 @@ from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
-from haystack.utils import print_answers
+from haystack.utils import print_answers, launch_es
 from haystack.retriever.sparse import ElasticsearchRetriever
 
 
 def tutorial1_basic_qa_pipeline():
     logger = logging.getLogger(__name__)
-
-    LAUNCH_ELASTICSEARCH = True
 
     # ## Document Store
     #
@@ -45,15 +43,7 @@ def tutorial1_basic_qa_pipeline():
     # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
     # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
 
-    if LAUNCH_ELASTICSEARCH:
-        logging.info("Starting Elasticsearch ...")
-        status = subprocess.run(
-            ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
-        )
-        if status.returncode:
-            raise Exception("Failed to launch Elasticsearch. If you want to connect to an existing Elasticsearch instance"
-                            "then set LAUNCH_ELASTICSEARCH in the script to False.")
-        time.sleep(15)
+    launch_es()
 
     # Connect to Elasticsearch
     document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
@@ -82,11 +72,7 @@ def tutorial1_basic_qa_pipeline():
     # It must take a str as input, and return a str.
 
     # Now, let's write the docs to our DB.
-    if LAUNCH_ELASTICSEARCH:
-        document_store.write_documents(dicts)
-    else:
-        logger.warning("Since we already have a running ES instance we should not index the same documents again. \n"
-                       "If you still want to do this call: document_store.write_documents(dicts) manually ")
+    document_store.write_documents(dicts)
 
     # ## Initalize Retriever, Reader,  & Finder
     #
@@ -158,3 +144,7 @@ def tutorial1_basic_qa_pipeline():
 
 if __name__ == "__main__":
     tutorial1_basic_qa_pipeline()
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/

@@ -174,3 +174,7 @@ res_2 = p_classifier.run(
 )
 print("ES Results" + "\n" + "="*15)
 print_answers(res_2)
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/

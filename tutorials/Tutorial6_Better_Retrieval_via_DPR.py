@@ -1,13 +1,13 @@
 from haystack import Finder
-from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_store import FAISSDocumentStore, MilvusDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader
-from haystack.utils import print_answers
+from haystack.utils import print_answers, launch_milvus
 from haystack.retriever.dense import DensePassageRetriever
 
 def tutorial6_better_retrieval_via_dpr():
-    # FAISS is a library for efficient similarity search on a cluster of dense vectors.
+    # OPTION 1: FAISS is a library for efficient similarity search on a cluster of dense vectors.
     # The FAISSDocumentStore uses a SQL(SQLite in-memory be default) document store under-the-hood
     # to store the document text and other meta data. The vector embeddings of the text are
     # indexed on a FAISS Index that later is queried for searching answers.
@@ -15,6 +15,13 @@ def tutorial6_better_retrieval_via_dpr():
     # faster search at the expense of some accuracy. Just set the faiss_index_factor_str argument in the constructor.
     # For more info on which suits your use case: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
     document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
+
+    # OPTION2: Milvus is an open source database library that is also optimized for vector similarity searches like FAISS.
+    # Like FAISS it has both a "Flat" and "HNSW" mode but it outperforms FAISS when it comes to dynamic data management.
+    # It does require a little more setup, however, as it is run through Docker and requires the setup of some config files.
+    # See https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md
+    # launch_milvus()
+    # document_store = MilvusDocumentStore()
 
     # ## Preprocessing of documents
     # Let's first get some documents that we want to query
@@ -67,3 +74,7 @@ def tutorial6_better_retrieval_via_dpr():
 
 if __name__ == "__main__":
     tutorial6_better_retrieval_via_dpr()
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/
