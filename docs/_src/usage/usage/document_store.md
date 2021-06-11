@@ -29,13 +29,15 @@ Initialising a new DocumentStore within Haystack is straight forward.
 
 [Install](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html)
 Elasticsearch and then [start](https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html)
-an instance.
+an instance. 
 
 If you have Docker set up, we recommend pulling the Docker image and running it.
 ```bash
 docker pull docker.elastic.co/elasticsearch/elasticsearch:7.9.2
 docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2
 ```
+
+Note that we also have a utility function `haystack.utils.launch_es` that can start up an Elasticsearch instance.
 
 Next you can initialize the Haystack object that will connect to this instance.
 
@@ -60,7 +62,8 @@ Use e.g. [aws-requests-auth](https://github.com/davidmuller/aws-requests-auth) t
 <label class="labelouter" for="tab-1-2">Milvus</label>
 <div class="tabcontent">
 
-Follow the [official documentation](https://www.milvus.io/docs/v1.0.0/milvus_docker-cpu.md) to start a Milvus instance via Docker
+Follow the [official documentation](https://www.milvus.io/docs/v1.0.0/milvus_docker-cpu.md) to start a Milvus instance via Docker. 
+Note that we also have a utility function `haystack.utils.launch_milvus` that can start up a Milvus instance.
 
 You can initialize the Haystack object that will connect to this instance as follows:
 ```python
