@@ -30,6 +30,21 @@ p.draw(path="custom_pipe.png")
 ```
 ![image](https://user-images.githubusercontent.com/1563902/102451716-54813700-4039-11eb-881e-f3c01b47ca15.png)
 
+### Arguments
+
+Whatever keyword arguments are passed into the `Pipeline.run()` method will be passed on to each node in the pipeline.
+For example, in the code snippet below, all nodes will receive `query`, `top_k_retriever` and `top_k_reader` as argument,
+even if they don't use those arguments. It is therefore very important when defining custom nodes that their 
+keyword argument names do not clash with the other nodes in your pipeline.
+
+```python
+res = pipeline.run(
+    query="What did Einstein work on?",
+    top_k_retriever=1,
+    top_k_reader=5
+)
+```
+
 ### YAML File Definitions
 
 For your convenience, there is also the option of defining and loading pipelines in YAML files.
