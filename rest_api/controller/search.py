@@ -8,7 +8,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from haystack import Pipeline
-from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, PIPELINES_DIR
+from rest_api.config import LOG_LEVEL, PIPELINES_DIR
 from rest_api.controller.utils import RequestLimiter, PipelineHelper
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)

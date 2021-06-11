@@ -9,13 +9,18 @@ from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 from haystack.pipeline import Pipeline
-from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
+from rest_api.config import FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME, PIPELINES_DIR
+from rest_api.controller.utils import PipelineHelper
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+pipeline_helper = PipelineHelper(PIPELINES_DIR)
+
 
 try:
-    INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
+    index_pipeline = pipeline_helper.get_pipelines(INDEXING_PIPELINE_NAME)[0]
+    INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(f"{PIPELINES_DIR}/{index_pipeline.yaml_file}"),
+                                                pipeline_name=index_pipeline.name)
 except KeyError:
     INDEXING_PIPELINE = None
     logger.info("Indexing Pipeline not found in the YAML configuration. File Upload API will not be available.")
