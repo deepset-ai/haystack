@@ -50,7 +50,7 @@ class BasePreProcessor(BaseComponent):
         **kwargs,
     ):
         documents = self.process(
-            document=document,
+            documents=document,
             clean_whitespace=clean_whitespace,
             clean_header_footer=clean_header_footer,
             clean_empty_lines=clean_empty_lines,
