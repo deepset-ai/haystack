@@ -525,7 +525,7 @@ class EmbeddingRetriever(BaseRetriever):
                                   "For details see https://github.com/UKPLab/sentence-transformers ")
             # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
             # e.g. 'roberta-base-nli-stsb-mean-tokens'
-            if use_gpu:
+            if use_gpu and torch.cuda.is_available():
                 device = "cuda"
             else:
                 device = "cpu"
