@@ -118,6 +118,27 @@ document_store = SQLDocumentStore()
 
 </div>
 </div>
+    
+<div class="tab">
+<input type="radio" id="tab-1-6" name="tab-group-1">
+<label class="labelouter" for="tab-1-6">Weaviate</label>
+<div class="tabcontent">
+
+The `WeaviateDocumentStore` requires a running Weaviate Server. 
+You can start a basic instance like this (see Weaviate docs for details): 
+```
+    docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.4.0
+```
+  
+Afterwards, you can use it in Haystack:
+```python
+from haystack.document_store import WeaviateDocumentStore
+
+document_store = WeaviateDocumentStore()
+```
+    
+</div>
+</div>
 
 </div>
 
@@ -264,6 +285,24 @@ The Document Stores have different characteristics. You should choose one depend
 </div>
 </div>
 
+    
+<div class="tab">
+<input type="radio" id="tab-2-6" name="tab-group-2">
+<label class="labelouter" for="tab-2-6">Weaviate</label>
+<div class="tabcontent">
+
+**Pros:**
+- Simple vector search
+- Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
+- Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
+
+**Cons:**
+- Less options for ANN algorithms than FAISS or Milvus
+- No BM25 / Tf-idf retrieval
+    
+</div>
+</div>
+    
 </div>
 
 <div class="recommendation">

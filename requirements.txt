@@ -31,3 +31,4 @@ pymilvus
 #webdriver-manager
 SPARQLWrapper
 mmh3
+weaviate-client
