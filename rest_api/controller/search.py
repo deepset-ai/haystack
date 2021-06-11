@@ -43,6 +43,8 @@ class Response(BaseModel):
 
 
 active_pipeline, active_pipeline_path = pipeline_helper.get_active_pipeline()
+logger.info(f"Loading pipeline {active_pipeline} from {active_pipeline_path} path.")
+
 PIPELINE = Pipeline.load_from_yaml(Path(active_pipeline_path), pipeline_name=active_pipeline)
 logger.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
 concurrency_limiter = RequestLimiter(4)
