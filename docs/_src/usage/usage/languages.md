@@ -128,6 +128,56 @@ reader = FARMReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 </div>
 </div>
 
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Chinese</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import FARMReader
+
+reader = FARMReader("uer/roberta-base-chinese-extractive-qa")
+# or 
+reader = FARMReader("wptoux/albert-chinese-large-qa")
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Spanish</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import FARMReader
+
+reader = FARMReader("mrm8488/distill-bert-base-spanish-wwm-cased-finetuned-spa-squad2-es")
+# or
+reader = FARMReader("mrm8488/bert-base-spanish-wwm-cased-finetuned-spa-squad2-es")
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Portuguese</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import FARMReader
+
+reader = FARMReader("pierreguillou/bert-base-cased-squad-v1.1-portuguese")
+# or
+reader = FARMReader("pucpr/bioBERTpt-squad-v1.1-portuguese")
+
+```
+
+</div>
+</div>
+
+
 <div class="tabinner">
 <input type="radio" id="tab-5-3" name="tab-group-5">
 <label class="labelinner" for="tab-5-3">Zero-shot</label>
@@ -199,6 +249,55 @@ reader = TransformersReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 
 <div class="tabinner2">
 <input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Chinese</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import TransformersReader
+
+reader = TransformersReader("uer/roberta-base-chinese-extractive-qa")
+# or 
+reader = TransformersReader("wptoux/albert-chinese-large-qa")
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Spanish</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import TransformersReader
+
+reader = TransformersReader("mrm8488/distill-bert-base-spanish-wwm-cased-finetuned-spa-squad2-es")
+# or
+reader = TransformersReader("mrm8488/bert-base-spanish-wwm-cased-finetuned-spa-squad2-es")
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Portuguese</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import TransformersReader
+
+reader = TransformersReader("pierreguillou/bert-base-cased-squad-v1.1-portuguese")
+# or
+reader = TransformersReader("pucpr/bioBERTpt-squad-v1.1-portuguese")
+
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
 <label class="labelinner" for="tab-6-3">Zero-shot</label>
 <div class="tabcontentinner">
 
@@ -220,9 +319,9 @@ reader = TransformersReader("deepset/xlm-roberta-large-squad2")
 
 We are the creators of the **German** model and you can find out more about it [here](https://deepset.ai/germanquad)
 
-The **French** and **Italian models** are both monolingual language models trained on French and Italian versions of the SQuAD dataset
+The **French**, **Italian**, **Spanish**, **Portuguese** and **Chinese** models are monolingual language models trained on versions of the SQuAD dataset in their respective languages
 and their authors report decent results in their model cards
-[here](https://huggingface.co/illuin/camembert-base-fquad) and [here](https://huggingface.co/mrm8488/bert-italian-finedtuned-squadv1-it-alfa).
+(e.g. [here](https://huggingface.co/illuin/camembert-base-fquad) and [here](https://huggingface.co/mrm8488/bert-italian-finedtuned-squadv1-it-alfa)).
 There also exist Korean QA models on the model hub but their performance is not reported.
 
 The **zero-shot model** that is shown above is a **multilingual XLM-RoBERTa Large** that is trained on English SQuAD.
@@ -231,6 +330,4 @@ that the model has been able to transfer some of its English QA capabilities to 
 but still its performance lags behind that of the monolingual models.
 Nonetheless, if there is not yet a monolingual model for your language and it is one of the 100 supported by XLM-RoBERTa,
 this zero-shot model may serve as a decent first baseline.
-
-[//]: # (Add link to Reader training, create section in reader.md on training Reader)
 
