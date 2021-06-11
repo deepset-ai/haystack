@@ -9,6 +9,31 @@ id: "optimizationmd"
 
 # Optimization
 
+## Speeding up Reader
+
+In most pipelines, the Reader will be the most computationally expensive component. 
+If this is a step that you would like to speed up, you can opt for a smaller Reader model 
+that can process more passages in the same amount of time. 
+
+On our [benchmarks page](https://haystack.deepset.ai/bm/benchmarks), you will find a comparison of
+many of the common model architectures. While our default recommendation is RoBERTa,
+MiniLM offers much faster processing for only a minimal drop in accuracy. 
+You can find the models that we've trained on [the HuggingFace Model Hub](https://huggingface.co/deepset)
+
+## GPU acceleration
+
+The transformer based models used in Haystack are designed to be run on a GPU enabled machine. 
+The design of these models means that they greatly benefit from the parallel processing capabilities of graphics cards.
+If Haystack has successfully detected a graphics card, you should see these lines in your console output.
+
+```
+INFO - farm.utils -   Using device: CUDA 
+INFO - farm.utils -   Number of GPUs: 1
+```
+
+You can track the work load on your CUDA enabled Nvidia GPU by tracking the output of `nvidia-smi -l` on the command line
+while your Haystack program is running.
+
 ## Document Length
 
 Document length has a very direct impact on the speed of the Reader 
@@ -17,7 +42,8 @@ which is why we recommend using the `PreProcessor` class to clean and split your
 
 For **sparse retrievers**, very long documents pose a challenge since the signal of the relevant section of text
 can get washed out by the rest of the document.
-We would recommend making sure that **documents are no longer than 10,000 words**.
+To get a good balance between Reader speed and Retriever performance, we splitting documents to a maximum of 500 words. 
+If there is no Reader in the pipeline following the Retriever, we recommend that **documents be no longer than 10,000 words**.
 
 **Dense retrievers** are limited in the length of text that they can read in one pass.
 As such, it is important that documents are not longer than the dense retriever's maximum input length.
@@ -54,4 +80,28 @@ answers = pipeline.run(query="What did Einstein work on?", top_k_retriever=10, t
 or like this if directly calling the `Retriever`:
 ``` python
 retrieved_docs = retriever.retrieve(top_k=10)
+```
+
+## Metadata Filtering
+
+Metadata can be attached to the documents which you index into your DocumentStore (see the input data format [here](/docs/latest/retrievermd)).
+At query time, you can apply filters based on this metadata to limit the scope of your search and ensure your answers 
+come from a specific slice of your data. 
+
+For example, if you have a set of annual reports from various companies, 
+you may want to perform a search on just a specific year, or on a small selection of companies.
+This can reduce the work load of the retriever and also ensure that you get more relevant results.
+
+Filters are applied via the `filters` argument of the `Retriever` class. In practice, this argument will probably
+be passed into the `Pipeline.run()` call, which will then route it on to the `Retriever` class 
+(see our the Arguments on the [Pipelines page](/docs/latest/pipelinesmd) for an explanation).
+
+```python
+pipeline.run(
+    query="Why did the revenue increase?",
+    filters={
+        "years": ["2019"],
+        "companies": ["BMW", "Mercedes"]
+    }
+)
 ```
