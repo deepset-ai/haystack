@@ -676,7 +676,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                    f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
             for doc, emb in zip(document_batch, embeddings):
-                self.weaviate_client.data_object.upate({}, class_name=index, uuid=doc.id, vector=emb)
+                # Using update method to only update the embeddings, other properties will be in tact
+                self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
