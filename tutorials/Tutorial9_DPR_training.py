@@ -80,3 +80,7 @@ def tutorial9_dpr_training():
 
 if __name__ == "__main__":
     tutorial9_dpr_training()
+
+# This Haystack script was made with love by deepset in Berlin, Germany
+# Haystack: https://github.com/deepset-ai/haystack
+# deepset: https://deepset.ai/
