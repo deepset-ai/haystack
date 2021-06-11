@@ -95,7 +95,7 @@ class PreProcessor(BasePreProcessor):
 
         if type(documents) == dict:
             ret = self._process_single(
-                document=None,
+                document=documents,
                 **kwargs                #type: ignore
         )
         elif type(documents) == list:
