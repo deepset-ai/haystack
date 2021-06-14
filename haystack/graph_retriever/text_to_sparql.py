@@ -28,7 +28,7 @@ class Text2SparqlRetriever(BaseGraphRetriever):
 
         self.knowledge_graph = knowledge_graph
         # TODO We should extend this to any seq2seq models and use the AutoModel class
-        self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, force_bos_token_to_be_generated=True)
+        self.model = BartForConditionalGeneration.from_pretrained(model_name_or_path, forced_bos_token_id=0)
         self.tok = BartTokenizer.from_pretrained(model_name_or_path)
         self.top_k = top_k
 
