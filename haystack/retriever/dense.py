@@ -1,22 +1,21 @@
 import logging
-from abc import abstractmethod
 from typing import List, Union, Optional
 import torch
 import numpy as np
 from pathlib import Path
 from tqdm.auto import tqdm
-from transformers import AutoTokenizer, AutoModel
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
+from haystack.utils import get_device
 
 from farm.infer import Inferencer
 from farm.modeling.tokenization import Tokenizer
 from farm.modeling.language_model import LanguageModel
 from farm.modeling.biadaptive_model import BiAdaptiveModel
 from farm.modeling.prediction_head import TextSimilarityHead
-from farm.data_handler.processor import TextSimilarityProcessor, InferenceProcessor
+from farm.data_handler.processor import TextSimilarityProcessor
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.dataloader import NamedDataLoader
 from farm.modeling.optimization import initialize_optimizer
@@ -39,6 +38,7 @@ class DensePassageRetriever(BaseRetriever):
                  document_store: BaseDocumentStore,
                  query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
                  passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
+                 single_model_path: Optional[Union[Path, str]] = None,
                  model_version: Optional[str] = None,
                  max_seq_len_query: int = 64,
                  max_seq_len_passage: int = 256,
@@ -75,6 +75,9 @@ class DensePassageRetriever(BaseRetriever):
         :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
                                         one used by hugging-face transformers' modelhub models
                                         Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+        :param single_model_path: Local path or remote name of a query and passage embedder in one single model. Those
+                                  models are typically trained within FARM.
+                                  Currently available remote names: TODO add FARM DPR model to HF modelhub
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
@@ -99,7 +102,7 @@ class DensePassageRetriever(BaseRetriever):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             document_store=document_store, query_embedding_model=query_embedding_model,
-            passage_embedding_model=passage_embedding_model,
+            passage_embedding_model=passage_embedding_model, single_model_path=single_model_path,
             model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
             top_k=top_k, use_gpu=use_gpu, batch_size=batch_size, embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers, infer_tokenizer_classes=infer_tokenizer_classes,
@@ -120,10 +123,7 @@ class DensePassageRetriever(BaseRetriever):
                            "We recommend you use dot_product instead. "
                            "This can be set when initializing the DocumentStore")
 
-        if use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
+        self.device = get_device(use_gpu)
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
         tokenizers_default_classes = {
@@ -135,42 +135,51 @@ class DensePassageRetriever(BaseRetriever):
             tokenizers_default_classes["passage"] = None # type: ignore
 
         # Init & Load Encoders
-        self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
-                                              revision=model_version,
-                                              do_lower_case=True,
-                                              use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"])
-        self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
-                                                revision=model_version,
-                                                language_model_class="DPRQuestionEncoder")
-        self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
-                                                revision=model_version,
-                                                do_lower_case=True,
-                                                use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"])
-        self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
+        if single_model_path is None:
+            self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
                                                   revision=model_version,
-                                                  language_model_class="DPRContextEncoder")
+                                                  do_lower_case=True,
+                                                  use_fast=use_fast_tokenizers,
+                                                  tokenizer_class=tokenizers_default_classes["query"])
+            self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
+                                                    revision=model_version,
+                                                    language_model_class="DPRQuestionEncoder")
+            self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
+                                                    revision=model_version,
+                                                    do_lower_case=True,
+                                                    use_fast=use_fast_tokenizers,
+                                                    tokenizer_class=tokenizers_default_classes["passage"])
+            self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
+                                                      revision=model_version,
+                                                      language_model_class="DPRContextEncoder")
 
-        self.processor = TextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
-                                                 passage_tokenizer=self.passage_tokenizer,
-                                                 max_seq_len_passage=max_seq_len_passage,
-                                                 max_seq_len_query=max_seq_len_query,
-                                                 label_list=["hard_negative", "positive"],
-                                                 metric="text_similarity_metric",
-                                                 embed_title=embed_title,
-                                                 num_hard_negatives=0,
-                                                 num_positives=1)
-        prediction_head = TextSimilarityHead(similarity_function=similarity_function)
-        self.model = BiAdaptiveModel(
-            language_model1=self.query_encoder,
-            language_model2=self.passage_encoder,
-            prediction_heads=[prediction_head],
-            embeds_dropout_prob=0.1,
-            lm1_output_types=["per_sequence"],
-            lm2_output_types=["per_sequence"],
-            device=self.device,
-        )
+            self.processor = TextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
+                                                     passage_tokenizer=self.passage_tokenizer,
+                                                     max_seq_len_passage=max_seq_len_passage,
+                                                     max_seq_len_query=max_seq_len_query,
+                                                     label_list=["hard_negative", "positive"],
+                                                     metric="text_similarity_metric",
+                                                     embed_title=embed_title,
+                                                     num_hard_negatives=0,
+                                                     num_positives=1)
+            prediction_head = TextSimilarityHead(similarity_function=similarity_function)
+            self.model = BiAdaptiveModel(
+                language_model1=self.query_encoder,
+                language_model2=self.passage_encoder,
+                prediction_heads=[prediction_head],
+                embeds_dropout_prob=0.1,
+                lm1_output_types=["per_sequence"],
+                lm2_output_types=["per_sequence"],
+                device=self.device,
+            )
+        else:
+            self.processor = TextSimilarityProcessor.load_from_dir(single_model_path)
+            self.processor.max_seq_len_passage = max_seq_len_passage
+            self.processor.max_seq_len_query = max_seq_len_query
+            self.processor.embed_title = embed_title
+            self.processor.num_hard_negatives = 0
+            self.processor.num_positives = 1  # during indexing of documents only one embedding is created
+            self.model = BiAdaptiveModel.load(single_model_path, device=self.device)
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
@@ -415,8 +424,7 @@ class DensePassageRetriever(BaseRetriever):
              use_fast_tokenizers: bool = True,
              similarity_function: str = "dot_product",
              query_encoder_dir: str = "query_encoder",
-             passage_encoder_dir: str = "passage_encoder",
-             infer_tokenizer_classes: bool = False
+             passage_encoder_dir: str = "passage_encoder"
              ):
         """
         Load DensePassageRetriever from the specified directory.
@@ -433,8 +441,7 @@ class DensePassageRetriever(BaseRetriever):
             batch_size=batch_size,
             embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers,
-            similarity_function=similarity_function,
-            infer_tokenizer_classes=infer_tokenizer_classes
+            similarity_function=similarity_function
         )
         logger.info(f"DPR model loaded from {load_dir}")
 
@@ -452,7 +459,6 @@ class EmbeddingRetriever(BaseRetriever):
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
         top_k: int = 10,
-        progress_bar: bool = True
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -474,7 +480,6 @@ class EmbeddingRetriever(BaseRetriever):
         :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
-        :param progress_bar: If true displays progress bar during embedding.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -485,17 +490,47 @@ class EmbeddingRetriever(BaseRetriever):
         )
 
         self.document_store = document_store
-        self.embedding_model = embedding_model
         self.model_format = model_format
-        self.model_version = model_version
-        self.use_gpu = use_gpu
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
         self.top_k = top_k
-        self.progress_bar = progress_bar
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
-        self.embedding_encoder = _EmbeddingEncoderFactory.get_embedding_retriever_impl(self, model_format)
+        if model_format == "farm" or model_format == "transformers":
+            self.embedding_model = Inferencer.load(
+                embedding_model, revision=model_version, task_type="embeddings", extraction_strategy=self.pooling_strategy,
+                extraction_layer=self.emb_extraction_layer, gpu=use_gpu, batch_size=4, max_seq_len=512, num_processes=0
+            )
+            # Check that document_store has the right similarity function
+            similarity = document_store.similarity
+            # If we are using a sentence transformer model
+            if "sentence" in embedding_model.lower() and similarity != "cosine":
+                logger.warning(f"You seem to be using a Sentence Transformer with the {similarity} function. "
+                               f"We recommend using cosine instead. "
+                               f"This can be set when initializing the DocumentStore")
+            elif "dpr" in embedding_model.lower() and similarity != "dot_product":
+                logger.warning(f"You seem to be using a DPR model with the {similarity} function. "
+                               f"We recommend using dot_product instead. "
+                               f"This can be set when initializing the DocumentStore")
+
+        elif model_format == "sentence_transformers":
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError:
+                raise ImportError("Can't find package `sentence-transformers` \n"
+                                  "You can install it via `pip install sentence-transformers` \n"
+                                  "For details see https://github.com/UKPLab/sentence-transformers ")
+            # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
+            # e.g. 'roberta-base-nli-stsb-mean-tokens'
+            device = get_device(use_gpu)
+            self.embedding_model = SentenceTransformer(embedding_model, device=device)
+            if document_store.similarity != "cosine":
+                logger.warning(
+                    f"You are using a Sentence Transformer with the {document_store.similarity} function. "
+                    f"We recommend using cosine instead. "
+                    f"This can be set when initializing the DocumentStore")
+        else:
+            raise NotImplementedError
 
     def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
@@ -511,210 +546,54 @@ class EmbeddingRetriever(BaseRetriever):
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
-        query_emb = self.embed_queries(texts=[query])
+        query_emb = self.embed(texts=[query])
         documents = self.document_store.query_by_embedding(query_emb=query_emb[0], filters=filters,
                                                            top_k=top_k, index=index)
         return documents
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of queries.
+        Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param texts: Texts to embed
+        :return: List of embeddings (one per input text). Each embedding is a list of floats.
         """
+
         # for backward compatibility: cast pure str input
         if isinstance(texts, str):
             texts = [texts]
         assert isinstance(texts, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
-        return self.embedding_encoder.embed_queries(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        """
-        Create embeddings for a list of passages.
+        if self.model_format == "farm" or self.model_format == "transformers":
+            # TODO: FARM's `sample_to_features_text` need to fix following warning -
+            # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
+            emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
+            emb = [(r["vec"]) for r in emb]
+        elif self.model_format == "sentence_transformers":
+            # texts can be a list of strings or a list of [title, text]
+            # get back list of numpy embedding vectors
+            emb = self.embedding_model.encode(texts, batch_size=200, show_progress_bar=False)
+            emb = [r for r in emb]
+        return emb
 
-        :param docs: List of documents to embed
-        :return: Embeddings, one per input passage
-        """
-        return self.embedding_encoder.embed_passages(docs)
-
-
-class _EmbeddingEncoder:
-
-    @abstractmethod
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of queries.
+        Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
 
         :param texts: Queries to embed
         :return: Embeddings, one per input queries
         """
-        pass
+        return self.embed(texts)
 
-    @abstractmethod
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages.
+        Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
 
         :param docs: List of documents to embed
         :return: Embeddings, one per input passage
         """
-        pass
-
-
-class _EmbeddingEncoderFactory:
-
-    @staticmethod
-    def get_embedding_retriever_impl(retriever: EmbeddingRetriever, model_format: str) -> _EmbeddingEncoder:
-        if model_format == "farm" or model_format == "transformers":
-            return _DefaultEmbeddingEncoder(retriever)
-        elif model_format == "sentence_transformers":
-            return _SentenceTransformersEmbeddingEncoder(retriever)
-        elif model_format == "retribert":
-            return _RetribertEmbeddingEncoder(retriever)
+        if self.model_format == "sentence_transformers":
+            passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.text] for d in docs]  # type: ignore
         else:
-            raise ValueError(f"Unknown retriever embedding model format {model_format}")
-
-
-class _DefaultEmbeddingEncoder(_EmbeddingEncoder):
-
-    def __init__(
-            self,
-            retriever: EmbeddingRetriever
-    ):
-
-        self.embedding_model = Inferencer.load(
-            retriever.embedding_model, revision=retriever.model_version, task_type="embeddings",
-            extraction_strategy=retriever.pooling_strategy,
-            extraction_layer=retriever.emb_extraction_layer, gpu=retriever.use_gpu,
-            batch_size=4, max_seq_len=512, num_processes=0
-        )
-        # Check that document_store has the right similarity function
-        similarity = retriever.document_store.similarity
-        # If we are using a sentence transformer model
-        if "sentence" in retriever.embedding_model.lower() and similarity != "cosine":
-            logger.warning(f"You seem to be using a Sentence Transformer with the {similarity} function. "
-                           f"We recommend using cosine instead. "
-                           f"This can be set when initializing the DocumentStore")
-        elif "dpr" in retriever.embedding_model.lower() and similarity != "dot_product":
-            logger.warning(f"You seem to be using a DPR model with the {similarity} function. "
-                           f"We recommend using dot_product instead. "
-                           f"This can be set when initializing the DocumentStore")
-
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
-        # TODO: FARM's `sample_to_features_text` need to fix following warning -
-        # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
-        emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
-        emb = [(r["vec"]) for r in emb]
-        return emb
-
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
-
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.text for d in docs] # type: ignore
+            passages = [d.text for d in docs] # type: ignore
         return self.embed(passages)
-
-
-class _SentenceTransformersEmbeddingEncoder(_EmbeddingEncoder):
-
-    def __init__(
-            self,
-            retriever: EmbeddingRetriever
-    ):
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError:
-            raise ImportError("Can't find package `sentence-transformers` \n"
-                              "You can install it via `pip install sentence-transformers` \n"
-                              "For details see https://github.com/UKPLab/sentence-transformers ")
-        # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
-        # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        if retriever.use_gpu:
-            device = "cuda"
-        else:
-            device = "cpu"
-        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=device)
-        self.show_progress_bar = retriever.progress_bar
-        document_store = retriever.document_store
-        if document_store.similarity != "cosine":
-            logger.warning(
-                f"You are using a Sentence Transformer with the {document_store.similarity} function. "
-                f"We recommend using cosine instead. "
-                f"This can be set when initializing the DocumentStore")
-
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
-        # texts can be a list of strings or a list of [title, text]
-        # get back list of numpy embedding vectors
-        emb = self.embedding_model.encode(texts, batch_size=200, show_progress_bar=self.show_progress_bar)
-        emb = [r for r in emb]
-        return emb
-
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
-
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.text] for d in docs]  # type: ignore
-        return self.embed(passages)
-
-
-class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
-
-    def __init__(
-            self,
-            retriever: EmbeddingRetriever
-    ):
-
-        self.progress_bar = retriever.progress_bar
-        if retriever.use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
-
-        embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model,
-                                                            use_fast_tokenizers=True)
-        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)
-        self.processor = InferenceProcessor(tokenizer=embedding_tokenizer,
-                                            max_seq_len=embedding_tokenizer.max_len_single_sentence)
-
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-
-        queries = [{"text": q} for q in texts]
-        dataloader = self._create_dataloader(queries)
-
-        embeddings: List[np.ndarray] = []
-        disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
-
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
-            with torch.no_grad():
-                q_reps = self.embedding_model.embed_questions(input_ids=batch["input_ids"],
-                                                              attention_mask=batch["padding_mask"]).cpu().numpy()
-            embeddings.append(q_reps)
-
-        return np.concatenate(embeddings)
-
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-
-        doc_text = [{"text": d.text} for d in docs]
-        dataloader = self._create_dataloader(doc_text)
-
-        embeddings: List[np.ndarray] = []
-        disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
-
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
-            with torch.no_grad():
-                q_reps = self.embedding_model.embed_answers(input_ids=batch["input_ids"],
-                                                            attention_mask=batch["padding_mask"]).cpu().numpy()
-            embeddings.append(q_reps)
-
-        return np.concatenate(embeddings)
-
-    def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
-
-        dataset, tensor_names, _ = self.processor.dataset_from_dicts(text_to_encode,
-                                                                     indices=[i for i in range(len(text_to_encode))])
-        dataloader = NamedDataLoader(dataset=dataset, sampler=SequentialSampler(dataset),
-                                     batch_size=32, tensor_names=tensor_names)
-        return dataloader
