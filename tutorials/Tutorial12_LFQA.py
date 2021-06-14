@@ -5,8 +5,8 @@ from haystack.generator.transformers import Seq2SeqGenerator
 
 def tutorial12_lfqa():
 
-    """### Document Store
-
+    """
+    Document Store:
     FAISS is a library for efficient similarity search on a cluster of dense vectors.
     The `FAISSDocumentStore` uses a SQL(SQLite in-memory be default) database under-the-hood
     to store the document text and other meta data. The vector embeddings of the text are
@@ -20,8 +20,8 @@ def tutorial12_lfqa():
 
     document_store = FAISSDocumentStore(vector_dim=128, faiss_index_factory_str="Flat")
 
-    """### Cleaning & indexing documents
-    
+    """
+    Cleaning & indexing documents:
     Similarly to the previous tutorials, we download, convert and index some Game of Thrones articles to our DocumentStore
     """
 
@@ -36,13 +36,9 @@ def tutorial12_lfqa():
     # Now, let's write the dicts containing documents to our DB.
     document_store.write_documents(dicts)
 
-    """### Initalize Retriever and Reader/Generator
-    
-    #### Retriever
-    
-    **Here:** We use a `RetribertRetriever` and we invoke `update_embeddings` to index the embeddings of documents in the `FAISSDocumentStore`
-    
-    
+    """
+    Initalize Retriever and Reader/Generator:
+    We use a `RetribertRetriever` and we invoke `update_embeddings` to index the embeddings of documents in the `FAISSDocumentStore`
     """
 
     from haystack.retriever.dense import EmbeddingRetriever
@@ -65,19 +61,15 @@ def tutorial12_lfqa():
     )
     print_documents(res, max_text_len=512)
 
-    """#### Reader/Generator
-    
+    """
     Similar to previous Tutorials we now initalize our reader/generator.
-    
     Here we use a `Seq2SeqGenerator` with the *yjernite/bart_eli5* model (see: https://huggingface.co/yjernite/bart_eli5)
-    
-    
     """
 
     generator = Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
 
-    """### Pipeline
-    
+    """
+    Pipeline:
     With a Haystack `Pipeline` you can stick together your building blocks to a search pipeline.
     Under the hood, `Pipelines` are Directed Acyclic Graphs (DAGs) that you can easily customize for your own use cases.
     To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `GenerativeQAPipeline` that combines a retriever and a reader/generator to answer our questions.
@@ -87,11 +79,20 @@ def tutorial12_lfqa():
     from haystack.pipeline import GenerativeQAPipeline
     pipe = GenerativeQAPipeline(generator, retriever)
 
-    """## Voilà! Ask a question!"""
+    """Voilà! Ask a question!"""
 
-    pipe.run(query="Why did Arya Stark's character get portrayed in a television adaptation?", top_k_retriever=1)
+    query_1 = "Why did Arya Stark's character get portrayed in a television adaptation?"
+    result_1 = pipe.run(query=query_1, top_k_retriever=1)
+    print(f"Query: {query_1}")
+    print(f"Answer: {result_1['answers'][0]}")
+    print()
 
-    pipe.run(query="What kind of character does Arya Stark play?", top_k_retriever=1)
+    query_2 = "What kind of character does Arya Stark play?"
+    result_2 = pipe.run(query=query_2, top_k_retriever=1)
+    print(f"Query: {query_2}")
+    print(f"Answer: {result_2['answers'][0]}")
+    print()
+    pipe.run(query=query_2, top_k_retriever=1)
 
 
 if __name__ == "__main__":
