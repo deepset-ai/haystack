@@ -423,7 +423,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -447,6 +447,7 @@ class EmbeddingRetriever(BaseRetriever)
 - `emb_extraction_layer`: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                              Default: -1 (very last layer).
 - `top_k`: How many documents to return per query.
+- `progress_bar`: If true displays progress bar during embedding.
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
@@ -465,23 +466,6 @@ that are most relevant to the query.
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
-<a name="dense.EmbeddingRetriever.embed"></a>
-#### embed
-
-```python
- | embed(texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]
-```
-
-Create embeddings for each text in a list of texts using the retrievers model (`self.embedding_model`)
-
-**Arguments**:
-
-- `texts`: Texts to embed
-
-**Returns**:
-
-List of embeddings (one per input text). Each embedding is a list of floats.
-
 <a name="dense.EmbeddingRetriever.embed_queries"></a>
 #### embed\_queries
 
@@ -489,7 +473,7 @@ List of embeddings (one per input text). Each embedding is a list of floats.
  | embed_queries(texts: List[str]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of queries. For this Retriever type: The same as calling .embed()
+Create embeddings for a list of queries.
 
 **Arguments**:
 
@@ -503,10 +487,53 @@ Embeddings, one per input queries
 #### embed\_passages
 
 ```python
- | embed_passages(docs: List[Document]) -> Union[List[str], List[List[str]]]
+ | embed_passages(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of passages. For this Retriever type: The same as calling .embed()
+Create embeddings for a list of passages.
+
+**Arguments**:
+
+- `docs`: List of documents to embed
+
+**Returns**:
+
+Embeddings, one per input passage
+
+<a name="dense._EmbeddingEncoder"></a>
+## \_EmbeddingEncoder Objects
+
+```python
+class _EmbeddingEncoder()
+```
+
+<a name="dense._EmbeddingEncoder.embed_queries"></a>
+#### embed\_queries
+
+```python
+ | @abstractmethod
+ | embed_queries(texts: List[str]) -> List[np.ndarray]
+```
+
+Create embeddings for a list of queries.
+
+**Arguments**:
+
+- `texts`: Queries to embed
+
+**Returns**:
+
+Embeddings, one per input queries
+
+<a name="dense._EmbeddingEncoder.embed_passages"></a>
+#### embed\_passages
+
+```python
+ | @abstractmethod
+ | embed_passages(docs: List[Document]) -> List[np.ndarray]
+```
+
+Create embeddings for a list of passages.
 
 **Arguments**:
 
