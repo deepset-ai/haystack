@@ -139,3 +139,94 @@ Generated answers plus additional infos in a dict like this:
 |      }}]}
 ```
 
+<a name="transformers.Seq2SeqGenerator"></a>
+## Seq2SeqGenerator Objects
+
+```python
+class Seq2SeqGenerator(BaseGenerator)
+```
+
+A generic sequence-to-sequence generator based on HuggingFace's transformers.
+
+Text generation is supported by so called auto-regressive language models like GPT2,
+XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
+GenerationMixin can be used by Seq2SeqGenerator.
+
+Moreover, as language models prepare model input in their specific encoding, each model
+specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
+accompanying model input converter that takes care of prefixes, separator tokens etc.
+By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5). 
+It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter 
+is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
+
+For mode details on custom model input converters refer to _BartEli5Converter
+
+
+See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
+as well as https://huggingface.co/blog/how-to-generate
+
+For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text-generation
+
+**Example**
+
+```python
+|     query = "Why is Dothraki language important?"
+|
+|     # Retrieve related documents from retriever
+|     retrieved_docs = retriever.retrieve(query=query)
+|
+|     # Now generate answer from query and retrieved documents
+|     generator.predict(
+|        query=query,
+|        documents=retrieved_docs,
+|        top_k=1
+|     )
+|
+|     # Answer
+|
+|     {'answers': [" The Dothraki language is a constructed fictional language. It's important because George R.R. Martin wrote it."],
+|      'query': 'Why is Dothraki language important?'}
+|
+```
+
+<a name="transformers.Seq2SeqGenerator.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True)
+```
+
+**Arguments**:
+
+- `model_name_or_path`: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
+- `input_converter`: an optional Callable to prepare model input for the underlying language model
+                        specified in model_name_or_path parameter. The required __call__ method signature for
+                        the Callable is:
+                        __call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
+                        top_k: Optional[int] = None) -> BatchEncoding:
+- `top_k`: Number of independently generated text to return
+- `max_length`: Maximum length of generated text
+- `min_length`: Minimum length of generated text
+- `num_beams`: Number of beams for beam search. 1 means no beam search.
+- `use_gpu`: Whether to use GPU (if available)
+
+<a name="transformers.Seq2SeqGenerator.predict"></a>
+#### predict
+
+```python
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+```
+
+Generate the answer to the input query. The generation will be conditioned on the supplied documents.
+These document can be retrieved via the Retriever or supplied directly via predict method.
+
+**Arguments**:
+
+- `query`: Query
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `top_k`: Number of returned answers
+
+**Returns**:
+
+Generated answers
+
