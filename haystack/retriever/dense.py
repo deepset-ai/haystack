@@ -513,7 +513,6 @@ class EmbeddingRetriever(BaseRetriever):
                                f"We recommend using dot_product instead. "
                                f"This can be set when initializing the DocumentStore")
 
-
         elif model_format == "sentence_transformers":
             try:
                 from sentence_transformers import SentenceTransformer

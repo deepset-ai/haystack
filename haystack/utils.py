@@ -206,4 +206,3 @@ def get_device(use_gpu: bool = True) -> str:
     if use_gpu and torch.cuda.is_available():
         return "cuda"
     return "cpu"
-

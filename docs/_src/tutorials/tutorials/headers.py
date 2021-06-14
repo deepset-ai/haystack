@@ -49,7 +49,7 @@ id: "tutorial6md"
 --->""",
     7: """<!---
 title: "Tutorial 7"
-metaTitle: "Generative QA"
+metaTitle: "Generative QA with RAG"
 metaDescription: ""
 slug: "/docs/tutorial7"
 date: "2020-11-12"
@@ -86,5 +86,13 @@ metaDescription: ""
 slug: "/docs/tutorial11"
 date: "2021-04-06"
 id: "tutorial11md"
+--->""",
+    12: """<!---
+title: "Tutorial 12"
+metaTitle: "Generative QA with LFQA"
+metaDescription: ""
+slug: "/docs/tutorial12"
+date: "2021-04-06"
+id: "tutorial12md"
 --->"""
 }

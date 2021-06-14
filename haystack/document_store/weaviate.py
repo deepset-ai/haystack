@@ -676,27 +676,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                    f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
             for doc, emb in zip(document_batch, embeddings):
-                # This doc processing will not required once weaviate's update
-                # method works. To be improved.
-                _doc = {
-                    **doc.to_dict(field_map=self._create_document_field_map())
-                }
-                _ = _doc.pop("score", None)
-                _ = _doc.pop("probability", None)
-
-                if "meta" in _doc.keys():
-                    for k, v in _doc["meta"].items():
-                        _doc[k] = v
-                    _doc.pop("meta")
-
-                doc_id = str(_doc.pop("id"))
-                _ = _doc.pop(self.embedding_field)
-                keys_to_remove = [k for k,v in _doc.items() if v is None]
-                for key in keys_to_remove:
-                    _doc.pop(key)
-
-                # TODO: Weaviate's update throws an error while passing a vector now, have to improve this later
-                self.weaviate_client.data_object.replace(_doc, class_name=index, uuid=doc_id, vector=emb)
+                # Using update method to only update the embeddings, other properties will be in tact
+                self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """

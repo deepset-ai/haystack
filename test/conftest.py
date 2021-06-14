@@ -6,6 +6,8 @@ from sys import platform
 import pytest
 import requests
 from elasticsearch import Elasticsearch
+
+from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
 
@@ -207,6 +209,11 @@ def rag_generator():
 
 
 @pytest.fixture(scope="module")
+def eli5_generator():
+    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
+
+
+@pytest.fixture(scope="module")
 def summarizer():
     return TransformersSummarizer(
         model_name_or_path="google/pegasus-xsum",
@@ -319,6 +326,11 @@ def get_retriever(retriever_type, document_store):
             embedding_model="deepset/sentence_bert",
             use_gpu=False
         )
+    elif retriever_type == "retribert":
+        retriever = EmbeddingRetriever(document_store=document_store,
+                                       embedding_model="yjernite/retribert-base-uncased",
+                                       model_format="retribert",
+                                       use_gpu=False)
     elif retriever_type == "elasticsearch":
         retriever = ElasticsearchRetriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
@@ -338,27 +350,29 @@ def document_store_with_docs(request, test_docs_xs):
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
 def document_store(request, test_docs_xs):
-    document_store = get_document_store(request.param)
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
+    document_store = get_document_store(request.param, vector_dim.args[0])
     yield document_store
     document_store.delete_all_documents()
 
 
-def get_document_store(document_store_type, embedding_field="embedding"):
+def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding"):
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url="sqlite://", index="haystack_test")
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(
-            return_embedding=True, embedding_field=embedding_field, index="haystack_test"
+            return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, index="haystack_test"
         )
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(
-            index="haystack_test", return_embedding=True, embedding_field=embedding_field
+            index="haystack_test", return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
+            vector_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
@@ -367,6 +381,7 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         return document_store
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
+            vector_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
