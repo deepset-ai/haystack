@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/document_store]
-    modules: ['base', 'elasticsearch', 'memory', 'sql', 'faiss', 'milvus', 'weaviate']
+    search_path: [../../../../haystack/ranker]
+    modules: ['base', 'farm']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter
@@ -15,4 +15,5 @@ renderer:
   descriptive_module_title: true
   add_method_class_prefix: false
   add_member_class_prefix: false
-  filename: document_store.md
+  filename: ranker.md
+
