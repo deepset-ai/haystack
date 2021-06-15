@@ -7,10 +7,8 @@ from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import TextPairClassificationProcessor
 from farm.infer import Inferencer
 from farm.modeling.optimization import initialize_optimizer
-from farm.modeling.adaptive_model import BaseAdaptiveModel
 from farm.train import Trainer
 from farm.utils import set_all_seeds, initialize_device_settings
-import shutil
 
 from haystack import Document
 from haystack.ranker.base import BaseRanker
@@ -171,13 +169,6 @@ class FARMRanker(BaseRanker):
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
         data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes)
-
-        # Quick-fix until this is fixed upstream in FARM:
-        # We must avoid applying DataParallel twice (once when loading the inferencer,
-        # once when calling initalize_optimizer)
-        self.inferencer.model.save("tmp_model")
-        model = BaseAdaptiveModel.load(load_dir="tmp_model", device=device, strict=True)
-        shutil.rmtree('tmp_model')
 
         # 3. Create an optimizer and pass the already initialized model
         model, optimizer, lr_schedule = initialize_optimizer(
