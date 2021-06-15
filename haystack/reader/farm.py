@@ -13,12 +13,11 @@ from farm.data_handler.inputs import QAInput, Question
 from farm.infer import QAInferencer
 from farm.modeling.optimization import initialize_optimizer
 from farm.modeling.predictions import QAPred, QACandidate
-from farm.modeling.adaptive_model import BaseAdaptiveModel, AdaptiveModel
+from farm.modeling.adaptive_model import AdaptiveModel
 from farm.train import Trainer
 from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
 from scipy.special import expit
-import shutil
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
@@ -220,13 +219,6 @@ class FARMReader(BaseReader):
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
         data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes)
-
-        # Quick-fix until this is fixed upstream in FARM:
-        # We must avoid applying DataParallel twice (once when loading the inferencer,
-        # once when calling initalize_optimizer)
-        self.inferencer.model.save("tmp_model")
-        model = BaseAdaptiveModel.load(load_dir="tmp_model", device=device, strict=True)
-        shutil.rmtree('tmp_model')
 
         # 3. Create an optimizer and pass the already initialized model
         model, optimizer, lr_schedule = initialize_optimizer(
