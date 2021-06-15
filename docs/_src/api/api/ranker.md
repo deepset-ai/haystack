@@ -41,15 +41,15 @@ position in the ranking of documents the correct document is.
 
 **Arguments**:
 
-                    contained in the retrieved docs (common approach in open-domain QA).
-                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
-                    are within ids explicitly stated in the labels.
-                     contains the keys "predictions" and "metrics".
 - `label_index`: Index/Table in DocumentStore where labeled questions are stored
 - `doc_index`: Index/Table in DocumentStore where documents that are used for evaluation are stored
 - `top_k`: How many documents to return per query
 - `open_domain`: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
+                    contained in the retrieved docs (common approach in open-domain QA).
+                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
+                    are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
+                     contains the keys "predictions" and "metrics".
 
 <a name="farm"></a>
 # Module farm
@@ -78,21 +78,21 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 
 **Arguments**:
 
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
 'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
 See https://huggingface.co/models for full list of available models.
-                   Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
-                   to a value so only a single batch is used.
-                      multiprocessing. Set to None to let Inferencer determine optimum number. If you
-                      want to debug the Language Model, you might need to disable multiprocessing!
-                     Can be helpful to disable in production deployments to keep the logs clean.
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `batch_size`: Number of samples the model receives in one batch for inference.
+                   Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
+                   to a value so only a single batch is used.
 - `use_gpu`: Whether to use GPU (if available)
 - `top_k`: The maximum number of documents to return
 - `num_processes`: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
+                      multiprocessing. Set to None to let Inferencer determine optimum number. If you
+                      want to debug the Language Model, you might need to disable multiprocessing!
 - `max_seq_len`: Max sequence length of one input text for the model
 - `progress_bar`: Whether to show a tqdm progress bar or not.
+                     Can be helpful to disable in production deployments to keep the logs clean.
 
 <a name="farm.FARMRanker.train"></a>
 #### train
@@ -108,11 +108,26 @@ Fine-tune a model on a TextPairClassification dataset. Options:
 
 **Arguments**:
 
+- `data_dir`: Path to directory containing your training data in SQuAD style
+- `train_filename`: Filename of training data
+- `dev_filename`: Filename of dev / eval data
+- `test_filename`: Filename of test data
+- `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                   that gets split off from training data for eval.
+- `use_gpu`: Whether to use GPU (if available)
+- `batch_size`: Number of samples the model receives in one batch for training
+- `n_epochs`: Number of iterations on the whole training data set
+- `learning_rate`: Learning rate of the optimizer
+- `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
+- `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
                           Until that point LR is increasing linearly. After that it's decreasing again linearly.
                           Options for different schedules are available in FARM.
+- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
+- `save_dir`: Path to store the final model
+- `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
                       Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                       Set to None to use all CPU cores minus one.
+- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
                 Available options:
                 None (Don't use AMP)
                 "O0" (Normal FP32 training)
@@ -120,21 +135,6 @@ Fine-tune a model on a TextPairClassification dataset. Options:
                 "O2" (Almost FP16)
                 "O3" (Pure FP16).
                 See details on: https://nvidia.github.io/apex/amp.html
-- `data_dir`: Path to directory containing your training data in SQuAD style
-- `train_filename`: Filename of training data
-- `dev_filename`: Filename of dev / eval data
-- `test_filename`: Filename of test data
-- `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
-- `use_gpu`: Whether to use GPU (if available)
-- `batch_size`: Number of samples the model receives in one batch for training
-- `n_epochs`: Number of iterations on the whole training data set
-- `learning_rate`: Learning rate of the optimizer
-- `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
-- `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
-- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
-- `save_dir`: Path to store the final model
-- `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
-- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
 
 **Returns**:
 

@@ -24,8 +24,8 @@ https://haystack.deepset.ai/docs/latest/tutorial5md).
 
 **Arguments**:
 
-                    When False, correct retrieval is evaluated based on document_id.
 - `open_domain`: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
+                    When False, correct retrieval is evaluated based on document_id.
 - `debug`: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
 - `top_k`: calculate eval metrics for top k results, e.g., recall@k
 

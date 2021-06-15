@@ -92,9 +92,9 @@ See https://huggingface.co/transformers/model_doc/rag.html for more details
 
 **Arguments**:
 
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
                            'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                            See https://huggingface.co/models for full list of available models.
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `retriever`: `DensePassageRetriever` used to embedded passage
 - `generator_type`: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
@@ -125,6 +125,19 @@ These document can for example be retrieved via the Retriever.
 **Returns**:
 
 Generated answers plus additional infos in a dict like this:
+
+```python
+|     {'query': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'query': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'texts': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
+```
 
 <a name="transformers.Seq2SeqGenerator"></a>
 ## Seq2SeqGenerator Objects
@@ -185,12 +198,12 @@ For a list of all text-generation models see https://huggingface.co/models?pipel
 
 **Arguments**:
 
+- `model_name_or_path`: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
+- `input_converter`: an optional Callable to prepare model input for the underlying language model
                         specified in model_name_or_path parameter. The required __call__ method signature for
                         the Callable is:
                         __call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
                         top_k: Optional[int] = None) -> BatchEncoding:
-- `model_name_or_path`: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
-- `input_converter`: an optional Callable to prepare model input for the underlying language model
 - `top_k`: Number of independently generated text to return
 - `max_length`: Maximum length of generated text
 - `min_length`: Minimum length of generated text
