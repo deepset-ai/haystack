@@ -22,16 +22,15 @@ Abstract method for creating a summary.
 
 **Arguments**:
 
-- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
                                 If set to "True", all docs will be joined to a single string that will then
                                 be summarized.
                                 Important: The summary will depend on the order of the supplied documents!
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
 
 **Returns**:
 
 List of Documents, where Document.text contains the summarization and Document.meta["context"]
-         the original, not summarized text
 
 <a name="transformers"></a>
 # Module transformers
@@ -90,9 +89,13 @@ https://huggingface.co/models?filter=summarization
 
 **Arguments**:
 
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
                            'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                            See https://huggingface.co/models?filter=summarization for full list of available models.
+                                     into a single text. This separator appears between those subsequent docs.
+                                If set to "True", all docs will be joined to a single string that will then
+                                be summarized.
+                                Important: The summary will depend on the order of the supplied documents!
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `max_length`: Maximum length of summarized text
@@ -100,11 +103,7 @@ https://huggingface.co/models?filter=summarization
 - `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
 - `clean_up_tokenization_spaces`: Whether or not to clean up the potential extra spaces in the text output
 - `separator_for_single_summary`: If `generate_single_summary=True` in `predict()`, we need to join all docs
-                                     into a single text. This separator appears between those subsequent docs.
 - `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
-                                If set to "True", all docs will be joined to a single string that will then
-                                be summarized.
-                                Important: The summary will depend on the order of the supplied documents!
 
 <a name="transformers.TransformersSummarizer.predict"></a>
 #### predict
@@ -118,14 +117,13 @@ These document can for example be retrieved via the Retriever.
 
 **Arguments**:
 
-- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
                                 If set to "True", all docs will be joined to a single string that will then
                                 be summarized.
                                 Important: The summary will depend on the order of the supplied documents!
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
 
 **Returns**:
 
 List of Documents, where Document.text contains the summarization and Document.meta["context"]
-         the original, not summarized text
 

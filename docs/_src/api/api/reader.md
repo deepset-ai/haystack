@@ -44,42 +44,42 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 
 **Arguments**:
 
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
 'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
 See https://huggingface.co/models for full list of available models.
-- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `context_window_size`: The size, in characters, of the window around the answer span that is used when
                             displaying the context around the answer.
-- `batch_size`: Number of samples the model receives in one batch for inference.
                    Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
                    to a value so only a single batch is used.
-- `use_gpu`: Whether to use GPU (if available)
-- `no_ans_boost`: How much the no_answer logit is boosted/increased.
 If set to 0 (default), the no_answer logit is not changed.
 If a negative number, there is a lower chance of "no_answer" being predicted.
 If a positive number, there is an increased chance of "no_answer"
-- `return_no_answer`: Whether to include no_answer predictions in the results.
-- `top_k`: The maximum number of answers to return
-- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
 Note that this is not the number of "final answers" you will receive
 (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
 and that FARM includes no_answer in the sorted list of predictions.
-- `top_k_per_sample`: How many answers to extract from each small text passage that the model can process at once
 (one "candidate doc" is usually split into many smaller "passages").
 You usually want a very small value here, as it slows down inference
 and you don't gain much of quality by having multiple answers from one passage.
 Note that this is not the number of "final answers" you will receive
 (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
 and that FARM includes no_answer in the sorted list of predictions.
-- `num_processes`: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
                       multiprocessing. Set to None to let Inferencer determine optimum number. If you
                       want to debug the Language Model, you might need to disable multiprocessing!
+                     Can be helpful to disable in production deployments to keep the logs clean.
+                            The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `context_window_size`: The size, in characters, of the window around the answer span that is used when
+- `batch_size`: Number of samples the model receives in one batch for inference.
+- `use_gpu`: Whether to use GPU (if available)
+- `no_ans_boost`: How much the no_answer logit is boosted/increased.
+- `return_no_answer`: Whether to include no_answer predictions in the results.
+- `top_k`: The maximum number of answers to return
+- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+- `top_k_per_sample`: How many answers to extract from each small text passage that the model can process at once
+- `num_processes`: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
 - `max_seq_len`: Max sequence length of one input text for the model
 - `doc_stride`: Length of striding window for splitting long texts (used if ``len(text) > max_seq_len``)
 - `progress_bar`: Whether to show a tqdm progress bar or not.
-                     Can be helpful to disable in production deployments to keep the logs clean.
 - `duplicate_filtering`: Answers are filtered based on their position. Both start and end position of the answers are considered.
-                            The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
 
 <a name="farm.FARMReader.train"></a>
 #### train
@@ -95,26 +95,11 @@ Fine-tune a model on a QA dataset. Options:
 
 **Arguments**:
 
-- `data_dir`: Path to directory containing your training data in SQuAD style
-- `train_filename`: Filename of training data
-- `dev_filename`: Filename of dev / eval data
-- `test_filename`: Filename of test data
-- `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                   that gets split off from training data for eval.
-- `use_gpu`: Whether to use GPU (if available)
-- `batch_size`: Number of samples the model receives in one batch for training
-- `n_epochs`: Number of iterations on the whole training data set
-- `learning_rate`: Learning rate of the optimizer
-- `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
-- `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
                           Until that point LR is increasing linearly. After that it's decreasing again linearly.
                           Options for different schedules are available in FARM.
-- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
-- `save_dir`: Path to store the final model
-- `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
                       Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                       Set to None to use all CPU cores minus one.
-- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
                 Available options:
                 None (Don't use AMP)
                 "O0" (Normal FP32 training)
@@ -122,6 +107,21 @@ Fine-tune a model on a QA dataset. Options:
                 "O2" (Almost FP16)
                 "O3" (Pure FP16).
                 See details on: https://nvidia.github.io/apex/amp.html
+- `data_dir`: Path to directory containing your training data in SQuAD style
+- `train_filename`: Filename of training data
+- `dev_filename`: Filename of dev / eval data
+- `test_filename`: Filename of test data
+- `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
+- `use_gpu`: Whether to use GPU (if available)
+- `batch_size`: Number of samples the model receives in one batch for training
+- `n_epochs`: Number of iterations on the whole training data set
+- `learning_rate`: Learning rate of the optimizer
+- `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
+- `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
+- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
+- `save_dir`: Path to store the final model
+- `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
+- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
 
 **Returns**:
 
@@ -222,12 +222,9 @@ Returns a dict containing the following metrics:
 
 **Arguments**:
 
-- `data_dir`: The directory in which the test set can be found
-:type data_dir: Path or str
-- `test_filename`: The name of the file containing the test data in SQuAD format.
-:type test_filename: str
-- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
-:type device: str
+- `data_dir` (`Path or str`): The directory in which the test set can be found
+- `test_filename` (`str`): The name of the file containing the test data in SQuAD format.
+- `device` (`str`): The device on which the tensors should be processed. Choose from "cpu" and "cuda".
 
 <a name="farm.FARMReader.eval"></a>
 #### eval
@@ -325,11 +322,11 @@ Usage:
 
 **Arguments**:
 
+                           inference is faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs,
+                           float32 could still be be more performant.
 - `model_name`: transformers model name
 - `output_path`: Path to output the converted model
 - `convert_to_float16`: Many models use float32 precision by default. With the half precision of float16,
-                           inference is faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs,
-                           float32 could still be be more performant.
 - `quantize`: convert floating point number to integers
 - `task_type`: Type of task for the model. Available options: "question_answering" or "embeddings".
 - `opset_version`: ONNX opset version
@@ -367,22 +364,22 @@ See https://huggingface.co/models for full list of available QA models
 
 **Arguments**:
 
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
 'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
 See https://huggingface.co/models for full list of available models.
-- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `tokenizer`: Name of the tokenizer (usually the same as model)
-- `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
                             The context usually helps users to understand if the answer really makes sense.
-- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
-- `top_k`: The maximum number of answers to return
-- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
 Note that this is not the number of "final answers" you will receive
 (see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
 and that no_answer can be included in the sorted list of predictions.
-- `return_no_answers`: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
 If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
 If you would like to set no_answer_boost, use a `FARMReader`.
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
+- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+- `top_k`: The maximum number of answers to return
+- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+- `return_no_answers`: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
 - `max_seq_len`: max sequence length of one input text for the model
 - `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 

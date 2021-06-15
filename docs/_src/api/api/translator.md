@@ -78,10 +78,10 @@ They also have a few multilingual models that support multiple languages at once
 
 **Arguments**:
 
-- `model_name_or_path`: Name of the seq2seq model that shall be used for translation.
                            Can be a remote name from Huggingface's modelhub or a local path.
-- `tokenizer_name`: Optional tokenizer name. If not supplied, `model_name_or_path` will also be used for the
                        tokenizer.
+- `model_name_or_path`: Name of the seq2seq model that shall be used for translation.
+- `tokenizer_name`: Optional tokenizer name. If not supplied, `model_name_or_path` will also be used for the
 - `max_seq_len`: The maximum sentence length the model accepts. (Optional)
 - `clean_up_tokenization_spaces`: Whether or not to clean up the tokenization spaces. (default True)
 

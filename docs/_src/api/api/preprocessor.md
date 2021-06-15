@@ -36,24 +36,24 @@ class PreProcessor(BasePreProcessor)
 
 **Arguments**:
 
-- `clean_header_footer`: Use heuristic to remove footers and headers across different pages by searching
                              for the longest common string. This heuristic uses exact matches and therefore
                              works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
                              or similar.
-- `clean_whitespace`: Strip whitespaces before or after each line in the text.
-- `clean_empty_lines`: Remove more than two empty lines in the text.
-- `split_by`: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
-- `split_length`: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
                    "sentence", then each output document will have 10 sentences.
-- `split_overlap`: Word overlap between two adjacent documents after a split.
                       Setting this to a positive number essentially enables the sliding window approach.
                       For example, if split_by -> `word`,
                       split_length -> 5 & split_overlap -> 2, then the splits would be like:
                       [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
                       Set the value to 0 to ensure there is no overlap among the documents after splitting.
-- `split_respect_sentence_boundary`: Whether to split in partial sentences if split_by -> `word`. If set
                                         to True, the individual split will always have complete sentences &
                                         the number of words will be <= split_length.
+- `clean_header_footer`: Use heuristic to remove footers and headers across different pages by searching
+- `clean_whitespace`: Strip whitespaces before or after each line in the text.
+- `clean_empty_lines`: Remove more than two empty lines in the text.
+- `split_by`: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
+- `split_length`: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
+- `split_overlap`: Word overlap between two adjacent documents after a split.
+- `split_respect_sentence_boundary`: Whether to split in partial sentences if split_by -> `word`. If set
 
 <a name="preprocessor.PreProcessor.process"></a>
 #### process
@@ -144,6 +144,7 @@ Document Store.
 
 **Arguments**:
 
+
 - `dir_path`: path for the documents to be written to the DocumentStore
 - `clean_func`: a custom cleaning function that gets applied to each doc (input: str, output:str)
 - `split_paragraphs`: split text in paragraphs.
@@ -163,6 +164,7 @@ Convert all files(.txt, .pdf) in the sub-directories of the given path to Python
 Document Store.
 
 **Arguments**:
+
 
 - `merge_lowercase`: allow conversion of merged paragraph to lowercase
 - `merge_short`: allow merging of short paragraphs
@@ -185,12 +187,9 @@ Fetch an archive (zip or tar.gz) from a url via http and extract content to an o
 
 **Arguments**:
 
-- `url`: http address
-:type url: str
-- `output_dir`: local path
-:type output_dir: str
-- `proxies`: proxies details as required by requests library
-:type proxies: dict
+- `url` (`str`): http address
+- `output_dir` (`str`): local path
+- `proxies` (`dict`): proxies details as required by requests library
 
 **Returns**:
 
@@ -207,10 +206,8 @@ Converts a SQuAD-json-file into jsonl format with one document per line.
 
 **Arguments**:
 
-- `squad_file`: SQuAD-file in json format.
-:type squad_file: str
-- `output_file`: Name of output file (SQuAD in jsonl format)
-:type output_file: str
+- `squad_file` (`str`): SQuAD-file in json format.
+- `output_file` (`str`): Name of output file (SQuAD in jsonl format)
 
 <a name="cleaning"></a>
 # Module cleaning

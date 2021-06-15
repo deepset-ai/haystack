@@ -59,15 +59,15 @@ position in the ranking of documents the correct document is.
 
 **Arguments**:
 
+                    contained in the retrieved docs (common approach in open-domain QA).
+                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
+                    are within ids explicitly stated in the labels.
+                     contains the keys "predictions" and "metrics".
 - `label_index`: Index/Table in DocumentStore where labeled questions are stored
 - `doc_index`: Index/Table in DocumentStore where documents that are used for evaluation are stored
 - `top_k`: How many documents to return per query
 - `open_domain`: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
-                    contained in the retrieved docs (common approach in open-domain QA).
-                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
-                    are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
-                     contains the keys "predictions" and "metrics".
 
 <a name="sparse"></a>
 # Module sparse
@@ -88,8 +88,6 @@ class ElasticsearchRetriever(BaseRetriever)
 
 **Arguments**:
 
-- `document_store`: an instance of a DocumentStore to retrieve documents from.
-- `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
                      Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
                      that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
@@ -121,6 +119,8 @@ class ElasticsearchRetriever(BaseRetriever)
                     |    self.retrieve(query="Why did the revenue increase?",
                     |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                     ```
+- `document_store`: an instance of a DocumentStore to retrieve documents from.
+- `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 - `top_k`: How many documents to return per query.
 
 <a name="sparse.ElasticsearchRetriever.retrieve"></a>
@@ -238,7 +238,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", single_model_path: Optional[Union[Path, str]] = None, model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", progress_bar: bool = True)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", progress_bar: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -259,16 +259,21 @@ The checkpoint format matches huggingface transformers' model format
 
 **Arguments**:
 
-- `document_store`: An instance of DocumentStore from which to retrieve documents.
-- `query_embedding_model`: Local path or remote name of question encoder checkpoint. The format equals the
                               one used by hugging-face transformers' modelhub models
                               Currently available remote names: ``"facebook/dpr-question_encoder-single-nq-base"``
-- `passage_embedding_model`: Local path or remote name of passage encoder checkpoint. The format equals the
                                 one used by hugging-face transformers' modelhub models
                                 Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
-- `single_model_path`: Local path or remote name of a query and passage embedder in one single model. Those
-                          models are typically trained within FARM.
-                          Currently available remote names: TODO add FARM DPR model to HF modelhub
+                    This is the approach used in the original paper and is likely to improve performance if your
+                    titles contain meaningful information for retrieval (topic, entities etc.) .
+                    The title is expected to be present in doc.meta["name"] and can be supplied in the documents
+                    before writing them to the DocumentStore like this:
+                    {"text": "my text", "meta": {"name": "my title"}}.
+                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
+                            Options: `dot_product` (Default) or `cosine`
+                     Can be helpful to disable in production deployments to keep the logs clean.
+- `document_store`: An instance of DocumentStore from which to retrieve documents.
+- `query_embedding_model`: Local path or remote name of question encoder checkpoint. The format equals the
+- `passage_embedding_model`: Local path or remote name of passage encoder checkpoint. The format equals the
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
 - `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
@@ -276,18 +281,10 @@ The checkpoint format matches huggingface transformers' model format
 - `use_gpu`: Whether to use gpu or not
 - `batch_size`: Number of questions or passages to encode at once
 - `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
-                    This is the approach used in the original paper and is likely to improve performance if your
-                    titles contain meaningful information for retrieval (topic, entities etc.) .
-                    The title is expected to be present in doc.meta["name"] and can be supplied in the documents
-                    before writing them to the DocumentStore like this:
-                    {"text": "my text", "meta": {"name": "my title"}}.
 - `use_fast_tokenizers`: Whether to use fast Rust tokenizers
 - `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
-                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
 - `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
-                            Options: `dot_product` (Default) or `cosine`
 - `progress_bar`: Whether to show a tqdm progress bar or not.
-                     Can be helpful to disable in production deployments to keep the logs clean.
 
 <a name="dense.DensePassageRetriever.retrieve"></a>
 #### retrieve
@@ -351,13 +348,18 @@ train a DensePassageRetrieval model
 
 **Arguments**:
 
+                      It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+            "O0" (FP32)
+            "O1" (Mixed Precision)
+            "O2" (Almost FP16)
+            "O3" (Pure FP16).
+            For more information, refer to: https://nvidia.github.io/apex/amp.html
 - `data_dir`: Directory where training file, dev file and test file are present
 - `train_filename`: training filename
 - `dev_filename`: development set filename, file to be used by model in eval step of training
 - `test_filename`: test set filename, file to be used by model in test step after training
 - `max_sample`: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
 - `max_processes`: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
-                      It can be set to 1 to disable the use of multiprocessing or make debugging easier.
 - `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None
 - `batch_size`: total number of samples in 1 batch of data
 - `embed_title`: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
@@ -371,11 +373,6 @@ train a DensePassageRetrieval model
 - `weight_decay`: weight decay parameter of optimizer
 - `grad_acc_steps`: number of steps to accumulate gradient over before back-propagation is done
 - `use_amp`: Whether to use automatic mixed precision (AMP) or not. The options are:
-            "O0" (FP32)
-            "O1" (Mixed Precision)
-            "O2" (Almost FP16)
-            "O3" (Pure FP16).
-            For more information, refer to: https://nvidia.github.io/apex/amp.html
 - `optimizer_name`: what optimizer to use (default: TransformersAdamW)
 - `num_warmup_steps`: number of warmup steps
 - `optimizer_correct_bias`: Whether to correct bias in optimizer
@@ -407,7 +404,7 @@ None
 
 ```python
  | @classmethod
- | load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder")
+ | load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder", infer_tokenizer_classes: bool = False)
 ```
 
 Load DensePassageRetriever from the specified directory.
@@ -428,24 +425,24 @@ class EmbeddingRetriever(BaseRetriever)
 
 **Arguments**:
 
-- `document_store`: An instance of DocumentStore from which to retrieve documents.
-- `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
-- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `use_gpu`: Whether to use gpu or not
-- `model_format`: Name of framework that was used for saving the model. Options:
 
                      - ``'farm'``
                      - ``'transformers'``
                      - ``'sentence_transformers'``
-- `pooling_strategy`: Strategy for combining the embeddings from the model (for farm / transformers models only).
                          Options:
 
                          - ``'cls_token'`` (sentence vector)
                          - ``'reduce_mean'`` (sentence vector)
                          - ``'reduce_max'`` (sentence vector)
                          - ``'per_token'`` (individual token vectors)
-- `emb_extraction_layer`: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
                              Default: -1 (very last layer).
+- `document_store`: An instance of DocumentStore from which to retrieve documents.
+- `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `use_gpu`: Whether to use gpu or not
+- `model_format`: Name of framework that was used for saving the model. Options:
+- `pooling_strategy`: Strategy for combining the embeddings from the model (for farm / transformers models only).
+- `emb_extraction_layer`: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
 
