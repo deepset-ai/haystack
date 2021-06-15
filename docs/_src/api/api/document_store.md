@@ -1468,3 +1468,254 @@ List[np.array]: List of vectors.
 
 Return the count of embeddings in the document store.
 
+<a name="weaviate"></a>
+# Module weaviate
+
+<a name="weaviate.WeaviateDocumentStore"></a>
+## WeaviateDocumentStore Objects
+
+```python
+class WeaviateDocumentStore(BaseDocumentStore)
+```
+
+Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
+(See https://www.semi.technology/developers/weaviate/current/index.html#what-is-weaviate)
+
+Some of the key differences in contrast to FAISS & Milvus:
+1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
+2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
+3. Has less variety of ANN algorithms, as of now only HNSW.  
+
+Weaviate python client is used to connect to the server, more details are here
+https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
+
+Usage:
+1. Start a Weaviate server (see https://www.semi.technology/developers/weaviate/current/getting-started/installation.html)
+2. Init a WeaviateDocumentStore in Haystack
+
+<a name="weaviate.WeaviateDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, text_field: str = "text", name_field: str = "name", faq_question_field="question", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+```
+
+**Arguments**:
+
+                     For more details, refer "https://www.semi.technology/developers/weaviate/current/getting-started/installation.html"
+                   If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+                   Currently, HSNW is only supported.
+                   See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
+                   See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
+                    For more details, See https://www.semi.technology/developers/weaviate/current/modules/
+                     Can be helpful to disable in production deployments to keep the logs clean.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already exists.
+- `host`: Weaviate server connection URL for storing and processing documents and vectors.
+- `port`: port of Weaviate instance
+- `timeout_config`: Weaviate Timeout config as a tuple of (retries, time out seconds).
+- `username`: username (standard authentication via http_auth)
+- `password`: password (standard authentication via http_auth)
+- `index`: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
+- `embedding_dim`: The embedding vector size. Default: 768.
+- `text_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+- `name_field`: Name of field that contains the title of the the doc
+- `faq_question_field`: Name of field containing the question in case of FAQ-Style QA
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default.
+- `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
+- `custom_schema`: Allows to create custom schema in Weaviate, for more details
+- `module_name`: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
+- `return_embedding`: To return document embedding.
+- `embedding_field`: Name of field containing an embedding vector.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+
+<a name="weaviate.WeaviateDocumentStore.get_document_by_id"></a>
+#### get\_document\_by\_id
+
+```python
+ | get_document_by_id(id: str, index: Optional[str] = None) -> Optional[Document]
+```
+
+Fetch a document by specifying its text id string
+
+<a name="weaviate.WeaviateDocumentStore.get_documents_by_id"></a>
+#### get\_documents\_by\_id
+
+```python
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Document]
+```
+
+Fetch documents by specifying a list of text id strings
+
+<a name="weaviate.WeaviateDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
+```
+
+Add new documents to the DocumentStore.
+
+**Arguments**:
+
+                configured with a module. If a module is configured, the embedding is automatically generated by Weaviate.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+- `documents`: List of `Dicts` or List of `Documents`. Passing an Embedding/Vector is mandatory in case weaviate is not
+- `index`: index name for storing the docs and metadata
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+
+**Raises**:
+
+- `DuplicateDocumentError`: Exception trigger on duplicate document
+
+**Returns**:
+
+None
+
+<a name="weaviate.WeaviateDocumentStore.update_document_meta"></a>
+#### update\_document\_meta
+
+```python
+ | update_document_meta(id: str, meta: Dict[str, str])
+```
+
+Update the metadata dictionary of a document by specifying its string id
+
+<a name="weaviate.WeaviateDocumentStore.get_document_count"></a>
+#### get\_document\_count
+
+```python
+ | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int
+```
+
+Return the number of documents in the document store.
+
+<a name="weaviate.WeaviateDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+              DocumentStore's default index (self.index) will be used.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `index`: Name of the index to get the documents from. If None, the
+- `filters`: Optional filters to narrow down the documents to return.
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+<a name="weaviate.WeaviateDocumentStore.get_all_documents_generator"></a>
+#### get\_all\_documents\_generator
+
+```python
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> Generator[Document, None, None]
+```
+
+Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+document store and yielded as individual documents. This method can be used to iteratively process
+a large number of documents without having to load all documents in memory.
+
+**Arguments**:
+
+              DocumentStore's default index (self.index) will be used.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `index`: Name of the index to get the documents from. If None, the
+- `filters`: Optional filters to narrow down the documents to return.
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+<a name="weaviate.WeaviateDocumentStore.query"></a>
+#### query
+
+```python
+ | query(query: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query as defined by Weaviate semantic search.
+
+**Arguments**:
+
+                    https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `custom_query`: Custom query that will executed using query.raw method, for more details refer
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+
+<a name="weaviate.WeaviateDocumentStore.query_by_embedding"></a>
+#### query\_by\_embedding
+
+```python
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[dict] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+**Arguments**:
+
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `filters`: Optional filters to narrow down the search space.
+- `top_k`: How many documents to return
+- `index`: index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
+
+**Returns**:
+
+
+
+<a name="weaviate.WeaviateDocumentStore.update_embeddings"></a>
+#### update\_embeddings
+
+```python
+ | update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
+```
+
+Updates the embeddings in the the document store using the encoding model specified in the retriever.
+This can be useful if want to change the embeddings for your documents (e.g. after changing the retriever config).
+
+**Arguments**:
+
+This option must be always true for weaviate and it will update the embeddings for all the documents.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `retriever`: Retriever to use to update the embeddings.
+- `index`: Index name to update
+- `update_existing_embeddings`: Weaviate mandates an embedding while creating the document itself.
+- `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+**Returns**:
+
+None
+
+<a name="weaviate.WeaviateDocumentStore.delete_all_documents"></a>
+#### delete\_all\_documents
+
+```python
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete documents in an index. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
+
