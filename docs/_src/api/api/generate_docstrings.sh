@@ -15,4 +15,4 @@ pydoc-markdown pydoc-markdown-pipelines.yml
 pydoc-markdown pydoc-markdown-knowledge-graph.yml
 pydoc-markdown pydoc-markdown-graph-retriever.yml
 pydoc-markdown pydoc-markdown-evaluation.yml
-
+pydoc-markdown pydoc-markdown-ranker.yml
