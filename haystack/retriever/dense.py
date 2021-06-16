@@ -10,6 +10,7 @@ from transformers import AutoTokenizer, AutoModel
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
+from haystack.utils import get_device
 
 from farm.infer import Inferencer
 from farm.modeling.tokenization import Tokenizer
@@ -120,10 +121,7 @@ class DensePassageRetriever(BaseRetriever):
                            "We recommend you use dot_product instead. "
                            "This can be set when initializing the DocumentStore")
 
-        if use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
+        self.device = get_device(use_gpu)
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
         tokenizers_default_classes = {
@@ -630,10 +628,7 @@ class _SentenceTransformersEmbeddingEncoder(_EmbeddingEncoder):
                               "For details see https://github.com/UKPLab/sentence-transformers ")
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        if retriever.use_gpu:
-            device = "cuda"
-        else:
-            device = "cpu"
+        device = get_device(retriever.use_gpu)
         self.embedding_model = SentenceTransformer(retriever.embedding_model, device=device)
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
