@@ -37,11 +37,16 @@ def pytest_addoption(parser):
 
 
 def pytest_generate_tests(metafunc):
-    mark = metafunc.definition.get_closest_marker('parametrize')
     # parametrize document_store fixture if it's in the test function argument list
     # but does not have an explicit parametrize annotation e.g
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
-    if (not mark or 'document_store' not in mark.args[0]) and 'document_store' in metafunc.fixturenames:
+    found_mark_parametrize_document_store = False
+    for marker in metafunc.definition.iter_markers('parametrize'):
+        if 'document_store' in marker.args[0]:
+            found_mark_parametrize_document_store = True
+            break
+
+    if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
         document_store_type = metafunc.config.option.document_store_type
         if "all" in document_store_type:
             document_store_type = "elasticsearch, faiss, memory, milvus, weaviate"
