@@ -13,7 +13,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def launch_es():
+def launch_es(sleep=15):
     # Start an Elasticsearch server
     # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
     # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
@@ -26,10 +26,24 @@ def launch_es():
         logger.warning("Tried to start Elasticsearch through Docker but this failed. "
                        "It is likely that there is already an existing Elasticsearch instance running. ")
     else:
-        time.sleep(15)
+        time.sleep(sleep)
 
+def launch_open_distro_es(sleep=15):
+    # Start an Open Distro for Elasticsearch server
+    # You can start Open Distro for Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
+    # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
 
-def launch_milvus():
+    logger.info("Starting Open Distro for Elasticsearch ...")
+    status = subprocess.run(
+        ['docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" amazon/opendistro-for-elasticsearch:1.13.2'], shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start Open Distro for Elasticsearch through Docker but this failed. "
+                       "It is likely that there is already an existing Elasticsearch instance running. ")
+    else:
+        time.sleep(sleep)
+
+def launch_milvus(sleep=15):
     # Start a Milvus server
     # You can start Milvus on your local machine instance using Docker. If Docker is not readily available in
     # your environment (eg., in Colab notebooks)
@@ -54,7 +68,7 @@ def launch_milvus():
         logger.warning("Tried to start Milvus through Docker but this failed. "
                        "It is likely that there is already an existing Milvus instance running. ")
     else:
-        time.sleep(15)
+        time.sleep(sleep)
 
 
 def print_answers(results: dict, details: str = "all"):
