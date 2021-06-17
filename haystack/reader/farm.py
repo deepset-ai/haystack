@@ -5,7 +5,6 @@ from typing import List, Optional, Union, Dict, Any
 from collections import defaultdict
 from time import perf_counter
 
-import numpy as np
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import SquadProcessor
 from farm.data_handler.dataloader import NamedDataLoader
@@ -17,7 +16,6 @@ from farm.modeling.adaptive_model import AdaptiveModel
 from farm.train import Trainer
 from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
-from scipy.special import expit
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
@@ -623,10 +621,6 @@ class FARMReader(BaseReader):
                   doc_index=doc_index,
                   label_origin=label_origin,
                   calibrate_conf_scores=True)
-
-    @staticmethod
-    def _get_pseudo_prob(score: float):
-        return float(expit(np.asarray(score) / 8))
 
     @staticmethod
     def _check_no_answer(c: QACandidate):
