@@ -18,7 +18,7 @@ def get_pipelines():
     return pipeline_helper.get_pipelines()
 
 
-@router.get('/pipelines/{name}', response_model=List[PipelineSchema], response_model_exclude={'yaml_file'})
+@router.get('/pipelines/{name}', response_model=List[PipelineSchema], response_model_include={'name', 'type', 'status'})
 def get_pipelines_by_name(name: str):
     pipelines: list = pipeline_helper.get_pipelines(name)
     if len(pipelines) == 0:
@@ -29,7 +29,7 @@ def get_pipelines_by_name(name: str):
 @router.post('/pipelines/{name}/activate')
 def activate_pipelines(name: str):
     if pipeline_helper.activate_pipeline(name) is False:
-        raise HTTPException(status_code=406, detail=f"{name} pipeline does not exist.")
+        raise HTTPException(status_code=404, detail=f"{name} pipeline does not exist.")
 
     return {'status': True}
 
@@ -49,6 +49,6 @@ def file_upload(file: UploadFile = File(...)):
     pipeline_exists = list(filter(lambda pipeline: pipeline.name in pipeline_names, pipelines))
     if len(pipeline_exists) > 0:
         os.unlink(file_path)
-        raise HTTPException(status_code=406, detail="Pipeline name already exist.")
+        raise HTTPException(status_code=409, detail="Pipeline name already exist.")
 
     return {'status': True}
