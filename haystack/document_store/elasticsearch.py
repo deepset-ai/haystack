@@ -48,6 +48,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         timeout=30,
         return_embedding: bool = False,
         duplicate_documents: str = 'overwrite',
+        index_type: str = "flat"
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -95,6 +96,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
+                           ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
 
         """
         # save init parameters to enable export of component config as YAML
@@ -105,7 +108,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
             duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
-            timeout=timeout, return_embedding=return_embedding,
+            timeout=timeout, return_embedding=return_embedding, index_type=index_type
         )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
@@ -131,16 +134,21 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.custom_mapping = custom_mapping
         self.index: str = index
         self.label_index: str = label_index
-        if similarity in ["cosine", "dot_product"]:
+        if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity = similarity
         else:
-            raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine' and 'dot_product'")
+            raise Exception(f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'")
+        if index_type in ["flat", "hnsw"]:
+            self.index_type = index_type
+        else:
+            raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
         if create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
 
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
+
 
     def _init_elastic_client(self,
                              host: Union[str, List[str]],
@@ -1040,15 +1048,21 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
                 }
             }
             if self.embedding_field:
+
                 if self.similarity == "cosine":
                     similarity_space_type = "cosinesimil"
                 elif self.similarity == "dot_product":
+                    similarity_space_type = "inner_product"
+                elif self.similarity == "l2":
                     similarity_space_type = "l2"
+
+                if self.index_type == "flat":
+                    knn = False
+                elif self.index_type == "hnsw":
+                    knn = True
                 else:
-                    raise Exception(
-                        f"Similarity function {self.similarity} is not supported by OpenDistroElasticsearchDocumentStore."
-                    )
-                mapping["settings"]["knn"] = True
+                    logger.error("Please set index_type to either 'flat' or 'hnsw'")
+                mapping["settings"]["knn"] = knn
                 mapping["settings"]["knn.space_type"] = similarity_space_type
                 mapping["mappings"]["properties"][self.embedding_field] = {
                     "type": "knn_vector",
