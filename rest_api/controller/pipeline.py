@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import List
+from haystack import Pipeline
 
 from rest_api.config import PIPELINES_DIR
 from rest_api.controller.utils import PipelineHelper, PipelineSchema
@@ -30,6 +31,10 @@ def get_pipelines_by_name(name: str):
 def activate_pipelines(name: str):
     if pipeline_helper.activate_pipeline(name) is False:
         raise HTTPException(status_code=404, detail=f"{name} pipeline does not exist.")
+
+    global PIPELINE
+    active_pipeline, active_pipeline_path = pipeline_helper.get_active_pipeline()
+    PIPELINE = Pipeline.load_from_yaml(Path(active_pipeline_path), pipeline_name=active_pipeline)
 
     return {'status': True}
 
