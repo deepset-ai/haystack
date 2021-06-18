@@ -3,24 +3,22 @@ import shutil
 import uuid
 import os
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import List
-from haystack import Pipeline
 
 from rest_api.config import PIPELINES_DIR
-from rest_api.controller.utils import PipelineHelper, PipelineSchema
+from rest_api.controller.utils import get_pipeline_helper, PipelineSchema, get_model
 
 router = APIRouter()
-pipeline_helper = PipelineHelper(PIPELINES_DIR)
 
 
 @router.get("/pipelines", response_model=List[PipelineSchema], response_model_include={'name', 'type', 'status'})
-def get_pipelines():
+def get_pipelines(pipeline_helper=Depends(get_pipeline_helper)):
     return pipeline_helper.get_pipelines()
 
 
 @router.get('/pipelines/{name}', response_model=List[PipelineSchema], response_model_include={'name', 'type', 'status'})
-def get_pipelines_by_name(name: str):
+def get_pipelines_by_name(name: str, pipeline_helper=Depends(get_pipeline_helper)):
     pipelines: list = pipeline_helper.get_pipelines(name)
     if len(pipelines) == 0:
         raise HTTPException(status_code=404, detail="Pipeline not found.")
@@ -28,19 +26,16 @@ def get_pipelines_by_name(name: str):
 
 
 @router.post('/pipelines/{name}/activate')
-def activate_pipelines(name: str):
+def activate_pipelines(name: str, pipeline_helper=Depends(get_pipeline_helper), model=Depends(get_model)):
     if pipeline_helper.activate_pipeline(name) is False:
         raise HTTPException(status_code=404, detail=f"{name} pipeline does not exist.")
 
-    global PIPELINE
-    active_pipeline, active_pipeline_path = pipeline_helper.get_active_pipeline()
-    PIPELINE = Pipeline.load_from_yaml(Path(active_pipeline_path), pipeline_name=active_pipeline)
-
+    model.load()
     return {'status': True}
 
 
 @router.post("/pipelines")
-def file_upload(file: UploadFile = File(...)):
+def file_upload(file: UploadFile = File(...), pipeline_helper=Depends(get_pipeline_helper)):
     pipelines: list = pipeline_helper.get_pipelines()
     try:
         file_path = Path(PIPELINES_DIR) / f"{uuid.uuid4().hex}_{file.filename}"

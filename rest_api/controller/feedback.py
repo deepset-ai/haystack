@@ -4,14 +4,15 @@ from typing import Dict, Union, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from rest_api.controller.search import PIPELINE
+from rest_api.controller.utils import get_model
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
 # TODO make this generic for other pipelines with different naming
-retriever = PIPELINE.get_node(name="ESRetriever")
+pipeline = get_model().get_active_pipeline()
+retriever = pipeline.get_node(name="ESRetriever")
 document_store = retriever.document_store if retriever else None
 
 

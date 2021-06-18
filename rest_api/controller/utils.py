@@ -1,4 +1,5 @@
 # coding: utf8
+import logging
 import yaml
 from pathlib import Path
 from typing import List, Optional
@@ -6,7 +7,11 @@ from pydantic import BaseModel
 from contextlib import contextmanager
 from threading import Semaphore
 from fastapi import HTTPException
-from rest_api.config import ACTIVE_PIPELINE_FILE, PIPELINES_DIR
+from rest_api.config import ACTIVE_PIPELINE_FILE, PIPELINES_DIR, LOG_LEVEL
+from haystack import Pipeline
+
+logging.getLogger("haystack").setLevel(LOG_LEVEL)
+logger = logging.getLogger("haystack")
 
 
 class RequestLimiter:
@@ -126,3 +131,36 @@ class PipelineHelper:
         active_pipeline = list(filter(lambda pipeline: pipeline.status == "active", self.pipelines))[0]
 
         return active_pipeline.name, f"{PIPELINES_DIR}/{active_pipeline.yaml_file}"
+
+
+class Model:
+    def __init__(self, pipeline_helper):
+        self._pipeline_helper = pipeline_helper
+        self._pipeline = None
+        self.load()
+
+    def load(self):
+        """ Load the active model """
+        active_pipeline, active_pipeline_path = self._pipeline_helper.get_active_pipeline()
+        self._pipeline = Pipeline.load_from_yaml(Path(active_pipeline_path), pipeline_name=active_pipeline)
+        logger.info(f"Loaded pipeline nodes: {self._pipeline.graph.nodes.keys()}")
+
+        return self
+
+    def get_active_pipeline(self):
+        """Return the active pipline object"""
+        return self._pipeline
+
+
+pipeline_helper = PipelineHelper(PIPELINES_DIR)
+model = Model(pipeline_helper)
+
+
+def get_pipeline_helper():
+    """Return pipelineHelper object"""
+    return pipeline_helper
+
+
+def get_model():
+    """Return Model object"""
+    return model

@@ -1,21 +1,18 @@
 import json
 import logging
 import time
-from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from haystack import Pipeline
-from rest_api.config import LOG_LEVEL, PIPELINES_DIR
-from rest_api.controller.utils import RequestLimiter, PipelineHelper
+from rest_api.config import LOG_LEVEL
+from rest_api.controller.utils import RequestLimiter, get_model
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
 logger = logging.getLogger("haystack")
 
 router = APIRouter()
-pipeline_helper = PipelineHelper(PIPELINES_DIR)
 
 
 class Request(BaseModel):
@@ -42,18 +39,13 @@ class Response(BaseModel):
     answers: List[Answer]
 
 
-active_pipeline, active_pipeline_path = pipeline_helper.get_active_pipeline()
-logger.info(f"Loading pipeline {active_pipeline} from {active_pipeline_path} path.")
-
-PIPELINE = Pipeline.load_from_yaml(Path(active_pipeline_path), pipeline_name=active_pipeline)
-logger.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
 concurrency_limiter = RequestLimiter(4)
 
 
 @router.post("/query", response_model=Response)
-def query(request: Request):
+def query(request: Request, model=Depends(get_model)):
     with concurrency_limiter.run():
-        result = _process_request(PIPELINE, request)
+        result = _process_request(model.get_active_pipeline(), request)
         return result
 
 
