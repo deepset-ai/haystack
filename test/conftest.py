@@ -49,7 +49,7 @@ def pytest_generate_tests(metafunc):
     if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
         document_store_type = metafunc.config.option.document_store_type
         if "all" in document_store_type:
-            document_store_type = "elasticsearch, faiss, memory, milvus, weaviate"
+            document_store_type = "elasticsearch, faiss, memory, milvus, sql"
 
         document_store_types = [item.strip() for item in document_store_type.split(",")]
         metafunc.parametrize("document_store", document_store_types, indirect=True)
