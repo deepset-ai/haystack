@@ -188,7 +188,7 @@ document_store = ElasticsearchDocumentStore(host="localhost", username="", passw
 docs = [Document(text="Arya accompanies her father Ned and her sister Sansa to King's Landing. Before their departure ...", meta={}),
        ...]
 
-document_store.write_documents([doc])
+document_store.write_documents(docs)
 
 # Init Retriever: Fast algorithm to identify most promising candidate docs
 # (Options: DPR, TF-IDF, Elasticsearch, Plain Embeddings ..)
