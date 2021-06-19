@@ -134,6 +134,7 @@ class PipelineHelper:
 
 
 class Model:
+    """Class hold the Pipeline Object"""
     def __init__(self, pipeline_helper):
         self._pipeline_helper = pipeline_helper
         self._pipeline = None
