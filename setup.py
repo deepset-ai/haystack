@@ -1,3 +1,5 @@
+import os
+import re
 from io import open
 
 from setuptools import find_packages, setup
@@ -45,9 +47,24 @@ def get_dependency_links(filename):
 dependency_links = get_dependency_links('requirements.txt')
 parsed_requirements = parse_requirements('requirements.txt')
 
+
+def versionfromfile(*filepath):
+    infile = os.path.join(*filepath)
+    with open(infile) as fp:
+        version_match = re.search(
+                r"^__version__\s*=\s*['\"]([^'\"]*)['\"]", fp.read(), re.M
+        )
+        if version_match:
+            return version_match.group(1)
+        raise RuntimeError("Unable to find version string in {}.".format(infile))
+
+
+here = os.path.abspath(os.path.dirname(__file__))
+_version: str = versionfromfile(here, "haystack", "_version.py")
+
 setup(
     name="farm-haystack",
-    version="0.9.0",
+    version=_version,
     author="Malte Pietsch, Timo Moeller, Branden Chan, Tanay Soni",
     author_email="malte.pietsch@deepset.ai",
     description="Neural Question Answering & Semantic Search at Scale. Use modern transformer based models like BERT to find answers in large document collections",
@@ -56,7 +73,7 @@ setup(
     keywords="QA Question-Answering Reader Retriever semantic-search search BERT roberta albert squad mrc transfer-learning language-model transformer",
     license="Apache",
     url="https://github.com/deepset-ai/haystack",
-    download_url="https://github.com/deepset-ai/haystack/archive/0.9.0.tar.gz",
+    download_url=f"https://github.com/deepset-ai/haystack/archive/{_version}.tar.gz",
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     dependency_links=dependency_links,
     install_requires=parsed_requirements,
