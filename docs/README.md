@@ -16,17 +16,9 @@ We use Pydoc-Markdown to create markdown files from the docstrings in our code.
 ### Update docstrings
 Execute this in `/haystack/docs/_src/api/api`:
 ```
-pip install 'pydoc-markdown>=3.0.0,<4.0.0'
-pydoc-markdown pydoc-markdown-document-store.yml
-pydoc-markdown pydoc-markdown-file-converters.yml
-pydoc-markdown pydoc-markdown-preprocessor.yml
-pydoc-markdown pydoc-markdown-reader.yml
-pydoc-markdown pydoc-markdown-generator.yml
-pydoc-markdown pydoc-markdown-retriever.yml
-pydoc-markdown pydoc-markdown-pipelines.yml
+pip install 'pydoc-markdown==3.11.0'
+./generate_docstrings.sh
 ```
-
-(Or run one of the commands above to update the docstrings only for a single module)
 
 ### Configuration
 
