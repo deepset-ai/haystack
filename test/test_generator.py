@@ -435,7 +435,6 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
 @pytest.mark.slow
 @pytest.mark.generator
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
 def test_lfqa_pipeline(document_store, retriever, eli5_generator):
