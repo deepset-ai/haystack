@@ -11,7 +11,6 @@ from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, \
 from haystack import Document
 from haystack.generator.base import BaseGenerator
 from haystack.retriever.dense import DensePassageRetriever
-from haystack.utils import get_device
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +118,7 @@ class RAGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.device = get_device(use_gpu)
+        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
 
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
 
@@ -377,7 +376,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.device = get_device(use_gpu)
+        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
 
         Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
 
