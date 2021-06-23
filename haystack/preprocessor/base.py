@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 from haystack import BaseComponent
 
@@ -8,7 +8,7 @@ class BasePreProcessor(BaseComponent):
 
     def process(
         self,
-        document: dict,
+        documents: Union[dict, List[dict]],
         clean_whitespace: Optional[bool] = True,
         clean_header_footer: Optional[bool] = False,
         clean_empty_lines: Optional[bool] = True,
