@@ -3,7 +3,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Generator, Set
+from typing import List, Optional, Generator, Set, Union
 
 import nltk
 from more_itertools import windowed
@@ -92,7 +92,7 @@ class PreProcessor(BasePreProcessor):
 
     def process(
         self,
-        document: dict,
+        documents: Union[dict, List[dict]],
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
@@ -101,9 +101,51 @@ class PreProcessor(BasePreProcessor):
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
     ) -> List[dict]:
+
         """
-        Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
+        Perform document cleaning and splitting. Can take a single document or a list of documents as input and returns a list of documents.
         """
+
+        kwargs = {
+            "clean_whitespace": clean_whitespace,
+            "clean_header_footer": clean_header_footer,
+            "clean_empty_lines": clean_empty_lines,
+            "split_by": split_by,
+            "split_length": split_length,
+            "split_overlap": split_overlap,
+            "split_respect_sentence_boundary": split_respect_sentence_boundary
+        }
+
+        ret = []
+
+        if type(documents) == dict:
+            ret = self._process_single(
+                document=documents,
+                **kwargs                #type: ignore
+        )
+        elif type(documents) == list:
+            ret = self._process_batch(
+                documents=list(documents),
+                **kwargs
+            )
+
+        else:
+            raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
+
+        return ret
+
+    def _process_single(
+        self,
+        document,
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        split_by: Optional[str] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
+        split_respect_sentence_boundary: Optional[bool] = None,
+    ) -> List[dict]:
+
         if clean_whitespace is None:
             clean_whitespace = self.clean_whitespace
         if clean_header_footer is None:
@@ -133,6 +175,14 @@ class PreProcessor(BasePreProcessor):
             split_respect_sentence_boundary=split_respect_sentence_boundary,
         )
         return split_documents
+
+    def _process_batch(
+        self,
+        documents: List[dict],
+        **kwargs
+    ) -> List[dict]:
+        nested_docs = [self.process(d, **kwargs) for d in documents]
+        return [d for x in nested_docs for d in x]
 
     def clean(
         self,
