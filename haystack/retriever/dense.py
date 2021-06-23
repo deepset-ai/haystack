@@ -4,6 +4,8 @@ from typing import List, Union, Optional
 import torch
 import numpy as np
 from pathlib import Path
+
+from farm.utils import initialize_device_settings
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModel
 
