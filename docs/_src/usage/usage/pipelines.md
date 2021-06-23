@@ -90,7 +90,7 @@ To load, simply call:
 pipeline.load_from_yaml(Path("sample.yaml"))
 ```
 
-For another example YAML config, check out [this file](https://github.com/deepset-ai/haystack/blob/master/rest_api/pipelines.yaml).
+For another example YAML config, check out [this file](https://github.com/deepset-ai/haystack/blob/master/rest_api/pipeline/pipelines.yaml).
 
 ### Multiple retrievers
 You can now also use multiple Retrievers and join their results: 
