@@ -78,7 +78,7 @@ class PreProcessor(BasePreProcessor):
     ) -> List[dict]:
 
         """
-        Perform document cleaning and splitting. Can takes a single document or a list of documents as input and returns a list of documents.
+        Perform document cleaning and splitting. Can take a single document or a list of documents as input and returns a list of documents.
         """
 
         kwargs = {
@@ -103,6 +103,9 @@ class PreProcessor(BasePreProcessor):
                 documents=list(documents),
                 **kwargs
             )
+
+        else:
+            raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
 
         return ret
 
