@@ -387,19 +387,19 @@ and the further processing can be customized. You can define this by connecting 
   
   Pass your own `Sklearn` binary classification model or use one of the following pretrained ones:
   1) Keywords vs. Questions/Statements (Default)
-  query_classifier="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle"
-  query_vectorizer="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
+  query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/model.pickle)
+  query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/vectorizer.pickle)
   output_1 => question/statement
   output_2 => keyword query
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
+  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/readme.txt)
   
   
   2) Questions vs. Statements
-  `query_classifier`="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle"`
-  `query_vectorizer`="https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle"`
+  query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier\_statements/model.pickle)
+  query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier\_statements/vectorizer.pickle)
   output_1 => question
   output_2 => statement
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
+  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier\_statements/readme.txt)
   
   See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
 
@@ -409,9 +409,9 @@ and the further processing can be customized. You can define this by connecting 
 ```python
  | __init__(model_name_or_path: Union[
  |             str, Any
- |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
+ |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/model.pickle", vectorizer_name_or_path: Union[
  |             str, Any
- |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle")
+ |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/vectorizer.pickle")
 ```
 
 **Arguments**:
@@ -454,14 +454,14 @@ and the further processing can be customized. You can define this by connecting 
   model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
   output_1 => question/statement
   output_2 => keyword query
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
+  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/readme.txt)
   
   
   2) Questions vs. Statements
   `model_name_or_path`="shahrukhx01/question-vs-statement-classifier"
   output_1 => question
   output_2 => statement
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
+  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier\_statements/readme.txt)
   
   See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
 
