@@ -6,8 +6,13 @@ from sys import platform
 import pytest
 import requests
 from elasticsearch import Elasticsearch
+
+from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
+
+import weaviate
+from haystack.document_store.weaviate import WeaviateDocumentStore
 
 from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
@@ -25,6 +30,29 @@ from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.summarizer.transformers import TransformersSummarizer
 from haystack.translator import TransformersTranslator
+
+
+def pytest_addoption(parser):
+    parser.addoption("--document_store_type", action="store", default="all")
+
+
+def pytest_generate_tests(metafunc):
+    # parametrize document_store fixture if it's in the test function argument list
+    # but does not have an explicit parametrize annotation e.g
+    # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
+    found_mark_parametrize_document_store = False
+    for marker in metafunc.definition.iter_markers('parametrize'):
+        if 'document_store' in marker.args[0]:
+            found_mark_parametrize_document_store = True
+            break
+
+    if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
+        document_store_type = metafunc.config.option.document_store_type
+        if "all" in document_store_type:
+            document_store_type = "elasticsearch, faiss, memory, milvus"
+
+        document_store_types = [item.strip() for item in document_store_type.split(",")]
+        metafunc.parametrize("document_store", document_store_types, indirect=True)
 
 
 def _sql_session_rollback(self, attr):
@@ -61,6 +89,8 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
             item.add_marker(pytest.mark.slow)
+        elif "weaviate" in item.nodeid:
+            item.add_marker(pytest.mark.weaviate)
 
 
 @pytest.fixture(scope="session")
@@ -98,6 +128,27 @@ def milvus_fixture():
                                  'milvusdb/milvus:0.10.5-cpu-d010621-4eda95'], shell=True)
         time.sleep(40)
 
+@pytest.fixture(scope="session")
+def weaviate_fixture():
+    # test if a Weaviate server is already running. If not, start Weaviate docker container locally.
+    # Make sure you have given > 6GB memory to docker engine
+    try:
+        weaviate_server = weaviate.Client(url='http://localhost:8080', timeout_config=(5, 15))
+        weaviate_server.is_ready()
+    except:
+        print("Starting Weaviate servers ...")
+        status = subprocess.run(
+            ['docker rm haystack_test_weaviate'],
+            shell=True
+        )
+        status = subprocess.run(
+            ['docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.4.0'],
+            shell=True
+        )
+        if status.returncode:
+            raise Exception(
+                "Failed to launch Weaviate. Please check docker container logs.")
+        time.sleep(60)
 
 @pytest.fixture(scope="session")
 def graphdb_fixture():
@@ -178,6 +229,11 @@ def rag_generator():
         model_name_or_path="facebook/rag-token-nq",
         generator_type=RAGeneratorType.TOKEN
     )
+
+
+@pytest.fixture(scope="module")
+def eli5_generator():
+    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
 
 
 @pytest.fixture(scope="module")
@@ -293,6 +349,11 @@ def get_retriever(retriever_type, document_store):
             embedding_model="deepset/sentence_bert",
             use_gpu=False
         )
+    elif retriever_type == "retribert":
+        retriever = EmbeddingRetriever(document_store=document_store,
+                                       embedding_model="yjernite/retribert-base-uncased",
+                                       model_format="retribert",
+                                       use_gpu=False)
     elif retriever_type == "elasticsearch":
         retriever = ElasticsearchRetriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
@@ -311,29 +372,31 @@ def document_store_with_docs(request, test_docs_xs):
     document_store.delete_all_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
+@pytest.fixture
 def document_store(request, test_docs_xs):
-    document_store = get_document_store(request.param)
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
+    document_store = get_document_store(request.param, vector_dim.args[0])
     yield document_store
     document_store.delete_all_documents()
 
 
-def get_document_store(document_store_type, embedding_field="embedding"):
+def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding"):
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url="sqlite://", index="haystack_test")
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(
-            return_embedding=True, embedding_field=embedding_field, index="haystack_test"
+            return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, index="haystack_test"
         )
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(
-            index="haystack_test", return_embedding=True, embedding_field=embedding_field
+            index="haystack_test", return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
+            vector_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
@@ -342,6 +405,7 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         return document_store
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
+            vector_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
@@ -351,6 +415,14 @@ def get_document_store(document_store_type, embedding_field="embedding"):
         for collection in collections:
             if collection.startswith("haystack_test"):
                 document_store.milvus_server.drop_collection(collection)
+        return document_store
+    elif document_store_type == "weaviate":
+        document_store = WeaviateDocumentStore(
+            weaviate_url="http://localhost:8080",
+            index="Haystacktest"
+        )
+        document_store.weaviate_client.schema.delete_all()
+        document_store._create_schema_and_index_if_not_exist()
         return document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")

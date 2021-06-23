@@ -665,7 +665,7 @@ class SklearnQueryClassifier(BaseComponent):
             and (not isinstance(vectorizer_name_or_path, str))
         ):
             raise TypeError(
-                "query_classifier and query_classifier must either be of type Path or str"
+                "model_name_or_path and vectorizer_name_or_path must either be of type Path or str"
             )
 
         # save init parameters to enable export of component config as YAML

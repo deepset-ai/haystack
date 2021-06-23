@@ -13,6 +13,20 @@ Haystack is well suited to open-domain QA on languages other than English.
 While our defaults are tuned for English,
 you will find some tips and tricks here for using Haystack in your language. 
 
+##Preprocessor
+
+<div class="recommendation">
+
+**Note**
+
+This feature will be implemented by [this PR.](https://github.com/deepset-ai/haystack/pull/1160)
+
+</div>
+
+The PreProcessor's sentence tokenization is language specific. 
+If you are using the PreProcessor on a language other than English,
+make sure to set the `language` argument when initializing it.
+
 ##Retrievers
 
 The sparse retriever methods themselves(BM25, TF-IDF) are language agnostic.
@@ -36,7 +50,8 @@ document_store = ElasticsearchDocumentStore(analyzer="thai")
 The models used in dense retrievers are language specific. 
 Be sure to check language of the model used in your EmbeddingRetriever. 
 The default model that is loaded in the DensePassageRetriever is for English.
-We are currently working on training a German DensePassageRetriever model and know other teams who work on further languages.
+
+We have created a [German DensePassageRetriever model](https://deepset.ai/germanquad) and know other teams who work on further languages.
 If you have a language model and a question answering dataset in your own language, you can also train a DPR model using Haystack!
 Below is a simplified example.
 See [our tutorial](/docs/latest/tutorial9md) and also the [API reference](/docs/latest/apiretrievermd#train) for `DensePassageRetriever.train()` for more details.
@@ -73,6 +88,20 @@ there are a couple QA models that are directly usable in Haystack.
 
 <div class="tabinner">
 <input type="radio" id="tab-5-1" name="tab-group-5" checked>
+<label class="labelinner" for="tab-5-1">German</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import FARMReader
+
+reader = FARMReader("deepset/gelectra-large-germanquad")
+```
+
+</div>
+</div>
+
+<div class="tabinner">
+<input type="radio" id="tab-5-1" name="tab-group-5" checked>
 <label class="labelinner" for="tab-5-1">French</label>
 <div class="tabcontentinner">
 
@@ -99,6 +128,56 @@ reader = FARMReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 </div>
 </div>
 
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Chinese</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import FARMReader
+
+reader = FARMReader("uer/roberta-base-chinese-extractive-qa")
+# or 
+reader = FARMReader("wptoux/albert-chinese-large-qa")
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Spanish</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import FARMReader
+
+reader = FARMReader("mrm8488/distill-bert-base-spanish-wwm-cased-finetuned-spa-squad2-es")
+# or
+reader = FARMReader("mrm8488/bert-base-spanish-wwm-cased-finetuned-spa-squad2-es")
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Portuguese</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import FARMReader
+
+reader = FARMReader("pierreguillou/bert-base-cased-squad-v1.1-portuguese")
+# or
+reader = FARMReader("pucpr/bioBERTpt-squad-v1.1-portuguese")
+
+```
+
+</div>
+</div>
+
+
 <div class="tabinner">
 <input type="radio" id="tab-5-3" name="tab-group-5">
 <label class="labelinner" for="tab-5-3">Zero-shot</label>
@@ -124,6 +203,21 @@ reader = FARMReader("deepset/xlm-roberta-large-squad2")
 <div class="tabcontent">
 
 <div class="tabs innertabslanguage">
+
+<div class="tabinner">
+<input type="radio" id="tab-5-1" name="tab-group-5" checked>
+<label class="labelinner" for="tab-5-1">German</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import TransformersReader
+
+reader = TransformersReader("deepset/gelectra-large-germanquad")
+```
+
+</div>
+</div>
+
 
 <div class="tabinner2">
 <input type="radio" id="tab-6-1" name="tab-group-6" checked>
@@ -155,6 +249,55 @@ reader = TransformersReader("mrm8488/bert-italian-finedtuned-squadv1-it-alfa")
 
 <div class="tabinner2">
 <input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Chinese</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import TransformersReader
+
+reader = TransformersReader("uer/roberta-base-chinese-extractive-qa")
+# or 
+reader = TransformersReader("wptoux/albert-chinese-large-qa")
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Spanish</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import TransformersReader
+
+reader = TransformersReader("mrm8488/distill-bert-base-spanish-wwm-cased-finetuned-spa-squad2-es")
+# or
+reader = TransformersReader("mrm8488/bert-base-spanish-wwm-cased-finetuned-spa-squad2-es")
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
+<label class="labelinner" for="tab-6-3">Portuguese</label>
+<div class="tabcontentinner">
+
+```python
+from haystack.reader import TransformersReader
+
+reader = TransformersReader("pierreguillou/bert-base-cased-squad-v1.1-portuguese")
+# or
+reader = TransformersReader("pucpr/bioBERTpt-squad-v1.1-portuguese")
+
+```
+
+</div>
+</div>
+
+<div class="tabinner2">
+<input type="radio" id="tab-6-3" name="tab-group-6">
 <label class="labelinner" for="tab-6-3">Zero-shot</label>
 <div class="tabcontentinner">
 
@@ -174,9 +317,11 @@ reader = TransformersReader("deepset/xlm-roberta-large-squad2")
 
 </div>
 
-The **French** and **Italian models** are both monolingual language models trained on French and Italian versions of the SQuAD dataset
+We are the creators of the **German** model and you can find out more about it [here](https://deepset.ai/germanquad)
+
+The **French**, **Italian**, **Spanish**, **Portuguese** and **Chinese** models are monolingual language models trained on versions of the SQuAD dataset in their respective languages
 and their authors report decent results in their model cards
-[here](https://huggingface.co/illuin/camembert-base-fquad) and [here](https://huggingface.co/mrm8488/bert-italian-finedtuned-squadv1-it-alfa).
+(e.g. [here](https://huggingface.co/illuin/camembert-base-fquad) and [here](https://huggingface.co/mrm8488/bert-italian-finedtuned-squadv1-it-alfa)).
 There also exist Korean QA models on the model hub but their performance is not reported.
 
 The **zero-shot model** that is shown above is a **multilingual XLM-RoBERTa Large** that is trained on English SQuAD.
@@ -185,6 +330,4 @@ that the model has been able to transfer some of its English QA capabilities to 
 but still its performance lags behind that of the monolingual models.
 Nonetheless, if there is not yet a monolingual model for your language and it is one of the 100 supported by XLM-RoBERTa,
 this zero-shot model may serve as a decent first baseline.
-
-[//]: # (Add link to Reader training, create section in reader.md on training Reader)
 

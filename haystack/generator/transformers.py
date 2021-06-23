@@ -1,14 +1,17 @@
 import logging
+from collections.abc import Callable
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import numpy
 import torch
-from transformers import RagTokenizer, RagTokenForGeneration
+from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, \
+    AutoModelForSeq2SeqLM, PreTrainedTokenizer, BatchEncoding
 
 from haystack import Document
 from haystack.generator.base import BaseGenerator
 from haystack.retriever.dense import DensePassageRetriever
+from haystack.utils import get_device
 
 logger = logging.getLogger(__name__)
 
@@ -116,10 +119,7 @@ class RAGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        if use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
+        self.device = get_device(use_gpu)
 
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
 
@@ -291,3 +291,187 @@ class RAGenerator(BaseGenerator):
         result = {"query": query, "answers": answers}
 
         return result
+
+
+class Seq2SeqGenerator(BaseGenerator):
+
+    """
+        A generic sequence-to-sequence generator based on HuggingFace's transformers.
+
+        Text generation is supported by so called auto-regressive language models like GPT2,
+        XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
+        GenerationMixin can be used by Seq2SeqGenerator.
+
+        Moreover, as language models prepare model input in their specific encoding, each model
+        specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
+        accompanying model input converter that takes care of prefixes, separator tokens etc.
+        By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5). 
+        It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter 
+        is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
+
+        For mode details on custom model input converters refer to _BartEli5Converter
+
+
+        See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
+        as well as https://huggingface.co/blog/how-to-generate
+
+        For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text-generation
+
+        **Example**
+
+        ```python
+        |     query = "Why is Dothraki language important?"
+        |
+        |     # Retrieve related documents from retriever
+        |     retrieved_docs = retriever.retrieve(query=query)
+        |
+        |     # Now generate answer from query and retrieved documents
+        |     generator.predict(
+        |        query=query,
+        |        documents=retrieved_docs,
+        |        top_k=1
+        |     )
+        |
+        |     # Answer
+        |
+        |     {'answers': [" The Dothraki language is a constructed fictional language. It's important because George R.R. Martin wrote it."],
+        |      'query': 'Why is Dothraki language important?'}
+        |
+        ```
+    """
+
+    _model_input_converters: Dict[str, Callable] = dict()
+
+    def __init__(
+            self,
+            model_name_or_path: str,
+            input_converter: Optional[Callable] = None,
+            top_k: int = 1,
+            max_length: int = 200,
+            min_length: int = 2,
+            num_beams: int = 8,
+            use_gpu: bool = True,
+    ):
+        """
+        :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
+        :param input_converter: an optional Callable to prepare model input for the underlying language model
+                                specified in model_name_or_path parameter. The required __call__ method signature for
+                                the Callable is:
+                                __call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
+                                top_k: Optional[int] = None) -> BatchEncoding:
+        :param top_k: Number of independently generated text to return
+        :param max_length: Maximum length of generated text
+        :param min_length: Minimum length of generated text
+        :param num_beams: Number of beams for beam search. 1 means no beam search.
+        :param use_gpu: Whether to use GPU (if available)
+        """
+
+        self.model_name_or_path = model_name_or_path
+        self.max_length = max_length
+        self.min_length = min_length
+        self.num_beams = num_beams
+
+        if top_k > self.num_beams:
+            top_k = self.num_beams
+            logger.warning(f'top_k value should not be greater than num_beams, hence setting it to {num_beams}')
+
+        self.top_k = top_k
+
+        self.device = get_device(use_gpu)
+
+        Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path).to(self.device)
+        self.model.eval()
+
+    @classmethod
+    def _register_converters(cls, model_name_or_path: str, custom_converter: Optional[Callable]):
+        # init if empty
+        if not cls._model_input_converters:
+            cls._model_input_converters["yjernite/bart_eli5"] = _BartEli5Converter()
+
+        # register user provided custom converter
+        if model_name_or_path and custom_converter:
+            cls._model_input_converters[model_name_or_path] = custom_converter
+
+    @classmethod
+    def _get_converter(cls, model_name_or_path: str):
+        return cls._model_input_converters.get(model_name_or_path)
+
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        """
+        Generate the answer to the input query. The generation will be conditioned on the supplied documents.
+        These document can be retrieved via the Retriever or supplied directly via predict method.
+
+        :param query: Query
+        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+        :param top_k: Number of returned answers
+        :return: Generated answers
+
+        """
+        torch.set_grad_enabled(False)
+        if len(documents) == 0:
+            raise AttributeError("generator needs documents to predict the answer")
+
+        top_k = top_k if top_k is not None else self.top_k
+
+        if top_k > self.num_beams:
+            top_k = self.num_beams
+            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {top_k}")
+
+        converter: Callable = Seq2SeqGenerator._get_converter(self.model_name_or_path)
+        if not converter:
+            raise KeyError(f"Seq2SeqGenerator doesn't have input converter registered for {self.model_name_or_path}. "
+                           f"Provide custom converter for {self.model_name_or_path} in Seq2SeqGenerator initialization")
+
+        try:
+            query_and_docs_encoded: BatchEncoding = converter(tokenizer=self.tokenizer, query=query,
+                                                              documents=documents, top_k=top_k).to(self.device)
+        except TypeError as e:
+            raise TypeError(f"Language model input converter {converter} provided in Seq2SeqGenerator.__init__() does "
+                            f"not have a valid __call__ method signature. The required Callable __call__ signature is: "
+                            f"__call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document], "
+                            f"top_k: Optional[int] = None) -> BatchEncoding:")
+
+        generated_answers_encoded = self.model.generate(
+            input_ids=query_and_docs_encoded["input_ids"],
+            attention_mask=query_and_docs_encoded["attention_mask"],
+            min_length=self.min_length,
+            max_length=self.max_length,
+            do_sample=True if self.num_beams == 1 else False,
+            early_stopping=True,
+            num_beams=self.num_beams,
+            temperature=1.0,
+            top_k=None,
+            top_p=None,
+            eos_token_id=self.tokenizer.eos_token_id,
+            no_repeat_ngram_size=3,
+            num_return_sequences=top_k,
+            decoder_start_token_id=self.tokenizer.bos_token_id
+        )
+        generated_answers = self.tokenizer.batch_decode(generated_answers_encoded, skip_special_tokens=True)
+        return {"query": query, "answers": generated_answers}
+
+
+class _BartEli5Converter:
+    """
+       A sequence-to-sequence model input converter (https://huggingface.co/yjernite/bart_eli5) based on the
+       BART architecture fine-tuned on ELI5 dataset (https://arxiv.org/abs/1907.09190).
+       
+       The converter takes documents and a query as input and formats them into a single sequence
+       that a seq2seq model can use it as input for its generation step. 
+       This includes model-specific prefixes, separation tokens and the actual conversion into tensors.
+       
+       For more details refer to Yacine Jernite's excellent LFQA contributions at https://yjernite.github.io/lfqa.html
+    """
+
+    def __call__(self, tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
+                 top_k: Optional[int] = None) -> BatchEncoding:
+        conditioned_doc = "<P> " + " <P> ".join([d.text for d in documents])
+
+        # concatenate question and support document into BART input
+        query_and_docs = "question: {} context: {}".format(query, conditioned_doc)
+
+        return tokenizer([(query_and_docs, "A")], truncation=True,
+                         padding=True, return_tensors="pt")
