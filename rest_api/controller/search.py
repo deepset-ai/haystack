@@ -2,7 +2,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -36,7 +36,7 @@ class Answer(BaseModel):
     offset_start_in_doc: Optional[int]
     offset_end_in_doc: Optional[int]
     document_id: Optional[str] = None
-    meta: Optional[Dict[str, str]]
+    meta: Optional[Dict[str, Any]]
 
 
 class Response(BaseModel):
