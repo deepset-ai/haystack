@@ -20,6 +20,9 @@ router = APIRouter()
 class Request(BaseModel):
     query: str
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
+    top_k_retriever: Optional[int] = None
+    top_k_reader: Optional[int] = None
+
 
 
 class Answer(BaseModel):
@@ -66,7 +69,10 @@ def _process_request(pipeline, request) -> Response:
                 values = [values]
             filters[key] = values
 
-    result = pipeline.run(query=request.query, filters=filters)
+    result = pipeline.run(query=request.query,
+                          filters=filters,
+                          top_k_retriever=request.top_k_retriever,
+                          top_k_reader=request.top_k_reader)
 
     end_time = time.time()
     logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
