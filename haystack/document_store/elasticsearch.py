@@ -806,7 +806,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.similarity == "cosine":
             similarity_fn_name = "cosineSimilarity"
         elif self.similarity == "dot_product":
-            similarity_fn_name = "dotProduct"
+            similarity_fn_name = "innerproduct"
         else:
             raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
@@ -1052,7 +1052,7 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
                 if self.similarity == "cosine":
                     similarity_space_type = "cosinesimil"
                 elif self.similarity == "dot_product":
-                    similarity_space_type = "inner_product"
+                    similarity_space_type = "innerproduct"
                 elif self.similarity == "l2":
                     similarity_space_type = "l2"
 
