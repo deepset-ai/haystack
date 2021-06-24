@@ -1,16 +1,16 @@
 from haystack import Finder
-from haystack.document_store import FAISSDocumentStore, MilvusDocumentStore, OpenDistroElasticsearchDocumentStore, ElasticsearchDocumentStore
+from haystack.document_store import OpenSearchDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader
-from haystack.utils import print_answers, launch_milvus, launch_open_distro_es, launch_opensearch
+from haystack.utils import print_answers, launch_opensearch
 from haystack.retriever.dense import DensePassageRetriever
 
 def tutorial6_better_retrieval_via_dpr():
 
     launch_opensearch()
     # print("init_doc_store")
-    document_store = OpenDistroElasticsearchDocumentStore(index_type="hnsw", similarity="dot_product")
+    document_store = OpenSearchDocumentStore(index_type="hnsw", similarity="dot_product")
 
     # ## Preprocessing of documents
     # Let's first get some documents that we want to query

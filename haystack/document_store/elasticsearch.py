@@ -995,9 +995,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
-class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
+
+class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     """
-    Document Store using the Open Distro for Elasticsearch. It is compatible with the AWS Elasticsearch Service.
+    Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
 
     In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
     the KNN plugin that can scale to a large number of documents.
@@ -1006,13 +1007,13 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
     def __init__(self, **kwargs):
 
         # Overwrite default kwarg values of parent class so that in default cases we can initialize
-        # an OpenDistroElastichsearchDocumentStore without provding any arguments
+        # an OpenSearchDocumentStore without provding any arguments
         kwargs["verify_certs"] = kwargs.get("verify_certs", False)
         kwargs["scheme"] = kwargs.get("scheme", "https")
         kwargs["username"] = kwargs.get("username", "admin")
         kwargs["password"] = kwargs.get("password", "admin")
 
-        super(OpenDistroElasticsearchDocumentStore, self).__init__(**kwargs)
+        super(OpenSearchDocumentStore, self).__init__(**kwargs)
 
 
     def _create_document_index(self, index_name: str):
@@ -1088,3 +1089,10 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
 
     def _scale_embedding_score(self, score):
         return score
+
+
+class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
+    def __init__(self):
+        logger.warning("Open Distro for Elasticsearch has been replaced by OpenSearch! "
+                       "See https://opensearch.org/faq/ for details. "
+                       "We recommend using the OpenSearchDocumentStore instead.")
