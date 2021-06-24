@@ -13,14 +13,30 @@ from utils import feedback_doc
 from utils import retrieve_doc
 from utils import upload_doc
 
+# Adjust to a question that you would like users to see in the search bar when they load the UI:
+DEFAULT_QUESTION_AT_STARTUP = "Who is the father of Arya Stark?"
+
 
 def annotate_answer(answer, context):
+    """ If we are using an extractive QA pipeline, we'll get answers
+    from the API that we highlight in the given context"""
     start_idx = context.find(answer)
     end_idx = start_idx + len(answer)
     annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
 
 
+def show_plain_documents(text):
+    """ If we are using a plain document search pipeline, i.e. only retriever, we'll get plain documents
+    from the API that we just show without any highlighting"""
+    st.markdown(text)
+
+
 def random_questions(df):
+    """
+    Helper to get one random question + gold random_answer from the user's CSV 'eval_labels_example'.
+    This can then be shown in the UI when the evaluation mode is selected. Users can easily give feedback on the
+    model's results and "enrich" the eval dataset with more acceptable labels
+    """
     random_row = df.sample(1)
     random_question = random_row["Question Text"].values[0]
     random_answer = random_row["Answer"].values[0]
@@ -29,12 +45,12 @@ def random_questions(df):
 
 # Define state
 state_question = SessionState.get(
-    random_question="Who is the father of Arya Starck?", random_answer="", next_question="false", run_query="false"
+    random_question=DEFAULT_QUESTION_AT_STARTUP, random_answer="", next_question="false", run_query="false"
 )
 
 # Initialize variables
 eval_mode = False
-random_question = "Who is the father of Arya Starck?"
+random_question = DEFAULT_QUESTION_AT_STARTUP
 eval_labels = os.getenv("EVAL_FILE", "eval_labels_example.csv")
 
 # UI search bar and sidebar
@@ -76,7 +92,7 @@ if eval_mode:
         state_question.random_question = random_question
         state_question.random_answer = random_answer
 
-# Generate new random question
+# Get next random question from the CSV
 if eval_mode:
     next_question = st.button("Load new question")
     if next_question:
@@ -113,23 +129,26 @@ if run_query:
         st.write("## Correct answers:")
         random_answer
 
-    st.write("## Retrieved answers:")
+    st.write("## Results:")
 
     # Make every button key unique
     count = 0
 
     for result in results:
-        annotate_answer(result["answer"], result["context"])
-        "**Relevance:** ", result["relevance"], "**Source:** ", result["source"]
+        if result["answer"]:
+            annotate_answer(result["answer"], result["context"])
+        else:
+            show_plain_documents(result["context"])
+        st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
         if eval_mode:
             # Define columns for buttons
             button_col1, button_col2, button_col3, button_col4 = st.beta_columns([1, 1, 1, 6])
-            if button_col1.button("👍", key=(result["answer"] + str(count)), help="Correct answer"):
+            if button_col1.button("👍", key=(result["context"] + str(count)), help="Correct answer"):
                 raw_json_feedback = feedback_doc(
                     question, "true", result["document_id"], 1, "true", result["answer"], result["offset_start_in_doc"]
                 )
                 st.success("Thanks for your feedback")
-            if button_col2.button("👎", key=(result["answer"] + str(count)), help="Wrong answer and wrong passage"):
+            if button_col2.button("👎", key=(result["context"] + str(count)), help="Wrong answer and wrong passage"):
                 raw_json_feedback = feedback_doc(
                     question,
                     "false",
@@ -140,7 +159,7 @@ if run_query:
                     result["offset_start_in_doc"],
                 )
                 st.success("Thanks for your feedback!")
-            if button_col3.button("👎👍", key=(result["answer"] + str(count)), help="Wrong answer, but correct passage"):
+            if button_col3.button("👎👍", key=(result["context"] + str(count)), help="Wrong answer, but correct passage"):
                 raw_json_feedback = feedback_doc(
                     question, "false", result["document_id"], 1, "true", result["answer"], result["offset_start_in_doc"]
                 )
