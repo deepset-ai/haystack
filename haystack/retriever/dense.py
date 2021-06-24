@@ -4,13 +4,14 @@ from typing import List, Union, Optional
 import torch
 import numpy as np
 from pathlib import Path
+
+from farm.utils import initialize_device_settings
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModel
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
-from haystack.utils import get_device
 
 from farm.infer import Inferencer
 from farm.modeling.tokenization import Tokenizer
@@ -121,7 +122,7 @@ class DensePassageRetriever(BaseRetriever):
                            "We recommend you use dot_product instead. "
                            "This can be set when initializing the DocumentStore")
 
-        self.device = get_device(use_gpu)
+        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
         tokenizers_default_classes = {
@@ -628,7 +629,7 @@ class _SentenceTransformersEmbeddingEncoder(_EmbeddingEncoder):
                               "For details see https://github.com/UKPLab/sentence-transformers ")
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        device = get_device(retriever.use_gpu)
+        device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
         self.embedding_model = SentenceTransformer(retriever.embedding_model, device=device)
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
