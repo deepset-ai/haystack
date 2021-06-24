@@ -14,7 +14,7 @@ from utils import retrieve_doc
 from utils import upload_doc
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
-DEFAULT_QUESTION_AT_STARTUP = "vorsteuerabzug bei reisekosten"
+DEFAULT_QUESTION_AT_STARTUP = "Who is the father of Arya Stark?"
 
 
 def annotate_answer(answer, context):
