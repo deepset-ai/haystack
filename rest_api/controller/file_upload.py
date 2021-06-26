@@ -49,7 +49,7 @@ def file_upload(
         meta["name"] = file.filename
 
         INDEXING_PIPELINE.run(
-            file_path=file_path,
+            file_paths=file_path,
             remove_numeric_tables=remove_numeric_tables,
             remove_whitespace=remove_whitespace,
             remove_empty_lines=remove_empty_lines,

@@ -25,7 +25,7 @@ def test_load_and_save_yaml(document_store_with_docs, tmp_path):
         Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_path=Path("samples/pdf/sample_pdf_1.pdf"),
+        file_paths=Path("samples/pdf/sample_pdf_1.pdf"),
         top_k_retriever=10,
         top_k_reader=3,
     )
