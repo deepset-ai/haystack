@@ -8,3 +8,5 @@ FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", "./file-upload")
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 ROOT_PATH = os.getenv("ROOT_PATH", "/")
+
+CONCURRENT_REQUEST_PER_WORKER = os.getenv("CONCURRENT_REQUEST_PER_WORKER", 10)
