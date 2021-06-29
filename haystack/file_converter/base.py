@@ -91,7 +91,7 @@ class BaseConverter(BaseComponent):
             file_paths = [file_paths]
 
         if meta is None or isinstance(meta, dict):
-            meta = [meta] * len(file_paths)
+            meta = [meta] * len(file_paths)  # type: ignore
 
         documents: list = []
         for file_path, file_meta in zip(file_paths, meta):
