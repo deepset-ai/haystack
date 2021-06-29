@@ -114,7 +114,7 @@ class FileTypeClassifier(BaseComponent):
         :param file_paths:
         :return: set
         """
-        return {file_path.name.split(".")[-1].lower() for file_path in file_paths}
+        return {file_path.suffix for file_path in file_paths}
 
     def run(self, file_paths: Union[Path, List[Path]], **kwargs):  # type: ignore
         """
