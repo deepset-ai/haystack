@@ -82,18 +82,22 @@ class BaseConverter(BaseComponent):
         else:
             return False
 
-    def run(self, file_paths: Union[Path, List[Path]], meta: Optional[Dict[str, str]] = None,  # type: ignore
+    def run(self, file_paths: Union[Path, List[Path]],
+            meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None,  # type: ignore
             remove_numeric_tables: Optional[bool] = None,  # type: ignore
             valid_languages: Optional[List[str]] = None, **kwargs):  # type: ignore
 
         if isinstance(file_paths, Path):
             file_paths = [file_paths]
 
+        if meta is None or isinstance(meta, dict):
+            meta = [meta] * len(file_paths)
+
         documents: list = []
-        for file_path in file_paths:
+        for file_path, file_meta in zip(file_paths, meta):
             documents.append(self.convert(
                     file_path=file_path,
-                    meta=meta,
+                    meta=file_meta,
                     remove_numeric_tables=remove_numeric_tables,
                     valid_languages=valid_languages,
             ))
