@@ -2,7 +2,7 @@
 name: Bug report
 about: Errors you encountered
 title: ''
-labels: bug
+labels: ''
 assignees: ''
 
 ---
@@ -21,6 +21,9 @@ Add any other context about the problem here, like document types / preprocessin
 
 **To Reproduce**
 Steps to reproduce the behavior
+
+**FAQ Check**
+- [ ] Have you had a look at [our new FAQ page](https://haystack.deepset.ai/docs/latest/faqmd)?
 
 **System:**
  - OS: 
