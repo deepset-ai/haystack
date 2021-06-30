@@ -378,7 +378,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             _doc[k] = v
                         _doc.pop("meta")
 
-                    doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
                     if _doc.get(self.faq_question_field) is None:
                         _doc.pop(self.faq_question_field)
@@ -391,7 +390,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             self._update_schema(property, index)
                             current_properties.append(property)
 
-                    docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
+                    docs_batch.add(_doc, class_name=index, uuid=None, vector=vector)
 
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create(docs_batch)
