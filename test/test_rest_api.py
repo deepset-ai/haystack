@@ -22,7 +22,7 @@ def test_api(reader, document_store):
     client = get_test_client_and_override_dependencies()
 
     # test file upload API
-    file_to_upload = {'file': Path("samples/pdf/sample_pdf_1.pdf").open('rb')}
+    file_to_upload = {'files': Path("samples/pdf/sample_pdf_1.pdf").open('rb')}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
     assert 200 == response.status_code
 
