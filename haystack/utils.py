@@ -58,6 +58,20 @@ def launch_milvus():
         time.sleep(15)
 
 
+def launch_weaviate():
+    # Start a Weaviate server via Docker
+
+    logger.info("Starting Weaviate ...")
+    status = subprocess.run(
+        ["docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.4.0"], shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start Weaviate through Docker but this failed. "
+                       "It is likely that there is already an existing Weaviate instance running. ")
+    else:
+        time.sleep(15)
+
+
 def print_answers(results: dict, details: str = "all"):
     # TODO: unify the output format of Generator and Reader so that this function doesn't have the try/except
     #  Or implement a class method like PredReader.print() and PredGenerator.print() that handles all this functionality.
