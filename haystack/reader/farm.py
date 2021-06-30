@@ -5,7 +5,6 @@ from typing import List, Optional, Union, Dict, Any
 from collections import defaultdict
 from time import perf_counter
 
-import numpy as np
 from farm.data_handler.data_silo import DataSilo
 from farm.data_handler.processor import SquadProcessor
 from farm.data_handler.dataloader import NamedDataLoader
@@ -17,7 +16,6 @@ from farm.modeling.adaptive_model import AdaptiveModel
 from farm.train import Trainer
 from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
-from scipy.special import expit
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
@@ -126,6 +124,7 @@ class FARMReader(BaseReader):
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
+        self.device, _ = initialize_device_settings(use_cuda=self.use_gpu)
 
     def train(
         self,
@@ -394,7 +393,7 @@ class FARMReader(BaseReader):
 
         return result
 
-    def eval_on_file(self, data_dir: str, test_filename: str, device: str):
+    def eval_on_file(self, data_dir: str, test_filename: str, device: Optional[str] = None):
         """
         Performs evaluation on a SQuAD-formatted file.
         Returns a dict containing the following metrics:
@@ -406,9 +405,11 @@ class FARMReader(BaseReader):
         :type data_dir: Path or str
         :param test_filename: The name of the file containing the test data in SQuAD format.
         :type test_filename: str
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
         :type device: str
         """
+        if device is None:
+            device = self.device
         eval_processor = SquadProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
             max_seq_len=self.inferencer.processor.max_seq_len,
@@ -437,7 +438,7 @@ class FARMReader(BaseReader):
     def eval(
             self,
             document_store: BaseDocumentStore,
-            device: str,
+            device: Optional[str] = None,
             label_index: str = "label",
             doc_index: str = "eval_document",
             label_origin: str = "gold_label",
@@ -451,13 +452,14 @@ class FARMReader(BaseReader):
               - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
         :param document_store: DocumentStore containing the evaluation documents
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
         :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
         """
-
+        if device is None:
+            device = self.device
         if self.top_k_per_candidate != 4:
             logger.info(f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
                         f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
@@ -603,7 +605,7 @@ class FARMReader(BaseReader):
     def calibrate_confidence_scores(
             self,
             document_store: BaseDocumentStore,
-            device: str,
+            device: Optional[str] = None,
             label_index: str = "label",
             doc_index: str = "eval_document",
             label_origin: str = "gold_label"
@@ -612,21 +614,19 @@ class FARMReader(BaseReader):
         Calibrates confidence scores on evaluation documents in the DocumentStore.
 
         :param document_store: DocumentStore containing the evaluation documents
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
         """
+        if device is None:
+            device = self.device
         self.eval(document_store=document_store,
                   device=device,
                   label_index=label_index,
                   doc_index=doc_index,
                   label_origin=label_origin,
                   calibrate_conf_scores=True)
-
-    @staticmethod
-    def _get_pseudo_prob(score: float):
-        return float(expit(np.asarray(score) / 8))
 
     @staticmethod
     def _check_no_answer(c: QACandidate):

@@ -3,7 +3,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Generator, Set
+from typing import List, Optional, Generator, Set, Union
 
 import nltk
 from more_itertools import windowed
@@ -11,6 +11,28 @@ from more_itertools import windowed
 from haystack.preprocessor.base import BasePreProcessor
 
 logger = logging.getLogger(__name__)
+
+
+iso639_to_nltk = {
+    "ru": "russian",
+    "sl": "slovene",
+    "es": "spanish",
+    "sv": "swedish",
+    "tr": "turkish",
+    "cs": "czech",
+    "da": "danish",
+    "nl": "dutch",
+    "en": "english",
+    "et": "estonian",
+    "fi": "finnish",
+    "fr": "french",
+    "de": "german",
+    "el": "greek",
+    "it": "italian",
+    "no": "norwegian",
+    "pl": "polish",
+    "pt": "portuguese",
+}
 
 
 class PreProcessor(BasePreProcessor):
@@ -23,6 +45,7 @@ class PreProcessor(BasePreProcessor):
         split_length: int = 1000,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
+        language: str = "en",
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -43,6 +66,7 @@ class PreProcessor(BasePreProcessor):
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
+        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -56,7 +80,7 @@ class PreProcessor(BasePreProcessor):
             nltk.data.find('tokenizers/punkt')
         except LookupError:
             nltk.download('punkt')
-            
+
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
@@ -64,10 +88,11 @@ class PreProcessor(BasePreProcessor):
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
+        self.language = iso639_to_nltk.get(language, language)
 
     def process(
         self,
-        document: dict,
+        documents: Union[dict, List[dict]],
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
@@ -76,9 +101,51 @@ class PreProcessor(BasePreProcessor):
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
     ) -> List[dict]:
+
         """
-        Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
+        Perform document cleaning and splitting. Can take a single document or a list of documents as input and returns a list of documents.
         """
+
+        kwargs = {
+            "clean_whitespace": clean_whitespace,
+            "clean_header_footer": clean_header_footer,
+            "clean_empty_lines": clean_empty_lines,
+            "split_by": split_by,
+            "split_length": split_length,
+            "split_overlap": split_overlap,
+            "split_respect_sentence_boundary": split_respect_sentence_boundary
+        }
+
+        ret = []
+
+        if type(documents) == dict:
+            ret = self._process_single(
+                document=documents,
+                **kwargs                #type: ignore
+        )
+        elif type(documents) == list:
+            ret = self._process_batch(
+                documents=list(documents),
+                **kwargs
+            )
+
+        else:
+            raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
+
+        return ret
+
+    def _process_single(
+        self,
+        document,
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        split_by: Optional[str] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
+        split_respect_sentence_boundary: Optional[bool] = None,
+    ) -> List[dict]:
+
         if clean_whitespace is None:
             clean_whitespace = self.clean_whitespace
         if clean_header_footer is None:
@@ -108,6 +175,14 @@ class PreProcessor(BasePreProcessor):
             split_respect_sentence_boundary=split_respect_sentence_boundary,
         )
         return split_documents
+
+    def _process_batch(
+        self,
+        documents: List[dict],
+        **kwargs
+    ) -> List[dict]:
+        nested_docs = [self.process(d, **kwargs) for d in documents]
+        return [d for x in nested_docs for d in x]
 
     def clean(
         self,
@@ -166,7 +241,7 @@ class PreProcessor(BasePreProcessor):
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
-            sentences = nltk.tokenize.sent_tokenize(text)
+            sentences = nltk.tokenize.sent_tokenize(text, language=self.language)
             word_count = 0
             list_splits = []
             current_slice: List[str] = []
@@ -207,7 +282,7 @@ class PreProcessor(BasePreProcessor):
             if split_by == "passage":
                 elements = text.split("\n\n")
             elif split_by == "sentence":
-                elements = nltk.tokenize.sent_tokenize(text)
+                elements = nltk.tokenize.sent_tokenize(text, language=self.language)
             elif split_by == "word":
                 elements = text.split(" ")
             else:

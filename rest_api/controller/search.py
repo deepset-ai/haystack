@@ -2,13 +2,13 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from haystack import Pipeline
-from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, QUERY_PIPELINE_NAME
+from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, QUERY_PIPELINE_NAME, CONCURRENT_REQUEST_PER_WORKER
 from rest_api.controller.utils import RequestLimiter
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
@@ -20,6 +20,9 @@ router = APIRouter()
 class Request(BaseModel):
     query: str
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
+    top_k_retriever: Optional[int] = None
+    top_k_reader: Optional[int] = None
+
 
 
 class Answer(BaseModel):
@@ -33,7 +36,7 @@ class Answer(BaseModel):
     offset_start_in_doc: Optional[int]
     offset_end_in_doc: Optional[int]
     document_id: Optional[str] = None
-    meta: Optional[Dict[str, str]]
+    meta: Optional[Dict[str, Any]]
 
 
 class Response(BaseModel):
@@ -43,7 +46,7 @@ class Response(BaseModel):
 
 PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
 logger.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
-concurrency_limiter = RequestLimiter(4)
+concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
 
 
 @router.post("/query", response_model=Response)
@@ -66,7 +69,10 @@ def _process_request(pipeline, request) -> Response:
                 values = [values]
             filters[key] = values
 
-    result = pipeline.run(query=request.query, filters=filters)
+    result = pipeline.run(query=request.query,
+                          filters=filters,
+                          top_k_retriever=request.top_k_retriever,
+                          top_k_reader=request.top_k_reader)
 
     end_time = time.time()
     logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
