@@ -26,7 +26,7 @@ os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)  # create directory for uploading f
 
 @router.post("/file-upload")
 def file_upload(
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     meta: Optional[str] = Form("null"),  # JSON serialized string
     remove_numeric_tables: Optional[bool] = Form(None),
     remove_whitespace: Optional[bool] = Form(None),
@@ -40,16 +40,25 @@ def file_upload(
 ):
     if not INDEXING_PIPELINE:
         raise HTTPException(status_code=501, detail="Indexing Pipeline is not configured.")
-    try:
-        file_path = Path(FILE_UPLOAD_PATH) / f"{uuid.uuid4().hex}_{file.filename}"
-        with file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
 
-        meta = json.loads(meta) or {}
-        meta["name"] = file.filename
+    file_paths: list = []
+    file_metas: list = []
+    meta = json.loads(meta) or {}
 
-        INDEXING_PIPELINE.run(
-            file_path=file_path,
+    for file in files:
+        try:
+            file_path = Path(FILE_UPLOAD_PATH) / f"{uuid.uuid4().hex}_{file.filename}"
+            with file_path.open("wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            file_paths.append(file_path)
+            meta["name"] = file.filename
+            file_metas.append(meta)
+        finally:
+            file.file.close()
+
+    INDEXING_PIPELINE.run(
+            file_paths=file_paths,
             remove_numeric_tables=remove_numeric_tables,
             remove_whitespace=remove_whitespace,
             remove_empty_lines=remove_empty_lines,
@@ -59,7 +68,5 @@ def file_upload(
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
-            meta=meta,
-        )
-    finally:
-        file.file.close()
+            meta=file_metas,
+    )
