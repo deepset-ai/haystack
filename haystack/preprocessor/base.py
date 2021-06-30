@@ -39,7 +39,7 @@ class BasePreProcessor(BaseComponent):
 
     def run(  # type: ignore
         self,
-        document: dict,
+        documents: Union[dict, List[dict]],
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
@@ -50,7 +50,7 @@ class BasePreProcessor(BaseComponent):
         **kwargs,
     ):
         documents = self.process(
-            documents=document,
+            documents=documents,
             clean_whitespace=clean_whitespace,
             clean_header_footer=clean_header_footer,
             clean_empty_lines=clean_empty_lines,
