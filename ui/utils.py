@@ -58,6 +58,6 @@ def feedback_doc(question, is_correct_answer, document_id, model_id, is_correct_
 
 def upload_doc(file):
     url = f"{API_ENDPOINT}/{DOC_UPLOAD}"
-    files = [("file", file)]
+    files = [("files", file)]
     response_raw = requests.post(url, files=files).json()
     return response_raw
