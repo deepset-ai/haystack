@@ -1065,11 +1065,13 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     logger.error("Please set index_type to either 'flat' or 'hnsw'")
                 mapping["settings"]["knn"] = knn
                 mapping["settings"]["knn.space_type"] = similarity_space_type
+                mapping["settings"]["knn.algo_param.ef_search"] = 20
                 mapping["mappings"]["properties"][self.embedding_field] = {
                     "type": "knn_vector",
                     "dimension": self.embedding_dim,
                 }
-
+                mapping["mappings"]["parameters.ef_construction"] = 80
+                mapping["mappings"]["parameters.m"] = 64
         try:
             self.client.indices.create(index=index_name, body=mapping)
         except RequestError as e:
