@@ -1,13 +1,14 @@
 import os
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore
+from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.document_store.milvus import MilvusDocumentStore, IndexType
 from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
+from haystack.utils import launch_milvus, launch_es, launch_opensearch
 from farm.file_utils import http_get
 
 import logging
@@ -57,7 +58,7 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
             index=index
         )
         assert document_store.get_document_count(index="eval_document") == 0
-    elif document_store_type in("faiss_flat", "faiss_hnsw"):
+    elif document_store_type in ("faiss_flat", "faiss_hnsw"):
         if document_store_type == "faiss_flat":
             index_type = "Flat"
         elif document_store_type == "faiss_hnsw":
@@ -80,7 +81,12 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
             index=index
         )
         assert document_store.get_document_count() == 0
-
+    elif document_store_type in ("opensearch_flat", "opensearch_hnsw"):
+        if document_store_type == "opensearch_flat":
+            index_type = "flat"
+        elif document_store_type == "opensearch_hnsw":
+            index_type = "hnsw"
+        document_store = OpenSearchDocumentStore(index_type=index_type)
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
     return document_store

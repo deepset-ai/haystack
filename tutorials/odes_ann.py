@@ -1,3 +1,5 @@
+import time
+
 from haystack import Finder
 from haystack.document_store import OpenSearchDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
@@ -53,13 +55,16 @@ def tutorial6_better_retrieval_via_dpr():
     pipe = ExtractiveQAPipeline(reader, retriever)
 
     ## Voilà! Ask a question!
-    prediction = pipe.run(query="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
+    tic = time.perf_counter()
+    for _ in range(10):
+        prediction = pipe.run(query="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
+    toc = time.perf_counter()
 
     # prediction = pipe.run(query="Who created the Dothraki vocabulary?", top_k_reader=5)
     # prediction = pipe.run(query="Who is the sister of Sansa?", top_k_reader=5)
 
     print_answers(prediction, details="minimal")
-
+    print(toc-tic)
 
 if __name__ == "__main__":
     tutorial6_better_retrieval_via_dpr()

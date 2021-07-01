@@ -142,6 +142,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             self.index_type = index_type
         else:
             raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
+        if index_type == "hnsw" and type(self) == ElasticsearchDocumentStore:
+            raise Exception("The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
+                            "Try the OpenSearchDocumentStore instead.")
         if create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
@@ -1058,20 +1061,21 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     similarity_space_type = "l2"
 
                 if self.index_type == "flat":
-                    knn = False
+                    mapping["settings"]["knn"] = False
                 elif self.index_type == "hnsw":
-                    knn = True
+                    mapping["settings"]["knn"] = True
+                    mapping["settings"]["knn.algo_param.ef_search"] = 20
+                    mapping["mappings"]["parameters.ef_construction"] = 80
+                    mapping["mappings"]["parameters.m"] = 64
                 else:
                     logger.error("Please set index_type to either 'flat' or 'hnsw'")
-                mapping["settings"]["knn"] = knn
-                mapping["settings"]["knn.space_type"] = similarity_space_type
-                mapping["settings"]["knn.algo_param.ef_search"] = 20
+
                 mapping["mappings"]["properties"][self.embedding_field] = {
                     "type": "knn_vector",
                     "dimension": self.embedding_dim,
                 }
-                mapping["mappings"]["parameters.ef_construction"] = 80
-                mapping["mappings"]["parameters.m"] = 64
+                mapping["settings"]["knn.space_type"] = similarity_space_type
+
         try:
             self.client.indices.create(index=index_name, body=mapping)
         except RequestError as e:
