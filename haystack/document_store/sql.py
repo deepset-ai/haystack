@@ -329,6 +329,7 @@ class SQLDocumentStore(BaseDocumentStore):
         # TODO: Use batch_size
         for label in labels:
             label_orm = LabelORM(
+                id=label.id,
                 document_id=label.document_id,
                 no_answer=label.no_answer,
                 origin=label.origin,
