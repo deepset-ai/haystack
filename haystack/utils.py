@@ -45,7 +45,7 @@ def launch_opensearch(sleep=15):
     logger.info("Starting OpenSearch ...")
     status = subprocess.run(
         [
-            'docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.0.0-rc1'],
+            'docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.0.0-rc1'],
         shell=True
     )
     if status.returncode:
