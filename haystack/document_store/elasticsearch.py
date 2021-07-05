@@ -1015,6 +1015,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         kwargs["scheme"] = kwargs.get("scheme", "https")
         kwargs["username"] = kwargs.get("username", "admin")
         kwargs["password"] = kwargs.get("password", "admin")
+        kwargs["port"] = kwargs.get("port", 9201)
 
         super(OpenSearchDocumentStore, self).__init__(**kwargs)
 
@@ -1060,21 +1061,27 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 elif self.similarity == "l2":
                     similarity_space_type = "l2"
 
-                if self.index_type == "flat":
-                    mapping["settings"]["knn"] = False
-                elif self.index_type == "hnsw":
-                    mapping["settings"]["knn"] = True
-                    mapping["settings"]["knn.algo_param.ef_search"] = 20
-                    mapping["mappings"]["parameters.ef_construction"] = 80
-                    mapping["mappings"]["parameters.m"] = 64
-                else:
-                    logger.error("Please set index_type to either 'flat' or 'hnsw'")
+                mapping["settings"]["index"] = {}
+                mapping["settings"]["index"]["knn"] = True
+                mapping["settings"]["index"]["knn.space_type"] = similarity_space_type
 
                 mapping["mappings"]["properties"][self.embedding_field] = {
                     "type": "knn_vector",
                     "dimension": self.embedding_dim,
                 }
-                mapping["settings"]["knn.space_type"] = similarity_space_type
+
+                if self.index_type == "flat":
+                    pass
+                elif self.index_type == "hnsw":
+                    mapping["settings"]["index"]["knn.algo_param.ef_search"] = 20
+                    mapping["mappings"]["properties"][self.embedding_field]["method"] = {
+                        "parameters": {
+                            "ef_construction": 80,
+                            "m": 64
+                        }
+                    }
+                else:
+                    logger.error("Please set index_type to either 'flat' or 'hnsw'")
 
         try:
             self.client.indices.create(index=index_name, body=mapping)
