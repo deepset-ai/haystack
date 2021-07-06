@@ -326,6 +326,11 @@ class SQLDocumentStore(BaseDocumentStore):
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
         index = index or self.label_index
+        labels_found = self.get_labels_by_id(ids=[label.id for label in labels], index=index)
+        if len(labels_found) > 0:
+            ids_exist_in_db = [label.id for label in labels_found]
+            logger.warning(f"Duplicate labels: Label with ids {','.join(ids_exist_in_db)}' already exists in index "
+                           f"'{index}'")
         # TODO: Use batch_size
         for label in labels:
             label_orm = LabelORM(
@@ -341,8 +346,22 @@ class SQLDocumentStore(BaseDocumentStore):
                 model_id=label.model_id,
                 index=index,
             )
-            self.session.add(label_orm)
+            if label.id in ids_exist_in_db:
+                self.session.merge(label_orm)
+            else:
+                self.session.merge(label_orm)
         self.session.commit()
+
+    def get_labels_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Label]:
+        """Fetch Labels by specifying a list of text id strings"""
+        index: str = index or self.label_index
+        labels: list = []
+
+        query = self.session.query(LabelORM).filter(LabelORM.id.in_(ids),LabelORM.index == index)
+        for row in query.all():
+            labels.append(self._convert_sql_row_to_label(row))
+
+        return labels
 
     def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None, batch_size: int = 10_000):
         """
@@ -432,7 +451,8 @@ class SQLDocumentStore(BaseDocumentStore):
             offset_start_in_doc=row.offset_start_in_doc,
             model_id=row.model_id,
             created_at=row.created_at,
-            updated_at=row.updated_at
+            updated_at=row.updated_at,
+            id=row.id
         )
         return label
 
