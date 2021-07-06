@@ -326,6 +326,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
         index = index or self.label_index
+        ids_exist_in_db: list = []
         labels_found = self.get_labels_by_id(ids=[label.id for label in labels], index=index)
         if len(labels_found) > 0:
             ids_exist_in_db = [label.id for label in labels_found]
