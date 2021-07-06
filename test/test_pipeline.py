@@ -18,8 +18,8 @@ from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_load_and_save_yaml(document_store_with_docs, tmp_path):
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_load_and_save_yaml(document_store, tmp_path):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
         Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="indexing_pipeline"
@@ -58,7 +58,7 @@ def test_load_and_save_yaml(document_store_with_docs, tmp_path):
           type: ElasticsearchRetriever
         - name: ElasticsearchDocumentStore
           params:
-            index: haystack_test_document
+            index: haystack_test
             label_index: haystack_test_label
           type: ElasticsearchDocumentStore
         - name: Reader
