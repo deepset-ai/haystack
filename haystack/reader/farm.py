@@ -51,7 +51,11 @@ class FARMReader(BaseReader):
         max_seq_len: int = 256,
         doc_stride: int = 128,
         progress_bar: bool = True,
-        duplicate_filtering: int = 0
+        duplicate_filtering: int = 0,
+        proxies=None,
+        local_files_only=False,
+        force_download=False,
+        **kwargs
     ):
 
         """
@@ -99,7 +103,8 @@ class FARMReader(BaseReader):
             batch_size=batch_size, use_gpu=use_gpu, no_ans_boost=no_ans_boost, return_no_answer=return_no_answer,
             top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
             num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering
+            duplicate_filtering=duplicate_filtering,proxies=proxies,local_files_only=local_files_only,
+            force_download=force_download,**kwargs
         )
 
         self.return_no_answers = return_no_answer
@@ -109,7 +114,11 @@ class FARMReader(BaseReader):
                                             task_type="question_answering", max_seq_len=max_seq_len,
                                             doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
                                             disable_tqdm=not progress_bar,
-                                            strict=False)
+                                            strict=False,
+                                            proxies=proxies,
+                                            local_files_only=local_files_only,
+                                            force_download=force_download,
+                                            **kwargs)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
