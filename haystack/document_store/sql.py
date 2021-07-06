@@ -354,7 +354,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def get_labels_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Label]:
         """Fetch Labels by specifying a list of text id strings"""
-        index: str = index or self.label_index
+        index = index or self.label_index
         labels: list = []
 
         query = self.session.query(LabelORM).filter(LabelORM.id.in_(ids),LabelORM.index == index)
