@@ -269,6 +269,13 @@ class BaseComponent:
         cls.subclasses[cls.__name__] = cls
 
     @classmethod
+    def get_subclass(cls, component_type: str):
+        if component_type not in cls.subclasses.keys():
+            raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
+        subclass = cls.subclasses[component_type]
+        return subclass
+
+    @classmethod
     def load_from_args(cls, component_type: str, **kwargs):
         """
         Load a component instance of the given type using the kwargs.
@@ -276,10 +283,26 @@ class BaseComponent:
         :param component_type: name of the component class to load.
         :param kwargs: parameters to pass to the __init__() for the component. 
         """
-        if component_type not in cls.subclasses.keys():
-            raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
-        instance = cls.subclasses[component_type](**kwargs)
+        subclass = cls.get_subclass(component_type)
+        instance = subclass(**kwargs)
         return instance
+
+    @classmethod
+    def load_from_pipeline_config(cls, pipeline_config, component_name):
+        if pipeline_config:
+            all_component_configs = pipeline_config["components"]
+            all_component_names = [comp["name"] for comp in all_component_configs]
+            component_config = next(comp for comp in all_component_configs if comp["name"] == component_name)
+            component_params = component_config["params"]
+
+            for key, value in component_params.items():
+                if value in all_component_names:  # check if the param value is a reference to another component
+                    component_params[key] = cls.load_from_pipeline_config(pipeline_config, value)
+
+            component_instance = cls.load_from_args(component_config["type"], **component_params)
+        else:
+            component_instance = cls.load_from_args(component_name)
+        return component_instance
 
     @abstractmethod
     def run(self, *args: Any, **kwargs: Any):

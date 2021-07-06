@@ -1,3 +1,4 @@
+import copy
 import inspect
 import logging
 import os
@@ -9,6 +10,8 @@ from typing import List, Optional, Dict, Union, Any
 import pickle
 import urllib
 from functools import wraps
+import ray
+from ray import serve
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 
@@ -41,6 +44,11 @@ class Pipeline:
 
     def __init__(self, pipeline_type: str = "Query"):
         self.graph = DiGraph()
+        self.pipeline_type = pipeline_type
+        self._setup_root_node(pipeline_type)
+        self.components: dict = {}
+
+    def _setup_root_node(self, pipeline_type):
         if pipeline_type == "Query":
             self.root_node_id = "Query"
             self.graph.add_node("Query", component=RootNode())
@@ -49,9 +57,6 @@ class Pipeline:
             self.graph.add_node("File", component=RootNode())
         else:
             raise Exception(f"pipeline_type '{pipeline_type}' is not valid. Supported types are 'Query' & 'Indexing'.")
-
-        self.pipeline_type = pipeline_type
-        self.components: dict = {}
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
@@ -656,7 +661,7 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
         return output
 
 
-class RootNode:
+class RootNode(BaseComponent):
     outgoing_edges = 1
 
     def run(self, **kwargs):
@@ -897,3 +902,192 @@ class JoinDocuments(BaseComponent):
             documents = documents[: self.top_k_join]
         output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"
+
+
+class RayPipeline(Pipeline):
+    def __init__(self, pipeline_type: str = "Query"):
+        ray.init()
+        serve.start()
+        super().__init__(pipeline_type=pipeline_type)
+
+    def _setup_root_node(self, pipeline_type):
+        if pipeline_type == "Query":
+            self.root_node_id = "Query"
+        elif pipeline_type == "Indexing":
+            self.root_node_id = "File"
+        else:
+            raise Exception(f"pipeline_type '{pipeline_type}' is not valid. Supported types are 'Query' & 'Indexing'.")
+
+        RootNodeDeployment = serve.deployment(_RayDeploymentWrapper, name=self.root_node_id)
+        RootNodeDeployment.deploy({}, "RootNode")
+        handle = RootNodeDeployment.get_handle()
+        self.graph.add_node("Query", component=handle)
+
+    @classmethod
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+        """
+        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        be passed.
+
+        Here's a sample configuration:
+
+            ```yaml
+            |   version: '0.8'
+            |
+            |    components:    # define all the building-blocks for Pipeline
+            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+            |      type: FARMReader    # Haystack Class name for the component
+            |      params:
+            |        no_ans_boost: -10
+            |        model_name_or_path: deepset/roberta-base-squad2
+            |    - name: MyESRetriever
+            |      type: ElasticsearchRetriever
+            |      params:
+            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+            |        custom_query: null
+            |    - name: MyDocumentStore
+            |      type: ElasticsearchDocumentStore
+            |      params:
+            |        index: haystack_test
+            |
+            |    pipelines:    # multiple Pipelines can be defined using the components from above
+            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+            |      nodes:
+            |      - name: MyESRetriever
+            |        inputs: [Query]
+            |      - name: MyReader
+            |        inputs: [MyESRetriever]
+            ```
+
+        :param path: path of the YAML file.
+        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        """
+        with open(path, "r", encoding="utf-8") as stream:
+            data = yaml.safe_load(stream)
+
+        if pipeline_name is None:
+            if len(data["pipelines"]) == 1:
+                pipeline_config = data["pipelines"][0]
+            else:
+                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
+        else:
+            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
+            if not pipelines_in_yaml:
+                raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+            pipeline_config = pipelines_in_yaml[0]
+
+        definitions = {}  # definitions of each component from the YAML.
+
+        component_definitions = copy.deepcopy(data["components"])
+        for definition in component_definitions:
+            if overwrite_with_env_variables:
+                cls._overwrite_with_env_variables(definition)
+            name = definition.pop("name")
+            definitions[name] = definition
+
+        pipeline = cls(pipeline_type=pipeline_config["type"])
+
+        for node_config in pipeline_config["nodes"]:
+            name = node_config["name"]
+            component_type = definitions[name]["type"]
+            component_class = BaseComponent.get_subclass(component_type)
+            replicas = next(comp for comp in data["components"] if comp["name"] == name).get("replicas", 1)
+            RayDeployment = serve.deployment(_RayDeploymentWrapper, name=name, num_replicas=replicas)
+            RayDeployment.deploy(data, name)
+            handle = RayDeployment.get_handle()
+            pipeline._add_ray_deployment_in_graph(
+                handle=handle,
+                name=name,
+                outgoing_edges=component_class.outgoing_edges,
+                inputs=node_config.get("inputs", []),
+            )
+
+        return pipeline
+
+    def run(self, **kwargs):
+        has_next_node = True
+        current_node_id = self.root_node_id
+        input_dict = {"pipeline_type": self.pipeline_type, **kwargs}
+        output_dict = None
+
+        while has_next_node:
+            output_dict, stream_id = ray.get(self.graph.nodes[current_node_id]["component"].remote(**input_dict))
+            input_dict = output_dict
+            next_nodes = self.get_next_nodes(current_node_id, stream_id)
+
+            if len(next_nodes) > 1:
+                join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
+                if set(self.graph.predecessors(join_node_id)) != set(next_nodes):
+                    raise NotImplementedError(
+                        "The current pipeline does not support multiple levels of parallel nodes."
+                    )
+                inputs_for_join_node = {"inputs": []}
+                for n_id in next_nodes:
+                    output = self.graph.nodes[n_id]["component"].run(**input_dict)
+                    inputs_for_join_node["inputs"].append(output)
+                input_dict = inputs_for_join_node
+                current_node_id = join_node_id
+            elif len(next_nodes) == 1:
+                current_node_id = next_nodes[0]
+            else:
+                has_next_node = False
+
+        return output_dict
+
+    def add_node(self, component, name: str, inputs: List[str]):
+        raise NotImplementedError(
+            "The current implementation of RayPipeline only supports loading Pipelines from a YAML file."
+        )
+
+    def _add_ray_deployment_in_graph(self, handle, name: str, outgoing_edges: int, inputs: List[str]):
+        """
+        Add the Ray deployment handle in the Pipeline Graph.
+
+        :param handle: Ray deployment `handle` to add in the Pipeline Graph.
+        :param name: The name for the node. It must not contain any dots.
+        :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+
+                       In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
+                       must be specified explicitly as "QueryClassifier.output_2".
+        """
+        self.graph.add_node(name, component=handle, inputs=inputs, outgoing_edges=outgoing_edges)
+
+        if len(self.graph.nodes) == 2:  # first node added; connect with Root
+            self.graph.add_edge(self.root_node_id, name, label="output_1")
+            return
+
+        for i in inputs:
+            if "." in i:
+                [input_node_name, input_edge_name] = i.split(".")
+                assert "output_" in input_edge_name, f"'{input_edge_name}' is not a valid edge name."
+                outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
+                assert int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node, (
+                    f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
+                    f"{outgoing_edges_input_node} outgoing edge(s)."
+                )
+            else:
+                outgoing_edges_input_node = self.graph.nodes[i]["outgoing_edges"]
+                assert outgoing_edges_input_node == 1, (
+                    f"Adding an edge from {i} to {name} is ambiguous as {i} has {outgoing_edges_input_node} edges. "
+                    f"Please specify the output explicitly."
+                )
+                input_node_name = i
+                input_edge_name = "output_1"
+            self.graph.add_edge(input_node_name, name, label=input_edge_name)
+
+
+class _RayDeploymentWrapper:
+    node: BaseComponent
+
+    def __init__(self, pipeline_config, component_name):
+        self.node = BaseComponent.load_from_pipeline_config(pipeline_config, component_name)
+
+    def __call__(self, *args, **kwargs):
+        return self.node.run(*args, **kwargs)
