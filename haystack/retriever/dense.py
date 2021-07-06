@@ -51,6 +51,7 @@ class DensePassageRetriever(BaseRetriever):
                  use_fast_tokenizers: bool = True,
                  infer_tokenizer_classes: bool = False,
                  similarity_function: str = "dot_product",
+                 global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True
                  ):
         """
@@ -94,6 +95,8 @@ class DensePassageRetriever(BaseRetriever):
                                         If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
         :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training. 
                                     Options: `dot_product` (Default) or `cosine`
+        :param global_loss_buffer_size: Buffer size for all_gather() in DDP.
+                                        Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         """
@@ -160,7 +163,7 @@ class DensePassageRetriever(BaseRetriever):
                                                  embed_title=embed_title,
                                                  num_hard_negatives=0,
                                                  num_positives=1)
-        prediction_head = TextSimilarityHead(similarity_function=similarity_function)
+        prediction_head = TextSimilarityHead(similarity_function=similarity_function, global_loss_buffer_size=global_loss_buffer_size)
         self.model = BiAdaptiveModel(
             language_model1=self.query_encoder,
             language_model2=self.passage_encoder,
