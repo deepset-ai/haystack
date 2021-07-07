@@ -330,8 +330,9 @@ class SQLDocumentStore(BaseDocumentStore):
         labels_found = self.get_labels_by_id(ids=[label.id for label in labels], index=index)
         if len(labels_found) > 0:
             ids_exist_in_db = [label.id for label in labels_found]
-            logger.warning(f"Duplicate labels: Label with ids {','.join(ids_exist_in_db)}' already exists in index "
-                           f"'{index}'")
+            logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                           f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                           f" the answer annotation and not the question. Problematic ids: {','.join(ids_exist_in_db)}")
         # TODO: Use batch_size
         for label in labels:
             label_orm = LabelORM(
@@ -350,7 +351,7 @@ class SQLDocumentStore(BaseDocumentStore):
             if label.id in ids_exist_in_db:
                 self.session.merge(label_orm)
             else:
-                self.session.merge(label_orm)
+                self.session.add(label_orm)
         self.session.commit()
 
     def get_labels_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Label]:
