@@ -16,6 +16,8 @@ from haystack.document_store.weaviate import WeaviateDocumentStore
 
 from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
+from haystack.ranker import FARMRanker
+from haystack.ranker.sentence_transformers import SentenceTransformersRanker
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
@@ -261,6 +263,17 @@ def reader(request):
             model_name_or_path="distilbert-base-uncased-distilled-squad",
             tokenizer="distilbert-base-uncased",
             use_gpu=-1
+        )
+
+@pytest.fixture(params=["farm", "sentencetransformers"], scope="module")
+def ranker(request):
+    if request.param == "farm":
+        return FARMRanker(
+            model_name_or_path="deepset/gbert-base-germandpr-reranking"
+        )
+    if request.param == "sentencetransformers":
+        return SentenceTransformersRanker(
+            model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
         )
 
 

@@ -14,10 +14,21 @@ logger = logging.getLogger(__name__)
 class SentenceTransformersRanker(BaseRanker):
     """
     Sentence Transformer based pre-trained Cross-Encoder model for Document Re-ranking (https://huggingface.co/cross-encoder).
+    SentenceTransformerRanker handles Cross-Encoder models that use a single logit as similarity score.
+    https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
+    In contrast, FARMRanker handles Cross-Encoder models that internally use two logits and output the classifier's probability of label "1" as similarity score.
+    This includes TextPairClassification models trained within FARM.
 
     |  With a SentenceTransformersRanker, you can:
-
      - directly get predictions via predict()
+
+    Usage example:
+    ...
+    retriever = ElasticsearchRetriever(document_store=document_store)
+    ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+    p = Pipeline()
+    p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+    p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
     """
 
     def __init__(
@@ -28,19 +39,11 @@ class SentenceTransformersRanker(BaseRanker):
     ):
 
         """
-        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+        :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
         'cross-encoder/ms-marco-MiniLM-L-12-v2'.
         See https://huggingface.co/cross-encoder for full list of available models
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param batch_size: Number of samples the model receives in one batch for inference.
-                           Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
-                           to a value so only a single batch is used.
-        :param use_gpu: Whether to use GPU (if available)
         :param top_k: The maximum number of documents to return
-        :param num_processes: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
-                              multiprocessing. Set to None to let Inferencer determine optimum number. If you
-                              want to debug the Language Model, you might need to disable multiprocessing!
-        :param max_seq_len: Max sequence length of one input text for the model
         """
 
         # save init parameters to enable export of component config as YAML
@@ -68,7 +71,7 @@ class SentenceTransformersRanker(BaseRanker):
         """
         raise NotImplementedError
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
         """
         Use loaded ranker model to re-rank the supplied list of Document.
 
