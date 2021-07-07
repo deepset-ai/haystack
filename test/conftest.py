@@ -16,8 +16,7 @@ from haystack.document_store.weaviate import WeaviateDocumentStore
 
 from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
-from haystack.ranker import FARMRanker
-from haystack.ranker.sentence_transformers import SentenceTransformersRanker
+from haystack.ranker import FARMRanker, SentenceTransformersRanker
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
