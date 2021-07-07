@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class FARMRanker(BaseRanker):
     """
     Transformer based model for Document Re-ranking using the TextPairClassifier of FARM framework (https://github.com/deepset-ai/FARM).
+    Re-Ranking can be used on top of a retriever to boost the performance for document search. This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
     While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interface remains the same.
     FARMRanker handles Cross-Encoder models that internally use two logits and output the classifier's probability of label "1" as similarity score.
     This includes TextPairClassification models trained within FARM.
