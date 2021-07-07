@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 class SentenceTransformersRanker(BaseRanker):
     """
     Sentence Transformer based pre-trained Cross-Encoder model for Document Re-ranking (https://huggingface.co/cross-encoder).
+    Re-Ranking can be used on top of a retriever to boost the performance for document search. This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
+
     SentenceTransformerRanker handles Cross-Encoder models that use a single logit as similarity score.
     https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
     In contrast, FARMRanker handles Cross-Encoder models that internally use two logits and output the classifier's probability of label "1" as similarity score.
