@@ -329,6 +329,7 @@ class SQLDocumentStore(BaseDocumentStore):
         # TODO: Use batch_size
         for label in labels:
             label_orm = LabelORM(
+                id=label.id,
                 document_id=label.document_id,
                 no_answer=label.no_answer,
                 origin=label.origin,
@@ -406,7 +407,7 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         Return the number of labels in the document store
         """
-        index = index or self.index
+        index = index or self.label_index
         return self.session.query(LabelORM).filter_by(index=index).count()
 
     def _convert_sql_row_to_document(self, row) -> Document:

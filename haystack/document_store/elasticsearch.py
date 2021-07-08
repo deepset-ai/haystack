@@ -517,6 +517,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Return the number of labels in the document store
         """
+        index = index or self.label_index
         return self.get_document_count(index=index)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
