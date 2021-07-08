@@ -326,13 +326,15 @@ class SQLDocumentStore(BaseDocumentStore):
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
         index = index or self.label_index
-        ids_exist_in_db: list = []
-        labels_found = self.get_labels_by_id(ids=[label.id for label in labels], index=index)
-        if len(labels_found) > 0:
-            ids_exist_in_db = [label.id for label in labels_found]
+
+        all_labels_ids: list = [label.id for label in self.get_all_labels(index=index)]
+        labels_ids_exist_in_db = list(filter(lambda label_id: label_id in all_labels_ids,
+                                             [label.id for label in labels]))
+        if len(labels_ids_exist_in_db) > 0:
             logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
                            f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                           f" the answer annotation and not the question. Problematic ids: {','.join(ids_exist_in_db)}")
+                           f" the answer annotation and not the question."
+                           f" Problematic ids: {','.join(labels_ids_exist_in_db)}")
         # TODO: Use batch_size
         for label in labels:
             label_orm = LabelORM(
@@ -348,22 +350,11 @@ class SQLDocumentStore(BaseDocumentStore):
                 model_id=label.model_id,
                 index=index,
             )
-            if label.id in ids_exist_in_db:
+            if label.id in labels_ids_exist_in_db:
                 self.session.merge(label_orm)
             else:
                 self.session.add(label_orm)
         self.session.commit()
-
-    def get_labels_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Label]:
-        """Fetch Labels by specifying a list of text id strings"""
-        index = index or self.label_index
-        labels: list = []
-
-        query = self.session.query(LabelORM).filter(LabelORM.id.in_(ids),LabelORM.index == index)
-        for row in query.all():
-            labels.append(self._convert_sql_row_to_label(row))
-
-        return labels
 
     def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None, batch_size: int = 10_000):
         """
