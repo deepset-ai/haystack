@@ -179,7 +179,7 @@ class BaseRetriever(BaseComponent):
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
             output, stream = run_query_timed(**kwargs)
-        elif root_node == "Indexing":
+        elif root_node == "File":
             self.index_count += len(kwargs["documents"])
             run_indexing = self.timing(self.run_indexing, "index_time")
             output, stream = run_indexing(**kwargs)
