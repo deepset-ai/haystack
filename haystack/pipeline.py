@@ -33,7 +33,46 @@ from haystack.graph_retriever.base import BaseGraphRetriever
 logger = logging.getLogger(__name__)
 
 
-class Pipeline:
+class BasePipeline:
+
+    def run(self, **kwargs):
+        raise NotImplementedError
+
+    @classmethod
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+        pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
+        if pipeline_config["type"] == "Pipeline":
+            return Pipeline.load_from_yaml(
+                path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+            )
+        elif pipeline_config["type"] == "RayPipeline":
+            return RayPipeline.load_from_yaml(
+                path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+            )
+        else:
+            raise KeyError(f"Pipeline Type '{pipeline_config['type']}' is not a valid. The available types are"
+                           f"'Pipeline' and 'RayPipeline'.")
+
+    @classmethod
+    def _get_pipeline_config_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None):
+        with open(path, "r", encoding='utf-8') as stream:
+            data = yaml.safe_load(stream)
+
+        if pipeline_name is None:
+            if len(data["pipelines"]) == 1:
+                pipeline_config = data["pipelines"][0]
+            else:
+                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
+        else:
+            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
+            if not pipelines_in_yaml:
+                raise KeyError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+            pipeline_config = pipelines_in_yaml[0]
+
+        return pipeline_config
+
+
+class Pipeline(BasePipeline):
     """
     Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
 
@@ -42,21 +81,10 @@ class Pipeline:
     Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
 
-    def __init__(self, pipeline_type: str = "Query"):
+    def __init__(self):
         self.graph = DiGraph()
-        self.pipeline_type = pipeline_type
-        self._setup_root_node(pipeline_type)
+        self.root_node = None
         self.components: dict = {}
-
-    def _setup_root_node(self, pipeline_type):
-        if pipeline_type == "Query":
-            self.root_node_id = "Query"
-            self.graph.add_node("Query", component=RootNode())
-        elif pipeline_type == "Indexing":
-            self.root_node_id = "File"
-            self.graph.add_node("File", component=RootNode())
-        else:
-            raise Exception(f"pipeline_type '{pipeline_type}' is not valid. Supported types are 'Query' & 'Indexing'.")
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
@@ -73,13 +101,20 @@ class Pipeline:
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
         """
+        if self.root_node is None:
+            root_node = inputs[0]
+            if root_node in ["Query", "File"]:
+                self.root_node = root_node
+                self.graph.add_node(root_node, component=RootNode())
+            else:
+                raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node_id, \
-                f"The '{name}' node can only input from {self.root_node_id}. " \
-                f"Set the 'inputs' parameter to ['{self.root_node_id}']"
-            self.graph.add_edge(self.root_node_id, name, label="output_1")
+            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node, \
+                f"The '{name}' node can only input from {self.root_node}. " \
+                f"Set the 'inputs' parameter to ['{self.root_node}']"
+            self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
         for i in inputs:
@@ -123,7 +158,7 @@ class Pipeline:
     def run(self, **kwargs):
         node_output = None
         queue = {
-            self.root_node_id: {"pipeline_type": self.pipeline_type, **kwargs}
+            self.root_node: {"root_node": self.root_node, **kwargs}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
@@ -229,16 +264,7 @@ class Pipeline:
         with open(path, "r", encoding='utf-8') as stream:
             data = yaml.safe_load(stream)
 
-        if pipeline_name is None:
-            if len(data["pipelines"]) == 1:
-                pipeline_config = data["pipelines"][0]
-            else:
-                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
-        else:
-            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
-            if not pipelines_in_yaml:
-                raise KeyError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
-            pipeline_config = pipelines_in_yaml[0]
+        pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
 
         definitions = {}  # definitions of each component from the YAML.
         for definition in data["components"]:
@@ -247,7 +273,7 @@ class Pipeline:
             name = definition.pop("name")
             definitions[name] = definition
 
-        pipeline = cls(pipeline_type=pipeline_config["type"])
+        pipeline = cls()
 
         components: dict = {}  # instances of component objects.
         for node_config in pipeline_config["nodes"]:
@@ -312,13 +338,12 @@ class Pipeline:
         """
         nodes = self.graph.nodes
 
-        pipeline_name = self.pipeline_type.lower()
-        pipeline_type = self.pipeline_type
-        pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": pipeline_type, "nodes": []}}
+        pipeline_name = self.root_node.lower()
+        pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": "Pipeline", "nodes": []}}
 
         components = {}
         for node in nodes:
-            if node == self.root_node_id:
+            if node == self.root_node:
                 continue
             component_instance = self.graph.nodes.get(node)["component"]
             component_type = component_instance.pipeline_config["type"]
@@ -905,23 +930,13 @@ class JoinDocuments(BaseComponent):
 
 
 class RayPipeline(Pipeline):
-    def __init__(self, pipeline_type: str = "Query"):
-        ray.init()
+    def __init__(self, address: str = None):
+        """
+        :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+        """
+        ray.init(address=address)
         serve.start()
-        super().__init__(pipeline_type=pipeline_type)
-
-    def _setup_root_node(self, pipeline_type):
-        if pipeline_type == "Query":
-            self.root_node_id = "Query"
-        elif pipeline_type == "Indexing":
-            self.root_node_id = "File"
-        else:
-            raise Exception(f"pipeline_type '{pipeline_type}' is not valid. Supported types are 'Query' & 'Indexing'.")
-
-        RootNodeDeployment = serve.deployment(_RayDeploymentWrapper, name=self.root_node_id)
-        RootNodeDeployment.deploy({}, "RootNode")
-        handle = RootNodeDeployment.get_handle()
-        self.graph.add_node("Query", component=handle)
+        super().__init__()
 
     @classmethod
     def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
@@ -970,19 +985,9 @@ class RayPipeline(Pipeline):
         with open(path, "r", encoding="utf-8") as stream:
             data = yaml.safe_load(stream)
 
-        if pipeline_name is None:
-            if len(data["pipelines"]) == 1:
-                pipeline_config = data["pipelines"][0]
-            else:
-                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
-        else:
-            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
-            if not pipelines_in_yaml:
-                raise Exception(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
-            pipeline_config = pipelines_in_yaml[0]
+        pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
 
         definitions = {}  # definitions of each component from the YAML.
-
         component_definitions = copy.deepcopy(data["components"])
         for definition in component_definitions:
             if overwrite_with_env_variables:
@@ -990,16 +995,23 @@ class RayPipeline(Pipeline):
             name = definition.pop("name")
             definitions[name] = definition
 
-        pipeline = cls(pipeline_type=pipeline_config["type"])
+        pipeline = cls()
 
         for node_config in pipeline_config["nodes"]:
+            if pipeline.root_node is None:
+                root_node = node_config["inputs"][0]
+                if root_node in ["Query", "File"]:
+                    pipeline.root_node = root_node
+                    handle = cls._create_ray_deployment(name=root_node, pipeline_config=data)
+                    pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1,  inputs=[])
+                else:
+                    raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
+
             name = node_config["name"]
             component_type = definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
             replicas = next(comp for comp in data["components"] if comp["name"] == name).get("replicas", 1)
-            RayDeployment = serve.deployment(_RayDeploymentWrapper, name=name, num_replicas=replicas)
-            RayDeployment.deploy(data, name)
-            handle = RayDeployment.get_handle()
+            handle = cls._create_ray_deployment(name=name, pipeline_config=data, replicas=replicas)
             pipeline._add_ray_deployment_in_graph(
                 handle=handle,
                 name=name,
@@ -1009,10 +1021,17 @@ class RayPipeline(Pipeline):
 
         return pipeline
 
+    @classmethod
+    def _create_ray_deployment(cls, name, pipeline_config, replicas=1):
+        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=name, num_replicas=replicas)
+        RayDeployment.deploy(pipeline_config, name)
+        handle = RayDeployment.get_handle()
+        return handle
+
     def run(self, **kwargs):
         has_next_node = True
-        current_node_id = self.root_node_id
-        input_dict = {"pipeline_type": self.pipeline_type, **kwargs}
+        current_node_id = self.root_node
+        input_dict = {"root_node": self.root_node, **kwargs}
         output_dict = None
 
         while has_next_node:
@@ -1060,7 +1079,7 @@ class RayPipeline(Pipeline):
         self.graph.add_node(name, component=handle, inputs=inputs, outgoing_edges=outgoing_edges)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            self.graph.add_edge(self.root_node_id, name, label="output_1")
+            self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
         for i in inputs:
@@ -1087,7 +1106,10 @@ class _RayDeploymentWrapper:
     node: BaseComponent
 
     def __init__(self, pipeline_config, component_name):
-        self.node = BaseComponent.load_from_pipeline_config(pipeline_config, component_name)
+        if component_name in ["Query", "File"]:
+            self.node = RootNode()
+        else:
+            self.node = BaseComponent.load_from_pipeline_config(pipeline_config, component_name)
 
     def __call__(self, *args, **kwargs):
         return self.node.run(*args, **kwargs)

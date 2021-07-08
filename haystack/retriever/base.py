@@ -174,17 +174,17 @@ class BaseRetriever(BaseComponent):
         else:
             return metrics
 
-    def run(self, pipeline_type: str, **kwargs): # type: ignore
-        if pipeline_type == "Query":
+    def run(self, root_node: str, **kwargs):  # type: ignore
+        if root_node == "Query":
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
             output, stream = run_query_timed(**kwargs)
-        elif pipeline_type == "Indexing":
+        elif root_node == "Indexing":
             self.index_count += len(kwargs["documents"])
             run_indexing = self.timing(self.run_indexing, "index_time")
             output, stream = run_indexing(**kwargs)
         else:
-            raise Exception(f"Invalid pipeline_type '{pipeline_type}'.")
+            raise Exception(f"Invalid root_node '{root_node}'.")
         return output, stream
 
     def run_query(
