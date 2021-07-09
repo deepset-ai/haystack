@@ -328,11 +328,7 @@ class SQLDocumentStore(BaseDocumentStore):
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
         index = index or self.label_index
 
-        ids = [label.id for label in labels]
-        duplicate_ids = [label_id for label_id, count in collections.Counter(ids).items() if count > 1]
-
-        all_labels_ids: list = [label.id for label in self.get_all_labels(index=index)]
-        duplicate_ids.extend(list(filter(lambda label_id: label_id in all_labels_ids, ids)))
+        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
                            f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
