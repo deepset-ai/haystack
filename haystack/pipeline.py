@@ -630,11 +630,13 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
     """
     def __init__(self, question_generator, reader):
         question_generator.run = self.formatting_wrapper(question_generator.run)
+        # Overwrite reader.run function so it can handle a batch of questions being passed on by the QuestionGenerator
         reader.run = reader.run_batch
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["QuestionGenerator"])
 
+    # This is used to format the output of the QuestionGenerator so that its questions are ready to be answered by the reader
     def formatting_wrapper(self, fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):

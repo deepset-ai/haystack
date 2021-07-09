@@ -70,6 +70,7 @@ class BaseReader(BaseComponent):
         return results, "output_1"
 
     def run_batch(self, query_doc_list: List[Dict], top_k_reader: Optional[int] = None, **kwargs):
+        """ A unoptimized implementation of running Reader queries in batch """
         self.query_count += len(query_doc_list)
         results = []
         if query_doc_list:
