@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 class FARMClassifier(BaseClassifier):
     """
-    text
+    This node classifies documents and adds the output from the classification step to the document's meta data.
+    The meta field of the document is a dictionary with the following format:
+    'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'neutral', 'probability' = 0.9997646, ...} }
 
     |  With a FARMClassifier, you can:
      - directly get predictions via predict()
@@ -31,6 +33,18 @@ class FARMClassifier(BaseClassifier):
     p = Pipeline()
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
     p.add_node(component=classifier, name="Classifier", inputs=["ESRetriever"])
+
+    res = p_extractive.run(
+        query="Who is the father of Arya Stark?",
+        top_k_retriever=10,
+        top_k_reader=5
+    )
+
+    print(classified_docs[0].to_dict()["meta"]["classification"]["label"])
+    # Note that print_documents() does not output the content of the classification field in the meta data
+    # document_dicts = [doc.to_dict() for doc in res["documents"]]
+    # res["documents"] = document_dicts
+    # print_documents(res, max_text_len=100)
     """
 
     def __init__(
@@ -256,12 +270,13 @@ class FARMClassifier(BaseClassifier):
 
         # documents should follow the structure {"text": "Schartau sagte dem Tagesspiegel, dass Fischer ein ... sei"},
         docs = [{"text": doc.text} for doc in documents]
-        results = self.inferencer.inference_from_dicts(dicts=docs)
+        results = self.inferencer.inference_from_dicts(dicts=docs)[0]["predictions"]
 
         classified_docs: List[Document] = []
 
         for result, doc in zip(results, documents):
-            cur_doc = Document(text=doc.text, meta={"classification": result})
+            cur_doc = doc
+            cur_doc.meta["classification"] = result
             classified_docs.append(cur_doc)
 
         return classified_docs[:top_k]
