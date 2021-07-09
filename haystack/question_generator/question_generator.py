@@ -10,11 +10,10 @@ readability with its notable use of significant whitespace."
 
 """
 TODO
-top_k instead of length
+top_k instead of length?
 device and use gpu
 split to base class?
 Not totally sure about args
-text limits?
 run method
 Does it clip long texts??
 https://discuss.huggingface.co/t/t5-finetuning-tips/684
@@ -31,7 +30,8 @@ class QuestionGenerator(BaseComponent):
                  length_penalty=1.5,
                  early_stopping=True,
                  split_length=50,
-                 split_overlap=10):
+                 split_overlap=10,
+                 prompt="generate questions:"):
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.set_config(
@@ -48,7 +48,7 @@ class QuestionGenerator(BaseComponent):
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
-        self.prompt = "generate questions:"
+        self.prompt = prompt
 
     def generate(self, text):
         # Performing splitting because T5 has a max input length
