@@ -3,24 +3,18 @@ from transformers import AutoTokenizer
 from haystack import BaseComponent
 from haystack.preprocessor import PreProcessor
 
-text = "generate questions: Python is an interpreted, high-level, general-purpose programming language. Created by Guido van Rossum \
-and first released in 1991, Python's design philosophy emphasizes code \
-readability with its notable use of significant whitespace."
-
-
-"""
-TODO
-top_k instead of length?
-device and use gpu
-split to base class?
-Not totally sure about args
-run method
-Does it clip long texts??
-https://discuss.huggingface.co/t/t5-finetuning-tips/684
-Inefficient because we feed it 50 words
-"""
 
 class QuestionGenerator(BaseComponent):
+    """ The Question Generator takes only a document as input and outputs questions that it thinks can be
+    answered by this document. In our current implementation, input texts are split into chunks of 50 words
+    with a 10 word overlap. This is because the default model `valhalla/t5-base-e2e-qg` seems to generate only
+    about 3 questions per passage regardless of length. Our approach prioritizes the creation of more questions
+    over processing efficiency (T5 is able to digest much more than 50 words at once). The returned questions
+    generally come in an order dictated by the order of their answers i.e. early questions in the list generally
+    come from earlier in the document."""
+
+    outgoing_edges = 1
+
     def __init__(self,
                  model_name_or_path="valhalla/t5-base-e2e-qg",
                  model_version=None,
@@ -49,6 +43,18 @@ class QuestionGenerator(BaseComponent):
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
         self.prompt = prompt
+
+    def run(self, **kwargs):
+        documents = kwargs["documents"]
+        generated_questions = []
+        for d in documents:
+            questions = self.generate(d.text)
+            curr_dict = {"document_id": d.id,
+                         "document_sample": d.text[:200],
+                         "questions": questions}
+            generated_questions.append(curr_dict)
+        output = {"generated_questions": generated_questions, **kwargs}
+        return output, "output_1"
 
     def generate(self, text):
         # Performing splitting because T5 has a max input length
