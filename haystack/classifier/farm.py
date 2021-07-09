@@ -120,7 +120,7 @@ class FARMClassifier(BaseClassifier):
         - Take a plain language model (e.g. `bert-base-cased`) and train it for TextClassification
         - Take a TextClassification model and fine-tune it for your domain
 
-        :param data_dir: Path to directory containing your training data in SQuAD style
+        :param data_dir: Path to directory containing your training data
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
         :param test_filename: Filename of test data
@@ -159,7 +159,7 @@ class FARMClassifier(BaseClassifier):
 
         set_all_seeds(seed=42)
 
-        # For these variables, by default, we use the value set when initializing the FARMRanker.
+        # For these variables, by default, we use the value set when initializing the FARMClassifier.
         # These can also be manually set when train() is called if you want a different value at train vs inference
         if use_gpu is None:
             use_gpu = self.use_gpu
@@ -225,7 +225,7 @@ class FARMClassifier(BaseClassifier):
             max_seq_len: Optional[int] = None,
     ):
         """
-        Hot update parameters of a loaded Ranker. It may not to be safe when processing concurrent requests.
+        Hot update parameters of a loaded FARMClassifier. It may not to be safe when processing concurrent requests.
         """
         if max_seq_len is not None:
             self.inferencer.processor.max_seq_len = max_seq_len
@@ -233,24 +233,24 @@ class FARMClassifier(BaseClassifier):
 
     def save(self, directory: Path):
         """
-        Saves the Ranker model so that it can be reused at a later point in time.
+        Saves the FARMClassifier model so that it can be reused at a later point in time.
 
-        :param directory: Directory where the Ranker model should be saved
+        :param directory: Directory where the FARMClassifier model should be saved
         """
-        logger.info(f"Saving ranker model to {directory}")
+        logger.info(f"Saving classifier model to {directory}")
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
     def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
         """
-        Use loaded Ranker model to, for a list of queries, rank each query's supplied list of Document.
+        Use loaded FARMClassifier model to, for a list of queries, classify each query's supplied list of Document.
 
         Returns list of dictionary of query and list of document sorted by (desc.) similarity with query
 
         :param query_doc_list: List of dictionaries containing queries with their retrieved documents
         :param top_k: The maximum number of answers to return for each query
         :param batch_size: Number of samples the model receives in one batch for inference
-        :return: List of dictionaries containing query and ranked list of Document
+        :return: List of dictionaries containing query and list of Document with class probabilities in meta field
         """
         raise NotImplementedError
 
@@ -263,7 +263,7 @@ class FARMClassifier(BaseClassifier):
         :param query: Query string (is not used at the moment)
         :param documents: List of Document to be classified
         :param top_k: The maximum number of documents to return
-        :return: List of Document
+        :return: List of Document with class probabilities in meta field
         """
         if top_k is None:
             top_k = self.top_k
