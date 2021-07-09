@@ -443,6 +443,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if index and not self.client.indices.exists(index=index):
             self._create_label_index(index)
 
+        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
+        if len(duplicate_ids) > 0:
+            logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                           f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                           f" the answer annotation and not the question."
+                           f" Problematic ids: {','.join(duplicate_ids)}")
         labels_to_index = []
         for l in labels:
             # Make sure we comply to Label class format
@@ -458,7 +464,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 label.updated_at = label.created_at
 
             _label = {
-                "_op_type": "index" if self.duplicate_documents == "overwrite" else "create",
+                "_op_type": "index" if self.duplicate_documents == "overwrite" or label.id in duplicate_ids else
+                "create",
                 "_index": index,
                 **label.to_dict()
             }  # type: Dict[str, Any]
@@ -608,7 +615,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         index = index or self.label_index
         result = list(self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size))
-        labels = [Label.from_dict(hit["_source"]) for hit in result]
+        labels = [Label.from_dict({**hit["_source"],"id": hit["_id"]}) for hit in result]
         return labels
 
     def _get_all_documents_in_index(
