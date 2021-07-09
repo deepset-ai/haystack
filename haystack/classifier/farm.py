@@ -40,7 +40,7 @@ class FARMClassifier(BaseClassifier):
         top_k_reader=5
     )
 
-    print(classified_docs[0].to_dict()["meta"]["classification"]["label"])
+    print(res["documents"][0].to_dict()["meta"]["classification"]["label"])
     # Note that print_documents() does not output the content of the classification field in the meta data
     # document_dicts = [doc.to_dict() for doc in res["documents"]]
     # res["documents"] = document_dicts
