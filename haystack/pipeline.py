@@ -602,7 +602,8 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
 
     def run(self, documents, **kwargs):
-        output = self.pipeline.run(documents, **kwargs)
+        kwargs["documents"] = documents
+        output = self.pipeline.run(**kwargs)
         return output
 
 
@@ -621,11 +622,6 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
         output = self.pipeline.run(**kwargs)
         return output
 
-class dotdict(dict):
-    """dot.notation access to dictionary attributes"""
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
 
 class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
     """
@@ -647,8 +643,7 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
             documents = output["documents"]
             query_doc_list = []
             for q in questions:
-                query_dot_dict = dotdict({"question": q})
-                query_doc_list.append({"question": query_dot_dict, "docs": documents})
+                query_doc_list.append({"queries": q, "docs": documents})
             kwargs["query_doc_list"] = query_doc_list
             return kwargs, output_stream
         return wrapper
