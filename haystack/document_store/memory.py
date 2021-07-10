@@ -397,3 +397,33 @@ class InMemoryDocumentStore(BaseDocumentStore):
             raise NotImplementedError("Delete by filters is not implemented for InMemoryDocumentStore.")
         index = index or self.index
         self.indexes[index] = {}
+
+    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete a list of document by specifying their id list
+
+        :param ids: List of Ids of the documents to be deleted.
+        :param index: Index name to delete the documents from.
+        :param filters: Optional filters to narrow down the documents to be deleted.
+        :return: None
+        """
+        if filters:
+            raise NotImplementedError("Delete by filters is not implemented for InMemoryDocumentStore.")
+        index = index or self.index
+        for id in ids:
+            if id in self.indexes[index].keys():
+                self.indexes[index].pop(id)
+            else:
+                logger.warning(f"Document Key Error: Document with id '{id} not found in index "f"'{index}'")
+
+
+    def delete_document_by_id(self, id: str, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete a document by specifying its text id string
+
+        :param id: Id of the document to be deleted.
+        :param index: Index name to delete the document from.
+        :param filters: Optional filters to narrow down the document to be deleted.
+        :return: None
+        """
+        self.delete_documents_by_id([id], index, filters)

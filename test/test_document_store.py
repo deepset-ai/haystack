@@ -348,6 +348,21 @@ def test_delete_documents_with_filters(document_store_with_docs):
 
 
 @pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_delete_document_by_id(document_store_with_docs):
+    documents = document_store_with_docs.get_all_documents()
+    assert len(documents) == 3
+
+    doc_id_to_delete = documents[0].id
+    document_store_with_docs.delete_document_by_id(doc_id_to_delete)
+
+    documents = document_store_with_docs.get_all_documents()
+    doc_ids = [doc.id for doc in documents]
+    assert len(documents) == 2
+    assert doc_id_to_delete not in doc_ids
+
+
+@pytest.mark.elasticsearch
 def test_labels(document_store):
     label = Label(
         question="question",
