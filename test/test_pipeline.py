@@ -75,7 +75,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
           - inputs:
             - ESRetriever
             name: Reader
-          type: Query
+          type: Pipeline
         version: '0.8'
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(
