@@ -934,12 +934,20 @@ class RayPipeline(Pipeline):
         """
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         """
-        ray.init(address=address)
+        if address:
+            ray.init(address=address)
+        else:
+            serve.start()
         serve.start()
         super().__init__()
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+    def load_from_yaml(
+            cls,
+            path: Path, pipeline_name: Optional[str] = None,
+            overwrite_with_env_variables: bool = True,
+            address: Optional[str] = None,
+    ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -981,6 +989,7 @@ class RayPipeline(Pipeline):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         """
         with open(path, "r", encoding="utf-8") as stream:
             data = yaml.safe_load(stream)
@@ -995,7 +1004,7 @@ class RayPipeline(Pipeline):
             name = definition.pop("name")
             definitions[name] = definition
 
-        pipeline = cls()
+        pipeline = cls(address=address)
 
         for node_config in pipeline_config["nodes"]:
             if pipeline.root_node is None:

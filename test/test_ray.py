@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-import ray
+from ray import serve
 from haystack.pipeline import RayPipeline
 
 
@@ -13,4 +13,4 @@ def test_load_pipeline(document_store_with_docs):
     prediction = pipeline.run(query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3)
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0]["answer"] == "Carla"
-    ray.shutdown()
+    serve.shutdown()
