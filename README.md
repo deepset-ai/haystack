@@ -24,7 +24,7 @@
     </a>    
 </p>
 
-# Barbara & Milo 
+# Barbara & Milos 
 
 Haystack is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
 Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
