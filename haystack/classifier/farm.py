@@ -4,39 +4,47 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 from farm.data_handler.data_silo import DataSilo
-from farm.data_handler.processor import TextPairClassificationProcessor
+from farm.data_handler.processor import TextClassificationProcessor
 from farm.infer import Inferencer
 from farm.modeling.optimization import initialize_optimizer
 from farm.train import Trainer
 from farm.utils import set_all_seeds, initialize_device_settings
 
 from haystack import Document
-from haystack.ranker.base import BaseRanker
+from haystack.classifier.base import BaseClassifier
 
 logger = logging.getLogger(__name__)
 
 
-class FARMRanker(BaseRanker):
+class FARMClassifier(BaseClassifier):
     """
-    Transformer based model for Document Re-ranking using the TextPairClassifier of FARM framework (https://github.com/deepset-ai/FARM).
-    Re-Ranking can be used on top of a retriever to boost the performance for document search. This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
-    While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interface remains the same.
-    FARMRanker handles Cross-Encoder models that internally use two logits and output the classifier's probability of label "1" as similarity score.
-    This includes TextPairClassification models trained within FARM.
-    In contrast, SentenceTransformersRanker handles Cross-Encoder models that use a single logit as similarity score.
-    https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
+    This node classifies documents and adds the output from the classification step to the document's meta data.
+    The meta field of the document is a dictionary with the following format:
+    'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'neutral', 'probability' = 0.9997646, ...} }
 
-    |  With a FARMRanker, you can:
+    |  With a FARMClassifier, you can:
      - directly get predictions via predict()
-     - fine-tune the model on TextPair data via train()
+     - fine-tune the model on text classification training data via train()
 
     Usage example:
     ...
     retriever = ElasticsearchRetriever(document_store=document_store)
-    ranker = FARMRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
+    classifier = FARMClassifier(model_name_or_path="deepset/bert-base-german-cased-sentiment-Germeval17")
     p = Pipeline()
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-    p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
+    p.add_node(component=classifier, name="Classifier", inputs=["ESRetriever"])
+
+    res = p_extractive.run(
+        query="Who is the father of Arya Stark?",
+        top_k_retriever=10,
+        top_k_reader=5
+    )
+
+    print(res["documents"][0].to_dict()["meta"]["classification"]["label"])
+    # Note that print_documents() does not output the content of the classification field in the meta data
+    # document_dicts = [doc.to_dict() for doc in res["documents"]]
+    # res["documents"] = document_dicts
+    # print_documents(res, max_text_len=100)
     """
 
     def __init__(
@@ -52,8 +60,7 @@ class FARMRanker(BaseRanker):
     ):
 
         """
-        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
-        'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
+        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'deepset/bert-base-german-cased-sentiment-Germeval17'.
         See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param batch_size: Number of samples the model receives in one batch for inference.
@@ -92,6 +99,9 @@ class FARMRanker(BaseRanker):
             self,
             data_dir: str,
             train_filename: str,
+            label_list: List[str],
+            delimiter: str,
+            metric: str,
             dev_filename: Optional[str] = None,
             test_filename: Optional[str] = None,
             use_gpu: Optional[bool] = None,
@@ -107,12 +117,17 @@ class FARMRanker(BaseRanker):
             use_amp: str = None,
     ):
         """
-        Fine-tune a model on a TextPairClassification dataset. Options:
+        Fine-tune a model on a TextClassification dataset.
+        The dataset needs to be in tabular format (CSV, TSV, etc.), with columns called "label" and "text" in no specific order.
+        Options:
 
-        - Take a plain language model (e.g. `bert-base-cased`) and train it for TextPairClassification
-        - Take a TextPairClassification model and fine-tune it for your domain
+        - Take a plain language model (e.g. `bert-base-cased`) and train it for TextClassification
+        - Take a TextClassification model and fine-tune it for your domain
 
         :param data_dir: Path to directory containing your training data
+        :param label_list: list of labels in the training dataset, e.g., ["0", "1"]
+        :param delimiter: delimiter that separates columns in the training dataset, e.g., "\t"
+        :param metric: evaluation metric to be used while training, e.g., "f1_macro"
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
         :param test_filename: Filename of test data
@@ -150,7 +165,7 @@ class FARMRanker(BaseRanker):
 
         set_all_seeds(seed=42)
 
-        # For these variables, by default, we use the value set when initializing the FARMRanker.
+        # For these variables, by default, we use the value set when initializing the FARMClassifier.
         # These can also be manually set when train() is called if you want a different value at train vs inference
         if use_gpu is None:
             use_gpu = self.use_gpu
@@ -163,9 +178,7 @@ class FARMRanker(BaseRanker):
             save_dir = f"saved_models/{self.inferencer.model.language_model.name}"
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
-        label_list = ["0", "1"]
-        metric = "f1_macro"
-        processor = TextPairClassificationProcessor(
+        processor = TextClassificationProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
             max_seq_len=max_seq_len,
             label_list=label_list,
@@ -175,7 +188,7 @@ class FARMRanker(BaseRanker):
             dev_split=dev_split,
             test_filename=test_filename,
             data_dir=Path(data_dir),
-            delimiter="\t"
+            delimiter=delimiter,
         )
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
@@ -215,7 +228,7 @@ class FARMRanker(BaseRanker):
             max_seq_len: Optional[int] = None,
     ):
         """
-        Hot update parameters of a loaded Ranker. It may not to be safe when processing concurrent requests.
+        Hot update parameters of a loaded FARMClassifier. It may not to be safe when processing concurrent requests.
         """
         if max_seq_len is not None:
             self.inferencer.processor.max_seq_len = max_seq_len
@@ -223,49 +236,50 @@ class FARMRanker(BaseRanker):
 
     def save(self, directory: Path):
         """
-        Saves the Ranker model so that it can be reused at a later point in time.
+        Saves the FARMClassifier model so that it can be reused at a later point in time.
 
-        :param directory: Directory where the Ranker model should be saved
+        :param directory: Directory where the FARMClassifier model should be saved
         """
-        logger.info(f"Saving ranker model to {directory}")
+        logger.info(f"Saving classifier model to {directory}")
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
     def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
         """
-        Use loaded Ranker model to, for a list of queries, rank each query's supplied list of Document.
+        Use loaded FARMClassifier model to, for a list of queries, classify each query's supplied list of Document.
 
         Returns list of dictionary of query and list of document sorted by (desc.) similarity with query
 
         :param query_doc_list: List of dictionaries containing queries with their retrieved documents
         :param top_k: The maximum number of answers to return for each query
         :param batch_size: Number of samples the model receives in one batch for inference
-        :return: List of dictionaries containing query and ranked list of Document
+        :return: List of dictionaries containing query and list of Document with class probabilities in meta field
         """
         raise NotImplementedError
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
         """
-        Use loaded ranker model to re-rank the supplied list of Document.
+        Use loaded classification model to classify the supplied list of Document.
 
-        Returns list of Document sorted by (desc.) TextPairClassification similarity with the query.
+        Returns list of Document enriched with class label and probability, which are stored in Document.meta["classification"]
 
-        :param query: Query string
-        :param documents: List of Document to be re-ranked
+        :param query: Query string (is not used at the moment)
+        :param documents: List of Document to be classified
         :param top_k: The maximum number of documents to return
-        :return: List of Document
+        :return: List of Document with class probabilities in meta field
         """
         if top_k is None:
             top_k = self.top_k
 
-        # calculate similarity of query and each document
-        query_and_docs = [{"text": (query, doc.text)} for doc in documents]
-        result = self.inferencer.inference_from_dicts(dicts=query_and_docs)
-        similarity_scores = [pred["probability"] if pred["label"] == "1" else 1-pred["probability"] for preds in result for pred in preds["predictions"]]
+        # documents should follow the structure {"text": "Schartau sagte dem Tagesspiegel, dass Fischer ein ... sei"},
+        docs = [{"text": doc.text} for doc in documents]
+        results = self.inferencer.inference_from_dicts(dicts=docs)[0]["predictions"]
 
-        # rank documents according to scores
-        sorted_scores_and_documents = sorted(zip(similarity_scores, documents),
-                                             key=lambda similarity_document_tuple: similarity_document_tuple[0],
-                                             reverse=True)
-        sorted_documents = [doc for _, doc in sorted_scores_and_documents]
-        return sorted_documents[:top_k]
+        classified_docs: List[Document] = []
+
+        for result, doc in zip(results, documents):
+            cur_doc = doc
+            cur_doc.meta["classification"] = result
+            classified_docs.append(cur_doc)
+
+        return classified_docs[:top_k]
