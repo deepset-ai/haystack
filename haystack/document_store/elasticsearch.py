@@ -904,6 +904,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if index is None:
             index = self.index
 
+        if self.refresh_type == 'false':
+            self.client.indices.refresh(index=index)
+
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
