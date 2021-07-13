@@ -26,11 +26,11 @@ class BaseClassifier(BaseComponent):
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         pass
 
-    def run(self, query: str, documents: List[Document], top_k_ranker: Optional[int] = None, **kwargs): # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, **kwargs): # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
-            results = predict(query=query, documents=documents, top_k=top_k_ranker)
+            results = predict(query=query, documents=documents, top_k=top_k)
         else:
             results = []
 
@@ -58,48 +58,11 @@ class BaseClassifier(BaseComponent):
         return wrapper
 
     def print_time(self):
-        print("Ranker (Speed)")
+        print("Classifier (Speed)")
         print("---------------")
         if not self.query_count:
-            print("No querying performed via Retriever.run()")
+            print("No querying performed via Classifier.run()")
         else:
             print(f"Queries Performed: {self.query_count}")
             print(f"Query time: {self.query_time}s")
             print(f"{self.query_time / self.query_count} seconds per query")
-
-    def eval(
-        self,
-        label_index: str = "label",
-        doc_index: str = "eval_document",
-        label_origin: str = "gold_label",
-        top_k: int = 10,
-        open_domain: bool = False,
-        return_preds: bool = False,
-    ) -> dict:
-        """
-        Performs evaluation of the Ranker.
-        Ranker is evaluated in the same way as a Retriever based on whether it finds the correct document given the query string and at which
-        position in the ranking of documents the correct document is.
-
-        |  Returns a dict containing the following metrics:
-
-            - "recall": Proportion of questions for which correct document is among retrieved documents
-            - "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.
-              Only considers the highest ranked relevant document.
-            - "map": Mean of average precision for each question. Rewards retrievers that give relevant
-              documents a higher rank. Considers all retrieved relevant documents. If ``open_domain=True``,
-              average precision is normalized by the number of retrieved relevant documents per query.
-              If ``open_domain=False``, average precision is normalized by the number of all relevant documents
-              per query.
-
-        :param label_index: Index/Table in DocumentStore where labeled questions are stored
-        :param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
-        :param top_k: How many documents to return per query
-        :param open_domain: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
-                            contained in the retrieved docs (common approach in open-domain QA).
-                            If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
-                            are within ids explicitly stated in the labels.
-        :param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
-                             contains the keys "predictions" and "metrics".
-        """
-        raise NotImplementedError

@@ -99,6 +99,9 @@ class FARMClassifier(BaseClassifier):
             self,
             data_dir: str,
             train_filename: str,
+            label_list: List[str],
+            delimiter: str,
+            metric: str,
             dev_filename: Optional[str] = None,
             test_filename: Optional[str] = None,
             use_gpu: Optional[bool] = None,
@@ -112,15 +115,19 @@ class FARMClassifier(BaseClassifier):
             save_dir: Optional[str] = None,
             num_processes: Optional[int] = None,
             use_amp: str = None,
-            label_list: Optional[List[str]] = None,
     ):
         """
-        Fine-tune a model on a TextClassification dataset. Options:
+        Fine-tune a model on a TextClassification dataset.
+        The dataset needs to be in tabular format (CSV, TSV, etc.), with columns called "label" and "text" in no specific order.
+        Options:
 
         - Take a plain language model (e.g. `bert-base-cased`) and train it for TextClassification
         - Take a TextClassification model and fine-tune it for your domain
 
         :param data_dir: Path to directory containing your training data
+        :param label_list: list of labels in the training dataset, e.g., ["0", "1"]
+        :param delimiter: delimiter that separates columns in the training dataset, e.g., "\t"
+        :param metric: evaluation metric to be used while training, e.g., "f1_macro"
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
         :param test_filename: Filename of test data
@@ -147,7 +154,6 @@ class FARMClassifier(BaseClassifier):
                         "O2" (Almost FP16)
                         "O3" (Pure FP16).
                         See details on: https://nvidia.github.io/apex/amp.html
-        :param label_list: list of labels in the training dataset, e.g., ["0", "1"]
         :return: None
         """
 
@@ -172,9 +178,6 @@ class FARMClassifier(BaseClassifier):
             save_dir = f"saved_models/{self.inferencer.model.language_model.name}"
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
-        metric = "f1_macro"
-        if label_list is None:
-            label_list = ["0", "1"]
         processor = TextClassificationProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
             max_seq_len=max_seq_len,
@@ -185,7 +188,7 @@ class FARMClassifier(BaseClassifier):
             dev_split=dev_split,
             test_filename=test_filename,
             data_dir=Path(data_dir),
-            delimiter="\t"
+            delimiter=delimiter,
         )
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
@@ -258,7 +261,7 @@ class FARMClassifier(BaseClassifier):
         """
         Use loaded classification model to classify the supplied list of Document.
 
-        Returns list of Document enriched with classification.
+        Returns list of Document enriched with class label and probability, which are stored in Document.meta["classification"]
 
         :param query: Query string (is not used at the moment)
         :param documents: List of Document to be classified
