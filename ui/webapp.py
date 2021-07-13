@@ -22,8 +22,9 @@ def annotate_answer(answer, context):
     from the API that we highlight in the given context"""
     start_idx = context.find(answer)
     end_idx = start_idx + len(answer)
-    annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
-
+    # calculate dynamic height depending on context length
+    height = int(len(context) * 0.50) + 5
+    annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:], height=height)
 
 def show_plain_documents(text):
     """ If we are using a plain document search pipeline, i.e. only retriever, we'll get plain documents
