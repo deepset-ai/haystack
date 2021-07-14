@@ -36,9 +36,9 @@ def tutorial2_finetune_a_model_on_your_data():
     #**Recommendation: Run training on a GPU. To do so change the `use_gpu` arguments below to `True`
 
     reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=True)
-    train_data = "data/squad20"
-    # train_data = "PATH/TO_YOUR/TRAIN_DATA"
-    reader.train(data_dir=train_data, train_filename="dev-v2.0.json", use_gpu=True, n_epochs=1, save_dir="my_model")
+    data_dir = "data/squad20"
+    # data_dir = "PATH/TO_YOUR/TRAIN_DATA"
+    reader.train(data_dir=data_dir, train_filename="dev-v2.0.json", use_gpu=True, n_epochs=1, save_dir="my_model")
 
     # Saving the model happens automatically at the end of training into the `save_dir` you specified
     # However, you could also save a reader manually again via:
