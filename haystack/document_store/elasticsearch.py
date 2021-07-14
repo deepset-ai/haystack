@@ -443,29 +443,31 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if index and not self.client.indices.exists(index=index):
             self._create_label_index(index)
 
+        labels = [Label.from_dict(label) if isinstance(label, dict) else label for label in labels]
+        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
+        if len(duplicate_ids) > 0:
+            logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                           f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                           f" the answer annotation and not the question."
+                           f" Problematic ids: {','.join(duplicate_ids)}")
         labels_to_index = []
-        for l in labels:
-            # Make sure we comply to Label class format
-            if isinstance(l, dict):
-                label = Label.from_dict(l)
-            else:
-                label = l
-
+        for label in labels:
             # create timestamps if not available yet
-            if not label.created_at:
-                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
-            if not label.updated_at:
-                label.updated_at = label.created_at
+            if not label.created_at:  # type: ignore
+                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")  # type: ignore
+            if not label.updated_at:  # type: ignore
+                label.updated_at = label.created_at  # type: ignore
 
             _label = {
-                "_op_type": "index" if self.duplicate_documents == "overwrite" else "create",
+                "_op_type": "index" if self.duplicate_documents == "overwrite" or label.id in duplicate_ids else  # type: ignore
+                "create",
                 "_index": index,
-                **label.to_dict()
+                **label.to_dict()  # type: ignore
             }  # type: Dict[str, Any]
 
             # rename id for elastic
-            if label.id is not None:
-                _label["_id"] = str(_label.pop("id"))
+            if label.id is not None:  # type: ignore
+                _label["_id"] = str(_label.pop("id"))  # type: ignore
 
             labels_to_index.append(_label)
 
@@ -608,7 +610,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         index = index or self.label_index
         result = list(self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size))
-        labels = [Label.from_dict(hit["_source"]) for hit in result]
+        labels = [Label.from_dict({**hit["_source"], "id": hit["_id"]}) for hit in result]
         return labels
 
     def _get_all_documents_in_index(
