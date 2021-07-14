@@ -334,10 +334,15 @@ class BaseDocumentStore(BaseComponent):
         :return: List of labels
         """
         index = index or self.label_index
-        ids = [label.id for label in labels]
-        duplicate_ids = [label_id for label_id, count in collections.Counter(ids).items() if count > 1]
+        new_ids: List[str] = [label.id for label in labels]
+        duplicate_ids: List[str] = []
 
-        all_labels_ids: list = [label.id for label in self.get_all_labels(index=index)]
-        duplicate_ids.extend(list(filter(lambda label_id: label_id in all_labels_ids, ids)))
+        for label_id, count in collections.Counter(new_ids).items():
+            if count > 1:
+                duplicate_ids.append(label_id)
+
+        for label in self.get_all_labels(index=index):
+            if label.id in new_ids:
+                duplicate_ids.append(label.id)
 
         return [label for label in labels if label.id in duplicate_ids]
