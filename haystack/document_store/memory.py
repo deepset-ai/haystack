@@ -122,14 +122,20 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.label_index
         label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
 
+        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_objects, index=index)]
+        if len(duplicate_ids) > 0:
+            logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                           f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                           f" the answer annotation and not the question."
+                           f" Problematic ids: {','.join(duplicate_ids)}")
+
         for label in label_objects:
-            label_id = str(uuid4())
             # create timestamps if not available yet
             if not label.created_at:
                 label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
             if not label.updated_at:
                 label.updated_at = label.created_at
-            self.indexes[index][label_id] = label
+            self.indexes[index][label.id] = label
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
