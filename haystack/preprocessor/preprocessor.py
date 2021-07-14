@@ -90,7 +90,7 @@ class PreProcessor(BasePreProcessor):
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
         self.language = iso639_to_nltk.get(language, language)
-        self.log = []
+        self.print_log = set()
 
     def process(
         self,
@@ -133,11 +133,6 @@ class PreProcessor(BasePreProcessor):
 
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
-
-        # Display the log messages that might have accumulated over the course of processing
-        for log_message, log_fn in self.log:
-            log_fn(log_message)
-        self.log = []
 
         return ret
 
@@ -256,8 +251,9 @@ class PreProcessor(BasePreProcessor):
                 current_word_count = len(sen.split(" "))
                 if current_word_count > split_length:
                     long_sentence_message = f"One or more sentence found with word count higher than the split length."
-                    if (long_sentence_message, logger.warning) not in self.log:
-                        self.log.append((long_sentence_message, logger.warning))
+                    if long_sentence_message not in self.log:
+                        self.print_log.add(long_sentence_message)
+                        logger.warning(long_sentence_message)
                 if word_count + current_word_count > split_length:
                     list_splits.append(current_slice)
                     # Enable split_stride with split_by='word' while respecting sentence boundaries.
