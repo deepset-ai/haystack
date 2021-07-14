@@ -31,6 +31,7 @@ from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.summarizer.transformers import TransformersSummarizer
 from haystack.translator import TransformersTranslator
+from haystack.question_generator import QuestionGenerator
 
 
 def pytest_addoption(parser):
@@ -230,6 +231,11 @@ def rag_generator():
         model_name_or_path="facebook/rag-token-nq",
         generator_type=RAGeneratorType.TOKEN
     )
+
+
+@pytest.fixture(scope="module")
+def question_generator():
+    return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
 
 @pytest.fixture(scope="module")
