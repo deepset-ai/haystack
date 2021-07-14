@@ -1,5 +1,6 @@
 import itertools
 import logging
+import collections
 from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
@@ -326,6 +327,13 @@ class SQLDocumentStore(BaseDocumentStore):
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
         index = index or self.label_index
+
+        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
+        if len(duplicate_ids) > 0:
+            logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                           f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                           f" the answer annotation and not the question."
+                           f" Problematic ids: {','.join(duplicate_ids)}")
         # TODO: Use batch_size
         for label in labels:
             label_orm = LabelORM(
@@ -341,7 +349,10 @@ class SQLDocumentStore(BaseDocumentStore):
                 model_id=label.model_id,
                 index=index,
             )
-            self.session.add(label_orm)
+            if label.id in duplicate_ids:
+                self.session.merge(label_orm)
+            else:
+                self.session.add(label_orm)
         self.session.commit()
 
     def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None, batch_size: int = 10_000):
@@ -432,7 +443,8 @@ class SQLDocumentStore(BaseDocumentStore):
             offset_start_in_doc=row.offset_start_in_doc,
             model_id=row.model_id,
             created_at=row.created_at,
-            updated_at=row.updated_at
+            updated_at=row.updated_at,
+            id=row.id
         )
         return label
 
