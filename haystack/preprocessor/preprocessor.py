@@ -90,7 +90,7 @@ class PreProcessor(BasePreProcessor):
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
         self.language = iso639_to_nltk.get(language, language)
-        self.print_log = set()
+        self.print_log: Set[str] = set()
 
     def process(
         self,
