@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from pathlib import Path
@@ -15,10 +16,9 @@ class Crawler(BaseComponent):
     ```python
     |    from haystack.connector import Crawler
     |
-    |    crawler = Crawler()
+    |    crawler = Crawler(output_dir="crawled_files")
     |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/docs/
     |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/docs/latest/get_startedmd"],
-    |                         output_dir="crawled_files",
     |                         filter_urls= ["haystack\.deepset\.ai\/docs\/"])
     ```
     """
@@ -143,7 +143,7 @@ class Crawler(BaseComponent):
                 data['meta']['base_url'] = base_url
             data['text'] = text
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(str(data))
+                json.dump(data, f)
             paths.append(file_path)
 
         return paths
