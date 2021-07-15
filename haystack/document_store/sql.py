@@ -35,7 +35,7 @@ class DocumentORM(ORMBase):
     vector_id = Column(String(100), unique=True, nullable=True)
 
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
-    meta = relationship("MetaORM", backref="Document", lazy="joined")
+    meta = relationship("MetaORM", back_populates="documents", lazy="joined")
 
 
 class MetaORM(ORMBase):
@@ -50,7 +50,7 @@ class MetaORM(ORMBase):
         index=True
     )
 
-    documents = relationship(DocumentORM, backref="Meta")
+    documents = relationship(DocumentORM, back_populates="meta")
 
 
 class LabelORM(ORMBase):
