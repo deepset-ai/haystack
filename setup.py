@@ -4,48 +4,74 @@ from io import open
 
 from setuptools import find_packages, setup
 
+# IMPORTANT:
+# 1. all packages should be listed here with their version requirements if any
+packages = [
+    "farm==0.8.0",
+    "torch>=1.8",
+    "fastapi",
+    "uvicorn",
+    "gunicorn",
+    "pandas",
+    "sklearn",
+    "elasticsearch>=7.7,<=7.10",
+    "tox",
+    "coverage",
+    "langdetect",  # for PDF conversions
+    "python-multipart",
+    "python-docx",
+    "sqlalchemy>=1.4.2",
+    "sqlalchemy_utils",
+    "faiss-cpu>=1.6.3",
+    "faiss-gpu",
+    "tika",
+    "httptools",
+    "nltk",
+    "more_itertools",
+    "networkx",
+    "pymilvus",
+    "SPARQLWrapper",
+    "mmh3",
+    "weaviate-client",
+    "mypy",
+    "pytest",
+    "sentence-transformers",
+    "selenium",
+    "webdriver-manager",
+    "beautifulsoup4",
+    "markdown",
+    "streamlit",
+]
+# this is a lookup table with items like:
+# tokenizers: "tokenizers==0.9.4"
+# packaging: "packaging"
+deps = {b: a for a, b in (re.findall(r"^(([^!=<>]+)(?:[!=<>].*)?$)", x)[0] for x in packages)}
 
-def parse_requirements(filename):
-    """
-    Parse a requirements pip file returning the list of required packages. It exclude commented lines and --find-links directives.
 
-    Args:
-        filename: pip requirements requirements
+def deps_list(*pkgs):
+    return [deps[pkg] for pkg in pkgs]
 
-    Returns:
-        list of required package with versions constraints
+install_requires = [
+    deps["farm"],
+    deps["torch"],
+    deps["fastapi"],
+    deps["uvicorn"],
+    deps["gunicorn"],
+    deps["pandas"],
+    deps["networkx"],
+    deps["sklearn"],
+    deps["mmh3"],
+    deps["sqlalchemy"],
+    deps["sqlalchemy_utils"],
+]
 
-    """
-    with open(filename) as file:
-        parsed_requirements = file.read().splitlines()
-    parsed_requirements = [line.strip()
-                           for line in parsed_requirements
-                           if not ((line.strip()[0] == "#") or line.strip().startswith('--find-links') or ("git+https" in line))]
-    
-    return parsed_requirements
-
-
-def get_dependency_links(filename):
-    """
-     Parse a requirements pip file looking for the --find-links directive.
-    Args:
-        filename:  pip requirements requirements
-
-    Returns:
-        list of find-links's url
-    """
-    with open(filename) as file:
-        parsed_requirements = file.read().splitlines()
-    dependency_links = list()
-    for line in parsed_requirements:
-        line = line.strip()
-        if line.startswith('--find-links'):
-            dependency_links.append(line.split('=')[1])
-    return dependency_links
-
-
-dependency_links = get_dependency_links('requirements.txt')
-parsed_requirements = parse_requirements('requirements.txt')
+extras = {}
+extras["elasticsearch"] = deps_list("elasticsearch")
+extras["faiss-cpu"] = deps_list("faiss-cpu")
+extras["faiss-gpu"] = deps_list("faiss-gpu")
+extras["weaviate"] = deps_list("weaviate-client")
+extras["ui"] = deps_list("streamlit")
+extras["crawer"] = deps_list("selenium","webdriver-manager")
 
 
 def versionfromfile(*filepath):
@@ -75,8 +101,8 @@ setup(
     url="https://github.com/deepset-ai/haystack",
     download_url=f"https://github.com/deepset-ai/haystack/archive/{_version}.tar.gz",
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-    dependency_links=dependency_links,
-    install_requires=parsed_requirements,
+    install_requires=install_requires,
+    extras_require=extras,
     python_requires=">=3.7.0",
     tests_require=["pytest"],
     classifiers=[
