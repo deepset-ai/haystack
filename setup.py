@@ -78,8 +78,17 @@ extras["faiss-cpu"] = deps_list("faiss-cpu")
 extras["faiss-gpu"] = deps_list("faiss-gpu")
 extras["weaviate"] = deps_list("weaviate-client")
 extras["ui"] = deps_list("streamlit")
-extras["crawer"] = deps_list("selenium", "webdriver-manager")
+extras["crawling"] = deps_list("selenium", "webdriver-manager")
 extras["testing"] = deps_list("pytest", "mypy")
+
+extras["all"] = (
+        extras["elasticsearch"]
+        + extras["faiss-cpu"]
+        + extras["weaviate"]
+        + extras["ui"]
+        + extras["crawling"]
+        + extras["testing"]
+)
 
 
 def versionfromfile(*filepath):
