@@ -1,12 +1,13 @@
 import os
 import re
 from io import open
+from typing import List, Dict
 
 from setuptools import find_packages, setup
 
 # IMPORTANT:
 # 1. all packages should be listed here with their version requirements if any
-packages = [
+packages: List[str] = [
     "farm==0.8.0",
     "torch",  # torch package version already mentioned in farm
     "fastapi",
@@ -49,37 +50,40 @@ packages = [
 # this is a lookup table with items like:
 # tokenizers: "tokenizers==0.9.4"
 # packaging: "packaging"
-deps = {b: a for a, b in (re.findall(r"^(([^!=<>]+)(?:[!=<>].*)?$)", x)[0] for x in packages)}
+dependencies: Dict[str:str] = {b: a for a, b in (re.findall(r"^(([^!=<>]+)(?:[!=<>].*)?$)", x)[0] for x in packages)}
 
 
-def deps_list(*pkgs):
-    return [deps[pkg] for pkg in pkgs]
+def dependencies_list(*package_list):
+    """
+    Return package with version from list
+    """
+    return [dependencies[package] for package in package_list]
 
 
 install_requires = [
-    deps["farm"],
-    deps["torch"],
-    deps["fastapi"],
-    deps["uvicorn"],
-    deps["gunicorn"],
-    deps["pandas"],
-    deps["sklearn"],
-    deps["psycopg2-binary"] + "; sys_platform != 'win32' and sys_platform != 'cygwin'",
-    deps["mmh3"],
-    deps["sqlalchemy"],
-    deps["sqlalchemy_utils"],
-    deps["networkx"],
-    deps["uvloop"] + "; sys_platform != 'win32' and sys_platform != 'cygwin'",
+    dependencies["farm"],
+    dependencies["torch"],
+    dependencies["fastapi"],
+    dependencies["uvicorn"],
+    dependencies["gunicorn"],
+    dependencies["pandas"],
+    dependencies["sklearn"],
+    dependencies["psycopg2-binary"] + "; sys_platform != 'win32' and sys_platform != 'cygwin'",
+    dependencies["mmh3"],
+    dependencies["sqlalchemy"],
+    dependencies["sqlalchemy_utils"],
+    dependencies["networkx"],
+    dependencies["uvloop"] + "; sys_platform != 'win32' and sys_platform != 'cygwin'",
 ]
 
 extras = {}
-extras["elasticsearch"] = deps_list("elasticsearch")
-extras["faiss-cpu"] = deps_list("faiss-cpu")
-extras["faiss-gpu"] = deps_list("faiss-gpu")
-extras["weaviate"] = deps_list("weaviate-client")
-extras["ui"] = deps_list("streamlit")
-extras["crawling"] = deps_list("selenium", "webdriver-manager")
-extras["testing"] = deps_list("pytest", "mypy")
+extras["elasticsearch"] = dependencies_list("elasticsearch")
+extras["faiss-cpu"] = dependencies_list("faiss-cpu")
+extras["faiss-gpu"] = dependencies_list("faiss-gpu")
+extras["weaviate"] = dependencies_list("weaviate-client")
+extras["ui"] = dependencies_list("streamlit")
+extras["crawling"] = dependencies_list("selenium", "webdriver-manager")
+extras["testing"] = dependencies_list("pytest", "mypy")
 
 extras["all"] = (
         extras["elasticsearch"]
