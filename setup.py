@@ -8,16 +8,19 @@ from setuptools import find_packages, setup
 # 1. all packages should be listed here with their version requirements if any
 packages = [
     "farm==0.8.0",
-    "torch>=1.8",
+    "torch",  # torch package version already mentioned in farm
     "fastapi",
     "uvicorn",
     "gunicorn",
     "pandas",
     "sklearn",
+    "psycopg2-binary",
     "elasticsearch>=7.7,<=7.10",
+    "elastic-apm",
     "tox",
     "coverage",
     "langdetect",  # for PDF conversions
+    "sentence-transformers",
     "python-multipart",
     "python-docx",
     "sqlalchemy>=1.4.2",
@@ -25,6 +28,7 @@ packages = [
     "faiss-cpu>=1.6.3",
     "faiss-gpu",
     "tika",
+    "uvloop==0.14",
     "httptools",
     "nltk",
     "more_itertools",
@@ -51,6 +55,7 @@ deps = {b: a for a, b in (re.findall(r"^(([^!=<>]+)(?:[!=<>].*)?$)", x)[0] for x
 def deps_list(*pkgs):
     return [deps[pkg] for pkg in pkgs]
 
+
 install_requires = [
     deps["farm"],
     deps["torch"],
@@ -58,11 +63,13 @@ install_requires = [
     deps["uvicorn"],
     deps["gunicorn"],
     deps["pandas"],
-    deps["networkx"],
     deps["sklearn"],
+    deps["psycopg2-binary"] + "; sys_platform != 'win32' and sys_platform != 'cygwin'",
     deps["mmh3"],
     deps["sqlalchemy"],
     deps["sqlalchemy_utils"],
+    deps["networkx"],
+    deps["uvloop"] + "; sys_platform != 'win32' and sys_platform != 'cygwin'",
 ]
 
 extras = {}
