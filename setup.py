@@ -71,7 +71,8 @@ extras["faiss-cpu"] = deps_list("faiss-cpu")
 extras["faiss-gpu"] = deps_list("faiss-gpu")
 extras["weaviate"] = deps_list("weaviate-client")
 extras["ui"] = deps_list("streamlit")
-extras["crawer"] = deps_list("selenium","webdriver-manager")
+extras["crawer"] = deps_list("selenium", "webdriver-manager")
+extras["testing"] = deps_list("pytest", "mypy")
 
 
 def versionfromfile(*filepath):
