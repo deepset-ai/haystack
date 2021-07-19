@@ -83,6 +83,14 @@ extras_require["weaviate"] = dependencies_list("weaviate-client")
 extras_require["ui"] = dependencies_list("streamlit")
 extras_require["crawling"] = dependencies_list("selenium", "webdriver-manager")
 extras_require["testing"] = dependencies_list("pytest", "mypy")
+extras_require["all"] = (
+        extras_require["elasticsearch"]
+        + extras_require["faiss-gpu"]
+        + extras_require["weaviate"]
+        + extras_require["ui"]
+        + extras_require["crawling"]
+        + extras_require["testing"]
+)
 
 
 def versionfromfile(*filepath):
