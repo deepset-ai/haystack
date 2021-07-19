@@ -5,7 +5,6 @@ from typing import List, Dict
 
 from setuptools import find_packages, setup
 
-# IMPORTANT:
 # 1. all packages should be listed here with their version requirements if any
 packages: List[str] = [
     "farm==0.8.0",
@@ -50,7 +49,7 @@ packages: List[str] = [
 # this is a lookup table with items like:
 # tokenizers: "tokenizers==0.9.4"
 # packaging: "packaging"
-dependencies: Dict[str:str] = {b: a for a, b in (re.findall(r"^(([^!=<>]+)(?:[!=<>].*)?$)", x)[0] for x in packages)}
+dependencies: Dict = {b: a for a, b in (re.findall(r"^(([^!=<>]+)(?:[!=<>].*)?$)", x)[0] for x in packages)}
 
 
 def dependencies_list(*package_list):
@@ -76,23 +75,14 @@ install_requires = [
     dependencies["uvloop"] + "; sys_platform != 'win32' and sys_platform != 'cygwin'",
 ]
 
-extras = {}
-extras["elasticsearch"] = dependencies_list("elasticsearch")
-extras["faiss-cpu"] = dependencies_list("faiss-cpu")
-extras["faiss-gpu"] = dependencies_list("faiss-gpu")
-extras["weaviate"] = dependencies_list("weaviate-client")
-extras["ui"] = dependencies_list("streamlit")
-extras["crawling"] = dependencies_list("selenium", "webdriver-manager")
-extras["testing"] = dependencies_list("pytest", "mypy")
-
-extras["all"] = (
-        extras["elasticsearch"]
-        + extras["faiss-cpu"]
-        + extras["weaviate"]
-        + extras["ui"]
-        + extras["crawling"]
-        + extras["testing"]
-)
+extras_require = {}
+extras_require["elasticsearch"] = dependencies_list("elasticsearch")
+extras_require["faiss-cpu"] = dependencies_list("faiss-cpu")
+extras_require["faiss-gpu"] = dependencies_list("faiss-gpu")
+extras_require["weaviate"] = dependencies_list("weaviate-client")
+extras_require["ui"] = dependencies_list("streamlit")
+extras_require["crawling"] = dependencies_list("selenium", "webdriver-manager")
+extras_require["testing"] = dependencies_list("pytest", "mypy")
 
 
 def versionfromfile(*filepath):
@@ -123,7 +113,7 @@ setup(
     download_url=f"https://github.com/deepset-ai/haystack/archive/{_version}.tar.gz",
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     install_requires=install_requires,
-    extras_require=extras,
+    extras_require=extras_require,
     python_requires=">=3.7.0",
     tests_require=["pytest"],
     classifiers=[
