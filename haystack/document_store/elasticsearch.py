@@ -363,7 +363,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return buckets
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000,duplicate_documents: Optional[str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -1074,14 +1074,14 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     pass
                 elif self.index_type == "hnsw":
                     mapping["settings"]["index"]["knn.algo_param"] = {}
-                    mapping["settings"]["index"]["knn.algo_param"]["ef_search"] = 20
+                    mapping["settings"]["index"]["knn.algo_param"]["ef_search"] = 2
                     mapping["mappings"]["properties"][self.embedding_field]["method"] = {
                         "space_type": similarity_space_type,
                         "name": "hnsw",
                         "engine": "nmslib",
                         "parameters": {
-                            "ef_construction": 80,
-                            "m": 64
+                            "ef_construction": 8,
+                            "m": 16
                         }
                     }
                 else:
