@@ -109,6 +109,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     doc_store.delete_all_documents(index=doc_index)
                     doc_store.delete_all_documents(index=label_index)
                 time.sleep(10)
+                doc_store.stop_service()
                 del doc_store
                 del retriever
     if update_json:

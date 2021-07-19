@@ -1074,14 +1074,14 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     pass
                 elif self.index_type == "hnsw":
                     mapping["settings"]["index"]["knn.algo_param"] = {}
-                    mapping["settings"]["index"]["knn.algo_param"]["ef_search"] = 2
+                    mapping["settings"]["index"]["knn.algo_param"]["ef_search"] = 20
                     mapping["mappings"]["properties"][self.embedding_field]["method"] = {
                         "space_type": similarity_space_type,
                         "name": "hnsw",
                         "engine": "nmslib",
                         "parameters": {
-                            "ef_construction": 8,
-                            "m": 16
+                            "ef_construction": 80,
+                            "m": 64
                         }
                     }
                 else:
