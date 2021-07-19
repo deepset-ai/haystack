@@ -37,11 +37,13 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore()
     elif document_store_type == "elasticsearch":
+        launch_es()
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index='haystack_test*', ignore=[404])
         document_store = ElasticsearchDocumentStore(index="eval_document", similarity=similarity, timeout=3000)
     elif document_store_type in ("milvus_flat", "milvus_hnsw"):
+        launch_milvus()
         if document_store_type == "milvus_flat":
             index_type = IndexType.FLAT
             index_param = None
@@ -82,6 +84,7 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
         )
         assert document_store.get_document_count() == 0
     elif document_store_type in ("opensearch_flat", "opensearch_hnsw"):
+        launch_opensearch()
         if document_store_type == "opensearch_flat":
             index_type = "flat"
         elif document_store_type == "opensearch_hnsw":

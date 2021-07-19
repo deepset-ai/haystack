@@ -6,6 +6,9 @@ import pprint
 import pandas as pd
 from typing import Dict, Any, List
 from haystack.document_store.sql import DocumentORM
+from haystack.document_store.elasticsearch import OpenSearchDocumentStore
+from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_store.memory import InMemoryDocumentStore
 import subprocess
 import time
 
@@ -42,10 +45,10 @@ def launch_open_distro_es(sleep=15):
 def launch_opensearch(sleep=15):
     # Start an OpenSearch server via docker
 
-    logger.info("Starting OpenSearch ...")
+    logger.info("Starting OpenSearch...")
     status = subprocess.run(
         [
-            'docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.0.0-rc1'],
+            'docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name opensearch opensearchproject/opensearch:1.0.0-rc1'],
         shell=True
     )
     if status.returncode:
@@ -54,6 +57,21 @@ def launch_opensearch(sleep=15):
     else:
         time.sleep(sleep)
 
+def stop_opensearch():
+    logger.info("Stopping OpenSearch...")
+    status = subprocess.run(['docker stop opensearch'], shell=True)
+    if status.returncode:
+        logger.warning("Tried to stop OpenSearch but this failed. "
+                       "It is likely that there was no OpenSearch Docker container with the name opensearch")
+
+def stop_document_store_service(document_store):
+    ds_type = type(document_store)
+    if ds_type == OpenSearchDocumentStore:
+        stop_opensearch()
+    elif ds_type in [InMemoryDocumentStore, FAISSDocumentStore]:
+        logger.warning(f"No document store service was shut down. The {ds_type} class does not rely on an external service to function.")
+    else:
+        logger.warning(f"Not able to shut down the document store service. Currently there is no implementation to shut down the Docker container of a {ds_type}.")
 
 def launch_milvus(sleep=15):
     # Start a Milvus server via docker

@@ -4,6 +4,7 @@ from time import perf_counter
 from utils import get_document_store, get_retriever, index_to_doc_store, load_config, download_from_url
 from haystack.preprocessor.utils import eval_data_from_json
 from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.utils import stop_document_store_service
 
 from haystack import Document
 import pickle
@@ -88,6 +89,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                 time.sleep(10)
                 del doc_store
                 del retriever
+                stop_document_store_service(doc_store)
 
             except Exception:
                 tb = traceback.format_exc()
@@ -153,6 +155,9 @@ def benchmark_querying(n_docs_options,
                                             add_precomputed=add_precomputed)
                 logger.info("Start indexing...")
                 index_to_doc_store(doc_store, docs, retriever, labels)
+                # Ensure that we are not still waiting on an async write operation to finish
+                assert doc_store.get_document_count(index=doc_index) == n_docs
+
                 logger.info("Start queries...")
 
                 raw_results = retriever.eval()
@@ -180,6 +185,7 @@ def benchmark_querying(n_docs_options,
                 time.sleep(5)
                 del doc_store
                 del retriever
+                stop_document_store_service(doc_store)
             except Exception:
                 tb = traceback.format_exc()
                 logging.error(f"##### The following Error was raised while running querying run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
