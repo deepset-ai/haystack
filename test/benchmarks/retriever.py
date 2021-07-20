@@ -157,19 +157,6 @@ def benchmark_querying(n_docs_options,
                 logger.info("Start indexing...")
                 index_to_doc_store(doc_store, docs, retriever, labels)
 
-                # Ensure that we are not still waiting on an async write operation to finish
-                write_wait = 0
-                while True:
-                    finished_writing = doc_store.get_document_count(index=doc_index) == n_docs
-                    if finished_writing:
-                        break
-                    else:
-                        time.sleep(1)
-                        write_wait += 1
-                        if write_wait >= wait_write_limit:
-                            logger.warning(f"Waited {wait_write_limit} seconds for async writing to finish but it has not completed. Continuing anyways.")
-                            break
-
                 logger.info("Start queries...")
 
                 raw_results = retriever.eval()
