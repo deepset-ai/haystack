@@ -1004,7 +1004,82 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
     In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
     the KNN plugin that can scale to a large number of documents.
     """
+    
+    def query_by_embedding(self,
+                        query_emb: np.ndarray,
+                        filters: Optional[Dict[str, List[str]]] = None,
+                        top_k: int = 10,
+                        index: Optional[str] = None,
+                        return_embedding: Optional[bool] = None) -> List[Document]:
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param top_k: How many documents to return
+        :param index: Index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :return:
+        """
+        if index is None:
+            index = self.index
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
+        if not self.embedding_field:
+            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
+        else:
+            # +1 in similarity to avoid negative numbers (for cosine sim)
+            body = {
+                "size": top_k,
+                "query": {
+                    "bool": {
+                        "must": [
+                            self._get_vector_similarity_query(query_emb, top_k)
+                        ]
+                    }
+                }
+            }
+            if filters:
+                filter_clause = []
+                for key, values in filters.items():
+                    if type(values) != list:
+                        raise ValueError(
+                            f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                            'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
+                    filter_clause.append(
+                        {
+                            "terms": {key: values}
+                        }
+                    )
+                body["query"]["bool"]["filter"] = filter_clause
+
+            excluded_meta_data: Optional[list] = None
+
+            if self.excluded_meta_data:
+                excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+                if return_embedding is True and self.embedding_field in excluded_meta_data:
+                    excluded_meta_data.remove(self.embedding_field)
+                elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                    excluded_meta_data.append(self.embedding_field)
+            elif return_embedding is False:
+                excluded_meta_data = [self.embedding_field]
+
+            if excluded_meta_data:
+                body["_source"] = {"excludes": excluded_meta_data}
+
+            logger.debug(f"Retriever query: {body}")
+            result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+
+            documents = [
+                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+                for hit in result
+            ]
+            return documents
+    
     def _create_document_index(self, index_name: str):
         """
         Create a new index for storing documents.
