@@ -177,10 +177,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
             client = Elasticsearch(
                 hosts=hosts, http_auth=aws4auth, connection_class=RequestsHttpConnection, use_ssl=True, verify_certs=True, timeout=timeout)
-        else:
+        elif username:
             # standard http_auth
             client = Elasticsearch(hosts=hosts, http_auth=(username, password),
                                         scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
+                                        timeout=timeout)
+        else:
+            # there is no authentication for this elasticsearch instance
+            client = Elasticsearch(hosts=hosts, scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
                                         timeout=timeout)
 
         # Test connection
