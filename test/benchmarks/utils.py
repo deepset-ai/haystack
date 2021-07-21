@@ -89,7 +89,7 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
             index_type = "flat"
         elif document_store_type == "opensearch_hnsw":
             index_type = "hnsw"
-        document_store = OpenSearchDocumentStore(index_type=index_type)
+        document_store = OpenSearchDocumentStore(index_type=index_type, timeout=3000)
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
     return document_store
