@@ -334,7 +334,7 @@ The Document Stores have different characteristics. You should choose one depend
 
 <div class="tab">
 <input type="radio" id="tab-2-6" name="tab-group-2">
-<label class="labelouter" for="tab-2-6">Weaviate</label>
+<label class="labelouter" for="tab-2-6">OpenSearch</label>
 <div class="tabcontent">
 
 **Pros:**
