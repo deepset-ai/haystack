@@ -809,7 +809,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.similarity == "cosine":
             similarity_fn_name = "cosineSimilarity"
         elif self.similarity == "dot_product":
-            similarity_fn_name = "innerproduct"
+            if type(self) == OpenSearchDocumentStore:
+                similarity_fn_name = "innerproduct"
+            elif type(self) == ElasticsearchDocumentStore:
+                similarity_fn_name = "dotProduct"
         else:
             raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
