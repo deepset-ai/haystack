@@ -39,7 +39,6 @@ packages: List[str] = [
     "weaviate-client",
     "mypy",
     "pytest",
-    "sentence-transformers",
     "selenium",
     "webdriver-manager",
     "beautifulsoup4",
@@ -83,6 +82,8 @@ extras_require["weaviate"] = dependencies_list("weaviate-client")
 extras_require["ui"] = dependencies_list("streamlit")
 extras_require["crawling"] = dependencies_list("selenium", "webdriver-manager")
 extras_require["testing"] = dependencies_list("pytest", "mypy")
+extras_require["milvus"] = dependencies_list("pymilvus")
+extras_require["sentence-transformers"] = dependencies_list("sentence-transformers")
 extras_require["all"] = (
         extras_require["elasticsearch"]
         + extras_require["faiss-gpu"]
@@ -90,6 +91,8 @@ extras_require["all"] = (
         + extras_require["ui"]
         + extras_require["crawling"]
         + extras_require["testing"]
+        + extras_require["milvus"]
+        + extras_require["sentence-transformers"]
 )
 
 
