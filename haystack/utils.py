@@ -43,9 +43,11 @@ def launch_opensearch(sleep=15):
     # Start an OpenSearch server via docker
 
     logger.info("Starting OpenSearch...")
+    # This line is needed since it is not possible to start a new docker container with the name opensearch if there is a stopped image with the same now
+    # docker rm only succeeds if the container is stopped, not if it is running
+    _ = subprocess.run(['docker rm opensearch'], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
-        [
-            'docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name opensearch opensearchproject/opensearch:1.0.0-rc1'],
+        ['docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name opensearch opensearchproject/opensearch:1.0.0-rc1'],
         shell=True
     )
     if status.returncode:
@@ -62,6 +64,14 @@ def stop_opensearch():
         logger.warning("Tried to stop OpenSearch but this failed. "
                        "It is likely that there was no OpenSearch Docker container with the name opensearch")
     status = subprocess.run(['docker rm opensearch'], shell=True)
+
+
+def stop_service(document_store):
+    ds_class = str(type(document_store))
+    if "OpenSearchDocumentStore" in ds_class:
+        stop_opensearch()
+    else:
+        logger.warning(f"No support yet for auto stopping the service behind a {ds_class}")
 
 
 def launch_milvus(sleep=15):
@@ -228,6 +238,7 @@ def get_batches_from_generator(iterable, n):
     """
     Batch elements of an iterable into fixed-length chunks or blocks.
     """
+    # TODO consider moving to base.DocumentStore
     it = iter(iterable)
     x = tuple(islice(it, n))
     while x:

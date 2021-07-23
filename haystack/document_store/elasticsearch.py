@@ -13,7 +13,7 @@ from tqdm.auto import tqdm
 
 from haystack.document_store.base import BaseDocumentStore, DuplicateDocumentError
 from haystack import Document, Label
-from haystack.utils import get_batches_from_generator, stop_opensearch
+from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
 
@@ -1106,8 +1106,6 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name):
                 raise e
 
-    def stop_service(self):
-        stop_opensearch()
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """

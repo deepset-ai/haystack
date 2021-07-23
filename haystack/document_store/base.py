@@ -279,9 +279,6 @@ class BaseDocumentStore(BaseComponent):
                             batch_size: int = 10_000) -> List[Document]:
         pass
 
-    def stop_service(self):
-        logger.warning(f"DocumentStore service not stopped. DocumentStore.stop_service() not implemented yet for {type(self)}.")
-
     def _drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
         """
          Drop duplicates documents based on same hash ID
