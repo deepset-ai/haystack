@@ -1010,17 +1010,23 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     the KNN plugin that can scale to a large number of documents.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self,
+                 verify_certs=False,
+                 scheme="https",
+                 username="admin",
+                 password="admin",
+                 port=9201,
+                 **kwargs):
 
         # Overwrite default kwarg values of parent class so that in default cases we can initialize
         # an OpenSearchDocumentStore without provding any arguments
-        kwargs["verify_certs"] = kwargs.get("verify_certs", False)
-        kwargs["scheme"] = kwargs.get("scheme", "https")
-        kwargs["username"] = kwargs.get("username", "admin")
-        kwargs["password"] = kwargs.get("password", "admin")
-        kwargs["port"] = kwargs.get("port", 9201)
 
-        super(OpenSearchDocumentStore, self).__init__(**kwargs)
+        super(OpenSearchDocumentStore, self).__init__(verify_certs=verify_certs,
+                                                      scheme=scheme,
+                                                      username=username,
+                                                      password=password,
+                                                      port=port,
+                                                      **kwargs)
 
 
     def _create_document_index(self, index_name: str):
