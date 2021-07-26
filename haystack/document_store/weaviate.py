@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, Generator, List, Optional, Union
 import numpy as np
 from tqdm import tqdm
+import uuid
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
@@ -14,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 class WeaviateDocumentStore(BaseDocumentStore):
     """
-    
+
     Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
     (See https://www.semi.technology/developers/weaviate/current/index.html#what-is-weaviate)
-    
+
     Some of the key differences in contrast to FAISS & Milvus:
     1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
-    2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
-    3. Has less variety of ANN algorithms, as of now only HNSW.  
+    2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
+    3. Has less variety of ANN algorithms, as of now only HNSW.
 
     Weaviate python client is used to connect to the server, more details are here
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -360,6 +361,25 @@ class WeaviateDocumentStore(BaseDocumentStore):
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
         document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
 
+        # Weaviate has strict requirements for what ids can be used. We will attach a weaviate-compliant id to the
+        # metadata of each document object
+        for do in document_objects:
+            weaviate_uuid = str(uuid.uuid4())
+            do.meta["uuid"] = weaviate_uuid
+
+        # Weaviate requires that documents contain a vector in order to be indexed. These lines add a
+        # dummy vector so that indexing can still happen
+        dummy_embed_warning_raised = False
+        for do in document_objects:
+            if not do.embedding:
+                dummy_embedding = np.random.rand(self.embedding_dim).astype(np.float32)
+                do.embedding = dummy_embedding
+                if not dummy_embed_warning_raised:
+                    logger.warning("No embedding found in Document object being written into Weaviate. A dummy "
+                                 "embedding is being supplied so that indexing can still take place. This "
+                                 "embedding should be overwritten in order to perform vector similarity searches.")
+                    dummy_embed_warning_raised = True
+
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
@@ -390,7 +410,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             self._update_schema(property, index)
                             current_properties.append(property)
 
-                    docs_batch.add(_doc, class_name=index, uuid=None, vector=vector)
+                    docs_batch.add(_doc, class_name=index, uuid=doc.meta["uuid"], vector=vector)
 
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create(docs_batch)
@@ -676,7 +696,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
             for doc, emb in zip(document_batch, embeddings):
                 # Using update method to only update the embeddings, other properties will be in tact
-                self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
+                self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.meta["uuid"], vector=emb)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """

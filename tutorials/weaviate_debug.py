@@ -31,6 +31,9 @@ def weaviate_debug():
 
     retriever = DensePassageRetriever(document_store=document_store)
 
+    all_docs = document_store.get_all_documents()
+    _ = document_store.get_document_by_id(all_docs[0].id)
+
     document_store.update_embeddings(retriever)
 
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
