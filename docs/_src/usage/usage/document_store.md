@@ -47,9 +47,9 @@ from haystack.document_store import ElasticsearchDocumentStore
 document_store = ElasticsearchDocumentStore()
 ```
 
-Note that we also support [Open Distro for Elasticsearch](https://opendistro.github.io/for-elasticsearch-docs/).
-Follow [their documentation](https://opendistro.github.io/for-elasticsearch-docs/docs/install/)
-to run it and connect to it using Haystack's `OpenDistroElasticsearchDocumentStore` class.
+Note that we also support [OpenSearch](https://opensearch.org/).
+Follow [their documentation](https://opensearch.org/docs/)
+to run it and connect to it using Haystack's `OpenSearchDocumentStore` class.
 
 We further support [AWS Elastic Search Service](https://aws.amazon.com/elasticsearch-service/) with [signed Requests](https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html):
 Use e.g. [aws-requests-auth](https://github.com/davidmuller/aws-requests-auth) to create an auth object and pass it as `aws4auth` to the `ElasticsearchDocumentStore` constructor.
@@ -140,6 +140,32 @@ from haystack.document_store import WeaviateDocumentStore
 document_store = WeaviateDocumentStore()
 ```
     
+</div>
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-1-1" name="tab-group-1" checked>
+<label class="labelouter" for="tab-1-1">OpenSearch</label>
+<div class="tabcontent">
+
+See the official [OpenSearch documentation](https://opensearch.org/docs/opensearch/install/docker/) on how to install and start an instance.
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+```bash
+docker pull opensearchproject/opensearch:1.0.0
+docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.0.0
+```
+
+Note that we also have a utility function `haystack.utils.launch_opensearch` that can start up an OpenSearch instance.
+
+Next you can initialize the Haystack object that will connect to this instance.
+
+```python
+from haystack.document_store import OpenSearchDocumentStore
+
+document_store = OpenSearchDocumentStore()
+```
+
 </div>
 </div>
 
@@ -302,6 +328,21 @@ The Document Stores have different characteristics. You should choose one depend
 **Cons:**
 - Less options for ANN algorithms than FAISS or Milvus
 - No BM25 / Tf-idf retrieval
+    
+</div>
+</div>
+
+<div class="tab">
+<input type="radio" id="tab-2-6" name="tab-group-2">
+<label class="labelouter" for="tab-2-6">OpenSearch</label>
+<div class="tabcontent">
+
+**Pros:**
+- Fully open source fork of Elasticsearch
+- Has support for Approximate Nearest Neighbours vector search
+
+**Cons:**
+- It's ANN algorithms seem a little less performant that FAISS or Milvus in our benchmarks
     
 </div>
 </div>
