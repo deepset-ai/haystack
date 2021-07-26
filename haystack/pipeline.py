@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Union, Any
 import pickle
 import urllib
+from functools import wraps
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 
@@ -587,6 +588,70 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=output_translator, name="OutputTranslator", inputs=previous_node_name)
 
     def run(self, **kwargs):
+        output = self.pipeline.run(**kwargs)
+        return output
+
+
+class QuestionGenerationPipeline(BaseStandardPipeline):
+    """
+    A simple pipeline that takes documents as input and generates
+    questions that it thinks can be answered by the documents.
+    """
+    def __init__(self, question_generator):
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
+
+    def run(self, documents, **kwargs):
+        kwargs["documents"] = documents
+        output = self.pipeline.run(**kwargs)
+        return output
+
+
+class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
+    """
+    A simple pipeline that takes a query as input, performs retrieval, and then generates
+    questions that it thinks can be answered by the retrieved documents.
+    """
+    def __init__(self, retriever, question_generator):
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
+
+    def run(self, query, **kwargs):
+        kwargs["query"] = query
+        output = self.pipeline.run(**kwargs)
+        return output
+
+
+class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
+    """
+    This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
+    this document, and then performs question answering of this questions using that single document.
+    """
+    def __init__(self, question_generator, reader):
+        question_generator.run = self.formatting_wrapper(question_generator.run)
+        # Overwrite reader.run function so it can handle a batch of questions being passed on by the QuestionGenerator
+        reader.run = reader.run_batch
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
+        self.pipeline.add_node(component=reader, name="Reader", inputs=["QuestionGenerator"])
+
+    # This is used to format the output of the QuestionGenerator so that its questions are ready to be answered by the reader
+    def formatting_wrapper(self, fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            output, output_stream = fn(*args, **kwargs)
+            questions = output["generated_questions"][0]["questions"]
+            documents = output["documents"]
+            query_doc_list = []
+            for q in questions:
+                query_doc_list.append({"queries": q, "docs": documents})
+            kwargs["query_doc_list"] = query_doc_list
+            return kwargs, output_stream
+        return wrapper
+
+    def run(self, document, **kwargs):
+        kwargs["documents"] = [document]
         output = self.pipeline.run(**kwargs)
         return output
 

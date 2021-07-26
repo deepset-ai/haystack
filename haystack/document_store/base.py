@@ -22,6 +22,7 @@ class BaseDocumentStore(BaseComponent):
     label_index: Optional[str]
     similarity: Optional[str]
     duplicate_documents_options: tuple = ('skip', 'overwrite', 'fail')
+    ids_iterator = None
 
     @abstractmethod
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
@@ -65,6 +66,20 @@ class BaseDocumentStore(BaseComponent):
         :param return_embedding: Whether to return the document embeddings.
         """
         pass
+
+    def __iter__(self):
+        if not self.ids_iterator:
+            self.ids_iterator = [x.id for x in self.get_all_documents()]
+        return self
+
+    def __next__(self):
+        if len(self.ids_iterator) == 0:
+            raise StopIteration
+        else:
+            curr_id = self.ids_iterator[0]
+            ret = self.get_document_by_id(curr_id)
+            self.ids_iterator = self.ids_iterator[1:]
+            return ret
 
     @abstractmethod
     def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
