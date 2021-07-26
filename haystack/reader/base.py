@@ -2,7 +2,7 @@ import numpy as np
 from scipy.special import expit
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Dict
 from functools import wraps
 from time import perf_counter
 
@@ -67,6 +67,21 @@ class BaseReader(BaseComponent):
                     ans["meta"] = deepcopy(doc.meta)
 
         results.update(**kwargs)
+        return results, "output_1"
+
+    def run_batch(self, query_doc_list: List[Dict], top_k_reader: Optional[int] = None, **kwargs):
+        """ A unoptimized implementation of running Reader queries in batch """
+        self.query_count += len(query_doc_list)
+        results = []
+        if query_doc_list:
+            for qd in query_doc_list:
+                q = qd["queries"]
+                docs = qd["docs"]
+                predict = self.timing(self.predict, "query_time")
+                result = predict(query=q, documents=docs, top_k=top_k_reader)
+                results.append(result)
+        else:
+            results = [{"answers": [], "query": ""}]
         return results, "output_1"
 
     def timing(self, fn, attr_name):
