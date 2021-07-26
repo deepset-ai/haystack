@@ -48,6 +48,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         timeout=30,
         return_embedding: bool = False,
         duplicate_documents: str = 'overwrite',
+        index_type: str = "flat"
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -95,6 +96,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
+                           ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
 
         """
         # save init parameters to enable export of component config as YAML
@@ -105,7 +108,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
             duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
-            timeout=timeout, return_embedding=return_embedding,
+            timeout=timeout, return_embedding=return_embedding, index_type=index_type
         )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
@@ -131,16 +134,24 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.custom_mapping = custom_mapping
         self.index: str = index
         self.label_index: str = label_index
-        if similarity in ["cosine", "dot_product"]:
+        if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity = similarity
         else:
-            raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine' and 'dot_product'")
+            raise Exception(f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'")
+        if index_type in ["flat", "hnsw"]:
+            self.index_type = index_type
+        else:
+            raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
+        if index_type == "hnsw" and type(self) == ElasticsearchDocumentStore:
+            raise Exception("The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
+                            "Try the OpenSearchDocumentStore instead.")
         if create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
 
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
+
 
     def _init_elastic_client(self,
                              host: Union[str, List[str]],
@@ -356,7 +367,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return buckets
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000,duplicate_documents: Optional[str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -805,7 +816,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.similarity == "cosine":
             similarity_fn_name = "cosineSimilarity"
         elif self.similarity == "dot_product":
-            similarity_fn_name = "dotProduct"
+            if type(self) == OpenSearchDocumentStore:
+                similarity_fn_name = "innerproduct"
+            elif type(self) == ElasticsearchDocumentStore:
+                similarity_fn_name = "dotProduct"
         else:
             raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
@@ -997,13 +1011,33 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
-class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
+
+class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     """
-    Document Store using the Open Distro for Elasticsearch. It is compatible with the AWS Elasticsearch Service.
+    Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
 
     In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
     the KNN plugin that can scale to a large number of documents.
     """
+
+    def __init__(self,
+                 verify_certs=False,
+                 scheme="https",
+                 username="admin",
+                 password="admin",
+                 port=9201,
+                 **kwargs):
+
+        # Overwrite default kwarg values of parent class so that in default cases we can initialize
+        # an OpenSearchDocumentStore without provding any arguments
+
+        super(OpenSearchDocumentStore, self).__init__(verify_certs=verify_certs,
+                                                      scheme=scheme,
+                                                      username=username,
+                                                      password=password,
+                                                      port=port,
+                                                      **kwargs)
+
 
     def _create_document_index(self, index_name: str):
         """
@@ -1038,20 +1072,39 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
                 }
             }
             if self.embedding_field:
+
                 if self.similarity == "cosine":
                     similarity_space_type = "cosinesimil"
                 elif self.similarity == "dot_product":
+                    similarity_space_type = "innerproduct"
+                elif self.similarity == "l2":
                     similarity_space_type = "l2"
-                else:
-                    raise Exception(
-                        f"Similarity function {self.similarity} is not supported by OpenDistroElasticsearchDocumentStore."
-                    )
-                mapping["settings"]["knn"] = True
-                mapping["settings"]["knn.space_type"] = similarity_space_type
+
+                mapping["settings"]["index"] = {}
+                mapping["settings"]["index"]["knn"] = True
+                mapping["settings"]["index"]["knn.space_type"] = similarity_space_type
+
                 mapping["mappings"]["properties"][self.embedding_field] = {
                     "type": "knn_vector",
                     "dimension": self.embedding_dim,
                 }
+
+                if self.index_type == "flat":
+                    pass
+                elif self.index_type == "hnsw":
+                    mapping["settings"]["index"]["knn.algo_param"] = {}
+                    mapping["settings"]["index"]["knn.algo_param"]["ef_search"] = 20
+                    mapping["mappings"]["properties"][self.embedding_field]["method"] = {
+                        "space_type": similarity_space_type,
+                        "name": "hnsw",
+                        "engine": "nmslib",
+                        "parameters": {
+                            "ef_construction": 80,
+                            "m": 64
+                        }
+                    }
+                else:
+                    logger.error("Please set index_type to either 'flat' or 'hnsw'")
 
         try:
             self.client.indices.create(index=index_name, body=mapping)
@@ -1063,6 +1116,7 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name):
                 raise e
 
+
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
@@ -1072,3 +1126,10 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
 
     def _scale_embedding_score(self, score):
         return score
+
+
+class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
+    def __init__(self):
+        logger.warning("Open Distro for Elasticsearch has been replaced by OpenSearch! "
+                       "See https://opensearch.org/faq/ for details. "
+                       "We recommend using the OpenSearchDocumentStore instead.")

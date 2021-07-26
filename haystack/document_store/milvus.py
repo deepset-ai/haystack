@@ -118,7 +118,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             self.similarity = similarity
         else:
             raise ValueError("The Milvus document store can currently only support dot_product and L2 similarity. "
-                             "Please set similarity=\"dot_product\"")
+                             "Please set similarity=\"dot_product\" or \"l2\"")
 
         self.index_type = index_type
         self.index_param = index_param or {"nlist": 16384}
