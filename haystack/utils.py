@@ -14,10 +14,8 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-def launch_es():
-    # Start an Elasticsearch server
-    # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
-    # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
+def launch_es(sleep=15):
+    # Start an Elasticsearch server via Docker
 
     logger.info("Starting Elasticsearch ...")
     status = subprocess.run(
@@ -27,13 +25,59 @@ def launch_es():
         logger.warning("Tried to start Elasticsearch through Docker but this failed. "
                        "It is likely that there is already an existing Elasticsearch instance running. ")
     else:
-        time.sleep(15)
+        time.sleep(sleep)
+
+def launch_open_distro_es(sleep=15):
+    # Start an Open Distro for Elasticsearch server via Docker
+
+    logger.info("Starting Open Distro for Elasticsearch ...")
+    status = subprocess.run(
+        ['docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" amazon/opendistro-for-elasticsearch:1.13.2'], shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start Open Distro for Elasticsearch through Docker but this failed. "
+                       "It is likely that there is already an existing Elasticsearch instance running. ")
+    else:
+        time.sleep(sleep)
+
+def launch_opensearch(sleep=15):
+    # Start an OpenSearch server via docker
+
+    logger.info("Starting OpenSearch...")
+    # This line is needed since it is not possible to start a new docker container with the name opensearch if there is a stopped image with the same now
+    # docker rm only succeeds if the container is stopped, not if it is running
+    _ = subprocess.run(['docker rm opensearch'], shell=True, stdout=subprocess.DEVNULL)
+    status = subprocess.run(
+        ['docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name opensearch opensearchproject/opensearch:1.0.0-rc1'],
+        shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start OpenSearch through Docker but this failed. "
+                       "It is likely that there is already an existing OpenSearch instance running. ")
+    else:
+        time.sleep(sleep)
 
 
-def launch_milvus():
-    # Start a Milvus server
-    # You can start Milvus on your local machine instance using Docker. If Docker is not readily available in
-    # your environment (eg., in Colab notebooks)
+def stop_opensearch():
+    logger.info("Stopping OpenSearch...")
+    status = subprocess.run(['docker stop opensearch'], shell=True)
+    if status.returncode:
+        logger.warning("Tried to stop OpenSearch but this failed. "
+                       "It is likely that there was no OpenSearch Docker container with the name opensearch")
+    status = subprocess.run(['docker rm opensearch'], shell=True)
+
+
+def stop_service(document_store):
+    ds_class = str(type(document_store))
+    if "OpenSearchDocumentStore" in ds_class:
+        stop_opensearch()
+    else:
+        logger.warning(f"No support yet for auto stopping the service behind a {ds_class}")
+
+
+def launch_milvus(sleep=15):
+    # Start a Milvus server via docker
+
     logger.info("Starting Milvus ...")
     logger.warning("Automatic Milvus config creation not yet implemented. "
                    "If you are starting Milvus using launch_milvus(), "
@@ -55,7 +99,7 @@ def launch_milvus():
         logger.warning("Tried to start Milvus through Docker but this failed. "
                        "It is likely that there is already an existing Milvus instance running. ")
     else:
-        time.sleep(15)
+        time.sleep(sleep)
 
 
 def print_answers(results: dict, details: str = "all"):
@@ -195,6 +239,7 @@ def get_batches_from_generator(iterable, n):
     """
     Batch elements of an iterable into fixed-length chunks or blocks.
     """
+    # TODO consider moving to base.DocumentStore
     it = iter(iterable)
     x = tuple(islice(it, n))
     while x:
