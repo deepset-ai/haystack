@@ -26,6 +26,12 @@ class QuestionGenerator(BaseComponent):
                  split_length=50,
                  split_overlap=10,
                  prompt="generate questions:"):
+        """
+        Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
+        implemented as a Seq2SeqLM in HuggingFace Transformers. Note that this style of question generation (where the only input
+        is a document) is sometimes referred to as end-to-end question generation. Answer-supervised question
+        generation is not currently supported.
+        """
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.set_config(
