@@ -111,7 +111,7 @@ class TransformersSummarizer(BaseSummarizer):
                                         If set to "True", all docs will be joined to a single string that will then
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
-        :param truncation: truncate to a maximum length accepted by the model
+        :param truncation: Truncate to a maximum length accepted by the model
         :return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
                  the original, not summarized text
         """
@@ -138,7 +138,7 @@ class TransformersSummarizer(BaseSummarizer):
             max_length=self.max_length,
             return_text=True,
             clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
-            truncation=True
+            truncation=True,
         )
 
         result: List[Document] = []
