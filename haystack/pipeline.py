@@ -1091,7 +1091,8 @@ class RayPipeline(Pipeline):
         """
         Add the Ray deployment handle in the Pipeline Graph.
 
-        :param handle: Ray deployment `handle` to add in the Pipeline Graph.
+        :param handle: Ray deployment `handle` to add in the Pipeline Graph. The handle allow calling a Ray deployment
+                       from Python: https://docs.ray.io/en/master/serve/package-ref.html#servehandle-api.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
                        of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
