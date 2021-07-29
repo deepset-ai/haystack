@@ -961,8 +961,6 @@ class RayPipeline(Pipeline):
         """
         if address:
             ray.init(address=address)
-        else:
-            serve.start()
         serve.start()
         super().__init__()
 
