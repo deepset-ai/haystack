@@ -10,8 +10,14 @@ from typing import List, Optional, Dict, Union, Any
 import pickle
 import urllib
 from functools import wraps
-import ray
-from ray import serve
+
+try:
+    from ray import serve
+    import ray
+except:
+    ray = None
+    serve = None
+
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 
