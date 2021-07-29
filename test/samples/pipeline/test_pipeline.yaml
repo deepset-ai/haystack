@@ -24,11 +24,7 @@ components:
     type: PreProcessor
     params:
       clean_whitespace: true
-  - name: MiniReader
-    type: FARMReader
-    params:
-      model_name_or_path: mrm8488/bert-tiny-5-finetuned-squadv2
-      num_processes: 0
+
 
 pipelines:
   - name: query_pipeline
@@ -38,13 +34,6 @@ pipelines:
         inputs: [Query]
       - name: Reader
         inputs: [ESRetriever]
-  - name: ray_test_pipeline
-    type: RayPipeline
-    nodes:
-      - name: ESRetriever
-        inputs: [ Query ]
-      - name: MiniReader
-        inputs: [ ESRetriever ]
 
   - name: indexing_pipeline
     type: Indexing
