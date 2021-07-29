@@ -19,6 +19,7 @@ from farm.file_utils import http_get
 import json
 from results_to_json import retriever as retriever_json
 from templates import RETRIEVER_TEMPLATE, RETRIEVER_MAP_TEMPLATE, RETRIEVER_SPEED_TEMPLATE
+from haystack.utils import stop_service
 
 logger = logging.getLogger(__name__)
 logging.getLogger("haystack.retriever.base").setLevel(logging.WARN)
@@ -86,6 +87,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     with open(md_file, "w") as f:
                         f.write(str(retriever_df.to_markdown()))
                 time.sleep(10)
+                stop_service(doc_store)
                 del doc_store
                 del retriever
 
@@ -108,6 +110,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     doc_store.delete_all_documents(index=doc_index)
                     doc_store.delete_all_documents(index=label_index)
                 time.sleep(10)
+                stop_service(doc_store)
                 del doc_store
                 del retriever
     if update_json:
@@ -126,6 +129,7 @@ def benchmark_querying(n_docs_options,
                        embeddings_dir,
                        update_json,
                        save_markdown,
+                       wait_write_limit=100,
                        **kwargs):
     """ Benchmark the time it takes to perform querying. Doc embeddings are loaded from file."""
     retriever_results = []
@@ -153,6 +157,7 @@ def benchmark_querying(n_docs_options,
                                             add_precomputed=add_precomputed)
                 logger.info("Start indexing...")
                 index_to_doc_store(doc_store, docs, retriever, labels)
+
                 logger.info("Start queries...")
 
                 raw_results = retriever.eval()
@@ -178,6 +183,7 @@ def benchmark_querying(n_docs_options,
                     doc_store.delete_all_documents(index=doc_index)
                     doc_store.delete_all_documents(index=label_index)
                 time.sleep(5)
+                stop_service(doc_store)
                 del doc_store
                 del retriever
             except Exception:

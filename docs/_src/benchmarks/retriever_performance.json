@@ -69,6 +69,20 @@
             "index_speed": 115.61076852516383,
             "query_speed": 38.80526238789059,
             "map": 81.63864883662649
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 100000,
+            "index_speed": 70.05381128388427,
+            "query_speed": 15.306895223372484,
+            "map": 86.54014997282701
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 100000,
+            "index_speed": 70.31004397719536,
+            "query_speed": 24.95733865947408,
+            "map": 85.7342431384476
         }
     ]
 }
