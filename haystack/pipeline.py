@@ -78,7 +78,7 @@ class BasePipeline:
         return pipeline_config
 
     @classmethod
-    def _read_yaml(cls, path: Path, pipeline_name: str, overwrite_with_env_variables: bool):
+    def _read_yaml(cls, path: Path, pipeline_name: Optional[str], overwrite_with_env_variables: bool):
         """
         Parse the YAML and return the full YAML config, pipeline_config, and definitions of all components.
 
