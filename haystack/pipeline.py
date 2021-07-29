@@ -955,12 +955,11 @@ class JoinDocuments(BaseComponent):
 
 
 class RayPipeline(Pipeline):
-    def __init__(self, address: str = None):
+    def __init__(self, address: str = None, **kwargs):
         """
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         """
-        if address:
-            ray.init(address=address)
+        ray.init(address=address, **kwargs)
         serve.start()
         super().__init__()
 
@@ -970,6 +969,7 @@ class RayPipeline(Pipeline):
             path: Path, pipeline_name: Optional[str] = None,
             overwrite_with_env_variables: bool = True,
             address: Optional[str] = None,
+            **kwargs,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -1017,7 +1017,7 @@ class RayPipeline(Pipeline):
         data, pipeline_config, definitions = cls._read_yaml(
             path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
         )
-        pipeline = cls(address=address)
+        pipeline = cls(address=address, **kwargs)
 
         for node_config in pipeline_config["nodes"]:
             if pipeline.root_node is None:
