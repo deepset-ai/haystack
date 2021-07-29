@@ -27,7 +27,7 @@ components:
   - name: MiniReader
     type: FARMReader
     params:
-      model_name_or_path: deepset/minilm-uncased-squad2
+      model_name_or_path: mrm8488/bert-tiny-5-finetuned-squadv2
       num_processes: 0
 
 pipelines:
