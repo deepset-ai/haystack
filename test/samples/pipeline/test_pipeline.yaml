@@ -24,10 +24,10 @@ components:
     type: PreProcessor
     params:
       clean_whitespace: true
-  - name: BERTReader
+  - name: MiniReader
     type: FARMReader
     params:
-      model_name_or_path: deepset/bert-base-cased-squad2
+      model_name_or_path: deepset/minilm-uncased-squad2
       num_processes: 0
 
 pipelines:
@@ -43,7 +43,7 @@ pipelines:
     nodes:
       - name: ESRetriever
         inputs: [ Query ]
-      - name: BERTReader
+      - name: MiniReader
         inputs: [ ESRetriever ]
 
   - name: indexing_pipeline
