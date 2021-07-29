@@ -77,6 +77,48 @@ class BasePipeline:
 
         return pipeline_config
 
+    @classmethod
+    def _read_yaml(cls, path: Path, pipeline_name: str, overwrite_with_env_variables: bool):
+        """
+        Parse the YAML and return the full YAML config, pipeline_config, and definitions of all components.
+
+        :param path: path of the YAML file.
+        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        """
+        with open(path, "r", encoding="utf-8") as stream:
+            data = yaml.safe_load(stream)
+
+        pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
+
+        definitions = {}  # definitions of each component from the YAML.
+        component_definitions = copy.deepcopy(data["components"])
+        for definition in component_definitions:
+            if overwrite_with_env_variables:
+                cls._overwrite_with_env_variables(definition)
+            name = definition.pop("name")
+            definitions[name] = definition
+
+        return data, pipeline_config, definitions
+
+    @classmethod
+    def _overwrite_with_env_variables(cls, definition: dict):
+        """
+        Overwrite the YAML configuration with environment variables. For example, to change index name param for an
+        ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+        `_` sign must be used to specify nested hierarchical properties.
+
+        :param definition: a dictionary containing the YAML definition of a component.
+        """
+        env_prefix = f"{definition['name']}_params_".upper()
+        for key, value in os.environ.items():
+            if key.startswith(env_prefix):
+                param_name = key.replace(env_prefix, "").lower()
+                definition["params"][param_name] = value
+
 
 class Pipeline(BasePipeline):
     """
@@ -267,17 +309,9 @@ class Pipeline(BasePipeline):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        with open(path, "r", encoding='utf-8') as stream:
-            data = yaml.safe_load(stream)
-
-        pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
-
-        definitions = {}  # definitions of each component from the YAML.
-        for definition in data["components"]:
-            if overwrite_with_env_variables:
-                cls._overwrite_with_env_variables(definition)
-            name = definition.pop("name")
-            definitions[name] = definition
+        data, pipeline_config, definitions = cls._read_yaml(
+            path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+        )
 
         pipeline = cls()
 
@@ -319,21 +353,6 @@ class Pipeline(BasePipeline):
         except Exception as e:
             raise Exception(f"Failed loading pipeline component '{name}': {e}")
         return instance
-
-    @classmethod
-    def _overwrite_with_env_variables(cls, definition: dict):
-        """
-        Overwrite the YAML configuration with environment variables. For example, to change index name param for an
-        ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-        `_` sign must be used to specify nested hierarchical properties.
-
-        :param definition: a dictionary containing the YAML definition of a component.
-        """
-        env_prefix = f"{definition['name']}_params_".upper()
-        for key, value in os.environ.items():
-            if key.startswith(env_prefix):
-                param_name = key.replace(env_prefix, "").lower()
-                definition["params"][param_name] = value
 
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
         """
@@ -997,19 +1016,9 @@ class RayPipeline(Pipeline):
                                              `_` sign must be used to specify nested hierarchical properties.
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         """
-        with open(path, "r", encoding="utf-8") as stream:
-            data = yaml.safe_load(stream)
-
-        pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
-
-        definitions = {}  # definitions of each component from the YAML.
-        component_definitions = copy.deepcopy(data["components"])
-        for definition in component_definitions:
-            if overwrite_with_env_variables:
-                cls._overwrite_with_env_variables(definition)
-            name = definition.pop("name")
-            definitions[name] = definition
-
+        data, pipeline_config, definitions = cls._read_yaml(
+            path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+        )
         pipeline = cls(address=address)
 
         for node_config in pipeline_config["nodes"]:
