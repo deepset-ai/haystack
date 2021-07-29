@@ -288,7 +288,13 @@ class BaseComponent:
         return instance
 
     @classmethod
-    def load_from_pipeline_config(cls, pipeline_config, component_name):
+    def load_from_pipeline_config(cls, pipeline_config: dict, component_name: str):
+        """
+        Load an individual component from a YAML config for Pipelines.
+
+        :param pipeline_config: the Pipelines YAML config parsed as a dict.
+        :param component_name: the name of the component to load.
+        """
         if pipeline_config:
             all_component_configs = pipeline_config["components"]
             all_component_names = [comp["name"] for comp in all_component_configs]
