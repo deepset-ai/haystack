@@ -35,6 +35,12 @@ pipelines:
       - name: Reader
         inputs: [ESRetriever]
 
+  - name: ray_test_pipeline
+    type: Query
+    nodes:
+      - name: ESRetriever
+        inputs: [ Query ]
+
   - name: indexing_pipeline
     type: Indexing
     nodes:
