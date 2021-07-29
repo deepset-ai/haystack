@@ -132,6 +132,16 @@ class TransformersSummarizer(BaseSummarizer):
             # Different order of same documents produce different summary.
             contexts = [self.separator_for_single_summary.join(contexts)]
 
+        encoded_input = self.summarizer.tokenizer(contexts, verbose=False)
+        for input_id in encoded_input['input_ids']:
+            if len(input_id) > self.summarizer.tokenizer.model_max_length:
+                logger.warning(
+                        "Token indices sequence length is longer than the specified maximum sequence length "
+                        f"for this model ({len(input_id)} > {self.summarizer.tokenizer.model_max_length}). "
+                        f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"
+                        f" tokens."
+                )
+
         summaries = self.summarizer(
             contexts,
             min_length=self.min_length,
