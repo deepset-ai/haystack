@@ -1204,13 +1204,31 @@ class RayPipeline(Pipeline):
 
 
 class _RayDeploymentWrapper:
+    """
+    Ray Serve supports calling of __init__ methods on the Classes to create "deployment" instances.
+
+    In case of Haystack, some Components like Retrievers have complex init methods that needs objects
+    like Document Stores.
+
+    This wrapper class encapsulates the initialization of Components. Given a Component Class
+    name, it creates an instance using the YAML Pipeline config.
+    """
     node: BaseComponent
 
-    def __init__(self, pipeline_config, component_name):
+    def __init__(self, pipeline_config: dict, component_name: str):
+        """
+        Create an instance of Component.
+
+        :param pipeline_config: Pipeline YAML parsed as a dict.
+        :param component_name: Component Class name.
+        """
         if component_name in ["Query", "File"]:
             self.node = RootNode()
         else:
             self.node = BaseComponent.load_from_pipeline_config(pipeline_config, component_name)
 
     def __call__(self, *args, **kwargs):
+        """
+        Ray calls this method which is then re-directed to the corresponding component's run().
+        """
         return self.node.run(*args, **kwargs)
