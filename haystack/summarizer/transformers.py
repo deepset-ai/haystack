@@ -137,10 +137,10 @@ class TransformersSummarizer(BaseSummarizer):
         for input_id in encoded_input['input_ids']:
             tokens_count: int = len(input_id)
             if tokens_count > self.summarizer.tokenizer.model_max_length:
-                truncation_warning = "One or more of your input document texts is longer than the specified maximum sequence length "\
-                        f"for this summarizer model. "\
-                        f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"\
-                        f" tokens."
+                truncation_warning = "One or more of your input document texts is longer than the specified " \
+                                     f"maximum sequence length for this summarizer model. "\
+                                     f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"\
+                                     f" tokens."
                 if truncation_warning not in self.print_log:
                     logger.warning(truncation_warning)
                     self.print_log.add(truncation_warning)
