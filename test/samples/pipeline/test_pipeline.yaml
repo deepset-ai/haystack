@@ -14,7 +14,7 @@ components:
   - name: DocumentStore
     type: ElasticsearchDocumentStore
     params:
-      index: haystack_test_document
+      index: haystack_test
       label_index: haystack_test_label
   - name: PDFConverter
     type: PDFToTextConverter
