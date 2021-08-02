@@ -99,6 +99,7 @@ class TransformersSummarizer(BaseSummarizer):
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         self.separator_for_single_summary = separator_for_single_summary
         self.generate_single_summary = generate_single_summary
+        self.print_log = set()
 
     def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None,
                 truncation: bool = True) -> List[Document]:
@@ -136,12 +137,13 @@ class TransformersSummarizer(BaseSummarizer):
         for input_id in encoded_input['input_ids']:
             tokens_count: int = len(input_id)
             if tokens_count > self.summarizer.tokenizer.model_max_length:
-                logger.warning(
-                        "Token indices sequence length is longer than the specified maximum sequence length "
-                        f"for this model ({tokens_count} > {self.summarizer.tokenizer.model_max_length}). "
-                        f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"
+                truncation_warning = "One or more of your input document texts is longer than the specified maximum sequence length "\
+                        f"for this summarizer model. "\
+                        f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"\
                         f" tokens."
-                )
+                if truncation_warning not in self.print_log:
+                    logger.warning(truncation_warning)
+                    self.print_log.add(truncation_warning)
 
         summaries = self.summarizer(
             contexts,
