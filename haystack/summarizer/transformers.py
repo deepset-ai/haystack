@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
@@ -99,7 +99,7 @@ class TransformersSummarizer(BaseSummarizer):
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         self.separator_for_single_summary = separator_for_single_summary
         self.generate_single_summary = generate_single_summary
-        self.print_log = set()
+        self.print_log: Set[str] = set()
 
     def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None,
                 truncation: bool = True) -> List[Document]:
