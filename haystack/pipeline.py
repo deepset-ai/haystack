@@ -46,6 +46,48 @@ class BasePipeline:
 
     @classmethod
     def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+        """
+        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        be passed.
+
+        Here's a sample configuration:
+
+            ```yaml
+            |   version: '0.8'
+            |
+            |    components:    # define all the building-blocks for Pipeline
+            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+            |      type: FARMReader    # Haystack Class name for the component
+            |      params:
+            |        no_ans_boost: -10
+            |        model_name_or_path: deepset/roberta-base-squad2
+            |    - name: MyESRetriever
+            |      type: ElasticsearchRetriever
+            |      params:
+            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+            |        custom_query: null
+            |    - name: MyDocumentStore
+            |      type: ElasticsearchDocumentStore
+            |      params:
+            |        index: haystack_test
+            |
+            |    pipelines:    # multiple Pipelines can be defined using the components from above
+            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+            |      nodes:
+            |      - name: MyESRetriever
+            |        inputs: [Query]
+            |      - name: MyReader
+            |        inputs: [MyESRetriever]
+            ```
+
+        :param path: path of the YAML file.
+        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        """
         pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
         if pipeline_config["type"] == "Pipeline":
             return Pipeline.load_from_yaml(
@@ -61,6 +103,13 @@ class BasePipeline:
 
     @classmethod
     def _get_pipeline_config_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None):
+        """
+        Get the definition of Pipeline from a given YAML. If the YAML contains more than one Pipeline,
+        then the pipeline_name must be supplied.
+
+        :param path: Path of Pipeline YAML file.
+        :param pipeline_name: name of the Pipeline.
+        """
         with open(path, "r", encoding='utf-8') as stream:
             data = yaml.safe_load(stream)
 
@@ -712,6 +761,9 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
 
 
 class RootNode(BaseComponent):
+    """
+    RootNode feeds inputs(`query` or `file`) together with corresponding parameters to a Pipeline.
+    """
     outgoing_edges = 1
 
     def run(self, **kwargs):
@@ -955,9 +1007,27 @@ class JoinDocuments(BaseComponent):
 
 
 class RayPipeline(Pipeline):
+    """
+    Ray (https://ray.io) is a framework for distributed computing.
+
+    With Ray, the Pipeline nodes can be distributed across a cluster of machine(s).
+
+    This allows scaling individual nodes. For instance, in an extractive QA Pipeline, multiple replicas
+    of the Reader, while keeping a single instance for the Retriever. It also enables efficient resource
+    utilization as load could be split across GPU vs CPU machines.
+
+    In the current implementation, a Ray Pipeline can only be created with a YAML Pipeline config.
+    >>> from haystack.pipeline import RayPipeline
+    >>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
+    >>> pipeline.run(query="What is the capital of Germany?")
+
+    By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
+    set the `address` parameter when creating RayPipeline instance.
+    """
     def __init__(self, address: str = None, **kwargs):
         """
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+        :param kwargs: Optional parameters for initializing Ray.
         """
         ray.init(address=address, **kwargs)
         serve.start()
@@ -1024,7 +1094,7 @@ class RayPipeline(Pipeline):
                 root_node = node_config["inputs"][0]
                 if root_node in ["Query", "File"]:
                     pipeline.root_node = root_node
-                    handle = cls._create_ray_deployment(name=root_node, pipeline_config=data)
+                    handle = cls._create_ray_deployment(component_name=root_node, pipeline_config=data)
                     pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1,  inputs=[])
                 else:
                     raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
@@ -1033,7 +1103,7 @@ class RayPipeline(Pipeline):
             component_type = definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
             replicas = next(comp for comp in data["components"] if comp["name"] == name).get("replicas", 1)
-            handle = cls._create_ray_deployment(name=name, pipeline_config=data, replicas=replicas)
+            handle = cls._create_ray_deployment(component_name=name, pipeline_config=data, replicas=replicas)
             pipeline._add_ray_deployment_in_graph(
                 handle=handle,
                 name=name,
@@ -1044,9 +1114,17 @@ class RayPipeline(Pipeline):
         return pipeline
 
     @classmethod
-    def _create_ray_deployment(cls, name, pipeline_config, replicas=1):
-        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=name, num_replicas=replicas)
-        RayDeployment.deploy(pipeline_config, name)
+    def _create_ray_deployment(cls, component_name: str, pipeline_config: dict, replicas: int = 1):
+        """
+        Create a Ray Deployment for the Component.
+
+        :param component_name: Class name of the Haystack Component.
+        :param pipeline_config: The Pipeline config YAML parsed as a dict.
+        :param replicas: By default, a single replica of the component is created. It can be
+                         configured by setting `replicas` parameter in the Pipeline YAML.
+        """
+        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)
+        RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
         return handle
 
