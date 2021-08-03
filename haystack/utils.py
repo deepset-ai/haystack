@@ -14,6 +14,7 @@ import importlib.util
 logger = logging.getLogger(__name__)
 
 _faiss_available: bool = importlib.util.find_spec("faiss") is not None
+_elasticsearch_available: bool = importlib.util.find_spec("elasticsearch") is not None
 
 def launch_es(sleep=15):
     # Start an Elasticsearch server via Docker
@@ -251,3 +252,8 @@ def get_batches_from_generator(iterable, n):
 def is_faiss_available() -> bool:
     """Check if faiss is installed"""
     return _faiss_available
+
+
+def is_elasticsearch_available() -> bool:
+    """Check if elasticsearch is installed"""
+    return _elasticsearch_available
