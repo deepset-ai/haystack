@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
@@ -99,8 +99,10 @@ class TransformersSummarizer(BaseSummarizer):
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         self.separator_for_single_summary = separator_for_single_summary
         self.generate_single_summary = generate_single_summary
+        self.print_log: Set[str] = set()
 
-    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
+    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None,
+                truncation: bool = True) -> List[Document]:
         """
         Produce the summarization from the supplied documents.
         These document can for example be retrieved via the Retriever.
@@ -110,6 +112,7 @@ class TransformersSummarizer(BaseSummarizer):
                                         If set to "True", all docs will be joined to a single string that will then
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
+        :param truncation: Truncate to a maximum length accepted by the model
         :return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
                  the original, not summarized text
         """
@@ -130,12 +133,25 @@ class TransformersSummarizer(BaseSummarizer):
             # Different order of same documents produce different summary.
             contexts = [self.separator_for_single_summary.join(contexts)]
 
+        encoded_input = self.summarizer.tokenizer(contexts, verbose=False)
+        for input_id in encoded_input['input_ids']:
+            tokens_count: int = len(input_id)
+            if tokens_count > self.summarizer.tokenizer.model_max_length:
+                truncation_warning = "One or more of your input document texts is longer than the specified " \
+                                     f"maximum sequence length for this summarizer model. "\
+                                     f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"\
+                                     f" tokens."
+                if truncation_warning not in self.print_log:
+                    logger.warning(truncation_warning)
+                    self.print_log.add(truncation_warning)
+
         summaries = self.summarizer(
             contexts,
             min_length=self.min_length,
             max_length=self.max_length,
             return_text=True,
             clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
+            truncation=True,
         )
 
         result: List[Document] = []

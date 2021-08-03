@@ -31,4 +31,5 @@ pymilvus
 #webdriver-manager
 SPARQLWrapper
 mmh3
-weaviate-client
+weaviate-client==2.5.0
+ray==1.5.0

@@ -159,6 +159,46 @@
             "model": "BM25 / Elasticsearch",
             "n_docs": 1000,
             "query_speed": 282.95914917837337
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 1000,
+            "query_speed": 29.061163356184426
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 10000,
+            "query_speed": 24.834414667596725
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 100000,
+            "query_speed": 15.306895223372484
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 1000,
+            "query_speed": 29.10621389658101
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 10000,
+            "query_speed": 26.92417300437131
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 100000,
+            "query_speed": 24.95733865947408
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 500000,
+            "query_speed": 11.33271222977541
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 500000,
+            "query_speed": 24.13921492357397
         }
     ]
 }

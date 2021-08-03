@@ -159,6 +159,46 @@
             "model": "BM25 / Elasticsearch",
             "n_docs": 1000,
             "map": 74.20444712972909
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 1000,
+            "map": 92.95105322830891
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 10000,
+            "map": 89.8709701490436
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 100000,
+            "map": 86.54014997282701
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 1000,
+            "map": 92.76308330349686
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 10000,
+            "map": 89.00403653862938
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 100000,
+            "map": 85.7342431384476
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 500000,
+            "map": 80.85588135082547
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 500000,
+            "map": 77.5426462347698
         }
     ]
 }
