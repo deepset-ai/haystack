@@ -1088,7 +1088,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             "terms": {key: values}
                         }
                     )
-                body["query"]["bool"]["filter"] = filter_clause
+                body["query"]["bool"]["filter"] = filter_clause         # type: ignore
 
             excluded_meta_data: Optional[list] = None
 
