@@ -9,10 +9,11 @@ from haystack.document_store.sql import DocumentORM
 import subprocess
 import time
 import torch
-
+import importlib.util
 
 logger = logging.getLogger(__name__)
 
+_faiss_available: bool = importlib.util.find_spec("faiss") is not None
 
 def launch_es():
     # Start an Elasticsearch server
@@ -200,3 +201,8 @@ def get_batches_from_generator(iterable, n):
     while x:
         yield x
         x = tuple(islice(it, n))
+
+
+def is_faiss_available() -> bool:
+    """Check if faiss is installed"""
+    return _faiss_available
