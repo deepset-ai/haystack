@@ -1,10 +1,10 @@
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
-
+from copy import deepcopy
 import mmh3
 import numpy as np
 from abc import abstractmethod
-
+import inspect
 
 class Document:
     def __init__(
@@ -257,6 +257,7 @@ class BaseComponent:
     outgoing_edges: int
     subclasses: dict = {}
     pipeline_config: dict = {}
+    name: Optional[str] = None
 
     def __init_subclass__(cls, **kwargs):
         """ This automatically keeps track of all available subclasses.
@@ -318,6 +319,32 @@ class BaseComponent:
         :return:
         """
         pass
+
+    def _dispatch_run(self, **kwargs):
+        arguments = deepcopy(kwargs)
+        params = arguments.get("params", {})
+
+        run_signature_args = inspect.signature(self.run).parameters.keys()
+
+        run_params = {}
+        for key, value in params.items():
+            if key == self.name:  # targeted params for this node
+                if isinstance(value, dict):
+                    for _k, _v in value.items():
+                        if _k not in run_signature_args:
+                            raise Exception(f"Invalid parameter {_k} for the node {self.name}.")
+                run_params.update(**value)
+            elif not isinstance(value, dict) and key in run_signature_args:  # global params
+                run_params[key] = value
+
+        run_inputs = {}
+        for key, value in arguments.items():
+            if key in run_signature_args:
+                run_inputs[key] = value
+
+        output, stream = self.run(**run_inputs, **run_params)
+        output["params"] = params
+        return output, stream
 
     def set_config(self, **kwargs):
         """

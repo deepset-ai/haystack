@@ -206,6 +206,7 @@ class Pipeline(BasePipeline):
                 self.graph.add_node(root_node, component=RootNode())
             else:
                 raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
+        component.name = name
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
@@ -253,11 +254,15 @@ class Pipeline(BasePipeline):
         """
         self.graph.nodes[name]["component"] = component
 
-    def run(self, **kwargs):
+    def run(self, query: Optional[str] = None, file: Optional[str] = None, params: Optional[dict] = None):
         node_output = None
         queue = {
-            self.root_node: {"root_node": self.root_node, **kwargs}
+            self.root_node: {"root_node": self.root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
+        if query:
+            queue[self.root_node]["query"] = query
+        if file:
+            queue[self.root_node]["file"] = file
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
             node_id = list(queue.keys())[i]
@@ -267,7 +272,7 @@ class Pipeline(BasePipeline):
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
-                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+                    node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
@@ -765,8 +770,16 @@ class RootNode(BaseComponent):
     """
     outgoing_edges = 1
 
-    def run(self, **kwargs):
-        return kwargs, "output_1"
+    def run(self, root_node: str, query: Optional[str] = None, file: Optional[str] = None):
+        output = {"root_node": root_node}
+        if root_node == "Query" and query:
+            output["query"] = query
+        elif root_node == "File" and file:
+            output["file"] = file
+        else:
+            raise Exception
+
+        return output, "output_1"
 
 
 class SklearnQueryClassifier(BaseComponent):

@@ -174,15 +174,22 @@ class BaseRetriever(BaseComponent):
         else:
             return metrics
 
-    def run(self, root_node: str, **kwargs):  # type: ignore
+    def run(
+        self,
+        root_node: str,
+        query: Optional[str],
+        filters: Optional[dict] = None,
+        top_k: Optional[int] = None,
+        documents: Optional[List[dict]] = None
+    ):  # type: ignore
         if root_node == "Query":
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
-            output, stream = run_query_timed(**kwargs)
+            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k)
         elif root_node == "File":
-            self.index_count += len(kwargs["documents"])
+            self.index_count += len(documents)
             run_indexing = self.timing(self.run_indexing, "index_time")
-            output, stream = run_indexing(**kwargs)
+            output, stream = run_indexing(documents=documents)
         else:
             raise Exception(f"Invalid root_node '{root_node}'.")
         return output, stream
@@ -191,29 +198,28 @@ class BaseRetriever(BaseComponent):
         self,
         query: str,
         filters: Optional[dict] = None,
-        top_k_retriever: Optional[int] = None,
+        top_k: Optional[int] = None,
         **kwargs,
     ):
         index = kwargs.get("index", None)
-        documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever, index=index)
+        documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index)
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {
             "query": query,
             "documents": documents,
-            **kwargs
         }
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[dict], **kwargs):
+    def run_indexing(self, documents: List[dict]):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             documents = deepcopy(documents)
             document_objects = [Document.from_dict(doc) for doc in documents]
             embeddings = self.embed_passages(document_objects)  # type: ignore
             for doc, emb in zip(documents, embeddings):
                 doc["embedding"] = emb
-        output = {**kwargs, "documents": documents}
+        output = {"documents": documents}
         return output, "output_1"
 
     def print_time(self):

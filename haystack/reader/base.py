@@ -50,11 +50,11 @@ class BaseReader(BaseComponent):
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, **kwargs): # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
-            results = predict(query=query, documents=documents, top_k=top_k_reader)
+            results = predict(query=query, documents=documents, top_k=top_k)
         else:
             results = {"answers": [], "query": query}
 
@@ -65,7 +65,6 @@ class BaseReader(BaseComponent):
                 if doc.id == ans["document_id"]:
                     ans["meta"] = deepcopy(doc.meta)
 
-        results.update(**kwargs)
         return results, "output_1"
 
     def run_batch(self, query_doc_list: List[Dict], top_k_reader: Optional[int] = None, **kwargs):
