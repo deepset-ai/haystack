@@ -1,2 +1,2 @@
-streamlit>=0.76.0
+streamlit>=0.84.0
 st-annotated-text==1.1.0
