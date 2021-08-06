@@ -13,10 +13,10 @@ import importlib.util
 
 logger = logging.getLogger(__name__)
 
-_faiss_available: bool = importlib.util.find_spec("faiss") is not None
-_elasticsearch_available: bool = importlib.util.find_spec("elasticsearch") is not None
-_pymilvus_available: bool = importlib.util.find_spec("pymilvus") is not None
-_sqlalchemy_available: bool = importlib.util.find_spec("sqlalchemy") is not None
+FAISS_AVAILABLE: bool = importlib.util.find_spec("faiss") is not None
+ELASTICSEARCH_AVAILABLE: bool = importlib.util.find_spec("elasticsearch") is not None
+PYMILVUS_AVAILABLE: bool = importlib.util.find_spec("pymilvus") is not None
+SQLALCHEMY_AVAILABLE: bool = importlib.util.find_spec("sqlalchemy") is not None
 
 def launch_es(sleep=15):
     # Start an Elasticsearch server via Docker
@@ -249,23 +249,3 @@ def get_batches_from_generator(iterable, n):
     while x:
         yield x
         x = tuple(islice(it, n))
-
-
-def is_faiss_available() -> bool:
-    """Check if faiss is installed"""
-    return _faiss_available
-
-
-def is_elasticsearch_available() -> bool:
-    """Check if elasticsearch is installed"""
-    return _elasticsearch_available
-
-
-def is_pymilvus_available() -> bool:
-    """Check if pymilvus is installed"""
-    return _pymilvus_available
-
-
-def is_sqlalchemy_available() -> bool:
-    """Check if sqlalchemy is installed"""
-    return _sqlalchemy_available
