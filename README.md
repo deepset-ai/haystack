@@ -299,6 +299,12 @@ If you'd like to learn more about Haystack, feel free to go through the tutorial
     [Colab](https://colab.research.google.com/github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.py)
+-   Tutorial 14 - Query Classifier:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.py)
 
 
 ## How to use Haystack
