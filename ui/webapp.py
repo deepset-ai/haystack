@@ -65,14 +65,15 @@ eval_mode = st.sidebar.checkbox("Evaluation mode")
 debug = st.sidebar.checkbox("Show debug info")
 
 st.sidebar.write("## File Upload:")
-data_file = st.sidebar.file_uploader("", type=["pdf", "txt", "docx"])
-# Upload file
-if data_file:
-    raw_json = upload_doc(data_file)
-    st.sidebar.write(raw_json)
-    if debug:
-        st.subheader("REST API JSON response")
+data_files = st.sidebar.file_uploader("", type=["pdf", "txt", "docx"], accept_multiple_files=True)
+for data_file in data_files:
+    # Upload file
+    if data_file:
+        raw_json = upload_doc(data_file)
         st.sidebar.write(raw_json)
+        if debug:
+            st.subheader("REST API JSON response")
+            st.sidebar.write(raw_json)
 
 # load csv into pandas dataframe
 if eval_mode:
