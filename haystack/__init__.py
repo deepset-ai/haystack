@@ -14,7 +14,9 @@ from haystack.schema import Document, Label, MultiLabel, BaseComponent
 from haystack.finder import Finder
 from haystack.pipeline import Pipeline
 from haystack._version import __version__
+from haystack.utils import HaystackDependencyManagement
 
 pd.options.display.max_colwidth = 80
 
 logger = logging.getLogger(__name__)
+HaystackDependencyManagement().install()

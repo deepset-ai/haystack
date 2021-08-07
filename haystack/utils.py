@@ -1,5 +1,5 @@
 import json
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from itertools import islice
 import logging
 import pprint
@@ -10,6 +10,8 @@ import subprocess
 import time
 import torch
 import importlib.util
+import importlib.abc
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,71 @@ FAISS_AVAILABLE: bool = importlib.util.find_spec("faiss") is not None
 ELASTICSEARCH_AVAILABLE: bool = importlib.util.find_spec("elasticsearch") is not None
 PYMILVUS_AVAILABLE: bool = importlib.util.find_spec("pymilvus") is not None
 SQLALCHEMY_AVAILABLE: bool = importlib.util.find_spec("sqlalchemy") is not None
+
+FAISS_IMPORT_ERROR: str = """
+{0} requires the faiss library but it was not found in your environment. You can install it with:
+```
+pip install "farm-haystack['faiss']"
+```
+"""
+
+ELASTICSEARCH_IMPORT_ERROR: str = """
+{0} requires the elasticsearch library but it was not found in your environment. You can install it with:
+```
+pip install "farm-haystack['elasticsearch']"
+```
+"""
+
+PYMILVUS_IMPORT_ERROR: str = """
+{0} requires the PYMILVUS library but it was not found in your environment. You can install it with:
+```
+pip install "farm-haystack['pymilvus']"
+```
+"""
+
+SQLALCHEMY_IMPORT_ERROR: str = """
+{0} requires the sqlalchemy library but it was not found in your environment. You can install it with:
+```
+pip install "farm-haystack['sqlalchemy']"
+```
+"""
+
+_DEPENDENCY_MAPPING = OrderedDict(
+        [
+            ("FAISSDocumentStore", (FAISS_AVAILABLE, FAISS_IMPORT_ERROR)),
+            ("ElasticsearchDocumentStore", (ELASTICSEARCH_AVAILABLE, ELASTICSEARCH_IMPORT_ERROR)),
+            ("OpenDistroElasticsearchDocumentStore", (ELASTICSEARCH_AVAILABLE, ELASTICSEARCH_IMPORT_ERROR)),
+            ("OpenSearchDocumentStore", (ELASTICSEARCH_AVAILABLE, ELASTICSEARCH_IMPORT_ERROR)),
+            ("SQLDocumentStore", (SQLALCHEMY_AVAILABLE, SQLALCHEMY_IMPORT_ERROR)),
+            ("MilvusDocumentStore", (PYMILVUS_AVAILABLE, PYMILVUS_IMPORT_ERROR)),
+        ]
+)
+
+
+class HaystackDependencyFinder(importlib.abc.MetaPathFinder):
+
+    def find_spec(self, fullname, path, target=None):
+        """
+        Attempt to locate the requested module
+
+        :param fullname: fully-qualified name of the module
+        :param path: Module path
+        :param target: target can be a module object
+        :return:
+        """
+        if 'haystack' in fullname and len(fullname.split('.')) > 1:
+            module_name: str = fullname.rsplit('.', 1)[-1]
+            if module_name in _DEPENDENCY_MAPPING:
+                raise ImportError(_DEPENDENCY_MAPPING[module_name][1].format(module_name))
+
+
+class HaystackDependencyManagement:
+
+    def __init__(self):
+        self._finder = HaystackDependencyFinder()
+
+    def install(self):
+        sys.meta_path.append(self._finder)
 
 def launch_es(sleep=15):
     # Start an Elasticsearch server via Docker
