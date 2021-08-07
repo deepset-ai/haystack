@@ -19,4 +19,4 @@ from haystack.utils import HaystackDependencyManagement
 pd.options.display.max_colwidth = 80
 
 logger = logging.getLogger(__name__)
-HaystackDependencyManagement().install()
+HaystackDependencyManagement().initialize()

@@ -82,7 +82,7 @@ class HaystackDependencyManagement:
     def __init__(self):
         self._finder = HaystackDependencyFinder()
 
-    def install(self):
+    def initialize(self):
         sys.meta_path.append(self._finder)
 
 def launch_es(sleep=15):
