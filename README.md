@@ -328,7 +328,8 @@ While it's almost impossible to cover all types, layouts, and special cases (esp
 - PDF
 - Docx
 - Apache Tika (Supports > 340 file formats)
-
+- Markdown
+- 
 **Example**
 
 ```python
@@ -405,7 +406,9 @@ document_store.write_documents(docs)
 - FAISS
 - SQL
 - InMemory
-
+- Milvus
+- Weaviate
+- 
 **Example**
 
 ```python
