@@ -1,7 +1,6 @@
 import pytest
 from haystack.document_store.base import BaseDocumentStore
 from haystack.preprocessor.preprocessor import PreProcessor
-from haystack.finder import Finder
 from haystack.eval import EvalAnswers, EvalDocuments
 from haystack import Pipeline
 
