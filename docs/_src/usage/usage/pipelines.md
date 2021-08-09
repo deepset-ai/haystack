@@ -145,7 +145,7 @@ To get hands on with this kind of node, have a look at the [evaluation tutorial]
 
 ### Default Pipelines (replacing the "Finder")
 Last but not least, we added some "Default Pipelines" that allow you to run standard patterns with very few lines of code.
-This is replacing the `Finder` class which is now deprecated.
+This is replacing the `Finder` class which was deprecated with Haystack 0.6.0 .
 
 ```
 from haystack.pipeline import DocumentSearchPipeline, ExtractiveQAPipeline, Pipeline, JoinDocuments
@@ -167,6 +167,20 @@ doc_pipe = FAQPipeline(retriever=retriever)
 res = doc_pipe.run(query="How can I change my address?", top_k_retriever=3)
 
 ```    
+So to migrate your QA system from the deprecated `Finder` to `ExtractiveQAPipeline` you'd need to: 
+```
+# 1. Change import
+from haystack.pipeline import  ExtractiveQAPipeline
+
+# 2. Replace the Finder 
+qa_pipe = ExtractiveQAPipeline(reader=reader, retriever=retriever)
+
+# 3. Replace get_answers() with run()
+res = qa_pipe.run(query="When was Kant born?", top_k_retriever=3, top_k_reader=5)
+
+# 4. Access your results from ["documents"] rather than ["answers"]
+print(res["documents"])
+```
 See also the [Pipelines API documentation](/docs/latest/apipipelinesmd) for more details. 
 
 We plan many more features around the new pipelines incl. parallelized execution, distributed execution, dry runs - so stay tuned ...  
