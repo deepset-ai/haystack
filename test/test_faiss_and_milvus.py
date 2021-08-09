@@ -2,7 +2,7 @@ import faiss
 import numpy as np
 import pytest
 from haystack import Document
-from haystack import Finder
+from haystack.pipeline import DocumentSearchPipeline
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.pipeline import Pipeline
 from haystack.retriever.dense import EmbeddingRetriever
@@ -158,11 +158,11 @@ def test_faiss_retrieving(index_factory, tmp_path):
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
 def test_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
-    finder = Finder(reader=None, retriever=retriever)
+    pipe = DocumentSearchPipeline(retriever=retriever)
 
-    prediction = finder.get_answers_via_similar_questions(question="How to test this?", top_k_retriever=1)
+    prediction = pipe.run(query="How to test this?", top_k_retriever=1)
 
-    assert len(prediction.get('answers', [])) == 1
+    assert len(prediction.get('documents', [])) == 1
 
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
