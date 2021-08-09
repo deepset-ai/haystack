@@ -4,8 +4,6 @@ from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.eval import EvalAnswers, EvalDocuments
 from haystack import Pipeline
 
-
-
 @pytest.mark.parametrize("batch_size", [None, 20])
 @pytest.mark.elasticsearch
 def test_add_eval_data(document_store, batch_size):
