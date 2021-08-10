@@ -6,11 +6,13 @@ import time
 from tqdm import tqdm
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_store import MilvusDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import fetch_archive_from_http
 from haystack.reader.farm import FARMReader
-from haystack.utils import print_answers, launch_es
+from haystack.utils import print_answers, launch_es, launch_milvus
 from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.retriever.dense import DensePassageRetriever
 from pathlib import Path
 from haystack.preprocessor import PreProcessor
 
@@ -21,16 +23,28 @@ def kendra_benchmark():
     doc_index = "document"
     outfile = "predictions.json"
     summary_file = "summary.json"
-    model = "deepset/roberta-base-squad2"
+    model = "facebook/dpr-reader-single-nq-base"
     top_k_retriever = 5
     top_k_reader = 10
+    split_length = 100
+    split_overlap = 10
+    dense_retrieval = True
 
-    # Start document store
-    launch_es()
-    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index=doc_index)
+    if not dense_retrieval:
+        launch_es()
+        document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index=doc_index)
+    else:
+        launch_milvus()
+        document_store = MilvusDocumentStore()
 
     document_store.delete_documents(index=doc_index)
-    preprocessor = PreProcessor(clean_header_footer=True, split_length=1000, split_overlap=50)
+    preprocessor = PreProcessor(
+        clean_header_footer=True,
+        split_length=split_length,
+        split_overlap=split_overlap,
+        split_by="word",
+        split_respect_sentence_boundary=False
+    )
 
     def prepare_docs(filepath, preprocessor):
         lines = json.load(open(filepath))
@@ -48,7 +62,10 @@ def kendra_benchmark():
     toc = time.perf_counter()
     index_time = toc - tic
 
-    retriever = ElasticsearchRetriever(document_store=document_store, top_k=top_k_retriever)
+    if not dense_retrieval:
+        retriever = ElasticsearchRetriever(document_store=document_store, top_k=top_k_retriever)
+    else:
+        retriever = DensePassageRetriever(document_store=document_store, top_k=top_k_retriever)
 
     reader = FARMReader(model_name_or_path=model, use_gpu=True, top_k=top_k_reader)
 
@@ -75,7 +92,8 @@ def kendra_benchmark():
         "top_k_retriever": top_k_retriever,
         "reader": str(type(reader)),
         "reader_model": model,
-        "retriever": str(type(retriever))
+        "retriever": str(type(retriever)),
+        "split_length": split_length
     }
     json.dump(summary, open(doc_dir / summary_file, "w"), indent=2)
     json.dump(results, open(doc_dir / outfile, "w"), indent=2)
