@@ -6,7 +6,6 @@
 #
 # If you are interested in more feature-rich Elasticsearch, then please refer to the Tutorial 1.
 
-from haystack import Finder
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
@@ -50,7 +49,7 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     document_store.write_documents(dicts)
 
 
-    # ## Initalize Retriever, Reader,  & Finder
+    # ## Initalize Retriever, Reader & Pipeline
     #
     # ### Retriever
     #
