@@ -1,4 +1,3 @@
-from haystack import Finder
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 from haystack.retriever.dense import EmbeddingRetriever
