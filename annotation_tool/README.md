@@ -66,4 +66,4 @@ The manual (of a slightly earlier version) can be found [here](https://drive.goo
 - Please do not annotate this text
 - You can write down what is missing, or the cause why you cannot label the text + the text number and title.
 8. Which browser to use?
-- • Please use the Chrome browser. The tool is not tested for other browsers.
+- Please use the Chrome browser. The tool is not tested for other browsers.
