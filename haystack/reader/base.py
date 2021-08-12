@@ -42,8 +42,7 @@ class BaseReader(BaseComponent):
             no_ans_score = best_score_answer - max_no_ans_gap
 
         no_ans_prediction = {"answer": None,
-               "score": no_ans_score,
-               "probability": float(expit(np.asarray(no_ans_score) / 8)),  # just a pseudo prob for now
+               "score": float(expit(np.asarray(no_ans_score) / 8)),  # just a pseudo prob for now
                "context": None,
                "offset_start": 0,
                "offset_end": 0,

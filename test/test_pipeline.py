@@ -127,8 +127,8 @@ def test_extractive_qa_answers(reader, retriever_with_docs):
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0]["answer"] == "Carla"
-    assert prediction["answers"][0]["probability"] <= 1
-    assert prediction["answers"][0]["probability"] >= 0
+    assert prediction["answers"][0]["score"] <= 1
+    assert prediction["answers"][0]["score"] >= 0
     assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
     assert (
         prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
@@ -271,8 +271,8 @@ def test_extractive_qa_answers_with_translator(
     assert prediction is not None
     assert prediction["query"] == "Wer lebt in Berlin?"
     assert "Carla" in prediction["answers"][0]["answer"]
-    assert prediction["answers"][0]["probability"] <= 1
-    assert prediction["answers"][0]["probability"] >= 0
+    assert prediction["answers"][0]["score"] <= 1
+    assert prediction["answers"][0]["score"] >= 0
     assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
     assert (
         prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"

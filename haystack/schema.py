@@ -72,7 +72,7 @@ class Document:
     @classmethod
     def from_dict(cls, dict, field_map={}):
         _doc = dict.copy()
-        init_args = ["text", "id", "score", "probability", "question", "meta", "embedding"]
+        init_args = ["text", "id", "score", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"

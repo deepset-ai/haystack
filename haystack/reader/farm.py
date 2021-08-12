@@ -51,7 +51,8 @@ class FARMReader(BaseReader):
         max_seq_len: int = 256,
         doc_stride: int = 128,
         progress_bar: bool = True,
-        duplicate_filtering: int = 0
+        duplicate_filtering: int = 0,
+        use_confidence_scores: bool = True
     ):
 
         """
@@ -286,7 +287,7 @@ class FARMReader(BaseReader):
         """
         Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
 
-        Returns list of dictionaries containing answers sorted by (desc.) probability
+        Returns list of dictionaries containing answers sorted by (desc.) score
 
         :param query_doc_list: List of dictionaries containing queries with their retrieved documents
         :param top_k: The maximum number of answers to return for each query
@@ -347,7 +348,7 @@ class FARMReader(BaseReader):
         """
         Use loaded QA model to find answers for a query in the supplied list of Document.
 
-        Returns dictionaries containing answers sorted by (desc.) probability.
+        Returns dictionaries containing answers sorted by (desc.) score.
         Example:
          ```python
             |{
@@ -357,8 +358,7 @@ class FARMReader(BaseReader):
             |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
             |                 'offset_answer_start': 147,
             |                 'offset_answer_end': 154,
-            |                 'probability': 0.9787139466668613,
-            |                 'score': None,
+            |                 'score': 0.9787139466668613,
             |                 'document_id': '1337'
             |                 },...
             |              ]
@@ -573,9 +573,7 @@ class FARMReader(BaseReader):
                 else:
                     cur = {
                         "answer": ans.answer,
-                        "score": ans.score,
-                        # just a pseudo prob for now
-                        "probability": ans.confidence,
+                        "score": ans.confidence if self.use_gpu else ans.score,
                         "context": ans.context_window,
                         "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
                         "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
@@ -642,7 +640,7 @@ class FARMReader(BaseReader):
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
-        Returns dictionaries containing answers sorted by (desc.) probability.
+        Returns dictionaries containing answers sorted by (desc.) score.
         Example:
          ```python
             |{
@@ -652,8 +650,7 @@ class FARMReader(BaseReader):
             |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
             |                 'offset_answer_start': 147,
             |                 'offset_answer_end': 154,
-            |                 'probability': 0.9787139466668613,
-            |                 'score': None,
+            |                 'score': 0.9787139466668613,
             |                 'document_id': '1337'
             |                 },...
             |              ]
