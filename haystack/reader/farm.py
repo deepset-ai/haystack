@@ -100,7 +100,7 @@ class FARMReader(BaseReader):
             batch_size=batch_size, use_gpu=use_gpu, no_ans_boost=no_ans_boost, return_no_answer=return_no_answer,
             top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
             num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering
+            duplicate_filtering=duplicate_filtering, use_confidence_scores=use_confidence_scores
         )
 
         self.return_no_answers = return_no_answer
@@ -126,6 +126,7 @@ class FARMReader(BaseReader):
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.device, _ = initialize_device_settings(use_cuda=self.use_gpu)
+        self.use_confidence_scores = use_confidence_scores
 
     def train(
         self,
@@ -573,7 +574,7 @@ class FARMReader(BaseReader):
                 else:
                     cur = {
                         "answer": ans.answer,
-                        "score": ans.confidence if self.use_gpu else ans.score,
+                        "score": ans.confidence if self.use_confidence_scores else ans.score,
                         "context": ans.context_window,
                         "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
                         "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
