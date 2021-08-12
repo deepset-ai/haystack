@@ -557,8 +557,8 @@ def semantic_answer_similarity(predictions: List[List[str]],
     else:
         # For Biencoders we can flatten predictions and labels into one list
         model = SentenceTransformer(sts_model_path_or_string)
-        lengths = []
-        all_texts = []
+        lengths:List[Tuple[int,int]] = []
+        all_texts:List[str] = []
         for p, l in zip(predictions, gold_labels):
             # TODO potentially exclude (near) exact matches from computations
             all_texts.extend(p)
