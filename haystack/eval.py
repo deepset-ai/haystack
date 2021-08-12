@@ -165,7 +165,9 @@ class EvalAnswers:
                           The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
                           Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
                           Models:
-                          - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data
+                          - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+                            Not all cross encoders can be used because of different return types.
+                            If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
                           - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                           - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
