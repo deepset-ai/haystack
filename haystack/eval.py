@@ -222,16 +222,17 @@ class EvalAnswers:
                 predictions = [p for p in predictions if p["answer"]]
                 top_1_em, top_1_f1, top_k_em, top_k_f1 = self.evaluate_extraction(multi_labels, predictions)
 
-                # Compute Semantic Answer Similarity if present
+                # Compute Semantic Answer Similarity if model is supplied
                 if self.sas_model is not None:
+                    # sas works on batches, so we pack the labels into a list of lists, and unpack the return values as well
                     gold_labels = [multi_labels.multiple_answers]
                     predictions_list = [[p["answer"] for p in predictions]]
                     top_1_sas, top_k_sas = semantic_answer_similarity(
                         predictions=predictions_list,
                         gold_labels=gold_labels,
                         sts_model_path_or_string=self.sas_model)
-                    self.top_1_sas_sum += top_1_sas
-                    self.top_k_sas_sum += top_k_sas
+                    self.top_1_sas_sum += top_1_sas[0]
+                    self.top_k_sas_sum += top_k_sas[0]
 
                 if self.debug:
                     self.log.append({"predictions": predictions,
@@ -517,7 +518,7 @@ def semantic_answer_similarity(predictions: List[List[str]],
                                sts_model_path_or_string: str="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"):
     """
     Computes BERT based similarity of prediction to gold labels.
-    Returns per QA pair a) the similarity of the most likely prediction to all available gold labels
+    Returns per QA pair a) the similarity of the most likely prediction to all corresponding gold labels
                         b) the highest similarity of all predictions to gold labels
 
     :param predictions: Predictions as list of multiple preds per question
@@ -525,8 +526,8 @@ def semantic_answer_similarity(predictions: List[List[str]],
     :param sts_model_path_or_string: SentenceTransformers semantic textual similarity model, should be path or string
                                      pointing to downloadable models.
 
-    Returns the average of the semantically evaluated best, and Top N predictions as well as the List of
-    :return best_pred_similarity, all_preds_highest_similarity
+
+    :return top_1_sas, top_k_sas
     """
     assert len(predictions) == len(gold_labels)
 
@@ -536,8 +537,8 @@ def semantic_answer_similarity(predictions: List[List[str]],
         cross_encoder_used = any([arch.endswith('ForSequenceClassification') for arch in config.architectures])
 
     # Compute similarities
-    top_1_sim = []
-    top_k_sim = []
+    top_1_sas = []
+    top_k_sas = []
 
 
     # Based on Modelstring we can load either Bi Encoders or Cross Encoders.
@@ -545,14 +546,14 @@ def semantic_answer_similarity(predictions: List[List[str]],
     if cross_encoder_used:
         model = CrossEncoder(sts_model_path_or_string)
         for preds,labels in zip (predictions,gold_labels):
-            # TODO put all texts and labels into grid and extract scores afterwards
+            # TODO add efficient batch mode: put all texts and labels into grid, predict, and extract scores afterwards
             grid = []
             for p in preds:
                 for l in labels:
                     grid.append((p,l))
             scores = model.predict(grid)
-            top_1_sim.append(np.max(scores[:len(labels)]))
-            top_k_sim.append(np.max(scores))
+            top_1_sas.append(np.max(scores[:len(labels)]))
+            top_k_sas.append(np.max(scores))
 
     else:
         # For Biencoders we can flatten predictions and labels into one list
@@ -575,10 +576,10 @@ def semantic_answer_similarity(predictions: List[List[str]],
             label_embeddings = embeddings[current_position:current_position + len_l, :]
             current_position += len_l
             sims = cosine_similarity(pred_embeddings, label_embeddings)
-            top_1_sim.append(np.max(sims[0, :]))
-            top_k_sim.append(np.max(sims))
+            top_1_sas.append(np.max(sims[0, :]))
+            top_k_sas.append(np.max(sims))
 
-    return np.mean(top_1_sim), np.mean(top_k_sim)
+    return top_1_sas, top_k_sas
 
 
 def _count_overlap(
