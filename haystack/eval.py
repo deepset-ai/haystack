@@ -170,6 +170,7 @@ class EvalAnswers:
                             If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
                           - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                           - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+                          - Large model for German only: "deepset/gbert-large-sts"
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
         """
         self.outgoing_edges = 1
