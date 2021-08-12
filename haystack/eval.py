@@ -322,6 +322,7 @@ class EvalAnswers:
                     "(top k results are likely inflated since the Reader always returns a no_answer prediction in its top k)"
                 )
 
+
 def get_label(labels, node_id):
     if type(labels) in [Label, MultiLabel]:
         ret = labels
@@ -329,6 +330,7 @@ def get_label(labels, node_id):
     else:
         ret = labels[node_id]
     return ret
+
 
 def calculate_em_str_multi(gold_labels, prediction):
     for gold_label in gold_labels:
@@ -374,7 +376,6 @@ def semantic_answer_similarity(predictions: List[List[str]],
     top_1_sas = []
     top_k_sas = []
 
-
     # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
     # Similarity computation changes for both approaches
     if cross_encoder_used:
@@ -388,7 +389,6 @@ def semantic_answer_similarity(predictions: List[List[str]],
             scores = model.predict(grid)
             top_1_sas.append(np.max(scores[:len(labels)]))
             top_k_sas.append(np.max(scores))
-
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
         model = SentenceTransformer(sas_model_name_or_path)
