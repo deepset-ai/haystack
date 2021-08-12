@@ -153,18 +153,21 @@ class EvalAnswers:
     """
 
     def __init__(self,
-                 skip_incorrect_retrieval: bool=True,
-                 open_domain: bool=True,
-                 sas_model=None,
-                 debug: bool=False,
+                 skip_incorrect_retrieval: bool = True,
+                 open_domain: bool = True,
+                 sas_model: str = None,
+                 debug: bool = False,
                  ):
         """
         :param skip_incorrect_retrieval: When set to True, this eval will ignore the cases where the retriever returned no correct documents
         :param open_domain: When True, extracted answers are evaluated purely on string similarity rather than the position of the extracted answer
-        :param sas_model: Semantic Answer Similarity model string. When set, will use the model to calculate similarity between predictions and labels.
-                          possible models can be sentence transformers or cross encoders trained on Semantic Textual Similarity (STS) data
-                          "sentence-transformers/paraphrase-multilingual-mpnet-base-v2" - A good default for multiple languages
-                          "cross-encoder/stsb-roberta-large" - large powerful but slow model for English only
+        :param sas_model: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+                          The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+                          Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                          Models:
+                          - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data
+                          - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+                          - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
         """
         self.outgoing_edges = 1
@@ -174,7 +177,6 @@ class EvalAnswers:
         self.open_domain = open_domain
         self.sas_model = sas_model
         self.init_counts()
-
 
     def init_counts(self):
         self.query_count = 0
@@ -229,7 +231,7 @@ class EvalAnswers:
                     top_1_sas, top_k_sas = semantic_answer_similarity(
                         predictions=predictions_list,
                         gold_labels=gold_labels,
-                        sts_model_path_or_string=self.sas_model)
+                        sas_model_name_or_path=self.sas_model)
                     self.top_1_sas_sum += top_1_sas
                     self.top_k_sas_sum += top_k_sas
 
@@ -514,15 +516,15 @@ def calculate_f1_str_multi(gold_labels, prediction):
 
 def semantic_answer_similarity(predictions: List[List[str]],
                                gold_labels: List[List[str]],
-                               sts_model_path_or_string: str="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"):
+                               sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2") -> (np.float32, np.float32):
     """
-    Computes BERT based similarity of prediction to gold labels.
-    Returns per QA pair a) the similarity of the most likely prediction to all available gold labels
+    Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
+    Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
                         b) the highest similarity of all predictions to gold labels
 
-    :param predictions: Predictions as list of multiple preds per question
+    :param predictions: Predicted answers as list of multiple preds per question
     :param gold_labels: Labels as list of multiple possible answers per question
-    :param sts_model_path_or_string: SentenceTransformers semantic textual similarity model, should be path or string
+    :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model, should be path or string
                                      pointing to downloadable models.
 
     Returns the average of the semantically evaluated best, and Top N predictions as well as the List of
@@ -530,7 +532,7 @@ def semantic_answer_similarity(predictions: List[List[str]],
     """
     assert len(predictions) == len(gold_labels)
 
-    config = AutoConfig.from_pretrained(sts_model_path_or_string)
+    config = AutoConfig.from_pretrained(sas_model_name_or_path)
     cross_encoder_used = False
     if config.architectures is not None:
         cross_encoder_used = any([arch.endswith('ForSequenceClassification') for arch in config.architectures])
@@ -540,11 +542,11 @@ def semantic_answer_similarity(predictions: List[List[str]],
     top_k_sim = []
 
 
-    # Based on Modelstring we can load either Bi Encoders or Cross Encoders.
+    # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
     # Similarity computation changes for both approaches
     if cross_encoder_used:
-        model = CrossEncoder(sts_model_path_or_string)
-        for preds,labels in zip (predictions,gold_labels):
+        model = CrossEncoder(sas_model_name_or_path)
+        for preds, labels in zip (predictions,gold_labels):
             # TODO put all texts and labels into grid and extract scores afterwards
             grid = []
             for p in preds:
@@ -555,10 +557,10 @@ def semantic_answer_similarity(predictions: List[List[str]],
             top_k_sim.append(np.max(scores))
 
     else:
-        # For Biencoders we can flatten predictions and labels into one list
-        model = SentenceTransformer(sts_model_path_or_string)
-        lengths:List[Tuple[int,int]] = []
-        all_texts:List[str] = []
+        # For Bi-encoders we can flatten predictions and labels into one list
+        model = SentenceTransformer(sas_model_name_or_path)
+        lengths: List[Tuple[int,int]] = []
+        all_texts: List[str] = []
         for p, l in zip(predictions, gold_labels):                                  # type: ignore
             # TODO potentially exclude (near) exact matches from computations
             all_texts.extend(p)
