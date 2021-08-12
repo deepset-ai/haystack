@@ -106,7 +106,9 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
 
     eval_retriever = EvalDocuments()
-    eval_reader = EvalAnswers()
+    eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-MiniLM-L3-v2",debug=True)
+    eval_reader_cross = EvalAnswers(sas_model="cross-encoder/stsb-TinyBERT-L-4",debug=True)
+    eval_reader_vanila = EvalAnswers()
 
     assert document_store.get_document_count(index="haystack_test_eval_document") == 2
     p = Pipeline()
@@ -114,6 +116,8 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
     p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
     p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
+    p.add_node(component=eval_reader_cross, name="EvalAnswers_cross", inputs=["QAReader"])
+    p.add_node(component=eval_reader_vanila, name="EvalAnswers_vanilla", inputs=["QAReader"])
     for l in labels:
         res = p.run(
             query=l.question,
@@ -125,6 +129,9 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     assert eval_retriever.recall == 1.0
     assert round(eval_reader.top_k_f1, 4) == 0.8333
     assert eval_reader.top_k_em == 0.5
+    assert round(eval_reader.top_k_sas, 3) == 0.800
+    assert round(eval_reader_cross.top_k_sas, 3) == 0.671
+    assert eval_reader.top_k_em == eval_reader_vanila.top_k_em
 
 @pytest.mark.elasticsearch
 def test_eval_data_split_word(document_store):

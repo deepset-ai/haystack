@@ -99,7 +99,7 @@ def tutorial5_evaluation():
 
     # Here we initialize the nodes that perform evaluation
     eval_retriever = EvalDocuments()
-    eval_reader = EvalAnswers()
+    eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
 
 
     ## Evaluate Retriever on its own in closed domain fashion
