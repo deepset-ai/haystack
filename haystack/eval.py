@@ -559,7 +559,7 @@ def semantic_answer_similarity(predictions: List[List[str]],
         model = SentenceTransformer(sts_model_path_or_string)
         lengths:List[Tuple[int,int]] = []
         all_texts:List[str] = []
-        for p, l in zip(predictions, gold_labels):
+        for p, l in zip(predictions, gold_labels):                                  # type: ignore
             # TODO potentially exclude (near) exact matches from computations
             all_texts.extend(p)
             all_texts.extend(l)
