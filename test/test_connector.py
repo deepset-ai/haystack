@@ -48,3 +48,6 @@ def test_crawler_filter_urls(tmp_path):
 
     doc_path = Crawler(output_dir=tmp_dir).crawl(urls=_url, filter_urls=["haystack\.deepset\.ai\/docs\/v0\.8\.0\/"])
     assert len(doc_path) > 0
+
+    doc_path = Crawler(output_dir=tmp_dir).crawl(urls=_url, filter_urls=["google\.com"])
+    assert len(doc_path) == 0
