@@ -518,7 +518,7 @@ def calculate_f1_str_multi(gold_labels, prediction):
 def semantic_answer_similarity(predictions: List[List[str]],
                                gold_labels: List[List[str]],
                                sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-                               ) -> Tuple[np.float32, np.float32]:
+                               ) -> Tuple[List[float],List[float]]:
     """
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
     Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
