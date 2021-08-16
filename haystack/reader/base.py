@@ -56,7 +56,7 @@ class BaseReader(BaseComponent):
             predict = self.timing(self.predict, "query_time")
             results = predict(query=query, documents=documents, top_k=top_k)
         else:
-            results = {"answers": [], "query": query}
+            results = {"answers": []}
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
@@ -67,7 +67,7 @@ class BaseReader(BaseComponent):
 
         return results, "output_1"
 
-    def run_batch(self, query_doc_list: List[Dict], top_k_reader: Optional[int] = None, **kwargs):
+    def run_batch(self, query_doc_list: List[Dict], top_k_reader: Optional[int] = None):
         """ A unoptimized implementation of running Reader queries in batch """
         self.query_count += len(query_doc_list)
         results = []
