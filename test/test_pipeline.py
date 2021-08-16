@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import math
 import pytest
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
@@ -330,7 +331,7 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert results["documents"][0].score > 1000
+    assert math.isclose(results["documents"][0].score, 0.5350644373470798, rel_tol=0.0001)
     assert len(results["documents"]) == 2
 
     # test concatenate
