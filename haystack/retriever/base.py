@@ -180,16 +180,17 @@ class BaseRetriever(BaseComponent):
         query: Optional[str],
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
-        documents: Optional[List[dict]] = None
+        documents: Optional[List[dict]] = None,
+        index: Optional[str] = None,
     ):  # type: ignore
         if root_node == "Query":
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
-            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k)
+            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index)
         elif root_node == "File":
             self.index_count += len(documents)
             run_indexing = self.timing(self.run_indexing, "index_time")
-            output, stream = run_indexing(documents=documents)
+            output, stream = run_indexing(documents=documents, index=index)
         else:
             raise Exception(f"Invalid root_node '{root_node}'.")
         return output, stream
@@ -199,16 +200,12 @@ class BaseRetriever(BaseComponent):
         query: str,
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
-        **kwargs,
+        index: Optional[str] = None,
     ):
-        index = kwargs.get("index", None)
         documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index)
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
-        output = {
-            "query": query,
-            "documents": documents,
-        }
+        output = {"documents": documents}
 
         return output, "output_1"
 
