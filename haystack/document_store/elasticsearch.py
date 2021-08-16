@@ -427,7 +427,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             # don't index query score and empty fields
             _ = _doc.pop("score", None)
-            _ = _doc.pop("probability", None)
             _doc = {k:v for k,v in _doc.items() if v is not None}
 
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
@@ -872,7 +871,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             text=hit["_source"].get(self.text_field),
             meta=meta_data,
             score=score,
-            probability=probability,
             question=hit["_source"].get(self.faq_question_field),
             embedding=embedding,
         )

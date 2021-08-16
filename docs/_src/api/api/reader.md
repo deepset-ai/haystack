@@ -158,7 +158,7 @@ Saves the Reader model so that it can be reused at a later point in time.
 
 Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
 
-Returns list of dictionaries containing answers sorted by (desc.) probability
+Returns list of dictionaries containing answers sorted by (desc.) score
 
 **Arguments**:
 
@@ -179,7 +179,7 @@ List of dictionaries containing query and answers
 
 Use loaded QA model to find answers for a query in the supplied list of Document.
 
-Returns dictionaries containing answers sorted by (desc.) probability.
+Returns dictionaries containing answers sorted by (desc.) score.
 Example:
  ```python
     |{
@@ -189,8 +189,7 @@ Example:
     |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
     |                 'offset_answer_start': 147,
     |                 'offset_answer_end': 154,
-    |                 'probability': 0.9787139466668613,
-    |                 'score': None,
+    |                 'score': 0.9787139466668613,
     |                 'document_id': '1337'
     |                 },...
     |              ]
@@ -276,7 +275,7 @@ Calibrates confidence scores on evaluation documents in the DocumentStore.
 ```
 
 Use loaded QA model to find answers for a question in the supplied list of Document.
-Returns dictionaries containing answers sorted by (desc.) probability.
+Returns dictionaries containing answers sorted by (desc.) score.
 Example:
  ```python
     |{
@@ -286,8 +285,7 @@ Example:
     |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
     |                 'offset_answer_start': 147,
     |                 'offset_answer_end': 154,
-    |                 'probability': 0.9787139466668613,
-    |                 'score': None,
+    |                 'score': 0.9787139466668613,
     |                 'document_id': '1337'
     |                 },...
     |              ]
@@ -395,7 +393,7 @@ If you would like to set no_answer_boost, use a `FARMReader`.
 
 Use loaded QA model to find answers for a query in the supplied list of Document.
 
-Returns dictionaries containing answers sorted by (desc.) probability.
+Returns dictionaries containing answers sorted by (desc.) score.
 Example:
 
  ```python
@@ -406,8 +404,7 @@ Example:
     |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
     |                 'offset_answer_start': 147,
     |                 'offset_answer_end': 154,
-    |                 'probability': 0.9787139466668613,
-    |                 'score': None,
+    |                 'score': 0.9787139466668613,
     |                 'document_id': '1337'
     |                 },...
     |              ]

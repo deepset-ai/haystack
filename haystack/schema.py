@@ -12,7 +12,6 @@ class Document:
         text: str,
         id: Optional[str] = None,
         score: Optional[float] = None,
-        probability: Optional[float] = None,
         question: Optional[str] = None,
         meta: Dict[str, Any] = None,
         embedding: Optional[np.ndarray] = None,
@@ -35,7 +34,6 @@ class Document:
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
         :param score: Retriever's query score for a retrieved document
-        :param probability: a pseudo probability by scaling score in the range 0 to 1
         :param question: Question text (e.g. for FAQs where one document usually consists of one question and one answer text).
         :param meta: Meta fields for a document like name, url, or author.
         :param embedding: Vector encoding of the text
@@ -46,7 +44,6 @@ class Document:
 
         self.text = text
         self.score = score
-        self.probability = probability
         self.question = question
         self.meta = meta or {}
         self.embedding = embedding

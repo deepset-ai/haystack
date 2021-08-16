@@ -24,7 +24,7 @@ def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
         if answer:
             context = "..." + answers[i]["context"] + "..."
             meta_name = answers[i]["meta"]["name"]
-            relevance = round(answers[i]["probability"] * 100, 2)
+            relevance = round(answers[i]["score"] * 100, 2)
             document_id = answers[i]["document_id"]
             offset_start_in_doc = answers[i]["offset_start_in_doc"]
             result.append(
