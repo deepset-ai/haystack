@@ -254,7 +254,7 @@ class Pipeline(BasePipeline):
         """
         self.graph.nodes[name]["component"] = component
 
-    def run(self, query: Optional[str] = None, file: Optional[str] = None, params: Optional[dict] = None):
+    def run(self, query: Optional[str] = None, file: Optional[str] = None, params: Optional[dict] = None):  # type: ignore
         node_output = None
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
@@ -519,9 +519,12 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
     def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_reader: int = 10):
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_reader=top_k_reader
-        )
+        params = {
+            "filters": filters,
+            "Retriever": {"top_k": top_k_retriever},
+            "Reader": {"top_k": top_k_reader},
+        }
+        output = self.pipeline.run(query=query, params=params)
         return output
 
 
@@ -536,7 +539,8 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
     def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
+        params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}}
+        output = self.pipeline.run(query=query, params=params)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
@@ -561,9 +565,12 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         top_k_retriever: Optional[int] = None,
         top_k_generator: Optional[int] = None
     ):
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_generator=top_k_generator
-        )
+        params = {
+            "filters": filters,
+            "Retriever": {"top_k": top_k_retriever},
+            "Generator": {"top_k": top_k_generator},
+        }
+        output = self.pipeline.run(query=query, params=params)
         return output
 
 
@@ -596,9 +603,12 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer format used in other QA pipelines (True).
                                         With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
         """
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_single_summary=generate_single_summary
-        )
+        params = {
+            "filters": filters,
+            "Retriever": {"top_k": top_k_retriever},
+            "Summarizer": {"generate_single_summary": generate_single_summary},
+        }
+        output = self.pipeline.run(query=query, params=params)
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
         if return_in_answer_format:
@@ -633,7 +643,8 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
     def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
+        params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}}
+        output = self.pipeline.run(query=query, params=params)
         documents = output["documents"]
 
         results: Dict = {"query": query, "answers": []}
@@ -770,7 +781,7 @@ class RootNode(BaseComponent):
     """
     outgoing_edges = 1
 
-    def run(self, root_node: str, query: Optional[str] = None, file: Optional[str] = None):
+    def run(self, root_node: str, query: Optional[str] = None, file: Optional[str] = None):  # type: ignore
         output = {"root_node": root_node}
         if root_node == "Query" and query:
             output["query"] = query
