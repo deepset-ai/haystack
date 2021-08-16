@@ -5,7 +5,7 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from haystack import MultiLabel, Label
+from haystack import MultiLabel, Label, BaseComponent
 
 from farm.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
 from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
@@ -13,7 +13,7 @@ from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
 logger = logging.getLogger(__name__)
 
 
-class EvalDocuments:
+class EvalDocuments(BaseComponent):
     """
     This is a pipeline node that should be placed after a node that returns a List of Document, e.g., Retriever or
     Ranker, in order to assess its performance. Performance metrics are stored in this class and updated as each
@@ -22,6 +22,9 @@ class EvalDocuments:
     a look at our evaluation tutorial for more info about open vs closed domain eval (
     https://haystack.deepset.ai/tutorials/evaluation).
     """
+
+    outgoing_edges = 1
+
     def __init__(self, debug: bool=False, open_domain: bool=True, top_k: int=10, name="EvalDocuments"):
         """
         :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
@@ -29,7 +32,6 @@ class EvalDocuments:
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
         :param top_k: calculate eval metrics for top k results, e.g., recall@k
         """
-        self.outgoing_edges = 1
         self.init_counts()
         self.no_answer_warning = False
         self.debug = debug
@@ -53,10 +55,10 @@ class EvalDocuments:
         self.reciprocal_rank_sum = 0.0
         self.has_answer_reciprocal_rank_sum = 0.0
 
-    def run(self, documents, labels: dict, top_k: Optional[int]=None, **kwargs):
+    def run(self, documents, labels: dict, top_k: Optional[int]=None):
         """Run this node on one sample and its labels"""
         self.query_count += 1
-        retriever_labels = get_label(labels, kwargs["node_id"])
+        retriever_labels = get_label(labels, self.name)
         if not top_k:
             top_k = self.top_k
 
