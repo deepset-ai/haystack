@@ -164,6 +164,7 @@ class EvalAnswers:
         :param sas_model: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
                           The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
                           Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                          More info in the paper: https://arxiv.org/abs/2108.06130
                           Models:
                           - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
                             Not all cross encoders can be used because of different return types.
