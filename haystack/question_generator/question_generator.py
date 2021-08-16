@@ -1,7 +1,8 @@
 from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
-from haystack import BaseComponent
+from haystack import BaseComponent, Document
 from haystack.preprocessor import PreProcessor
+from typing import List
 
 
 class QuestionGenerator(BaseComponent):
@@ -50,8 +51,7 @@ class QuestionGenerator(BaseComponent):
         self.preprocessor = PreProcessor()
         self.prompt = prompt
 
-    def run(self, **kwargs):
-        documents = kwargs["documents"]
+    def run(self, documents: List[Document]):
         generated_questions = []
         for d in documents:
             questions = self.generate(d.text)
@@ -59,7 +59,7 @@ class QuestionGenerator(BaseComponent):
                          "document_sample": d.text[:200],
                          "questions": questions}
             generated_questions.append(curr_dict)
-        output = {"generated_questions": generated_questions, **kwargs}
+        output = {"generated_questions": generated_questions}
         return output, "output_1"
 
     def generate(self, text):

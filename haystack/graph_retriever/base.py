@@ -15,9 +15,7 @@ class BaseGraphRetriever(BaseComponent):
     def eval(self):
         raise NotImplementedError
 
-    def run(self, query: str, top_k: int, **kwargs):  # type: ignore
+    def run(self, query: str, top_k: int):  # type: ignore
         answers = self.retrieve(query=query, top_k=top_k)
-        results = {"query": query,
-                   "answers": answers,
-                   **kwargs}
+        results = {"answers": answers}
         return results, "output_1"

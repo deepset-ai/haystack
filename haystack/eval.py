@@ -22,7 +22,7 @@ class EvalDocuments:
     a look at our evaluation tutorial for more info about open vs closed domain eval (
     https://haystack.deepset.ai/tutorials/evaluation).
     """
-    def __init__(self, debug: bool=False, open_domain: bool=True, top_k_eval_documents: int=10, name="EvalDocuments"):
+    def __init__(self, debug: bool=False, open_domain: bool=True, top_k: int=10, name="EvalDocuments"):
         """
         :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
                             When False, correct retrieval is evaluated based on document_id.
@@ -35,7 +35,7 @@ class EvalDocuments:
         self.debug = debug
         self.log: List = []
         self.open_domain = open_domain
-        self.top_k_eval_documents = top_k_eval_documents
+        self.top_k = top_k
         self.name = name
         self.too_few_docs_warning = False
         self.top_k_used = 0
@@ -53,25 +53,25 @@ class EvalDocuments:
         self.reciprocal_rank_sum = 0.0
         self.has_answer_reciprocal_rank_sum = 0.0
 
-    def run(self, documents, labels: dict, top_k_eval_documents: Optional[int]=None, **kwargs):
+    def run(self, documents, labels: dict, top_k: Optional[int]=None, **kwargs):
         """Run this node on one sample and its labels"""
         self.query_count += 1
         retriever_labels = get_label(labels, kwargs["node_id"])
-        if not top_k_eval_documents:
-            top_k_eval_documents = self.top_k_eval_documents
+        if not top_k:
+            top_k = self.top_k
 
         if not self.top_k_used:
-            self.top_k_used = top_k_eval_documents
-        elif self.top_k_used != top_k_eval_documents:
+            self.top_k_used = top_k
+        elif self.top_k_used != top_k:
             logger.warning(f"EvalDocuments was last run with top_k_eval_documents={self.top_k_used} but is "
-                           f"being run again with top_k_eval_documents={self.top_k_eval_documents}. "
+                           f"being run again with top_k={self.top_k}. "
                            f"The evaluation counter is being reset from this point so that the evaluation "
                            f"metrics are interpretable.")
             self.init_counts()
 
-        if len(documents) < top_k_eval_documents and not self.too_few_docs_warning:
-            logger.warning(f"EvalDocuments is being provided less candidate documents than top_k_eval_documents "
-                           f"(currently set to {top_k_eval_documents}).")
+        if len(documents) < top_k and not self.too_few_docs_warning:
+            logger.warning(f"EvalDocuments is being provided less candidate documents than top_k "
+                           f"(currently set to {top_k}).")
             self.too_few_docs_warning = True
 
         # TODO retriever_labels is currently a Multilabel object but should eventually be a RetrieverLabel object
@@ -89,7 +89,7 @@ class EvalDocuments:
         # If there are answer span annotations in the labels
         else:
             self.has_answer_count += 1
-            retrieved_reciprocal_rank = self.reciprocal_rank_retrieved(retriever_labels, documents, top_k_eval_documents)
+            retrieved_reciprocal_rank = self.reciprocal_rank_retrieved(retriever_labels, documents, top_k)
             self.reciprocal_rank_sum += retrieved_reciprocal_rank
             correct_retrieval = True if retrieved_reciprocal_rank > 0 else False
             self.has_answer_correct += int(correct_retrieval)
@@ -101,7 +101,7 @@ class EvalDocuments:
         self.recall = self.correct_retrieval_count / self.query_count
         self.mean_reciprocal_rank = self.reciprocal_rank_sum / self.query_count
         
-        self.top_k_used = top_k_eval_documents
+        self.top_k_used = top_k
 
         if self.debug:
             self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank, **kwargs})

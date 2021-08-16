@@ -27,8 +27,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
     )
     pipeline.run(
         file_paths=Path("samples/pdf/sample_pdf_1.pdf"),
-        top_k_retriever=10,
-        top_k_reader=3,
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
     )
 
     # test correct load of query pipeline from yaml
@@ -36,7 +35,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
         Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
-        query="Who made the PDF specification?", top_k_retriever=10, top_k_reader=3
+        query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0]["answer"] == "Adobe Systems"
@@ -123,7 +122,7 @@ def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
 def test_extractive_qa_answers(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     prediction = pipeline.run(
-        query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3
+        query="Who lives in Berlin?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
     )
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
@@ -163,9 +162,7 @@ def test_extractive_qa_answers_without_normalized_scores(reader_without_normaliz
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_offsets(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    prediction = pipeline.run(
-        query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=5
-    )
+    prediction = pipeline.run(query="Who lives in Berlin?", params={"Retriever": {"top_k": 5}})
 
     assert prediction["answers"][0]["offset_start"] == 11
     assert prediction["answers"][0]["offset_end"] == 16
@@ -183,7 +180,7 @@ def test_extractive_qa_offsets(reader, retriever_with_docs):
 def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     query = "testing finder"
-    prediction = pipeline.run(query=query, top_k_retriever=1, top_k_reader=1)
+    prediction = pipeline.run(query=query, params={"top_k": 1})
     assert prediction is not None
     assert len(prediction["answers"]) == 1
 
@@ -228,15 +225,13 @@ def test_faq_pipeline(retriever, document_store):
 
     pipeline = FAQPipeline(retriever=retriever)
 
-    output = pipeline.run(query="How to test this?", top_k_retriever=3)
+    output = pipeline.run(query="How to test this?", params={"top_k": 3})
     assert len(output["answers"]) == 3
     assert output["answers"][0]["query"].startswith("How to")
     assert output["answers"][0]["answer"].startswith("Using tests")
 
     if isinstance(document_store, ElasticsearchDocumentStore):
-        output = pipeline.run(
-            query="How to test this?", filters={"source": ["wiki2"]}, top_k_retriever=5
-        )
+        output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
         assert len(output["answers"]) == 1
 
 
@@ -264,13 +259,11 @@ def test_document_search_pipeline(retriever, document_store):
     document_store.update_embeddings(retriever)
 
     pipeline = DocumentSearchPipeline(retriever=retriever)
-    output = pipeline.run(query="How to test this?", top_k_retriever=4)
+    output = pipeline.run(query="How to test this?", params={"top_k": 4})
     assert len(output.get("documents", [])) == 4
 
     if isinstance(document_store, ElasticsearchDocumentStore):
-        output = pipeline.run(
-            query="How to test this?", filters={"source": ["wiki2"]}, top_k_retriever=5
-        )
+        output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
         assert len(output["documents"]) == 1
 
 
@@ -287,9 +280,7 @@ def test_extractive_qa_answers_with_translator(
         pipeline=base_pipeline,
     )
 
-    prediction = pipeline.run(
-        query="Wer lebt in Berlin?", top_k_retriever=10, top_k_reader=3
-    )
+    prediction = pipeline.run(query="Wer lebt in Berlin?", params={"Reader": {"top_k": 3}})
     assert prediction is not None
     assert prediction["query"] == "Wer lebt in Berlin?"
     assert "Carla" in prediction["answers"][0]["answer"]

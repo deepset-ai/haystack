@@ -67,7 +67,7 @@ class BaseReader(BaseComponent):
 
         return results, "output_1"
 
-    def run_batch(self, query_doc_list: List[Dict], top_k_reader: Optional[int] = None):
+    def run_batch(self, query_doc_list: List[Dict], top_k: Optional[int] = None):
         """ A unoptimized implementation of running Reader queries in batch """
         self.query_count += len(query_doc_list)
         results = []
@@ -76,7 +76,7 @@ class BaseReader(BaseComponent):
                 q = qd["queries"]
                 docs = qd["docs"]
                 predict = self.timing(self.predict, "query_time")
-                result = predict(query=q, documents=docs, top_k=top_k_reader)
+                result = predict(query=q, documents=docs, top_k=top_k)
                 results.append(result)
         else:
             results = [{"answers": [], "query": ""}]

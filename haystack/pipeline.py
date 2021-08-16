@@ -254,15 +254,15 @@ class Pipeline(BasePipeline):
         """
         self.graph.nodes[name]["component"] = component
 
-    def run(self, query: Optional[str] = None, file: Optional[str] = None, params: Optional[dict] = None):  # type: ignore
+    def run(self, query: Optional[str] = None, file_paths: Optional[List[str]] = None, params: Optional[dict] = None):  # type: ignore
         node_output = None
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
         if query:
             queue[self.root_node]["query"] = query
-        if file:
-            queue[self.root_node]["file"] = file
+        if file_paths:
+            queue[self.root_node]["file_paths"] = file_paths
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
             node_id = list(queue.keys())[i]
@@ -505,6 +505,10 @@ class BaseStandardPipeline(ABC):
         """
         self.pipeline.draw(path)
 
+    def run(self, query: str, params: Optional[dict] = None):
+        output = self.pipeline.run(query=query, params=params)
+        return output
+
 
 class ExtractiveQAPipeline(BaseStandardPipeline):
     def __init__(self, reader: BaseReader, retriever: BaseRetriever):
@@ -518,15 +522,6 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_reader: int = 10):
-        params = {
-            "filters": filters,
-            "Retriever": {"top_k": top_k_retriever},
-            "Reader": {"top_k": top_k_reader},
-        }
-        output = self.pipeline.run(query=query, params=params)
-        return output
-
 
 class DocumentSearchPipeline(BaseStandardPipeline):
     def __init__(self, retriever: BaseRetriever):
@@ -538,8 +533,7 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}}
+    def run(self, query: str, params: Optional[dict] = None):
         output = self.pipeline.run(query=query, params=params)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
@@ -558,60 +552,28 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: Optional[int] = None,
-        top_k_generator: Optional[int] = None
-    ):
-        params = {
-            "filters": filters,
-            "Retriever": {"top_k": top_k_retriever},
-            "Generator": {"top_k": top_k_generator},
-        }
-        output = self.pipeline.run(query=query, params=params)
-        return output
-
 
 class SearchSummarizationPipeline(BaseStandardPipeline):
-    def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever):
+    def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False):
         """
         Initialize a Pipeline that retrieves documents for a query and then summarizes those documents.
 
         :param summarizer: Summarizer instance
         :param retriever: Retriever instance
+        :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer
+                                        format used in other QA pipelines (True). With the latter, you can use this
+                                        pipeline as a "drop-in replacement" for other QA pipelines.
         """
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
+        self.return_in_answer_format = return_in_answer_format
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: Optional[int] = None,
-        generate_single_summary: Optional[bool] = None,
-        return_in_answer_format: bool = False,
-    ):
-        """
-        :param query: Your search query
-        :param filters:
-        :param top_k_retriever: Number of top docs the retriever should pass to the summarizer.
-                                The higher this value, the slower your pipeline.
-        :param generate_single_summary: Whether to generate single summary from all retrieved docs (True) or one per doc (False).
-        :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer format used in other QA pipelines (True).
-                                        With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
-        """
-        params = {
-            "filters": filters,
-            "Retriever": {"top_k": top_k_retriever},
-            "Summarizer": {"generate_single_summary": generate_single_summary},
-        }
+    def run(self, query: str, params: Optional[dict] = None):
         output = self.pipeline.run(query=query, params=params)
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
-        if return_in_answer_format:
+        if self.return_in_answer_format:
             results: Dict = {"query": query, "answers": []}
             docs = deepcopy(output["documents"])
             for doc in docs:
@@ -642,8 +604,7 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}}
+    def run(self, query: str, params: Optional[dict] = None):
         output = self.pipeline.run(query=query, params=params)
         documents = output["documents"]
 

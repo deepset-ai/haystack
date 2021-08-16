@@ -30,13 +30,10 @@ class BaseTranslator(BaseComponent):
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
         answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
-        **kwargs
     ):
         """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
 
-        results: Dict = {
-            **kwargs
-        }
+        results = {}
 
         # This will cover input query stage
         if query:
