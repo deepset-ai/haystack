@@ -51,7 +51,7 @@ class QuestionGenerator(BaseComponent):
         self.preprocessor = PreProcessor()
         self.prompt = prompt
 
-    def run(self, documents: List[Document]):
+    def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
         for d in documents:
             questions = self.generate(d.text)
