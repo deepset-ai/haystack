@@ -137,6 +137,27 @@ def test_extractive_qa_answers(reader, retriever_with_docs):
     assert len(prediction["answers"]) == 3
 
 
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+def test_extractive_qa_answers_without_normalized_scores(reader_without_normalized_scores, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader_without_normalized_scores, retriever=retriever_with_docs)
+    prediction = pipeline.run(
+        query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3
+    )
+    assert prediction is not None
+    assert prediction["query"] == "Who lives in Berlin?"
+    assert prediction["answers"][0]["answer"] == "Carla"
+    assert prediction["answers"][0]["score"] <= 11
+    assert prediction["answers"][0]["score"] >= 10
+    assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
+    assert (
+            prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
+    )
+
+    assert len(prediction["answers"]) == 3
+
+
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_offsets(reader, retriever_with_docs):
