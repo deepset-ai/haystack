@@ -322,7 +322,7 @@ class BaseComponent:
 
     def _dispatch_run(self, **kwargs):
         arguments = deepcopy(kwargs)
-        params = arguments.get("params", {})
+        params = arguments.get("params") or {}
 
         run_signature_args = inspect.signature(self.run).parameters.keys()
 
