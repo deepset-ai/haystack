@@ -591,7 +591,7 @@ class FARMReader(BaseReader):
             answers += answers_per_document[:self.top_k_per_candidate]
 
         # calculate the score for predicting 'no answer', relative to our best positive answer score
-        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_score_answer)
+        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_score_answer, self.use_confidence_scores)
         if self.return_no_answers:
             answers.append(no_ans_prediction)
 
