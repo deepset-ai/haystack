@@ -343,6 +343,20 @@ class BaseComponent:
                 run_inputs[key] = value
 
         output, stream = self.run(**run_inputs, **run_params)
+
+        # append _debug information from nodes
+        all_debug = arguments.get("_debug", {})
+        current_debug = output.get("_debug")
+        if current_debug:
+            all_debug[self.name] = current_debug
+        if all_debug:
+            output["_debug"] = all_debug
+
+        # add "extra" args that were not used by the node
+        for k, v in arguments.items():
+            if k not in output.keys():
+                output[k] = v
+
         output["params"] = params
         return output, stream
 
