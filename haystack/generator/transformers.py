@@ -281,7 +281,6 @@ class RAGenerator(BaseGenerator):
                 "meta": {
                     "doc_ids": flat_docs_dict["id"],
                     "doc_scores": flat_docs_dict["score"],
-                    "doc_probabilities": flat_docs_dict["probability"],
                     "texts": flat_docs_dict["text"],
                     "titles": titles,
                 }

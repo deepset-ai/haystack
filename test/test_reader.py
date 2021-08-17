@@ -18,8 +18,8 @@ def test_output(prediction):
     assert prediction["answers"][0]["answer"] == "Carla"
     assert prediction["answers"][0]["offset_start"] == 11
     assert prediction["answers"][0]["offset_end"] == 16
-    assert prediction["answers"][0]["probability"] <= 1
-    assert prediction["answers"][0]["probability"] >= 0
+    assert prediction["answers"][0]["score"] <= 1
+    assert prediction["answers"][0]["score"] >= 0
     assert prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
     assert len(prediction["answers"]) == 5
 
@@ -32,8 +32,8 @@ def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction["answers"][0]["answer"] is None
     assert no_answer_prediction["answers"][0]["offset_start"] == 0
     assert no_answer_prediction["answers"][0]["offset_end"] == 0
-    assert no_answer_prediction["answers"][0]["probability"] <= 1
-    assert no_answer_prediction["answers"][0]["probability"] >= 0
+    assert no_answer_prediction["answers"][0]["score"] <= 1
+    assert no_answer_prediction["answers"][0]["score"] >= 0
     assert no_answer_prediction["answers"][0]["context"] == None
     assert no_answer_prediction["answers"][0]["document_id"] == None
     answers = [x["answer"] for x in no_answer_prediction["answers"]]
@@ -57,7 +57,7 @@ def test_answer_attributes(prediction):
     # TODO Transformers answer also has meta key
     # TODO FARM answer has offset_start_in_doc, offset_end_in_doc
     answer = prediction["answers"][0]
-    attributes_gold = ['answer', 'score', 'probability', 'context', 'offset_start', 'offset_end', 'document_id']
+    attributes_gold = ['answer', 'score', 'context', 'offset_start', 'offset_end', 'document_id']
     for ag in attributes_gold:
         assert ag in answer
 
