@@ -840,7 +840,7 @@ class SklearnQueryClassifier(BaseComponent):
 
 
     def run(self, query):
-        query_vector = self.vectorizer.transform(query)
+        query_vector = self.vectorizer.transform([query])
 
         is_question: bool = self.model.predict(query_vector)[0]
         if is_question:
