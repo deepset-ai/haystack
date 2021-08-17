@@ -368,8 +368,8 @@ class MilvusDocumentStore(SQLDocumentStore):
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
         for doc in documents:
-            doc.score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.probability = float(expit(np.asarray(doc.score / 100)))
+            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
+            doc.score = float(expit(np.asarray(raw_score / 100)))
 
         return documents
 

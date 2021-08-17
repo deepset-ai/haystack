@@ -278,6 +278,16 @@ def test_docs_xs():
     ]
 
 
+@pytest.fixture(scope="module")
+def reader_without_normalized_scores():
+    return FARMReader(
+        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        use_gpu=False,
+        top_k_per_sample=5,
+        num_processes=0,
+        use_confidence_scores=False
+    )
+
 @pytest.fixture(params=["farm", "transformers"], scope="module")
 def reader(request):
     if request.param == "farm":
