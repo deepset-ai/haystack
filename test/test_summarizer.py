@@ -68,7 +68,7 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
 
     query = "Where is Eiffel Tower?"
     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
-    output = pipeline.run(query=query, params={"Summarizer": {"top_k": 1}})
+    output = pipeline.run(query=query, params={"top_k": 1})
     answers = output["answers"]
     assert len(answers) == 1
     assert "The Eiffel Tower is a landmark in Paris, France." == answers[0]["answer"]
