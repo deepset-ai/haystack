@@ -144,7 +144,7 @@ class EvalDocuments(BaseComponent):
         print(f"mean_reciprocal_rank@{self.top_k_used}: {self.mean_reciprocal_rank:.4f}")
 
 
-class EvalAnswers:
+class EvalAnswers(BaseComponent):
     """
     This is a pipeline node that should be placed after a Reader in order to assess the performance of the Reader
     individually or to assess the extractive QA performance of the whole pipeline. Performance metrics are stored in
@@ -154,12 +154,9 @@ class EvalAnswers:
     open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
     """
 
-    def __init__(self,
-                 skip_incorrect_retrieval: bool = True,
-                 open_domain: bool = True,
-                 sas_model: str = None,
-                 debug: bool = False,
-                 ):
+    outgoing_edges = 1
+
+    def __init__(self, skip_incorrect_retrieval: bool=True, open_domain: bool=True, debug: bool=False):
         """
         :param skip_incorrect_retrieval: When set to True, this eval will ignore the cases where the retriever returned no correct documents
         :param open_domain: When True, extracted answers are evaluated purely on string similarity rather than the position of the extracted answer
@@ -176,12 +173,11 @@ class EvalAnswers:
                           - Large model for German only: "deepset/gbert-large-sts"
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
         """
-        self.outgoing_edges = 1
+        self.init_counts()
         self.log: List = []
         self.debug = debug
         self.skip_incorrect_retrieval = skip_incorrect_retrieval
         self.open_domain = open_domain
-        self.sas_model = sas_model
         self.init_counts()
 
     def init_counts(self):
@@ -205,14 +201,14 @@ class EvalAnswers:
             self.top_1_sas = 0.0
             self.top_k_sas = 0.0
 
-    def run(self, labels, answers, **kwargs):
+    def run(self, labels, answers, correct_retrieval):
         """Run this node on one sample and its labels"""
         self.query_count += 1
         predictions = answers
-        skip = self.skip_incorrect_retrieval and not kwargs.get("correct_retrieval")
+        skip = self.skip_incorrect_retrieval and correct_retrieval
         if predictions and not skip:
             self.correct_retrieval_count += 1
-            multi_labels = get_label(labels, kwargs["node_id"])
+            multi_labels = get_label(labels, self.name)
             # If this sample is impossible to answer and expects a no_answer response
             if multi_labels.no_answer:
                 self.no_answer_count += 1
@@ -256,7 +252,7 @@ class EvalAnswers:
                 self.top_k_em_count += top_k_em
                 self.top_k_f1_sum += top_k_f1
                 self.update_has_answer_metrics()
-        return {**kwargs}, "output_1"
+        return {}, "output_1"
 
     def evaluate_extraction(self, gold_labels, predictions):
         if self.open_domain:
