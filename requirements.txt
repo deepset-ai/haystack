@@ -11,6 +11,9 @@ elastic-apm
 tox
 coverage
 langdetect # for PDF conversions
+# for PDF conversions using OCR
+pytesseract==0.3.7 
+pillow==8.2.0
 # optional: sentence-transformers
 python-multipart
 python-docx
