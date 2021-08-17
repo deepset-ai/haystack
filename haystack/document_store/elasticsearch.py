@@ -165,16 +165,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              ca_certs: Optional[str],
                              verify_certs: bool,
                              timeout: int) -> Elasticsearch:
-        # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
-        if isinstance(host, list):
-            if isinstance(port, list):
-                if not len(port) == len(host):
-                    raise ValueError("Length of list `host` must match length of list `port`")
-                hosts = [{"host":h, "port":p} for h, p in zip(host,port)]
-            else:
-                hosts = [{"host": h, "port": port} for h in host]
-        else:
-            hosts = [{"host": host, "port": port}]
+
+        hosts = self._prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not(api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
@@ -213,6 +205,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             raise ConnectionError(
                 f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
         return client
+
+    def _prepare_hosts(self, host, port):
+        # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
+        if isinstance(host, list):
+            if isinstance(port, list):
+                if not len(port) == len(host):
+                    raise ValueError("Length of list `host` must match length of list `port`")
+                hosts = [{"host":h, "port":p} for h, p in zip(host,port)]
+            else:
+                hosts = [{"host": h, "port": port} for h in host]
+        else:
+            hosts = [{"host": host, "port": port}]
+        return hosts
 
     def _create_document_index(self, index_name: str):
         """
@@ -1200,7 +1205,15 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
 
 class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
-    def __init__(self):
+    """
+    A DocumentStore which has an Open Distro for Elasticsearch service behind it.
+    """
+    def __init__(self, host="https://admin:admin@localhost:9200/", similarity="cosine", **kwargs):
         logger.warning("Open Distro for Elasticsearch has been replaced by OpenSearch! "
                        "See https://opensearch.org/faq/ for details. "
                        "We recommend using the OpenSearchDocumentStore instead.")
+        super(OpenDistroElasticsearchDocumentStore, self).__init__(host=host,
+                                                                   similarity=similarity,
+                                                                   **kwargs)
+    def _prepare_hosts(self, host, port):
+        return host
