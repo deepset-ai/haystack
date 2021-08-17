@@ -156,7 +156,12 @@ class EvalAnswers(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self, skip_incorrect_retrieval: bool=True, open_domain: bool=True, debug: bool=False):
+    def __init__(self,
+                 skip_incorrect_retrieval: bool = True,
+                 open_domain: bool = True,
+                 sas_model: str = None,
+                 debug: bool = False,
+                 ):
         """
         :param skip_incorrect_retrieval: When set to True, this eval will ignore the cases where the retriever returned no correct documents
         :param open_domain: When True, extracted answers are evaluated purely on string similarity rather than the position of the extracted answer
@@ -173,11 +178,11 @@ class EvalAnswers(BaseComponent):
                           - Large model for German only: "deepset/gbert-large-sts"
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
         """
-        self.init_counts()
         self.log: List = []
         self.debug = debug
         self.skip_incorrect_retrieval = skip_incorrect_retrieval
         self.open_domain = open_domain
+        self.sas_model = sas_model
         self.init_counts()
 
     def init_counts(self):
