@@ -102,7 +102,8 @@ transformer_question_classifier.add_node(component=reader, name="QAReader", inpu
 
 ### Standalone Query Classifier
 Below we run queries classifiers standalone to better understand their outputs on each of the three types of queries
-```
+
+```python
 from haystack.pipeline import TransformersQueryClassifier
 
 queries = ["Lord Eddard was the father of Arya Stark.","Jon Snow was filmed in United Kingdom.",
