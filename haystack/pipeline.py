@@ -839,14 +839,14 @@ class SklearnQueryClassifier(BaseComponent):
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
 
 
-    def run(self, **kwargs):
-        query_vector = self.vectorizer.transform([kwargs["query"]])
+    def run(self, query):
+        query_vector = self.vectorizer.transform(query)
 
         is_question: bool = self.model.predict(query_vector)[0]
         if is_question:
-            return (kwargs, "output_1")
+            return {}, "output_1"
         else:
-            return (kwargs, "output_2")
+            return {}, "output_2"
 
 
 class TransformersQueryClassifier(BaseComponent):
