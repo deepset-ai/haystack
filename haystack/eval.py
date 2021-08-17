@@ -55,7 +55,7 @@ class EvalDocuments(BaseComponent):
         self.reciprocal_rank_sum = 0.0
         self.has_answer_reciprocal_rank_sum = 0.0
 
-    def run(self, documents, labels: dict, top_k: Optional[int]=None):
+    def run(self, documents, labels: dict, top_k: Optional[int]=None):  # type: ignore
         """Run this node on one sample and its labels"""
         self.query_count += 1
         retriever_labels = get_label(labels, self.name)
@@ -106,8 +106,8 @@ class EvalDocuments(BaseComponent):
         self.top_k_used = top_k
 
         if self.debug:
-            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank, **kwargs})
-        return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank, **kwargs}, "output_1"
+            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank})
+        return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank}, "output_1"
 
     def is_correctly_retrieved(self, retriever_labels, predictions):
         return self.reciprocal_rank_retrieved(retriever_labels, predictions) > 0
