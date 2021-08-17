@@ -3,13 +3,20 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
+from pdf2image import convert_from_path, convert_from_bytes
+from PIL.PpmImagePlugin import PpmImageFile
+
 from haystack.file_converter.base import BaseConverter
 
 logger = logging.getLogger(__name__)
 
 
 class PDFToTextConverter(BaseConverter):
-    def __init__(self, remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = None):
+    def __init__(
+        self,
+        remove_numeric_tables: bool = False,
+        valid_languages: Optional[List[str]] = None,
+    ):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
@@ -24,7 +31,9 @@ class PDFToTextConverter(BaseConverter):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        self.set_config(
+            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
+        )
 
         verify_installation = subprocess.run(["pdftotext -v"], shell=True)
         if verify_installation.returncode == 127:
@@ -42,7 +51,9 @@ class PDFToTextConverter(BaseConverter):
                 """
             )
 
-        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        super().__init__(
+            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
+        )
 
     def convert(
         self,
@@ -102,7 +113,11 @@ class PDFToTextConverter(BaseConverter):
 
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
-                    if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
+                    if (
+                        words
+                        and len(digits) / len(words) > 0.4
+                        and not line.strip().endswith(".")
+                    ):
                         logger.debug(f"Removing line '{line}' from {file_path}")
                         continue
                 cleaned_lines.append(line)
@@ -122,7 +137,9 @@ class PDFToTextConverter(BaseConverter):
         document = {"text": text, "meta": meta}
         return document
 
-    def _read_pdf(self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1") -> List[str]:
+    def _read_pdf(
+        self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1"
+    ) -> List[str]:
         """
         Extract pages from the pdf file at file_path.
 
@@ -134,9 +151,45 @@ class PDFToTextConverter(BaseConverter):
             command = ["pdftotext", "-enc", encoding, "-layout", str(file_path), "-"]
         else:
             command = ["pdftotext", "-enc", encoding, str(file_path), "-"]
-        output = subprocess.run(command, stdout=subprocess.PIPE, shell=False) # type: ignore
+        output = subprocess.run(command, stdout=subprocess.PIPE, shell=False)  # type: ignore
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")
         pages = pages[:-1]  # the last page in the split is always empty.
         return pages
 
+
+class PDFtoImageConverter(BaseConverter):
+    def convert(
+        self,
+        file_path: Path,
+        meta: Optional[Dict[str, str]] = None,
+        remove_numeric_tables: Optional[bool] = None,
+        valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = "utf-8",
+    ) -> List[PpmImageFile]:
+        """
+        Convert a file to a dictionary containing the text and any associated meta data.
+
+        File converters may extract file meta like name or size. In addition to it, user
+        supplied meta data like author, url, external IDs can be supplied as a dictionary.
+
+        :param file_path: path of the file to convert
+        :param meta: dictionary of meta data key-value pairs to append in the returned document.
+        :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
+                                      The tabular structures in documents might be noise for the reader model if it
+                                      does not have table parsing capability for finding answers. However, tables
+                                      may also have long strings that could possible candidate for searching answers.
+                                      The rows containing strings are thus retained in this option.
+        :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
+                                (https://en.wikipedia.org/wiki/ISO_639-1) format.
+                                This option can be used to add test for encoding errors. If the extracted text is
+                                not one of the valid languages, then it might likely be encoding error resulting
+                                in garbled text.
+        :param encoding: Select the file encoding (default is `utf-8`)
+        """
+        images = []
+        try:
+            images = convert_from_path(file_path)
+        except Exception as exception:
+            logger.error(f"File {file_path} has an error \n {exception}")
+        return images
