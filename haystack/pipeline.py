@@ -605,7 +605,6 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
                     "document_id": doc.id,
                     "context": doc.meta.pop("context"),
                     "score": None,
-                    "probability": None,
                     "offset_start": None,
                     "offset_end": None,
                     "meta": doc.meta,
@@ -640,7 +639,6 @@ class FAQPipeline(BaseStandardPipeline):
                 "document_id": doc.id,
                 "context": doc.meta["answer"],
                 "score": doc.score,
-                "probability": doc.probability,
                 "offset_start": 0,
                 "offset_end": len(doc.meta["answer"]),
                 "meta": doc.meta,
@@ -971,7 +969,7 @@ class JoinDocuments(BaseComponent):
         self.set_config(join_mode=join_mode, weights=weights, top_k_join=top_k_join)
 
         self.join_mode = join_mode
-        self.weights = weights
+        self.weights = [float(i)/sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
 
     def run(self, **kwargs):

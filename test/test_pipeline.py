@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import math
 import pytest
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
@@ -127,11 +128,32 @@ def test_extractive_qa_answers(reader, retriever_with_docs):
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0]["answer"] == "Carla"
-    assert prediction["answers"][0]["probability"] <= 1
-    assert prediction["answers"][0]["probability"] >= 0
+    assert prediction["answers"][0]["score"] <= 1
+    assert prediction["answers"][0]["score"] >= 0
     assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
     assert (
         prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
+    )
+
+    assert len(prediction["answers"]) == 3
+
+
+@pytest.mark.slow
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+def test_extractive_qa_answers_without_normalized_scores(reader_without_normalized_scores, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader_without_normalized_scores, retriever=retriever_with_docs)
+    prediction = pipeline.run(
+        query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3
+    )
+    assert prediction is not None
+    assert prediction["query"] == "Who lives in Berlin?"
+    assert prediction["answers"][0]["answer"] == "Carla"
+    assert prediction["answers"][0]["score"] <= 11
+    assert prediction["answers"][0]["score"] >= 10
+    assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
+    assert (
+            prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
     )
 
     assert len(prediction["answers"]) == 3
@@ -271,8 +293,8 @@ def test_extractive_qa_answers_with_translator(
     assert prediction is not None
     assert prediction["query"] == "Wer lebt in Berlin?"
     assert "Carla" in prediction["answers"][0]["answer"]
-    assert prediction["answers"][0]["probability"] <= 1
-    assert prediction["answers"][0]["probability"] >= 0
+    assert prediction["answers"][0]["score"] <= 1
+    assert prediction["answers"][0]["score"] >= 0
     assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
     assert (
         prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
@@ -291,7 +313,7 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     )
     document_store_with_docs.update_embeddings(dpr)
 
-    query = "Where does Carla lives?"
+    query = "Where does Carla live?"
 
     # test merge without weights
     join_node = JoinDocuments(join_mode="merge")
@@ -309,7 +331,7 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert results["documents"][0].score > 1000
+    assert math.isclose(results["documents"][0].score, 0.5350644373470798, rel_tol=0.0001)
     assert len(results["documents"]) == 2
 
     # test concatenate
@@ -329,7 +351,8 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     p.add_node(component=reader, name="Reader", inputs=["Join"])
     results = p.run(query=query)
-    assert results["answers"][0]["answer"] == "Berlin"
+    #check whether correct answer is within top 2 predictions
+    assert results["answers"][0]["answer"] == "Berlin" or results["answers"][1]["answer"] == "Berlin"
 
 
 def test_parallel_paths_in_pipeline_graph():

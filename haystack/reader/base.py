@@ -25,7 +25,7 @@ class BaseReader(BaseComponent):
         pass
 
     @staticmethod
-    def _calc_no_answer(no_ans_gaps: Sequence[float], best_score_answer: float):
+    def _calc_no_answer(no_ans_gaps: Sequence[float], best_score_answer: float, use_confidence_scores: bool = True):
         # "no answer" scores and positive answers scores are difficult to compare, because
         # + a positive answer score is related to one specific document
         # - a "no answer" score is related to all input documents
@@ -42,8 +42,7 @@ class BaseReader(BaseComponent):
             no_ans_score = best_score_answer - max_no_ans_gap
 
         no_ans_prediction = {"answer": None,
-               "score": no_ans_score,
-               "probability": float(expit(np.asarray(no_ans_score) / 8)),  # just a pseudo prob for now
+               "score": float(expit(np.asarray(no_ans_score) / 8)) if use_confidence_scores else no_ans_score,  # just a pseudo prob for now or old score
                "context": None,
                "offset_start": 0,
                "offset_end": 0,

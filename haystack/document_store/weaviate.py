@@ -191,7 +191,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Weaviate get methods return the data items in properties key, whereas the query doesn't.
         """
         score = None
-        probability = None
         text = ""
         question = None
 
@@ -214,7 +213,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if "_additional" in props:
             if "certainty" in props["_additional"]:
                 score = props["_additional"]['certainty']
-                probability = score
             if "id" in props["_additional"]:
                 id = props["_additional"]['id']
             if "vector" in props["_additional"]:
@@ -232,7 +230,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             text=text,
             meta=meta_data,
             score=score,
-            probability=probability,
             question=question,
             embedding=embedding,
         )
@@ -369,7 +366,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         **doc.to_dict(field_map=self._create_document_field_map())
                     }
                     _ = _doc.pop("score", None)
-                    _ = _doc.pop("probability", None)
 
                     # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
                     # we "unnest" all value within "meta"

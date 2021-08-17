@@ -51,7 +51,8 @@ class FARMReader(BaseReader):
         max_seq_len: int = 256,
         doc_stride: int = 128,
         progress_bar: bool = True,
-        duplicate_filtering: int = 0
+        duplicate_filtering: int = 0,
+        use_confidence_scores: bool = True
     ):
 
         """
@@ -99,7 +100,7 @@ class FARMReader(BaseReader):
             batch_size=batch_size, use_gpu=use_gpu, no_ans_boost=no_ans_boost, return_no_answer=return_no_answer,
             top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
             num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering
+            duplicate_filtering=duplicate_filtering, use_confidence_scores=use_confidence_scores
         )
 
         self.return_no_answers = return_no_answer
@@ -125,6 +126,7 @@ class FARMReader(BaseReader):
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.device, _ = initialize_device_settings(use_cuda=self.use_gpu)
+        self.use_confidence_scores = use_confidence_scores
 
     def train(
         self,
@@ -286,7 +288,7 @@ class FARMReader(BaseReader):
         """
         Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
 
-        Returns list of dictionaries containing answers sorted by (desc.) probability
+        Returns list of dictionaries containing answers sorted by (desc.) score
 
         :param query_doc_list: List of dictionaries containing queries with their retrieved documents
         :param top_k: The maximum number of answers to return for each query
@@ -347,7 +349,7 @@ class FARMReader(BaseReader):
         """
         Use loaded QA model to find answers for a query in the supplied list of Document.
 
-        Returns dictionaries containing answers sorted by (desc.) probability.
+        Returns dictionaries containing answers sorted by (desc.) score.
         Example:
          ```python
             |{
@@ -357,8 +359,7 @@ class FARMReader(BaseReader):
             |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
             |                 'offset_answer_start': 147,
             |                 'offset_answer_end': 154,
-            |                 'probability': 0.9787139466668613,
-            |                 'score': None,
+            |                 'score': 0.9787139466668613,
             |                 'document_id': '1337'
             |                 },...
             |              ]
@@ -573,9 +574,7 @@ class FARMReader(BaseReader):
                 else:
                     cur = {
                         "answer": ans.answer,
-                        "score": ans.score,
-                        # just a pseudo prob for now
-                        "probability": ans.confidence,
+                        "score": ans.confidence if self.use_confidence_scores else ans.score,
                         "context": ans.context_window,
                         "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
                         "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
@@ -592,7 +591,7 @@ class FARMReader(BaseReader):
             answers += answers_per_document[:self.top_k_per_candidate]
 
         # calculate the score for predicting 'no answer', relative to our best positive answer score
-        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_score_answer)
+        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_score_answer, self.use_confidence_scores)
         if self.return_no_answers:
             answers.append(no_ans_prediction)
 
@@ -642,7 +641,7 @@ class FARMReader(BaseReader):
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         """
         Use loaded QA model to find answers for a question in the supplied list of Document.
-        Returns dictionaries containing answers sorted by (desc.) probability.
+        Returns dictionaries containing answers sorted by (desc.) score.
         Example:
          ```python
             |{
@@ -652,8 +651,7 @@ class FARMReader(BaseReader):
             |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
             |                 'offset_answer_start': 147,
             |                 'offset_answer_end': 154,
-            |                 'probability': 0.9787139466668613,
-            |                 'score': None,
+            |                 'score': 0.9787139466668613,
             |                 'document_id': '1337'
             |                 },...
             |              ]
