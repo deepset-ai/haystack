@@ -59,7 +59,7 @@ class QuestionGenerator(BaseComponent):
                          "document_sample": d.text[:200],
                          "questions": questions}
             generated_questions.append(curr_dict)
-        output = {"generated_questions": generated_questions}
+        output = {"generated_questions": generated_questions, "documents": documents}
         return output, "output_1"
 
     def generate(self, text):

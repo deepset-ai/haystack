@@ -742,9 +742,8 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
             return kwargs, output_stream
         return wrapper
 
-    def run(self, document, **kwargs):
-        kwargs["documents"] = [document]
-        output = self.pipeline.run(**kwargs)
+    def run(self, documents: List[Document], params: Optional[dict] = None):  # type: ignore
+        output = self.pipeline.run(documents=documents, params=params)
         return output
 
 
@@ -1163,7 +1162,7 @@ class RayPipeline(Pipeline):
                     raise NotImplementedError(
                         "The current pipeline does not support multiple levels of parallel nodes."
                     )
-                inputs_for_join_node = {"inputs": []}
+                inputs_for_join_node: dict = {"inputs": []}
                 for n_id in next_nodes:
                     output = self.graph.nodes[n_id]["component"].run(**input_dict)
                     inputs_for_join_node["inputs"].append(output)
