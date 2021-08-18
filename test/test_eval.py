@@ -121,7 +121,8 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     for l in labels:
         res = p.run(
             query=l.question,
-            params={"top_k": 10, "labels": l, "index": "haystack_test_eval_document"}
+            labels=l,
+            params={"index": "haystack_test_eval_document"}
         )
     assert eval_retriever.recall == 1.0
     assert round(eval_reader.top_k_f1, 4) == 0.8333
