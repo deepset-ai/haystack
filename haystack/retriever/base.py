@@ -177,7 +177,7 @@ class BaseRetriever(BaseComponent):
     def run(  # type: ignore
         self,
         root_node: str,
-        query: Optional[str],
+        query: Optional[str] = None,
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
         documents: Optional[List[dict]] = None,
@@ -190,7 +190,7 @@ class BaseRetriever(BaseComponent):
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
             run_indexing = self.timing(self.run_indexing, "index_time")
-            output, stream = run_indexing(documents=documents, index=index)
+            output, stream = run_indexing(documents=documents)
         else:
             raise Exception(f"Invalid root_node '{root_node}'.")
         return output, stream
