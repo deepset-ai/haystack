@@ -294,7 +294,15 @@ class Pipeline(BasePipeline):
                     if queue.get(n):  # concatenate inputs if it's a join node
                         existing_input = queue[n]
                         if "inputs" not in existing_input.keys():
-                            updated_input = {"inputs": [existing_input, node_output]}
+                            updated_input = {"inputs": [existing_input, node_output], "params": params}
+                            if query:
+                                updated_input["query"] = query
+                            if file_paths:
+                                updated_input["file_paths"] = file_paths
+                            if labels:
+                                updated_input["labels"] = labels
+                            if documents:
+                                updated_input["documents"] = documents
                         else:
                             existing_input["inputs"].append(node_output)
                             updated_input = existing_input
@@ -961,9 +969,7 @@ class JoinDocuments(BaseComponent):
         self.weights = [float(i)/sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
 
-    def run(self, **kwargs):
-        inputs = kwargs["inputs"]
-
+    def run(self, inputs: List[dict]):
         if self.join_mode == "concatenate":
             document_map = {}
             for input_from_node in inputs:
@@ -989,7 +995,7 @@ class JoinDocuments(BaseComponent):
 
         if self.top_k_join:
             documents = documents[: self.top_k_join]
-        output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
+        output = {"documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"
 
 
