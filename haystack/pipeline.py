@@ -1130,10 +1130,26 @@ class RayPipeline(Pipeline):
         handle = RayDeployment.get_handle()
         return handle
 
-    def run(self, **kwargs):
+    def run(  # type: ignore
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        params: Optional[dict] = None,
+    ):
         has_next_node = True
         current_node_id = self.root_node
-        input_dict = {"root_node": self.root_node, **kwargs}
+        input_dict = {"root_node": self.root_node, "params": params}
+        if query:
+            input_dict["query"] = query
+        if file_paths:
+            input_dict["file_paths"] = file_paths
+        if labels:
+            input_dict["labels"] = labels
+        if documents:
+            input_dict["documents"] = documents
+
         output_dict = None
 
         while has_next_node:
@@ -1233,7 +1249,7 @@ class _RayDeploymentWrapper:
         """
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
-        return self.node.run(*args, **kwargs)
+        return self.node._dispatch_run(*args, **kwargs)
 
 
 class Docs2Answers(BaseComponent):
