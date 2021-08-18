@@ -26,7 +26,7 @@ import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
-from haystack import BaseComponent
+from haystack import BaseComponent, MultiLabel, Document
 from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
@@ -254,7 +254,14 @@ class Pipeline(BasePipeline):
         """
         self.graph.nodes[name]["component"] = component
 
-    def run(self, query: Optional[str] = None, file_paths: Optional[List[str]] = None, params: Optional[dict] = None):  # type: ignore
+    def run(  # type: ignore
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        params: Optional[dict] = None,
+    ):
         node_output = None
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
@@ -263,6 +270,11 @@ class Pipeline(BasePipeline):
             queue[self.root_node]["query"] = query
         if file_paths:
             queue[self.root_node]["file_paths"] = file_paths
+        if labels:
+            queue[self.root_node]["labels"] = labels
+        if documents:
+            queue[self.root_node]["documents"] = documents
+
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
             node_id = list(queue.keys())[i]
@@ -742,16 +754,8 @@ class RootNode(BaseComponent):
     """
     outgoing_edges = 1
 
-    def run(self, root_node: str, query: Optional[str] = None, file: Optional[str] = None):  # type: ignore
-        output = {"root_node": root_node}
-        if root_node == "Query" and query:
-            output["query"] = query
-        elif root_node == "File" and file:
-            output["file"] = file
-        else:
-            raise Exception
-
-        return output, "output_1"
+    def run(self, root_node: str):  # type: ignore
+        return {}, "output_1"
 
 
 class SklearnQueryClassifier(BaseComponent):
