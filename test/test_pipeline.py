@@ -348,36 +348,36 @@ def test_join_document_pipeline(document_store_with_docs, reader):
 
 def test_parallel_paths_in_pipeline_graph():
     class A(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] = "A"
-            return kwargs, "output_1"
+        def run(self, output):
+            output = "A"
+            return output, "output_1"
 
     class B(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "B"
-            return kwargs, "output_1"
+        def run(self, output):
+            output = "B"
+            return output, "output_1"
 
     class C(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "C"
-            return kwargs, "output_1"
+        def run(self, output):
+            output = "C"
+            return output, "output_1"
 
     class D(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "D"
-            return kwargs, "output_1"
+        def run(self, output):
+            output = "D"
+            return output, "output_1"
 
     class E(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "E"
-            return kwargs, "output_1"
+        def run(self, output):
+            output = "E"
+            return output, "output_1"
 
     class JoinNode(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] = (
-                kwargs["inputs"][0]["output"] + kwargs["inputs"][1]["output"]
+        def run(self, inputs):
+            output = (
+                inputs[0]["output"] + inputs[1]["output"]
             )
-            return kwargs, "output_1"
+            return {"output": output}, "output_1"
 
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=A(), inputs=["Query"])
@@ -403,51 +403,51 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
     class AWithOutput1(RootNode):
         outgoing_edges = 2
 
-        def run(self, **kwargs):
-            kwargs["output"] = "A"
-            return kwargs, "output_1"
+        def run(self, output):
+            output = "A"
+            return output, "output_1"
 
     class AWithOutput2(RootNode):
         outgoing_edges = 2
 
-        def run(self, **kwargs):
-            kwargs["output"] = "A"
-            return kwargs, "output_2"
+        def run(self, output):
+            output = "A"
+            return output, "output_2"
 
     class AWithOutputAll(RootNode):
         outgoing_edges = 2
 
-        def run(self, **kwargs):
-            kwargs["output"] = "A"
-            return kwargs, "output_all"
+        def run(self, output):
+            output = "A"
+            return output, "output_all"
 
     class B(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "B"
-            return kwargs, "output_1"
+        def run(self, output):
+            output += "B"
+            return output, "output_1"
 
     class C(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "C"
-            return kwargs, "output_1"
+        def run(self, output):
+            output += "C"
+            return output, "output_1"
 
     class D(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "D"
-            return kwargs, "output_1"
+        def run(self, output):
+            output += "D"
+            return output, "output_1"
 
     class E(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "E"
-            return kwargs, "output_1"
+        def run(self, output):
+            output += "E"
+            return output, "output_1"
 
     class JoinNode(RootNode):
-        def run(self, **kwargs):
-            if kwargs.get("inputs"):
-                kwargs["output"] = ""
-                for input_dict in kwargs["inputs"]:
-                    kwargs["output"] += input_dict["output"]
-            return kwargs, "output_1"
+        def run(self, inputs):
+            if inputs:
+                output = ""
+                for input_dict in inputs:
+                    output += input_dict["output"]
+            return {"output": output}, "output_1"
 
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=AWithOutput1(), inputs=["Query"])
