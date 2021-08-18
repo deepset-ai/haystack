@@ -80,7 +80,7 @@ class BaseReader(BaseComponent):
                 results.append(result)
         else:
             results = [{"answers": [], "query": ""}]
-        return results, "output_1"
+        return {"results": results}, "output_1"
 
     def timing(self, fn, attr_name):
         """Wrapper method used to time functions. """
