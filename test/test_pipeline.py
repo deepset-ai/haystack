@@ -348,36 +348,36 @@ def test_join_document_pipeline(document_store_with_docs, reader):
 
 def test_parallel_paths_in_pipeline_graph():
     class A(RootNode):
-        def run(self, output):
-            output = "A"
-            return output, "output_1"
+        def run(self):
+            test = "A"
+            return {"test": test}, "output_1"
 
     class B(RootNode):
-        def run(self, output):
-            output = "B"
-            return output, "output_1"
+        def run(self, test):
+            test += "B"
+            return {"test": test}, "output_1"
 
     class C(RootNode):
-        def run(self, output):
-            output = "C"
-            return output, "output_1"
+        def run(self, test):
+            test += "C"
+            return {"test": test}, "output_1"
 
     class D(RootNode):
-        def run(self, output):
-            output = "D"
-            return output, "output_1"
+        def run(self, test):
+            test += "D"
+            return {"test": test}, "output_1"
 
     class E(RootNode):
-        def run(self, output):
-            output = "E"
-            return output, "output_1"
+        def run(self, test):
+            test += "E"
+            return {"test": test}, "output_1"
 
     class JoinNode(RootNode):
         def run(self, inputs):
-            output = (
-                inputs[0]["output"] + inputs[1]["output"]
+            test = (
+                inputs[0]["test"] + inputs[1]["test"]
             )
-            return {"output": output}, "output_1"
+            return {"test": test}, "output_1"
 
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=A(), inputs=["Query"])
@@ -387,7 +387,7 @@ def test_parallel_paths_in_pipeline_graph():
     pipeline.add_node(name="D", component=D(), inputs=["B"])
     pipeline.add_node(name="F", component=JoinNode(), inputs=["D", "E"])
     output = pipeline.run(query="test")
-    assert output["output"] == "ABDABCE"
+    assert output["test"] == "ABDABCE"
 
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=A(), inputs=["Query"])
@@ -396,53 +396,53 @@ def test_parallel_paths_in_pipeline_graph():
     pipeline.add_node(name="D", component=D(), inputs=["B"])
     pipeline.add_node(name="E", component=JoinNode(), inputs=["C", "D"])
     output = pipeline.run(query="test")
-    assert output["output"] == "ABCABD"
+    assert output["test"] == "ABCABD"
 
 
 def test_parallel_paths_in_pipeline_graph_with_branching():
     class AWithOutput1(RootNode):
         outgoing_edges = 2
 
-        def run(self, output):
+        def run(self):
             output = "A"
-            return output, "output_1"
+            return {"output": output}, "output_1"
 
     class AWithOutput2(RootNode):
         outgoing_edges = 2
 
-        def run(self, output):
+        def run(self):
             output = "A"
-            return output, "output_2"
+            return {"output": output}, "output_2"
 
     class AWithOutputAll(RootNode):
         outgoing_edges = 2
 
-        def run(self, output):
+        def run(self):
             output = "A"
-            return output, "output_all"
+            return {"output": output}, "output_all"
 
     class B(RootNode):
         def run(self, output):
             output += "B"
-            return output, "output_1"
+            return {"output": output}, "output_1"
 
     class C(RootNode):
         def run(self, output):
             output += "C"
-            return output, "output_1"
+            return {"output": output}, "output_1"
 
     class D(RootNode):
         def run(self, output):
             output += "D"
-            return output, "output_1"
+            return {"output": output}, "output_1"
 
     class E(RootNode):
         def run(self, output):
             output += "E"
-            return output, "output_1"
+            return {"output": output}, "output_1"
 
     class JoinNode(RootNode):
-        def run(self, inputs):
+        def run(self, output=None, inputs=None):
             if inputs:
                 output = ""
                 for input_dict in inputs:
