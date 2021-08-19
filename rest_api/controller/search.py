@@ -74,6 +74,6 @@ def _process_request(pipeline, request) -> Response:
     params["filters"] = filters
     result = pipeline.run(query=request.query, params=params)
     end_time = time.time()
-    logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
+    logger.info({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"})
 
     return result

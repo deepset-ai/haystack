@@ -6,7 +6,7 @@ import numpy as np
 from abc import abstractmethod
 import inspect
 
-class Document(dict):
+class Document:
     def __init__(
         self,
         text: str,
@@ -94,7 +94,7 @@ class Document(dict):
         return str(self.to_dict())
 
 
-class Label(dict):
+class Label:
     def __init__(self, question: str,
                  answer: str,
                  is_correct_answer: bool,
@@ -194,7 +194,7 @@ class Label(dict):
     def __str__(self):
         return str(self.to_dict())
 
-class MultiLabel(dict):
+class MultiLabel:
     def __init__(self, question: str,
                  multiple_answers: List[str],
                  is_correct_answer: bool,
