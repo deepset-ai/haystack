@@ -25,7 +25,7 @@ class EvalDocuments(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self, debug: bool=False, open_domain: bool=True, top_k: int=10, name="EvalDocuments"):
+    def __init__(self, debug: bool=False, open_domain: bool=True, top_k: int=10):
         """
         :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
                             When False, correct retrieval is evaluated based on document_id.
@@ -38,7 +38,6 @@ class EvalDocuments(BaseComponent):
         self.log: List = []
         self.open_domain = open_domain
         self.top_k = top_k
-        self.name = name
         self.too_few_docs_warning = False
         self.top_k_used = 0
 
@@ -107,7 +106,7 @@ class EvalDocuments(BaseComponent):
 
         if self.debug:
             self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank})
-        return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank}, "output_1"
+        return {"correct_retrieval": correct_retrieval}, "output_1"
 
     def is_correctly_retrieved(self, retriever_labels, predictions):
         return self.reciprocal_rank_retrieved(retriever_labels, predictions) > 0
@@ -210,7 +209,7 @@ class EvalAnswers(BaseComponent):
         """Run this node on one sample and its labels"""
         self.query_count += 1
         predictions = answers
-        skip = self.skip_incorrect_retrieval and correct_retrieval
+        skip = self.skip_incorrect_retrieval and not correct_retrieval
         if predictions and not skip:
             self.correct_retrieval_count += 1
             multi_labels = get_label(labels, self.name)
