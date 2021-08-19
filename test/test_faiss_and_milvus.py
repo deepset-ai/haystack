@@ -67,7 +67,6 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
 
-
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
@@ -203,5 +202,50 @@ def test_faiss_passing_index_from_outside(tmp_path):
     # test if vectors ids are associated with docs
     for doc in documents_indexed:
         assert 0 <= int(doc.meta["vector_id"]) <= 7
+
+
+def test_faiss_cosine_similarity(tmp_path):
+    document_store = FAISSDocumentStore(
+        sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", similarity='cosine'
+    )
+
+    # below we will write documents to the store and then query it to see if vectors were normalized
+
+    document_store.write_documents(documents=DOCUMENTS)
+
+    # note that the same query will be used later when querying after updating the embeddings
+    query = np.random.rand(768).astype(np.float32)
+
+    query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+
+    # check if search with cosine similarity returns the correct number of results
+    assert len(query_results) == len(DOCUMENTS)
+
+    scores = {}
+    for idx, doc in enumerate(query_results):
+        result_emb = doc.embedding
+        original_emb = DOCUMENTS[idx]["embedding"]
+        faiss.normalize_L2(original_emb)
+        # we will need to access the original score later when updating embeddings
+        scores[doc.text] = doc.score
+
+        # check if the stored embedding was normalized
+        assert np.allclose(original_emb, result_emb, rtol=0.01)
+        
+        # check if the score is plausible for cosine similarity
+        assert -1.0 <= doc.score <= 1.0
+
+    # now check if vectors are normalized when updating embeddings
+    class MockRetriever():
+        def embed_passages(self, docs):
+            return [np.random.rand(768).astype(np.float32) for doc in docs]
+
+    retriever = MockRetriever()
+    document_store.update_embeddings(retriever=retriever)
+    query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+
+    for doc in query_results:
+        # check if the cosine similarity score has changed after updating the embeddings
+        assert scores[doc.text] != doc.score
 
 
