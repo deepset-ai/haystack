@@ -17,12 +17,15 @@ logger = logging.getLogger("haystack")
 router = APIRouter()
 
 
-class Request(BaseModel):
-    query: str
+class SearchParams(BaseModel):
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
     top_k_retriever: Optional[int] = None
     top_k_reader: Optional[int] = None
 
+
+class Request(BaseModel):
+    query: str
+    params: Optional[SearchParams]
 
 
 class Answer(BaseModel):
@@ -59,21 +62,17 @@ def query(request: Request):
 def _process_request(pipeline, request) -> Response:
     start_time = time.time()
 
+    params = request.params.dict() if request.params else {}
     filters = {}
-    if request.filters:
-        # put filter values into a list and remove filters with null value
-        for key, values in request.filters.items():
+    if "filters" in params:  # put filter values into a list and remove filters with null value
+        for key, values in params["filters"].items():
             if values is None:
                 continue
             if not isinstance(values, list):
                 values = [values]
             filters[key] = values
-
-    result = pipeline.run(query=request.query,
-                          filters=filters,
-                          top_k_retriever=request.top_k_retriever,
-                          top_k_reader=request.top_k_reader)
-
+    params["filters"] = filters
+    result = pipeline.run(query=request.query, params=params)
     end_time = time.time()
     logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
 

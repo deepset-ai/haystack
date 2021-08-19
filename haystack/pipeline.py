@@ -260,6 +260,7 @@ class Pipeline(BasePipeline):
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
         params: Optional[dict] = None,
     ):
         node_output = None
@@ -274,6 +275,8 @@ class Pipeline(BasePipeline):
             queue[self.root_node]["labels"] = labels
         if documents:
             queue[self.root_node]["documents"] = documents
+        if meta:
+            queue[self.root_node]["meta"] = meta
 
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
@@ -303,6 +306,8 @@ class Pipeline(BasePipeline):
                                 updated_input["labels"] = labels
                             if documents:
                                 updated_input["documents"] = documents
+                            if meta:
+                                updated_input["meta"] = meta
                         else:
                             existing_input["inputs"].append(node_output)
                             updated_input = existing_input
@@ -1141,6 +1146,7 @@ class RayPipeline(Pipeline):
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
         params: Optional[dict] = None,
     ):
         has_next_node = True
@@ -1154,6 +1160,8 @@ class RayPipeline(Pipeline):
             input_dict["labels"] = labels
         if documents:
             input_dict["documents"] = documents
+        if meta:
+            input_dict["meta"] = meta
 
         output_dict = None
 
