@@ -403,8 +403,13 @@ class MilvusDocumentStore(SQLDocumentStore):
         if status.code != Status.SUCCESS:
             raise RuntimeError(f'Milvus has collection check failed: {status}')
         if ok:
-            existing_docs = super().get_all_documents(filters=filters, index=index)
-            self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
+            if filters:
+                status = self.milvus_server.drop_collection(collection_name=index)
+                if status.code != Status.SUCCESS:
+                    raise RuntimeError(f'Milvus drop collection failed: {status}')
+            else:
+                existing_docs = super().get_all_documents(filters=filters, index=index)
+                self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
 
             self.milvus_server.flush([index])
             self.milvus_server.compact(collection_name=index)
