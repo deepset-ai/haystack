@@ -332,7 +332,7 @@ class BaseComponent:
                 if isinstance(value, dict):
                     for _k, _v in value.items():
                         if _k not in run_signature_args:
-                            raise Exception(f"Invalid parameter {_k} for the node {self.name}.")
+                            raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
                 run_params.update(**value)
             elif key in run_signature_args:  # global params
                 run_params[key] = value

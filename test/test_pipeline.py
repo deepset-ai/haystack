@@ -116,6 +116,23 @@ def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
         )
 
 
+def test_invalid_run_args():
+    pipeline = Pipeline.load_from_yaml(
+        Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="query_pipeline"
+    )
+    with pytest.raises(Exception) as exc:
+        pipeline.run(params={"ESRetriever": {"top_k": 10}})
+    assert "run() missing 1 required positional argument: 'query'" in str(exc.value)
+
+    with pytest.raises(Exception) as exc:
+        pipeline.run(invalid_query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}})
+    assert "run() got an unexpected keyword argument 'invalid_query'" in str(exc.value)
+
+    with pytest.raises(Exception) as exc:
+        pipeline.run(query="Who made the PDF specification?", params={"ESRetriever": {"invalid": 10}})
+    assert "Invalid parameter 'invalid' for the node 'ESRetriever'" in str(exc.value)
+
+
 @pytest.mark.slow
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
