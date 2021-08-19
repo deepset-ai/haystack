@@ -143,7 +143,7 @@ def test_extractive_qa_answers(reader, retriever_with_docs):
 def test_extractive_qa_answers_without_normalized_scores(reader_without_normalized_scores, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader_without_normalized_scores, retriever=retriever_with_docs)
     prediction = pipeline.run(
-        query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3
+        query="Who lives in Berlin?", params={"Reader": {"top_k": 3}}
     )
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
