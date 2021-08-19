@@ -224,13 +224,13 @@ def test_faiss_cosine_similarity(tmp_path):
     scores = {}
     for idx, doc in enumerate(query_results):
         result_emb = doc.embedding
-        original_emb = DOCUMENTS[idx]["embedding"]
+        original_emb = np.array([DOCUMENTS[idx]["embedding"]], dtype="float32")
         faiss.normalize_L2(original_emb)
         # we will need to access the original score later when updating embeddings
         scores[doc.text] = doc.score
 
         # check if the stored embedding was normalized
-        assert np.allclose(original_emb, result_emb, rtol=0.01)
+        assert np.allclose(original_emb[0], result_emb, rtol=0.01)
         
         # check if the score is plausible for cosine similarity
         assert -1.0 <= doc.score <= 1.0
