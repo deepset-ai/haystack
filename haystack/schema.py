@@ -312,8 +312,11 @@ class BaseComponent:
     def run(self, *args: Any, **kwargs: Any):
         """
         Method that will be executed when the node in the graph is called.
+
         The argument that are passed can vary between different types of nodes
         (e.g. retriever nodes expect different args than a reader node)
+
+
         See an example for an implementation in haystack/reader/base/BaseReader.py
         :param kwargs:
         :return:
@@ -321,6 +324,15 @@ class BaseComponent:
         pass
 
     def _dispatch_run(self, **kwargs):
+        """
+        The Pipelines call this method which in turn executes the run() method of Component.
+
+        It takes care of the following:
+          - inspect run() signature to validate if all necessary arguments are available
+          - call run() with the corresponding arguments and gather output
+          - collate _debug information if present
+          - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
+        """
         arguments = deepcopy(kwargs)
         params = arguments.get("params") or {}
 
