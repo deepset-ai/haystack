@@ -75,6 +75,6 @@ def _process_request(pipeline, request) -> Response:
                           top_k_reader=request.top_k_reader)
 
     end_time = time.time()
-    # logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
+    logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
 
     return result
