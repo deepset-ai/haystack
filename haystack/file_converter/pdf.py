@@ -159,6 +159,34 @@ class PDFToTextConverter(BaseConverter):
 
 
 class PDFtoImageConverter(BaseConverter):
+    def __init__(
+        self,
+        remove_numeric_tables: bool = False,
+        valid_languages: Optional[List[str]] = None,
+    ):
+        """
+        :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
+                                      The tabular structures in documents might be noise for the reader model if it
+                                      does not have table parsing capability for finding answers. However, tables
+                                      may also have long strings that could possible candidate for searching answers.
+                                      The rows containing strings are thus retained in this option.
+        :param valid_languages: validate languages from a list of languages specified here
+                                (https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html)
+                                This option can be used to add test for encoding errors. If the extracted text is
+                                not one of the valid languages, then it might likely be encoding error resulting
+                                in garbled text. Run the following line of code to check available language packs:
+                                # List of available languages
+                                print(pytesseract.get_languages(config=''))
+        """
+
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
+        )
+        super().__init__(
+            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
+        )
+
     def convert(
         self,
         file_path: Path,
