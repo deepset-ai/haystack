@@ -53,7 +53,6 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_1 = sklearn_keyword_classifier.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10
     )
     print("DPR Results" + "\n" + "="*15)
     print_answers(res_1)
@@ -61,7 +60,6 @@ def tutorial14_query_classifier():
     # Run only the sparse retriever on a keyword based query
     res_2 = sklearn_keyword_classifier.run(
         query="arya stark father",
-        top_k_retriever=10
     )
     print("ES Results" + "\n" + "="*15)
     print_answers(res_2)
@@ -69,7 +67,6 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_3 = sklearn_keyword_classifier.run(
         query="which country was jon snow filmed ?",
-        top_k_retriever=10
     )
     print("DPR Results" + "\n" + "="*15)
     print_answers(res_3)
@@ -77,7 +74,6 @@ def tutorial14_query_classifier():
     # Run only the sparse retriever on a keyword based query
     res_4 = sklearn_keyword_classifier.run(
         query="jon snow country",
-        top_k_retriever=10
     )
     print("ES Results" + "\n" + "="*15)
     print_answers(res_4)
@@ -85,7 +81,6 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_5 = sklearn_keyword_classifier.run(
         query="who are the younger brothers of arya stark ?",
-        top_k_retriever=10
     )
     print("DPR Results" + "\n" + "="*15)
     print_answers(res_5)
@@ -93,7 +88,6 @@ def tutorial14_query_classifier():
     # Run only the sparse retriever on a keyword based query
     res_6 = sklearn_keyword_classifier.run(
         query="arya stark younger brothers",
-        top_k_retriever=10
     )
     print("ES Results" + "\n" + "="*15)
     print_answers(res_6)
@@ -109,7 +103,6 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_1 = transformer_keyword_classifier.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10
     )
     print("DPR Results" + "\n" + "="*15)
     print_answers(res_1)
@@ -117,7 +110,6 @@ def tutorial14_query_classifier():
     # Run only the sparse retriever on a keyword based query
     res_2 = transformer_keyword_classifier.run(
         query="arya stark father",
-        top_k_retriever=10
     )
     print("ES Results" + "\n" + "="*15)
     print_answers(res_2)
@@ -125,7 +117,6 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_3 = transformer_keyword_classifier.run(
         query="which country was jon snow filmed ?",
-        top_k_retriever=10
     )
     print("DPR Results" + "\n" + "="*15)
     print_answers(res_3)
@@ -133,7 +124,6 @@ def tutorial14_query_classifier():
     # Run only the sparse retriever on a keyword based query
     res_4 = transformer_keyword_classifier.run(
         query="jon snow country",
-        top_k_retriever=10
     )
     print("ES Results" + "\n" + "="*15)
     print_answers(res_4)
@@ -141,7 +131,6 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_5 = transformer_keyword_classifier.run(
         query="who are the younger brothers of arya stark ?",
-        top_k_retriever=10
     )
     print("DPR Results" + "\n" + "="*15)
     print_answers(res_5)
@@ -149,7 +138,6 @@ def tutorial14_query_classifier():
     # Run only the sparse retriever on a keyword based query
     res_6 = transformer_keyword_classifier.run(
         query="arya stark younger brothers",
-        top_k_retriever=10
     )
     print("ES Results" + "\n" + "="*15)
     print_answers(res_6)
@@ -164,7 +152,6 @@ def tutorial14_query_classifier():
     # Run only the QA reader on the question query
     res_1 = transformer_question_classifier.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10
     )
     print("DPR Results" + "\n" + "="*15)
     print_answers(res_1)
@@ -172,7 +159,6 @@ def tutorial14_query_classifier():
     # Show only DPR results
     res_2 = transformer_question_classifier.run(
         query="Arya Stark was the daughter of a Lord.",
-        top_k_retriever=10
     )
     print("ES Results" + "\n" + "="*15)
     res_2
