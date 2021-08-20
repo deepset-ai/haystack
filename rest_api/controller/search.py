@@ -31,8 +31,8 @@ class Answer(BaseModel):
     score: Optional[float] = None
     probability: Optional[float] = None
     context: Optional[str]
-    offset_start: int
-    offset_end: int
+    offset_start: Optional[int]
+    offset_end: Optional[int]
     offset_start_in_doc: Optional[int]
     offset_end_in_doc: Optional[int]
     document_id: Optional[str] = None

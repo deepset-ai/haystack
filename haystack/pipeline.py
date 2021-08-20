@@ -1230,3 +1230,46 @@ class _RayDeploymentWrapper:
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
         return self.node.run(*args, **kwargs)
+
+
+class Docs2Answers(BaseComponent):
+    outgoing_edges = 1
+
+    def __init__(self):
+        self.set_config()
+
+    def run(self, query, documents, **kwargs):
+        # conversion from Document -> Answer
+        answers = []
+        for doc in documents:
+            # For FAQ style QA use cases
+            if "answer" in doc.meta:
+                cur_answer = {
+                    "query": doc.text,
+                    "answer": doc.meta["answer"],
+                    "document_id": doc.id,
+                    "context": doc.meta["answer"],
+                    "score": doc.score,
+                    "offset_start": 0,
+                    "offset_end": len(doc.meta["answer"]),
+                    "meta": doc.meta,
+                }
+            else:
+                # Regular docs
+                cur_answer = {
+                    "query": None,
+                    "answer": None,
+                    "document_id": doc.id,
+                    "context": doc.text,
+                    "score": doc.score,
+                    "offset_start": None,
+                    "offset_end": None,
+                    "meta": doc.meta,
+                }
+            answers.append(cur_answer)
+
+        output = {"query": query, "answers": answers}
+        # Pass also the other incoming kwargs so that future nodes still have access to it
+        output.update(**kwargs)
+
+        return output, "output_1"
