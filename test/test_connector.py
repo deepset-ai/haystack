@@ -96,7 +96,7 @@ def test_crawler_content(tmp_path):
 
 def test_crawler_return_document(tmp_path):
     tmp_dir = tmp_path / "crawled_files"
-    _url = ["https://haystack.deepset.ai/docs/v0.9.0/get_startedmd"]
+    _url = ["https://haystack.deepset.ai/docs/v0.5.0/intromd"]
 
     crawler = Crawler(output_dir=tmp_dir)
     docs_path = crawler.crawl(urls=_url, crawler_depth=1)
