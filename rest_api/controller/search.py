@@ -17,15 +17,9 @@ logger = logging.getLogger("haystack")
 router = APIRouter()
 
 
-class SearchParams(BaseModel):
-    filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
-    top_k_retriever: Optional[int] = None
-    top_k_reader: Optional[int] = None
-
-
 class Request(BaseModel):
     query: str
-    params: Optional[SearchParams]
+    params: Optional[dict] = None
 
 
 class Answer(BaseModel):
@@ -62,7 +56,8 @@ def query(request: Request):
 def _process_request(pipeline, request) -> Response:
     start_time = time.time()
 
-    params = request.params.dict() if request.params else {}
+    params = request.params or {}
+    params["filters"] = params["filters"] or {}
     filters = {}
     if "filters" in params:  # put filter values into a list and remove filters with null value
         for key, values in params["filters"].items():
