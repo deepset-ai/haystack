@@ -31,8 +31,8 @@ class Answer(BaseModel):
     score: Optional[float] = None
     probability: Optional[float] = None
     context: Optional[str]
-    offset_start: int
-    offset_end: int
+    offset_start: Optional[int]
+    offset_end: Optional[int]
     offset_start_in_doc: Optional[int]
     offset_end_in_doc: Optional[int]
     document_id: Optional[str] = None
@@ -75,6 +75,6 @@ def _process_request(pipeline, request) -> Response:
                           top_k_reader=request.top_k_reader)
 
     end_time = time.time()
-    logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
+    # logger.info(json.dumps({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"}))
 
     return result
