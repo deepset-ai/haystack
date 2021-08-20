@@ -57,7 +57,7 @@ def _process_request(pipeline, request) -> Response:
     start_time = time.time()
 
     params = request.params or {}
-    params["filters"] = params["filters"] or {}
+    params["filters"] = params.get("filters", {})
     filters = {}
     if "filters" in params:  # put filter values into a list and remove filters with null value
         for key, values in params["filters"].items():
