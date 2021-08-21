@@ -81,6 +81,7 @@ class ImageToTextConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = "utf-8",
     ) -> Dict[str, Any]:
         """
         Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
