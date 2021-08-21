@@ -52,21 +52,22 @@ class ImageToTextConverter(BaseConverter):
                 """
             )
         tesseract_langs = []
-        for language in valid_languages:
-            if (
-                language in pytesseract.get_languages(config="")
-                and language not in tesseract_langs
-            ):
-                tesseract_langs.append(language)
-            else:
-                raise Exception(
-                    f"""{language} is not either a valid tessarect language code or its language pack isn't installed.
+        if valid_languages:
+            for language in valid_languages:
+                if (
+                    language in pytesseract.get_languages(config="")
+                    and language not in tesseract_langs
+                ):
+                    tesseract_langs.append(language)
+                else:
+                    raise Exception(
+                        f"""{language} is not either a valid tessarect language code or its language pack isn't installed.
 
-                   Check the list of valid tesseract language codes here: https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html
+                    Check the list of valid tesseract language codes here: https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html
 
-                   For installing specific language packs check here: https://tesseract-ocr.github.io/tessdoc/Installation.html
-                """
-                )
+                    For installing specific language packs check here: https://tesseract-ocr.github.io/tessdoc/Installation.html
+                    """
+                    )
 
         ## if you have more than one language in images, then pass it to tesseract like this e.g., `fra+eng`
         self.tesseract_langs = "+".join(tesseract_langs)
