@@ -76,7 +76,7 @@ class ImageToTextConverter(BaseConverter):
 
     def convert(
         self,
-        image: Any,
+        file_path: Any,
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
@@ -99,7 +99,7 @@ class ImageToTextConverter(BaseConverter):
                                 in garbled text.
         """
 
-        pages = self._image_to_text(image)
+        pages = self._image_to_text(file_path)
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables
         if valid_languages is None:
