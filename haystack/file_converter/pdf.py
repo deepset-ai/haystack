@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 from pdf2image import convert_from_path, convert_from_bytes
-from PIL.PpmImagePlugin import PpmImageFile
 
 from haystack.file_converter.base import BaseConverter
+from haystack.file_converter.image import ImageToTextConverter
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,8 @@ class PDFToTextConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
+        # init image to text instance
+        self.image_2_text = ImageToTextConverter()
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -158,26 +160,31 @@ class PDFToTextConverter(BaseConverter):
         return pages
 
 
-class PDFtoImageConverter(BaseConverter):
+class PDFToTextOCRConverter(BaseConverter):
     def __init__(
         self,
         remove_numeric_tables: bool = False,
-        valid_languages: Optional[List[str]] = None,
+        valid_languages: Optional[List[str]] = ["eng"],
     ):
         """
+        Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
+
+        :param images: list of images you want to convert
+        :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
+                     Can be any custom keys and values.
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
                                       does not have table parsing capability for finding answers. However, tables
                                       may also have long strings that could possible candidate for searching answers.
                                       The rows containing strings are thus retained in this option.
-        :param valid_languages: validate languages from a list of languages specified here
-                                (https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html)
+        :param valid_languages: validate languages from a list of languages supported by tessarect
+                                (https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html).
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
-                                in garbled text. Run the following line of code to check available language packs:
-                                # List of available languages
-                                print(pytesseract.get_languages(config=''))
+                                in garbled text.
         """
+        # init image to text instance
+        self.image_2_text = ImageToTextConverter(remove_numeric_tables, valid_languages)
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -194,7 +201,7 @@ class PDFtoImageConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
-    ) -> List[PpmImageFile]:
+    ) -> List[Any]:
         """
         Convert a file to a dictionary containing the text and any associated meta data.
 
@@ -215,9 +222,12 @@ class PDFtoImageConverter(BaseConverter):
                                 in garbled text.
         :param encoding: Select the file encoding (default is `utf-8`)
         """
-        images = []
+        raw_text = ""
         try:
             images = convert_from_path(file_path)
+            for image in images:
+                raw_text += self.image_2_text.convert(image)["text"]
         except Exception as exception:
             logger.error(f"File {file_path} has an error \n {exception}")
-        return images
+        document = {"text": raw_text, "meta": meta}
+        return document

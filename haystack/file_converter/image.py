@@ -15,7 +15,7 @@ class ImageToTextConverter(BaseConverter):
     def __init__(
         self,
         remove_numeric_tables: bool = False,
-        valid_languages: Optional[List[str]] = None,
+        valid_languages: Optional[List[str]] = ["eng"],
     ):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
@@ -76,7 +76,7 @@ class ImageToTextConverter(BaseConverter):
 
     def convert(
         self,
-        images: List[PpmImageFile],
+        image: Any,
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
@@ -99,7 +99,7 @@ class ImageToTextConverter(BaseConverter):
                                 in garbled text.
         """
 
-        pages = self._image_to_text(images)
+        pages = self._image_to_text(image)
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables
         if valid_languages is None:
@@ -139,14 +139,11 @@ class ImageToTextConverter(BaseConverter):
         document = {"text": text, "meta": meta}
         return document
 
-    def _image_to_text(self, images: List[PpmImageFile]) -> List[str]:
+    def _image_to_text(self, image: PpmImageFile) -> List[str]:
         """
         Extract pages from the pdf file at file_path.
 
         :param images: list of image files
         """
-        pages = []
-        for image in images:
-            pages.append(pytesseract.image_to_string(image, lang=self.tesseract_langs))
-
-        return pages
+        text = [pytesseract.image_to_string(image, lang=self.tesseract_langs)]
+        return text

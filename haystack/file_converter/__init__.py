@@ -5,4 +5,4 @@ from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.tika import TikaConverter
 from haystack.file_converter.txt import TextConverter
 from haystack.file_converter.image import ImageToTextConverter
-from haystack.file_converter.pdf import PDFtoImageConverter
+from haystack.file_converter.pdf import PDFToTextOCRConverter
