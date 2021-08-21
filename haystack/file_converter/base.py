@@ -93,7 +93,7 @@ class BaseConverter(BaseComponent):
         file_paths: Union[Path, List[Path]],  # type: ignore
         meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None,  # type: ignore
         remove_numeric_tables: Optional[bool] = None,  # type: ignore
-        valid_languages: Optional[List[str]] = None,
+        valid_languages: Optional[List[str]] = None,  # type: ignore
         **kwargs,
     ):  # type: ignore
 
