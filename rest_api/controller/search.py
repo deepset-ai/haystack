@@ -7,8 +7,11 @@ from typing import Dict, List, Optional, Union, Any
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from enum import Enum
+
 from haystack import Pipeline
-from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, QUERY_PIPELINE_NAME, CONCURRENT_REQUEST_PER_WORKER
+from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, QUERY_PIPELINE_NAME
+from rest_api.config import FAQ_PIPELINE_NAME, CONCURRENT_REQUEST_PER_WORKER
 from rest_api.controller.utils import RequestLimiter
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
@@ -16,14 +19,12 @@ logger = logging.getLogger("haystack")
 
 router = APIRouter()
 
-
 class Request(BaseModel):
     query: str
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
     top_k_retriever: Optional[int] = None
     top_k_reader: Optional[int] = None
-
-
+    pipeline: str = "query"
 
 class Answer(BaseModel):
     answer: Optional[str]
@@ -43,18 +44,19 @@ class Response(BaseModel):
     query: str
     answers: List[Answer]
 
+QUERY_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
+logger.info(f"Loaded query pipeline nodes: {QUERY_PIPELINE.graph.nodes.keys()}")
+FAQ_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=FAQ_PIPELINE_NAME)
+logger.info(f"Loaded faq pipeline nodes: {FAQ_PIPELINE.graph.nodes.keys()}")
 
-PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
-logger.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
 concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
-
 
 @router.post("/query", response_model=Response)
 def query(request: Request):
     with concurrency_limiter.run():
+        PIPELINE = QUERY_PIPELINE if request.pipeline=="query" else FAQ_PIPELINE
         result = _process_request(PIPELINE, request)
         return result
-
 
 def _process_request(pipeline, request) -> Response:
     start_time = time.time()

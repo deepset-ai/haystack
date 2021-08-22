@@ -1,19 +1,36 @@
 version: '0.7'
 
-components:    # define all the building-blocks for Pipeline
-  - name: ElasticsearchDocumentStore
-    type: ElasticsearchDocumentStore
-    params:
-      host: localhost
+components:    # define all the building-blocks for Pipelines
   - name: ESRetriever
     type: ElasticsearchRetriever
     params:
-      document_store: ElasticsearchDocumentStore    # params can reference other components defined in the YAML
+      document_store: QueryElasticsearchDocumentStore 
       top_k: 5
+  - name: QueryElasticsearchDocumentStore    # for storing normal docs
+    type: ElasticsearchDocumentStore
+    params:
+      host: elasticsearch
+  - name: ElasticsearchDocumentStore         # for storing faq docs
+    type: ElasticsearchDocumentStore
+    params:
+      host: elasticsearch
+      index: faq
+      embedding_field: question_emb
+      embedding_dim: 768
+      excluded_meta_data:
+      - question_emb
+  - name: EBRetriever
+    type: EmbeddingRetriever
+    params:
+      document_store: ElasticsearchDocumentStore    # params can reference other components defined in the YAML
+      embedding_model: deepset/sentence_bert
+      use_gpu: false
   - name: Reader       # custom-name for the component; helpful for visualization & debugging
     type: FARMReader    # Haystack Class name for the component
     params:
       model_name_or_path: deepset/roberta-base-squad2
+  - name: Converter
+    type: Docs2Answers
   - name: TextFileConverter
     type: TextConverter
   - name: PDFFileConverter
@@ -27,6 +44,13 @@ components:    # define all the building-blocks for Pipeline
     type: FileTypeClassifier
 
 pipelines:
+  - name: faq     # a sample faq pipeline
+    type: Query
+    nodes:
+      - name: EBRetriever
+        inputs: [Query]
+      - name: Converter
+        inputs: [EBRetriever]
   - name: query    # a sample extractive-qa Pipeline
     type: Query
     nodes:
@@ -34,7 +58,6 @@ pipelines:
         inputs: [Query]
       - name: Reader
         inputs: [ESRetriever]
-
   - name: indexing
     type: Indexing
     nodes:

@@ -10,12 +10,12 @@ RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.
 
 RUN apt-get install libpoppler-cpp-dev pkg-config -y --fix-missing
 
-# copy code
-COPY haystack /home/user/haystack
-
 # install as a package
 COPY setup.py requirements.txt README.md /home/user/
 RUN pip install -r requirements.txt
+
+# copy code
+COPY haystack /home/user/haystack
 RUN pip install -e .
 
 # copy saved models

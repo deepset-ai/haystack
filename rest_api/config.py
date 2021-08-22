@@ -1,7 +1,10 @@
 import os
 
 PIPELINE_YAML_PATH = os.getenv("PIPELINE_YAML_PATH", "rest_api/pipeline/pipelines.yaml")
+
 QUERY_PIPELINE_NAME = os.getenv("QUERY_PIPELINE_NAME", "query")
+FAQ_PIPELINE_NAME = os.getenv("FAQ_PIPELINE_NAME", "faq")
+
 INDEXING_PIPELINE_NAME = os.getenv("INDEXING_PIPELINE_NAME", "indexing")
 
 FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", "./file-upload")
