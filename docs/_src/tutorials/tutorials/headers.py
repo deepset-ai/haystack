@@ -94,5 +94,21 @@ metaDescription: ""
 slug: "/docs/tutorial12"
 date: "2021-04-06"
 id: "tutorial12md"
+--->""",
+    13: """<!---
+title: "Tutorial 13"
+metaTitle: "Question Generation"
+metaDescription: ""
+slug: "/docs/tutorial13"
+date: "2021-08-23"
+id: "tutorial13md"
+--->""",
+    14: """<!---
+title: "Tutorial 14"
+metaTitle: "Query Classifier Tutorial"
+metaDescription: ""
+slug: "/docs/tutorial14"
+date: "2021-08-23"
+id: "tutorial14md"
 --->"""
 }
