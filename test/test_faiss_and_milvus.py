@@ -220,14 +220,14 @@ def test_faiss_cosine_similarity(tmp_path):
 
     # check if search with cosine similarity returns the correct number of results
     assert len(query_results) == len(DOCUMENTS)
+    indexed_docs = {}
+    for doc in DOCUMENTS:
+        indexed_docs[doc["text"]] = doc["embedding"]
 
-    scores = {}
-    for idx, doc in enumerate(query_results):
+    for doc in query_results:
         result_emb = doc.embedding
-        original_emb = np.array([DOCUMENTS[idx]["embedding"]], dtype="float32")
+        original_emb = np.array([indexed_docs[doc.text]], dtype="float32")
         faiss.normalize_L2(original_emb)
-        # we will need to access the original score later when updating embeddings
-        scores[doc.text] = doc.score
 
         # check if the stored embedding was normalized
         assert np.allclose(original_emb[0], result_emb, rtol=0.01)
@@ -245,7 +245,9 @@ def test_faiss_cosine_similarity(tmp_path):
     query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
 
     for doc in query_results:
-        # check if the cosine similarity score has changed after updating the embeddings
-        assert scores[doc.text] != doc.score
+        original_emb = np.array([indexed_docs[doc.text]], dtype="float32")
+        faiss.normalize_L2(original_emb)
+        # check if the original embedding has changed after updating the embeddings
+        assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
 
