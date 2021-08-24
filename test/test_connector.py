@@ -92,3 +92,22 @@ def test_crawler_content(tmp_path):
                 for partial_line in partial_content:
                     assert search(partial_line, content['text'])
                     assert partial_line in content['text']
+
+
+def test_crawler_return_document(tmp_path):
+    tmp_dir = tmp_path / "crawled_files"
+    _url = ["https://haystack.deepset.ai/docs/v0.5.0/intromd"]
+
+    crawler = Crawler(output_dir=tmp_dir)
+    docs_path = crawler.crawl(urls=_url, crawler_depth=1)
+    results, _ = crawler.run(urls=_url, crawler_depth=1, return_documents=True)
+    documents = results['documents']
+
+    for json_file, document in zip(docs_path, documents):
+        assert isinstance(json_file, Path)
+        assert isinstance(document, dict)
+
+        with open(json_file.absolute(), "r") as read_file:
+            file_content = json.load(read_file)
+            assert file_content['meta'] == document['meta']
+            assert file_content['text'] == document['text']
