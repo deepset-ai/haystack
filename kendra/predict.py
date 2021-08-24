@@ -10,6 +10,7 @@ from haystack.document_store import MilvusDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import fetch_archive_from_http
 from haystack.reader.farm import FARMReader
+from haystack.reader.transformers import TransformersReader
 from haystack.utils import print_answers, launch_es, launch_milvus
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.retriever.dense import DensePassageRetriever
@@ -23,7 +24,7 @@ def kendra_benchmark():
     doc_index = "document"
     outfile = "predictions.json"
     summary_file = "summary.json"
-    model = "facebook/dpr-reader-single-nq-base"
+    model = "ankur310794/roberta-base-squad2-nq"
     top_k_retriever = 5
     top_k_reader = 10
     split_length = 100
@@ -56,16 +57,24 @@ def kendra_benchmark():
         print(len(docs))
         return docs
 
+    if not dense_retrieval:
+        retriever = ElasticsearchRetriever(document_store=document_store, top_k=top_k_retriever)
+    else:
+        retriever = DensePassageRetriever(document_store=document_store, top_k=top_k_retriever)
+
     docs = prepare_docs(doc_dir / "nq_dev_texts.json", preprocessor)
     tic = time.perf_counter()
     document_store.write_documents(docs, index=doc_index)
     toc = time.perf_counter()
     index_time = toc - tic
 
-    if not dense_retrieval:
-        retriever = ElasticsearchRetriever(document_store=document_store, top_k=top_k_retriever)
-    else:
-        retriever = DensePassageRetriever(document_store=document_store, top_k=top_k_retriever)
+    if dense_retrieval:
+        tic = time.perf_counter()
+        document_store.update_embeddings(retriever=retriever, index=doc_index)
+        toc = time.perf_counter()
+        embedding_update_time = toc - tic
+
+
 
     reader = FARMReader(model_name_or_path=model, use_gpu=True, top_k=top_k_reader)
 
@@ -95,6 +104,8 @@ def kendra_benchmark():
         "retriever": str(type(retriever)),
         "split_length": split_length
     }
+    if dense_retrieval:
+        summary["embedding_update_time"] = embedding_update_time
     json.dump(summary, open(doc_dir / summary_file, "w"), indent=2)
     json.dump(results, open(doc_dir / outfile, "w"), indent=2)
 

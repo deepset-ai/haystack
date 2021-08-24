@@ -9,10 +9,10 @@ INVALID_Q_STR = "INVALID QUESTION FOR KENDRA"
 
 label_dir = Path("../data/nq")
 pred_dir = Path(".")
-preds_haystack_filename = "predictions_haystack_7k.json"
+preds_haystack_filename = "predictions_haystack_dpr_7k.json"
 preds_kendra_filename = "predictions_kendra_300k.json"
 labels_filename = "nq_dev_labels.json"
-top_k_eval = 10
+top_k_eval = 1
 
 def reduce_haystack_preds(preds_haystack_full, top_k_eval):
     ret = {}
