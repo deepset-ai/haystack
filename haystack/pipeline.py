@@ -34,6 +34,7 @@ from haystack.summarizer.base import BaseSummarizer
 from haystack.translator.base import BaseTranslator
 from haystack.knowledge_graph.base import BaseKnowledgeGraph
 from haystack.graph_retriever.base import BaseGraphRetriever
+from haystack.connector import Crawler
 
 
 logger = logging.getLogger(__name__)

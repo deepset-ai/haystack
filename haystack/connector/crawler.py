@@ -98,22 +98,19 @@ class Crawler(BaseComponent):
         if not output_dir.exists():
             output_dir.mkdir(parents=True)
 
+        file_paths: list = []
         is_not_empty = len(list(output_dir.rglob("*"))) > 0
         if is_not_empty and not overwrite_existing_files:
             logger.info(
                 f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data."
             )
-            return []
         else:
             logger.info(f"Fetching from {urls} to `{output_dir}`")
-
-            filepaths = []
-
             sub_links: Dict[str, List] = {}
 
             # don't go beyond the initial list of urls
             if crawler_depth == 0:
-                filepaths += self._write_to_files(urls, output_dir=output_dir)
+                file_paths += self._write_to_files(urls, output_dir=output_dir)
             # follow one level of sublinks
             elif crawler_depth == 1:
                 for url_ in urls:
@@ -121,9 +118,9 @@ class Crawler(BaseComponent):
                     sub_links[url_] = list(self._extract_sublinks_from_url(base_url=url_, filter_urls=filter_urls,
                                                                      existed_links=existed_links))
                 for url in sub_links:
-                    filepaths += self._write_to_files(sub_links[url], output_dir=output_dir, base_url=url)
+                    file_paths += self._write_to_files(sub_links[url], output_dir=output_dir, base_url=url)
 
-            return filepaths
+        return file_paths
 
     def _write_to_files(self, urls: List[str], output_dir: Path, base_url: str = None) -> List[Path]:
         paths = []
@@ -148,9 +145,10 @@ class Crawler(BaseComponent):
 
         return paths
 
-    def run(self, output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, # type: ignore
-            crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, # type: ignore
-            overwrite_existing_files: Optional[bool] = None, **kwargs) -> Tuple[Dict, str]: # type: ignore
+    def run(self, output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None,  # type: ignore
+            crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None,  # type: ignore
+            overwrite_existing_files: Optional[bool] = None, return_documents: Optional[bool] = False,  # type: ignore
+            **kwargs) -> Tuple[Dict, str]:  # type: ignore
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
@@ -162,13 +160,18 @@ class Crawler(BaseComponent):
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
+        :param return_documents:  Return json files content
 
         :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
         """
 
-        filepaths = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth, filter_urls=filter_urls,
-                               overwrite_existing_files=overwrite_existing_files)
-        results = {"paths": filepaths}
+        file_paths = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth,
+                                  filter_urls=filter_urls, overwrite_existing_files=overwrite_existing_files)
+        if return_documents:
+            crawled_data = [self._read_json_file(_file) for _file in file_paths]
+            results = {"documents": crawled_data}
+        else:
+            results = {"paths": file_paths}
         results.update(**kwargs)
         return results, "output_1"
 
@@ -207,3 +210,8 @@ class Crawler(BaseComponent):
                         sub_links.add(sub_link)
 
         return sub_links
+
+    def _read_json_file(self, file_path: Path):
+        """Read the json file and return the content"""
+        with open(file_path.absolute(), "r") as read_file:
+            return json.load(read_file)
