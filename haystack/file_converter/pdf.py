@@ -29,9 +29,6 @@ class PDFToTextConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
-        # init image to text instance
-        self.image_2_text = ImageToTextConverter()
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
