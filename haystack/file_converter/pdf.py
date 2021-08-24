@@ -219,12 +219,15 @@ class PDFToTextOCRConverter(BaseConverter):
                                 in garbled text.
         :param encoding: Select the file encoding (default is `utf-8`)
         """
-        raw_text = ""
+        pages = []
         try:
             images = convert_from_path(file_path)
             for image in images:
-                raw_text += self.image_2_text.convert(image)["text"]
+                pages.append(self.image_2_text.convert(image)["text"])
         except Exception as exception:
             logger.error(f"File {file_path} has an error \n {exception}")
+            
+        raw_text = "\f".join(pages)
         document = {"text": raw_text, "meta": meta}
+        
         return document

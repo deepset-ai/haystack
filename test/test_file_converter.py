@@ -4,12 +4,14 @@ import pytest
 
 from haystack.file_converter import MarkdownConverter
 from haystack.file_converter.docx import DocxToTextConverter
-from haystack.file_converter.pdf import PDFToTextConverter
+from haystack.file_converter.pdf import PDFToTextConverter, PDFToTextOCRConverter
 from haystack.file_converter.tika import TikaConverter
 
 
 @pytest.mark.tika
-@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
+@pytest.mark.parametrize(
+    "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
+)
 def test_convert(Converter, xpdf_fixture):
     converter = Converter()
     document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
@@ -32,7 +34,10 @@ def test_table_removal(Converter, xpdf_fixture):
     # assert text is retained from the document.
     # As whitespace can differ (\n," ", etc.), we standardize all to simple whitespace
     page_standard_whitespace = " ".join(pages[0].split())
-    assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
+    assert (
+        "Adobe Systems made the PDF specification available free of charge in 1993."
+        in page_standard_whitespace
+    )
 
 
 @pytest.mark.tika
@@ -40,11 +45,17 @@ def test_table_removal(Converter, xpdf_fixture):
 def test_language_validation(Converter, xpdf_fixture, caplog):
     converter = Converter(valid_languages=["en"])
     converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
-    assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['en']." not in caplog.text
+    assert (
+        "The language for samples/pdf/sample_pdf_1.pdf is not one of ['en']."
+        not in caplog.text
+    )
 
     converter = Converter(valid_languages=["de"])
     converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
-    assert "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
+    assert (
+        "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']."
+        in caplog.text
+    )
 
 
 def test_docx_converter():
