@@ -100,7 +100,8 @@ def test_crawler_return_document(tmp_path):
 
     crawler = Crawler(output_dir=tmp_dir)
     docs_path = crawler.crawl(urls=_url, crawler_depth=1)
-    documents = crawler.crawl(urls=_url, crawler_depth=1, return_documents=True)
+    results, _ = crawler.run(urls=_url, crawler_depth=1, return_documents=True)
+    documents = results['documents']
 
     for json_file, document in zip(docs_path, documents):
         assert isinstance(json_file, Path)
