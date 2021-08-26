@@ -1,17 +1,12 @@
 import json
 import logging
-import subprocess
 import time
-
 from tqdm import tqdm
 
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_store import MilvusDocumentStore
-from haystack.preprocessor.cleaning import clean_wiki_text
-from haystack.preprocessor.utils import fetch_archive_from_http
 from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader
-from haystack.utils import print_answers, launch_es, launch_milvus
+from haystack.utils import launch_es, launch_milvus
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.retriever.dense import DensePassageRetriever
 from pathlib import Path
@@ -74,8 +69,6 @@ def kendra_benchmark():
         toc = time.perf_counter()
         embedding_update_time = toc - tic
 
-
-
     reader = FARMReader(model_name_or_path=model, use_gpu=True, top_k=top_k_reader)
 
     from haystack.pipeline import ExtractiveQAPipeline
@@ -108,16 +101,6 @@ def kendra_benchmark():
         summary["embedding_update_time"] = embedding_update_time
     json.dump(summary, open(doc_dir / summary_file, "w"), indent=2)
     json.dump(results, open(doc_dir / outfile, "w"), indent=2)
-
-
-    ## Voilà! Ask a question!
-    # prediction = pipe.run(query="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
-    #
-    # prediction = pipe.run(query="Who created the Dothraki vocabulary?", top_k_reader=5)
-    # prediction = pipe.run(query="Who is the sister of Sansa?", top_k_reader=5)
-    #
-    # print_answers(prediction, details="minimal")
-
 
 if __name__ == "__main__":
     kendra_benchmark()
