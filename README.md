@@ -4,7 +4,7 @@
     <a href="https://github.com/deepset-ai/haystack/actions">
         <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
     </a>
-    <a href="https://haystack.deepset.ai/docs/intromd">
+    <a href="https://haystack.deepset.ai/overview/intro">
         <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
     </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
@@ -52,7 +52,7 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 |  |  |
 |-|-|
-| :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
+| :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Usage, Guides, API documentation ...|
 | :beginner: [Quick Demo](https://github.com/deepset-ai/haystack/#quick-demo) | Quickly see what Haystack offers |
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :art: [Key Components](https://github.com/deepset-ai/haystack/#key-components) | Overview of core concepts |
@@ -60,8 +60,8 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 | :eyes: [How to use Haystack](https://github.com/deepset-ai/haystack/#how-to-use-haystack) | Basic explanation of concepts, options and usage |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
 | :vulcan_salute: [Community](https://www.deepset.ai/community)| [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
-| :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers and DocumentStores |
-| :telescope: [Roadmap](https://haystack.deepset.ai/docs/latest/roadmapmd) | Public roadmap of Haystack |
+| :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/v0.9.0) | Speed & Accuracy of Retriever, Readers and DocumentStores |
+| :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap) | Public roadmap of Haystack |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
 ## Quick Demo
@@ -310,7 +310,7 @@ Below you'll find more detailed descriptions of various Haystack components alon
 
 [File Conversion](https://github.com/deepset-ai/haystack/blob/master/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/master/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/master/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/master/README.md#4-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-readers) | [Pipelines](https://github.com/deepset-ai/haystack/blob/master/README.md#6-pipelines) | [REST API](https://github.com/deepset-ai/haystack/blob/master/README.md#7-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/master/README.md#8-labeling-tool)
 
-Please also refer to our [documentation](https://haystack.deepset.ai/docs/intromd).
+Please also refer to our [documentation](https://haystack.deepset.ai/overview/intro).
 
 ### 1) File Conversion
 
@@ -423,7 +423,7 @@ document_store.query(query="What is the meaning of life?", filters=None, top_k=5
 document_store.query_by_embedding(query_emb, filters=None, top_k=5)
 
 ```
--> See [docs](https://haystack.deepset.ai/docs/latest/documentstoremd) for details
+-> See [docs](https://haystack.deepset.ai/usage/document-store) for details
 
 
 ### 4) Retrievers
@@ -452,7 +452,7 @@ retriever.retrieve(query="Why did the revenue increase?")
 # returns: [Document, Document]
 ```
 
--> See [docs](https://haystack.deepset.ai/docs/latest/retrievermd) for details
+-> See [docs](https://haystack.deepset.ai/usage/retriever) for details
 
 
 ### 5) Readers
@@ -486,7 +486,7 @@ reader.eval(...)
 # Predict
 reader.predict(question="Who is the father of Arya Starck?", documents=documents, top_k=3)
 ```
--> See [docs](https://haystack.deepset.ai/docs/latest/readermd) for details
+-> See [docs](https://haystack.deepset.ai/usage/reader) for details
 
 ### 6) Pipelines
 
@@ -518,7 +518,7 @@ p.draw(path="custom_pipe.png")
 ```
 ![image](https://user-images.githubusercontent.com/1563902/102451716-54813700-4039-11eb-881e-f3c01b47ca15.png)
 
--> See [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd) for details and example of more complex pipelines
+-> See [docs](https://haystack.deepset.ai/usage/pipelines) for details and example of more complex pipelines
 
 ### 7) REST API
 

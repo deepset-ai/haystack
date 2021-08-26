@@ -20,7 +20,7 @@ class EvalDocuments:
     sample passes through it. To view the results of the evaluation, call EvalDocuments.print(). Note that results
     from this Node may differ from that when calling Retriever.eval() since that is a closed domain evaluation. Have
     a look at our evaluation tutorial for more info about open vs closed domain eval (
-    https://haystack.deepset.ai/docs/latest/tutorial5md).
+    https://haystack.deepset.ai/tutorials/evaluation).
     """
     def __init__(self, debug: bool=False, open_domain: bool=True, top_k_eval_documents: int=10, name="EvalDocuments"):
         """
@@ -149,7 +149,7 @@ class EvalAnswers:
     this class and updated as each sample passes through it. To view the results of the evaluation, call EvalAnswers.print().
     Note that results from this Node may differ from that when calling Reader.eval()
     since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
-    open vs closed domain eval (https://haystack.deepset.ai/docs/latest/tutorial5md).
+    open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
     """
 
     def __init__(self,

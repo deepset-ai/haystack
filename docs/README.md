@@ -1,6 +1,6 @@
 # :ledger: Looking for the docs?
 You find them here here: 
-#### https://haystack.deepset.ai/docs/intromd
+#### https://haystack.deepset.ai/overview/intro
 
 
 # :computer: How to update docs?
