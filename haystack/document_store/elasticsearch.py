@@ -805,7 +805,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 body["_source"] = {"excludes": excluded_meta_data}
 
             logger.debug(f"Retriever query: {body}")
-            result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+            try:
+                result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+            except RequestError as e:
+                error_message: str = "The embedding of some documents is not available." \
+                                     " Run the document store update_embeddings() method."
+                raise RequestError(e.status_code, error_message)
 
             documents = [
                 self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
