@@ -1101,7 +1101,7 @@ class RayPipeline(Pipeline):
             name = node_config["name"]
             component_type = definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
-            replicas = next(comp for comp in data["components"] if comp["name"] == name).get("replicas", 1)
+            replicas = next(node for node in pipeline_config["nodes"] if node["name"] == name).get("replicas", 1)
             handle = cls._create_ray_deployment(component_name=name, pipeline_config=data, replicas=replicas)
             pipeline._add_ray_deployment_in_graph(
                 handle=handle,
