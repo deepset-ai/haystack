@@ -122,7 +122,7 @@ if run_query:
     with st.spinner(
         "Performing neural search on documents... 🧠 \n "
         "Do you want to optimize speed or accuracy? \n"
-        "Check out the docs: https://haystack.deepset.ai/docs/latest/optimizationmd "
+        "Check out the docs: https://haystack.deepset.ai/usage/optimization "
     ):
         results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
 
