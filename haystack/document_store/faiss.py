@@ -370,7 +370,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         logger.warning(
                 """DEPRECATION WARNINGS: 
-                1. delete_documents() method is deprecated, please use delete_documents method
+                1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
