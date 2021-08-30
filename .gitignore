@@ -153,3 +153,4 @@ saved_models
 *_build
 
 .DS_Store
+/.vs

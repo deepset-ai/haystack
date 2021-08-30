@@ -410,6 +410,31 @@ class MilvusDocumentStore(SQLDocumentStore):
             self.milvus_server.flush([index])
             self.milvus_server.compact(collection_name=index)
 
+    def delete_document_by_id(self, id: str, index: Optional[str] = None):
+        """Delete a document by specifying its text id string"""
+        index = index or self.index
+        self.delete_documents_by_id([id], index=index)
+    
+    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None):
+        """Delete documents by specifying a list of text id strings
+
+        :param ids: List of text id strings
+        :param index: Optional Index name to delete the document from.
+        :return: None
+        """
+        index = index or self.index
+        super().delete_documents_by_id(ids=ids, index=index)
+        status, ok = self.milvus_server.has_collection(collection_name=index)
+        if status.code != Status.SUCCESS:
+            raise RuntimeError(f'Milvus has collection check failed: {status}')
+        if ok:
+            status = self.milvus_server.drop_collection(collection_name=index)
+            if status.code != Status.SUCCESS:
+                raise RuntimeError(f'Milvus drop collection failed: {status}')
+
+            self.milvus_server.flush([index])
+            self.milvus_server.compact(collection_name=index)
+
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,

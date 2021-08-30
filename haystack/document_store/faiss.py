@@ -386,6 +386,26 @@ class FAISSDocumentStore(SQLDocumentStore):
         if index in self.faiss_indexes.keys():
             self.faiss_indexes[index].reset()
         super().delete_documents(index=index)
+    
+    def delete_document_by_id(self, id: str, index: Optional[str] = None):
+        """Delete a document by specifying its text id string"""
+        index = index or self.index
+        if index in self.faiss_indexes.keys():
+            self.faiss_indexes[index].reset()
+        super().delete_document_by_id(id=id,index=index)
+
+    
+    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None):
+        """Delete documents by specifying a list of text id strings
+
+        :param ids: List of text id strings
+        :param index: Optional Index name to delete the document from.
+        :return: None
+        """
+        index = index or self.index
+        if index in self.faiss_indexes.keys():
+            self.faiss_indexes[index].reset()
+        super().delete_documents_by_id(ids=ids,index=index)
 
     def query_by_embedding(
         self,

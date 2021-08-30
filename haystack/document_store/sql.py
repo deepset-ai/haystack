@@ -5,7 +5,7 @@ from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
 import numpy as np
-from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text
+from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text, exc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
@@ -500,6 +500,35 @@ class SQLDocumentStore(BaseDocumentStore):
             self.session.query(DocumentORM).filter_by(index=index).delete(synchronize_session=False)
 
         self.session.commit()
+
+    def delete_document_by_id(self, id: str, index: Optional[str] = None):
+        """Delete a document by specifying its text id string"""
+        self.delete_documents_by_id([id], index=index)
+    
+    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000):
+        """Delete documents by specifying a list of text id strings
+
+        :param ids: List of text id strings
+        :param index: Optional Index name to delete the document from.
+        :param batch size: Batch size of documents while writing to document store
+        :return: None
+        """
+        index = index or self.index
+        try:
+            for i in range(0, len(ids), batch_size):
+                document_to_delete = self.session.query(DocumentORM).filter(
+                    DocumentORM.id.in_(ids[i: i + batch_size]),
+                    DocumentORM.index == index
+                )
+                if not document_to_delete:
+                    raise Exception(f"Document with id {ids[i:i + batch_size]} could not be found")
+                else:
+                    self.session.query(DocumentORM).filter(
+                    DocumentORM.id.in_(ids[i: i + batch_size]),
+                    DocumentORM.index == index).delete(synchronize_session=False)
+            self.session.commit()
+        except exc as e:
+            raise e.DBAPIError("Delete operation failed", e.message)
 
     def _get_or_create(self, session, model, **kwargs):
         instance = session.query(model).filter_by(**kwargs).first()

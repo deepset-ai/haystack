@@ -286,6 +286,14 @@ class BaseDocumentStore(BaseComponent):
     def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
 
+    @abstractmethod
+    def delete_document_by_id(self, id: str, index: Optional[str] = None):
+        pass
+
+    @abstractmethod
+    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000):
+        pass
+
     def run(self, documents: List[dict], index: Optional[str] = None, **kwargs):  # type: ignore
         self.write_documents(documents=documents, index=index)
         return kwargs, "output_1"

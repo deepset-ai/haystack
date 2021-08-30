@@ -691,3 +691,19 @@ class WeaviateDocumentStore(BaseDocumentStore):
         else:
             self.weaviate_client.schema.delete_class(index)
             self._create_schema_and_index_if_not_exist(index)
+    
+    def delete_document_by_id(self, id: str, index: Optional[str] = None):
+        """Delete a document by specifying its text id string"""
+        self.weaviate_client.data_object.delete(id)
+
+    
+    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None):
+        """Delete documents by specifying a list of text id strings
+
+        :param ids: List of text id strings
+        :param index: Optional Index name to delete the document from.
+        :return: None
+        """
+        index = index or self.index
+        for id in ids :
+            self.weaviate_client.data_object.delete(id)

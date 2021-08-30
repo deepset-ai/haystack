@@ -1011,7 +1011,24 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
             time.sleep(2)
+    
+    def delete_document_by_id(self, id: str, index: Optional[str] = None):
+        """Delete a document by specifying its text id string"""
+        index = index or self.index
+        self.delete_documents_by_id([id], index=index)
+    
+    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None):
+        """Delete documents by specifying a list of text id strings
 
+        :param ids: List of text id strings
+        :param index: Optional Index name to delete the document from.
+        :return: None
+        """
+        index = index or self.index
+        query = {"query": {"ids": {"values": ids}}}
+        self.client.delete_by_query(index=index, body=query, ignore=[404])
+        if self.refresh_type == "wait_for":
+            time.sleep(2)
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     """
