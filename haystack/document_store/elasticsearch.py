@@ -4,6 +4,8 @@ import time
 from copy import deepcopy
 from string import Template
 from typing import List, Optional, Union, Dict, Any, Generator
+
+import elasticsearch.exceptions
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
@@ -808,9 +810,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             try:
                 result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
             except RequestError as e:
-                error_message: str = "The embedding of some documents is not available." \
-                                     " Run the document store update_embeddings() method."
-                raise RequestError(e.status_code, error_message)
+                if e.error == "search_phase_execution_exception":
+                    error_message: str = "search_phase_execution_exception: Likely some of your stored documents don't have embeddings." \
+                                         " Run the document store's update_embeddings() method."
+                    raise RequestError(e.status_code, error_message, e.info)
+                else:
+                    raise e
 
             documents = [
                 self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
