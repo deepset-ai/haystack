@@ -808,7 +808,7 @@ class SklearnQueryClassifier(BaseComponent):
        output_2 => statement
        [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
 
-    See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
+    See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
     """
 
@@ -901,7 +901,7 @@ class TransformersQueryClassifier(BaseComponent):
      output_2 => statement
      [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
 
-     See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
+     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
     """
 
     outgoing_edges = 2
