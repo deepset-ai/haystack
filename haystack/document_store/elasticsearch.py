@@ -5,7 +5,6 @@ from copy import deepcopy
 from string import Template
 from typing import List, Optional, Union, Dict, Any, Generator
 
-import elasticsearch.exceptions
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
