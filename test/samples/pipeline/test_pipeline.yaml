@@ -45,7 +45,7 @@ pipelines:
         inputs: [ ESRetriever ]
 
   - name: indexing_pipeline
-    type: Indexing
+    type: Pipeline
     nodes:
       - name: PDFConverter
         inputs: [File]
