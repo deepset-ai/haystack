@@ -324,7 +324,7 @@ def test_update_embeddings(document_store, retriever):
 def test_delete_all_documents(document_store_with_docs):
     assert len(document_store_with_docs.get_all_documents()) == 3
 
-    document_store_with_docs.delete_all_documents()
+    document_store_with_docs.delete_documents()
     documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 0
 
