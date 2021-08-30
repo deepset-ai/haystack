@@ -193,7 +193,7 @@ def test_faiss_passing_index_from_outside(tmp_path):
         sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", faiss_index=faiss_index, index=index
     )
 
-    document_store.delete_all_documents()
+    document_store.delete_documents()
     # as it is a IVF index we need to train it before adding docs
     document_store.train_index(DOCUMENTS)
 

@@ -406,7 +406,7 @@ def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_all_documents()
+    document_store.delete_documents()
 
 
 @pytest.fixture
@@ -414,7 +414,7 @@ def document_store(request, test_docs_xs):
     vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
     document_store = get_document_store(request.param, vector_dim.args[0])
     yield document_store
-    document_store.delete_all_documents()
+    document_store.delete_documents()
 
 
 def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding"):
