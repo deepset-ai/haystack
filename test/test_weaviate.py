@@ -31,13 +31,13 @@ def document_store_with_docs(request):
     document_store = get_document_store(request.param)
     document_store.write_documents(DOCUMENTS_XS)
     yield document_store
-    document_store.delete_all_documents()
+    document_store.delete_documents()
 
 @pytest.fixture(params=["weaviate"])
 def document_store(request):
     document_store = get_document_store(request.param)
     yield document_store
-    document_store.delete_all_documents()
+    document_store.delete_documents()
 
 @pytest.mark.weaviate
 @pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
@@ -316,7 +316,7 @@ def test_query(document_store_with_docs):
 def test_delete_all_documents(document_store_with_docs):
     assert len(document_store_with_docs.get_all_documents()) == 3
 
-    document_store_with_docs.delete_all_documents()
+    document_store_with_docs.delete_documents()
     documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 0
 

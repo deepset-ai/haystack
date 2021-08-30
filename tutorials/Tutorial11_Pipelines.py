@@ -29,7 +29,7 @@ def tutorial11_pipelines():
     # Initialize DocumentStore and index documents
     launch_es()
     document_store = ElasticsearchDocumentStore()
-    document_store.delete_all_documents()
+    document_store.delete_documents()
     document_store.write_documents(got_dicts)
 
     # Initialize Sparse retriever
