@@ -1009,19 +1009,33 @@ class RayPipeline(Pipeline):
     """
     Ray (https://ray.io) is a framework for distributed computing.
 
-    With Ray, the Pipeline nodes can be distributed across a cluster of machine(s).
+    Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
+    Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
+    of the Reader and a single replica for the Retriever. It enables efficient resource utilization by horizontally
+    scaling Components.
 
-    This allows scaling individual nodes. For instance, in an extractive QA Pipeline, multiple replicas
-    of the Reader, while keeping a single instance for the Retriever. It also enables efficient resource
-    utilization as load could be split across GPU vs CPU machines.
+    To set the number of replicas, add  `replicas` in the YAML config for the node in a pipeline:
 
-    In the current implementation, a Ray Pipeline can only be created with a YAML Pipeline config.
+            ```yaml
+            |    components:
+            |        ...
+            |
+            |    pipelines:
+            |        - name: ray_query_pipeline
+            |          type: RayPipeline
+            |          nodes:
+            |            - name: ESRetriever
+            |              replicas: 2  # number of replicas to create on the Ray cluster
+            |              inputs: [ Query ]
+            ```
+
+    A RayPipeline can only be created with a YAML Pipeline config.
     >>> from haystack.pipeline import RayPipeline
     >>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
     >>> pipeline.run(query="What is the capital of Germany?")
 
     By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
-    set the `address` parameter when creating RayPipeline instance.
+    set the `address` parameter when creating the RayPipeline instance.
     """
     def __init__(self, address: str = None, **kwargs):
         """
