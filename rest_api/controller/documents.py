@@ -15,9 +15,13 @@ now = datetime.now()
 router = APIRouter()
 
 class Request(BaseModel,Document):
+    """ doc_store: str (Name of the document store to be used/modified)
+    id: Union[List[str],str] (doc id)
+    doc_list: List[Document]
+    """
     doc_store: str
-    id: Union[str,List[id]] = None
-    doc_list : List[Document] = None
+    id  = None
+    doc_list  = None
     
 @router.post("/documents/add", status_code=HTTPStatus.CREATED.value, response_model=Document)
 def create_document(payload: Request, response: Response):
