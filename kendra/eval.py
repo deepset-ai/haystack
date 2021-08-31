@@ -11,7 +11,7 @@ label_dir = Path("../data/nq")
 pred_dir = Path(".")
 preds_haystack_filename = "predictions_haystack_dpr_7k.json"
 preds_kendra_filename = "predictions_kendra_300k.json"
-labels_filename = "nq_dev_labels.json"
+labels_filename = "nq_open_efficient_qa_test.jsonl"
 top_k_eval = 1
 
 def reduce_haystack_preds(preds_haystack_full, top_k_eval):
@@ -95,11 +95,20 @@ def generate_results(preds_labels):
     df = pd.DataFrame.from_records(results)
     return df
 
+def load_labels(filename):
+    if filename.suffix == ".json":
+        ret = json.load(open(filename))
+    elif filename.suffix == ".jsonl":
+        ret = [json.loads(l) for l in open(filename)]
+    else:
+        raise Exception
+    return ret
+
 def main():
     # File loading
     preds_haystack_full = json.load(open(pred_dir/preds_haystack_filename))
     preds_kendra_full = json.load(open(pred_dir/preds_kendra_filename))
-    labels_full = json.load(open(label_dir/labels_filename))
+    labels_full = load_labels(label_dir / labels_filename)
 
     # Data prep
     preds_haystack = reduce_haystack_preds(preds_haystack_full, top_k_eval)
