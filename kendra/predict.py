@@ -16,6 +16,7 @@ def kendra_benchmark():
     # Define variables
     logger = logging.getLogger(__name__)
     doc_dir = Path("../data/nq")
+    labels_filename = "nq_open_efficient_qa_test.jsonl"
     doc_index = "document"
     outfile = "predictions.json"
     summary_file = "summary.json"
@@ -74,7 +75,16 @@ def kendra_benchmark():
     from haystack.pipeline import ExtractiveQAPipeline
     pipe = ExtractiveQAPipeline(reader, retriever)
 
-    label_data = json.load(open(doc_dir / "nq_dev_labels.json"))
+    def load_labels(filename):
+        if filename.suffix == ".json":
+            ret = json.load(open(filename))
+        elif filename.suffix == ".jsonl":
+            ret = [json.loads(l) for l in open(filename)]
+        else:
+            raise Exception
+        return ret
+
+    label_data = load_labels(doc_dir / labels_filename)
     questions = [x["question"] for x in label_data]
 
     # querying
