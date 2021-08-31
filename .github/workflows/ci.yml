@@ -91,5 +91,8 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
 
+  - name: Install pdftotext
+      run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
+
     - name: Run tests
       run: cd test && pytest -s ${{ matrix.test-path }}
