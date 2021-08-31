@@ -14,4 +14,4 @@ Put your question here
 Add any other context or screenshots about the question (optional).
 
 **FAQ Check**
-- [ ] Have you had a look at [our new FAQ page](https://haystack.deepset.ai/docs/latest/faqmd)?
+- [ ] Have you had a look at [our new FAQ page](https://haystack.deepset.ai/overview/faq)?
