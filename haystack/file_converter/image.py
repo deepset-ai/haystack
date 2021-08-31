@@ -61,7 +61,7 @@ class ImageToTextConverter(BaseConverter):
                     tesseract_langs.append(language)
                 else:
                     raise Exception(
-                        f"""{language} is not either a valid tessarect language code or its language pack isn't installed.
+                        f"""{language} is not either a valid tesseract language code or its language pack isn't installed.
 
                     Check the list of valid tesseract language codes here: https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html
 
