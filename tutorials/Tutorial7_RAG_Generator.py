@@ -65,7 +65,7 @@ def tutorial7_rag_generator():
     )
 
     # Delete existing documents in documents store
-    document_store.delete_all_documents()
+    document_store.delete_documents()
     # Write documents to document store
     document_store.write_documents(documents)
     # Add documents embeddings to index
