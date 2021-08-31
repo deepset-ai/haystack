@@ -19,6 +19,13 @@ def test_convert(Converter, xpdf_fixture):
     assert len(pages) == 4  # the sample PDF file has four pages.
     assert pages[0] != ""  # the page 1 of PDF contains text.
     assert pages[2] == ""  # the page 3 of PDF file is empty.
+    # assert text is retained from the document.
+    # As whitespace can differ (\n," ", etc.), we standardize all to simple whitespace
+    page_standard_whitespace = " ".join(pages[0].split())
+    assert (
+        "Adobe Systems made the PDF specification available free of charge in 1993."
+        in page_standard_whitespace
+    )
 
 
 @pytest.mark.tika
@@ -30,14 +37,6 @@ def test_table_removal(Converter, xpdf_fixture):
     # assert numeric rows are removed from the table.
     assert "324" not in pages[0]
     assert "54x growth" not in pages[0]
-
-    # assert text is retained from the document.
-    # As whitespace can differ (\n," ", etc.), we standardize all to simple whitespace
-    page_standard_whitespace = " ".join(pages[0].split())
-    assert (
-        "Adobe Systems made the PDF specification available free of charge in 1993."
-        in page_standard_whitespace
-    )
 
 
 @pytest.mark.tika
