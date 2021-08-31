@@ -395,7 +395,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         super().delete_document_by_id(id=id,index=index)
 
     
-    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None):
+    def delete_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size=10_000):
         """Delete documents by specifying a list of text id strings
 
         :param ids: List of text id strings
