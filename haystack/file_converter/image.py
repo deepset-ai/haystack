@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 
 import pytesseract
 from PIL.PpmImagePlugin import PpmImageFile
+from PIL import Image
 
 from haystack.file_converter.base import BaseConverter
 
@@ -77,7 +78,7 @@ class ImageToTextConverter(BaseConverter):
 
     def convert(
         self,
-        image: Any,  # type: ignore
+        file_path: Path,
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
@@ -86,7 +87,7 @@ class ImageToTextConverter(BaseConverter):
         """
         Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
 
-        :param images: list of images you want to convert
+        :param file_path: path to image file
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
                      Can be any custom keys and values.
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
@@ -100,7 +101,7 @@ class ImageToTextConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
-
+        image = Image.open(file_path)
         pages = self._image_to_text(image)
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables

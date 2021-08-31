@@ -1,7 +1,10 @@
 import logging
 import subprocess
 from pathlib import Path
+import tempfile
+import os
 from typing import List, Optional, Dict, Any
+
 
 from pdf2image import convert_from_path, convert_from_bytes
 
@@ -220,7 +223,11 @@ class PDFToTextOCRConverter(BaseConverter):
         try:
             images = convert_from_path(file_path)
             for image in images:
-                pages.append(self.image_2_text.convert(image)["text"])
+                temp_img = tempfile.NamedTemporaryFile(
+                    dir=os.path.dirname(os.path.realpath(__file__)), suffix=".jpeg"
+                )
+                image.save(temp_img.name)
+                pages.append(self.image_2_text.convert(temp_img.name)["text"])
         except Exception as exception:
             logger.error(f"File {file_path} has an error \n {exception}")
 

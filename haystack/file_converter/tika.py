@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 import requests
-from tika import parser as tikaparser
+
+# from tika import parser as tikaparser
 
 from haystack.file_converter.base import BaseConverter
 
