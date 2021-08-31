@@ -143,9 +143,9 @@ class ImageToTextConverter(BaseConverter):
 
     def _image_to_text(self, image: PpmImageFile) -> List[str]:
         """
-        Extract pages from the pdf file at file_path.
+        Extract text from image file.
 
-        :param images: list of image files
+        :param image: input image file
         """
         text = [pytesseract.image_to_string(image, lang=self.tesseract_langs)]
         return text
