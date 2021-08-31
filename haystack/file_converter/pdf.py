@@ -166,9 +166,6 @@ class PDFToTextOCRConverter(BaseConverter):
         """
         Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
 
-        :param images: list of images you want to convert
-        :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
-                     Can be any custom keys and values.
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
                                       does not have table parsing capability for finding answers. However, tables
@@ -226,8 +223,8 @@ class PDFToTextOCRConverter(BaseConverter):
                 pages.append(self.image_2_text.convert(image)["text"])
         except Exception as exception:
             logger.error(f"File {file_path} has an error \n {exception}")
-            
+
         raw_text = "\f".join(pages)
         document = {"text": raw_text, "meta": meta}
-        
+
         return document
