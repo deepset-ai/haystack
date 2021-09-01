@@ -11,7 +11,7 @@ elastic-apm
 tox
 coverage
 langdetect # for PDF conversions
-# optional: sentence-transformers
+sentence-transformers
 python-multipart
 python-docx
 sqlalchemy>=1.4.2
