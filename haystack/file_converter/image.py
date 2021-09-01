@@ -78,7 +78,7 @@ class ImageToTextConverter(BaseConverter):
 
     def convert(
         self,
-        file_path: Path,
+        file_path: Union[Path,str],
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
@@ -101,6 +101,7 @@ class ImageToTextConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
+        file_path = Path(file_path)
         image = Image.open(file_path)
         pages = self._image_to_text(image)
         if remove_numeric_tables is None:
