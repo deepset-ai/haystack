@@ -36,7 +36,7 @@ def tutorial4_faq_style_qa():
     document_store = ElasticsearchDocumentStore(host="localhost", username="", password="",
                                                 index="document",
                                                 embedding_field="question_emb",
-                                                embedding_dim=768,
+                                                embedding_dim=384,
                                                 excluded_meta_data=["question_emb"],
                                                 similarity="cosine")
 
@@ -44,7 +44,7 @@ def tutorial4_faq_style_qa():
     # Instead of retrieving via Elasticsearch's plain BM25, we want to use vector similarity of the questions (user question vs. FAQ ones).
     # We can use the `EmbeddingRetriever` for this purpose and specify a model that we use for the embeddings.
     #
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=True)
+    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2", use_gpu=True)
 
     # Download a csv containing some FAQ data
     # Here: Some question-answer pairs related to COVID-19
