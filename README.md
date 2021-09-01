@@ -316,16 +316,17 @@ Please also refer to our [documentation](https://haystack.deepset.ai/overview/in
 
 **What**
 
-Different converters to extract text from your original files (pdf, docx, txt, html).
-While it's almost impossible to cover all types, layouts, and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta-information (e.g., page splits). The converters are easily extendable so that you can customize them for your files if needed.
+Different converters to extract text from your original files (pdf, docx, txt, md, html).
+While it's almost impossible to cover all types, layouts, and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta-information (e.g., page splits). The converters are easily extendable so that you can customize them for your files if needed. We also provide an OCR based approach for converting images or PDFs. 
 
 **Available options**
 
 - Txt
-- PDF
+- PDF (incl. OCR)
 - Docx
 - Apache Tika (Supports > 340 file formats)
 - Markdown
+- Images
 
 **Example**
 
