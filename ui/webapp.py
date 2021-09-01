@@ -26,6 +26,7 @@ def annotate_answer(answer, context):
     height = int(len(context) * 0.50) + 5
     annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:], height=height)
 
+
 def show_plain_documents(text):
     """ If we are using a plain document search pipeline, i.e. only retriever, we'll get plain documents
     from the API that we just show without any highlighting"""
@@ -144,13 +145,19 @@ if run_query:
         st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
         if eval_mode:
             # Define columns for buttons
-            button_col1, button_col2, button_col3, button_col4 = st.beta_columns([1, 1, 1, 6])
-            if button_col1.button("👍", key=(result["context"] + str(count)), help="Correct answer"):
+            button_col1, button_col2, button_col3, button_col4 = st.columns([1, 1, 1, 6])
+            if button_col1.button("👍", key=(result["context"] + str(count) + "1"), help="Correct answer"):
                 raw_json_feedback = feedback_doc(
-                    question, "true", result["document_id"], 1, "true", result["answer"], result["offset_start_in_doc"]
+                    question,
+                    "true",
+                    result["document_id"],
+                    1,
+                    "true",
+                    result["answer"],
+                    result["offset_start_in_doc"]
                 )
                 st.success("Thanks for your feedback")
-            if button_col2.button("👎", key=(result["context"] + str(count)), help="Wrong answer and wrong passage"):
+            if button_col2.button("👎", key=(result["context"] + str(count) + "2"), help="Wrong answer and wrong passage"):
                 raw_json_feedback = feedback_doc(
                     question,
                     "false",
@@ -161,7 +168,7 @@ if run_query:
                     result["offset_start_in_doc"],
                 )
                 st.success("Thanks for your feedback!")
-            if button_col3.button("👎👍", key=(result["context"] + str(count)), help="Wrong answer, but correct passage"):
+            if button_col3.button("👎👍", key=(result["context"] + str(count) + "3" ), help="Wrong answer, but correct passage"):
                 raw_json_feedback = feedback_doc(
                     question, "false", result["document_id"], 1, "true", result["answer"], result["offset_start_in_doc"]
                 )

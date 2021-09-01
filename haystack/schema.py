@@ -1,5 +1,7 @@
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
+from dataclasses import dataclass
+from typing import Literal
 
 import mmh3
 import numpy as np
@@ -9,10 +11,10 @@ from abc import abstractmethod
 class Document:
     def __init__(
         self,
-        text: str,
+        text: str, # change text to content/data to cope for images, tables ...?
         id: Optional[str] = None,
         score: Optional[float] = None,
-        question: Optional[str] = None,
+        question: Optional[str] = None, #do we really need it here? Only for FAQ? can we move it to meta?
         meta: Dict[str, Any] = None,
         embedding: Optional[np.ndarray] = None,
         id_hash_keys: Optional[List[str]] = None
@@ -94,17 +96,38 @@ class Document:
         return str(self.to_dict())
 
 
+@dataclass
+class Answer:
+    answer: Optional[str]
+    type: Literal["generative", "extractive"]
+    #question: Optional[str]
+    score: Optional[float]
+    #probability: Optional[float] = None
+    context: Optional[str]
+    offset_start: Optional[int]
+    offset_end: Optional[int]
+    offset_start_in_doc: Optional[int]
+    offset_end_in_doc: Optional[int]
+    document_id: Optional[str]
+    #maybe: change to doc_id: Optional[str] = None
+    meta: Optional[Dict[str, Any]]
+    #maybe add: source
+
+
 class Label:
-    def __init__(self, question: str,
-                 answer: str,
+    def __init__(self,
+                 #question: str,
+                 query: str,
+                 answer: Optional[Answer], # maybe replace str -> Answer object?
+                 document: Document, # make it suitable for Retrieval?
                  is_correct_answer: bool,
                  is_correct_document: bool,
-                 origin: str,
+                 origin: Literal["user-feedback", "gold-annotation"],
                  id: Optional[str] = None,
-                 document_id: Optional[str] = None,
-                 offset_start_in_doc: Optional[int] = None,
+                 #document_id: Optional[str] = None, # if we have Document up there we don't need the ID here
+                 #offset_start_in_doc: Optional[int] = None, # part of Answer object?
                  no_answer: Optional[bool] = None,
-                 model_id: Optional[int] = None,
+                 model_id: Optional[int] = None, #switch to pipeline_id/name/hash?
                  created_at: Optional[str] = None,
                  updated_at: Optional[str] = None,
                  meta: Optional[dict] = None
@@ -194,8 +217,11 @@ class Label:
     def __str__(self):
         return str(self.to_dict())
 
+
+# Can we switch to an object that rather consists of List[Label] or is that nasty in the handling?
 class MultiLabel:
-    def __init__(self, question: str,
+    def __init__(self,
+                 question: str,
                  multiple_answers: List[str],
                  is_correct_answer: bool,
                  is_correct_document: bool,

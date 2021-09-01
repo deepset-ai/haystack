@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from haystack import Pipeline
+from haystack import Answer
 from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, QUERY_PIPELINE_NAME, CONCURRENT_REQUEST_PER_WORKER
 from rest_api.controller.utils import RequestLimiter
 
@@ -25,23 +26,10 @@ class Request(BaseModel):
 
 
 
-class Answer(BaseModel):
-    answer: Optional[str]
-    question: Optional[str]
-    score: Optional[float] = None
-    probability: Optional[float] = None
-    context: Optional[str]
-    offset_start: Optional[int]
-    offset_end: Optional[int]
-    offset_start_in_doc: Optional[int]
-    offset_end_in_doc: Optional[int]
-    document_id: Optional[str] = None
-    meta: Optional[Dict[str, Any]]
-
-
 class Response(BaseModel):
     query: str
     answers: List[Answer]
+    #maybe add: documents?
 
 
 PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
