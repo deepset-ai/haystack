@@ -1,80 +1,77 @@
 import logging
-from html.parser import HTMLParser
+import subprocess
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
-import requests
-from tika import parser as tikaparser
+import pytesseract
+from PIL.PpmImagePlugin import PpmImageFile
+from PIL import Image
 
 from haystack.file_converter.base import BaseConverter
 
 logger = logging.getLogger(__name__)
 
 
-# Use the built-in HTML parser with minimum dependencies
-class TikaXHTMLParser(HTMLParser):
-    def __init__(self):
-        self.ingest = True
-        self.page = ""
-        self.pages: List[str] = []
-        super(TikaXHTMLParser, self).__init__()
-
-    def handle_starttag(self, tag, attrs):
-        # find page div
-        pagediv = [
-            value for attr, value in attrs if attr == "class" and value == "page"
-        ]
-        if tag == "div" and pagediv:
-            self.ingest = True
-
-    def handle_endtag(self, tag):
-        # close page div, or a single page without page div, save page and open a new page
-        if (tag == "div" or tag == "body") and self.ingest:
-            self.ingest = False
-            # restore words hyphened to the next line
-            self.pages.append(self.page.replace("-\n", ""))
-            self.page = ""
-
-    def handle_data(self, data):
-        if self.ingest:
-            self.page += data
-
-
-class TikaConverter(BaseConverter):
+class ImageToTextConverter(BaseConverter):
     def __init__(
         self,
-        tika_url: str = "http://localhost:9998/tika",
         remove_numeric_tables: bool = False,
-        valid_languages: Optional[List[str]] = None,
+        valid_languages: Optional[List[str]] = ["eng"],
     ):
         """
-        :param tika_url: URL of the Tika server
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
                                       does not have table parsing capability for finding answers. However, tables
                                       may also have long strings that could possible candidate for searching answers.
                                       The rows containing strings are thus retained in this option.
-        :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
-                                (https://en.wikipedia.org/wiki/ISO_639-1) format.
+        :param valid_languages: validate languages from a list of languages specified here
+                                (https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html)
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
-                                in garbled text.
+                                in garbled text. Run the following line of code to check available language packs:
+                                # List of available languages
+                                print(pytesseract.get_languages(config=''))
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            tika_url=tika_url,
-            remove_numeric_tables=remove_numeric_tables,
-            valid_languages=valid_languages,
+            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
         )
 
-        ping = requests.get(tika_url)
-        if ping.status_code != 200:
+        verify_installation = subprocess.run(["tesseract -v"], shell=True)
+        if verify_installation.returncode == 127:
             raise Exception(
-                f"Apache Tika server is not reachable at the URL '{tika_url}'. To run it locally"
-                f"with Docker, execute: 'docker run -p 9998:9998 apache/tika:1.24.1'"
+                """tesseract is not installed.
+                
+                   Installation on Linux:
+                   apt-get install tesseract-ocr libtesseract-dev poppler-utils
+                   
+                   Installation on MacOS:
+                   brew install tesseract
+                   
+                   For installing specific language packs check here: https://tesseract-ocr.github.io/tessdoc/Installation.html
+                """
             )
-        self.tika_url = tika_url
+        tesseract_langs = []
+        if valid_languages:
+            for language in valid_languages:
+                if (
+                    language in pytesseract.get_languages(config="")
+                    and language not in tesseract_langs
+                ):
+                    tesseract_langs.append(language)
+                else:
+                    raise Exception(
+                        f"""{language} is not either a valid tesseract language code or its language pack isn't installed.
+
+                    Check the list of valid tesseract language codes here: https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html
+
+                    For installing specific language packs check here: https://tesseract-ocr.github.io/tessdoc/Installation.html
+                    """
+                    )
+
+        ## if you have more than one language in images, then pass it to tesseract like this e.g., `fra+eng`
+        self.tesseract_langs = "+".join(tesseract_langs)
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
         )
@@ -85,39 +82,34 @@ class TikaConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
-        encoding: Optional[str] = None,
+        encoding: Optional[str] = "utf-8",
     ) -> Dict[str, Any]:
         """
-        :param file_path: path of the file to convert
-        :param meta: dictionary of meta data key-value pairs to append in the returned document.
+        Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
+
+        :param file_path: path to image file
+        :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
+                     Can be any custom keys and values.
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
                                       does not have table parsing capability for finding answers. However, tables
                                       may also have long strings that could possible candidate for searching answers.
                                       The rows containing strings are thus retained in this option.
-        :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
-                                (https://en.wikipedia.org/wiki/ISO_639-1) format.
+        :param valid_languages: validate languages from a list of languages supported by tessarect
+                                (https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html).
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param encoding: Not applicable
-
-        :return: a list of pages and the extracted meta data of the file.
         """
+        image = Image.open(file_path)
+        pages = self._image_to_text(image)
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables
         if valid_languages is None:
             valid_languages = self.valid_languages
 
-        parsed = tikaparser.from_file(
-            file_path.as_posix(), self.tika_url, xmlContent=True
-        )
-        parser = TikaXHTMLParser()
-        parser.feed(parsed["content"])
-
         cleaned_pages = []
-        # TODO investigate title of document appearing in the first extracted page
-        for page in parser.pages:
+        for page in pages:
             lines = page.splitlines()
             cleaned_lines = []
             for line in lines:
@@ -131,9 +123,8 @@ class TikaConverter(BaseConverter):
                         and len(digits) / len(words) > 0.4
                         and not line.strip().endswith(".")
                     ):
-                        logger.debug(f"Removing line '{line}' from {file_path}")
+                        logger.debug(f"Removing line '{line}' from file")
                         continue
-
                 cleaned_lines.append(line)
 
             page = "\n".join(cleaned_lines)
@@ -143,10 +134,19 @@ class TikaConverter(BaseConverter):
             document_text = "".join(cleaned_pages)
             if not self.validate_language(document_text):
                 logger.warning(
-                    f"The language for {file_path} is not one of {valid_languages}. The file may not have "
+                    f"The language for image is not one of {self.valid_languages}. The file may not have "
                     f"been decoded in the correct text format."
                 )
 
         text = "\f".join(cleaned_pages)
-        document = {"text": text, "meta": {**parsed["metadata"], **(meta or {})}}
+        document = {"text": text, "meta": meta}
         return document
+
+    def _image_to_text(self, image: PpmImageFile) -> List[str]:
+        """
+        Extract text from image file.
+
+        :param image: input image file
+        """
+        text = [pytesseract.image_to_string(image, lang=self.tesseract_langs)]
+        return text
