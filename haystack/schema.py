@@ -113,10 +113,24 @@ class Answer:
     meta: Optional[Dict[str, Any]]
     #maybe add: source
 
+# class ExtractiveQAFeedback(BaseModel):
+#     question: str = Field(..., description="The question input by the user, i.e., the query.")
+#     is_correct_answer: bool = Field(..., description="Whether the answer is correct or not.")
+#     document_id: str = Field(..., description="The document in the query result for which feedback is given.")
+#     model_id: Optional[int] = Field(None, description="The model used for the query.")
+#     is_correct_document: bool = Field(
+#         ...,
+#         description="In case of negative feedback, there could be two cases; incorrect answer but correct "
+#         "document & incorrect document. This flag denotes if the returned document was correct.",
+#     )
+#     answer: str = Field(..., description="The answer string.")
+#     offset_start_in_doc: int = Field(
+#         ..., description="The answer start offset in the original doc. Only required for doc-qa feedback."
+#     )
 
+#TODO: Verify compliance with FAST API usage
 class Label:
     def __init__(self,
-                 #question: str,
                  query: str,
                  answer: Optional[Answer], # maybe replace str -> Answer object?
                  document: Document, # make it suitable for Retrieval?
