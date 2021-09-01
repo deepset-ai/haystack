@@ -1,7 +1,7 @@
 import logging
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 import pytesseract
 from PIL.PpmImagePlugin import PpmImageFile
