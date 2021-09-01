@@ -269,6 +269,12 @@ class DensePassageRetriever(BaseRetriever):
         :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
         :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
         """
+
+        if self.processor.num_hard_negatives != 0:
+            logger.warning(f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
+                           f"not require any hard negatives. Setting num_hard_negatives to 0.")
+            self.processor.num_hard_negatives = 0
+
         passages = [{'passages': [{
             "title": d.meta["name"] if d.meta and "name" in d.meta else "",
             "text": d.text,
