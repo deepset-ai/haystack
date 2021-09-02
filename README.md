@@ -510,7 +510,7 @@ A minimal Open-Domain QA Pipeline:
 p = Pipeline()
 p.add_node(component=retriever, name="ESRetriever1", inputs=["Query"])
 p.add_node(component=reader, name="QAReader", inputs=["ESRetriever1"])
-res = p.run(query="What did Einstein work on?", top_k_retriever=1)
+res = p.run(query="What did Einstein work on?", params={"retriever": {"top_k": 1}})
 
 ```
 You can **draw the DAG** to inspect better what you are building:
