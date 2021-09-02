@@ -87,6 +87,8 @@ The quickest way to see what Haystack offers is to start a [Docker Compose](http
     cd haystack
     docker-compose pull
     docker-compose up
+    
+    # Or on a GPU machine: docker-compose -f docker-compose-gpu.yml up
 ```
 
 You should be able to see the following in your terminal window as part of the log output:
