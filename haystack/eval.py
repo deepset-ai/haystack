@@ -5,7 +5,7 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from haystack import MultiLabel, Label, BaseComponent
+from haystack import MultiLabel, Label, BaseComponent, Document
 
 from farm.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
 from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
