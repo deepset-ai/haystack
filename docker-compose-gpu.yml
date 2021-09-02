@@ -39,6 +39,7 @@ services:
     build:
       context: ui
       dockerfile: Dockerfile
+    image: "deepset/haystack-streamlit-ui:latest"
     ports:
       - 8501:8501
     environment:
