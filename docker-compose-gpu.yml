@@ -1,0 +1,46 @@
+version: "3"
+services:
+  haystack-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: "deepset/haystack-gpu:latest"
+    # in recent docker-compose version you can enable GPU resources. Make sure to fulfill the prerequisites listed here: https://docs.docker.com/compose/gpu-support/
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+    pull_policy: always
+    # Mount custom Pipeline YAML and custom Components.
+    # volumes:
+    #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
+    ports:
+      - 8000:8000
+    environment:
+      # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
+      - ELASTICSEARCHDOCUMENTSTORE_PARAMS_HOST=elasticsearch
+    restart: always
+    depends_on:
+      - elasticsearch
+    command: "/bin/bash -c 'sleep 15 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180'"
+  elasticsearch:
+    # This will start an empty elasticsearch instance (so you have to add your documents yourself)
+    #image: "elasticsearch:7.9.2"
+    # If you want a demo image instead that is "ready-to-query" with some indexed Game of Thrones articles:
+    image: "deepset/elasticsearch-game-of-thrones"
+    ports:
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
+  ui:
+    build:
+      context: ui
+      dockerfile: Dockerfile
+    ports:
+      - 8501:8501
+    environment:
+      - API_ENDPOINT=http://haystack-api:8000
+      - EVAL_FILE=eval_labels_example.csv
