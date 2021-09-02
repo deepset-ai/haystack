@@ -13,7 +13,6 @@ services:
           - driver: nvidia
             count: 1
             capabilities: [gpu]
-    pull_policy: always
     # Mount custom Pipeline YAML and custom Components.
     # volumes:
     #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
