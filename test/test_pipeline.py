@@ -363,6 +363,38 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     assert results["answers"][0]["answer"] == "Berlin" or results["answers"][1]["answer"] == "Berlin"
 
 
+def test_debug_info_propagation():
+    class A(RootNode):
+        def run(self):
+            test = "A"
+            return {"test": test, "_debug": "debug_from_a"}, "output_1"
+
+    class B(RootNode):
+        def run(self, test):
+            test += "B"
+            return {"test": test, "_debug": {"debug_key_b": "debug_value_b"}}, "output_1"
+
+    class C(RootNode):
+        def run(self, test):
+            test += "C"
+            return {"test": test}, "output_1"
+
+    class D(RootNode):
+        def run(self, test, _debug):
+            test += "C"
+            assert _debug["B"]["debug_key_b"] == "debug_value_b"
+            return {"test": test}, "output_1"
+
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=A(), inputs=["Query"])
+    pipeline.add_node(name="B", component=B(), inputs=["A"])
+    pipeline.add_node(name="C", component=C(), inputs=["B"])
+    pipeline.add_node(name="D", component=D(), inputs=["C"])
+    output = pipeline.run(query="test")
+    assert output["_debug"]["A"] == "debug_from_a"
+    assert output["_debug"]["B"]["debug_key_b"] == "debug_value_b"
+
+
 def test_parallel_paths_in_pipeline_graph():
     class A(RootNode):
         def run(self):
