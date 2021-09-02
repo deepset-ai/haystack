@@ -54,7 +54,7 @@ class EvalDocuments(BaseComponent):
         self.reciprocal_rank_sum = 0.0
         self.has_answer_reciprocal_rank_sum = 0.0
 
-    def run(self, documents, labels: dict, top_k: Optional[int]=None):  # type: ignore
+    def run(self, documents: List[Document], labels: List[Label], top_k: Optional[int] = None):  # type: ignore
         """Run this node on one sample and its labels"""
         self.query_count += 1
         retriever_labels = get_label(labels, self.name)
@@ -205,7 +205,7 @@ class EvalAnswers(BaseComponent):
             self.top_1_sas = 0.0
             self.top_k_sas = 0.0
 
-    def run(self, labels, answers, correct_retrieval):
+    def run(self, labels: List[Label], answers: List[dict], correct_retrieval: bool):  # type: ignore
         """Run this node on one sample and its labels"""
         self.query_count += 1
         predictions = answers
