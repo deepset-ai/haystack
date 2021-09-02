@@ -1,7 +1,6 @@
 # Add extra dependencies only required for tests and local dev setup
 mypy
 pytest
-sentence-transformers
 selenium
 webdriver-manager
 beautifulsoup4
