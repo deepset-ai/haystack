@@ -530,10 +530,6 @@ class BaseStandardPipeline(ABC):
         """
         self.pipeline.draw(path)
 
-    def run(self, query: str, params: Optional[dict] = None):
-        output = self.pipeline.run(query=query, params=params)
-        return output
-
 
 class ExtractiveQAPipeline(BaseStandardPipeline):
     def __init__(self, reader: BaseReader, retriever: BaseRetriever):
@@ -547,6 +543,15 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `reader`. For instance,
+                       params={"retriever": {"top_k": 10}, "reader": {"top_k": 5}}
+        """
+        output = self.pipeline.run(query=query, params=params)
+        return output
+
 
 class DocumentSearchPipeline(BaseStandardPipeline):
     def __init__(self, retriever: BaseRetriever):
@@ -559,6 +564,10 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
     def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+        """
         output = self.pipeline.run(query=query, params=params)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
@@ -576,6 +585,15 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
+
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `generator`. For instance,
+                       params={"retriever": {"top_k": 10}, "generator": {"top_k": 5}}
+        """
+        output = self.pipeline.run(query=query, params=params)
+        return output
 
 
 class SearchSummarizationPipeline(BaseStandardPipeline):
@@ -595,6 +613,11 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         self.return_in_answer_format = return_in_answer_format
 
     def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `summarizer`. For instance,
+                       params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+                """
         output = self.pipeline.run(query=query, params=params)
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
@@ -630,6 +653,10 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
     def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+        """
         output = self.pipeline.run(query=query, params=params)
         documents = output["documents"]
 
@@ -706,9 +733,8 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
 
-    def run(self, documents, **kwargs):
-        kwargs["documents"] = documents
-        output = self.pipeline.run(**kwargs)
+    def run(self, documents, params: Optional[dict] = None):
+        output = self.pipeline.run(documents=documents, params=params)
         return output
 
 
@@ -722,9 +748,8 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
 
-    def run(self, query, **kwargs):
-        kwargs["query"] = query
-        output = self.pipeline.run(**kwargs)
+    def run(self, query, params: Optional[dict] = None):
+        output = self.pipeline.run(query=query, params=params)
         return output
 
 
@@ -762,7 +787,7 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
 
 class RootNode(BaseComponent):
     """
-    RootNode feeds inputs(`query` or `file`) together with corresponding parameters to a Pipeline.
+    RootNode feeds inputs together with corresponding params to a Pipeline.
     """
     outgoing_edges = 1
 
@@ -1271,7 +1296,7 @@ class Docs2Answers(BaseComponent):
     def __init__(self):
         self.set_config()
 
-    def run(self, query, documents, **kwargs):
+    def run(self, query, documents):  # type: ignore
         # conversion from Document -> Answer
         answers = []
         for doc in documents:
@@ -1302,7 +1327,5 @@ class Docs2Answers(BaseComponent):
             answers.append(cur_answer)
 
         output = {"query": query, "answers": answers}
-        # Pass also the other incoming kwargs so that future nodes still have access to it
-        output.update(**kwargs)
 
         return output, "output_1"
