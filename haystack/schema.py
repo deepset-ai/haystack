@@ -309,7 +309,15 @@ class BaseComponent:
         return component_instance
 
     @abstractmethod
-    def run(self, *args: Any, **kwargs: Any):
+    def run(
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ):
         """
         Method that will be executed when the node in the graph is called.
 
@@ -318,7 +326,6 @@ class BaseComponent:
 
 
         See an example for an implementation in haystack/reader/base/BaseReader.py
-        :param kwargs:
         :return:
         """
         pass
