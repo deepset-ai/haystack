@@ -34,7 +34,7 @@ class FARMClassifier(BaseClassifier):
     p.add_node(component=retriever, name="Retriever", inputs=["Query"])
     p.add_node(component=classifier, name="Classifier", inputs=["Retriever"])
 
-    res = p_extractive.run(
+    res = p.run(
         query="Who is the father of Arya Stark?",
         params={"Retriever": {"top_k": 10}, "Classifier": {"top_k": 5}}
     )
