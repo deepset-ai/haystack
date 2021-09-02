@@ -11,7 +11,7 @@ RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.
 RUN apt-get install libpoppler-cpp-dev pkg-config -y --fix-missing
 
 # Install Tesseract
-RUN apt-get install tesseract-ocr libtesseract-dev poppler-utils
+RUN apt-get install tesseract-ocr libtesseract-dev poppler-utils -y
 
 # copy code
 COPY haystack /home/user/haystack
