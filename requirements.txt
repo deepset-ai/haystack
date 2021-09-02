@@ -15,7 +15,7 @@ langdetect # for PDF conversions
 pytesseract==0.3.7 
 pillow==8.2.0
 pdf2image==1.14.0
-# optional: sentence-transformers
+sentence-transformers>=0.4.0
 python-multipart
 python-docx
 sqlalchemy>=1.4.2
