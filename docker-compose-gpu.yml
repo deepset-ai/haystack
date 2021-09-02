@@ -4,7 +4,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: "deepset/haystack-cpu:latest"
+    image: "deepset/haystack-gpu:latest"
+    # in recent docker-compose version you can enable GPU resources. Make sure to fulfill the prerequisites listed here: https://docs.docker.com/compose/gpu-support/
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
     # Mount custom Pipeline YAML and custom Components.
     # volumes:
     #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
