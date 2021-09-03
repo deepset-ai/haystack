@@ -131,11 +131,11 @@ def test_get_documents_by_id(document_store_with_docs):
 @pytest.mark.elasticsearch
 def test_doc_id_with_int_zero_indexing(document_store):
     documents = [
-        {"text": "text1", "id": 0},
+        {"text": "text1", "id": 0, "meta_field_zero_id": "0"}
     ]
     document_store.write_documents(documents)
-    documents = document_store.get_all_documents()
-    assert "0" == documents[0].id
+    docs = document_store.get_all_documents(filters={"meta_field_zero_id": ["0"]})
+    assert "0" == docs[0].id
 
 
 @pytest.mark.elasticsearch
