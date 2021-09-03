@@ -129,6 +129,16 @@ def test_get_documents_by_id(document_store_with_docs):
 
 
 @pytest.mark.elasticsearch
+def test_doc_id_with_int_zero_indexing(document_store):
+    documents = [
+        {"text": "text1", "id": 0},
+    ]
+    document_store.write_documents(documents)
+    documents = document_store.get_all_documents()
+    assert "0" == documents[0].id
+
+
+@pytest.mark.elasticsearch
 def test_get_document_count(document_store):
     documents = [
         {"text": "text1", "id": "1", "meta_field_for_count": "a"},
