@@ -4,6 +4,7 @@ import time
 from copy import deepcopy
 from string import Template
 from typing import List, Optional, Union, Dict, Any, Generator
+
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
@@ -48,6 +49,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         timeout=30,
         return_embedding: bool = False,
         duplicate_documents: str = 'overwrite',
+        index_type: str = "flat"
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -95,6 +97,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
+                           ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
 
         """
         # save init parameters to enable export of component config as YAML
@@ -105,7 +109,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
             duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
-            timeout=timeout, return_embedding=return_embedding,
+            timeout=timeout, return_embedding=return_embedding, index_type=index_type
         )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
@@ -131,16 +135,24 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.custom_mapping = custom_mapping
         self.index: str = index
         self.label_index: str = label_index
-        if similarity in ["cosine", "dot_product"]:
+        if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity = similarity
         else:
-            raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine' and 'dot_product'")
+            raise Exception(f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'")
+        if index_type in ["flat", "hnsw"]:
+            self.index_type = index_type
+        else:
+            raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
+        if index_type == "hnsw" and type(self) == ElasticsearchDocumentStore:
+            raise Exception("The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
+                            "Try the OpenSearchDocumentStore instead.")
         if create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
 
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
+
 
     def _init_elastic_client(self,
                              host: Union[str, List[str]],
@@ -154,16 +166,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              ca_certs: Optional[str],
                              verify_certs: bool,
                              timeout: int) -> Elasticsearch:
-        # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
-        if isinstance(host, list):
-            if isinstance(port, list):
-                if not len(port) == len(host):
-                    raise ValueError("Length of list `host` must match length of list `port`")
-                hosts = [{"host":h, "port":p} for h, p in zip(host,port)]
-            else:
-                hosts = [{"host": h, "port": port} for h in host]
-        else:
-            hosts = [{"host": host, "port": port}]
+
+        hosts = self._prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not(api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
@@ -177,10 +181,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
             client = Elasticsearch(
                 hosts=hosts, http_auth=aws4auth, connection_class=RequestsHttpConnection, use_ssl=True, verify_certs=True, timeout=timeout)
-        else:
+        elif username:
             # standard http_auth
             client = Elasticsearch(hosts=hosts, http_auth=(username, password),
                                         scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
+                                        timeout=timeout)
+        else:
+            # there is no authentication for this elasticsearch instance
+            client = Elasticsearch(hosts=hosts, scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
                                         timeout=timeout)
 
         # Test connection
@@ -198,6 +206,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             raise ConnectionError(
                 f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s).")
         return client
+
+    def _prepare_hosts(self, host, port):
+        # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
+        if isinstance(host, list):
+            if isinstance(port, list):
+                if not len(port) == len(host):
+                    raise ValueError("Length of list `host` must match length of list `port`")
+                hosts = [{"host":h, "port":p} for h, p in zip(host,port)]
+            else:
+                hosts = [{"host": h, "port": port} for h in host]
+        else:
+            hosts = [{"host": host, "port": port}]
+        return hosts
 
     def _create_document_index(self, index_name: str):
         """
@@ -352,7 +373,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return buckets
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000,duplicate_documents: Optional[str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -412,7 +433,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             # don't index query score and empty fields
             _ = _doc.pop("score", None)
-            _ = _doc.pop("probability", None)
             _doc = {k:v for k,v in _doc.items() if v is not None}
 
             # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
@@ -443,29 +463,31 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if index and not self.client.indices.exists(index=index):
             self._create_label_index(index)
 
+        labels = [Label.from_dict(label) if isinstance(label, dict) else label for label in labels]
+        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
+        if len(duplicate_ids) > 0:
+            logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                           f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                           f" the answer annotation and not the question."
+                           f" Problematic ids: {','.join(duplicate_ids)}")
         labels_to_index = []
-        for l in labels:
-            # Make sure we comply to Label class format
-            if isinstance(l, dict):
-                label = Label.from_dict(l)
-            else:
-                label = l
-
+        for label in labels:
             # create timestamps if not available yet
-            if not label.created_at:
-                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")
-            if not label.updated_at:
-                label.updated_at = label.created_at
+            if not label.created_at:  # type: ignore
+                label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")  # type: ignore
+            if not label.updated_at:  # type: ignore
+                label.updated_at = label.created_at  # type: ignore
 
             _label = {
-                "_op_type": "index" if self.duplicate_documents == "overwrite" else "create",
+                "_op_type": "index" if self.duplicate_documents == "overwrite" or label.id in duplicate_ids else  # type: ignore
+                "create",
                 "_index": index,
-                **label.to_dict()
+                **label.to_dict()  # type: ignore
             }  # type: Dict[str, Any]
 
             # rename id for elastic
-            if label.id is not None:
-                _label["_id"] = str(_label.pop("id"))
+            if label.id is not None:  # type: ignore
+                _label["_id"] = str(_label.pop("id"))  # type: ignore
 
             labels_to_index.append(_label)
 
@@ -608,7 +630,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         index = index or self.label_index
         result = list(self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size))
-        labels = [Label.from_dict(hit["_source"]) for hit in result]
+        labels = [Label.from_dict({**hit["_source"], "id": hit["_id"]}) for hit in result]
         return labels
 
     def _get_all_documents_in_index(
@@ -784,7 +806,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 body["_source"] = {"excludes": excluded_meta_data}
 
             logger.debug(f"Retriever query: {body}")
-            result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+            try:
+                result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+            except RequestError as e:
+                if e.error == "search_phase_execution_exception":
+                    error_message: str = "search_phase_execution_exception: Likely some of your stored documents don't have embeddings." \
+                                         " Run the document store's update_embeddings() method."
+                    raise RequestError(e.status_code, error_message, e.info)
+                else:
+                    raise e
 
             documents = [
                 self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
@@ -799,7 +829,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.similarity == "cosine":
             similarity_fn_name = "cosineSimilarity"
         elif self.similarity == "dot_product":
-            similarity_fn_name = "dotProduct"
+            if type(self) == OpenSearchDocumentStore:
+                similarity_fn_name = "innerproduct"
+            elif type(self) == ElasticsearchDocumentStore:
+                similarity_fn_name = "dotProduct"
         else:
             raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
@@ -833,13 +866,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if adapt_score_for_embedding:
                 score = self._scale_embedding_score(score)
                 if self.similarity == "cosine":
-                    probability = (score + 1) / 2  # scaling probability from cosine similarity
+                    score = (score + 1) / 2  # scaling probability from cosine similarity
                 elif self.similarity == "dot_product":
-                    probability = float(expit(np.asarray(score / 100)))  # scaling probability from dot product
+                    score = float(expit(np.asarray(score / 100)))  # scaling probability from dot product
             else:
-                probability = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
-        else:
-            probability = None
+                score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
         embedding = None
         if return_embedding:
@@ -852,7 +883,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             text=hit["_source"].get(self.text_field),
             meta=meta_data,
             score=score,
-            probability=probability,
             question=hit["_source"].get(self.faq_question_field),
             embedding=embedding,
         )
@@ -903,6 +933,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         if index is None:
             index = self.index
+
+        if self.refresh_type == 'false':
+            self.client.indices.refresh(index=index)
 
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
@@ -988,14 +1021,109 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
-class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
+
+class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     """
-    Document Store using the Open Distro for Elasticsearch. It is compatible with the AWS Elasticsearch Service.
+    Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
 
     In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
     the KNN plugin that can scale to a large number of documents.
     """
+    
+    def __init__(self,
+                 verify_certs=False,
+                 scheme="https",
+                 username="admin",
+                 password="admin",
+                 port=9201,
+                 **kwargs):
 
+        # Overwrite default kwarg values of parent class so that in default cases we can initialize
+        # an OpenSearchDocumentStore without provding any arguments
+
+        super(OpenSearchDocumentStore, self).__init__(verify_certs=verify_certs,
+                                                      scheme=scheme,
+                                                      username=username,
+                                                      password=password,
+                                                      port=port,
+                                                      **kwargs)
+
+
+    def query_by_embedding(self,
+                        query_emb: np.ndarray,
+                        filters: Optional[Dict[str, List[str]]] = None,
+                        top_k: int = 10,
+                        index: Optional[str] = None,
+                        return_embedding: Optional[bool] = None) -> List[Document]:
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param top_k: How many documents to return
+        :param index: Index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :return:
+        """
+        if index is None:
+            index = self.index
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
+        if not self.embedding_field:
+            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
+        else:
+            # +1 in similarity to avoid negative numbers (for cosine sim)
+            body = {
+                "size": top_k,
+                "query": {
+                    "bool": {
+                        "must": [
+                            self._get_vector_similarity_query(query_emb, top_k)
+                        ]
+                    }
+                }
+            }
+            if filters:
+                filter_clause = []
+                for key, values in filters.items():
+                    if type(values) != list:
+                        raise ValueError(
+                            f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                            'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
+                    filter_clause.append(
+                        {
+                            "terms": {key: values}
+                        }
+                    )
+                body["query"]["bool"]["filter"] = filter_clause         # type: ignore
+
+            excluded_meta_data: Optional[list] = None
+
+            if self.excluded_meta_data:
+                excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+                if return_embedding is True and self.embedding_field in excluded_meta_data:
+                    excluded_meta_data.remove(self.embedding_field)
+                elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                    excluded_meta_data.append(self.embedding_field)
+            elif return_embedding is False:
+                excluded_meta_data = [self.embedding_field]
+
+            if excluded_meta_data:
+                body["_source"] = {"excludes": excluded_meta_data}
+
+            logger.debug(f"Retriever query: {body}")
+            result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+
+            documents = [
+                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+                for hit in result
+            ]
+            return documents
+    
     def _create_document_index(self, index_name: str):
         """
         Create a new index for storing documents.
@@ -1029,20 +1157,39 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
                 }
             }
             if self.embedding_field:
+
                 if self.similarity == "cosine":
                     similarity_space_type = "cosinesimil"
                 elif self.similarity == "dot_product":
+                    similarity_space_type = "innerproduct"
+                elif self.similarity == "l2":
                     similarity_space_type = "l2"
-                else:
-                    raise Exception(
-                        f"Similarity function {self.similarity} is not supported by OpenDistroElasticsearchDocumentStore."
-                    )
-                mapping["settings"]["knn"] = True
-                mapping["settings"]["knn.space_type"] = similarity_space_type
+
+                mapping["settings"]["index"] = {}
+                mapping["settings"]["index"]["knn"] = True
+                mapping["settings"]["index"]["knn.space_type"] = similarity_space_type
+
                 mapping["mappings"]["properties"][self.embedding_field] = {
                     "type": "knn_vector",
                     "dimension": self.embedding_dim,
                 }
+
+                if self.index_type == "flat":
+                    pass
+                elif self.index_type == "hnsw":
+                    mapping["settings"]["index"]["knn.algo_param"] = {}
+                    mapping["settings"]["index"]["knn.algo_param"]["ef_search"] = 20
+                    mapping["mappings"]["properties"][self.embedding_field]["method"] = {
+                        "space_type": similarity_space_type,
+                        "name": "hnsw",
+                        "engine": "nmslib",
+                        "parameters": {
+                            "ef_construction": 80,
+                            "m": 64
+                        }
+                    }
+                else:
+                    logger.error("Please set index_type to either 'flat' or 'hnsw'")
 
         try:
             self.client.indices.create(index=index_name, body=mapping)
@@ -1054,6 +1201,7 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name):
                 raise e
 
+
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
@@ -1063,3 +1211,18 @@ class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore):
 
     def _scale_embedding_score(self, score):
         return score
+
+
+class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
+    """
+    A DocumentStore which has an Open Distro for Elasticsearch service behind it.
+    """
+    def __init__(self, host="https://admin:admin@localhost:9200/", similarity="cosine", **kwargs):
+        logger.warning("Open Distro for Elasticsearch has been replaced by OpenSearch! "
+                       "See https://opensearch.org/faq/ for details. "
+                       "We recommend using the OpenSearchDocumentStore instead.")
+        super(OpenDistroElasticsearchDocumentStore, self).__init__(host=host,
+                                                                   similarity=similarity,
+                                                                   **kwargs)
+    def _prepare_hosts(self, host, port):
+        return host

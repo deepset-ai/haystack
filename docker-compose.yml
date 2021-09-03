@@ -5,6 +5,9 @@ services:
       context: .
       dockerfile: Dockerfile
     image: "deepset/haystack-cpu:latest"
+    # Mount custom Pipeline YAML and custom Components.
+    # volumes:
+    #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
     ports:
       - 8000:8000
     environment:
@@ -27,6 +30,7 @@ services:
     build:
       context: ui
       dockerfile: Dockerfile
+    image: "deepset/haystack-streamlit-ui:latest"
     ports:
       - 8501:8501
     environment:

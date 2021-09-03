@@ -11,7 +11,11 @@ elastic-apm
 tox
 coverage
 langdetect # for PDF conversions
-# optional: sentence-transformers
+# for PDF conversions using OCR
+pytesseract==0.3.7 
+pillow==8.2.0
+pdf2image==1.14.0
+sentence-transformers>=0.4.0
 python-multipart
 python-docx
 sqlalchemy>=1.4.2
@@ -31,4 +35,5 @@ pymilvus
 #webdriver-manager
 SPARQLWrapper
 mmh3
-weaviate-client
+weaviate-client==2.5.0
+ray==1.5.0

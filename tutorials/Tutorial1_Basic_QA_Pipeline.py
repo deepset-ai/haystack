@@ -13,7 +13,6 @@ import logging
 import subprocess
 import time
 
-from haystack import Finder
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
@@ -74,7 +73,7 @@ def tutorial1_basic_qa_pipeline():
     # Now, let's write the docs to our DB.
     document_store.write_documents(dicts)
 
-    # ## Initalize Retriever, Reader,  & Finder
+    # ## Initalize Retriever & Reader
     #
     # ### Retriever
     #

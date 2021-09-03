@@ -86,7 +86,7 @@ class RAGenerator(BaseGenerator):
                                    'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                                    See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param retriever: `DensePassageRetriever` used to embedded passage
+        :param retriever: `DensePassageRetriever` used to embedded passages for the docs passed to `predict()`. This is optional and is only needed if the docs you pass don't already contain embeddings in `Document.embedding`.   
         :param generator_type: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
         :param top_k: Number of independently generated text to return
         :param max_length: Maximum length of generated text
@@ -281,7 +281,6 @@ class RAGenerator(BaseGenerator):
                 "meta": {
                     "doc_ids": flat_docs_dict["id"],
                     "doc_scores": flat_docs_dict["score"],
-                    "doc_probabilities": flat_docs_dict["probability"],
                     "texts": flat_docs_dict["text"],
                     "titles": titles,
                 }

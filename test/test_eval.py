@@ -1,11 +1,8 @@
 import pytest
 from haystack.document_store.base import BaseDocumentStore
 from haystack.preprocessor.preprocessor import PreProcessor
-from haystack.finder import Finder
 from haystack.eval import EvalAnswers, EvalDocuments
 from haystack import Pipeline
-
-
 
 @pytest.mark.parametrize("batch_size", [None, 20])
 @pytest.mark.elasticsearch
@@ -109,7 +106,9 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
 
     eval_retriever = EvalDocuments()
-    eval_reader = EvalAnswers()
+    eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-MiniLM-L3-v2",debug=True)
+    eval_reader_cross = EvalAnswers(sas_model="cross-encoder/stsb-TinyBERT-L-4",debug=True)
+    eval_reader_vanila = EvalAnswers()
 
     assert document_store.get_document_count(index="haystack_test_eval_document") == 2
     p = Pipeline()
@@ -117,6 +116,8 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
     p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
     p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
+    p.add_node(component=eval_reader_cross, name="EvalAnswers_cross", inputs=["QAReader"])
+    p.add_node(component=eval_reader_vanila, name="EvalAnswers_vanilla", inputs=["QAReader"])
     for l in labels:
         res = p.run(
             query=l.question,
@@ -128,46 +129,9 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     assert eval_retriever.recall == 1.0
     assert round(eval_reader.top_k_f1, 4) == 0.8333
     assert eval_reader.top_k_em == 0.5
-
-
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-@pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
-def test_eval_finder(document_store: BaseDocumentStore, reader, retriever):
-    finder = Finder(reader=reader, retriever=retriever)
-
-    # add eval data (SQUAD format)
-    document_store.add_eval_data(
-        filename="samples/squad/tiny.json",
-        doc_index="haystack_test_eval_document",
-        label_index="haystack_test_feedback",
-    )
-    assert document_store.get_document_count(index="haystack_test_eval_document") == 2
-
-    # eval finder
-    results = finder.eval(
-        label_index="haystack_test_feedback", doc_index="haystack_test_eval_document", top_k_retriever=1, top_k_reader=5
-    )
-    assert results["retriever_recall"] == 1.0
-    assert results["retriever_map"] == 1.0
-    assert abs(results["reader_topk_f1"] - 0.66666) < 0.001
-    assert abs(results["reader_topk_em"] - 0.5) < 0.001
-    assert abs(results["reader_topk_accuracy"] - 1) < 0.001
-    assert results["reader_top1_f1"] <= results["reader_topk_f1"]
-    assert results["reader_top1_em"] <= results["reader_topk_em"]
-    assert results["reader_top1_accuracy"] <= results["reader_topk_accuracy"]
-
-    # batch eval finder
-    results_batch = finder.eval_batch(
-        label_index="haystack_test_feedback", doc_index="haystack_test_eval_document", top_k_retriever=1, top_k_reader=5
-    )
-    assert results_batch["retriever_recall"] == 1.0
-    assert results_batch["retriever_map"] == 1.0
-    assert results_batch["reader_top1_f1"] == results["reader_top1_f1"]
-    assert results_batch["reader_top1_em"] == results["reader_top1_em"]
-    assert results_batch["reader_topk_accuracy"] == results["reader_topk_accuracy"]
-
+    assert round(eval_reader.top_k_sas, 3) == 0.800
+    assert round(eval_reader_cross.top_k_sas, 3) == 0.671
+    assert eval_reader.top_k_em == eval_reader_vanila.top_k_em
 
 @pytest.mark.elasticsearch
 def test_eval_data_split_word(document_store):

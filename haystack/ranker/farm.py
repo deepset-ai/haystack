@@ -112,7 +112,7 @@ class FARMRanker(BaseRanker):
         - Take a plain language model (e.g. `bert-base-cased`) and train it for TextPairClassification
         - Take a TextPairClassification model and fine-tune it for your domain
 
-        :param data_dir: Path to directory containing your training data in SQuAD style
+        :param data_dir: Path to directory containing your training data
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
         :param test_filename: Filename of test data

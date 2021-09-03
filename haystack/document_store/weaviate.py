@@ -191,7 +191,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Weaviate get methods return the data items in properties key, whereas the query doesn't.
         """
         score = None
-        probability = None
         text = ""
         question = None
 
@@ -214,7 +213,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if "_additional" in props:
             if "certainty" in props["_additional"]:
                 score = props["_additional"]['certainty']
-                probability = score
             if "id" in props["_additional"]:
                 id = props["_additional"]['id']
             if "vector" in props["_additional"]:
@@ -232,7 +230,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             text=text,
             meta=meta_data,
             score=score,
-            probability=probability,
             question=question,
             embedding=embedding,
         )
@@ -369,7 +366,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         **doc.to_dict(field_map=self._create_document_field_map())
                     }
                     _ = _doc.pop("score", None)
-                    _ = _doc.pop("probability", None)
 
                     # In order to have a flat structure in elastic + similar behaviour to the other DocumentStores,
                     # we "unnest" all value within "meta"
@@ -682,6 +678,21 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
+        :param index: Index name to delete the document from.
+        :param filters: Optional filters to narrow down the documents to be deleted.
+        :return: None
+        """
+        logger.warning(
+                """DEPRECATION WARNINGS: 
+                1. delete_all_documents() method is deprecated, please use delete_documents method
+                For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
+                """
+        )
+        self.delete_documents(index, filters)
+
+    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
@@ -695,3 +706,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         else:
             self.weaviate_client.schema.delete_class(index)
             self._create_schema_and_index_if_not_exist(index)
+
+
+

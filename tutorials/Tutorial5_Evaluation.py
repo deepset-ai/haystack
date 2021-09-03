@@ -93,13 +93,13 @@ def tutorial5_evaluation():
     # Initialize Reader
     reader = FARMReader(
         model_name_or_path="deepset/roberta-base-squad2",
-        top_k_per_candidate=4,
+        top_k=4,
         return_no_answer=True
     )
 
     # Here we initialize the nodes that perform evaluation
     eval_retriever = EvalDocuments()
-    eval_reader = EvalAnswers()
+    eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
 
 
     ## Evaluate Retriever on its own in closed domain fashion

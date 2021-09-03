@@ -1,4 +1,5 @@
 import logging
+import collections
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Dict, List, Union
@@ -21,6 +22,7 @@ class BaseDocumentStore(BaseComponent):
     label_index: Optional[str]
     similarity: Optional[str]
     duplicate_documents_options: tuple = ('skip', 'overwrite', 'fail')
+    ids_iterator = None
 
     @abstractmethod
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
@@ -64,6 +66,20 @@ class BaseDocumentStore(BaseComponent):
         :param return_embedding: Whether to return the document embeddings.
         """
         pass
+
+    def __iter__(self):
+        if not self.ids_iterator:
+            self.ids_iterator = [x.id for x in self.get_all_documents()]
+        return self
+
+    def __next__(self):
+        if len(self.ids_iterator) == 0:
+            raise StopIteration
+        else:
+            curr_id = self.ids_iterator[0]
+            ret = self.get_document_by_id(curr_id)
+            self.ids_iterator = self.ids_iterator[1:]
+            return ret
 
     @abstractmethod
     def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
@@ -324,3 +340,24 @@ class BaseDocumentStore(BaseComponent):
             documents = list(filter(lambda doc: doc.id not in ids_exist_in_db, documents))
 
         return documents
+
+    def _get_duplicate_labels(self, labels: list, index: str = None) -> List[Label]:
+        """
+        Return all duplicate labels
+        :param labels: List of Label objects
+        :param index: add an optional index attribute to labels. It can be later used for filtering.
+        :return: List of labels
+        """
+        index = index or self.label_index
+        new_ids: List[str] = [label.id for label in labels]
+        duplicate_ids: List[str] = []
+
+        for label_id, count in collections.Counter(new_ids).items():
+            if count > 1:
+                duplicate_ids.append(label_id)
+
+        for label in self.get_all_labels(index=index):
+            if label.id in new_ids:
+                duplicate_ids.append(label.id)
+
+        return [label for label in labels if label.id in duplicate_ids]

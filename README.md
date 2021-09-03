@@ -4,7 +4,7 @@
     <a href="https://github.com/deepset-ai/haystack/actions">
         <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
     </a>
-    <a href="https://haystack.deepset.ai/docs/intromd">
+    <a href="https://haystack.deepset.ai/overview/intro">
         <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
     </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
@@ -52,19 +52,16 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 |  |  |
 |-|-|
-| :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
+| :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Usage, Guides, API documentation ...|
 | :beginner: [Quick Demo](https://github.com/deepset-ai/haystack/#quick-demo) | Quickly see what Haystack offers |
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :art: [Key Components](https://github.com/deepset-ai/haystack/#key-components) | Overview of core concepts |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
 | :eyes: [How to use Haystack](https://github.com/deepset-ai/haystack/#how-to-use-haystack) | Basic explanation of concepts, options and usage |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
-| :pray: [Slack](https://haystack.deepset.ai/community/join) | Join our community on Slack |
-| :bird: [Twitter](https://twitter.com/deepset_ai) | Follow us on Twitter for news and updates |
-| :vulcan_salute: [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) | We can always have a conversation here |
-| :hammer_and_pick: [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack) | Questions about Haystack on Stack Overflow |
-| :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers and DocumentStores |
-| :telescope: [Roadmap](https://haystack.deepset.ai/docs/latest/roadmapmd) | Public roadmap of Haystack |
+| :vulcan_salute: [Community](https://www.deepset.ai/community)| [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
+| :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/v0.9.0) | Speed & Accuracy of Retriever, Readers and DocumentStores |
+| :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap) | Public roadmap of Haystack |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
 ## Quick Demo
@@ -90,6 +87,8 @@ The quickest way to see what Haystack offers is to start a [Docker Compose](http
     cd haystack
     docker-compose pull
     docker-compose up
+    
+    # Or on a GPU machine: docker-compose -f docker-compose-gpu.yml up
 ```
 
 You should be able to see the following in your terminal window as part of the log output:
@@ -287,6 +286,24 @@ If you'd like to learn more about Haystack, feel free to go through the tutorial
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial11_Pipelines.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial11_Pipelines.py)
+-   Tutorial 12 - Long-Form Question Answering:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.py)
+-   Tutorial 13 - Question Generation:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.py)
+-   Tutorial 14 - Query Classifier:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.py)
 
 
 ## How to use Haystack
@@ -295,21 +312,23 @@ Below you'll find more detailed descriptions of various Haystack components alon
 
 [File Conversion](https://github.com/deepset-ai/haystack/blob/master/README.md#1-file-conversion) | [Preprocessing](https://github.com/deepset-ai/haystack/blob/master/README.md#2-preprocessing) | [DocumentStores](https://github.com/deepset-ai/haystack/blob/master/README.md#3-documentstores) | [Retrievers](https://github.com/deepset-ai/haystack/blob/master/README.md#4-retrievers) | [Readers](https://github.com/deepset-ai/haystack/blob/master/README.md#5-readers) | [Pipelines](https://github.com/deepset-ai/haystack/blob/master/README.md#6-pipelines) | [REST API](https://github.com/deepset-ai/haystack/blob/master/README.md#7-rest-api) |  [Labeling Tool](https://github.com/deepset-ai/haystack/blob/master/README.md#8-labeling-tool)
 
-Please also refer to our [documentation](https://haystack.deepset.ai/docs/intromd).
+Please also refer to our [documentation](https://haystack.deepset.ai/overview/intro).
 
 ### 1) File Conversion
 
 **What**
 
-Different converters to extract text from your original files (pdf, docx, txt, html).
-While it's almost impossible to cover all types, layouts, and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta-information (e.g., page splits). The converters are easily extendable so that you can customize them for your files if needed.
+Different converters to extract text from your original files (pdf, docx, txt, md, html).
+While it's almost impossible to cover all types, layouts, and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta-information (e.g., page splits). The converters are easily extendable so that you can customize them for your files if needed. We also provide an OCR based approach for converting images or PDFs. 
 
 **Available options**
 
 - Txt
-- PDF
+- PDF (incl. OCR)
 - Docx
 - Apache Tika (Supports > 340 file formats)
+- Markdown
+- Images
 
 **Example**
 
@@ -387,6 +406,8 @@ document_store.write_documents(docs)
 - FAISS
 - SQL
 - InMemory
+- Milvus
+- Weaviate
 
 **Example**
 
@@ -405,7 +426,7 @@ document_store.query(query="What is the meaning of life?", filters=None, top_k=5
 document_store.query_by_embedding(query_emb, filters=None, top_k=5)
 
 ```
--> See [docs](https://haystack.deepset.ai/docs/latest/documentstoremd) for details
+-> See [docs](https://haystack.deepset.ai/usage/document-store) for details
 
 
 ### 4) Retrievers
@@ -434,7 +455,7 @@ retriever.retrieve(query="Why did the revenue increase?")
 # returns: [Document, Document]
 ```
 
--> See [docs](https://haystack.deepset.ai/docs/latest/retrievermd) for details
+-> See [docs](https://haystack.deepset.ai/usage/retriever) for details
 
 
 ### 5) Readers
@@ -468,7 +489,7 @@ reader.eval(...)
 # Predict
 reader.predict(question="Who is the father of Arya Starck?", documents=documents, top_k=3)
 ```
--> See [docs](https://haystack.deepset.ai/docs/latest/readermd) for details
+-> See [docs](https://haystack.deepset.ai/usage/reader) for details
 
 ### 6) Pipelines
 
@@ -500,7 +521,7 @@ p.draw(path="custom_pipe.png")
 ```
 ![image](https://user-images.githubusercontent.com/1563902/102451716-54813700-4039-11eb-881e-f3c01b47ca15.png)
 
--> See [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd) for details and example of more complex pipelines
+-> See [docs](https://haystack.deepset.ai/usage/pipelines) for details and example of more complex pipelines
 
 ### 7) REST API
 
@@ -541,21 +562,37 @@ We are very open to the community's contributions - be it a quick fix of a typo,
 
 We'd also like to invite you to our Slack community channels. Please join [here](https://haystack.deepset.ai/community/join)!
 
-Tests will automatically run for every commit you push to your PR. You can also run them locally by executing [pytest](https://docs.pytest.org/en/stable/) in your terminal from the root folder of this repository:
-
-All tests:
-``` bash
+#### Tests
+Tests will automatically run in our CI for every commit you push to your PR. You can also run them locally by executing pytest in your terminal from the root folder of this repository.
+If you want to run **all** tests locally, you'll need **all** document stores running in the background.
+You can launch them like this:
+```
+docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
+docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
+docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.5.0
+docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
+docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+```
+Then run all tests:
+```
 cd test
 pytest
 ```
-
-You can also only run a subset of tests by specifying a marker and the optional "not" keyword:
-``` bash
-cd test
+To just run individual tests:
+```
+pytest -v test_retriever.py::test_dpr_embedding
+```
+To just select a logical subset of tests via markers and the optional "not" keyword:
+```
 pytest -m not elasticsearch
 pytest -m elasticsearch
 pytest -m generator
 pytest -m tika
 pytest -m not slow
 ...
+```
+If you want to run all test cases but not with all document store variants, you can make use of our `--document_store`:
+```
+pytest -v test_retriever.py::test_dpr_embedding --document_store_type="faiss"
+pytest -v test_retriever.py::test_dpr_embedding --document_store_type="faiss, memory"
 ```

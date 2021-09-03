@@ -22,8 +22,9 @@ def annotate_answer(answer, context):
     from the API that we highlight in the given context"""
     start_idx = context.find(answer)
     end_idx = start_idx + len(answer)
-    annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
-
+    # calculate dynamic height depending on context length
+    height = int(len(context) * 0.50) + 5
+    annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:], height=height)
 
 def show_plain_documents(text):
     """ If we are using a plain document search pipeline, i.e. only retriever, we'll get plain documents
@@ -64,14 +65,15 @@ eval_mode = st.sidebar.checkbox("Evaluation mode")
 debug = st.sidebar.checkbox("Show debug info")
 
 st.sidebar.write("## File Upload:")
-data_file = st.sidebar.file_uploader("", type=["pdf", "txt", "docx"])
-# Upload file
-if data_file:
-    raw_json = upload_doc(data_file)
-    st.sidebar.write(raw_json)
-    if debug:
-        st.subheader("REST API JSON response")
+data_files = st.sidebar.file_uploader("", type=["pdf", "txt", "docx"], accept_multiple_files=True)
+for data_file in data_files:
+    # Upload file
+    if data_file:
+        raw_json = upload_doc(data_file)
         st.sidebar.write(raw_json)
+        if debug:
+            st.subheader("REST API JSON response")
+            st.sidebar.write(raw_json)
 
 # load csv into pandas dataframe
 if eval_mode:
@@ -120,7 +122,7 @@ if run_query:
     with st.spinner(
         "Performing neural search on documents... 🧠 \n "
         "Do you want to optimize speed or accuracy? \n"
-        "Check out the docs: https://haystack.deepset.ai/docs/latest/optimizationmd "
+        "Check out the docs: https://haystack.deepset.ai/usage/optimization "
     ):
         results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
 

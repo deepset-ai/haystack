@@ -7,6 +7,7 @@ import pytest
 import requests
 from elasticsearch import Elasticsearch
 
+from haystack.classifier import FARMClassifier
 from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
@@ -31,6 +32,7 @@ from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.summarizer.transformers import TransformersSummarizer
 from haystack.translator import TransformersTranslator
+from haystack.question_generator import QuestionGenerator
 
 
 def pytest_addoption(parser):
@@ -233,6 +235,11 @@ def rag_generator():
 
 
 @pytest.fixture(scope="module")
+def question_generator():
+    return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
+
+
+@pytest.fixture(scope="module")
 def eli5_generator():
     return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
 
@@ -271,6 +278,16 @@ def test_docs_xs():
     ]
 
 
+@pytest.fixture(scope="module")
+def reader_without_normalized_scores():
+    return FARMReader(
+        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        use_gpu=False,
+        top_k_per_sample=5,
+        num_processes=0,
+        use_confidence_scores=False
+    )
+
 @pytest.fixture(params=["farm", "transformers"], scope="module")
 def reader(request):
     if request.param == "farm":
@@ -296,6 +313,14 @@ def ranker(request):
     if request.param == "sentencetransformers":
         return SentenceTransformersRanker(
             model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
+        )
+
+
+@pytest.fixture(params=["farm"], scope="module")
+def classifier(request):
+    if request.param == "farm":
+        return FARMClassifier(
+            model_name_or_path="deepset/bert-base-german-cased-sentiment-Germeval17"
         )
 
 
@@ -381,7 +406,7 @@ def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_all_documents()
+    document_store.delete_documents()
 
 
 @pytest.fixture
@@ -389,7 +414,7 @@ def document_store(request, test_docs_xs):
     vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
     document_store = get_document_store(request.param, vector_dim.args[0])
     yield document_store
-    document_store.delete_all_documents()
+    document_store.delete_documents()
 
 
 def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding"):

@@ -14,7 +14,7 @@ components:
   - name: DocumentStore
     type: ElasticsearchDocumentStore
     params:
-      index: haystack_test_document
+      index: haystack_test
       label_index: haystack_test_label
   - name: PDFConverter
     type: PDFToTextConverter
@@ -28,15 +28,24 @@ components:
 
 pipelines:
   - name: query_pipeline
-    type: Query
+    type: Pipeline
     nodes:
       - name: ESRetriever
         inputs: [Query]
       - name: Reader
         inputs: [ESRetriever]
 
+  - name: ray_query_pipeline
+    type: RayPipeline
+    nodes:
+      - name: ESRetriever
+        replicas: 2
+        inputs: [ Query ]
+      - name: Reader
+        inputs: [ ESRetriever ]
+
   - name: indexing_pipeline
-    type: Indexing
+    type: Pipeline
     nodes:
       - name: PDFConverter
         inputs: [File]

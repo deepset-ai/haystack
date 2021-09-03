@@ -118,7 +118,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             self.similarity = similarity
         else:
             raise ValueError("The Milvus document store can currently only support dot_product and L2 similarity. "
-                             "Please set similarity=\"dot_product\"")
+                             "Please set similarity=\"dot_product\" or \"l2\"")
 
         self.index_type = index_type
         self.index_param = index_param or {"nlist": 16384}
@@ -368,8 +368,8 @@ class MilvusDocumentStore(SQLDocumentStore):
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
         for doc in documents:
-            doc.score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.probability = float(expit(np.asarray(doc.score / 100)))
+            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
+            doc.score = float(expit(np.asarray(raw_score / 100)))
 
         return documents
 
@@ -403,9 +403,13 @@ class MilvusDocumentStore(SQLDocumentStore):
         if status.code != Status.SUCCESS:
             raise RuntimeError(f'Milvus has collection check failed: {status}')
         if ok:
-            status = self.milvus_server.drop_collection(collection_name=index)
-            if status.code != Status.SUCCESS:
-                raise RuntimeError(f'Milvus drop collection failed: {status}')
+            if filters:
+                existing_docs = super().get_all_documents(filters=filters, index=index)
+                self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
+            else:
+                status = self.milvus_server.drop_collection(collection_name=index)
+                if status.code != Status.SUCCESS:
+                    raise RuntimeError(f'Milvus drop collection failed: {status}')
 
             self.milvus_server.flush([index])
             self.milvus_server.compact(collection_name=index)
