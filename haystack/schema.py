@@ -133,10 +133,10 @@ class Label:
         """
 
         # Create a unique ID (either new one, or one from user input)
-        if id:
-            self.id = str(id)
-        else:
+        if id is None:
             self.id = str(uuid4())
+        else:
+            self.id = str(id)
 
         self.created_at = created_at
         self.updated_at = updated_at
