@@ -582,3 +582,11 @@ def test_document_search_pipeline(retriever, document_store):
     output = pipeline.run(document_ids=docs_id)
 
     assert isinstance(output, list)
+    assert isinstance(output, list)
+    assert len(output) == len(docs_id)
+
+    for item in output:
+        assert isinstance(item, list)
+        if len(item) > 0:
+            for _id in item:
+                assert isinstance(_id, str)
