@@ -28,6 +28,7 @@ from networkx.drawing.nx_agraph import to_agraph
 
 from haystack import BaseComponent
 from haystack.generator.base import BaseGenerator
+from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 from haystack.summarizer.base import BaseSummarizer
@@ -1288,3 +1289,30 @@ class Docs2Answers(BaseComponent):
         output.update(**kwargs)
 
         return output, "output_1"
+
+
+class MostSimilarDocumentsPipeline(BaseStandardPipeline):
+    def __init__(self, document_store: BaseDocumentStore):
+        """
+        Initialize a Pipeline for finding similar documents using document ids.
+
+        :param document_store: Document Store instance
+        """
+        self.document_store = document_store
+
+    def run(self, document_ids: List[str], top_k: Optional[int] = 5):
+        """
+        :param document_ids: document ids
+        :param top_k: How many documents id to return against single document
+        """
+        return_ids: list = []
+        self.document_store.return_embedding = True
+        for document in self.document_store.get_documents_by_id(ids=document_ids):
+            found_ids: list = []
+            for found_document in self.document_store.query_by_embedding(query_emb=document.embedding,
+                                                                         return_embedding=False,
+                                                                         top_k=top_k):
+                found_ids.append(found_document.id)
+            return_ids.append(found_ids)
+
+        return return_ids
