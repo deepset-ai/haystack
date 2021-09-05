@@ -113,6 +113,13 @@ class DensePassageRetriever(BaseRetriever):
             similarity_function=similarity_function, progress_bar=progress_bar,
         )
 
+        if devices is None:
+            device, _ = initialize_device_settings(use_cuda=use_gpu)
+            self.devices = [device]
+        else:
+            batch_size *= len(devices)
+            self.devices = devices
+
         self.document_store = document_store
         self.batch_size = batch_size
         self.progress_bar = progress_bar
@@ -126,12 +133,6 @@ class DensePassageRetriever(BaseRetriever):
             logger.warning(f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
                            "We recommend you use dot_product instead. "
                            "This can be set when initializing the DocumentStore")
-
-        if devices is None:
-            device, _ = initialize_device_settings(use_cuda=use_gpu)
-            self.devices = [device]
-        else:
-            self.devices = devices
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
         tokenizers_default_classes = {
@@ -177,7 +178,7 @@ class DensePassageRetriever(BaseRetriever):
             embeds_dropout_prob=0.1,
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
-            device=self.devices[0] if len(self.devices) == 1 else None,
+            device=self.devices[0],
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
@@ -243,9 +244,7 @@ class DensePassageRetriever(BaseRetriever):
         with tqdm(total=len(data_loader)*self.batch_size, unit=" Docs", desc=f"Create embeddings", position=1,
                   leave=False, disable=disable_tqdm) as progress_bar:
             for batch in data_loader:
-                if len(self.devices) == 1:
-                    print(self.devices)
-                    batch = {key: batch[key].to(self.devices[0]) for key in batch}
+                batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
                 # get logits
                 with torch.no_grad():
