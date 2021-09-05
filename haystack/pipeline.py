@@ -1300,7 +1300,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         """
         self.document_store = document_store
 
-    def run(self, document_ids: List[str], top_k: Optional[int] = 5):
+    def run(self, document_ids: List[str], top_k: int = 5):
         """
         :param document_ids: document ids
         :param top_k: How many documents id to return against single document
