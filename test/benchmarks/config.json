@@ -71,9 +71,6 @@
       "n_docs_options": [
         1000
       ],
-      "n_gpus_options": [
-          1
-      ],
       "n_queries": 100
     }
   },
