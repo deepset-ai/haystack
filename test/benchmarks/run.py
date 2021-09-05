@@ -27,7 +27,7 @@ parser.add_argument('--save_markdown', default=False, action="store_true",
 args = parser.parse_args()
 
 # load config
-params, filenames = load_config(config_filename="config_multi_gpu.json", ci=args.ci)
+params, filenames = load_config(config_filename="config.json", ci=args.ci)
 
 if args.retriever_index:
     benchmark_indexing(**params, **filenames, ci=args.ci, update_json=args.update_json, save_markdown=args.save_markdown)
