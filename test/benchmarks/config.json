@@ -49,6 +49,10 @@
         100000,
         500000
       ],
+      "n_gpus_options": [
+          1,
+          2
+      ],
       "n_queries": null
     },
     "ci": {
@@ -60,6 +64,9 @@
       ],
       "n_docs_options": [
         1000
+      ],
+      "n_gpus_options": [
+          1
       ],
       "n_queries": 100
     }

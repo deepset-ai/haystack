@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 from time import perf_counter
-from utils import get_document_store, get_retriever, index_to_doc_store, load_config, download_from_url
+from utils import get_document_store, get_retriever, index_to_doc_store, load_config, download_from_url, supports_multi_gpu
 from haystack.preprocessor.utils import eval_data_from_json
 from haystack.document_store.faiss import FAISSDocumentStore
 
@@ -39,80 +39,82 @@ speed_json = "../../docs/_src/benchmarks/retriever_speed.json"
 seed = 42
 random.seed(42)
 
-def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, update_json, save_markdown, **kwargs):
+def benchmark_indexing(n_docs_options, retriever_doc_stores, n_gpus_options, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, update_json, save_markdown, **kwargs):
 
     retriever_results = []
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
             logger.info(f"##### Start indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
-            try:
-                doc_store = get_document_store(doc_store_name)
-                retriever = get_retriever(retriever_name, doc_store)
-                docs, _ = prepare_data(data_dir=data_dir,
-                                       filename_gold=filename_gold,
-                                       filename_negative=filename_negative,
-                                       remote_url=data_s3_url,
-                                       embeddings_filenames=embeddings_filenames,
-                                       embeddings_dir=embeddings_dir,
-                                       n_docs=n_docs)
-
-                tic = perf_counter()
-                index_to_doc_store(doc_store, docs, retriever)
-                toc = perf_counter()
-                indexing_time = toc - tic
-
-                print(indexing_time)
-
-                retriever_results.append({
-                    "retriever": retriever_name,
-                    "doc_store": doc_store_name,
-                    "n_docs": n_docs,
-                    "indexing_time": indexing_time,
-                    "docs_per_second": n_docs / indexing_time,
-                    "date_time": datetime.datetime.now(),
-                    "error": None})
-                retriever_df = pd.DataFrame.from_records(retriever_results)
-                retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
-                retriever_df.to_csv(index_results_file)
-                logger.info("Deleting all docs from this run ...")
-
-                if isinstance(doc_store, FAISSDocumentStore):
-                    doc_store.session.close()
-                else:
-                    doc_store.delete_all_documents(index=doc_index)
-                    doc_store.delete_all_documents(index=label_index)
-
-                if save_markdown:
-                    md_file = index_results_file.replace(".csv", ".md")
-                    with open(md_file, "w") as f:
-                        f.write(str(retriever_df.to_markdown()))
-                time.sleep(10)
-                stop_service(doc_store)
-                del doc_store
-                del retriever
-
-            except Exception:
-                tb = traceback.format_exc()
-                logging.error(f"##### The following Error was raised while running indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
-                logging.error(tb)
-                retriever_results.append({
-                    "retriever": retriever_name,
-                    "doc_store": doc_store_name,
-                    "n_docs": n_docs,
-                    "indexing_time": 0,
-                    "docs_per_second": 0,
-                    "date_time": datetime.datetime.now(),
-                    "error": str(tb)})
-                logger.info("Deleting all docs from this run ...")
-                if isinstance(doc_store, FAISSDocumentStore):
-                    doc_store.session.close()
-                else:
-                    doc_store.delete_all_documents(index=doc_index)
-                    doc_store.delete_all_documents(index=label_index)
-                time.sleep(10)
-                stop_service(doc_store)
-                del doc_store
-                del retriever
+            for n_gpus in n_gpus_options if supports_multi_gpu(retriever_name) else [1]:
+                try:
+                    doc_store = get_document_store(doc_store_name)
+                    retriever = get_retriever(retriever_name, doc_store, n_gpus=n_gpus)
+                    docs, _ = prepare_data(data_dir=data_dir,
+                                           filename_gold=filename_gold,
+                                           filename_negative=filename_negative,
+                                           remote_url=data_s3_url,
+                                           embeddings_filenames=embeddings_filenames,
+                                           embeddings_dir=embeddings_dir,
+                                           n_docs=n_docs)
+    
+                    tic = perf_counter()
+                    index_to_doc_store(doc_store, docs, retriever)
+                    toc = perf_counter()
+                    indexing_time = toc - tic
+    
+                    print(indexing_time)
+    
+                    retriever_results.append({
+                        "retriever": retriever_name,
+                        "doc_store": doc_store_name,
+                        "n_docs": n_docs,
+                        "n_gpus": n_gpus,
+                        "indexing_time": indexing_time,
+                        "docs_per_second": n_docs / indexing_time,
+                        "date_time": datetime.datetime.now(),
+                        "error": None})
+                    retriever_df = pd.DataFrame.from_records(retriever_results)
+                    retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
+                    retriever_df.to_csv(index_results_file)
+                    logger.info("Deleting all docs from this run ...")
+    
+                    if isinstance(doc_store, FAISSDocumentStore):
+                        doc_store.session.close()
+                    else:
+                        doc_store.delete_all_documents(index=doc_index)
+                        doc_store.delete_all_documents(index=label_index)
+    
+                    if save_markdown:
+                        md_file = index_results_file.replace(".csv", ".md")
+                        with open(md_file, "w") as f:
+                            f.write(str(retriever_df.to_markdown()))
+                    time.sleep(10)
+                    stop_service(doc_store)
+                    del doc_store
+                    del retriever
+    
+                except Exception:
+                    tb = traceback.format_exc()
+                    logging.error(f"##### The following Error was raised while running indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
+                    logging.error(tb)
+                    retriever_results.append({
+                        "retriever": retriever_name,
+                        "doc_store": doc_store_name,
+                        "n_docs": n_docs,
+                        "indexing_time": 0,
+                        "docs_per_second": 0,
+                        "date_time": datetime.datetime.now(),
+                        "error": str(tb)})
+                    logger.info("Deleting all docs from this run ...")
+                    if isinstance(doc_store, FAISSDocumentStore):
+                        doc_store.session.close()
+                    else:
+                        doc_store.delete_all_documents(index=doc_index)
+                        doc_store.delete_all_documents(index=label_index)
+                    time.sleep(10)
+                    stop_service(doc_store)
+                    del doc_store
+                    del retriever
     if update_json:
         populate_retriever_json()
 

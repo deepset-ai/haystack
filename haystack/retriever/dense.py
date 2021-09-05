@@ -2,6 +2,7 @@ import logging
 from abc import abstractmethod
 from typing import List, Union, Optional
 import torch
+from torch.nn import DataParallel
 import numpy as np
 from pathlib import Path
 
@@ -52,7 +53,8 @@ class DensePassageRetriever(BaseRetriever):
                  infer_tokenizer_classes: bool = False,
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
-                 progress_bar: bool = True
+                 progress_bar: bool = True,
+                 devices: Optional[List[Union[int, str, torch.device]]] = None
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -125,7 +127,11 @@ class DensePassageRetriever(BaseRetriever):
                            "We recommend you use dot_product instead. "
                            "This can be set when initializing the DocumentStore")
 
-        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
+        if devices is None:
+            device, _ = initialize_device_settings(use_cuda=use_gpu)
+            self.devices = [device]
+        else:
+            self.devices = devices
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
         tokenizers_default_classes = {
@@ -171,10 +177,13 @@ class DensePassageRetriever(BaseRetriever):
             embeds_dropout_prob=0.1,
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
-            device=self.device,
+            device=self.devices[0] if len(self.devices) == 1 else None,
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
+
+        if len(self.devices) > 1:
+            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
@@ -234,7 +243,9 @@ class DensePassageRetriever(BaseRetriever):
         with tqdm(total=len(data_loader)*self.batch_size, unit=" Docs", desc=f"Create embeddings", position=1,
                   leave=False, disable=disable_tqdm) as progress_bar:
             for batch in data_loader:
-                batch = {key: batch[key].to(self.device) for key in batch}
+                if len(self.devices) == 1:
+                    print(self.devices)
+                    batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
                 # get logits
                 with torch.no_grad():
@@ -371,7 +382,7 @@ class DensePassageRetriever(BaseRetriever):
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
-            device=self.device,
+            device=self.devices[0], # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp
         )
 
@@ -384,7 +395,7 @@ class DensePassageRetriever(BaseRetriever):
             n_gpu=n_gpu,
             lr_schedule=lr_schedule,
             evaluate_every=evaluate_every,
-            device=self.device,
+            device=self.devices[0], # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp
         )
 
@@ -394,6 +405,8 @@ class DensePassageRetriever(BaseRetriever):
         self.model.save(Path(save_dir), lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
         self.query_tokenizer.save_pretrained(f"{save_dir}/{query_encoder_save_dir}")
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
+
+        self.model = DataParallel(self.model, device_ids=self.devices, output_device="cpu")
 
     def save(self, save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder",
              passage_encoder_dir: str = "passage_encoder"):
