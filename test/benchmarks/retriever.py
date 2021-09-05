@@ -39,16 +39,21 @@ speed_json = "../../docs/_src/benchmarks/retriever_speed.json"
 seed = 42
 random.seed(42)
 
-def benchmark_indexing(n_docs_options, retriever_doc_stores, n_gpus_options, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, update_json, save_markdown, **kwargs):
+def benchmark_indexing(n_docs_options, retriever_doc_stores_options, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, update_json, save_markdown, batch_sizes=[16], n_gpus=[1], **kwargs):
 
     retriever_results = []
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
-            logger.info(f"##### Start indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
-            for n_gpus in n_gpus_options if supports_multi_gpu(retriever_name) else [1]:
+            multi_gpu_support = supports_multi_gpu(retriever_name)
+            for n_gpus in n_gpus_options if multi_gpu_support else [1]:
+                for batch_size in batch_sizes if multi_gpu_support else [16]:
+                if multi_gpu_support:
+                    logger.info(f"##### Start indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs, {n_gpus} gpus, batch size: {batch_size} ##### ")
+                else:
+                    logger.info(f"##### Start indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
                 try:
                     doc_store = get_document_store(doc_store_name)
-                    retriever = get_retriever(retriever_name, doc_store, n_gpus=n_gpus)
+                    retriever = get_retriever(retriever_name, doc_store, n_gpus=n_gpus, batch_size=batch_size)
                     docs, _ = prepare_data(data_dir=data_dir,
                                            filename_gold=filename_gold,
                                            filename_negative=filename_negative,
@@ -69,6 +74,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, n_gpus_options, dat
                         "doc_store": doc_store_name,
                         "n_docs": n_docs,
                         "n_gpus": n_gpus,
+                        "batch_size": batch_size,
                         "indexing_time": indexing_time,
                         "docs_per_second": n_docs / indexing_time,
                         "date_time": datetime.datetime.now(),

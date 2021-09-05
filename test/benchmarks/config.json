@@ -53,7 +53,13 @@
           1,
           2
       ],
-      "n_queries": null
+      "n_queries": null,
+      "batch_sizes": [
+          32,
+          64,
+          128,
+          256
+      ]
     },
     "ci": {
       "retriever_doc_stores": [

@@ -96,7 +96,7 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
         raise Exception(f"No document store fixture for '{document_store_type}'")
     return document_store
 
-def get_retriever(retriever_name, doc_store, n_gpus = None):
+def get_retriever(retriever_name, doc_store, n_gpus = None, batch_size = 16):
     if retriever_name == "elastic":
         return ElasticsearchRetriever(doc_store)
     if retriever_name == "tfidf":
@@ -108,7 +108,8 @@ def get_retriever(retriever_name, doc_store, n_gpus = None):
                                       query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
                                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
                                       use_fast_tokenizers=False,
-                                      devices=list(range(n_gpus)))
+                                      devices=list(range(n_gpus)),
+                                      batch_size=batch_size)
     if retriever_name == "sentence_transformers":
         return EmbeddingRetriever(document_store=doc_store,
                                   embedding_model="nq-distilbert-base-v1",
