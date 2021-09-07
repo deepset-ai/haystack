@@ -17,6 +17,7 @@ DOWNSTREAM_TASK_MAP = {
 
 }
 
+
 def read_dpr_json(file, max_samples=None, proxies=None, num_hard_negatives=1, num_positives=1, shuffle_negatives=True, shuffle_positives=False):
     """
     Reads a Dense Passage Retrieval (DPR) data file in json format and returns a list of dictionaries.
@@ -95,6 +96,7 @@ def read_dpr_json(file, max_samples=None, proxies=None, num_hard_negatives=1, nu
         standard_dicts.append(sample)
     return standard_dicts
 
+
 def read_squad_file(filename, proxies=None):
     """Read a SQuAD json file"""
     if not (os.path.exists(filename)):
@@ -103,6 +105,7 @@ def read_squad_file(filename, proxies=None):
     with open(filename, "r", encoding="utf-8") as reader:
         input_data = json.load(reader)["data"]
     return input_data
+
 
 def write_squad_predictions(predictions, out_filename, predictions_filename=None):
     predictions_json = {}
@@ -134,6 +137,7 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
     json.dump(predictions_json, open(out_filename, "w"))
     logger.info(f"Written Squad predictions to: {out_filename}")
 
+
 def _download_extract_downstream_data(input_file, proxies=None):
     # download archive to temp dir and extract to correct position
     full_path = Path(os.path.realpath(input_file))
@@ -157,6 +161,7 @@ def _download_extract_downstream_data(input_file, proxies=None):
             tfile = tarfile.open(temp_file.name)
             tfile.extractall(datadir)
         # temp_file gets deleted here
+
 
 def is_json(x):
     if issubclass(type(x), Path):
