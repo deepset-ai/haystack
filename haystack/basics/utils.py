@@ -1,12 +1,11 @@
 import logging
 import signal
-from typing import Dict
-
 import torch
 import torch.distributed as dist
+from requests.exceptions import ConnectionError
 import mlflow
-import pickle
 from copy import deepcopy
+import pickle
 
 from haystack.basics.visual.ascii.images import WELCOME_BARN
 
@@ -18,38 +17,6 @@ def to_numpy(container):
         return container.cpu().numpy()
     except AttributeError:
         return container
-
-
-def flatten_list(nested_list):
-    """Flatten an arbitrarily nested list, without recursion (to avoid
-    stack overflows). Returns a new list, the original list is unchanged.
-    >> list(flatten_list([1, 2, 3, [4], [], [[[[[[[[[5]]]]]]]]]]))
-    [1, 2, 3, 4, 5]
-    >> list(flatten_list([[1, 2], 3]))
-    [1, 2, 3]
-    """
-    nested_list = deepcopy(nested_list)
-
-    while nested_list:
-        sublist = nested_list.pop(0)
-
-        if isinstance(sublist, list):
-            nested_list = sublist + nested_list
-        else:
-            yield sublist
-
-
-def try_get(keys, dictionary: Dict):
-    try:
-        for key in keys:
-            if key in dictionary:
-                ret = dictionary[key]
-                if type(ret) == list:
-                    ret = ret[0]
-                return ret
-    except Exception as e:
-        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
-    return None
 
 
 class GracefulKiller:
@@ -89,6 +56,30 @@ class BaseMLLogger:
     @classmethod
     def log_params(cls, params):
         raise NotImplementedError()
+
+
+class StdoutLogger(BaseMLLogger):
+    """ Minimal logger printing metrics and params to stdout.
+    Useful for services like AWS SageMaker, where you parse metrics from the actual logs"""
+
+    def init_experiment(self, experiment_name, run_name=None, nested=True):
+        logger.info(f"\n **** Starting experiment '{experiment_name}' (Run: {run_name})  ****")
+
+    @classmethod
+    def log_metrics(cls, metrics, step):
+        logger.info(f"Logged metrics at step {step}: \n {metrics}")
+
+    @classmethod
+    def log_params(cls, params):
+        logger.info(f"Logged parameters: \n {params}")
+
+    @classmethod
+    def log_artifacts(cls, dir_path, artifact_path=None):
+        raise NotImplementedError
+
+    @classmethod
+    def end_run(cls):
+        logger.info(f"**** End of Experiment **** ")
 
 
 class MLFlowLogger(BaseMLLogger):
@@ -219,3 +210,58 @@ def all_gather_list(data, group=None, max_size=16384):
             'in your training script that can cause one worker to finish an epoch '
             'while other workers are still iterating over their portions of the data.'
         )
+
+
+class TensorBoardLogger(BaseMLLogger):
+    """
+    PyTorch TensorBoard Logger
+    """
+
+    def __init__(self, **kwargs):
+        from tensorboardX import SummaryWriter
+        TensorBoardLogger.summary_writer = SummaryWriter()
+        super().__init__(**kwargs)
+
+    @classmethod
+    def log_metrics(cls, metrics, step):
+        for key, value in metrics.items():
+            TensorBoardLogger.summary_writer.add_scalar(
+                tag=key, scalar_value=value, global_step=step
+            )
+
+    @classmethod
+    def log_params(cls, params):
+        for key, value in params.items():
+            TensorBoardLogger.summary_writer.add_text(tag=key, text_string=str(value))
+
+
+def flatten_list(nested_list):
+    """Flatten an arbitrarily nested list, without recursion (to avoid
+    stack overflows). Returns a new list, the original list is unchanged.
+    >> list(flatten_list([1, 2, 3, [4], [], [[[[[[[[[5]]]]]]]]]]))
+    [1, 2, 3, 4, 5]
+    >> list(flatten_list([[1, 2], 3]))
+    [1, 2, 3]
+    """
+    nested_list = deepcopy(nested_list)
+
+    while nested_list:
+        sublist = nested_list.pop(0)
+
+        if isinstance(sublist, list):
+            nested_list = sublist + nested_list
+        else:
+            yield sublist
+
+
+def try_get(keys, dictionary):
+    try:
+        for key in keys:
+            if key in dictionary:
+                ret = dictionary[key]
+                if type(ret) == list:
+                    ret = ret[0]
+                return ret
+    except Exception as e:
+        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
+    return None
