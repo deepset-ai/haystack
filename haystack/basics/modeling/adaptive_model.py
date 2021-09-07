@@ -195,7 +195,7 @@ class BaseAdaptiveModel:
 
         return model_files, config_files
 
-def loss_per_head_sum(loss_per_head: Iterable):
+def loss_per_head_sum(loss_per_head: Iterable, global_step: Optional[int] = None, batch: Optional[Dict] = None):
     """
     Sums up the loss of each prediction head.
 
