@@ -1,3 +1,6 @@
+import hashlib
+from torch import multiprocessing as mp
+import json
 import logging
 import signal
 import torch
@@ -6,18 +9,13 @@ from requests.exceptions import ConnectionError
 import mlflow
 from copy import deepcopy
 import pickle
+import random
+import os
+import numpy as np
 
-from haystack.basics.visual.ascii.images import WELCOME_BARN
+from haystack.basics.visual.ascii.images import WELCOME_BARN, WORKER_M, WORKER_F, WORKER_X
 
 logger = logging.getLogger(__name__)
-
-
-def to_numpy(container):
-    try:
-        return container.cpu().numpy()
-    except AttributeError:
-        return container
-
 
 class GracefulKiller:
     kill_now = False
@@ -141,13 +139,171 @@ class MLFlowLogger(BaseMLLogger):
         cls.disable_logging = True
 
 
-# DDP utils
+class TensorBoardLogger(BaseMLLogger):
+    """
+    PyTorch TensorBoard Logger
+    """
 
+    def __init__(self, **kwargs):
+        from tensorboardX import SummaryWriter
+        TensorBoardLogger.summary_writer = SummaryWriter()
+        super().__init__(**kwargs)
+
+    @classmethod
+    def log_metrics(cls, metrics, step):
+        for key, value in metrics.items():
+            TensorBoardLogger.summary_writer.add_scalar(
+                tag=key, scalar_value=value, global_step=step
+            )
+
+    @classmethod
+    def log_params(cls, params):
+        for key, value in params.items():
+            TensorBoardLogger.summary_writer.add_text(tag=key, text_string=str(value))
+
+
+def set_all_seeds(seed, deterministic_cudnn=False):
+    """
+    Setting multiple seeds to make runs reproducible.
+
+    Important: Enabling `deterministic_cudnn` gives you full reproducibility with CUDA,
+    but might slow down your training (see https://pytorch.org/docs/stable/notes/randomness.html#cudnn) !
+
+    :param seed:number to use as seed
+    :type seed: int
+    :param deterministic_torch: Enable for full reproducibility when using CUDA. Caution: might slow down training.
+    :type deterministic_cudnn: bool
+    :return: None
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    torch.cuda.manual_seed_all(seed)
+    if deterministic_cudnn:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+def initialize_device_settings(use_cuda, local_rank=-1, use_amp=None):
+    if not use_cuda:
+        device = torch.device("cpu")
+        n_gpu = 0
+    elif local_rank == -1:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if not torch.cuda.is_available():
+            n_gpu = 0
+        else:
+            n_gpu = torch.cuda.device_count()
+    else:
+        device = torch.device("cuda", local_rank)
+        torch.cuda.set_device(device)
+        n_gpu = 1
+        # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
+        torch.distributed.init_process_group(backend="nccl")
+    logger.info(f"Using device: {str(device).upper()} ")
+    logger.info(f"Number of GPUs: {n_gpu}")
+    logger.info(f"Distributed Training: {bool(local_rank != -1)}")
+    logger.info(f"Automatic Mixed Precision: {use_amp}")
+    return device, n_gpu
+
+def calc_chunksize(num_dicts, min_chunksize=4, max_chunksize=2000, max_processes=128):
+    if mp.cpu_count() > 3:
+        num_cpus = min(mp.cpu_count() - 1 or 1, max_processes)  # -1 to keep a CPU core free for xxx
+    else:
+        num_cpus = min(mp.cpu_count(), max_processes) # when there are few cores, we use all of them
+
+    dicts_per_cpu = np.ceil(num_dicts / num_cpus)
+    # automatic adjustment of multiprocessing chunksize
+    # for small files (containing few dicts) we want small chunksize to ulitize all available cores but never less
+    # than 2, because we need it to sample another random sentence in LM finetuning
+    # for large files we want to minimize processor spawning without giving too much data to one process, so we
+    # clip it at 5k
+    multiprocessing_chunk_size = int(np.clip((np.ceil(dicts_per_cpu / 5)), a_min=min_chunksize, a_max=max_chunksize))
+    # This lets us avoid cases in lm_finetuning where a chunk only has a single doc and hence cannot pick
+    # a valid next sentence substitute from another document
+    if num_dicts != 1:
+        while num_dicts % multiprocessing_chunk_size == 1:
+            multiprocessing_chunk_size -= -1
+    dict_batches_to_process = int(num_dicts / multiprocessing_chunk_size)
+    num_processes = min(num_cpus, dict_batches_to_process) or 1
+
+    return multiprocessing_chunk_size, num_processes
+
+def log_ascii_workers(n, logger):
+    m_worker_lines = WORKER_M.split("\n")
+    f_worker_lines = WORKER_F.split("\n")
+    x_worker_lines = WORKER_X.split("\n")
+    all_worker_lines = []
+    for i in range(n):
+        rand = np.random.randint(low=0,high=3)
+        if(rand % 3 == 0):
+            all_worker_lines.append(f_worker_lines)
+        elif(rand % 3 == 1):
+            all_worker_lines.append(m_worker_lines)
+        else:
+            all_worker_lines.append(x_worker_lines)
+    zipped = zip(*all_worker_lines)
+    for z in zipped:
+        logger.info("  ".join(z))
+
+
+## Helper fcts
+def get_dict_checksum(payload_dict):
+    """
+    Get MD5 checksum for a dict.
+    """
+    checksum = hashlib.md5(json.dumps(payload_dict, sort_keys=True).encode("utf-8")).hexdigest()
+    return checksum
+
+def to_numpy(container):
+    try:
+        return container.cpu().numpy()
+    except AttributeError:
+        return container
+
+def stack(list_of_lists):
+    n_lists_final = len(list_of_lists[0])
+    ret = [list() for _ in range(n_lists_final)]
+    for l in list_of_lists:
+        for i, x in enumerate(l):
+            ret[i] += (x)
+    return ret
+
+def flatten_list(nested_list):
+    """Flatten an arbitrarily nested list, without recursion (to avoid
+    stack overflows). Returns a new list, the original list is unchanged.
+    >> list(flatten_list([1, 2, 3, [4], [], [[[[[[[[[5]]]]]]]]]]))
+    [1, 2, 3, 4, 5]
+    >> list(flatten_list([[1, 2], 3]))
+    [1, 2, 3]
+    """
+    nested_list = deepcopy(nested_list)
+
+    while nested_list:
+        sublist = nested_list.pop(0)
+
+        if isinstance(sublist, list):
+            nested_list = sublist + nested_list
+        else:
+            yield sublist
+
+def try_get(keys, dictionary):
+    try:
+        for key in keys:
+            if key in dictionary:
+                ret = dictionary[key]
+                if type(ret) == list:
+                    ret = ret[0]
+                return ret
+    except Exception as e:
+        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
+    return None
+
+# DDP utils
 def all_reduce(tensor, group=None):
     if group is None:
         group = dist.group.WORLD
     return dist.all_reduce(tensor, group=group)
-
 
 def all_gather_list(data, group=None, max_size=16384):
     """Gathers arbitrary data from all nodes into a list.
@@ -210,58 +366,3 @@ def all_gather_list(data, group=None, max_size=16384):
             'in your training script that can cause one worker to finish an epoch '
             'while other workers are still iterating over their portions of the data.'
         )
-
-
-class TensorBoardLogger(BaseMLLogger):
-    """
-    PyTorch TensorBoard Logger
-    """
-
-    def __init__(self, **kwargs):
-        from tensorboardX import SummaryWriter
-        TensorBoardLogger.summary_writer = SummaryWriter()
-        super().__init__(**kwargs)
-
-    @classmethod
-    def log_metrics(cls, metrics, step):
-        for key, value in metrics.items():
-            TensorBoardLogger.summary_writer.add_scalar(
-                tag=key, scalar_value=value, global_step=step
-            )
-
-    @classmethod
-    def log_params(cls, params):
-        for key, value in params.items():
-            TensorBoardLogger.summary_writer.add_text(tag=key, text_string=str(value))
-
-
-def flatten_list(nested_list):
-    """Flatten an arbitrarily nested list, without recursion (to avoid
-    stack overflows). Returns a new list, the original list is unchanged.
-    >> list(flatten_list([1, 2, 3, [4], [], [[[[[[[[[5]]]]]]]]]]))
-    [1, 2, 3, 4, 5]
-    >> list(flatten_list([[1, 2], 3]))
-    [1, 2, 3]
-    """
-    nested_list = deepcopy(nested_list)
-
-    while nested_list:
-        sublist = nested_list.pop(0)
-
-        if isinstance(sublist, list):
-            nested_list = sublist + nested_list
-        else:
-            yield sublist
-
-
-def try_get(keys, dictionary):
-    try:
-        for key in keys:
-            if key in dictionary:
-                ret = dictionary[key]
-                if type(ret) == list:
-                    ret = ret[0]
-                return ret
-    except Exception as e:
-        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
-    return None

@@ -28,10 +28,6 @@ from haystack.basics.data_handler.utils import (
     is_json,
 )
 from haystack.basics.utils import MLFlowLogger as MlLogger
-from haystack.basics.utils import try_get
-
-ID_NAMES = ["example_id", "external_id", "doc_id", "id"]
-
 
 logger = logging.getLogger(__name__)
 
@@ -293,37 +289,6 @@ class Processor(ABC):
     def _create_dataset(self, baskets:List[SampleBasket]):
         raise NotImplementedError
 
-    def _dict_to_samples(cls, dictionary: dict, all_dicts=None) -> List[Sample]:
-        raise NotImplementedError()
-
-    def _sample_to_features(cls, sample: Sample) -> dict:
-        raise NotImplementedError()
-
-    def _dict_to_samples_and_features(self, dictionary: dict, all_dicts=None) -> List[Sample]:
-        raise NotImplementedError()
-
-    def _init_samples_in_baskets(self):
-        all_dicts = [b.raw for b in self.baskets]
-        for basket in self.baskets:
-            try:
-                basket.samples = self._dict_to_samples(dictionary=basket.raw, all_dicts=all_dicts)
-                for num, sample in enumerate(basket.samples):
-                     sample.id = f"{basket.id_internal}-{num}"
-            except Exception as e:
-                logger.error(f"Could not create sample(s) from this dict: \n {basket.raw}")
-                logger.error(f"Error message: {e}")
-
-    def _featurize_samples(self):
-        curr_problematic_sample_ids = []
-        for basket in self.baskets:
-            for sample in basket.samples:
-                try:
-                    sample.features = self._sample_to_features(sample=sample)
-                except Exception as e:
-                    curr_problematic_sample_ids.append(sample.id)
-        if curr_problematic_sample_ids:
-            self.problematic_sample_ids.update(curr_problematic_sample_ids)
-
     @staticmethod
     def log_problematic(problematic_sample_ids):
         if problematic_sample_ids:
@@ -331,21 +296,6 @@ class Processor(ABC):
             problematic_id_str = ", ".join([str(i) for i in problematic_sample_ids])
             logger.error(
                 f"Unable to convert {n_problematic} samples to features. Their ids are : {problematic_id_str}")
-
-
-    def _init_and_featurize_samples_in_baskets(self):
-        for basket in self.baskets:
-            all_dicts = [b.raw for b in self.baskets]
-            try:
-                basket.samples = self._dict_to_samples_and_features(dictionary=basket.raw,
-                                                                    all_dicts=all_dicts,
-                                                                    basket_id_internal=basket.id_internal)
-                for num, sample in enumerate(basket.samples):
-                    sample.id = f"{basket.id_internal}-{num}"
-            except Exception as e:
-                logger.error(f"Could not create sample(s) from this dict: \n {basket.raw}")
-                logger.error(f"Error message: {e}")
-
 
     @staticmethod
     def _check_sample_features(basket:SampleBasket):
@@ -382,136 +332,7 @@ class Processor(ABC):
             params.update({name: str(value)})
         MlLogger.log_params(params)
 
-    @staticmethod
-    def _id_from_dict(d: dict):
-        ext_id = try_get(ID_NAMES, d)
-        if not ext_id and "qas" in d:
-            ext_id = try_get(ID_NAMES, d["qas"][0])
-        return ext_id
 
-
-
-# TODO potentially remove
-# class InferenceProcessor(Processor):
-#     """
-#     Generic processor used at inference time:
-#     - fast
-#     - no labels
-#     - pure encoding of text into pytorch dataset
-#     - Doesn't read from file, but only consumes dictionaries (e.g. coming from API requests)
-#     """
-#
-#     def __init__(
-#         self,
-#         tokenizer,
-#         max_seq_len,
-#         **kwargs,
-#     ):
-#
-#         super(InferenceProcessor, self).__init__(
-#             tokenizer=tokenizer,
-#             max_seq_len=max_seq_len,
-#             train_filename=None,
-#             dev_filename=None,
-#             test_filename=None,
-#             dev_split=None,
-#             data_dir=None,
-#             tasks={},
-#         )
-#
-#     @classmethod
-#     def load_from_dir(cls, load_dir):
-#         """
-#          Overwriting method from parent class to **always** load the InferenceProcessor instead of the specific class stored in the config.
-#
-#         :param load_dir: str, directory that contains a 'processor_config.json'
-#         :return: An instance of an InferenceProcessor
-#         """
-#         # read config
-#         processor_config_file = Path(load_dir) / "processor_config.json"
-#         config = json.load(open(processor_config_file))
-#         # init tokenizer
-#         tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["tokenizer"])
-#         # we have to delete the tokenizer string from config, because we pass it as Object
-#         del config["tokenizer"]
-#
-#         processor = cls.load(tokenizer=tokenizer, processor_name="InferenceProcessor", **config)
-#         for task_name, task in config["tasks"].items():
-#             processor.add_task(name=task_name, metric=task["metric"], label_list=task["label_list"])
-#
-#         if processor is None:
-#             raise Exception
-#
-#         return processor
-#
-#     def file_to_dicts(self, file: str) -> [dict]:
-#         raise NotImplementedError
-#
-#     def convert_labels(self, dictionary: dict):
-#         # For inference we do not need labels
-#         ret = {}
-#         return ret
-#
-#     def dataset_from_dicts(self, dicts, indices=None, return_baskets=False, debug=False):
-#         """
-#         Function to convert input dictionaries containing text into a torch dataset.
-#         For normal operation with Language Models it calls the superclass' TextClassification.dataset_from_dicts method.
-#         For slow tokenizers, s3e or wordembedding tokenizers the function works on _dict_to_samples and _sample_to_features
-#         """
-#         # TODO remove this sections once tokenizers work the same way for slow/fast and our special tokenizers
-#         if not self.tokenizer.is_fast:
-#             self.baskets = []
-#             for d in dicts:
-#                 sample = self._dict_to_samples(dictionary=d)
-#                 features = self._sample_to_features(sample)
-#                 sample.features = features
-#                 basket = SampleBasket(id_internal=None,
-#                                       raw=d,
-#                                       id_external=None,
-#                                       samples=[sample])
-#                 self.baskets.append(basket)
-#             if indices and 0 not in indices:
-#                 pass
-#             else:
-#                 self._log_samples(1)
-#
-#             problematic_ids = set()
-#             dataset, tensornames = self._create_dataset()
-#             ret = [dataset, tensornames, problematic_ids]
-#             if return_baskets:
-#                 ret.append(self.baskets)
-#             return ret
-#         else:
-#             return super().dataset_from_dicts(dicts=dicts,
-#                                        indices=indices,
-#                                        return_baskets=return_baskets,
-#                                        debug=debug)
-#
-#     # Private method to keep s3e pooling and embedding extraction working
-#     def _dict_to_samples(self, dictionary: dict, **kwargs) -> [Sample]:
-#         # this tokenization also stores offsets
-#         tokenized = tokenize_with_metadata(dictionary["text"], self.tokenizer)
-#         # truncate tokens, offsets and start_of_word to max_seq_len that can be handled by the model
-#         for seq_name in tokenized.keys():
-#             tokenized[seq_name], _, _ = truncate_sequences(seq_a=tokenized[seq_name], seq_b=None,
-#                                                            tokenizer=self.tokenizer,
-#                                                            max_seq_len=self.max_seq_len)
-#         return Sample(id=None, clear_text=dictionary, tokenized=tokenized)
-#
-#     # Private method to keep s3e pooling and embedding extraction working
-#     def _sample_to_features(self, sample) -> dict:
-#         features = sample_to_features_text(
-#             sample=sample,
-#             tasks=self.tasks,
-#             max_seq_len=self.max_seq_len,
-#             tokenizer=self.tokenizer,
-#         )
-#         return features
-
-
-#########################################
-# QA Processors ####
-#########################################
 class SquadProcessor(Processor):
     """
     Convert QA data (in SQuAD Format)
@@ -937,7 +758,6 @@ class SquadProcessor(Processor):
 
         dataset, tensor_names = convert_features_to_dataset(features=features_flat)
         return dataset, tensor_names, baskets
-
 
 
 class TextSimilarityProcessor(Processor):
