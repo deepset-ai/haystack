@@ -223,7 +223,7 @@ class QACandidate:
         self.offset_answer_end = end
         self.aggregation_level = "document"
 
-    def to_list(self) -> List[Union[str, int, float, Optional]]:
+    def to_list(self) -> List[Optional[Union[str, int, float]]]:
         return [self.answer, self.offset_answer_start, self.offset_answer_end, self.score, self.passage_id]
 
 
