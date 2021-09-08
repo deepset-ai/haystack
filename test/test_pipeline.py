@@ -583,8 +583,7 @@ def test_document_search_pipeline(retriever, document_store):
 
     for another_list in list_of_documents:
         assert isinstance(another_list, list)
-        if len(another_list) > 0:
-            for document in another_list:
-                assert isinstance(document, Document)
-                assert isinstance(document.id, str)
-                assert isinstance(document.text, str)
+        for document in another_list:
+            assert isinstance(document, Document)
+            assert isinstance(document.id, str)
+            assert isinstance(document.text, str)
