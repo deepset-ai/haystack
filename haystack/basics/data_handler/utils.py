@@ -5,6 +5,7 @@ import random
 import tarfile
 import tempfile
 import uuid
+from itertools import islice
 from pathlib import Path
 
 from haystack.basics.file_utils import http_get

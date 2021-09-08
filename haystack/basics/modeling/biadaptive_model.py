@@ -152,7 +152,7 @@ class BiAdaptiveModel(nn.Module):
 
         model = cls(language_model1, language_model2, prediction_heads, 0.1, device)
         if processor:
-            model.connect_heads_with_processor(processor.tasks)
+            model.connect_heads_with_processor(processor.tasks)  # type: ignore
 
         return model
 
@@ -457,7 +457,7 @@ class BiAdaptiveModel(nn.Module):
             raise NotImplementedError(f"Huggingface's transformer models of type {task_type} are not supported yet for BiAdaptive Models")
 
         if processor:
-            bi_adaptive_model.connect_heads_with_processor(processor.tasks)
+            bi_adaptive_model.connect_heads_with_processor(processor.tasks)  # type: ignore
 
         return bi_adaptive_model
 

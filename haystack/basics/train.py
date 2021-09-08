@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import torch
 from pathlib import Path
@@ -63,8 +63,9 @@ class EarlyStopping:
         self.patience = patience
         self.min_delta = min_delta
         self.min_evals = min_evals
-        self.eval_values = []  # for more complex modes
-        self.n_since_best = None
+        # for more complex modes
+        self.eval_values = []  # type: List
+        self.n_since_best = None  # type: Optional[int]
         if mode == "min":
             self.best_so_far = 1.0E99
         elif mode == "max":
@@ -100,7 +101,7 @@ class EarlyStopping:
             if self.save_dir:
                 savemodel = True
         else:
-            self.n_since_best += 1
+            self.n_since_best += 1  # type: ignore
         if self.n_since_best > self.patience:
             stopprocessing = True
         return stopprocessing, savemodel, eval_value
@@ -199,7 +200,7 @@ class Trainer:
                               'https://github.com/NVIDIA/apex')
         self.checkpoint_on_sigterm = checkpoint_on_sigterm
         if checkpoint_on_sigterm:
-            self.sigterm_handler = GracefulKiller()
+            self.sigterm_handler = GracefulKiller()  # type: Optional[GracefulKiller]
         else:
             self.sigterm_handler = None
         self.checkpoint_root_dir = checkpoint_root_dir
@@ -355,7 +356,7 @@ class Trainer:
                 evaluator_test.log_results(self.test_result, "Test", self.global_step)
         return self.model
 
-    def backward_propagate(self, loss: float, step: int):
+    def backward_propagate(self, loss: torch.Tensor, step: int):
         loss = self.adjust_loss(loss)
         if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0]:
             if self.local_rank in [-1, 0]:
@@ -384,7 +385,7 @@ class Trainer:
                 self.lr_schedule.step()
         return loss
 
-    def adjust_loss(self, loss: float):
+    def adjust_loss(self, loss: torch.Tensor):
         loss = loss.mean()
         if self.grad_acc_steps > 1:
             loss = loss / self.grad_acc_steps
