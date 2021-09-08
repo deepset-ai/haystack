@@ -47,7 +47,7 @@ class Processor(ABC):
         test_filename: Optional[Union[Path,str]],
         dev_split: float,
         data_dir: Optional[str],
-        tasks : Optional[Dict] = None,
+        tasks : Dict = {},
         proxies: Optional[Dict] = None,
         multithreading_rust: Optional[bool] = True,
     ):
@@ -995,7 +995,7 @@ class TextSimilarityProcessor(Processor):
         baskets = []
         if not indices:
             indices = list(range(len(dicts)))
-        for d, id_internal in zip(dicts,indices):
+        for d, id_internal in zip(dicts, indices):
             basket = SampleBasket(id_external=None,
                                   id_internal=id_internal,
                                   raw=d)

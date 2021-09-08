@@ -5,7 +5,7 @@ import numpy as np
 
 from pathlib import Path
 from transformers import AutoModelForQuestionAnswering
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional, Union, Dict
 
 import torch
 from torch import nn
@@ -28,7 +28,7 @@ class PredictionHead(nn.Module):
     """ Takes word embeddings from a language model and generates logits for a given task. Can also convert logits
     to loss and and logits to predictions. """
 
-    subclasses = {}
+    subclasses = {}  # type: Dict
 
     def __init_subclass__(cls, **kwargs):
         """ This automatically keeps track of all available subclasses.
@@ -272,7 +272,7 @@ class QuestionAnsweringHead(PredictionHead):
 
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore[override]
         """
         Load a prediction head from a saved FARM or transformers model. `pretrained_model_name_or_path`
         can be one of the following:
@@ -291,10 +291,10 @@ class QuestionAnsweringHead(PredictionHead):
         """
 
         if os.path.exists(pretrained_model_name_or_path) \
-                and "config.json" in pretrained_model_name_or_path \
-                and "prediction_head" in pretrained_model_name_or_path:
+                and "config.json" in str(pretrained_model_name_or_path) \
+                and "prediction_head" in str(pretrained_model_name_or_path):
             # a) FARM style
-            super(QuestionAnsweringHead, cls).load(pretrained_model_name_or_path)
+            super(QuestionAnsweringHead, cls).load(str(pretrained_model_name_or_path))
         else:
             # b) transformers style
             # load all weights from model
@@ -978,7 +978,7 @@ class TextSimilarityHead(PredictionHead):
         """
         return query_vectors, passage_vectors
 
-    def _embeddings_to_scores(self, query_vectors:torch.Tensor, passage_vectors:torch.Tensor) -> torch.Tensor:
+    def _embeddings_to_scores(self, query_vectors: torch.Tensor, passage_vectors: torch.Tensor) -> torch.Tensor:
         """
         Calculates similarity scores between all given query_vectors and passage_vectors
 
@@ -997,7 +997,7 @@ class TextSimilarityHead(PredictionHead):
         softmax_scores = nn.functional.log_softmax(scores, dim=1)
         return softmax_scores
 
-    def logits_to_loss(self, logits: Tuple[torch.Tensor, torch.Tensor], label_ids, **kwargs):
+    def logits_to_loss(self, logits: Tuple[torch.Tensor, torch.Tensor], label_ids, **kwargs):  # type: ignore[override]
         """
         Computes the loss (Default: NLLLoss) by applying a similarity function (Default: dot product) to the input
         tuple of (query_vectors, passage_vectors) and afterwards applying the loss function on similarity scores.
@@ -1045,17 +1045,17 @@ class TextSimilarityHead(PredictionHead):
                     global_positive_idx_per_question.extend([v + total_passages for v in positive_idx_per_question])
                 total_passages += p_vectors.size(0)
 
-            global_query_vectors = torch.cat(global_query_vectors, dim=0)
-            global_passage_vectors = torch.cat(global_passage_vectors, dim=0)
-            global_positive_idx_per_question = torch.LongTensor(global_positive_idx_per_question)
+            global_query_vectors = torch.cat(global_query_vectors, dim=0)  # type: ignore
+            global_passage_vectors = torch.cat(global_passage_vectors, dim=0)  # type: ignore
+            global_positive_idx_per_question = torch.LongTensor(global_positive_idx_per_question)  # type: ignore
         else:
-            global_query_vectors = query_vectors
-            global_passage_vectors = passage_vectors
-            global_positive_idx_per_question = positive_idx_per_question
+            global_query_vectors = query_vectors  # type: ignore
+            global_passage_vectors = passage_vectors  # type: ignore
+            global_positive_idx_per_question = positive_idx_per_question  # type: ignore
 
         # Get similarity scores
-        softmax_scores = self._embeddings_to_scores(global_query_vectors, global_passage_vectors)
-        targets = global_positive_idx_per_question.squeeze(-1).to(softmax_scores.device)
+        softmax_scores = self._embeddings_to_scores(global_query_vectors, global_passage_vectors)  # type: ignore
+        targets = global_positive_idx_per_question.squeeze(-1).to(softmax_scores.device)  # type: ignore
 
         # Calculate loss
         loss = self.loss_fct(softmax_scores, targets)
@@ -1074,7 +1074,7 @@ class TextSimilarityHead(PredictionHead):
         _, sorted_scores = torch.sort(softmax_scores, dim=1, descending=True)
         return sorted_scores
 
-    def prepare_labels(self, label_ids, **kwargs) -> torch.Tensor:
+    def prepare_labels(self, label_ids, **kwargs) -> torch.Tensor:  # type: ignore[override]
         """
         Returns a tensor with passage labels(0:hard_negative/1:positive) for each query
 

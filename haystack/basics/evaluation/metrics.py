@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 import numpy as np
 from functools import reduce
@@ -143,7 +143,7 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
         # all values in label_list (maybe dev set is small), the report will break
         if head.model_type == "text_similarity":
             labels = reduce(lambda x, y: x + list(y.astype('long')), labels, [])
-            preds = reduce(lambda x, y: x + [0] * y[0] + [1] + [0] * (len(y) - y[0] - 1), preds, [])
+            preds = reduce(lambda x, y: x + [0] * y[0] + [1] + [0] * (len(y) - y[0] - 1), preds, [])  # type: ignore
             all_possible_labels = list(range(len(head.label_list)))
         else:
             all_possible_labels = head.label_list
@@ -230,8 +230,8 @@ def confidence(preds):
 
 
 def metrics_per_bin(preds, labels, num_bins: int = 10):
-    pred_bins = [[] for _ in range(num_bins)]
-    label_bins = [[] for _ in range(num_bins)]
+    pred_bins = [[] for _ in range(num_bins)]  # type: List
+    label_bins = [[] for _ in range(num_bins)]  # type: List
     count_per_bin = [0]*num_bins
     for (pred, label) in zip(preds, labels):
         current_score = pred[0][0].confidence
@@ -331,7 +331,7 @@ def text_similarity_avg_ranks(preds, labels) -> float:
 
     :return: average predicted ranks of positive sequence/passage for each sample/query
     """
-    positive_idx_per_question = list(reduce(lambda x, y: x + list((y == 1).nonzero()[0]), labels, []))
+    positive_idx_per_question = list(reduce(lambda x, y: x + list((y == 1).nonzero()[0]), labels, []))  # type: ignore
     rank = 0
     for i, idx in enumerate(positive_idx_per_question):
         # aggregate the rank of the known gold passage in the sorted results for each question
