@@ -1315,4 +1315,5 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
                 found_ids.append(found_document.id)
             return_ids.append(found_ids)
 
+        self.document_store.return_embedding = False  # type: ignore
         return return_ids
