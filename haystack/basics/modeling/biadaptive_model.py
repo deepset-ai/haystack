@@ -6,10 +6,10 @@ from typing import List, Optional, Callable, Union, Dict
 import torch
 from torch import nn
 
-from basics.data_handler.processor import Processor
-from basics.modeling.language_model import LanguageModel
-from basics.modeling.prediction_head import PredictionHead, TextSimilarityHead
-from basics.utils import MLFlowLogger as MlLogger
+from haystack.basics.data_handler.processor import Processor
+from haystack.basics.modeling.language_model import LanguageModel
+from haystack.basics.modeling.prediction_head import PredictionHead, TextSimilarityHead
+from haystack.basics.utils import MLFlowLogger as MlLogger
 
 logger = logging.getLogger(__name__)
 

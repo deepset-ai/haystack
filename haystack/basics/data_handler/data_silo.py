@@ -17,14 +17,13 @@ import torch
 from sklearn.model_selection import StratifiedKFold, KFold
 from tqdm import tqdm
 
-from basics.data_handler.dataloader import NamedDataLoader
-from basics.data_handler.processor import Processor, BertStyleLMProcessor
-from basics.data_handler.utils import grouper
-from basics.modeling.tokenization import EmbeddingTokenizer
-from basics.utils import MLFlowLogger as MlLogger
-from basics.utils import log_ascii_workers, calc_chunksize
-from basics.utils import get_dict_checksum
-from basics.visual.ascii.images import TRACTOR_SMALL
+from haystack.basics.data_handler.dataloader import NamedDataLoader
+from haystack.basics.data_handler.processor import Processor
+from haystack.basics.data_handler.utils import grouper
+from haystack.basics.utils import MLFlowLogger as MlLogger
+from haystack.basics.utils import log_ascii_workers, calc_chunksize
+from haystack.basics.utils import get_dict_checksum
+from haystack.basics.visual.ascii.images import TRACTOR_SMALL
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,7 @@ class DataSilo:
                             The DataSilo will init the DataLoader with a DistributedSampler() to distribute batches.
         :param automatic_loading: Set to False, if you don't want to automatically load data at initialization.
         :param max_multiprocessing_chunksize: max possible value for chunksize as calculated by `calc_chunksize()`
-            in `farm.utils`. For certain cases like lm_finetuning, a smaller value can be set, as the default chunksize
+            in `haystack.basics.utils`. For certain cases like lm_finetuning, a smaller value can be set, as the default chunksize
             values are rather large that might cause memory issues.
         :param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
@@ -82,11 +81,6 @@ class DataSilo:
         if len(self.processor.tasks) == 0:
             raise Exception("No task initialized. Try initializing the processor with a metric and a label list. "
                             "Alternatively you can add a task using Processor.add_task()")
-
-        if type(self.processor.tokenizer) == EmbeddingTokenizer:
-            if max_processes != 1:
-                logger.warning("Multiprocessing not efficient for WordEmbedding Tokenizers. Please set max_process \n"
-                               "argument in DataSilo to 1.")
 
         loaded_from_cache = False
         if self.caching:  # Check if DataSets are present in cache

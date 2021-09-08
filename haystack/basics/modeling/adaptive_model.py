@@ -13,11 +13,11 @@ from transformers import AutoConfig
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
 
-from basics.data_handler.processor import Processor
-from basics.modeling.language_model import LanguageModel
-from basics.modeling.prediction_head import PredictionHead, pick_single_fn
-from basics.utils import MLFlowLogger as MlLogger, stack
-import basics.conversion.transformers as conv
+from haystack.basics.data_handler.processor import Processor
+from haystack.basics.modeling.language_model import LanguageModel
+from haystack.basics.modeling.prediction_head import PredictionHead, pick_single_fn
+from haystack.basics.utils import MLFlowLogger as MlLogger, stack
+import haystack.basics.conversion.transformers as conv
 
 logger = logging.getLogger(__name__)
 
