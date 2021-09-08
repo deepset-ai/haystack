@@ -563,8 +563,8 @@ def test_query_keyword_statement_classifier():
 )
 def test_document_search_pipeline(retriever, document_store):
     documents = [
-        {"text": "Sample text for document-1", "meta": {"source": "wiki1"}},
-        {"text": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"id": "a", "text": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"id": "b", "text": "Sample text for document-2", "meta": {"source": "wiki2"}},
         {"text": "Sample text for document-3", "meta": {"source": "wiki3"}},
         {"text": "Sample text for document-4", "meta": {"source": "wiki4"}},
         {"text": "Sample text for document-5", "meta": {"source": "wiki5"}},
@@ -573,12 +573,7 @@ def test_document_search_pipeline(retriever, document_store):
     document_store.write_documents(documents)
     document_store.update_embeddings(retriever)
 
-    docs_id: list = []
-    for index, doc in enumerate(document_store.get_all_documents(return_embedding=False)):
-        if index == 2:
-            break
-        docs_id.append(doc.id)
-
+    docs_id: list = ["a", "b"]
     pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
     list_of_documents = pipeline.run(document_ids=docs_id)
 
