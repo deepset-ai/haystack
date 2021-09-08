@@ -13,7 +13,7 @@ coverage
 langdetect # for PDF conversions
 # for PDF conversions using OCR
 pytesseract==0.3.7 
-pillow==8.2.0
+pillow==8.3.2
 pdf2image==1.14.0
 sentence-transformers>=0.4.0
 python-multipart
