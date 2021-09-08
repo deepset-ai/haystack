@@ -577,6 +577,7 @@ def test_document_search_pipeline(retriever, document_store):
     pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
     list_of_documents = pipeline.run(document_ids=docs_id)
 
+    assert len(list_of_documents[0]) > 1
     assert isinstance(list_of_documents, list)
     assert len(list_of_documents) == len(docs_id)
 
