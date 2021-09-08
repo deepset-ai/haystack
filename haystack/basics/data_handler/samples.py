@@ -1,4 +1,5 @@
 import logging
+from typing import Union
 
 import numpy as np
 from haystack.basics.visual.ascii.images import SAMPLE
@@ -11,7 +12,7 @@ class SampleBasket:
     is needed for tasks like question answering where the source text can generate multiple input - label
     pairs."""
 
-    def __init__(self, id_internal: str, raw: dict, id_external=None, samples=None):
+    def __init__(self, id_internal: Union[int, str], raw: dict, id_external=None, samples=None):
         """
         :param id: A unique identifying id. Used for identification within FARM.
         :type id: str
