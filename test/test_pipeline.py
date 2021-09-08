@@ -18,6 +18,7 @@ from haystack.pipeline import (
 )
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.schema import Document
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
@@ -579,14 +580,15 @@ def test_document_search_pipeline(retriever, document_store):
         docs_id.append(doc.id)
 
     pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
-    output = pipeline.run(document_ids=docs_id)
+    list_of_documents = pipeline.run(document_ids=docs_id)
 
-    assert isinstance(output, list)
-    assert isinstance(output, list)
-    assert len(output) == len(docs_id)
+    assert isinstance(list_of_documents, list)
+    assert len(list_of_documents) == len(docs_id)
 
-    for item in output:
-        assert isinstance(item, list)
-        if len(item) > 0:
-            for _id in item:
-                assert isinstance(_id, str)
+    for another_list in list_of_documents:
+        assert isinstance(another_list, list)
+        if len(another_list) > 0:
+            for document in another_list:
+                assert isinstance(document, Document)
+                assert isinstance(document.id, str)
+                assert isinstance(document.text, str)
