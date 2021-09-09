@@ -15,10 +15,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 try:
-    INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
+    _, pipeline_config, definitions = Pipeline._read_yaml(
+        path=Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME, overwrite_with_env_variables=True
+    )
+    is_faiss_present = False
+    for node in pipeline_config["nodes"]:
+        if definitions[node["name"]]["type"] == "FAISSDocumentStore":
+            is_faiss_present = True
+            break
+    if is_faiss_present:
+        logger.warning("Indexing Pipeline with FAISSDocumentStore is not supported with the REST APIs.")
+        INDEXING_PIPELINE = None
+    else:
+        INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
 except KeyError:
     INDEXING_PIPELINE = None
-    logger.info("Indexing Pipeline not found in the YAML configuration. File Upload API will not be available.")
+    logger.warning("Indexing Pipeline not found in the YAML configuration. File Upload API will not be available.")
 
 
 os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)  # create directory for uploading files
