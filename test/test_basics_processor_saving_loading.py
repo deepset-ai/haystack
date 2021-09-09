@@ -22,16 +22,20 @@ def test_processor_saving_loading(caplog):
         tokenizer=tokenizer,
         max_seq_len=128,
         label_list=["start_token", "end_token"],
+        train_filename="train-sample.json",
+        dev_filename="dev-sample.json",
+        test_filename=None,
+        data_dir=Path("samples/qa"),
     )
 
-    dicts = processor.file_to_dicts(file=Path("../data/squad20/dev-v2.0.json"))
+    dicts = processor.file_to_dicts(file=Path("samples/qa/dev-sample.json"))
     data, tensor_names, _ = processor.dataset_from_dicts(dicts)
 
     save_dir = Path("testsave/processor")
     processor.save(save_dir)
 
     processor = processor.load_from_dir(save_dir)
-    dicts = processor.file_to_dicts(file=Path("../data/squad20/dev-v2.0.json"))
+    dicts = processor.file_to_dicts(file=Path("samples/qa/dev-sample.json"))
     data_loaded, tensor_names_loaded, _ = processor.dataset_from_dicts(dicts)
 
     assert tensor_names == tensor_names_loaded
