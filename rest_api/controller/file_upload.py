@@ -18,6 +18,8 @@ try:
     _, pipeline_config, definitions = Pipeline._read_yaml(
         path=Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME, overwrite_with_env_variables=True
     )
+    # Since each instance of FAISSDocumentStore creates an in-memory FAISS index, the Indexing & Query Pipelines
+    # have different indices. The check below prevents creation of Indexing Pipelines with FAISSDocumentStore.   
     is_faiss_present = False
     for node in pipeline_config["nodes"]:
         if definitions[node["name"]]["type"] == "FAISSDocumentStore":
