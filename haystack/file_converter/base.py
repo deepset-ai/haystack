@@ -129,7 +129,7 @@ class FileTypeClassifier(BaseComponent):
         """
         return {file_path.suffix.lstrip(".") for file_path in file_paths}
 
-    def run(self, file_paths: Union[Path, List[Path]], **kwargs):  # type: ignore
+    def run(self, file_paths: Union[Path, List[Path]]):  # type: ignore
         """
         Return the output based on file extension
         """
@@ -140,7 +140,7 @@ class FileTypeClassifier(BaseComponent):
         if len(extension) > 1:
             raise ValueError(f"Multiple files types are not allowed at once.")
 
-        output = {"file_paths": file_paths, **kwargs}
+        output = {"file_paths": file_paths}
         ext: str = extension.pop()
         try:
             index = ["txt", "pdf", "md", "docx", "html"].index(ext) + 1
