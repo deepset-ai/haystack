@@ -67,6 +67,7 @@ class BiAdaptiveModel(nn.Module):
                                     Note: The loss at this stage is per sample, i.e one tensor of
                                     shape (batchsize) per prediction head.
         """
+        super(BiAdaptiveModel, self).__init__()
 
         self.device = device
         self.language_model1 = language_model1.to(device)
