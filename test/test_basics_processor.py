@@ -1,5 +1,4 @@
 import logging
-import json
 
 from haystack.basics.data_handler.processor import SquadProcessor
 from haystack.basics.modeling.tokenization import Tokenizer
