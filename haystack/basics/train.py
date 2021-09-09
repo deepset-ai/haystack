@@ -13,7 +13,6 @@ from haystack.basics.utils import MLFlowLogger as MlLogger
 from haystack.basics.utils import GracefulKiller
 from haystack.basics.eval import Evaluator
 from haystack.basics.data_handler.data_silo import DataSilo
-from haystack.basics.visual.ascii.images import GROWING_TREE
 from haystack.basics.modeling.adaptive_model import AdaptiveModel
 from haystack.basics.modeling.optimization import get_scheduler
 
@@ -244,8 +243,6 @@ class Trainer:
         loss = 0
         resume_from_step = self.from_step
 
-        if self.local_rank in [0, -1]:
-            logger.info(f"\n {GROWING_TREE}")
 
         for epoch in range(self.from_epoch, self.epochs):
             early_break = False
@@ -255,10 +252,6 @@ class Trainer:
             for step, batch in enumerate(progress_bar):
                 # when resuming training from a checkpoint, we want to fast forward to the step of the checkpoint
                 if resume_from_step and step <= resume_from_step:
-                    # TODO: Improve skipping for StreamingDataSilo
-                    # The seeds before and within the loop are currently needed, if you need full reproducibility
-                    # of runs with vs. without checkpointing using StreamingDataSilo. Reason: While skipping steps in StreamingDataSilo,
-                    # we update the state of the random number generator (e.g. due to masking words), which can impact the model behaviour (e.g. dropout)
                     if step % 10000 == 0:
                         logger.info(f"Skipping {step} out of {resume_from_step} steps ...")
                     if resume_from_step == step:
@@ -287,9 +280,6 @@ class Trainer:
                         and self.global_step % self.evaluate_every == 0 \
                         and self.global_step != 0\
                         and self.local_rank in [0,-1]:
-                    # When using StreamingDataSilo, each evaluation creates a new instance of
-                    # dev_data_loader. In cases like training from scratch, this could cause
-                    # some variance across evaluators due to the randomness in word masking.
                     dev_data_loader = self.data_silo.get_data_loader("dev")
                     if dev_data_loader is not None:
                         evaluator_dev = Evaluator(

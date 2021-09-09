@@ -15,8 +15,8 @@ from transformers.convert_graph_to_onnx import convert, quantize as quantize_mod
 
 from haystack.basics.data_handler.processor import Processor
 from haystack.basics.modeling.language_model import LanguageModel
-from haystack.basics.modeling.prediction_head import PredictionHead, pick_single_fn
-from haystack.basics.utils import MLFlowLogger as MlLogger, stack
+from haystack.basics.modeling.prediction_head import PredictionHead
+from haystack.basics.utils import MLFlowLogger as MlLogger
 import haystack.basics.conversion.transformers as conv
 
 logger = logging.getLogger(__name__)
@@ -103,27 +103,27 @@ class BaseAdaptiveModel:
             elif type(preds) == dict and "predictions" in preds:
                 preds_final.append(preds)
 
-        # This case is triggered by Natural Questions
-        else:
-            preds_final = [list() for _ in range(n_heads)]
-            preds = kwargs["preds"]
-            preds_for_heads = stack(preds)
-            logits_for_heads = [None] * n_heads
-
-            samples = [s for b in kwargs["baskets"] for s in b.samples]
-            kwargs["samples"] = samples
-
-            del kwargs["preds"]
-
-            for i, (head, preds_for_head, logits_for_head) in enumerate(zip(self.prediction_heads, preds_for_heads,  # type: ignore
-                                                                            logits_for_heads)):
-                preds = head.formatted_preds(logits=logits_for_head, preds=preds_for_head, **kwargs)
-                preds_final[i].append(preds)
-
-            # Look for a merge() function amongst the heads and if a single one exists, apply it to preds_final
-            merge_fn = pick_single_fn(self.prediction_heads, "merge_formatted_preds")
-            if merge_fn:
-                preds_final = merge_fn(preds_final)
+        # todo> remove?
+        # else:
+        #     preds_final = [list() for _ in range(n_heads)]
+        #     preds = kwargs["preds"]
+        #     preds_for_heads = stack(preds)
+        #     logits_for_heads = [None] * n_heads
+        #
+        #     samples = [s for b in kwargs["baskets"] for s in b.samples]
+        #     kwargs["samples"] = samples
+        #
+        #     del kwargs["preds"]
+        #
+        #     for i, (head, preds_for_head, logits_for_head) in enumerate(zip(self.prediction_heads, preds_for_heads,  # type: ignore
+        #                                                                     logits_for_heads)):
+        #         preds = head.formatted_preds(logits=logits_for_head, preds=preds_for_head, **kwargs)
+        #         preds_final[i].append(preds)
+        #
+        #     # Look for a merge() function amongst the heads and if a single one exists, apply it to preds_final
+        #     merge_fn = pick_single_fn(self.prediction_heads, "merge_formatted_preds")
+        #     if merge_fn:
+        #         preds_final = merge_fn(preds_final)
 
         return preds_final
 
@@ -138,19 +138,6 @@ class BaseAdaptiveModel:
                                not supplied with labels.
         :return: None
         """
-
-        # Drop the next sentence prediction head if it does not appear in tasks. This is triggered by the interaction
-        # setting the argument BertStyleLMProcessor(next_sent_pred=False)
-        if "nextsentence" not in tasks:
-            idx = None
-            for i, ph in enumerate(self.prediction_heads):
-                if ph.task_name == "nextsentence":
-                    idx = i
-            if idx is not None:
-                logger.info(
-                "Removing the NextSentenceHead since next_sent_pred is set to False in the BertStyleLMProcessor")
-                del self.prediction_heads[i]
-
         for head in self.prediction_heads:
             head.label_tensor_name = tasks[head.task_name]["label_tensor_name"]
             label_list = tasks[head.task_name]["label_list"]
@@ -158,12 +145,6 @@ class BaseAdaptiveModel:
                 raise Exception(f"The task \'{head.task_name}\' is missing a valid set of labels")
             label_list = tasks[head.task_name]["label_list"]
             head.label_list = label_list
-            if "RegressionHead" in str(type(head)):
-                # This needs to be explicitly set because the regression label_list is being hijacked to store
-                # the scaling factor and the mean
-                num_labels = 1
-            else:
-                num_labels = len(label_list)
             head.metric = tasks[head.task_name]["metric"]
 
     @classmethod
@@ -246,10 +227,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         self.lm_output_dims = language_model.get_output_dims()
         self.prediction_heads = nn.ModuleList([ph.to(device) for ph in prediction_heads])
         self.fit_heads_to_lm()
-        # set shared weights for LM finetuning
-        for head in self.prediction_heads:
-            if head.model_type == "language_modelling":
-                head.set_shared_weights(language_model.model.embeddings.word_embeddings.weight)
         self.dropout = nn.Dropout(embeds_dropout_prob)
         self.lm_output_types = (
             [lm_output_types] if isinstance(lm_output_types, str) else lm_output_types
@@ -325,7 +302,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         # Language Model
         if lm_name:
-            language_model = LanguageModel.load(load_dir, farm_lm_name=lm_name)
+            language_model = LanguageModel.load(load_dir, haystack_lm_name=lm_name)
         else:
             language_model = LanguageModel.load(load_dir)
 
@@ -512,7 +489,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                   task_type: Optional[str] = None, processor: Optional[Processor] = None):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
-         - continue training in FARM (e.g. take a squad QA model and fine-tune on your own data)
+         - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
          - compare models without switching frameworks
          - use model directly for inference
 
@@ -526,8 +503,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :param device: "cpu" or "cuda"
         :param task_type: One of :
                           - 'question_answering'
-                          - 'text_classification'
-                          - 'embeddings'
                           More tasks coming soon ...
         :param processor: Processor to populate prediction head with information coming from tasks.
         :type processor: Processor
@@ -548,8 +523,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         :param model_name: Transformers model name.
         :param output_path: Output Path to write the converted model to.
-        :param task_type: Type of task for the model. Available options: "embeddings", "question_answering",
-                          "text_classification", "ner".
+        :param task_type: Type of task for the model. Available options: "question_answering"
         :param convert_to_float16: By default, the model uses float32 precision. With half precision of float16, inference
                                    should be faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs, float32
                                    might be more performant.
@@ -563,8 +537,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         task_type_to_pipeline_map = {
             "question_answering": "question-answering",
-            "embeddings": "feature-extraction",
-            "ner": "ner"
         }
 
         convert(
@@ -576,7 +548,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             use_external_format=True if language_model_class is "XLMRoberta" else False
         )
 
-        # save processor & model config files that are needed when loading the model with the FARM Inferencer
+        # save processor & model config files that are needed when loading the model with the Haystack.basics Inferencer
         processor = Processor.convert_from_transformers(
             tokenizer_name_or_path=model_name,
             task_type=task_type,
@@ -618,10 +590,10 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
     """
     Implementation of ONNX Runtime for Inference of ONNX Models.
 
-    Existing PyTorch based FARM AdaptiveModel can be converted to ONNX format using AdaptiveModel.convert_to_onnx().
+    Existing PyTorch based Haystack.basics AdaptiveModel can be converted to ONNX format using AdaptiveModel.convert_to_onnx().
     The conversion is currently only implemented for Question Answering Models.
 
-    For inference, this class is compatible with the FARM Inferencer.
+    For inference, this class is compatible with the Haystack.basics Inferencer.
     """
     # TODO validate usefulness
 
@@ -640,7 +612,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         :param prediction_heads: A list of models that take embeddings and return logits for a given task.
         :param device: The device on which this model will operate. Either "cpu" or "cuda".
         """
-        import onnxruntime # TODO this line is not in original FARM code
+        import onnxruntime
         if str(device) == "cuda" and onnxruntime.get_device() != "GPU":
             raise Exception(f"Device {device} not available for Inference. For CPU, run pip install onnxruntime and"
                             f"for GPU run pip install onnxruntime-gpu")

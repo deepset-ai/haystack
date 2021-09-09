@@ -7,17 +7,15 @@ import tempfile
 import uuid
 from itertools import islice
 from pathlib import Path
-
-from haystack.basics.file_utils import http_get
+import requests
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
 DOWNSTREAM_TASK_MAP = {
     "squad20": "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-downstream/squad20.tar.gz",
     "covidqa": "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-downstream/covidqa.tar.gz",
-
 }
-
 
 def read_dpr_json(file, max_samples=None, proxies=None, num_hard_negatives=1, num_positives=1, shuffle_negatives=True, shuffle_positives=False):
     """
@@ -137,6 +135,17 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
     # filepath = Path("model_output") / out_filename
     json.dump(predictions_json, open(out_filename, "w"))
     logger.info(f"Written Squad predictions to: {out_filename}")
+
+def http_get(url, temp_file, proxies=None):
+    req = requests.get(url, stream=True, proxies=proxies)
+    content_length = req.headers.get("Content-Length")
+    total = int(content_length) if content_length is not None else None
+    progress = tqdm(unit="B", total=total)
+    for chunk in req.iter_content(chunk_size=1024):
+        if chunk:  # filter out keep-alive new chunks
+            progress.update(len(chunk))
+            temp_file.write(chunk)
+    progress.close()
 
 def grouper(iterable, n, worker_id=0, total_workers=1):
     """

@@ -13,7 +13,7 @@ import random
 import os
 import numpy as np
 
-from haystack.basics.visual.ascii.images import WELCOME_BARN, WORKER_M, WORKER_F, WORKER_X
+from haystack.basics.visual.ascii.images import WORKER_M, WORKER_F, WORKER_X
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,6 @@ class BaseMLLogger:
 
     def __init__(self, tracking_uri, **kwargs):
         self.tracking_uri = tracking_uri
-        print(WELCOME_BARN)
 
     def init_experiment(self, tracking_uri):
         raise NotImplementedError()
@@ -162,7 +161,7 @@ class TensorBoardLogger(BaseMLLogger):
             TensorBoardLogger.summary_writer.add_text(tag=key, text_string=str(value))
 
 
-def set_all_seeds(seed, deterministic_cudnn=False):
+def set_all_seeds(seed: int, deterministic_cudnn: bool=False) -> None:
     """
     Setting multiple seeds to make runs reproducible.
 
@@ -170,10 +169,7 @@ def set_all_seeds(seed, deterministic_cudnn=False):
     but might slow down your training (see https://pytorch.org/docs/stable/notes/randomness.html#cudnn) !
 
     :param seed:number to use as seed
-    :type seed: int
     :param deterministic_torch: Enable for full reproducibility when using CUDA. Caution: might slow down training.
-    :type deterministic_cudnn: bool
-    :return: None
     """
     random.seed(seed)
     np.random.seed(seed)
