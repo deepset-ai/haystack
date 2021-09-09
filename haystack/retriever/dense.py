@@ -84,8 +84,8 @@ class DensePassageRetriever(BaseRetriever):
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param top_k: How many documents to return per query.
-        :param use_gpu: Whether to use gpu or not
-        :param batch_size: Number of questions or passages to encode at once
+        :param use_gpu: Whether to use all available gpus or the cpu
+        :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
                             This is the approach used in the original paper and is likely to improve performance if your
                             titles contain meaningful information for retrieval (topic, entities etc.) .
@@ -101,6 +101,7 @@ class DensePassageRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
+        :param devices: List of gpu devices to use for inference. Training will only work on one gpu (first of the list).
         """
 
         # save init parameters to enable export of component config as YAML
@@ -113,12 +114,15 @@ class DensePassageRetriever(BaseRetriever):
             similarity_function=similarity_function, progress_bar=progress_bar,
         )
 
-        if devices is None:
-            device, _ = initialize_device_settings(use_cuda=use_gpu)
-            self.devices = [device]
-        else:
-            batch_size *= len(devices)
+        if devices is not None:
             self.devices = devices
+        elif use_gpu:
+            self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
+        else:
+            self.devices = [torch.device("cpu")]
+
+        if batch_size < len(self.devices):
+            logger.warn("Batch size is less than the number of devices. All gpus will not be utilized.")
 
         self.document_store = document_store
         self.batch_size = batch_size
