@@ -842,7 +842,7 @@ class TextSimilarityProcessor(Processor):
         self.max_seq_len_passage = max_seq_len_passage
 
         super(TextSimilarityProcessor, self).__init__(
-            tokenizer = None, #type: ignore
+            tokenizer = None,  # type: ignore
             max_seq_len = 0,
             train_filename=train_filename,
             dev_filename=dev_filename,
