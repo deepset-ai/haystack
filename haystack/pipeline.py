@@ -15,8 +15,8 @@ try:
     from ray import serve
     import ray
 except:
-    ray = None
-    serve = None
+    ray = None  # type: ignore
+    serve = None  # type: ignore
 
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
@@ -1136,7 +1136,7 @@ class RayPipeline(Pipeline):
         :param replicas: By default, a single replica of the component is created. It can be
                          configured by setting `replicas` parameter in the Pipeline YAML.
         """
-        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)
+        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)  # type: ignore
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
         return handle
