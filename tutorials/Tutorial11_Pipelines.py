@@ -147,11 +147,11 @@ def tutorial11_pipelines():
     class QueryClassifier():
         outgoing_edges = 2
 
-        def run(self, **kwargs):
-            if "?" in kwargs["query"]:
-                return (kwargs, "output_2")
+        def run(self, query):
+            if "?" in query:
+                return {}, "output_2"
             else:
-                return (kwargs, "output_1")
+                return {}, "output_1"
 
     # Here we build the pipeline
     p_classifier = Pipeline()
