@@ -85,13 +85,6 @@ class Evaluator:
         # Evaluate per prediction head
         all_results = []
         for head_num, head in enumerate(model.prediction_heads):
-            if head.model_type == "multilabel_text_classification":
-                # converting from string preds back to multi-hot encoding
-                from sklearn.preprocessing import MultiLabelBinarizer
-                mlb = MultiLabelBinarizer(classes=head.label_list)
-                # TODO check why .fit() should be called on predictions, rather than on labels
-                preds_all[head_num] = mlb.fit_transform(preds_all[head_num])
-                label_all[head_num] = mlb.transform(label_all[head_num])
             if head.model_type == "span_classification" and calibrate_conf_scores:
                 temperature_previous = head.temperature_for_confidence.item()
                 logger.info(f"temperature used for confidence scores before calibration: {temperature_previous}")

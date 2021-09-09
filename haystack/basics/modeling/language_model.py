@@ -21,13 +21,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import json
 import logging
 import os
-import io
 from pathlib import Path
-from collections import OrderedDict
 
-from dotmap import DotMap
-from tqdm import tqdm
-import copy
 import numpy as np
 import torch
 from torch import nn
@@ -48,7 +43,6 @@ from transformers import (
 
 from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
-from transformers.models.bert.tokenization_bert import load_vocab
 import transformers
 
 
@@ -130,7 +124,7 @@ class LanguageModel(nn.Module):
         config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
         if os.path.exists(config_file):
             logger.info(f"Model found locally at {pretrained_model_name_or_path}")
-            # it's a local directory in FARM format
+            # it's a local directory in Haystack format
             config = json.load(open(config_file))
             language_model = cls.subclasses[config["name"]].load(pretrained_model_name_or_path)
         else:
@@ -149,8 +143,7 @@ class LanguageModel(nn.Module):
                 f"Model not found for {pretrained_model_name_or_path}. Either supply the local path for a saved "
                 f"model or one of bert/roberta/xlnet/albert/distilbert models that can be downloaded from remote. "
                 f"Ensure that the model class name can be inferred from the directory name when loading a "
-                f"Transformers' model. Here's a list of available models: "
-                f"https://farm.deepset.ai/api/modeling.html#farm.modeling.language_model.LanguageModel.load"
+                f"Transformers' model."
             )
         else:
             logger.info(f"Loaded {pretrained_model_name_or_path}")
@@ -180,7 +173,7 @@ class LanguageModel(nn.Module):
             language_model_class = "XLMRoberta"
         elif model_type == "roberta":
             if "mlm" in model_name_or_path.lower():
-                raise NotImplementedError("MLM part of codebert is currently not supported in FARM")
+                raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
             language_model_class = "Roberta"
         elif model_type == "camembert":
             language_model_class = "Camembert"
@@ -223,7 +216,7 @@ class LanguageModel(nn.Module):
             language_model_class = "Roberta"
         elif "codebert" in model_name_or_path.lower():
             if "mlm" in model_name_or_path.lower():
-                raise NotImplementedError("MLM part of codebert is currently not supported in FARM")
+                raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
             else:
                 language_model_class = "Roberta"
         elif "camembert" in model_name_or_path.lower() or "umberto" in model_name_or_path.lower():
@@ -440,7 +433,7 @@ class Bert(LanguageModel):
 
         * the name of a remote model on s3 ("bert-base-cased" ...)
         * OR a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * OR a local path of a model trained via FARM ("some_dir/farm_model")
+        * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         :type pretrained_model_name_or_path: str
@@ -448,17 +441,17 @@ class Bert(LanguageModel):
         """
 
         bert = cls()
-        if "farm_lm_name" in kwargs:
-            bert.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            bert.name = kwargs["haystack_lm_name"]
         else:
             bert.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            bert_config = BertConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            bert.model = BertModel.from_pretrained(farm_lm_model, config=bert_config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            bert_config = BertConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            bert.model = BertModel.from_pretrained(haystack_lm_model, config=bert_config, **kwargs)
             bert.language = bert.model.config.language
         else:
             # Pytorch-transformer Style
@@ -525,26 +518,26 @@ class Albert(LanguageModel):
 
         * the name of a remote model on s3 ("albert-base" ...)
         * or a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * or a local path of a model trained via FARM ("some_dir/farm_model")
+        * or a local path of a model trained via Haystack ("some_dir/Haystack_model")
 
         :param pretrained_model_name_or_path: name or path of a model
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
-                         If not supplied, FARM will try to infer it from the model name.
+                         If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
 
         """
         albert = cls()
-        if "farm_lm_name" in kwargs:
-            albert.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            albert.name = kwargs["haystack_lm_name"]
         else:
             albert.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            config = AlbertConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            albert.model = AlbertModel.from_pretrained(farm_lm_model, config=config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            config = AlbertConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            albert.model = AlbertModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
             albert.language = albert.model.config.language
         else:
             # Huggingface transformer Style
@@ -612,26 +605,26 @@ class Roberta(LanguageModel):
 
         * the name of a remote model on s3 ("roberta-base" ...)
         * or a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * or a local path of a model trained via FARM ("some_dir/farm_model")
+        * or a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: name or path of a model
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
-                         If not supplied, FARM will try to infer it from the model name.
+                         If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
 
         """
         roberta = cls()
-        if "farm_lm_name" in kwargs:
-            roberta.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            roberta.name = kwargs["haystack_lm_name"]
         else:
             roberta.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            config = RobertaConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            roberta.model = RobertaModel.from_pretrained(farm_lm_model, config=config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            config = RobertaConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            roberta.model = RobertaModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
             roberta.language = roberta.model.config.language
         else:
             # Huggingface transformer Style
@@ -699,26 +692,26 @@ class XLMRoberta(LanguageModel):
 
         * the name of a remote model on s3 ("xlm-roberta-base" ...)
         * or a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * or a local path of a model trained via FARM ("some_dir/farm_model")
+        * or a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: name or path of a model
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
-                         If not supplied, FARM will try to infer it from the model name.
+                         If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
 
         """
         xlm_roberta = cls()
-        if "farm_lm_name" in kwargs:
-            xlm_roberta.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            xlm_roberta.name = kwargs["haystack_lm_name"]
         else:
             xlm_roberta.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            config = XLMRobertaConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            xlm_roberta.model = XLMRobertaModel.from_pretrained(farm_lm_model, config=config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            config = XLMRobertaConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            xlm_roberta.model = XLMRobertaModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
             xlm_roberta.language = xlm_roberta.model.config.language
         else:
             # Huggingface transformer Style
@@ -793,7 +786,7 @@ class DistilBert(LanguageModel):
 
         * the name of a remote model on s3 ("distilbert-base-german-cased" ...)
         * OR a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * OR a local path of a model trained via FARM ("some_dir/farm_model")
+        * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         :type pretrained_model_name_or_path: str
@@ -801,17 +794,17 @@ class DistilBert(LanguageModel):
         """
 
         distilbert = cls()
-        if "farm_lm_name" in kwargs:
-            distilbert.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            distilbert.name = kwargs["haystack_lm_name"]
         else:
             distilbert.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            config = DistilBertConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            distilbert.model = DistilBertModel.from_pretrained(farm_lm_model, config=config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            config = DistilBertConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            distilbert.model = DistilBertModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
             distilbert.language = distilbert.model.config.language
         else:
             # Pytorch-transformer Style
@@ -886,26 +879,26 @@ class XLNet(LanguageModel):
 
         * the name of a remote model on s3 ("xlnet-base-cased" ...)
         * or a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * or a local path of a model trained via FARM ("some_dir/farm_model")
+        * or a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: name or path of a model
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
-                         If not supplied, FARM will try to infer it from the model name.
+                         If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
 
         """
         xlnet = cls()
-        if "farm_lm_name" in kwargs:
-            xlnet.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            xlnet.name = kwargs["haystack_lm_name"]
         else:
             xlnet.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            config = XLNetConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            xlnet.model = XLNetModel.from_pretrained(farm_lm_model, config=config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            config = XLNetConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            xlnet.model = XLNetModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
             xlnet.language = xlnet.model.config.language
         else:
             # Pytorch-transformer Style
@@ -998,7 +991,7 @@ class Electra(LanguageModel):
 
         * the name of a remote model on s3 ("google/electra-base-discriminator" ...)
         * OR a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * OR a local path of a model trained via FARM ("some_dir/farm_model")
+        * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         :type pretrained_model_name_or_path: str
@@ -1006,17 +999,17 @@ class Electra(LanguageModel):
         """
 
         electra = cls()
-        if "farm_lm_name" in kwargs:
-            electra.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            electra.name = kwargs["haystack_lm_name"]
         else:
             electra.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            config = ElectraConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            electra.model = ElectraModel.from_pretrained(farm_lm_model, config=config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            config = ElectraConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            electra.model = ElectraModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
             electra.language = electra.model.config.language
         else:
             # Transformers Style
@@ -1094,26 +1087,26 @@ class Camembert(Roberta):
 
         * the name of a remote model on s3 ("camembert-base" ...)
         * or a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * or a local path of a model trained via FARM ("some_dir/farm_model")
+        * or a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: name or path of a model
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
-                         If not supplied, FARM will try to infer it from the model name.
+                         If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
 
         """
         camembert = cls()
-        if "farm_lm_name" in kwargs:
-            camembert.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            camembert.name = kwargs["haystack_lm_name"]
         else:
             camembert.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            config = CamembertConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            camembert.model = CamembertModel.from_pretrained(farm_lm_model, config=config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            config = CamembertConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            camembert.model = CamembertModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
             camembert.language = camembert.model.config.language
         else:
             # Huggingface transformer Style
@@ -1139,28 +1132,28 @@ class DPRQuestionEncoder(LanguageModel):
 
         * the name of a remote model on s3 ("facebook/dpr-question_encoder-single-nq-base" ...)
         * OR a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * OR a local path of a model trained via FARM ("some_dir/farm_model")
+        * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRQuestionEncoder
         :type pretrained_model_name_or_path: str
         """
 
         dpr_question_encoder = cls()
-        if "farm_lm_name" in kwargs:
-            dpr_question_encoder.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            dpr_question_encoder.name = kwargs["haystack_lm_name"]
         else:
             dpr_question_encoder.name = pretrained_model_name_or_path
 
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            original_model_config = AutoConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            original_model_config = AutoConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
 
             if original_model_config.model_type == "dpr":
-                dpr_config = transformers.DPRConfig.from_pretrained(farm_lm_config)
-                dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(farm_lm_model, config=dpr_config, **kwargs)
+                dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
+                dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(haystack_lm_model, config=dpr_config, **kwargs)
             else:
                 if original_model_config.model_type != "bert":
                     logger.warning(f"Using a model of type '{original_model_config.model_type}' which might be incompatible with DPR encoders."
@@ -1168,7 +1161,7 @@ class DPRQuestionEncoder(LanguageModel):
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder(config=transformers.DPRConfig(**original_config_dict))
-                language_model_class = cls.get_language_model_class(farm_lm_config)
+                language_model_class = cls.get_language_model_class(haystack_lm_config)
                 dpr_question_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
             dpr_question_encoder.language = dpr_question_encoder.model.config.language
         else:
@@ -1278,28 +1271,28 @@ class DPRContextEncoder(LanguageModel):
 
         * the name of a remote model on s3 ("facebook/dpr-ctx_encoder-single-nq-base" ...)
         * OR a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * OR a local path of a model trained via FARM ("some_dir/farm_model")
+        * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRContextEncoder
         :type pretrained_model_name_or_path: str
         """
 
         dpr_context_encoder = cls()
-        if "farm_lm_name" in kwargs:
-            dpr_context_encoder.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            dpr_context_encoder.name = kwargs["haystack_lm_name"]
         else:
             dpr_context_encoder.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
 
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            original_model_config = AutoConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            original_model_config = AutoConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
 
             if original_model_config.model_type == "dpr":
-                dpr_config = transformers.DPRConfig.from_pretrained(farm_lm_config)
-                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(farm_lm_model,config=dpr_config,**kwargs)
+                dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
+                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(haystack_lm_model,config=dpr_config,**kwargs)
             else:
                 if original_model_config.model_type != "bert":
                     logger.warning(
@@ -1308,7 +1301,7 @@ class DPRContextEncoder(LanguageModel):
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
                 dpr_context_encoder.model = transformers.DPRContextEncoder(config=transformers.DPRConfig(**original_config_dict))
-                language_model_class = cls.get_language_model_class(farm_lm_config)
+                language_model_class = cls.get_language_model_class(haystack_lm_config)
                 dpr_context_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(
                     str(pretrained_model_name_or_path)).model
             dpr_context_encoder.language = dpr_context_encoder.model.config.language
@@ -1438,7 +1431,7 @@ class BigBird(LanguageModel):
 
         * the name of a remote model on s3 ("bert-base-cased" ...)
         * OR a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * OR a local path of a model trained via FARM ("some_dir/farm_model")
+        * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         :type pretrained_model_name_or_path: str
@@ -1446,17 +1439,17 @@ class BigBird(LanguageModel):
         """
 
         big_bird = cls()
-        if "farm_lm_name" in kwargs:
-            big_bird.name = kwargs["farm_lm_name"]
+        if "haystack_lm_name" in kwargs:
+            big_bird.name = kwargs["haystack_lm_name"]
         else:
             big_bird.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using FARM format and Pytorch-Transformers format
-        farm_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(farm_lm_config):
-            # FARM style
-            big_bird_config = BigBirdConfig.from_pretrained(farm_lm_config)
-            farm_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            big_bird.model = BigBirdModel.from_pretrained(farm_lm_model, config=big_bird_config, **kwargs)
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            big_bird_config = BigBirdConfig.from_pretrained(haystack_lm_config)
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            big_bird.model = BigBirdModel.from_pretrained(haystack_lm_model, config=big_bird_config, **kwargs)
             big_bird.language = big_bird.model.config.language
         else:
             # Pytorch-transformer Style

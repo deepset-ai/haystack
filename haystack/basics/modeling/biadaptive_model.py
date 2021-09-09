@@ -147,7 +147,7 @@ class BiAdaptiveModel(nn.Module):
         prediction_heads = []
         ph_output_type = []
         for config_file in ph_config_files:
-            head = PredictionHead.load(config_file, strict=False, load_weights=False)
+            head = PredictionHead.load(config_file, strict=strict, load_weights=False)
             prediction_heads.append(head)
             ph_output_type.append(head.ph_output_type)
 
@@ -411,7 +411,7 @@ class BiAdaptiveModel(nn.Module):
             logger.warning("No prediction head weights are required for DPR")
 
         else:
-            raise NotImplementedError(f"FARM -> Transformers conversion is not supported yet for"
+            raise NotImplementedError(f"Haystack -> Transformers conversion is not supported yet for"
                                       f" prediction heads of type {self.prediction_heads[0].model_type}")
         pass
 
@@ -423,7 +423,7 @@ class BiAdaptiveModel(nn.Module):
                                   similarity_function: str = "dot_product"):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
-         - continue training in FARM (e.g. take a squad QA model and fine-tune on your own data)
+         - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
          - compare models without switching frameworks
          - use model directly for inference
 

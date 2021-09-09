@@ -104,7 +104,7 @@ class PredictionHead(nn.Module):
         :param config_file: location where corresponding config is stored
         :param strict: whether to strictly enforce that the keys loaded from saved model match the ones in
                        the PredictionHead (see torch.nn.module.load_state_dict()).
-                       Set to `False` for backwards compatibility with PHs saved with older version of FARM/haystack.
+                       Set to `False` for backwards compatibility with PHs saved with older version of Haystack.
         :param load_weights: whether to load weights of the prediction head
         :return: PredictionHead
         :rtype: PredictionHead[T]
@@ -141,7 +141,6 @@ class PredictionHead(nn.Module):
     def prepare_labels(self, **kwargs):
         """
         Some prediction heads need additional label conversion.
-        E.g. NER needs word level labels turned into subword token level labels.
 
         :param kwargs: placeholder for passing generic parameters
         :return: labels in the right format
@@ -274,9 +273,9 @@ class QuestionAnsweringHead(PredictionHead):
     @classmethod
     def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore[override]
         """
-        Load a prediction head from a saved FARM or transformers model. `pretrained_model_name_or_path`
+        Load a prediction head from a saved Haystack or transformers model. `pretrained_model_name_or_path`
         can be one of the following:
-        a) Local path to a FARM prediction head config (e.g. my-bert/prediction_head_0_config.json)
+        a) Local path to a Haystack prediction head config (e.g. my-bert/prediction_head_0_config.json)
         b) Local path to a Transformers model (e.g. my-bert)
         c) Name of a public model from https://huggingface.co/models (e.g. distilbert-base-uncased-distilled-squad)
 
@@ -293,7 +292,7 @@ class QuestionAnsweringHead(PredictionHead):
         if os.path.exists(pretrained_model_name_or_path) \
                 and "config.json" in str(pretrained_model_name_or_path) \
                 and "prediction_head" in str(pretrained_model_name_or_path):
-            # a) FARM style
+            # a) Haystack style
             super(QuestionAnsweringHead, cls).load(str(pretrained_model_name_or_path))
         else:
             # b) transformers style
@@ -825,62 +824,6 @@ class QuestionAnsweringHead(PredictionHead):
     def prepare_labels(self, labels, start_of_word, **kwargs):
         return labels
 
-    @staticmethod
-    def merge_formatted_preds(preds_all):
-        """ Merges results from the two prediction heads used for NQ style QA. Takes the prediction from QA head and
-        assigns it the appropriate classification label. This mapping is achieved through passage_id.
-        preds_all should contain [QuestionAnsweringHead.formatted_preds(), TextClassificationHead()]. The first item
-        of this list should be of len=n_documents while the second item should be of len=n_passages"""
-
-        ret = []
-
-        # This fn is used to align QA output of len=n_docs and Classification output of len=n_passages
-        def chunk(iterable, lengths):
-            if sum(lengths) != len(iterable):
-                logger.error("Sum of the lengths does not match the length of the iterable")
-            cumsum = list(np.cumsum(lengths))
-            cumsum = [0] + cumsum
-            spans = [(cumsum[i], cumsum[i+1]) for i in range(len(cumsum) - 1)]
-            ret = [iterable[start:end] for start, end in spans]
-            return ret
-
-        cls_preds = preds_all[1][0]["predictions"]
-        qa_preds = preds_all[0][0]
-        samples_per_doc = [doc_pred.n_passages for doc_pred in preds_all[0][0]]
-        cls_preds_grouped = chunk(cls_preds, samples_per_doc)
-
-        for qa_pred, cls_preds in zip(qa_preds, cls_preds_grouped):
-            qa_candidates = qa_pred.prediction
-            qa_candidates_new = []
-            for qa_candidate in qa_candidates:
-                passage_id = qa_candidate.passage_id
-                if passage_id is not None:
-                    cls_pred = cls_preds[int(passage_id)]["label"]
-                # i.e. if no_answer
-                else:
-                    cls_pred = "no_answer"
-                qa_candidate.add_cls(cls_pred)
-                qa_candidates_new.append(qa_candidate)
-            qa_pred.prediction = qa_candidates_new
-            ret.append(qa_pred)
-        return ret
-
-
-def pick_single_fn(heads, fn_name):
-    """ Iterates over heads and returns a static method called fn_name
-    if and only if one head has a method of that name. If no heads have such a method, None is returned.
-    If more than one head has such a method, an Exception is thrown"""
-    merge_fns = []
-    for h in heads:
-        merge_fns.append(getattr(h, fn_name, None))
-
-    merge_fns = [x for x in merge_fns if x is not None]
-    if len(merge_fns) == 0:
-        return None
-    elif len(merge_fns) == 1:
-        return merge_fns[0]
-    else:
-        raise Exception(f"More than one of the prediction heads have a {fn_name}() function")
 
 
 class TextSimilarityHead(PredictionHead):

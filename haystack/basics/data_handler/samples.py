@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, Optional, List
 
 import numpy as np
 from haystack.basics.visual.ascii.images import SAMPLE
@@ -7,44 +7,17 @@ from haystack.basics.visual.ascii.images import SAMPLE
 logger = logging.getLogger(__name__)
 
 
-class SampleBasket:
-    """ An object that contains one source text and the one or more samples that will be processed. This
-    is needed for tasks like question answering where the source text can generate multiple input - label
-    pairs."""
-
-    def __init__(self, id_internal: Union[int, str], raw: dict, id_external=None, samples=None):
-        """
-        :param id: A unique identifying id. Used for identification within FARM.
-        :type id: str
-        :param external_id: Used for identification outside of FARM. E.g. if another framework wants to pass along its own id with the results.
-        :type external_id: str
-        :param raw: Contains the various data needed to form a sample. It is ideally in human readable form.
-        :type raw: dict
-        :param samples: An optional list of Samples used to populate the basket at initialization.
-        :type samples: Sample
-        """
-        self.id_internal = id_internal
-        self.id_external = id_external
-        self.raw = raw
-        self.samples = samples
-
-
 class Sample(object):
     """A single training/test sample. This should contain the input and the label. Is initialized with
     the human readable clear_text. Over the course of data preprocessing, this object is populated
     with tokenized and featurized versions of the data."""
 
-    def __init__(self, id, clear_text, tokenized=None, features=None):
+    def __init__(self, id: str, clear_text: dict, tokenized: Optional[dict] = None, features: Optional[dict] = None):
         """
         :param id: The unique id of the sample
-        :type id: str
         :param clear_text: A dictionary containing various human readable fields (e.g. text, label).
-        :type clear_text: dict
         :param tokenized: A dictionary containing the tokenized version of clear text plus helpful meta data: offsets (start position of each token in the original text) and start_of_word (boolean if a token is the first one of a word).
-        :type tokenized: dict
         :param features: A dictionary containing features in a vectorized format needed by the model to process this sample.
-        :type features: dict
-
         """
         self.id = id
         self.clear_text = clear_text
@@ -57,9 +30,9 @@ class Sample(object):
             clear_text_str = "\n \t".join(
                 [k + ": " + str(v) for k, v in self.clear_text.items()]
             )
-            if len(clear_text_str) > 10000:
-                clear_text_str = clear_text_str[:10_000] + f"\nTHE REST IS TOO LONG TO DISPLAY. " \
-                                                           f"Remaining chars :{len(clear_text_str)-10_000}"
+            if len(clear_text_str) > 3000:
+                clear_text_str = clear_text_str[:3_000] + f"\nTHE REST IS TOO LONG TO DISPLAY. " \
+                                                           f"Remaining chars :{len(clear_text_str)-3_000}"
         else:
             clear_text_str = "None"
 
@@ -76,9 +49,9 @@ class Sample(object):
             tokenized_str = "\n \t".join(
                 [k + ": " + str(v) for k, v in self.tokenized.items()]
             )
-            if len(tokenized_str) > 10000:
-                tokenized_str = tokenized_str[:10_000] + f"\nTHE REST IS TOO LONG TO DISPLAY. " \
-                                                         f"Remaining chars: {len(tokenized_str)-10_000}"
+            if len(tokenized_str) > 3000:
+                tokenized_str = tokenized_str[:3_000] + f"\nTHE REST IS TOO LONG TO DISPLAY. " \
+                                                         f"Remaining chars: {len(tokenized_str)-3_000}"
         else:
             tokenized_str = "None"
         s = (
@@ -90,6 +63,25 @@ class Sample(object):
             "_____________________________________________________"
         )
         return s
+
+
+class SampleBasket:
+    """ An object that contains one source text and the one or more samples that will be processed. This
+    is needed for tasks like question answering where the source text can generate multiple input - label
+    pairs."""
+
+    def __init__(self, id_internal: Union[int, str], raw: dict, id_external: str = None, samples: Optional[List[Sample]] = None):
+        """
+        :param id_internal: A unique identifying id. Used for identification within Haystack.
+        :param external_id: Used for identification outside of Haystack. E.g. if another framework wants to pass along its own id with the results.
+        :param raw: Contains the various data needed to form a sample. It is ideally in human readable form.
+        :param samples: An optional list of Samples used to populate the basket at initialization.
+        """
+        self.id_internal = id_internal
+        self.id_external = id_external
+        self.raw = raw
+        self.samples = samples
+
 
 def process_answers(answers, doc_offsets, passage_start_c, passage_start_t):
     """TODO Write Comment"""
@@ -106,13 +98,6 @@ def process_answers(answers, doc_offsets, passage_start_c, passage_start_t):
         answer_end_c = answer_start_c + answer_len_c - 1
         answer_start_t = offset_to_token_idx_vecorized(doc_offsets, answer_start_c)
         answer_end_t = offset_to_token_idx_vecorized(doc_offsets, answer_end_c)
-
-        # # Leaving this code for potentially debugging 'offset_to_token_idx_vecorized()'
-        # answer_start_t2 = offset_to_token_idx(doc_offsets, answer_start_c)
-        # answer_end_t2 = offset_to_token_idx(doc_offsets, answer_end_c)
-        # if (answer_start_t != answer_start_t2) or (answer_end_t != answer_end_t2):
-        #     pass
-
 
         # TODO: Perform check that answer can be recovered from document?
         # This section converts start and end so that they are relative to the passage
@@ -185,14 +170,6 @@ def offset_to_token_idx(token_offsets, ch_idx):
 
 def offset_to_token_idx_vecorized(token_offsets, ch_idx):
     """ Returns the idx of the token at the given character idx"""
-    ################
-    ################
-    ##################
-    # TODO CHECK THIS fct thoroughly - This must be bulletproof and inlcude start and end of sequence checks
-    # todo Possibly this function does not work for Natural Questions and needs adjustments
-    ################
-    ################
-    ##################
     # case ch_idx is at end of tokens
     if ch_idx >= np.max(token_offsets):
         # TODO check "+ 1" (it is needed for making end indices compliant with old offset_to_token_idx() function)

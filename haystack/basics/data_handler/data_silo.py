@@ -1,4 +1,3 @@
-import copy
 import logging
 import torch.multiprocessing as mp
 from contextlib import ExitStack
@@ -9,12 +8,10 @@ from itertools import groupby
 from typing import Optional, List, Tuple, Dict, Union
 
 import numpy as np
-from sklearn.utils.class_weight import compute_class_weight
-from torch.utils.data import ConcatDataset, Dataset, Subset
+from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 import torch
-from sklearn.model_selection import StratifiedKFold, KFold
 from tqdm import tqdm
 
 from haystack.basics.data_handler.dataloader import NamedDataLoader
@@ -93,7 +90,7 @@ class DataSilo:
 
         if not loaded_from_cache and automatic_loading:
             # In most cases we want to load all data automatically, but in some cases we rather want to do this
-            # later or load from dicts instead of file (https://github.com/deepset-ai/FARM/issues/85)
+            # later or load from dicts instead of file
             self._load_data()
 
     @classmethod
@@ -107,7 +104,7 @@ class DataSilo:
           * all datasets get collected and concatenated
         :param chunk: Instead of only having a list of dicts here we also supply an index (ascending int) for each.
             => [(0, dict), (1, dict) ...]
-        :param processor: FARM Processor (e.g. TextClassificationProcessor)
+        :param processor: Haystack basics Processor (e.g. SquadProcessor)
         :return: PyTorch Dataset
         """
         dicts = [d[1] for d in chunk]
@@ -455,7 +452,7 @@ class DataSilo:
                 logger.info("Average sequence length after clipping: {}".format(ave_len))
                 logger.info("Proportion clipped:      {}".format(clipped))
                 if clipped > 0.5:
-                    logger.info("[Farmer's Tip] {}% of your samples got cut down to {} tokens. "
+                    logger.info("[Haystack Tip] {}% of your samples got cut down to {} tokens. "
                                 "Consider increasing max_seq_len. "
                                 "This will lead to higher memory consumption but is likely to "
                                 "improve your model performance".format(round(clipped * 100, 1), max_seq_len))
@@ -513,40 +510,6 @@ class DataSilo:
         ave_len = [ave_len_q, ave_len_p]
         max_seq_len = [q_max_seq_len, p_max_seq_len]
         return clipped, ave_len, seq_lens, max_seq_len
-
-    def calculate_class_weights(self, task_name: str, source: str = "train"):
-        """
-        For imbalanced datasets, we can calculate class weights that can be used later in the
-        loss function of the prediction head to upweight the loss of minorities.
-
-        :param task_name: Name of the task as used in the processor.
-        :param source: Portion of data to calculate class weights on. Either 'train' or 'all'.
-        """
-
-        tensor_name = self.processor.tasks[task_name]["label_tensor_name"]  # type: ignore
-        label_list = self.processor.tasks[task_name]["label_list"]  # type: ignore
-        tensor_idx = list(self.tensor_names).index(tensor_name)  # type: ignore
-        # we need at least ONE observation for each label to avoid division by zero in compute_class_weights.
-        observed_labels = copy.deepcopy(label_list)
-        if source == "all":
-            datasets = self.data.values()
-        elif source == "train":
-            datasets = [self.data["train"]]  # type: ignore
-        else:
-            raise Exception("source argument expects one of [\"train\", \"all\"]")
-        for dataset in datasets:
-            if "multilabel" in self.processor.tasks[task_name]["task_type"]:  # type: ignore
-                for x in dataset:
-                    observed_labels += [label_list[label_id] for label_id in (x[tensor_idx] == 1).nonzero()]
-            else:
-                observed_labels += [label_list[x[tensor_idx].item()] for x in dataset]
-
-        # TODO scale e.g. via logarithm to avoid crazy spikes for rare classes
-        class_weights = compute_class_weight("balanced", classes=np.asarray(label_list), y=observed_labels)
-
-        # conversion necessary to have class weights of same type as model weights
-        class_weights = class_weights.astype(np.float32)
-        return class_weights
 
     def get_data_loader(self, dataset_name: str):
         """
@@ -628,36 +591,12 @@ class DataSiloForCrossVal:
         :param stratified: If class stratification should be done.
             It is never done with question answering.
         :param n_neg_answers_per_question: number of negative answers per question to include for training
-        :param n_inner_splits: Number of inner splits of a nested cross validation.
-            Default is ``None`` which means to do a normal (not nested) cross validation.
-            If at least 2 is given a nested cross validation is done. In that case the ``n_splits``
-            parameter is the number of outer splits.
-            The outer cross validation splits the data into a test set and a rest set.
-            The inner cross validation splits the rest data into a train set and a dev set.
-            The advantage of a nested cross validation is that it is doing the inner split
-            not just by random but in a more systematic way. When doing model evaluation
-            this also reduces the variance. This is because you train on more different
-            iterations with more different data constellations.
         """
-        # check n_inner_splits param
-        if (n_inner_splits is not None) and (not n_inner_splits >= 2):
-            raise ValueError("'n_inner_splits' must be at least 2!")
-
         if "question_answering" in datasilo.processor.tasks and n_inner_splits is None:  # type: ignore
             return cls._make_question_answering(
                 datasilo, sets, n_splits, shuffle, random_state, n_neg_answers_per_question
             )
-        elif "question_answering" in datasilo.processor.tasks and n_inner_splits is not None:  # type: ignore
-            raise NotImplementedError()
-        elif n_inner_splits is None:
-            return cls._make(
-                datasilo, sets, n_splits, shuffle, random_state, stratified
-            )
-        elif n_inner_splits is not None:
-            return cls._make_nested(
-                datasilo, sets, n_splits, shuffle, random_state, stratified,
-                n_inner_splits
-            )
+
         else:
             raise RuntimeError("Cross validation can not be done under these conditions!")
 
@@ -743,51 +682,6 @@ class DataSiloForCrossVal:
         return silos
 
     @staticmethod
-    def _make(datasilo: DataSilo, sets: List[str] = ["train", "dev", "test"], n_splits: int = 5, shuffle: bool = True,
-              random_state: Optional[int] = None, stratified: bool = True):
-        """
-        Create number of folds data-silo-like objects which can be used for training from the
-        original data silo passed on.
-
-        :param datasilo: the data silo that contains the original data
-        :param sets: which sets to use to create the xval folds
-        :param n_splits: number of folds to create
-        :param shuffle: shuffle each class' samples before splitting
-        :param random_state: random state for shuffling
-        :param stratified: if class stratification should be done
-        """
-        setstoconcat = [datasilo.data[setname] for setname in sets]
-        ds_all = ConcatDataset(setstoconcat)  # type: Dataset
-        idxs = list(range(len(ds_all)))
-        dev_split = datasilo.processor.dev_split
-        if stratified:
-            # get all the labels for stratification
-            ytensors = [t[3][0] for t in ds_all]  # type: ignore
-            Y = torch.stack(ytensors)
-            xval = StratifiedKFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
-            xval_split = xval.split(idxs, Y)
-        else:
-            xval = KFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
-            xval_split = xval.split(idxs)
-        # for each fold create a DataSilo4Xval instance, where the training set is further
-        # divided into actual train and dev set
-        silos = []
-        for train_idx, test_idx in xval_split:
-            n_dev = int(dev_split * len(train_idx))
-            n_actual_train = len(train_idx) - n_dev
-            # TODO: this split into actual train and test set could/should also be stratified, for now
-            # we just do this by taking the first/last indices from the train set (which should be
-            # shuffled by default)
-            actual_train_idx = train_idx[:n_actual_train]
-            dev_idx = train_idx[n_actual_train:]
-            # create the actual datasets
-            ds_train = Subset(ds_all, actual_train_idx)
-            ds_dev = Subset(ds_all, dev_idx)
-            ds_test = Subset(ds_all, test_idx)
-            silos.append(DataSiloForCrossVal(datasilo, ds_train, ds_dev, ds_test))
-        return silos
-
-    @staticmethod
     def _split_for_qa(documents: List, id_index: int, n_splits: int = 5, shuffle: bool = True,
                       random_state: Optional[int] = None):
         keyfunc = lambda x: x[id_index][1]
@@ -820,44 +714,3 @@ class DataSiloForCrossVal:
             current_train_set = np.hstack(np.delete(splits, idx, axis=0))
 
             yield current_train_set, current_test_set
-
-    @staticmethod
-    def _make_nested(datasilo: DataSilo, sets: List[str] = ["train", "dev", "test"], n_splits: int = 5,
-                     shuffle: bool = True, random_state: Optional[int] = None, stratified: bool = True,
-                     n_inner_splits: int = 5):
-        setstoconcat = [datasilo.data[setname] for setname in sets]
-        ds_all = ConcatDataset(setstoconcat)  # type: Dataset
-        idxs = list(range(len(ds_all)))
-
-        silos = []
-
-        # outer cross validation where we split all data to test and rest
-        if stratified:
-            # get all the labels for stratification
-            ytensors = [t[3][0] for t in ds_all]  # type: ignore
-            y = torch.stack(ytensors)
-            outer_cv = StratifiedKFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
-            outer_split = outer_cv.split(idxs, y)
-        else:
-            outer_cv = KFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
-            outer_split = outer_cv.split(idxs)
-        for idxs_rest, idxs_test in outer_split:
-
-            # inner cross validation where we split rest data into train and dev
-            if stratified:
-                y_rest = y[idxs_rest]
-                inner_cv = StratifiedKFold(n_splits=n_inner_splits, shuffle=shuffle, random_state=random_state)
-                inner_split = inner_cv.split(idxs_rest, y_rest)
-            else:
-                inner_cv = KFold(n_splits=n_inner_splits, shuffle=shuffle, random_state=random_state)
-                inner_split = inner_cv.split(idxs_rest)
-            for idxs_train_idxs, idxs_dev_idxs in inner_split:
-                # split idxs_rest with indexes from inner cross validation
-                idxs_train = idxs_rest[idxs_train_idxs]
-                idxs_dev = idxs_rest[idxs_dev_idxs]
-
-                ds_train = Subset(ds_all, idxs_train)
-                ds_dev = Subset(ds_all, idxs_dev)
-                ds_test = Subset(ds_all, idxs_test)
-                silos.append(DataSiloForCrossVal(datasilo, ds_train, ds_dev, ds_test))
-        return silos

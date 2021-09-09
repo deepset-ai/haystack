@@ -13,7 +13,6 @@ from haystack.basics.modeling.tokenization import (
     Tokenizer,
     tokenize_batch_question_answering
 )
-from transformers import AutoConfig
 
 from haystack.basics.data_handler.dataset import convert_features_to_dataset
 from haystack.basics.data_handler.samples import (
@@ -152,7 +151,7 @@ class Processor(ABC):
     @classmethod
     def load_from_dir(cls, load_dir: str):
         """
-         Infers the specific type of Processor from a config file (e.g. GNADProcessor) and loads an instance of it.
+         Infers the specific type of Processor from a config file (e.g. SquadProcessor) and loads an instance of it.
 
         :param load_dir: directory that contains a 'processor_config.json'
         :return: An instance of a Processor Subclass (e.g. SquadProcessor)
@@ -190,7 +189,6 @@ class Processor(ABC):
     @classmethod
     def convert_from_transformers(cls, tokenizer_name_or_path, task_type, max_seq_len, doc_stride,
                                   revision=None, tokenizer_class=None, tokenizer_args=None, use_fast=True, **kwargs):
-        config = AutoConfig.from_pretrained(tokenizer_name_or_path, revision=revision, **kwargs)
         tokenizer_args = tokenizer_args or {}
         tokenizer = Tokenizer.load(tokenizer_name_or_path,
                                    tokenizer_class=tokenizer_class,
@@ -210,8 +208,6 @@ class Processor(ABC):
                 data_dir="data",
                 doc_stride=doc_stride
             )
-        # elif task_type == "embeddings":
-        #     processor = InferenceProcessor(tokenizer=tokenizer, max_seq_len=max_seq_len)
         else:
             raise ValueError(f"`task_type` {task_type} is not supported yet. "
                              f"Valid options for arg `task_type`: 'question_answering', "
@@ -255,7 +251,7 @@ class Processor(ABC):
                 config[key] = value
         return config
 
-    # TODO potentially remove
+    # TODO potentially remove tasks from code - multitask learning is not supported anyways
     def add_task(self, name,  metric, label_list, label_column_name=None,
                  label_name=None, task_type=None, text_column_name=None):
         if type(label_list) is not list:
@@ -298,27 +294,31 @@ class Processor(ABC):
                 f"Unable to convert {n_problematic} samples to features. Their ids are : {problematic_id_str}")
 
     @staticmethod
-    def _check_sample_features(basket:SampleBasket):
-        """Check if all samples in the basket has computed its features.
-
+    def _check_sample_features(basket: SampleBasket):
+        """
+        Check if all samples in the basket has computed its features.
 
         :param basket: the basket containing the samples
 
         :return: True if all the samples in the basket has computed its features, False otherwise
-
         """
-        if len(basket.samples) == 0:
+        if basket.samples is None:
             return False
-        for sample in basket.samples:
-            if sample.features is None:
-                return False
+        elif len(basket.samples) == 0:
+            return False
+        if basket.samples is None:
+            return False
+        else:
+            for sample in basket.samples:
+                if sample.features is None:
+                    return False
         return True
 
     def _log_samples(self, n_samples:int, baskets:List[SampleBasket]):
         logger.info("*** Show {} random examples ***".format(n_samples))
         for i in range(n_samples):
             random_basket = random.choice(baskets)
-            random_sample = random.choice(random_basket.samples)
+            random_sample = random.choice(random_basket.samples) # type: ignore
             logger.info(random_sample)
 
     def _log_params(self):
@@ -361,7 +361,7 @@ class SquadProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/master/farm/data_handler/utils.py>`_.
+                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/master/haystack/basics/data_handler/utils.py>`_.
         :param label_list: list of labels to predict (strings). For most cases this should be: ["start_token", "end_token"]
         :param metric: name of metric that shall be used for evaluation, can be "squad" or "top_n_accuracy"
         :param train_filename: The name of the file containing training data.
@@ -376,8 +376,6 @@ class SquadProcessor(Processor):
         :param max_answers: number of answers to be converted. QA dev or train sets can contain multi-way annotations, which are converted to arrays of max_answer length
         :param kwargs: placeholder for passing generic parameters
         """
-
-        self.target = "classification"
         self.ph_output_type = "per_token_squad"
 
         assert doc_stride < (max_seq_len - max_query_length), \
@@ -457,7 +455,7 @@ class SquadProcessor(Processor):
         dicts = [y for x in nested_dicts for y in x["paragraphs"]]
         return dicts
 
-    # TODO use Input Objects instead of this function
+    # TODO use Input Objects instead of this function, remove Natural Questions (NQ) related code
     def convert_qa_input_dict(self, infer_dict: dict):
         """ Input dictionaries in QA can either have ["context", "qas"] (internal format) as keys or
         ["text", "questions"] (api format). This function converts the latter into the former. It also converts the
@@ -474,7 +472,7 @@ class SquadProcessor(Processor):
             # Check if infer_dict is already in internal json format
             if "context" in infer_dict and "qas" in infer_dict:
                 return infer_dict
-            # converts dicts from inference mode to data structure used in FARM
+            # converts dicts from inference mode to data structure used in Haystack
             questions = infer_dict["questions"]
             text = infer_dict["text"]
             uid = infer_dict.get("id", None)
@@ -572,7 +570,7 @@ class SquadProcessor(Processor):
         """
         for basket in baskets:
             error_in_answer = False
-            for num, sample in enumerate(basket.samples):
+            for num, sample in enumerate(basket.samples): # type: ignore
                 # Dealing with potentially multiple answers (e.g. Squad dev set)
                 # Initializing a numpy array of shape (max_answers, 2), filled with -1 for missing values
                 label_idxs = np.full((self.max_answers, 2), fill_value=-1)
@@ -591,19 +589,14 @@ class SquadProcessor(Processor):
                         # Convert character offsets to token offsets on document level
                         answer_start_t = offset_to_token_idx_vecorized(basket.raw["document_offsets"], answer_start_c)
                         answer_end_t = offset_to_token_idx_vecorized(basket.raw["document_offsets"], answer_end_c)
-                        # TODO remove after testing 'offset_to_token_idx_vecorized()'
-                        # answer_start_t2 = offset_to_token_idx(doc_offsets, answer_start_c)
-                        # answer_end_t2 = offset_to_token_idx(doc_offsets, answer_end_c)
-                        # if (answer_start_t != answer_start_t2) or (answer_end_t != answer_end_t2):
-                        #     pass
 
                         # Adjust token offsets to be relative to the passage
-                        answer_start_t -= sample.tokenized["passage_start_t"]
-                        answer_end_t -= sample.tokenized["passage_start_t"]
+                        answer_start_t -= sample.tokenized["passage_start_t"] # type: ignore
+                        answer_end_t -= sample.tokenized["passage_start_t"] # type: ignore
 
                         # Initialize some basic variables
-                        question_len_t = len(sample.tokenized["question_tokens"])
-                        passage_len_t = len(sample.tokenized["passage_tokens"])
+                        question_len_t = len(sample.tokenized["question_tokens"]) # type: ignore
+                        passage_len_t = len(sample.tokenized["passage_tokens"]) # type: ignore
 
                         # Check that start and end are contained within this passage
                         # answer_end_t is 0 if the first token is the answer
@@ -643,35 +636,40 @@ class SquadProcessor(Processor):
                                 break # Break loop around answers, so the error message is not shown multiple times
                         ########## end of checking ####################
 
-                sample.tokenized["labels"] = label_idxs
+                sample.tokenized["labels"] = label_idxs # type: ignore
 
         return baskets
 
     def _passages_to_pytorch_features(self, baskets:List[SampleBasket], return_baskets:bool):
         """
         Convert internal representation (nested baskets + samples with mixed types) to python features (arrays of numbers).
-        We first join question and passages into on large vector.
-        Then we add additional vectors for: - #TODO
+        We first join question and passages into one large vector.
+        Then we add vectors for: - input_ids (token ids)
+                                 - segment_ids (does a token belong to question or document)
+                                 - padding_mask
+                                 - span_mask (valid answer tokens)
+                                 - start_of_word
         """
         for basket in baskets:
             # Add features to samples
-            for num, sample in enumerate(basket.samples):
+            for num, sample in enumerate(basket.samples): # type: ignore
                 # Initialize some basic variables
-                question_tokens = sample.tokenized["question_tokens"]
-                question_start_of_word = sample.tokenized["question_start_of_word"]
-                question_len_t = len(question_tokens)
-                passage_start_t = sample.tokenized["passage_start_t"]
-                passage_tokens = sample.tokenized["passage_tokens"]
-                passage_start_of_word = sample.tokenized["passage_start_of_word"]
-                passage_len_t = len(passage_tokens)
-                sample_id = [int(x) for x in sample.id.split("-")]
+                if sample.tokenized is not None:
+                    question_tokens = sample.tokenized["question_tokens"]
+                    question_start_of_word = sample.tokenized["question_start_of_word"]
+                    question_len_t = len(question_tokens)
+                    passage_start_t = sample.tokenized["passage_start_t"]
+                    passage_tokens = sample.tokenized["passage_tokens"]
+                    passage_start_of_word = sample.tokenized["passage_start_of_word"]
+                    passage_len_t = len(passage_tokens)
+                    sample_id = [int(x) for x in sample.id.split("-")]
 
-                # - Combines question_tokens and passage_tokens into a single vector called input_ids
-                # - input_ids also contains special tokens (e.g. CLS or SEP tokens).
-                # - It will have length = question_len_t + passage_len_t + n_special_tokens. This may be less than
-                #   max_seq_len but never greater since truncation was already performed when the document was chunked into passages
-                question_input_ids = sample.tokenized["question_tokens"]
-                passage_input_ids = sample.tokenized["passage_tokens"]
+                    # - Combines question_tokens and passage_tokens into a single vector called input_ids
+                    # - input_ids also contains special tokens (e.g. CLS or SEP tokens).
+                    # - It will have length = question_len_t + passage_len_t + n_special_tokens. This may be less than
+                    #   max_seq_len but never greater since truncation was already performed when the document was chunked into passages
+                    question_input_ids = sample.tokenized["question_tokens"]
+                    passage_input_ids = sample.tokenized["passage_tokens"]
 
                 input_ids = self.tokenizer.build_inputs_with_special_tokens(token_ids_0=question_input_ids,
                                                                        token_ids_1=passage_input_ids)
@@ -691,8 +689,8 @@ class SquadProcessor(Processor):
                 # tokens are attended to.
                 padding_mask = [1] * len(input_ids)
 
-                # The passage mask has 1 for tokens that are valid start or ends for QA spans.
-                # 0s are assigned to question tokens, mid special tokens, end special tokens and padding
+                # The span_mask has 1 for tokens that are valid start or end tokens for QA spans.
+                # 0s are assigned to question tokens, mid special tokens, end special tokens, and padding
                 # Note that start special tokens are assigned 1 since they can be chosen for a no_answer prediction
                 span_mask = [1] * self.sp_toks_start
                 span_mask += [0] * question_len_t
@@ -714,8 +712,9 @@ class SquadProcessor(Processor):
                 # TODO possibly remove these checks after input validation is in place
                 len_check = len(input_ids) == len(padding_mask) == len(segment_ids) == len(start_of_word) == len(span_mask)
                 id_check = len(sample_id) == 3
-                label_check = return_baskets or len(sample.tokenized.get("labels",[])) == self.max_answers
-                label_check2 = return_baskets or np.all(sample.tokenized["labels"] > -99) # labels are set to -100 when answer cannot be found
+                label_check = return_baskets or len(sample.tokenized.get("labels",[])) == self.max_answers # type: ignore
+                # labels are set to -100 when answer cannot be found
+                label_check2 = return_baskets or np.all(sample.tokenized["labels"] > -99) # type: ignore
                 if len_check and id_check and label_check and label_check2:
                     # - The first of the labels will be used in train, and the full array will be used in eval.
                     # - start_of_word and spec_tok_mask are not actually needed by model.forward() but are needed for
@@ -726,11 +725,12 @@ class SquadProcessor(Processor):
                                     "segment_ids": segment_ids,
                                     "passage_start_t": passage_start_t,
                                     "start_of_word": start_of_word,
-                                    "labels": sample.tokenized.get("labels",[]),
+                                    "labels": sample.tokenized.get("labels",[]), # type: ignore
                                     "id": sample_id,
                                     "seq_2_start_t": seq_2_start_t,
                                     "span_mask": span_mask}
-                    sample.features = [feature_dict] # other processor's features can be lists
+                    # other processor's features can be lists
+                    sample.features = [feature_dict] # type: ignore
                 else:
                     self.problematic_sample_ids.add(sample.id)
                     sample.features = None
@@ -742,12 +742,12 @@ class SquadProcessor(Processor):
         Also removes potential errors during preprocessing.
         Flattens nested basket structure to create a flat list of features
         """
-        features_flat = []
+        features_flat: List[dict] = []
         basket_to_remove = []
         for basket in baskets:
             if self._check_sample_features(basket):
-                for sample in basket.samples:
-                    features_flat.extend(sample.features)
+                for sample in basket.samples: # type: ignore
+                    features_flat.extend(sample.features) # type: ignore
             else:
                 # remove the entire basket
                 basket_to_remove.append(basket)
@@ -807,7 +807,7 @@ class TextSimilarityProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/master/farm/data_handler/utils.py>`_.
+                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/master/haystack/basics/data_handler/utils.py>`_.
         :param metric: name of metric that shall be used for evaluation, e.g. "acc" or "f1_macro".
                  Alternatively you can also supply a custom function, that takes preds and labels as args and returns a numerical value.
                  For using multiple metrics supply them as a list, e.g ["acc", my_custom_metric_fn].
@@ -1037,12 +1037,12 @@ class TextSimilarityProcessor(Processor):
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
                 except Exception as e:
-                    features = None #type: ignore
+                    features = None  # type: ignore
 
-            sample = Sample(id=None,
+            sample = Sample(id="",
                             clear_text=clear_text,
                             tokenized=tokenized,
-                            features=features)
+                            features=features)  # type: ignore
             basket.samples = [sample]
         return baskets
 
@@ -1093,15 +1093,15 @@ class TextSimilarityProcessor(Processor):
                     tokenized_passage = [self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in ctx_inputs["input_ids"]]
 
                     # for DPR we only have one sample containing query and corresponding (multiple) context features
-                    sample = basket.samples[0]
+                    sample = basket.samples[0]  # type: ignore
                     sample.clear_text["passages"] = positive_context + hard_negative_context
-                    sample.tokenized["passages_tokens"] = tokenized_passage
-                    sample.features[0]["passage_input_ids"] = ctx_inputs["input_ids"]
-                    sample.features[0]["passage_segment_ids"] = ctx_segment_ids
-                    sample.features[0]["passage_attention_mask"] = ctx_inputs["attention_mask"]
-                    sample.features[0]["label_ids"] = ctx_label
+                    sample.tokenized["passages_tokens"] = tokenized_passage  # type: ignore
+                    sample.features[0]["passage_input_ids"] = ctx_inputs["input_ids"]  # type: ignore
+                    sample.features[0]["passage_segment_ids"] = ctx_segment_ids  # type: ignore
+                    sample.features[0]["passage_attention_mask"] = ctx_inputs["attention_mask"]  # type: ignore
+                    sample.features[0]["label_ids"] = ctx_label  # type: ignore
                 except Exception as e:
-                    basket.samples[0].features = None
+                    basket.samples[0].features = None  # type: ignore
 
         return baskets
 
@@ -1111,13 +1111,13 @@ class TextSimilarityProcessor(Processor):
         Also removes potential errors during preprocessing.
         Flattens nested basket structure to create a flat list of features
         """
-        features_flat = []
+        features_flat: List[dict] = []
         basket_to_remove = []
         problematic_ids = set()
         for basket in baskets:
             if self._check_sample_features(basket):
-                for sample in basket.samples:
-                    features_flat.extend(sample.features)
+                for sample in basket.samples:  # type: ignore
+                    features_flat.extend(sample.features)  # type: ignore
             else:
                 # remove the entire basket
                 basket_to_remove.append(basket)
