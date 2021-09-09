@@ -30,7 +30,7 @@ def distilbert_squad():
     label_list = ["start_token", "end_token"]
     processor = SquadProcessor(
         tokenizer=tokenizer,
-        max_seq_len=20,
+        max_seq_len=256,
         doc_stride=10,
         max_query_length=6,
         train_filename="train-sample.json",

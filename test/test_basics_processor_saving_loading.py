@@ -20,7 +20,7 @@ def test_processor_saving_loading(caplog):
 
     processor = SquadProcessor(
         tokenizer=tokenizer,
-        max_seq_len=128,
+        max_seq_len=256,
         label_list=["start_token", "end_token"],
         train_filename="train-sample.json",
         dev_filename="dev-sample.json",
