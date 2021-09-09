@@ -84,7 +84,7 @@ class DensePassageRetriever(BaseRetriever):
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param top_k: How many documents to return per query.
-        :param use_gpu: Whether to use all available gpus or the cpu
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
                             This is the approach used in the original paper and is likely to improve performance if your
@@ -116,7 +116,7 @@ class DensePassageRetriever(BaseRetriever):
 
         if devices is not None:
             self.devices = devices
-        elif use_gpu:
+        elif use_gpu and torch.cuda.is_available():
             self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
         else:
             self.devices = [torch.device("cpu")]
@@ -409,7 +409,7 @@ class DensePassageRetriever(BaseRetriever):
         self.query_tokenizer.save_pretrained(f"{save_dir}/{query_encoder_save_dir}")
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
 
-        self.model = DataParallel(self.model, device_ids=self.devices, output_device="cpu")
+        self.model = DataParallel(self.model, device_ids=self.devices)
 
     def save(self, save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder",
              passage_encoder_dir: str = "passage_encoder"):
