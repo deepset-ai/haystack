@@ -22,10 +22,8 @@ logger = logging.getLogger(__name__)
 registered_metrics = {}
 registered_reports = {}
 
-
 def register_metrics(name: str, implementation: Callable):
     registered_metrics[name] = implementation
-
 
 def register_report(name: str, implementation: Callable):
     """
@@ -44,7 +42,6 @@ def register_report(name: str, implementation: Callable):
     """
     registered_reports[name] = implementation
 
-
 def simple_accuracy(preds, labels):
     # works also with nested lists of different lengths (needed for masked LM task)
     if type(preds) == type(labels) == list:
@@ -54,16 +51,13 @@ def simple_accuracy(preds, labels):
     correct = preds == labels
     return {"acc": correct.mean()}
 
-
 def acc_and_f1(preds, labels):
     acc = simple_accuracy(preds, labels)
     f1 = f1_score(y_true=labels, y_pred=preds)
     return {"acc": acc['acc'], "f1": f1, "acc_and_f1": (acc['acc'] + f1) / 2}
 
-
 def f1_macro(preds, labels):
     return {"f1_macro": f1_score(y_true=labels, y_pred=preds, average="macro")}
-
 
 def pearson_and_spearman(preds, labels):
     pearson_corr = pearsonr(preds, labels)[0]
@@ -73,7 +67,6 @@ def pearson_and_spearman(preds, labels):
         "spearman": spearman_corr,
         "corr": (pearson_corr + spearman_corr) / 2,
     }
-
 
 def compute_metrics(metric: str, preds, labels):
     """
@@ -108,8 +101,6 @@ def compute_metrics(metric: str, preds, labels):
         return {"top_n_accuracy": top_n_accuracy(preds, labels)}
     elif metric == "text_similarity_metric":
         return text_similarity_metric(preds, labels)
-    # elif metric == "masked_accuracy":
-    #     return simple_accuracy(preds, labels, ignore=-1)
     elif isinstance(metric, list):
         ret = {}
         for m in metric:
@@ -120,7 +111,6 @@ def compute_metrics(metric: str, preds, labels):
         return metric_func(preds, labels)
     else:
         raise KeyError(metric)
-
 
 def compute_report_metrics(head: PredictionHead, preds, labels):
     if head.ph_output_type in registered_reports:
@@ -157,7 +147,6 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
     else:
         return report_fn(labels, preds)
 
-
 def squad_EM(preds, labels):
     """
     Count how often the pair of predicted start and end index exactly matches one of the labels
@@ -172,7 +161,6 @@ def squad_EM(preds, labels):
         if (pred_start, pred_end) in curr_labels:
             n_correct += 1
     return n_correct/n_docs if n_docs else 0
-
 
 def squad_EM_start(preds, labels):
     """
@@ -189,7 +177,6 @@ def squad_EM_start(preds, labels):
             n_correct += 1
     return n_correct/n_docs if n_docs else 0
 
-
 def squad_f1(preds, labels):
     f1_scores = []
     n_docs = len(preds)
@@ -198,7 +185,6 @@ def squad_f1(preds, labels):
         best_f1 = max([squad_f1_single(best_pred, label) for label in labels[i]])
         f1_scores.append(best_f1)
     return np.mean(f1_scores)
-
 
 def squad_f1_single(pred, label, pred_idx: int = 0):
     label_start, label_end = label
@@ -221,13 +207,11 @@ def squad_f1_single(pred, label, pred_idx: int = 0):
     f1 = (2 * precision * recall) / (precision + recall)
     return f1
 
-
 def confidence(preds):
     conf = 0
     for pred in preds:
         conf += pred[0][0].confidence
     return conf/len(preds) if len(preds) else 0
-
 
 def metrics_per_bin(preds, labels, num_bins: int = 10):
     pred_bins = [[] for _ in range(num_bins)]  # type: List
@@ -248,13 +232,11 @@ def metrics_per_bin(preds, labels, num_bins: int = 10):
         confidence_per_bin[i] = confidence(preds=pred_bins[i])
     return em_per_bin, confidence_per_bin, count_per_bin
 
-
 def squad_base(preds, labels):
     em = squad_EM(preds=preds, labels=labels)
     f1 = squad_f1(preds=preds, labels=labels)
     top_acc = top_n_accuracy(preds=preds, labels=labels)
     return {"EM": em, "f1": f1, "top_n_accuracy": top_acc}
-
 
 def squad(preds, labels):
     """
@@ -277,7 +259,6 @@ def squad(preds, labels):
             "EM_no_answer": no_answer_results["EM"], "f1_no_answer": no_answer_results["f1"], "top_n_accuracy_no_answer": no_answer_results["top_n_accuracy"],
             "Total_no_answer": len(preds_no_answer)
             }
-
 
 def top_n_accuracy(preds, labels):
     """
@@ -302,7 +283,6 @@ def top_n_accuracy(preds, labels):
 
     return np.mean(answer_in_top_n)
 
-
 def text_similarity_acc_and_f1(preds, labels):
     """
     Returns accuracy and F1 scores for top-1(highest) ranked sequence(context/passage) for each sample/query
@@ -318,7 +298,6 @@ def text_similarity_acc_and_f1(preds, labels):
     labels = reduce(lambda x, y: x + list(y.astype('long')), labels, [])
     res = acc_and_f1(top_1_pred, labels)
     return res
-
 
 def text_similarity_avg_ranks(preds, labels) -> float:
     """
@@ -338,7 +317,6 @@ def text_similarity_avg_ranks(preds, labels) -> float:
         gold_idx = (preds[i] == idx).nonzero()[0]
         rank += gold_idx.item()
     return float(rank / len(preds))
-
 
 def text_similarity_metric(preds, labels) -> Dict[str, float]:
     """

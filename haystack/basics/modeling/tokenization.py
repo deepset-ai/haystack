@@ -15,12 +15,7 @@
 """Tokenization classes."""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import collections
-import json
 import logging
-import os
-import re
-from pathlib import Path
 
 import numpy as np
 from transformers import (
@@ -36,8 +31,7 @@ from transformers import (
     DPRQuestionEncoderTokenizer, DPRQuestionEncoderTokenizerFast,
     BigBirdTokenizer, BigBirdTokenizerFast
 )
-from transformers.models.bert.tokenization_bert import load_vocab
-from transformers.tokenization_utils import PreTrainedTokenizer
+
 from transformers import AutoConfig
 
 from haystack.basics.data_handler.samples import SampleBasket
@@ -66,7 +60,7 @@ class Tokenizer:
         :type revision: str
         :param tokenizer_class: (Optional) Name of the tokenizer class to load (e.g. `BertTokenizer`)
         :type tokenizer_class: str
-        :param use_fast: (Optional, False by default) Indicate if FARM should try to load the fast version of the tokenizer (True) or
+        :param use_fast: (Optional, False by default) Indicate if Haystack should try to load the fast version of the tokenizer (True) or
             use the Python one (False).
             Only DistilBERT, BERT and Electra fast tokenizers are supported.
         :type use_fast: bool
@@ -148,7 +142,7 @@ class Tokenizer:
         try:
             config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
         except OSError:
-            # FARM model (no 'config.json' file)
+            # Haystack model (no 'config.json' file)
             try:
                 config = AutoConfig.from_pretrained(pretrained_model_name_or_path + "/language_model_config.json")
             except Exception as e:
@@ -162,7 +156,7 @@ class Tokenizer:
             tokenizer_class = "XLMRobertaTokenizer"
         elif model_type == "roberta":
             if "mlm" in pretrained_model_name_or_path.lower():
-                raise NotImplementedError("MLM part of codebert is currently not supported in FARM")
+                raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
             tokenizer_class = "RobertaTokenizer"
         elif model_type == "camembert":
             tokenizer_class = "CamembertTokenizer"
@@ -208,7 +202,7 @@ class Tokenizer:
             tokenizer_class = "RobertaTokenizer"
         elif "codebert" in pretrained_model_name_or_path.lower():
             if "mlm" in pretrained_model_name_or_path.lower():
-                raise NotImplementedError("MLM part of codebert is currently not supported in FARM")
+                raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
             else:
                 tokenizer_class = "RobertaTokenizer"
         elif "camembert" in pretrained_model_name_or_path.lower() or "umberto" in pretrained_model_name_or_path.lower():
@@ -221,10 +215,6 @@ class Tokenizer:
             tokenizer_class = "XLNetTokenizer"
         elif "electra" in pretrained_model_name_or_path.lower():
             tokenizer_class = "ElectraTokenizer"
-        elif "word2vec" in pretrained_model_name_or_path.lower() or \
-                "glove" in pretrained_model_name_or_path.lower() or \
-                "fasttext" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "EmbeddingTokenizer"
         elif "minilm" in pretrained_model_name_or_path.lower():
             tokenizer_class = "BertTokenizer"
         elif "dpr-question_encoder" in pretrained_model_name_or_path.lower():

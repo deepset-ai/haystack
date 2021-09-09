@@ -202,21 +202,6 @@ class QACandidate:
 
         return final_text, start_ch, end_ch
 
-    def add_cls(self, predicted_class: str):
-        """
-        Adjust the final QA prediction depending on the prediction of the classification head (e.g. for binary answers in NQ)
-        Currently designed so that the QA head's prediction will always be preferred over the Classification head
-
-        :param predicted_class: The predicted class e.g. "yes", "no", "no_answer", "span"
-        """
-
-        if predicted_class in ["yes", "no"] and self.answer != "no_answer":
-            self.answer_support = self.answer
-            self.answer = predicted_class
-            self.answer_type = predicted_class
-            self.offset_answer_support_start = self.offset_answer_start
-            self.offset_answer_support_end = self.offset_answer_end
-
     def to_doc_level(self, start: int, end: int):
         """ Populate the start and end indices with document level indices. Changes aggregation level to 'document'"""
         self.offset_answer_start = start
