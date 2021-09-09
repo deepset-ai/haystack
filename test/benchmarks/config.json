@@ -49,17 +49,7 @@
         100000,
         500000
       ],
-      "n_gpus_options": [
-          1,
-          2
-      ],
-      "n_queries": null,
-      "batch_sizes": [
-          32,
-          64,
-          128,
-          256
-      ]
+      "n_queries": null
     },
     "ci": {
       "retriever_doc_stores": [

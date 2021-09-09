@@ -11,8 +11,6 @@ from haystack.reader.transformers import TransformersReader
 from haystack.utils import launch_milvus, launch_es, launch_opensearch
 from farm.file_utils import http_get
 
-import torch
-
 import logging
 import subprocess
 import time
@@ -96,30 +94,23 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
         raise Exception(f"No document store fixture for '{document_store_type}'")
     return document_store
 
-def get_retriever(retriever_name, doc_store, n_gpus = None, batch_size = 16):
+def get_retriever(retriever_name, doc_store, devices):
     if retriever_name == "elastic":
         return ElasticsearchRetriever(doc_store)
     if retriever_name == "tfidf":
         return TfidfRetriever(doc_store)
     if retriever_name == "dpr":
-        if n_gpus > torch.cuda.device_count():
-            raise Exception(f"Tried running benchmark on {n_gpus} GPUs, but only {torch.cuda.device_count()} GPUs are available")
         return DensePassageRetriever(document_store=doc_store,
                                       query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
                                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+                                      use_gpu=True,
                                       use_fast_tokenizers=False,
-                                      devices=list(range(n_gpus)),
-                                      batch_size=batch_size)
+                                      devices=devices)
     if retriever_name == "sentence_transformers":
         return EmbeddingRetriever(document_store=doc_store,
                                   embedding_model="nq-distilbert-base-v1",
                                   use_gpu=True,
                                   model_format="sentence_transformers")
-
-def supports_multi_gpu(retriever_name):
-    if retriever_name == "dpr":
-        return True
-    return False
 
 def get_reader(reader_name, reader_type, max_seq_len=384):
     reader_class = None
