@@ -411,17 +411,26 @@ class DataSilo:
         return train, test
 
     def _calculate_statistics(self):
-        """
-        Calculate and log simple summary statistics of the datasets.
-        """
+        """ Calculate and log simple summary statistics of the datasets """
         logger.info("")
         logger.info("DATASETS SUMMARY")
         logger.info("================")
 
         self.counts = {}
+        clipped = -1
+        ave_len = -1
 
         if self.data["train"]:
             self.counts["train"] = len(self.data["train"])
+            if "input_ids" in self.tensor_names:
+                clipped, ave_len, seq_lens, max_seq_len = self._calc_length_stats_single_encoder()
+            elif "query_input_ids" in self.tensor_names and "passage_input_ids" in self.tensor_names:
+                clipped, ave_len, seq_lens, max_seq_len = self._calc_length_stats_biencoder()
+            else:
+                logger.warning(
+                    f"Could not compute length statistics because 'input_ids' or 'query_input_ids' and 'passage_input_ids' are missing.")
+                clipped = -1
+                ave_len = -1
         else:
             self.counts["train"] = 0
 
@@ -435,29 +444,31 @@ class DataSilo:
         else:
             self.counts["test"] = 0
 
-        seq_lens = []
-        if self.data["train"]:
-            for dataset in self.data["train"].datasets:
-                train_input_numpy = dataset[:][0].numpy()
-                seq_lens.extend(np.sum(train_input_numpy != self.processor.tokenizer.pad_token_id, axis=1))
-            max_seq_len = dataset[:][0].shape[1]
-
-        self.clipped = np.mean(np.array(seq_lens) == max_seq_len) if seq_lens else 0
-        self.ave_len = np.mean(seq_lens) if seq_lens else 0
-
         logger.info("Examples in train: {}".format(self.counts["train"]))
         logger.info("Examples in dev  : {}".format(self.counts["dev"]))
         logger.info("Examples in test : {}".format(self.counts["test"]))
+        logger.info("Total examples   : {}".format(self.counts["train"] + self.counts["dev"] + self.counts["test"]))
         logger.info("")
         if self.data["train"]:
-            logger.info("Longest sequence length observed after clipping:     {}".format(max(seq_lens)))
-            logger.info("Average sequence length after clipping: {}".format(self.ave_len))
-            logger.info("Proportion clipped:      {}".format(self.clipped))
-            if self.clipped > 0.5:
-                logger.info("[Farmer's Tip] {}% of your samples got cut down to {} tokens. "
-                            "Consider increasing max_seq_len. "
-                            "This will lead to higher memory consumption but is likely to "
-                            "improve your model performance".format(round(self.clipped * 100, 1), max_seq_len))
+            if "input_ids" in self.tensor_names:
+                logger.info("Longest sequence length observed after clipping:     {}".format(max(seq_lens)))
+                logger.info("Average sequence length after clipping: {}".format(ave_len))
+                logger.info("Proportion clipped:      {}".format(clipped))
+                if clipped > 0.5:
+                    logger.info("[Farmer's Tip] {}% of your samples got cut down to {} tokens. "
+                                "Consider increasing max_seq_len. "
+                                "This will lead to higher memory consumption but is likely to "
+                                "improve your model performance".format(round(clipped * 100, 1), max_seq_len))
+            elif "query_input_ids" in self.tensor_names and "passage_input_ids" in self.tensor_names:
+                logger.info("Longest query length observed after clipping: {}   - for max_query_len: {}".format(
+                    max(seq_lens[0]), max_seq_len[0]))
+                logger.info("Average query length after clipping:          {}".format(ave_len[0]))
+                logger.info("Proportion queries clipped:                   {}".format(clipped[0]))
+                logger.info("")
+                logger.info("Longest passage length observed after clipping: {}   - for max_passage_len: {}".format(
+                    max(seq_lens[1]), max_seq_len[1]))
+                logger.info("Average passage length after clipping:          {}".format(ave_len[1]))
+                logger.info("Proportion passages clipped:                    {}".format(clipped[1]))
 
         MlLogger.log_params(
             {
@@ -465,10 +476,43 @@ class DataSilo:
                 "n_samples_dev": self.counts["dev"],
                 "n_samples_test": self.counts["test"],
                 "batch_size": self.batch_size,
-                "ave_seq_len": self.ave_len,
-                "clipped": self.clipped,
+                "ave_seq_len": ave_len,
+                "clipped": clipped,
             }
         )
+
+    def _calc_length_stats_single_encoder(self):
+        seq_lens = []
+        for dataset in self.data["train"].datasets:
+            train_input_numpy = dataset[:][self.tensor_names.index("input_ids")].numpy()
+            seq_lens.extend(np.sum(train_input_numpy != self.processor.tokenizer.pad_token_id, axis=1))
+        max_seq_len = dataset[:][self.tensor_names.index("input_ids")].shape[1]
+        clipped = np.mean(np.array(seq_lens) == max_seq_len) if seq_lens else 0
+        ave_len = np.mean(seq_lens) if seq_lens else 0
+        return clipped, ave_len, seq_lens, max_seq_len
+
+    def _calc_length_stats_biencoder(self):
+        seq_lens = [[], []]
+        for dataset in self.data["train"].datasets:
+            query_input_numpy = dataset[:][self.tensor_names.index("query_input_ids")].numpy()
+            num_passages = dataset[:][self.tensor_names.index("passage_input_ids")].shape[1]
+            bs = dataset[:][self.tensor_names.index("passage_input_ids")].shape[0]
+            passage_input_numpy = dataset[:][self.tensor_names.index("passage_input_ids")].numpy().reshape((bs, -1),
+                                                                                                           order='C')
+            qlen = np.sum(query_input_numpy != self.processor.query_tokenizer.pad_token_id, axis=1)
+            plen = np.sum(passage_input_numpy != self.processor.passage_tokenizer.pad_token_id, axis=1) / num_passages
+            seq_lens[0].extend(qlen)
+            seq_lens[1].extend(plen)
+        q_max_seq_len = dataset[:][self.tensor_names.index("query_input_ids")].shape[1]
+        p_max_seq_len = dataset[:][self.tensor_names.index("passage_input_ids")].shape[2]
+        clipped_q = np.mean(np.array(seq_lens[0]) == q_max_seq_len) if seq_lens[0] else 0
+        ave_len_q = np.mean(seq_lens[0]) if seq_lens[0] else 0
+        clipped_p = np.mean(np.array(seq_lens[1]) == p_max_seq_len) if seq_lens[1] else 0
+        ave_len_p = np.mean(seq_lens[1]) if seq_lens[1] else 0
+        clipped = [clipped_q, clipped_p]
+        ave_len = [ave_len_q, ave_len_p]
+        max_seq_len = [q_max_seq_len, p_max_seq_len]
+        return clipped, ave_len, seq_lens, max_seq_len
 
     def calculate_class_weights(self, task_name: str, source: str = "train"):
         """
