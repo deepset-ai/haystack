@@ -29,14 +29,14 @@ def test_processor_saving_loading(caplog):
     )
 
     dicts = processor.file_to_dicts(file=Path("samples/qa/dev-sample.json"))
-    data, tensor_names, _ = processor.dataset_from_dicts(dicts)
+    data, tensor_names, _ = processor.dataset_from_dicts(dicts=dicts, indices=[1])
 
     save_dir = Path("testsave/processor")
     processor.save(save_dir)
 
     processor = processor.load_from_dir(save_dir)
     dicts = processor.file_to_dicts(file=Path("samples/qa/dev-sample.json"))
-    data_loaded, tensor_names_loaded, _ = processor.dataset_from_dicts(dicts)
+    data_loaded, tensor_names_loaded, _ = processor.dataset_from_dicts(dicts, indices=[1])
 
     assert tensor_names == tensor_names_loaded
     for i in range(len(data.tensors)):

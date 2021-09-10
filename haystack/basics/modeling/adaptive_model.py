@@ -221,7 +221,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                     shape (batchsize) per prediction head.
         """
 
-        super(AdaptiveModel, self).__init__(prediction_heads)
+        super(AdaptiveModel, self).__init__()
         self.device = device
         self.language_model = language_model.to(device)
         self.lm_output_dims = language_model.get_output_dims()
