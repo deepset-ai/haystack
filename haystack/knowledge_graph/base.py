@@ -8,7 +8,7 @@ class BaseKnowledgeGraph(BaseComponent):
 
     def run(self, sparql_query: str, index: Optional[str] = None, **kwargs):  # type: ignore
         result = self.query(sparql_query=sparql_query, index=index)
-        output = {"sparql_result": result, **kwargs}
+        output = {"sparql_result": result}
         return output, "output_1"
 
     def query(self, sparql_query: str, index: Optional[str] = None):

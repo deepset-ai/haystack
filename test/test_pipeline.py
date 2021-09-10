@@ -29,8 +29,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
     )
     pipeline.run(
         file_paths=Path("samples/pdf/sample_pdf_1.pdf"),
-        top_k_retriever=10,
-        top_k_reader=3,
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
     )
 
     # test correct load of query pipeline from yaml
@@ -38,7 +37,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
         Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
-        query="Who made the PDF specification?", top_k_retriever=10, top_k_reader=3
+        query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0]["answer"] == "Adobe Systems"
@@ -119,13 +118,30 @@ def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
         )
 
 
+def test_invalid_run_args():
+    pipeline = Pipeline.load_from_yaml(
+        Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="query_pipeline"
+    )
+    with pytest.raises(Exception) as exc:
+        pipeline.run(params={"ESRetriever": {"top_k": 10}})
+    assert "run() missing 1 required positional argument: 'query'" in str(exc.value)
+
+    with pytest.raises(Exception) as exc:
+        pipeline.run(invalid_query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}})
+    assert "run() got an unexpected keyword argument 'invalid_query'" in str(exc.value)
+
+    with pytest.raises(Exception) as exc:
+        pipeline.run(query="Who made the PDF specification?", params={"ESRetriever": {"invalid": 10}})
+    assert "Invalid parameter 'invalid' for the node 'ESRetriever'" in str(exc.value)
+
+
 @pytest.mark.slow
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     prediction = pipeline.run(
-        query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3
+        query="Who lives in Berlin?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
     )
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
@@ -146,7 +162,7 @@ def test_extractive_qa_answers(reader, retriever_with_docs):
 def test_extractive_qa_answers_without_normalized_scores(reader_without_normalized_scores, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader_without_normalized_scores, retriever=retriever_with_docs)
     prediction = pipeline.run(
-        query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=3
+        query="Who lives in Berlin?", params={"Reader": {"top_k": 3}}
     )
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
@@ -165,9 +181,7 @@ def test_extractive_qa_answers_without_normalized_scores(reader_without_normaliz
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_offsets(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    prediction = pipeline.run(
-        query="Who lives in Berlin?", top_k_retriever=10, top_k_reader=5
-    )
+    prediction = pipeline.run(query="Who lives in Berlin?", params={"Retriever": {"top_k": 5}})
 
     assert prediction["answers"][0]["offset_start"] == 11
     assert prediction["answers"][0]["offset_end"] == 16
@@ -185,7 +199,7 @@ def test_extractive_qa_offsets(reader, retriever_with_docs):
 def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     query = "testing finder"
-    prediction = pipeline.run(query=query, top_k_retriever=1, top_k_reader=1)
+    prediction = pipeline.run(query=query, params={"top_k": 1})
     assert prediction is not None
     assert len(prediction["answers"]) == 1
 
@@ -230,15 +244,13 @@ def test_faq_pipeline(retriever, document_store):
 
     pipeline = FAQPipeline(retriever=retriever)
 
-    output = pipeline.run(query="How to test this?", top_k_retriever=3)
+    output = pipeline.run(query="How to test this?", params={"top_k": 3})
     assert len(output["answers"]) == 3
     assert output["answers"][0]["query"].startswith("How to")
     assert output["answers"][0]["answer"].startswith("Using tests")
 
     if isinstance(document_store, ElasticsearchDocumentStore):
-        output = pipeline.run(
-            query="How to test this?", filters={"source": ["wiki2"]}, top_k_retriever=5
-        )
+        output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
         assert len(output["answers"]) == 1
 
 
@@ -266,13 +278,11 @@ def test_document_search_pipeline(retriever, document_store):
     document_store.update_embeddings(retriever)
 
     pipeline = DocumentSearchPipeline(retriever=retriever)
-    output = pipeline.run(query="How to test this?", top_k_retriever=4)
+    output = pipeline.run(query="How to test this?", params={"top_k": 4})
     assert len(output.get("documents", [])) == 4
 
     if isinstance(document_store, ElasticsearchDocumentStore):
-        output = pipeline.run(
-            query="How to test this?", filters={"source": ["wiki2"]}, top_k_retriever=5
-        )
+        output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
         assert len(output["documents"]) == 1
 
 
@@ -289,9 +299,7 @@ def test_extractive_qa_answers_with_translator(
         pipeline=base_pipeline,
     )
 
-    prediction = pipeline.run(
-        query="Wer lebt in Berlin?", top_k_retriever=10, top_k_reader=3
-    )
+    prediction = pipeline.run(query="Wer lebt in Berlin?", params={"Reader": {"top_k": 3}})
     assert prediction is not None
     assert prediction["query"] == "Wer lebt in Berlin?"
     assert "Carla" in prediction["answers"][0]["answer"]
@@ -357,38 +365,70 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     assert results["answers"][0]["answer"] == "Berlin" or results["answers"][1]["answer"] == "Berlin"
 
 
-def test_parallel_paths_in_pipeline_graph():
+def test_debug_info_propagation():
     class A(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] = "A"
-            return kwargs, "output_1"
+        def run(self):
+            test = "A"
+            return {"test": test, "_debug": "debug_from_a"}, "output_1"
 
     class B(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "B"
-            return kwargs, "output_1"
+        def run(self, test):
+            test += "B"
+            return {"test": test, "_debug": {"debug_key_b": "debug_value_b"}}, "output_1"
 
     class C(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "C"
-            return kwargs, "output_1"
+        def run(self, test):
+            test += "C"
+            return {"test": test}, "output_1"
 
     class D(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "D"
-            return kwargs, "output_1"
+        def run(self, test, _debug):
+            test += "C"
+            assert _debug["B"]["debug_key_b"] == "debug_value_b"
+            return {"test": test}, "output_1"
+
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=A(), inputs=["Query"])
+    pipeline.add_node(name="B", component=B(), inputs=["A"])
+    pipeline.add_node(name="C", component=C(), inputs=["B"])
+    pipeline.add_node(name="D", component=D(), inputs=["C"])
+    output = pipeline.run(query="test")
+    assert output["_debug"]["A"] == "debug_from_a"
+    assert output["_debug"]["B"]["debug_key_b"] == "debug_value_b"
+
+
+def test_parallel_paths_in_pipeline_graph():
+    class A(RootNode):
+        def run(self):
+            test = "A"
+            return {"test": test}, "output_1"
+
+    class B(RootNode):
+        def run(self, test):
+            test += "B"
+            return {"test": test}, "output_1"
+
+    class C(RootNode):
+        def run(self, test):
+            test += "C"
+            return {"test": test}, "output_1"
+
+    class D(RootNode):
+        def run(self, test):
+            test += "D"
+            return {"test": test}, "output_1"
 
     class E(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "E"
-            return kwargs, "output_1"
+        def run(self, test):
+            test += "E"
+            return {"test": test}, "output_1"
 
     class JoinNode(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] = (
-                kwargs["inputs"][0]["output"] + kwargs["inputs"][1]["output"]
+        def run(self, inputs):
+            test = (
+                inputs[0]["test"] + inputs[1]["test"]
             )
-            return kwargs, "output_1"
+            return {"test": test}, "output_1"
 
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=A(), inputs=["Query"])
@@ -398,7 +438,7 @@ def test_parallel_paths_in_pipeline_graph():
     pipeline.add_node(name="D", component=D(), inputs=["B"])
     pipeline.add_node(name="F", component=JoinNode(), inputs=["D", "E"])
     output = pipeline.run(query="test")
-    assert output["output"] == "ABDABCE"
+    assert output["test"] == "ABDABCE"
 
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=A(), inputs=["Query"])
@@ -407,58 +447,58 @@ def test_parallel_paths_in_pipeline_graph():
     pipeline.add_node(name="D", component=D(), inputs=["B"])
     pipeline.add_node(name="E", component=JoinNode(), inputs=["C", "D"])
     output = pipeline.run(query="test")
-    assert output["output"] == "ABCABD"
+    assert output["test"] == "ABCABD"
 
 
 def test_parallel_paths_in_pipeline_graph_with_branching():
     class AWithOutput1(RootNode):
         outgoing_edges = 2
 
-        def run(self, **kwargs):
-            kwargs["output"] = "A"
-            return kwargs, "output_1"
+        def run(self):
+            output = "A"
+            return {"output": output}, "output_1"
 
     class AWithOutput2(RootNode):
         outgoing_edges = 2
 
-        def run(self, **kwargs):
-            kwargs["output"] = "A"
-            return kwargs, "output_2"
+        def run(self):
+            output = "A"
+            return {"output": output}, "output_2"
 
     class AWithOutputAll(RootNode):
         outgoing_edges = 2
 
-        def run(self, **kwargs):
-            kwargs["output"] = "A"
-            return kwargs, "output_all"
+        def run(self):
+            output = "A"
+            return {"output": output}, "output_all"
 
     class B(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "B"
-            return kwargs, "output_1"
+        def run(self, output):
+            output += "B"
+            return {"output": output}, "output_1"
 
     class C(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "C"
-            return kwargs, "output_1"
+        def run(self, output):
+            output += "C"
+            return {"output": output}, "output_1"
 
     class D(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "D"
-            return kwargs, "output_1"
+        def run(self, output):
+            output += "D"
+            return {"output": output}, "output_1"
 
     class E(RootNode):
-        def run(self, **kwargs):
-            kwargs["output"] += "E"
-            return kwargs, "output_1"
+        def run(self, output):
+            output += "E"
+            return {"output": output}, "output_1"
 
     class JoinNode(RootNode):
-        def run(self, **kwargs):
-            if kwargs.get("inputs"):
-                kwargs["output"] = ""
-                for input_dict in kwargs["inputs"]:
-                    kwargs["output"] += input_dict["output"]
-            return kwargs, "output_1"
+        def run(self, output=None, inputs=None):
+            if inputs:
+                output = ""
+                for input_dict in inputs:
+                    output += input_dict["output"]
+            return {"output": output}, "output_1"
 
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=AWithOutput1(), inputs=["Query"])

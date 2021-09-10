@@ -50,13 +50,13 @@ class BaseReader(BaseComponent):
                "meta": None,}
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, query: str, documents: List[Document], top_k_reader: Optional[int] = None, **kwargs): # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
-            results = predict(query=query, documents=documents, top_k=top_k_reader)
+            results = predict(query=query, documents=documents, top_k=top_k)
         else:
-            results = {"answers": [], "query": query}
+            results = {"answers": []}
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
@@ -65,10 +65,9 @@ class BaseReader(BaseComponent):
                 if doc.id == ans["document_id"]:
                     ans["meta"] = deepcopy(doc.meta)
 
-        results.update(**kwargs)
         return results, "output_1"
 
-    def run_batch(self, query_doc_list: List[Dict], top_k_reader: Optional[int] = None, **kwargs):
+    def run_batch(self, query_doc_list: List[Dict], top_k: Optional[int] = None):
         """ A unoptimized implementation of running Reader queries in batch """
         self.query_count += len(query_doc_list)
         results = []
@@ -77,11 +76,11 @@ class BaseReader(BaseComponent):
                 q = qd["queries"]
                 docs = qd["docs"]
                 predict = self.timing(self.predict, "query_time")
-                result = predict(query=q, documents=docs, top_k=top_k_reader)
+                result = predict(query=q, documents=docs, top_k=top_k)
                 results.append(result)
         else:
             results = [{"answers": [], "query": ""}]
-        return results, "output_1"
+        return {"results": results}, "output_1"
 
     def timing(self, fn, attr_name):
         """Wrapper method used to time functions. """

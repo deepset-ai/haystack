@@ -31,13 +31,12 @@ class FARMClassifier(BaseClassifier):
     retriever = ElasticsearchRetriever(document_store=document_store)
     classifier = FARMClassifier(model_name_or_path="deepset/bert-base-german-cased-sentiment-Germeval17")
     p = Pipeline()
-    p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-    p.add_node(component=classifier, name="Classifier", inputs=["ESRetriever"])
+    p.add_node(component=retriever, name="Retriever", inputs=["Query"])
+    p.add_node(component=classifier, name="Classifier", inputs=["Retriever"])
 
-    res = p_extractive.run(
+    res = p.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10,
-        top_k_reader=5
+        params={"Retriever": {"top_k": 10}, "Classifier": {"top_k": 5}}
     )
 
     print(res["documents"][0].to_dict()["meta"]["classification"]["label"])
