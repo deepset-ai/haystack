@@ -57,7 +57,7 @@ def tutorial12_lfqa():
     p_retrieval = DocumentSearchPipeline(retriever)
     res = p_retrieval.run(
         query="Tell me something about Arya Stark?",
-        top_k_retriever=5
+        params={"Retriever": {"top_k": 1}}
     )
     print_documents(res, max_text_len=512)
 
@@ -82,17 +82,17 @@ def tutorial12_lfqa():
     """Voilà! Ask a question!"""
 
     query_1 = "Why did Arya Stark's character get portrayed in a television adaptation?"
-    result_1 = pipe.run(query=query_1, top_k_retriever=1)
+    result_1 = pipe.run(query=query_1, params={"Retriever": {"top_k": 1}})
     print(f"Query: {query_1}")
     print(f"Answer: {result_1['answers'][0]}")
     print()
 
     query_2 = "What kind of character does Arya Stark play?"
-    result_2 = pipe.run(query=query_2, top_k_retriever=1)
+    result_2 = pipe.run(query=query_2, params={"Retriever": {"top_k": 1}})
     print(f"Query: {query_2}")
     print(f"Answer: {result_2['answers'][0]}")
     print()
-    pipe.run(query=query_2, top_k_retriever=1)
+    pipe.run(query=query_2, params={"Retriever": {"top_k": 1}})
 
 
 if __name__ == "__main__":
