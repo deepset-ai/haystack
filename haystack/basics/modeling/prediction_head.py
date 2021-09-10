@@ -12,6 +12,7 @@ from torch import nn
 from torch import optim
 from torch.nn import CrossEntropyLoss, NLLLoss
 from haystack.basics.data_handler.utils import is_json
+from haystack.basics.data_handler.samples import SampleBasket
 from haystack.basics.utils import try_get, all_gather_list
 from haystack.basics.modeling.predictions import QACandidate, QAPred
 
