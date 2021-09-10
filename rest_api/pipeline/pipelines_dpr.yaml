@@ -2,11 +2,11 @@ version: '0.9'
 
 components:    # define all the building-blocks for Pipeline
   - name: DocumentStore
-    type: ElasticsearchDocumentStore
+    type: ElasticsearchDocumentStore  # consider using MilvusDocumentStore or WeaviateDocumentStore for scaling to large number of documents
     params:
       host: localhost
   - name: Retriever
-    type: ElasticsearchRetriever
+    type: DensePassageRetriever
     params:
       document_store: DocumentStore    # params can reference other components defined in the YAML
       top_k: 5
