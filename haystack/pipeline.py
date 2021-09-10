@@ -26,7 +26,7 @@ import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
-from haystack import BaseComponent
+from haystack import BaseComponent, MultiLabel, Document
 from haystack.generator.base import BaseGenerator
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
@@ -206,6 +206,7 @@ class Pipeline(BasePipeline):
                 self.graph.add_node(root_node, component=RootNode())
             else:
                 raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
+        component.name = name
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
@@ -253,11 +254,30 @@ class Pipeline(BasePipeline):
         """
         self.graph.nodes[name]["component"] = component
 
-    def run(self, **kwargs):
+    def run(  # type: ignore
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ):
         node_output = None
         queue = {
-            self.root_node: {"root_node": self.root_node, **kwargs}
+            self.root_node: {"root_node": self.root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
+        if query:
+            queue[self.root_node]["query"] = query
+        if file_paths:
+            queue[self.root_node]["file_paths"] = file_paths
+        if labels:
+            queue[self.root_node]["labels"] = labels
+        if documents:
+            queue[self.root_node]["documents"] = documents
+        if meta:
+            queue[self.root_node]["meta"] = meta
+
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
             node_id = list(queue.keys())[i]
@@ -267,7 +287,7 @@ class Pipeline(BasePipeline):
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
-                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+                    node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
@@ -277,7 +297,17 @@ class Pipeline(BasePipeline):
                     if queue.get(n):  # concatenate inputs if it's a join node
                         existing_input = queue[n]
                         if "inputs" not in existing_input.keys():
-                            updated_input = {"inputs": [existing_input, node_output]}
+                            updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
+                            if query:
+                                updated_input["query"] = query
+                            if file_paths:
+                                updated_input["file_paths"] = file_paths
+                            if labels:
+                                updated_input["labels"] = labels
+                            if documents:
+                                updated_input["documents"] = documents
+                            if meta:
+                                updated_input["meta"] = meta
                         else:
                             existing_input["inputs"].append(node_output)
                             updated_input = existing_input
@@ -513,10 +543,13 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_reader: int = 10):
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_reader=top_k_reader
-        )
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `reader`. For instance,
+                       params={"retriever": {"top_k": 10}, "reader": {"top_k": 5}}
+        """
+        output = self.pipeline.run(query=query, params=params)
         return output
 
 
@@ -530,8 +563,12 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+        """
+        output = self.pipeline.run(query=query, params=params)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
@@ -549,54 +586,42 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: Optional[int] = None,
-        top_k_generator: Optional[int] = None
-    ):
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_generator=top_k_generator
-        )
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `generator`. For instance,
+                       params={"retriever": {"top_k": 10}, "generator": {"top_k": 5}}
+        """
+        output = self.pipeline.run(query=query, params=params)
         return output
 
 
 class SearchSummarizationPipeline(BaseStandardPipeline):
-    def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever):
+    def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False):
         """
         Initialize a Pipeline that retrieves documents for a query and then summarizes those documents.
 
         :param summarizer: Summarizer instance
         :param retriever: Retriever instance
+        :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer
+                                        format used in other QA pipelines (True). With the latter, you can use this
+                                        pipeline as a "drop-in replacement" for other QA pipelines.
         """
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
+        self.return_in_answer_format = return_in_answer_format
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: Optional[int] = None,
-        generate_single_summary: Optional[bool] = None,
-        return_in_answer_format: bool = False,
-    ):
+    def run(self, query: str, params: Optional[dict] = None):
         """
-        :param query: Your search query
-        :param filters:
-        :param top_k_retriever: Number of top docs the retriever should pass to the summarizer.
-                                The higher this value, the slower your pipeline.
-        :param generate_single_summary: Whether to generate single summary from all retrieved docs (True) or one per doc (False).
-        :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer format used in other QA pipelines (True).
-                                        With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
-        """
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_single_summary=generate_single_summary
-        )
+        :param query: the query string.
+        :param params: params for the `retriever` and `summarizer`. For instance,
+                       params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+                """
+        output = self.pipeline.run(query=query, params=params)
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
-        if return_in_answer_format:
+        if self.return_in_answer_format:
             results: Dict = {"query": query, "answers": []}
             docs = deepcopy(output["documents"])
             for doc in docs:
@@ -627,8 +652,12 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+        """
+        output = self.pipeline.run(query=query, params=params)
         documents = output["documents"]
 
         results: Dict = {"query": query, "answers": []}
@@ -704,9 +733,8 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
 
-    def run(self, documents, **kwargs):
-        kwargs["documents"] = documents
-        output = self.pipeline.run(**kwargs)
+    def run(self, documents, params: Optional[dict] = None):
+        output = self.pipeline.run(documents=documents, params=params)
         return output
 
 
@@ -720,9 +748,8 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
 
-    def run(self, query, **kwargs):
-        kwargs["query"] = query
-        output = self.pipeline.run(**kwargs)
+    def run(self, query, params: Optional[dict] = None):
+        output = self.pipeline.run(query=query, params=params)
         return output
 
 
@@ -753,20 +780,19 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
             return kwargs, output_stream
         return wrapper
 
-    def run(self, document, **kwargs):
-        kwargs["documents"] = [document]
-        output = self.pipeline.run(**kwargs)
+    def run(self, documents: List[Document], params: Optional[dict] = None):  # type: ignore
+        output = self.pipeline.run(documents=documents, params=params)
         return output
 
 
 class RootNode(BaseComponent):
     """
-    RootNode feeds inputs(`query` or `file`) together with corresponding parameters to a Pipeline.
+    RootNode feeds inputs together with corresponding params to a Pipeline.
     """
     outgoing_edges = 1
 
-    def run(self, **kwargs):
-        return kwargs, "output_1"
+    def run(self, root_node: str):  # type: ignore
+        return {}, "output_1"
 
 
 class SklearnQueryClassifier(BaseComponent):
@@ -854,14 +880,14 @@ class SklearnQueryClassifier(BaseComponent):
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
 
 
-    def run(self, **kwargs):
-        query_vector = self.vectorizer.transform([kwargs["query"]])
+    def run(self, query):
+        query_vector = self.vectorizer.transform([query])
 
         is_question: bool = self.model.predict(query_vector)[0]
         if is_question:
-            return (kwargs, "output_1")
+            return {}, "output_1"
         else:
-            return (kwargs, "output_2")
+            return {}, "output_2"
 
 
 class TransformersQueryClassifier(BaseComponent):
@@ -925,16 +951,16 @@ class TransformersQueryClassifier(BaseComponent):
             model=model, tokenizer=tokenizer
         )
 
-    def run(self, **kwargs):
+    def run(self, query):
 
         is_question: bool = (
-            self.query_classification_pipeline(kwargs["query"])[0]["label"] == "LABEL_1"
+            self.query_classification_pipeline(query)[0]["label"] == "LABEL_1"
         )
 
         if is_question:
-            return (kwargs, "output_1")
+            return {}, "output_1"
         else:
-            return (kwargs, "output_2")
+            return {}, "output_2"
 
 
 class JoinDocuments(BaseComponent):
@@ -973,9 +999,7 @@ class JoinDocuments(BaseComponent):
         self.weights = [float(i)/sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
 
-    def run(self, **kwargs):
-        inputs = kwargs["inputs"]
-
+    def run(self, inputs: List[dict]):  # type: ignore
         if self.join_mode == "concatenate":
             document_map = {}
             for input_from_node in inputs:
@@ -1001,7 +1025,7 @@ class JoinDocuments(BaseComponent):
 
         if self.top_k_join:
             documents = documents[: self.top_k_join]
-        output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
+        output = {"documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"
 
 
@@ -1141,10 +1165,29 @@ class RayPipeline(Pipeline):
         handle = RayDeployment.get_handle()
         return handle
 
-    def run(self, **kwargs):
+    def run(  # type: ignore
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ):
         has_next_node = True
         current_node_id = self.root_node
-        input_dict = {"root_node": self.root_node, **kwargs}
+        input_dict = {"root_node": self.root_node, "params": params}
+        if query:
+            input_dict["query"] = query
+        if file_paths:
+            input_dict["file_paths"] = file_paths
+        if labels:
+            input_dict["labels"] = labels
+        if documents:
+            input_dict["documents"] = documents
+        if meta:
+            input_dict["meta"] = meta
+
         output_dict = None
 
         while has_next_node:
@@ -1158,7 +1201,7 @@ class RayPipeline(Pipeline):
                     raise NotImplementedError(
                         "The current pipeline does not support multiple levels of parallel nodes."
                     )
-                inputs_for_join_node = {"inputs": []}
+                inputs_for_join_node: dict = {"inputs": []}
                 for n_id in next_nodes:
                     output = self.graph.nodes[n_id]["component"].run(**input_dict)
                     inputs_for_join_node["inputs"].append(output)
@@ -1244,7 +1287,7 @@ class _RayDeploymentWrapper:
         """
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
-        return self.node.run(*args, **kwargs)
+        return self.node._dispatch_run(*args, **kwargs)
 
 
 class Docs2Answers(BaseComponent):
@@ -1253,7 +1296,7 @@ class Docs2Answers(BaseComponent):
     def __init__(self):
         self.set_config()
 
-    def run(self, query, documents, **kwargs):
+    def run(self, query, documents):  # type: ignore
         # conversion from Document -> Answer
         answers = []
         for doc in documents:
@@ -1284,7 +1327,5 @@ class Docs2Answers(BaseComponent):
             answers.append(cur_answer)
 
         output = {"query": query, "answers": answers}
-        # Pass also the other incoming kwargs so that future nodes still have access to it
-        output.update(**kwargs)
 
         return output, "output_1"
