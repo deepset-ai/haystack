@@ -2,6 +2,7 @@ import logging
 from abc import abstractmethod
 from typing import List, Union, Optional
 import torch
+from torch.nn import DataParallel
 import numpy as np
 from pathlib import Path
 
@@ -52,7 +53,8 @@ class DensePassageRetriever(BaseRetriever):
                  infer_tokenizer_classes: bool = False,
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
-                 progress_bar: bool = True
+                 progress_bar: bool = True,
+                 devices: Optional[List[Union[int, str, torch.device]]] = None
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -82,8 +84,8 @@ class DensePassageRetriever(BaseRetriever):
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param top_k: How many documents to return per query.
-        :param use_gpu: Whether to use gpu or not
-        :param batch_size: Number of questions or passages to encode at once
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
                             This is the approach used in the original paper and is likely to improve performance if your
                             titles contain meaningful information for retrieval (topic, entities etc.) .
@@ -99,6 +101,8 @@ class DensePassageRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -108,8 +112,18 @@ class DensePassageRetriever(BaseRetriever):
             model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
             top_k=top_k, use_gpu=use_gpu, batch_size=batch_size, embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers, infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function, progress_bar=progress_bar,
+            similarity_function=similarity_function, progress_bar=progress_bar, devices=devices
         )
+
+        if devices is not None:
+            self.devices = devices
+        elif use_gpu and torch.cuda.is_available():
+            self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
+        else:
+            self.devices = [torch.device("cpu")]
+
+        if batch_size < len(self.devices):
+            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
 
         self.document_store = document_store
         self.batch_size = batch_size
@@ -124,8 +138,6 @@ class DensePassageRetriever(BaseRetriever):
             logger.warning(f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
                            "We recommend you use dot_product instead. "
                            "This can be set when initializing the DocumentStore")
-
-        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
         tokenizers_default_classes = {
@@ -171,10 +183,13 @@ class DensePassageRetriever(BaseRetriever):
             embeds_dropout_prob=0.1,
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
-            device=self.device,
+            device=self.devices[0],
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
+
+        if len(self.devices) > 1:
+            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
@@ -234,7 +249,7 @@ class DensePassageRetriever(BaseRetriever):
         with tqdm(total=len(data_loader)*self.batch_size, unit=" Docs", desc=f"Create embeddings", position=1,
                   leave=False, disable=disable_tqdm) as progress_bar:
             for batch in data_loader:
-                batch = {key: batch[key].to(self.device) for key in batch}
+                batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
                 # get logits
                 with torch.no_grad():
@@ -371,7 +386,7 @@ class DensePassageRetriever(BaseRetriever):
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
-            device=self.device,
+            device=self.devices[0], # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp
         )
 
@@ -384,7 +399,7 @@ class DensePassageRetriever(BaseRetriever):
             n_gpu=n_gpu,
             lr_schedule=lr_schedule,
             evaluate_every=evaluate_every,
-            device=self.device,
+            device=self.devices[0], # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp
         )
 
@@ -394,6 +409,8 @@ class DensePassageRetriever(BaseRetriever):
         self.model.save(Path(save_dir), lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
         self.query_tokenizer.save_pretrained(f"{save_dir}/{query_encoder_save_dir}")
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
+
+        self.model = DataParallel(self.model, device_ids=self.devices)
 
     def save(self, save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder",
              passage_encoder_dir: str = "passage_encoder"):
