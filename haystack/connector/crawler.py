@@ -145,10 +145,15 @@ class Crawler(BaseComponent):
 
         return paths
 
-    def run(self, output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None,  # type: ignore
-            crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None,  # type: ignore
-            overwrite_existing_files: Optional[bool] = None, return_documents: Optional[bool] = False,  # type: ignore
-            **kwargs) -> Tuple[Dict, str]:  # type: ignore
+    def run(  # type: ignore
+            self, 
+            output_dir: Union[str, Path, None] = None,
+            urls: Optional[List[str]] = None,
+            crawler_depth: Optional[int] = None,
+            filter_urls: Optional[List] = None,
+            overwrite_existing_files: Optional[bool] = None,
+            return_documents: Optional[bool] = False,
+    ) -> Tuple[Dict, str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
@@ -172,7 +177,7 @@ class Crawler(BaseComponent):
             results = {"documents": crawled_data}
         else:
             results = {"paths": file_paths}
-        results.update(**kwargs)
+
         return results, "output_1"
 
     @staticmethod

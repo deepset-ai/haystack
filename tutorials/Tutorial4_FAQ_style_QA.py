@@ -71,7 +71,7 @@ def tutorial4_faq_style_qa():
     from haystack.pipeline import FAQPipeline
     pipe = FAQPipeline(retriever=retriever)
 
-    prediction = pipe.run(query="How is the virus spreading?", top_k_retriever=10)
+    prediction = pipe.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})
     print_answers(prediction, details="all")
 
 

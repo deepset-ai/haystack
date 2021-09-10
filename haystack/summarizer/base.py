@@ -26,12 +26,9 @@ class BaseSummarizer(BaseComponent):
         """
         pass
 
-    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None, **kwargs): # type: ignore
+    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None): # type: ignore
 
-        results: Dict = {
-            "documents": [],
-            **kwargs
-        }
+        results: Dict = {"documents": []}
 
         if documents:
             results["documents"] = self.predict(documents=documents, generate_single_summary=generate_single_summary)
