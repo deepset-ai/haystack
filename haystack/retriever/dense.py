@@ -101,7 +101,8 @@ class DensePassageRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of gpu devices to use for inference. Training will only work on one gpu (first of the list).
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -111,7 +112,7 @@ class DensePassageRetriever(BaseRetriever):
             model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
             top_k=top_k, use_gpu=use_gpu, batch_size=batch_size, embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers, infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function, progress_bar=progress_bar,
+            similarity_function=similarity_function, progress_bar=progress_bar, devices=devices
         )
 
         if devices is not None:
@@ -122,7 +123,7 @@ class DensePassageRetriever(BaseRetriever):
             self.devices = [torch.device("cpu")]
 
         if batch_size < len(self.devices):
-            logger.warn("Batch size is less than the number of devices. All gpus will not be utilized.")
+            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
 
         self.document_store = document_store
         self.batch_size = batch_size
