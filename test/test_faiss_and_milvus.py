@@ -259,8 +259,8 @@ def test_faiss_cosine_sanity_check(tmp_path):
         vector_dim=3
     )
 
-    VEC_1 = np.arrray([.1, .2, .3], dtype="float32")
-    VEC_2 = np.arrray([.4, .5, .6], dtype="float32")
+    VEC_1 = np.array([.1, .2, .3], dtype="float32")
+    VEC_2 = np.array([.4, .5, .6], dtype="float32")
 
     # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
     KNOWN_COSINE = 0.9746317
