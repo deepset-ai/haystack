@@ -1,4 +1,5 @@
 import faiss
+import math
 import numpy as np
 import pytest
 from haystack import Document
@@ -251,3 +252,23 @@ def test_faiss_cosine_similarity(tmp_path):
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
 
+
+def test_faiss_cosine_sanity_check(tmp_path):
+    document_store = FAISSDocumentStore(
+        sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", similarity='cosine',
+        vector_dim=3
+    )
+
+    VEC_1 = np.arrray([.1, .2, .3], dtype="float32")
+    VEC_2 = np.arrray([.4, .5, .6], dtype="float32")
+
+    # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
+    KNOWN_COSINE = 0.9746317
+
+    docs = [{"name": "vec_1", "text": "vec_1", "embedding": VEC_1}]
+    document_store.write_documents(documents=docs)
+
+    query_results = document_store.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
+
+    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
+    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.000001)
