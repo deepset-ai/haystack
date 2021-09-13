@@ -1,20 +1,21 @@
-import pytest
 import logging
 from pathlib import Path
 
-from haystack.basics.data_handler.data_silo import DataSilo
-from haystack.basics.modeling.language_model import LanguageModel
-from haystack.basics.modeling.optimization import initialize_optimizer
-from haystack.basics.modeling.prediction_head import QuestionAnsweringHead
-from haystack.basics.modeling.tokenization import Tokenizer
-from haystack.basics.train import Trainer
-from haystack.basics.utils import set_all_seeds, initialize_device_settings
-from haystack.basics.data_handler.processor import SquadProcessor
-from haystack.basics.modeling.adaptive_model import AdaptiveModel
+from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.optimization import initialize_optimizer
+from haystack.modeling.model.prediction_head import QuestionAnsweringHead
+from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.training.base import Trainer
+from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 
-@pytest.fixture()
-def distilbert_squad():
+def test_training(caplog=None):
+    if caplog:
+        caplog.set_level(logging.CRITICAL)
+
     set_all_seeds(seed=42)
     device, n_gpu = initialize_device_settings(use_cuda=False)
     batch_size = 2
@@ -25,12 +26,12 @@ def distilbert_squad():
     tokenizer = Tokenizer.load(
         pretrained_model_name_or_path=base_LM_model,
         do_lower_case=True,
-        use_fast=True # TODO parametrize this to test slow as well
+        use_fast=True  # TODO parametrize this to test slow as well
     )
     label_list = ["start_token", "end_token"]
     processor = SquadProcessor(
         tokenizer=tokenizer,
-        max_seq_len=20,
+        max_seq_len=256,
         doc_stride=10,
         max_query_length=6,
         train_filename="train-sample.json",
@@ -55,7 +56,7 @@ def distilbert_squad():
     model, optimizer, lr_schedule = initialize_optimizer(
         model=model,
         learning_rate=2e-5,
-        #optimizer_opts={'name': 'AdamW', 'lr': 2E-05},
+        # optimizer_opts={'name': 'AdamW', 'lr': 2E-05},
         n_batches=len(data_silo.loaders["train"]),
         n_epochs=n_epochs,
         device=device
@@ -72,14 +73,6 @@ def distilbert_squad():
     )
     trainer.train()
 
-    return model, processor
-
-
-def test_training(distilbert_squad, caplog=None):
-    if caplog:
-        caplog.set_level(logging.CRITICAL)
-
-    model, processor = distilbert_squad
     assert type(model) == AdaptiveModel
     assert type(processor) == SquadProcessor
 

@@ -1,7 +1,6 @@
-from typing import List, Any, Optional, Tuple, Union, Dict
-from abc import ABC
 import logging
-
+from abc import ABC
+from typing import List, Any, Optional, Tuple, Union, Dict
 
 logger = logging.getLogger(__name__)
 
