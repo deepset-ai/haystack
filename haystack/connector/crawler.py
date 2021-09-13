@@ -1,3 +1,4 @@
+import sys
 import json
 import logging
 import re
@@ -39,6 +40,8 @@ class Crawler(BaseComponent):
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         """
+        IN_COLAB = "google.colab" in sys.modules
+        
         try:
             from webdriver_manager.chrome import ChromeDriverManager
         except ImportError:
@@ -53,7 +56,23 @@ class Crawler(BaseComponent):
 
         options = webdriver.chrome.options.Options()
         options.add_argument('--headless')
-        self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+        if IN_COLAB:
+            try:
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                self.driver = webdriver.Chrome('chromedriver', options=options)
+            except :
+                raise Exception(
+        """
+        \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
+                        !apt-get update
+                        !apt install chromium-driver
+                        !cp /usr/lib/chromium-browser/chromedriver /usr/bin
+        If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
+        )
+        else:
+            logger.info("'chrome-driver' will be automatically installed.")
+            self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
         self.urls = urls
         self.output_dir = output_dir
         self.crawler_depth = crawler_depth
