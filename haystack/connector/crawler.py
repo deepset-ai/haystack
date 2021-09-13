@@ -66,7 +66,7 @@ class Crawler(BaseComponent):
         """
         \'chrome-driver\' needs to be installed manually when running colab. Follow the below given commands:
                         !apt-get update
-                        !apt install chrome-driver
+                        !apt install chromium-driver
                         !cp usr/lib/chromium-browser/chromedriver /usr/bin
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
         )
