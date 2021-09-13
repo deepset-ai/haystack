@@ -196,7 +196,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         embeds_dropout_prob: float,
         lm_output_types: Union[str, List[str]],
         device: str,
-        loss_aggregation_fn=Optional[Callable],
+        loss_aggregation_fn: Optional[Callable] = None,
     ):
         """
         :param language_model: Any model that turns token ids into vector representations.

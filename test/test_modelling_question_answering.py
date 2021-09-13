@@ -13,8 +13,10 @@ from haystack.basics.data_handler.processor import SquadProcessor
 from haystack.basics.modeling.adaptive_model import AdaptiveModel
 
 
-@pytest.fixture()
-def distilbert_squad():
+def test_training(caplog=None):
+    if caplog:
+        caplog.set_level(logging.CRITICAL)
+
     set_all_seeds(seed=42)
     device, n_gpu = initialize_device_settings(use_cuda=False)
     batch_size = 2
@@ -25,7 +27,7 @@ def distilbert_squad():
     tokenizer = Tokenizer.load(
         pretrained_model_name_or_path=base_LM_model,
         do_lower_case=True,
-        use_fast=True # TODO parametrize this to test slow as well
+        use_fast=True  # TODO parametrize this to test slow as well
     )
     label_list = ["start_token", "end_token"]
     processor = SquadProcessor(
@@ -55,7 +57,7 @@ def distilbert_squad():
     model, optimizer, lr_schedule = initialize_optimizer(
         model=model,
         learning_rate=2e-5,
-        #optimizer_opts={'name': 'AdamW', 'lr': 2E-05},
+        # optimizer_opts={'name': 'AdamW', 'lr': 2E-05},
         n_batches=len(data_silo.loaders["train"]),
         n_epochs=n_epochs,
         device=device
@@ -72,14 +74,6 @@ def distilbert_squad():
     )
     trainer.train()
 
-    return model, processor
-
-
-def test_training(distilbert_squad, caplog=None):
-    if caplog:
-        caplog.set_level(logging.CRITICAL)
-
-    model, processor = distilbert_squad
     assert type(model) == AdaptiveModel
     assert type(processor) == SquadProcessor
 
