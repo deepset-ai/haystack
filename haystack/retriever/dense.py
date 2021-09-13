@@ -271,7 +271,7 @@ class DensePassageRetriever(BaseRetriever):
         """
         passages = [{'passages': [{
             "title": d.meta["name"] if d.meta and "name" in d.meta else "",
-            "text": d.text,
+            "text": d.content,
             "label": d.meta["label"] if d.meta and "label" in d.meta else "positive",
             "external_id": d.id}]
         } for d in docs]
@@ -614,7 +614,7 @@ class _DefaultEmbeddingEncoder(_EmbeddingEncoder):
         return self.embed(texts)
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.text for d in docs] # type: ignore
+        passages = [d.content for d in docs] # type: ignore
         return self.embed(passages)
 
 
@@ -653,7 +653,7 @@ class _SentenceTransformersEmbeddingEncoder(_EmbeddingEncoder):
         return self.embed(texts)
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.text] for d in docs]  # type: ignore
+        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
 
 
@@ -695,7 +695,7 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
 
-        doc_text = [{"text": d.text} for d in docs]
+        doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
 
         embeddings: List[np.ndarray] = []

@@ -72,7 +72,7 @@ class SquadData:
         record_dicts = df_docs.to_dict("records")
         documents = [
             Document(
-                text=rd["context"],
+                content=rd["context"],
                 id=rd["title"]
             ) for rd in record_dicts
         ]

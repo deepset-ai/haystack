@@ -29,7 +29,7 @@ def tutorial7_rag_generator():
     for title, text in zip(titles, texts):
         documents.append(
             Document(
-                text=text,
+                content=text,
                 meta={
                     "name": title or ""
                 }

@@ -62,7 +62,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
     # test if correct vectors are associated with docs
     for i, doc in enumerate(documents_indexed):
         # we currently don't get the embeddings back when we call document_store.get_all_documents()
-        original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
+        original_doc = [d for d in DOCUMENTS if d["text"] == doc.content][0]
         stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
@@ -82,7 +82,7 @@ def test_update_docs(document_store, retriever, batch_size):
 
     # test if correct vectors are associated with docs
     for doc in documents_indexed:
-        original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
+        original_doc = [d for d in DOCUMENTS if d["text"] == doc.content][0]
         updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
         stored_doc = document_store.get_all_documents(filters={"name": [doc.meta["name"]]})[0]
         # compare original input vec with stored one (ignore extra dim added by hnsw)
@@ -94,7 +94,7 @@ def test_update_docs(document_store, retriever, batch_size):
 @pytest.mark.parametrize("document_store", ["milvus", "faiss"], indirect=True)
 def test_update_existing_docs(document_store, retriever):
     document_store.duplicate_documents = "overwrite"
-    old_document = Document(text="text_1")
+    old_document = Document(content="text_1")
     # initial write
     document_store.write_documents([old_document])
     document_store.update_embeddings(retriever=retriever)
@@ -102,7 +102,7 @@ def test_update_existing_docs(document_store, retriever):
     assert len(old_documents_indexed) == 1
 
     # Update document data
-    new_document = Document(text="text_2")
+    new_document = Document(content="text_2")
     new_document.id = old_document.id
     document_store.write_documents([new_document])
     document_store.update_embeddings(retriever=retriever)
@@ -110,8 +110,8 @@ def test_update_existing_docs(document_store, retriever):
     assert len(new_documents_indexed) == 1
 
     assert old_documents_indexed[0].id == new_documents_indexed[0].id
-    assert old_documents_indexed[0].text == "text_1"
-    assert new_documents_indexed[0].text == "text_2"
+    assert old_documents_indexed[0].content == "text_1"
+    assert new_documents_indexed[0].content == "text_2"
     assert not np.allclose(old_documents_indexed[0].embedding, new_documents_indexed[0].embedding, rtol=0.01)
 
 

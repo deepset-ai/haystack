@@ -227,7 +227,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         document = Document(
             id=id,
-            text=text,
+            content=text,
             meta=meta_data,
             score=score,
             question=question,

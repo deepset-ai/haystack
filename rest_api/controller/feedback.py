@@ -104,10 +104,10 @@ def export_extractive_qa_feedback(
             )
 
         if full_document_context:
-            context = document.text
+            context = document.content
             answer_start = label.offset_start_in_doc
         else:
-            text = document.text
+            text = document.content
             # the final length of context(including the answer string) is 'context_size'.
             # we try to add equal characters for context before and after the answer string.
             # if either beginning or end of text is reached, we correspondingly

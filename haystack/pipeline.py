@@ -602,7 +602,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
             for doc in docs:
                 cur_answer = {
                     "query": query,
-                    "answer": doc.text,
+                    "answer": doc.content,
                     "document_id": doc.id,
                     "context": doc.meta.pop("context"),
                     "score": None,
@@ -635,7 +635,7 @@ class FAQPipeline(BaseStandardPipeline):
         for doc in documents:
             # TODO proper calibration of pseudo probabilities
             cur_answer = {
-                "query": doc.text,
+                "query": doc.content,
                 "answer": doc.meta["answer"],
                 "document_id": doc.id,
                 "context": doc.meta["answer"],
@@ -1260,7 +1260,7 @@ class Docs2Answers(BaseComponent):
             # For FAQ style QA use cases
             if "answer" in doc.meta:
                 cur_answer = {
-                    "query": doc.text,
+                    "query": doc.content,
                     "answer": doc.meta["answer"],
                     "document_id": doc.id,
                     "context": doc.meta["answer"],
@@ -1275,7 +1275,7 @@ class Docs2Answers(BaseComponent):
                     "query": None,
                     "answer": None,
                     "document_id": doc.id,
-                    "context": doc.text,
+                    "context": doc.content,
                     "score": doc.score,
                     "offset_start": None,
                     "offset_end": None,

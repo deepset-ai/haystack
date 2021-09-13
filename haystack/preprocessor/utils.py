@@ -125,7 +125,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
         cur_meta.update(meta_doc)
 
         ## Create Document
-        cur_doc = Document(text=paragraph["context"], meta=cur_meta)
+        cur_doc = Document(content=paragraph["context"], meta=cur_meta)
         if preprocessor is not None:
             splits_dicts = preprocessor.process(cur_doc.to_dict())
             # we need to pull in _split_id into the document id for unique reference in labels
@@ -143,7 +143,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                     offset += 2
                 else:
                     raise NotImplementedError
-                mydoc = Document(text=d["text"],
+                mydoc = Document(content=d["text"],
                                  id=id,
                                  meta=d["meta"])
                 splits.append(mydoc)
@@ -165,7 +165,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                         cur_ans_start = answer.get("answer_start", 0)
                         cur_id = '0'
                     else:
-                        ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
+                        ans_position = cur_doc.content[answer["answer_start"]:answer["answer_start"] + len(ans)]
                         if ans != ans_position:
                             # do not use answer
                             problematic_ids.append(qa.get("id","missing"))
@@ -177,12 +177,12 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                         else:
                             for s in splits:
                                 # If answer start offset is contained in passage we assign the label to that passage
-                                if (answer["answer_start"] >= s.meta["_split_offset"]) and (answer["answer_start"] < (s.meta["_split_offset"] + len(s.text))):
+                                if (answer["answer_start"] >= s.meta["_split_offset"]) and (answer["answer_start"] < (s.meta["_split_offset"] + len(s.content))):
                                     cur_id = s.id
                                     cur_ans_start = answer["answer_start"] - s.meta["_split_offset"]
                                     # If a document is splitting an answer we add the whole answer text to the document
-                                    if s.text[cur_ans_start:cur_ans_start+len(ans)] != ans:
-                                        s.text = s.text[:cur_ans_start] + ans
+                                    if s.content[cur_ans_start:cur_ans_start + len(ans)] != ans:
+                                        s.content = s.content[:cur_ans_start] + ans
                                     break
                     label = Label(
                         question=qa["question"],

@@ -126,7 +126,7 @@ class TransformersSummarizer(BaseSummarizer):
         if generate_single_summary is None:
             generate_single_summary = self.generate_single_summary
 
-        contexts: List[str] = [doc.text for doc in documents]
+        contexts: List[str] = [doc.content for doc in documents]
 
         if generate_single_summary:
             # Documents order is very important to produce summary.
@@ -157,7 +157,7 @@ class TransformersSummarizer(BaseSummarizer):
         result: List[Document] = []
 
         for context, summarized_answer in zip(contexts, summaries):
-            cur_doc = Document(text=summarized_answer['summary_text'], meta={"context": context})
+            cur_doc = Document(content=summarized_answer['summary_text'], meta={"context": context})
             result.append(cur_doc)
 
         return result

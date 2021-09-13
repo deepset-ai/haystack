@@ -15,7 +15,7 @@ def test_translator_with_list(en_to_de_translator):
 
 
 def test_translator_with_document(en_to_de_translator):
-    assert en_to_de_translator.translate(documents=[Document(text=INPUT)])[0].text == EXPECTED_OUTPUT
+    assert en_to_de_translator.translate(documents=[Document(content=INPUT)])[0].content == EXPECTED_OUTPUT
 
 
 def test_translator_with_dictionary(en_to_de_translator):

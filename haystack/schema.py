@@ -7,11 +7,12 @@ import mmh3
 import numpy as np
 from abc import abstractmethod
 
-
+@dataclass
 class Document:
     def __init__(
         self,
-        text: str, # change text to content/data to cope for images, tables ...?
+        content: str, # change text to content/data to cope for images, tables ...?
+        content_type: Literal["text", "table", "image"],
         id: Optional[str] = None,
         score: Optional[float] = None,
         question: Optional[str] = None, #do we really need it here? Only for FAQ? can we move it to meta?
@@ -44,7 +45,8 @@ class Document:
                              not unique, you can provide custom strings here that will be used (e.g. ["filename_xy", "text_of_doc"].
         """
 
-        self.text = text
+        self.content = content
+        self.content_type = content_type
         self.score = score
         self.question = question
         self.meta = meta or {}
@@ -57,7 +59,7 @@ class Document:
             self.id = self._get_id(id_hash_keys)
 
     def _get_id(self, id_hash_keys):
-        final_hash_key = ":".join(id_hash_keys) if id_hash_keys else self.text
+        final_hash_key = ":".join(id_hash_keys) if id_hash_keys else self.content
         return '{:02x}'.format(mmh3.hash128(final_hash_key, signed=False))
 
     def to_dict(self, field_map={}):
@@ -71,7 +73,7 @@ class Document:
     @classmethod
     def from_dict(cls, dict, field_map={}):
         _doc = dict.copy()
-        init_args = ["text", "id", "score", "question", "meta", "embedding"]
+        init_args = ["content","content_type", "id", "score", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"

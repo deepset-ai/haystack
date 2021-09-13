@@ -47,7 +47,7 @@ class DocxToTextConverter(BaseConverter):
             raise Exception("Language validation using 'valid_languages' is not supported by DocxToTextConverter.")
 
         file = docx.Document(file_path)  # Creating word reader object.
-        paragraphs = [para.text for para in file.paragraphs]
+        paragraphs = [para.content for para in file.paragraphs]
         text = "".join(paragraphs)
         document = {"text": text, "meta": meta}
         return document

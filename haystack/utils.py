@@ -203,7 +203,7 @@ def convert_labels_to_squad(labels_file: str):
             doc = DocumentORM.query.get(label["document_id"])
 
             assert (
-                doc.text[label["start_offset"] : label["end_offset"]]
+                    doc.content[label["start_offset"]: label["end_offset"]]
                 == label["selected_text"]
             )
 
@@ -225,7 +225,7 @@ def convert_labels_to_squad(labels_file: str):
 
         squad_format_label = {
             "paragraphs": [
-                {"qas": qas, "context": doc.text, "document_id": document_id}
+                {"qas": qas, "context": doc.content, "document_id": document_id}
             ]
         }
 

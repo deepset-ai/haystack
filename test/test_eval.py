@@ -42,7 +42,7 @@ def test_add_eval_data(document_store, batch_size):
     doc = document_store.get_document_by_id(label.document_id, index="haystack_test_eval_document")
     start = label.offset_start_in_doc
     end = start + len(label.answer)
-    assert doc.text[start:end] == "France"
+    assert doc.content[start:end] == "France"
 
 
 @pytest.mark.elasticsearch
@@ -179,4 +179,4 @@ def test_eval_data_split_passage(document_store):
     )
     docs = document_store.get_all_documents(index="haystack_test_eval_document")
     assert len(docs) == 2
-    assert len(docs[1].text) == 56
+    assert len(docs[1].content) == 56

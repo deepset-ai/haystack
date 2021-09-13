@@ -118,7 +118,7 @@ class BaseRetriever(BaseComponent):
                 current_avg_precision = 0.0
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_answer in gold_answers:
-                        if gold_answer in doc.text:
+                        if gold_answer in doc.content:
                             relevant_docs_found += 1
                             if not found_relevant_doc:
                                 correct_retrievals += 1

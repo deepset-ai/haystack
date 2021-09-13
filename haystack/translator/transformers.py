@@ -97,7 +97,7 @@ class TransformersTranslator(BaseTranslator):
 
         if isinstance(documents, list):
             if isinstance(documents[0], Document):
-                text_for_translator = [doc.text for doc in documents]   # type: ignore
+                text_for_translator = [doc.content for doc in documents]   # type: ignore
             elif isinstance(documents[0], str):
                 text_for_translator = documents   # type: ignore
             else:
@@ -127,7 +127,7 @@ class TransformersTranslator(BaseTranslator):
 
             for translated_text, doc in zip(translated_texts, documents):
                 if isinstance(doc, Document):
-                    doc.text = translated_text
+                    doc.content = translated_text
                 else:
                     doc[dict_key] = translated_text  # type: ignore
 

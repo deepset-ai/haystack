@@ -87,7 +87,7 @@ class SentenceTransformersRanker(BaseRanker):
         if top_k is None:
             top_k = self.top_k
 
-        features = self.transformer_tokenizer([query for doc in documents], [doc.text for doc in documents],
+        features = self.transformer_tokenizer([query for doc in documents], [doc.content for doc in documents],
                                               padding=True, truncation=True, return_tensors="pt")
 
         # In contrast to FARMRanker, SentenceTransformerRanker uses the logit as similarity score and not the classifier's probability of label "1"

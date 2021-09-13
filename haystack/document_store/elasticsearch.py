@@ -880,7 +880,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         document = Document(
             id=hit["_id"],
-            text=hit["_source"].get(self.text_field),
+            content=hit["_source"].get(self.text_field),
             meta=meta_data,
             score=score,
             question=hit["_source"].get(self.faq_question_field),
@@ -899,7 +899,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             index = self.index
         docs = self.get_all_documents(index)
 
-        l = [len(d.text) for d in docs]
+        l = [len(d.content) for d in docs]
         stats = {"count": len(docs),
                  "chars_mean": np.mean(l),
                  "chars_max": max(l),

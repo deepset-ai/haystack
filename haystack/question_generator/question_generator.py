@@ -54,9 +54,9 @@ class QuestionGenerator(BaseComponent):
         documents = kwargs["documents"]
         generated_questions = []
         for d in documents:
-            questions = self.generate(d.text)
+            questions = self.generate(d.content)
             curr_dict = {"document_id": d.id,
-                         "document_sample": d.text[:200],
+                         "document_sample": d.content[:200],
                          "questions": questions}
             generated_questions.append(curr_dict)
         output = {"generated_questions": generated_questions, **kwargs}

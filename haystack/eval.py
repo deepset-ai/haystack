@@ -114,7 +114,7 @@ class EvalDocuments:
         if self.open_domain:
             for label in retriever_labels.multiple_answers:
                 for rank, p in enumerate(predictions[:top_k_eval_documents]):
-                    if label.lower() in p.text.lower():
+                    if label.lower() in p.content.lower():
                         return 1/(rank+1)
             return False
         else:

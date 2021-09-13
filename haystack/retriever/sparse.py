@@ -148,7 +148,7 @@ class TfidfRetriever(BaseRetriever):
         paragraphs = []
         p_id = 0
         for doc in documents:
-            for p in doc.text.split("\n\n"):  # TODO: this assumes paragraphs are separated by "\n\n". Can be switched to paragraph tokenizer.
+            for p in doc.content.split("\n\n"):  # TODO: this assumes paragraphs are separated by "\n\n". Can be switched to paragraph tokenizer.
                 if not p.strip():  # skip empty paragraphs
                     continue
                 paragraphs.append(
@@ -200,7 +200,7 @@ class TfidfRetriever(BaseRetriever):
         )
 
         # get actual content for the top candidates
-        paragraphs = list(df_sliced.text.values)
+        paragraphs = list(df_sliced.content.values)
         meta_data = [{"document_id": row["document_id"], "paragraph_id": row["paragraph_id"],  "meta": row.get("meta", {})}
                      for idx, row in df_sliced.iterrows()]
 
@@ -209,7 +209,7 @@ class TfidfRetriever(BaseRetriever):
             documents.append(
                 Document(
                     id=meta["document_id"],
-                    text=para,
+                    content=para,
                     meta=meta.get("meta", {})
                 ))
 

@@ -467,7 +467,7 @@ class _BartEli5Converter:
 
     def __call__(self, tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
                  top_k: Optional[int] = None) -> BatchEncoding:
-        conditioned_doc = "<P> " + " <P> ".join([d.text for d in documents])
+        conditioned_doc = "<P> " + " <P> ".join([d.content for d in documents])
 
         # concatenate question and support document into BART input
         query_and_docs = "question: {} context: {}".format(query, conditioned_doc)

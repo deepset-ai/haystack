@@ -187,7 +187,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             curr_meta = deepcopy(doc.meta)
             new_document = Document(
                 id=doc.id,
-                text=doc.text,
+                content=doc.content,
                 meta=curr_meta,
                 embedding=doc.embedding
             )

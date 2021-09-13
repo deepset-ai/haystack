@@ -6,10 +6,10 @@ from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 
 DOCS = [
     Document(
-        text="""PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by the shutoffs which were expected to last through at least midday tomorrow.""",
+        content="""PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by the shutoffs which were expected to last through at least midday tomorrow.""",
     ),
     Document(
-        text="""The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world, a title it held for 41 years until the Chrysler Building in New York City was finished in 1930. It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."""
+        content="""The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world, a title it held for 41 years until the Chrysler Building in New York City was finished in 1930. It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."""
     )
 ]
 
@@ -20,10 +20,10 @@ EXPECTED_SUMMARIES = [
 
 SPLIT_DOCS = [
     Document(
-        text="""The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world, a title it held for 41 years until the Chrysler Building in New York City was finished in 1930."""
+        content="""The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world, a title it held for 41 years until the Chrysler Building in New York City was finished in 1930."""
     ),
     Document(
-        text="""It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."""
+        content="""It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."""
     )
 ]
 
@@ -41,7 +41,7 @@ def test_summarization(summarizer):
     summarized_docs = summarizer.predict(documents=DOCS)
     assert len(summarized_docs) == len(DOCS)
     for expected_summary, summary in zip(EXPECTED_SUMMARIES, summarized_docs):
-        assert expected_summary == summary.text
+        assert expected_summary == summary.content
 
 
 @pytest.mark.slow
@@ -49,7 +49,7 @@ def test_summarization(summarizer):
 def test_summarization_one_summary(summarizer):
     summarized_docs = summarizer.predict(documents=SPLIT_DOCS, generate_single_summary=True)
     assert len(summarized_docs) == 1
-    assert EXPECTED_ONE_SUMMARIES[0] == summarized_docs[0].text
+    assert EXPECTED_ONE_SUMMARIES[0] == summarized_docs[0].content
 
 
 @pytest.mark.slow
@@ -128,7 +128,7 @@ def test_summarization_pipeline_with_translator(
     # SearchSummarizationPipeline return answers but Summarizer return documents
     documents = output["documents"]
     assert len(documents) == 1
-    assert documents[0].text in [
+    assert documents[0].content in [
         "Der Eiffelturm ist ein Wahrzeichen in Paris, Frankreich.",
         "Der Eiffelturm, der 1889 in Paris, Frankreich, erbaut wurde, ist das höchste freistehende Bauwerk der Welt."
     ]

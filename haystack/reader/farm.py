@@ -311,7 +311,7 @@ class FARMReader(BaseReader):
             number_of_docs.append(len(documents))
 
             for doc in documents:
-                cur = QAInput(doc_text=doc.text,
+                cur = QAInput(doc_text=doc.content,
                               questions=Question(text=query.question,
                                                  uid=doc.id))
                 inputs.append(cur)
@@ -376,7 +376,7 @@ class FARMReader(BaseReader):
         # convert input to FARM format
         inputs = []
         for doc in documents:
-            cur = QAInput(doc_text=doc.text,
+            cur = QAInput(doc_text=doc.content,
                           questions=Question(text=query,
                                              uid=doc.id))
             inputs.append(cur)
@@ -488,7 +488,7 @@ class FARMReader(BaseReader):
                 logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
                 continue
             d[str(doc_id)] = {
-                "context": doc.text
+                "context": doc.content
             }
             # get all questions / answers
             aggregated_per_question: Dict[tuple, Any] = defaultdict(list)
@@ -667,7 +667,7 @@ class FARMReader(BaseReader):
         for text in texts:
             documents.append(
                 Document(
-                    text=text
+                    content=text
                 )
             )
         predictions = self.predict(question, documents, top_k)

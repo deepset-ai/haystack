@@ -35,11 +35,11 @@ def test_init_elastic_client():
 def test_write_with_duplicate_doc_ids(document_store):
     documents = [
         Document(
-            text="Doc1",
+            content="Doc1",
             id_hash_keys=["key1"]
         ),
         Document(
-            text="Doc2",
+            content="Doc2",
             id_hash_keys=["key1"]
         )
     ]
@@ -61,24 +61,24 @@ def test_get_all_documents_without_filters(document_store_with_docs):
 def test_get_all_document_filter_duplicate_text_value(document_store):
     documents = [
         Document(
-            text="Doc1",
+            content="Doc1",
             meta={"f1": "0"},
             id_hash_keys=["Doc1", "1"]
         ),
         Document(
-            text="Doc1",
+            content="Doc1",
             meta={"f1": "1", "meta_id": "0"},
             id_hash_keys=["Doc1", "2"]
         ),
         Document(
-            text="Doc2",
+            content="Doc2",
             meta={"f3": "0"},
             id_hash_keys=["Doc2", "3"]
         )
     ]
     document_store.write_documents(documents)
     documents = document_store.get_all_documents(filters={"f1": ["1"]})
-    assert documents[0].text == "Doc1"
+    assert documents[0].content == "Doc1"
     assert len(documents) == 1
     assert {d.meta["meta_id"] for d in documents} == {"0"}
 
@@ -125,7 +125,7 @@ def test_get_documents_by_id(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     doc = document_store_with_docs.get_document_by_id(documents[0].id)
     assert doc.id == documents[0].id
-    assert doc.text == documents[0].text
+    assert doc.content == documents[0].content
 
 
 @pytest.mark.elasticsearch
@@ -179,9 +179,9 @@ def test_update_existing_documents(document_store, update_existing_documents):
     stored_docs = document_store.get_all_documents()
     assert len(stored_docs) == 1
     if update_existing_documents:
-        assert stored_docs[0].text == updated_docs[0]["text"]
+        assert stored_docs[0].content == updated_docs[0]["text"]
     else:
-        assert stored_docs[0].text == original_docs[0]["text"]
+        assert stored_docs[0].content == original_docs[0]["text"]
 
 
 @pytest.mark.elasticsearch
@@ -189,8 +189,8 @@ def test_write_document_meta(document_store):
     documents = [
         {"text": "dict_without_meta", "id": "1"},
         {"text": "dict_with_meta", "meta_field": "test2", "name": "filename2", "id": "2"},
-        Document(text="document_object_without_meta", id="3"),
-        Document(text="document_object_with_meta", meta={"meta_field": "test4", "name": "filename3"}, id="4"),
+        Document(content="document_object_without_meta", id="3"),
+        Document(content="document_object_with_meta", meta={"meta_field": "test4", "name": "filename3"}, id="4"),
     ]
     document_store.write_documents(documents)
     documents_in_store = document_store.get_all_documents()
@@ -515,15 +515,15 @@ def test_multilabel_no_answer(document_store):
 def test_update_meta(document_store):
     documents = [
         Document(
-            text="Doc1",
+            content="Doc1",
             meta={"meta_key_1": "1", "meta_key_2": "1"}
         ),
         Document(
-            text="Doc2",
+            content="Doc2",
             meta={"meta_key_1": "2", "meta_key_2": "2"}
         ),
         Document(
-            text="Doc3",
+            content="Doc3",
             meta={"meta_key_1": "3", "meta_key_2": "3"}
         )
     ]
@@ -546,7 +546,7 @@ def test_custom_embedding_field(document_store_type):
     document_store.write_documents([doc_to_write])
     documents = document_store.get_all_documents(return_embedding=True)
     assert len(documents) == 1
-    assert documents[0].text == "test"
+    assert documents[0].content == "test"
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
 
 
@@ -555,15 +555,15 @@ def test_custom_embedding_field(document_store_type):
 def test_get_meta_values_by_key(document_store):
     documents = [
         Document(
-            text="Doc1",
+            content="Doc1",
             meta={"meta_key_1": "1", "meta_key_2": "11"}
         ),
         Document(
-            text="Doc2",
+            content="Doc2",
             meta={"meta_key_1": "2", "meta_key_2": "22"}
         ),
         Document(
-            text="Doc3",
+            content="Doc3",
             meta={"meta_key_1": "3", "meta_key_2": "33"}
         )
     ]
@@ -599,7 +599,7 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
     document_store.write_documents([doc_to_write])
     documents = document_store.get_all_documents(return_embedding=True)
     assert len(documents) == 1
-    assert documents[0].text == "test"
+    assert documents[0].content == "test"
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
 
 

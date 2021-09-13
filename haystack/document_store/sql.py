@@ -234,7 +234,7 @@ class SQLDocumentStore(BaseDocumentStore):
         for i, row in enumerate(documents_query, start=1):
             documents_map[row.id] = Document(
                 id=row.id,
-                text=row.text,
+                content=row.content,
                 meta=None if row.vector_id is None else {"vector_id": row.vector_id}
             )
             if i % batch_size == 0:
@@ -307,7 +307,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
-                doc_orm = DocumentORM(id=doc.id, text=doc.text, vector_id=vector_id, meta=meta_orms, index=index)
+                doc_orm = DocumentORM(id=doc.id, text=doc.content, vector_id=vector_id, meta=meta_orms, index=index)
                 if duplicate_documents == "overwrite":
                     # First old meta data cleaning is required
                     self.session.query(MetaORM).filter_by(document_id=doc.id).delete()
@@ -424,7 +424,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def _convert_sql_row_to_document(self, row) -> Document:
         document = Document(
             id=row.id,
-            text=row.text,
+            content=row.content,
             meta={meta.name: meta.value for meta in row.meta}
         )
         if row.vector_id:

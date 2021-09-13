@@ -110,7 +110,7 @@ class TransformersReader(BaseReader):
         no_ans_gaps = []
         best_overall_score = 0
         for doc in documents:
-            transformers_query = {"context": doc.text, "question": query}
+            transformers_query = {"context": doc.content, "question": query}
             predictions = self.model(transformers_query,
                                      topk=self.top_k_per_candidate,
                                      handle_impossible_answer=self.return_no_answers,
@@ -130,10 +130,10 @@ class TransformersReader(BaseReader):
                     if pred["score"] > best_doc_score:
                         best_doc_score = pred["score"]
                     context_start = max(0, pred["start"] - self.context_window_size)
-                    context_end = min(len(doc.text), pred["end"] + self.context_window_size)
+                    context_end = min(len(doc.content), pred["end"] + self.context_window_size)
                     answers.append({
                         "answer": pred["answer"],
-                        "context": doc.text[context_start:context_end],
+                        "context": doc.content[context_start:context_end],
                         "offset_start": pred["start"],
                         "offset_end": pred["end"],
                         "score": pred["score"],

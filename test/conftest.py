@@ -274,7 +274,7 @@ def test_docs_xs():
         # meta_field at the top level for backward compatibility
         {"text": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
         # Document object for a doc
-        Document(text="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"})
+        Document(content="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"})
     ]
 
 

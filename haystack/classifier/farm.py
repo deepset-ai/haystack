@@ -272,7 +272,7 @@ class FARMClassifier(BaseClassifier):
             top_k = self.top_k
 
         # documents should follow the structure {"text": "Schartau sagte dem Tagesspiegel, dass Fischer ein ... sei"},
-        docs = [{"text": doc.text} for doc in documents]
+        docs = [{"content": doc.content} for doc in documents]
         results = self.inferencer.inference_from_dicts(dicts=docs)[0]["predictions"]
 
         classified_docs: List[Document] = []
