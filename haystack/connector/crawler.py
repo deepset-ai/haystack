@@ -64,7 +64,7 @@ class Crawler(BaseComponent):
             except :
                 raise Exception(
         """
-        \'chrome-driver\' needs to be installed manually when running colab. Follow the below given commands:
+        \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
                         !apt-get update
                         !apt install chromium-driver
                         !cp usr/lib/chromium-browser/chromedriver /usr/bin
