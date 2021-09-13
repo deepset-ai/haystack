@@ -1,6 +1,8 @@
 from typing import List, Optional
 
-from transformers import pipeline
+from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering
+import torch
+import numpy as np
 
 from haystack import Document
 from haystack.reader.base import BaseReader
@@ -15,17 +17,17 @@ class TransformersReader(BaseReader):
     """
 
     def __init__(
-        self,
-        model_name_or_path: str = "distilbert-base-uncased-distilled-squad",
-        model_version: Optional[str] = None,
-        tokenizer: Optional[str] = None,
-        context_window_size: int = 70,
-        use_gpu: int = 0,
-        top_k: int = 10,
-        top_k_per_candidate: int = 4,
-        return_no_answers: bool = True,
-        max_seq_len: int = 256,
-        doc_stride: int = 128
+            self,
+            model_name_or_path: str = "distilbert-base-uncased-distilled-squad",
+            model_version: Optional[str] = None,
+            tokenizer: Optional[str] = None,
+            context_window_size: int = 70,
+            use_gpu: int = 0,
+            top_k: int = 10,
+            top_k_per_candidate: int = 4,
+            return_no_answers: bool = True,
+            max_seq_len: int = 256,
+            doc_stride: int = 128
     ):
         """
         Load a QA model from Transformers.
@@ -65,7 +67,8 @@ class TransformersReader(BaseReader):
             top_k_per_candidate=top_k_per_candidate, return_no_answers=return_no_answers, max_seq_len=max_seq_len,
         )
 
-        self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=use_gpu, revision=model_version)
+        self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=use_gpu,
+                              revision=model_version)
         self.context_window_size = context_window_size
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
@@ -164,6 +167,90 @@ class TransformersReader(BaseReader):
 
         return results
 
-    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None,  batch_size: Optional[int] = None):
+    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
 
         raise NotImplementedError("Batch prediction not yet available in TransformersReader.")
+
+
+class TableReader:
+
+    def __init__(
+            self,
+            model_name_or_path: str = "google/tapas-base-finetuned-wtq",
+            model_version: Optional[str] = None,
+            tokenizer: Optional[str] = None,
+            use_gpu: bool = True,
+            top_k: int = 10,
+            max_seq_len: int = 256,
+
+    ):
+
+        self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
+        if use_gpu and torch.cuda.is_available():
+                self.model.to("cuda")
+        if tokenizer is None:
+            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path)
+        else:
+            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer)
+        self.top_k = top_k
+        self.max_seq_len = max_seq_len
+
+    def predict(self, query, tables, top_k=None):
+
+        if top_k is None:
+            top_k = self.top_k
+
+        answers = []
+        for table in tables:
+            # Tokenize query and current table
+            inputs = self.tokenizer(table=table,
+                                    queries=query,
+                                    max_length=self.max_seq_len,
+                                    return_tensors="pt")
+            # Forward query and table through model and convert logits to predictions
+            outputs = self.model(**inputs)
+            predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
+                inputs,
+                outputs.logits.detach(),
+                outputs.logits_aggregation.detach()
+            )
+
+            # Get cell values
+            current_answer_coordinates = predicted_answer_coordinates[0]
+            current_answer_cells = []
+            for coordinate in current_answer_coordinates:
+                current_answer_cells.append(table.iat[coordinate])
+
+            # Get aggregation operator
+            current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
+
+            # Calculate answer score
+            # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
+            logits = outputs.logits.detach()
+            logits[logits < -88.7] = -88.7
+            token_probabilities = 1 / (1 + np.exp(-logits)) * inputs.attention_mask
+            segment_ids = inputs.token_type_ids[0, :, 0].tolist()
+            column_ids = inputs.token_type_ids[0, :, 1].tolist()
+            row_ids = inputs.token_type_ids[0, :, 2].tolist()
+            all_cell_probabilities = self.tokenizer._get_mean_cell_probs(token_probabilities[0].tolist(), segment_ids,
+                                                                         row_ids, column_ids)
+            answer_cell_probabilities = [all_cell_probabilities[coord] for coord in current_answer_coordinates]
+            current_score = np.mean(answer_cell_probabilities)
+
+            answers.append({
+                "answer_coordinates": current_answer_coordinates,
+                "answer_cells": current_answer_cells,
+                "aggregation_operator": current_aggregation_operator,
+                "score": current_score
+            })
+
+        # Sort answers by score and select top-k answers
+        answers = sorted(answers, key=lambda k: k["score"], reverse=True)
+        answers = answers[:top_k]
+
+        results = {"query": query,
+                   "answers": answers}
+
+        return results
+
+
