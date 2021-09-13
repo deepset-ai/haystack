@@ -130,7 +130,7 @@ def export_extractive_qa_feedback(
                     {
                         "context": context,
                         "id": label.document_id,
-                        "qas": [{"question": label.question, "id": label.id, "is_impossible": True, "answers": []}],
+                        "qas": [{"question": label.query, "id": label.id, "is_impossible": True, "answers": []}],
                     }
                 ]
             }
@@ -142,7 +142,7 @@ def export_extractive_qa_feedback(
                         "id": label.document_id,
                         "qas": [
                             {
-                                "question": label.question,
+                                "question": label.query,
                                 "id": label.id,
                                 "is_impossible": False,
                                 "answers": [{"text": label.answer, "answer_start": answer_start}],

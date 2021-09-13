@@ -285,9 +285,9 @@ def prepare_data(data_dir, filename_gold, filename_negative, remote_url, embeddi
     labels = [x for x in labels if x.document_id in doc_ids]
 
     # Filter labels down to n_queries
-    selected_queries = list(set(f"{x.document_id} | {x.question}" for x in labels))
+    selected_queries = list(set(f"{x.document_id} | {x.query}" for x in labels))
     selected_queries = selected_queries[:n_queries]
-    labels = [x for x in labels if f"{x.document_id} | {x.question}" in selected_queries]
+    labels = [x for x in labels if f"{x.document_id} | {x.query}" in selected_queries]
 
     n_neg_docs = max(0, n_docs - len(gold_docs))
     neg_docs = prepare_negative_passages(data_dir, filename_negative, n_neg_docs)

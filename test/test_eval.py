@@ -27,7 +27,7 @@ def test_add_eval_data(document_store, batch_size):
     labels = document_store.get_all_labels(index="haystack_test_feedback")
     label = None
     for l in labels:
-        if l.question == "In what country is Normandy located?":
+        if l.query == "In what country is Normandy located?":
             label = l
             break
     assert label.answer == "France"

@@ -84,7 +84,7 @@ class SquadData:
         record_dicts = df_labels.to_dict("records")
         labels = [
             Label(
-                question=rd["question"],
+                query=rd["question"],
                 answer=rd["answer_text"],
                 is_correct_answer=True,
                 is_correct_document=True,

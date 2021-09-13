@@ -48,7 +48,8 @@ class Document:
                              handling of Documents and check compatibility.
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
-        :param score: Retriever's query score for a retrieved document
+        :param score: The relevance score of the Document determined by a model (e.g. Retriever or Re-Ranker).
+                      In the range of [0,1], where 1 means extremely relevant.
         :param meta: Meta fields for a document like name, url, or author.
         :param embedding: Vector encoding of the text
         :param id_hash_keys: Generate the document id from a custom list of strings.
@@ -59,8 +60,8 @@ class Document:
         self.content = content
         if content_type is None:
             content_type = "text"
-            logger.warning("Initialized Document() without value for `content_type`, "
-                           "which will be a mandatory arg soon. Time to level up your code :)")
+            # logger.warning("Initialized Document() without value for `content_type`, "
+            #                "which will be a mandatory arg soon. Time to level up your code :)")
         self.content_type = content_type
         self.score = score
         self.meta = meta or {}
@@ -111,24 +112,26 @@ class Document:
     def __str__(self):
         return str(self.to_dict())
 
+    def __lt__(self, other):
+        """ Enable sorting of Documents by score """
+        return self.score < other.score
 
 @dataclass
 class Answer:
     answer: Optional[str]
     type: Literal["generative", "extractive"]
-    # question: Optional[str]
-    score: Optional[float]
-    # probability: Optional[float] = None
-    context: Optional[str]
-    offset_start: Optional[int]
-    offset_end: Optional[int]
-    offset_start_in_doc: Optional[int]
-    offset_end_in_doc: Optional[int]
-    document_id: Optional[str]
-    # maybe: change to doc_id: Optional[str] = None
-    meta: Optional[Dict[str, Any]]
-    # maybe add: source
+    score: float
+    context: Optional[Union[str, pd.DataFrame]] = None
+    offset_start: Optional[int] = None
+    offset_end: Optional[int] = None
+    offset_start_in_doc: Optional[int] = None
+    offset_end_in_doc: Optional[int] = None
+    document_id: Optional[str] = None
+    meta: Optional[Dict[str, Any]] = None
 
+    def __lt__(self, other):
+        """ Enable sorting of Answers by score """
+        return self.score < other.score
 
 # class ExtractiveQAFeedback(BaseModel):
 #     question: str = Field(..., description="The question input by the user, i.e., the query.")
@@ -150,13 +153,13 @@ class Label:
     def __init__(self,
                  query: str,
                  answer: Optional[Answer],  # maybe replace str -> Answer object?
-                 document: Document,  # make it suitable for Retrieval?
+                 document: Document,
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: Literal["user-feedback", "gold-annotation"],
                  id: Optional[str] = None,
                  # document_id: Optional[str] = None, # if we have Document up there we don't need the ID here
-                 # offset_start_in_doc: Optional[int] = None, # part of Answer object?
+                 offset_start_in_doc: Optional[int] = None, # part of Answer object?
                  no_answer: Optional[bool] = None,
                  model_id: Optional[int] = None,  # switch to pipeline_id/name/hash?
                  created_at: Optional[str] = None,
@@ -168,7 +171,7 @@ class Label:
         This includes labels from dataset like SQuAD, annotations from labeling tools,
         or, user-feedback from the Haystack REST API.
 
-        :param question: the question(or query) for finding answers.
+        :param query: the question (or query) for finding answers.
         :param answer: the answer string.
         :param is_correct_answer: whether the sample is positive or negative.
         :param is_correct_document: in case of negative sample(is_correct_answer is False), there could be two cases;
@@ -194,7 +197,7 @@ class Label:
 
         self.created_at = created_at
         self.updated_at = updated_at
-        self.question = question
+        self.query = query
         self.answer = answer
         self.is_correct_answer = is_correct_answer
         self.is_correct_document = is_correct_document
@@ -218,7 +221,7 @@ class Label:
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
-                getattr(other, 'question', None) == self.question and
+                getattr(other, 'question', None) == self.query and
                 getattr(other, 'answer', None) == self.answer and
                 getattr(other, 'is_correct_answer', None) == self.is_correct_answer and
                 getattr(other, 'is_correct_document', None) == self.is_correct_document and
@@ -231,7 +234,7 @@ class Label:
                 getattr(other, 'updated_at', None) == self.updated_at)
 
     def __hash__(self):
-        return hash(self.question +
+        return hash(self.query +
                     self.answer +
                     str(self.is_correct_answer) +
                     str(self.is_correct_document) +

@@ -56,6 +56,7 @@ class MetaORM(ORMBase):
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
+    #TODO adjust to new Label format
     document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     index = Column(String(100), nullable=False)
     no_answer = Column(Boolean, nullable=False)
@@ -341,7 +342,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 document_id=label.document_id,
                 no_answer=label.no_answer,
                 origin=label.origin,
-                question=label.question,
+                question=label.query,
                 is_correct_answer=label.is_correct_answer,
                 is_correct_document=label.is_correct_document,
                 answer=label.answer,
@@ -436,7 +437,7 @@ class SQLDocumentStore(BaseDocumentStore):
             document_id=row.document_id,
             no_answer=row.no_answer,
             origin=row.origin,
-            question=row.question,
+            query=row.query,
             is_correct_answer=row.is_correct_answer,
             is_correct_document=row.is_correct_document,
             answer=row.answer,

@@ -125,9 +125,9 @@ class BaseDocumentStore(BaseComponent):
             # or if there are fields in the meta data that we should group by (set using group_by_meta)
             group_by_id_list: list = []
             if open_domain:
-                group_by_id_list = [l.question]
+                group_by_id_list = [l.query]
             else:
-                group_by_id_list = [l.document_id, l.question]
+                group_by_id_list = [l.document_id, l.query]
             if aggregate_by_meta:
                 if type(aggregate_by_meta) == str:
                     aggregate_by_meta = [aggregate_by_meta]
@@ -162,7 +162,7 @@ class BaseDocumentStore(BaseComponent):
             # if both text and no answer are present, remove no answer labels
             if t_present and no_present:
                 logger.warning(
-                    f"Both text label and 'no answer possible' label is present for question: {ls[0].question}")
+                    f"Both text label and 'no answer possible' label is present for question: {ls[0].query}")
                 for remove_idx in no_idx[::-1]:
                     ls.pop(remove_idx)
 
@@ -175,7 +175,7 @@ class BaseDocumentStore(BaseComponent):
                     else:
                         meta_new = {}
 
-                    agg_label = MultiLabel(question=l.question,
+                    agg_label = MultiLabel(question=l.query,
                                            multiple_answers=[l.answer],
                                            is_correct_answer=l.is_correct_answer,
                                            is_correct_document=l.is_correct_document,

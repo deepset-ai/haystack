@@ -350,7 +350,7 @@ def test_delete_documents_with_filters(document_store_with_docs):
 @pytest.mark.elasticsearch
 def test_labels(document_store):
     label = Label(
-        question="question",
+        query="question",
         answer="answer",
         is_correct_answer=True,
         is_correct_document=True,
@@ -371,7 +371,7 @@ def test_labels(document_store):
 def test_multilabel(document_store):
     labels =[
         Label(
-            question="question",
+            query="question",
             answer="answer1",
             is_correct_answer=True,
             is_correct_document=True,
@@ -382,7 +382,7 @@ def test_multilabel(document_store):
         ),
         # different answer in same doc
         Label(
-            question="question",
+            query="question",
             answer="answer2",
             is_correct_answer=True,
             is_correct_document=True,
@@ -393,7 +393,7 @@ def test_multilabel(document_store):
         ),
         # answer in different doc
         Label(
-            question="question",
+            query="question",
             answer="answer3",
             is_correct_answer=True,
             is_correct_document=True,
@@ -404,7 +404,7 @@ def test_multilabel(document_store):
         ),
         # 'no answer', should be excluded from MultiLabel
         Label(
-            question="question",
+            query="question",
             answer="",
             is_correct_answer=True,
             is_correct_document=True,
@@ -415,7 +415,7 @@ def test_multilabel(document_store):
         ),
         # is_correct_answer=False, should be excluded from MultiLabel
         Label(
-            question="question",
+            query="question",
             answer="answer5",
             is_correct_answer=False,
             is_correct_document=True,
@@ -450,7 +450,7 @@ def test_multilabel(document_store):
 def test_multilabel_no_answer(document_store):
     labels = [
         Label(
-            question="question",
+            query="question",
             answer="",
             is_correct_answer=True,
             is_correct_document=True,
@@ -461,7 +461,7 @@ def test_multilabel_no_answer(document_store):
         ),
         # no answer in different doc
         Label(
-            question="question",
+            query="question",
             answer="",
             is_correct_answer=True,
             is_correct_document=True,
@@ -472,7 +472,7 @@ def test_multilabel_no_answer(document_store):
         ),
         # no answer in same doc, should be excluded
         Label(
-            question="question",
+            query="question",
             answer="",
             is_correct_answer=True,
             is_correct_document=True,
@@ -483,7 +483,7 @@ def test_multilabel_no_answer(document_store):
         ),
         # no answer with is_correct_answer=False, should be excluded
         Label(
-            question="question",
+            query="question",
             answer="",
             is_correct_answer=False,
             is_correct_document=True,

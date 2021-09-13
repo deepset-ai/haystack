@@ -184,8 +184,9 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                                     if s.content[cur_ans_start:cur_ans_start + len(ans)] != ans:
                                         s.content = s.content[:cur_ans_start] + ans
                                     break
+
                     label = Label(
-                        question=qa["question"],
+                        query=qa["question"],
                         answer=ans,
                         is_correct_answer=True,
                         is_correct_document=True,
@@ -199,7 +200,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                 # for no_answer we need to assign each split as not fitting to the question
                 for s in splits:
                     label = Label(
-                        question=qa["question"],
+                        query=qa["question"],
                         answer="",
                         is_correct_answer=True,
                         is_correct_document=True,

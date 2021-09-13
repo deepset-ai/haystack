@@ -17,7 +17,7 @@ from farm.train import Trainer
 from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
 
-from haystack import Document
+from haystack import Document, Answer
 from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
 
@@ -312,7 +312,7 @@ class FARMReader(BaseReader):
 
             for doc in documents:
                 cur = QAInput(doc_text=doc.content,
-                              questions=Question(text=query.question,
+                              questions=Question(text=query.query,
                                                  uid=doc.id))
                 inputs.append(cur)
 
@@ -334,7 +334,7 @@ class FARMReader(BaseReader):
         result = []
         for idx, group in enumerate(grouped_predictions):
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k)
-            query = group[0].question
+            query = group[0].query
             cur_label = labels[idx]
             result.append({
                 "query": query,
@@ -345,7 +345,7 @@ class FARMReader(BaseReader):
 
         return result
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None)->List[Answer]:
         """
         Use loaded QA model to find answers for a query in the supplied list of Document.
 
@@ -492,7 +492,7 @@ class FARMReader(BaseReader):
             }
             # get all questions / answers
             aggregated_per_question: Dict[tuple, Any] = defaultdict(list)
-            id_question_tuple = (label.id, label.question)
+            id_question_tuple = (label.id, label.query)
             if doc_id in aggregated_per_doc:
                 for label in aggregated_per_doc[doc_id]:
                     # add to existing answers
@@ -502,7 +502,7 @@ class FARMReader(BaseReader):
                         else:
                             # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
                             if len(aggregated_per_question[id_question_tuple]["answers"]) >= 6:
-                                logger.warning(f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.question}, label_id: {label.id})")
+                                logger.warning(f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})")
                                 continue
                             aggregated_per_question[id_question_tuple]["answers"].append({
                                         "text": label.answer,
@@ -513,15 +513,15 @@ class FARMReader(BaseReader):
                         # We don't need to create an answer dict if is_impossible / no_answer
                         if label.offset_start_in_doc == 0 and label.answer == "":
                             aggregated_per_question[id_question_tuple] = {
-                                "id": str(hash(str(doc_id) + label.question)),
-                                "question": label.question,
+                                "id": str(hash(str(doc_id) + label.query)),
+                                "question": label.query,
                                 "answers": [],
                                 "is_impossible": True
                             }
                         else:
                             aggregated_per_question[id_question_tuple] = {
-                                "id": str(hash(str(doc_id)+label.question)),
-                                "question": label.question,
+                                "id": str(hash(str(doc_id) + label.query)),
+                                "question": label.query,
                                 "answers": [{
                                         "text": label.answer,
                                         "answer_start": label.offset_start_in_doc}],
@@ -560,7 +560,7 @@ class FARMReader(BaseReader):
         # Assemble answers from all the different documents and format them.
         # For the 'no answer' option, we collect all no_ans_gaps and decide how likely
         # a no answer is based on all no_ans_gaps values across all documents
-        answers = []
+        answers: List[Answer] = []
         no_ans_gaps = []
         best_score_answer = 0
 
@@ -572,16 +572,16 @@ class FARMReader(BaseReader):
                 if self._check_no_answer(ans):
                     pass
                 else:
-                    cur = {
-                        "answer": ans.answer,
-                        "score": ans.confidence if self.use_confidence_scores else ans.score,
-                        "context": ans.context_window,
-                        "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
-                        "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
-                        "offset_start_in_doc": ans.offset_answer_start,
-                        "offset_end_in_doc": ans.offset_answer_end,
-                        "document_id": pred.id
-                    }
+                    cur = Answer(answer=ans.answer,
+                                 type="extractive",
+                                 score=ans.confidence if self.use_confidence_scores else ans.score,
+                                 context=ans.context_window,
+                                 offset_start=ans.offset_answer_start - ans.offset_context_window_start,
+                                 offset_end=ans.offset_answer_end - ans.offset_context_window_start,
+                                 offset_start_in_doc=ans.offset_answer_start,
+                                 offset_end_in_doc=ans.offset_answer_end,
+                                 )
+
                     answers_per_document.append(cur)
 
                     if ans.score > best_score_answer:
@@ -595,8 +595,8 @@ class FARMReader(BaseReader):
         if self.return_no_answers:
             answers.append(no_ans_prediction)
 
-        # sort answers by score and select top-k
-        answers = sorted(answers, key=lambda k: k["score"], reverse=True)
+        # sort answers by score (descending) and select top-k
+        answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
         return answers, max_no_ans_gap
