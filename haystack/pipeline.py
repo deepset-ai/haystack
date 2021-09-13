@@ -1334,9 +1334,10 @@ class Docs2Answers(BaseComponent):
 class MostSimilarDocumentsPipeline(BaseStandardPipeline):
     def __init__(self, document_store: BaseDocumentStore):
         """
-        Initialize a Pipeline for finding similar documents using document ids.
+        Initialize a Pipeline for finding the most similar documents to a given document.
+        This pipeline can be helpful if you already show a relevant document to your end users and they want to search for just similar ones.  
 
-        :param document_store: Document Store instance
+        :param document_store: Document Store instance with already stored embeddings. 
         """
         self.document_store = document_store
 
