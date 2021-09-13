@@ -1,11 +1,10 @@
 import logging
 
-from transformers import AutoModelForSequenceClassification, AutoModelForQuestionAnswering, AutoModelWithLMHead, \
-    AutoModelForTokenClassification
+from transformers import AutoModelForQuestionAnswering
 
-from haystack.basics.modeling import adaptive_model as am
-from haystack.basics.modeling.language_model import LanguageModel
-from haystack.basics.modeling.prediction_head import QuestionAnsweringHead
+from haystack.modeling.model import adaptive_model as am
+from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.prediction_head import QuestionAnsweringHead
 
 logger = logging.getLogger(__name__)
 

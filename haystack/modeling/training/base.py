@@ -1,20 +1,20 @@
 import logging
+import shutil
 import sys
+from pathlib import Path
 from typing import Optional, Tuple, List
 
-import torch
-from pathlib import Path
-from tqdm import tqdm
-import numpy
-import shutil
 import dill
+import numpy
+import torch
+from tqdm import tqdm
 
-from haystack.basics.utils import MLFlowLogger as MlLogger
-from haystack.basics.utils import GracefulKiller
-from haystack.basics.eval import Evaluator
-from haystack.basics.data_handler.data_silo import DataSilo
-from haystack.basics.modeling.adaptive_model import AdaptiveModel
-from haystack.basics.modeling.optimization import get_scheduler
+from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.evaluation.eval import Evaluator
+from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.model.optimization import get_scheduler
+from haystack.modeling.utils import GracefulKiller
+from haystack.modeling.utils import MLFlowLogger as MlLogger
 
 try:
     from apex import amp

@@ -6,7 +6,7 @@ from transformers import BertTokenizer, BertTokenizerFast, RobertaTokenizer, Rob
 
 from tokenizers.pre_tokenizers import WhitespaceSplit
 
-from haystack.basics.modeling.tokenization import Tokenizer
+from haystack.modeling.model.tokenization import Tokenizer
 
 import numpy as np
 

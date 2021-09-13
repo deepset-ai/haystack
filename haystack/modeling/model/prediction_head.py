@@ -1,19 +1,19 @@
 import json
 import logging
 import os
-import numpy as np
-
 from pathlib import Path
-from transformers import AutoModelForQuestionAnswering
 from typing import List, Tuple, Optional, Union, Dict
 
+import numpy as np
 import torch
 from torch import nn
 from torch import optim
 from torch.nn import CrossEntropyLoss, NLLLoss
-from haystack.basics.data_handler.utils import is_json
-from haystack.basics.utils import try_get, all_gather_list
-from haystack.basics.modeling.predictions import QACandidate, QAPred
+from transformers import AutoModelForQuestionAnswering
+
+from haystack.modeling.data_handler.samples import SampleBasket
+from haystack.modeling.model.predictions import QACandidate, QAPred
+from haystack.modeling.utils import try_get, all_gather_list
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class PredictionHead(nn.Module):
         for key, value in self.__dict__.items():
             if type(value) is np.ndarray:
                 value = value.tolist()
-            if is_json(value) and key[0] != "_":
+            if _is_json(value) and key[0] != "_":
                 config[key] = value
             if self.task_name == "text_similarity" and key == "similarity_function":
                 config['similarity_function'] = value
@@ -166,7 +166,7 @@ class PredictionHead(nn.Module):
             self.feed_forward.layer_dims[0] = input_dim
 
     @classmethod
-    def _get_model_file(cls, config_file):
+    def _get_model_file(cls, config_file: Union[str, Path]):
         if "config.json" in str(config_file) and "prediction_head" in str(config_file):
             head_num = int("".join([char for char in os.path.basename(config_file) if char.isdigit()]))
             model_file = Path(os.path.dirname(config_file)) / f"prediction_head_{head_num}.bin"
@@ -198,7 +198,7 @@ class FeedForwardBlock(nn.Module):
             layers_all.append(layer)
         self.feed_forward = nn.Sequential(*layers_all)
 
-    def forward(self, X):
+    def forward(self, X: torch.Tensor):
         logits = self.feed_forward(X)
         return logits
 
@@ -271,7 +271,7 @@ class QuestionAnsweringHead(PredictionHead):
 
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore[override]
+    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore
         """
         Load a prediction head from a saved Haystack or transformers model. `pretrained_model_name_or_path`
         can be one of the following:
@@ -306,7 +306,7 @@ class QuestionAnsweringHead(PredictionHead):
 
         return head
 
-    def forward(self, X):
+    def forward(self, X: torch.Tensor):
         """
         One forward pass through the prediction head model, starting with language model output on token level
 
@@ -314,7 +314,7 @@ class QuestionAnsweringHead(PredictionHead):
         logits = self.feed_forward(X)
         return self.temperature_scale(logits)
 
-    def logits_to_loss(self, logits, labels, **kwargs):
+    def logits_to_loss(self, logits: torch.Tensor, labels: torch.Tensor, **kwargs):
         """
         Combine predictions and labels to a per sample loss.
         """
@@ -346,11 +346,11 @@ class QuestionAnsweringHead(PredictionHead):
         return per_sample_loss
 
 
-    def temperature_scale(self, logits):
+    def temperature_scale(self, logits: torch.Tensor):
         return torch.div(logits, self.temperature_for_confidence)
 
 
-    def calibrate_conf(self, logits, label_all):
+    def calibrate_conf(self, logits: List[torch.Tensor], label_all: List[torch.Tensor]):
         """
         Learning a temperature parameter to apply temperature scaling to calibrate confidence scores
         """
@@ -389,8 +389,8 @@ class QuestionAnsweringHead(PredictionHead):
         optimizer.step(eval_start_end_logits)
 
 
-    def logits_to_preds(self, logits, span_mask, start_of_word,
-                        seq_2_start_t, max_answer_length=1000, **kwargs):
+    def logits_to_preds(self, logits: torch.Tensor, span_mask: torch.Tensor, start_of_word: torch.Tensor,
+                        seq_2_start_t: torch.Tensor, max_answer_length: int = 1000, **kwargs):
         """
         Get the predicted index of start and end token of the answer. Note that the output is at token level
         and not word level. Note also that these logits correspond to the tokens of a sample
@@ -462,7 +462,7 @@ class QuestionAnsweringHead(PredictionHead):
 
         return all_top_n
 
-    def get_top_candidates(self, sorted_candidates, start_end_matrix, sample_idx, start_matrix = None, end_matrix = None):
+    def get_top_candidates(self, sorted_candidates: torch.Tensor, start_end_matrix: torch.Tensor, sample_idx: int, start_matrix: torch.Tensor, end_matrix: torch.Tensor):
         """ Returns top candidate answers as a list of Span objects. Operates on a matrix of summed start and end logits.
         This matrix corresponds to a single sample (includes special tokens, question tokens, passage tokens).
         This method always returns a list of len n_best + 1 (it is comprised of the n_best positive answers along with the one no_answer)"""
@@ -518,7 +518,7 @@ class QuestionAnsweringHead(PredictionHead):
 
         return top_candidates
 
-    def formatted_preds(self, logits=None, preds=None, baskets=None, **kwargs):
+    def formatted_preds(self, logits: Optional[torch.Tensor] = None, preds: Optional[List[QACandidate]] = None, baskets: Optional[List[SampleBasket]] = None, **kwargs):
         """ Takes a list of passage level predictions, each corresponding to one sample, and converts them into document level
         predictions. Leverages information in the SampleBaskets. Assumes that we are being passed predictions from
         ALL samples in the one SampleBasket i.e. all passages of a document. Logits should be None, because we have
@@ -552,7 +552,7 @@ class QuestionAnsweringHead(PredictionHead):
 
         return doc_preds
 
-    def to_qa_preds(self, top_preds, no_ans_gaps, baskets):
+    def to_qa_preds(self, top_preds: Tuple[QACandidate], no_ans_gaps: Tuple[float], baskets: Tuple[SampleBasket]):
         """ Groups Span objects together in a QAPred object  """
         ret = []
 
@@ -586,7 +586,7 @@ class QuestionAnsweringHead(PredictionHead):
         return ret
 
     @staticmethod
-    def get_ground_truth(basket):
+    def get_ground_truth(basket: SampleBasket):
         if "answers" in basket.raw:
             return basket.raw["answers"]
         elif "annotations" in basket.raw:
@@ -595,7 +595,7 @@ class QuestionAnsweringHead(PredictionHead):
             return None
 
     @staticmethod
-    def get_question(question_names, raw_dict):
+    def get_question(question_names: List[str], raw_dict: Dict):
         # For NQ style dicts
         qa_name = None
         if "qas" in raw_dict:
@@ -606,12 +606,6 @@ class QuestionAnsweringHead(PredictionHead):
             if type(raw_dict[qa_name][0]) == dict:
                 return raw_dict[qa_name][0]["question"]
         return try_get(question_names, raw_dict)
-
-    def has_no_answer_idxs(self, sample_top_n):
-        for start, end, score in sample_top_n:
-            if start == 0 and end == 0:
-                return True
-        return False
 
     def aggregate_preds(self, preds, passage_start_t, ids, seq_2_start_t=None, labels=None):
         """ Aggregate passage level predictions to create document level predictions.
@@ -940,7 +934,7 @@ class TextSimilarityHead(PredictionHead):
         softmax_scores = nn.functional.log_softmax(scores, dim=1)
         return softmax_scores
 
-    def logits_to_loss(self, logits: Tuple[torch.Tensor, torch.Tensor], label_ids, **kwargs):  # type: ignore[override]
+    def logits_to_loss(self, logits: Tuple[torch.Tensor, torch.Tensor], label_ids, **kwargs):  # type: ignore
         """
         Computes the loss (Default: NLLLoss) by applying a similarity function (Default: dot product) to the input
         tuple of (query_vectors, passage_vectors) and afterwards applying the loss function on similarity scores.
@@ -1017,7 +1011,7 @@ class TextSimilarityHead(PredictionHead):
         _, sorted_scores = torch.sort(softmax_scores, dim=1, descending=True)
         return sorted_scores
 
-    def prepare_labels(self, label_ids, **kwargs) -> torch.Tensor:  # type: ignore[override]
+    def prepare_labels(self, label_ids, **kwargs) -> torch.Tensor:  # type: ignore
         """
         Returns a tensor with passage labels(0:hard_negative/1:positive) for each query
 
@@ -1033,3 +1027,12 @@ class TextSimilarityHead(PredictionHead):
 
     def formatted_preds(self, logits: Tuple[torch.Tensor, torch.Tensor], **kwargs):
         raise NotImplementedError("formatted_preds is not supported in TextSimilarityHead yet!")
+
+def _is_json(x):
+    if issubclass(type(x), Path):
+        return True
+    try:
+        json.dumps(x)
+        return True
+    except:
+        return False

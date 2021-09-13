@@ -1,7 +1,7 @@
 from math import ceil
 
-from torch.utils.data import DataLoader, Dataset, Sampler
 import torch
+from torch.utils.data import DataLoader, Dataset, Sampler
 
 
 class NamedDataLoader(DataLoader):

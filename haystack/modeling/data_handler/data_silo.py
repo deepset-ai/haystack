@@ -1,26 +1,26 @@
+import hashlib
+import json
 import logging
-import torch.multiprocessing as mp
+import random
 from contextlib import ExitStack
 from functools import partial
-import random
-from pathlib import Path
 from itertools import groupby
+from itertools import islice
+from pathlib import Path
 from typing import Optional, List, Tuple, Dict, Union
 
 import numpy as np
+import torch
+import torch.multiprocessing as mp
 from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
-import torch
 from tqdm import tqdm
 
-from haystack.basics.data_handler.dataloader import NamedDataLoader
-from haystack.basics.data_handler.processor import Processor
-from haystack.basics.data_handler.utils import grouper
-from haystack.basics.utils import MLFlowLogger as MlLogger
-from haystack.basics.utils import log_ascii_workers, calc_chunksize
-from haystack.basics.utils import get_dict_checksum
-from haystack.basics.visual.ascii.images import TRACTOR_SMALL
+from haystack.modeling.data_handler.dataloader import NamedDataLoader
+from haystack.modeling.data_handler.processor import Processor
+from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.visual.ascii.images import TRACTOR_SMALL, WORKER_F, WORKER_M, WORKER_X
 
 logger = logging.getLogger(__name__)
 
@@ -714,3 +714,116 @@ class DataSiloForCrossVal:
             current_train_set = np.hstack(np.delete(splits, idx, axis=0))
 
             yield current_train_set, current_test_set
+
+
+def calc_chunksize(num_dicts, min_chunksize=4, max_chunksize=2000, max_processes=128):
+    if mp.cpu_count() > 3:
+        num_cpus = min(mp.cpu_count() - 1 or 1, max_processes)  # -1 to keep a CPU core free for xxx
+    else:
+        num_cpus = min(mp.cpu_count(), max_processes) # when there are few cores, we use all of them
+
+    dicts_per_cpu = np.ceil(num_dicts / num_cpus)
+    # automatic adjustment of multiprocessing chunksize
+    # for small files (containing few dicts) we want small chunksize to ulitize all available cores but never less
+    # than 2, because we need it to sample another random sentence in LM finetuning
+    # for large files we want to minimize processor spawning without giving too much data to one process, so we
+    # clip it at 5k
+    multiprocessing_chunk_size = int(np.clip((np.ceil(dicts_per_cpu / 5)), a_min=min_chunksize, a_max=max_chunksize))
+    # This lets us avoid cases in lm_finetuning where a chunk only has a single doc and hence cannot pick
+    # a valid next sentence substitute from another document
+    if num_dicts != 1:
+        while num_dicts % multiprocessing_chunk_size == 1:
+            multiprocessing_chunk_size -= -1
+    dict_batches_to_process = int(num_dicts / multiprocessing_chunk_size)
+    num_processes = min(num_cpus, dict_batches_to_process) or 1
+
+    return multiprocessing_chunk_size, num_processes
+
+def log_ascii_workers(n, logger):
+    m_worker_lines = WORKER_M.split("\n")
+    f_worker_lines = WORKER_F.split("\n")
+    x_worker_lines = WORKER_X.split("\n")
+    all_worker_lines = []
+    for i in range(n):
+        rand = np.random.randint(low=0,high=3)
+        if(rand % 3 == 0):
+            all_worker_lines.append(f_worker_lines)
+        elif(rand % 3 == 1):
+            all_worker_lines.append(m_worker_lines)
+        else:
+            all_worker_lines.append(x_worker_lines)
+    zipped = zip(*all_worker_lines)
+    for z in zipped:
+        logger.info("  ".join(z))
+
+def get_dict_checksum(payload_dict):
+    """
+    Get MD5 checksum for a dict.
+    """
+    checksum = hashlib.md5(json.dumps(payload_dict, sort_keys=True).encode("utf-8")).hexdigest()
+    return checksum
+
+def grouper(iterable, n, worker_id=0, total_workers=1):
+    """
+    Split an iterable into a list of n-sized chunks. Each element in the chunk is a tuple of (index_num, element).
+
+    Example:
+    list(grouper('ABCDEFG', 3))
+    [[(0, 'A'), (1, 'B'), (2, 'C')], [(3, 'D'), (4, 'E'), (5, 'F')], [(6, 'G')]]
+
+
+    Use with the StreamingDataSilo
+
+    When StreamingDataSilo is used with multiple PyTorch DataLoader workers, the generator
+    yielding dicts(that gets converted to datasets) is replicated across the workers.
+
+    To avoid duplicates, we split the dicts across workers by creating a new generator for
+    each worker using this method.
+
+    Input --> [dictA, dictB, dictC, dictD, dictE, ...] with total worker=3 and n=2
+
+    Output for worker 1: [(dictA, dictB), (dictG, dictH), ...]
+    Output for worker 2: [(dictC, dictD), (dictI, dictJ), ...]
+    Output for worker 3: [(dictE, dictF), (dictK, dictL), ...]
+
+    This method also adds an index number to every dict yielded.
+
+    :param iterable: a generator object that yields dicts
+    :type iterable: generator
+    :param n: the dicts are grouped in n-sized chunks that gets converted to datasets
+    :type n: int
+    :param worker_id: the worker_id for the PyTorch DataLoader
+    :type worker_id: int
+    :param total_workers: total number of workers for the PyTorch DataLoader
+    :type total_workers: int
+    """
+    # TODO make me comprehensible :)
+    def get_iter_start_pos(gen):
+        start_pos = worker_id * n
+        for i in gen:
+            if start_pos:
+                start_pos -= 1
+                continue
+            yield i
+
+    def filter_elements_per_worker(gen):
+        x = n
+        y = (total_workers - 1) * n
+        for i in gen:
+            if x:
+                yield i
+                x -= 1
+            else:
+                if y != 1:
+                    y -= 1
+                    continue
+                else:
+                    x = n
+                    y = (total_workers - 1) * n
+
+    iterable = iter(enumerate(iterable))
+    iterable = get_iter_start_pos(iterable)
+    if total_workers > 1:
+        iterable = filter_elements_per_worker(iterable)
+
+    return iter(lambda: list(islice(iterable, n)), [])
