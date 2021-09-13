@@ -31,14 +31,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         aws4auth = None,
         index: str = "document",
         label_index: str = "label",
-        search_fields: Union[str, list] = "text",
-        text_field: str = "text",
+        search_fields: Union[str, list] = "content",
+        content_field: str = "content",
         name_field: str = "name",
         embedding_field: str = "embedding",
         embedding_dim: int = 768,
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
-        faq_question_field: Optional[str] = None,
         analyzer: str = "standard",
         scheme: str = "http",
         ca_certs: Optional[str] = None,
@@ -68,7 +67,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
         :param search_fields: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
-        :param text_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+        :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
@@ -104,7 +103,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             host=host, port=port, username=username, password=password, api_key_id=api_key_id, api_key=api_key,
-            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields, text_field=text_field,
+            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields, text_field=content_field,
             name_field=name_field, embedding_field=embedding_field, embedding_dim=embedding_dim,
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
@@ -123,12 +122,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         #TODO we should implement a more flexible interal mapping here that simplifies the usage of additional,
         # custom fields (e.g. meta data you want to return)
         self.search_fields = search_fields
-        self.text_field = text_field
+        self.content_field = content_field
         self.name_field = name_field
         self.embedding_field = embedding_field
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
-        self.faq_question_field = faq_question_field
         self.analyzer = analyzer
         self.return_embedding = return_embedding
 
@@ -244,7 +242,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "mappings": {
                     "properties": {
                         self.name_field: {"type": "keyword"},
-                        self.text_field: {"type": "text"},
+                        self.content_field: {"type": "text"},
                     },
                     "dynamic_templates": [
                         {
@@ -312,9 +310,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     # TODO: Add flexibility to define other non-meta and meta fields expected by the Document class
     def _create_document_field_map(self) -> Dict:
         return {
-            self.text_field: "text",
-            self.embedding_field: "embedding",
-            self.faq_question_field if self.faq_question_field else "question": "question"
+            self.content_field: "text",
+            self.embedding_field: "embedding"
         }
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
@@ -385,12 +382,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         they will automatically get UUIDs assigned. See the `Document` class for details)
 
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                          Optionally: Include meta data via {"text": "<the-actual-text>",
+                          For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+                          Optionally: Include meta data via {"content": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           It can be used for filtering and is accessible in the responses of the Finder.
                           Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
-                          should be changed to what you have set for self.text_field and self.name_field.
+                          should be changed to what you have set for self.content_field and self.name_field.
         :param index: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
         :param batch_size: Number of documents that are passed to Elasticsearch's bulk function at a time.
         :param duplicate_documents: Handle duplicates document based on parameter options.
@@ -856,7 +853,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.content_field, self.embedding_field)}
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
@@ -880,10 +877,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         document = Document(
             id=hit["_id"],
-            content=hit["_source"].get(self.text_field),
+            content=hit["_source"].get(self.content_field),
             meta=meta_data,
             score=score,
-            question=hit["_source"].get(self.faq_question_field),
             embedding=embedding,
         )
         return document
@@ -1136,7 +1132,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 "mappings": {
                     "properties": {
                         self.name_field: {"type": "keyword"},
-                        self.text_field: {"type": "text"},
+                        self.content_field: {"type": "text"},
                     },
                     "dynamic_templates": [
                         {

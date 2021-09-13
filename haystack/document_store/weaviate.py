@@ -42,7 +42,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             embedding_dim: int = 768,
             text_field: str = "text",
             name_field: str = "name",
-            faq_question_field = "question",
             similarity: str = "dot_product",
             index_type: str = "hnsw",
             custom_schema: Optional[dict] = None,
@@ -64,7 +63,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param text_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
-        :param faq_question_field: Name of field containing the question in case of FAQ-Style QA
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
@@ -121,7 +119,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.text_field = text_field
         self.name_field = name_field
-        self.faq_question_field = faq_question_field
         self.similarity = similarity
         self.index_type = index_type
         self.custom_schema = custom_schema
@@ -158,13 +155,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                     ],
                                     "description": "Name Field",
                                     "name": self.name_field
-                                },
-                                {
-                                    "dataType": [
-                                        "string"
-                                    ],
-                                    "description": "Question Field",
-                                    "name": self.faq_question_field
                                 },
                                 {
                                     "dataType": [
@@ -206,9 +196,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if props.get(self.text_field) is not None:
             text = str(props.get(self.text_field))
 
-        if props.get(self.faq_question_field) is not None:
-            question = props.get(self.faq_question_field)
-
         # Weaviate creates "_additional" key for semantic search
         if "_additional" in props:
             if "certainty" in props["_additional"]:
@@ -220,7 +207,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             props.pop("_additional", None)
 
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in props.items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
+        meta_data = {k:v for k,v in props.items() if k not in (self.text_field, self.embedding_field)}
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
@@ -230,7 +217,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             content=text,
             meta=meta_data,
             score=score,
-            question=question,
             embedding=embedding,
         )
         return document
@@ -238,8 +224,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def _create_document_field_map(self) -> Dict:
         return {
             self.text_field: "text",
-            self.embedding_field: "embedding",
-            self.faq_question_field if self.faq_question_field else "question": "question"
+            self.embedding_field: "embedding"
         }
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
@@ -376,8 +361,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
                     doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
-                    if _doc.get(self.faq_question_field) is None:
-                        _doc.pop(self.faq_question_field)
 
                     # Check if additional properties are in the document, if so,
                     # append the schema with all the additional properties

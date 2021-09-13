@@ -255,7 +255,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
         for path in paths:
             logger.info('Converting {}'.format(path))
             document = suffix2converter[suffix].convert(file_path=path, meta=None)
-            text = document["text"]
+            text = document["content"]
 
             if clean_func:
                 text = clean_func(text)
@@ -264,9 +264,9 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
                 for para in text.split("\n\n"):
                     if not para.strip():  # skip empty paragraphs
                         continue
-                    documents.append({"text": para, "meta": {"name": path.name}})
+                    documents.append({"content": para, "meta": {"name": path.name}})
             else:
-                documents.append({"text": text, "meta": {"name": path.name}})
+                documents.append({"content": text, "meta": {"name": path.name}})
 
     return documents
 

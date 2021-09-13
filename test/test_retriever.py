@@ -96,7 +96,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
     client = Elasticsearch()
     client.indices.delete(index="haystack_test_custom", ignore=[404])
     document_store = ElasticsearchDocumentStore(
-        index="haystack_test_custom", text_field="custom_text_field", embedding_field="custom_embedding_field"
+        index="haystack_test_custom", content_field="custom_text_field", embedding_field="custom_embedding_field"
     )
     documents = [
         {"text": "test_1", "meta": {"year": "2019"}},

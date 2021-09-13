@@ -592,7 +592,7 @@ def test_get_meta_values_by_key(document_store):
 def test_elasticsearch_custom_fields(elasticsearch_fixture):
     client = Elasticsearch()
     client.indices.delete(index='haystack_test_custom', ignore=[404])
-    document_store = ElasticsearchDocumentStore(index="haystack_test_custom", text_field="custom_text_field",
+    document_store = ElasticsearchDocumentStore(index="haystack_test_custom", content_field="custom_text_field",
                                                 embedding_field="custom_embedding_field")
 
     doc_to_write = {"custom_text_field": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}

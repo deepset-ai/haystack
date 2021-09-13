@@ -1,4 +1,10 @@
-from typing import Any, Optional, Dict, List, Literal, Union
+from typing import Any, Optional, Dict, List, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 from uuid import uuid4
 from dataclasses import dataclass
 
@@ -17,7 +23,6 @@ class Document:
         content_type: Literal["text", "table", "image"],
         id: Optional[str] = None,
         score: Optional[float] = None,
-        question: Optional[str] = None, #do we really need it here? Only for FAQ? can we move it to meta?
         meta: Dict[str, Any] = None,
         embedding: Optional[np.ndarray] = None,
         id_hash_keys: Optional[List[str]] = None
@@ -39,7 +44,6 @@ class Document:
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
         :param score: Retriever's query score for a retrieved document
-        :param question: Question text (e.g. for FAQs where one document usually consists of one question and one answer text).
         :param meta: Meta fields for a document like name, url, or author.
         :param embedding: Vector encoding of the text
         :param id_hash_keys: Generate the document id from a custom list of strings.
@@ -50,7 +54,6 @@ class Document:
         self.content = content
         self.content_type = content_type
         self.score = score
-        self.question = question
         self.meta = meta or {}
         self.embedding = embedding
 
