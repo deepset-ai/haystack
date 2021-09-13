@@ -1,7 +1,7 @@
 import logging
 
-from haystack.basics.data_handler.processor import SquadProcessor
-from haystack.basics.modeling.tokenization import Tokenizer
+from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.model.tokenization import Tokenizer
 
 
 # during inference (parameter return_baskets = False) we do not convert labels

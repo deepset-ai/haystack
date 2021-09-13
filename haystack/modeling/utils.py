@@ -1,19 +1,15 @@
-import hashlib
-from torch import multiprocessing as mp
-import json
 import logging
+import os
+import pickle
+import random
 import signal
+from copy import deepcopy
+
+import mlflow
+import numpy as np
 import torch
 import torch.distributed as dist
 from requests.exceptions import ConnectionError
-import mlflow
-from copy import deepcopy
-import pickle
-import random
-import os
-import numpy as np
-
-from haystack.basics.visual.ascii.images import WORKER_M, WORKER_F, WORKER_X
 
 logger = logging.getLogger(__name__)
 
@@ -202,68 +198,6 @@ def initialize_device_settings(use_cuda, local_rank=-1, use_amp=None):
     logger.info(f"Automatic Mixed Precision: {use_amp}")
     return device, n_gpu
 
-def calc_chunksize(num_dicts, min_chunksize=4, max_chunksize=2000, max_processes=128):
-    if mp.cpu_count() > 3:
-        num_cpus = min(mp.cpu_count() - 1 or 1, max_processes)  # -1 to keep a CPU core free for xxx
-    else:
-        num_cpus = min(mp.cpu_count(), max_processes) # when there are few cores, we use all of them
-
-    dicts_per_cpu = np.ceil(num_dicts / num_cpus)
-    # automatic adjustment of multiprocessing chunksize
-    # for small files (containing few dicts) we want small chunksize to ulitize all available cores but never less
-    # than 2, because we need it to sample another random sentence in LM finetuning
-    # for large files we want to minimize processor spawning without giving too much data to one process, so we
-    # clip it at 5k
-    multiprocessing_chunk_size = int(np.clip((np.ceil(dicts_per_cpu / 5)), a_min=min_chunksize, a_max=max_chunksize))
-    # This lets us avoid cases in lm_finetuning where a chunk only has a single doc and hence cannot pick
-    # a valid next sentence substitute from another document
-    if num_dicts != 1:
-        while num_dicts % multiprocessing_chunk_size == 1:
-            multiprocessing_chunk_size -= -1
-    dict_batches_to_process = int(num_dicts / multiprocessing_chunk_size)
-    num_processes = min(num_cpus, dict_batches_to_process) or 1
-
-    return multiprocessing_chunk_size, num_processes
-
-def log_ascii_workers(n, logger):
-    m_worker_lines = WORKER_M.split("\n")
-    f_worker_lines = WORKER_F.split("\n")
-    x_worker_lines = WORKER_X.split("\n")
-    all_worker_lines = []
-    for i in range(n):
-        rand = np.random.randint(low=0,high=3)
-        if(rand % 3 == 0):
-            all_worker_lines.append(f_worker_lines)
-        elif(rand % 3 == 1):
-            all_worker_lines.append(m_worker_lines)
-        else:
-            all_worker_lines.append(x_worker_lines)
-    zipped = zip(*all_worker_lines)
-    for z in zipped:
-        logger.info("  ".join(z))
-
-
-## Helper fcts
-def get_dict_checksum(payload_dict):
-    """
-    Get MD5 checksum for a dict.
-    """
-    checksum = hashlib.md5(json.dumps(payload_dict, sort_keys=True).encode("utf-8")).hexdigest()
-    return checksum
-
-def to_numpy(container):
-    try:
-        return container.cpu().numpy()
-    except AttributeError:
-        return container
-
-def stack(list_of_lists):
-    n_lists_final = len(list_of_lists[0])
-    ret = [list() for _ in range(n_lists_final)]
-    for l in list_of_lists:
-        for i, x in enumerate(l):
-            ret[i] += (x)
-    return ret
 
 def flatten_list(nested_list):
     """Flatten an arbitrarily nested list, without recursion (to avoid

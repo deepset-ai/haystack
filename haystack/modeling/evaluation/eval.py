@@ -1,17 +1,16 @@
+import logging
+import numbers
 from typing import Dict, List, Optional, Any
 
-from tqdm import tqdm
-import torch
-import numbers
-import logging
 import numpy as np
+import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-from haystack.basics.evaluation.metrics import compute_metrics, compute_report_metrics
-from haystack.basics.utils import to_numpy
-from haystack.basics.utils import MLFlowLogger as MlLogger
-from haystack.basics.modeling.adaptive_model import AdaptiveModel
-from haystack.basics.visual.ascii.images import BUSH_SEP
+from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
+from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.visual.ascii.images import BUSH_SEP
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +71,14 @@ class Evaluator:
 
             # stack results of all batches per prediction head
             for head_num, head in enumerate(model.prediction_heads):
-                loss_all[head_num] += np.sum(to_numpy(losses_per_head[head_num]))
-                preds_all[head_num] += list(to_numpy(preds[head_num]))
-                label_all[head_num] += list(to_numpy(labels[head_num]))
+                loss_all[head_num] += np.sum(_to_numpy(losses_per_head[head_num]))
+                preds_all[head_num] += list(_to_numpy(preds[head_num]))
+                label_all[head_num] += list(_to_numpy(labels[head_num]))
                 if head.model_type == "span_classification":
-                    ids_all[head_num] += list(to_numpy(batch["id"]))
-                    passage_start_t_all[head_num] += list(to_numpy(batch["passage_start_t"]))
+                    ids_all[head_num] += list(_to_numpy(batch["id"]))
+                    passage_start_t_all[head_num] += list(_to_numpy(batch["passage_start_t"]))
                     if calibrate_conf_scores:
-                        logits_all[head_num] += list(to_numpy(logits))
+                        logits_all[head_num] += list(_to_numpy(logits))
 
 
         # Evaluate per prediction head
@@ -165,3 +164,10 @@ class Evaluator:
                     else:
                         if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
                             logger.info("{}: {}".format(metric_name, metric_val))
+
+
+def _to_numpy(container):
+    try:
+        return container.cpu().numpy()
+    except AttributeError:
+        return container
