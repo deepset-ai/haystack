@@ -1,17 +1,19 @@
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, Dict, List, Literal, Union
 from uuid import uuid4
 from dataclasses import dataclass
-from typing import Literal
 
 import mmh3
 import numpy as np
 from abc import abstractmethod
 
+import pandas as pd
+
+
 @dataclass
 class Document:
     def __init__(
         self,
-        content: str, # change text to content/data to cope for images, tables ...?
+        content: Union[str, pd.DataFrame],
         content_type: Literal["text", "table", "image"],
         id: Optional[str] = None,
         score: Optional[float] = None,
