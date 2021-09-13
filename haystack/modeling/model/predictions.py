@@ -29,7 +29,7 @@ class QACandidate:
 
     def __init__(self,
                  answer_type: str,
-                 score: str,
+                 score: float,
                  offset_answer_start: int,
                  offset_answer_end: int,
                  offset_unit: str,
