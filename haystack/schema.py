@@ -11,21 +11,24 @@ from dataclasses import dataclass
 import mmh3
 import numpy as np
 from abc import abstractmethod
+import logging
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Document:
     def __init__(
-        self,
-        content: Union[str, pd.DataFrame],
-        content_type: Literal["text", "table", "image"],
-        id: Optional[str] = None,
-        score: Optional[float] = None,
-        meta: Dict[str, Any] = None,
-        embedding: Optional[np.ndarray] = None,
-        id_hash_keys: Optional[List[str]] = None
+            self,
+            content: Union[str, pd.DataFrame],
+            content_type: Literal["text", "table", "image"] = None,
+            id: Optional[str] = None,
+            score: Optional[float] = None,
+            meta: Dict[str, Any] = None,
+            embedding: Optional[np.ndarray] = None,
+            id_hash_keys: Optional[List[str]] = None
     ):
         """
         One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
@@ -40,7 +43,9 @@ class Document:
 
         There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
 
-        :param text: Text of the document
+        :param content: Content of the document. For most cases, this will be text, but it can be a table or image.
+        :param content_type: One of "image", "table" or "image". Haystack components can use this to adjust their
+                             handling of Documents and check compatibility.
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
         :param score: Retriever's query score for a retrieved document
@@ -52,6 +57,10 @@ class Document:
         """
 
         self.content = content
+        if content_type is None:
+            content_type = "text"
+            logger.warning("Initialized Document() without value for `content_type`, "
+                           "which will be a mandatory arg soon. Time to level up your code :)")
         self.content_type = content_type
         self.score = score
         self.meta = meta or {}
@@ -68,7 +77,7 @@ class Document:
         return '{:02x}'.format(mmh3.hash128(final_hash_key, signed=False))
 
     def to_dict(self, field_map={}):
-        inv_field_map = {v:k for k, v in field_map.items()}
+        inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
             k = k if k not in inv_field_map else inv_field_map[k]
@@ -78,7 +87,7 @@ class Document:
     @classmethod
     def from_dict(cls, dict, field_map={}):
         _doc = dict.copy()
-        init_args = ["content","content_type", "id", "score", "question", "meta", "embedding"]
+        init_args = ["content", "content_type", "id", "score", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
@@ -107,18 +116,19 @@ class Document:
 class Answer:
     answer: Optional[str]
     type: Literal["generative", "extractive"]
-    #question: Optional[str]
+    # question: Optional[str]
     score: Optional[float]
-    #probability: Optional[float] = None
+    # probability: Optional[float] = None
     context: Optional[str]
     offset_start: Optional[int]
     offset_end: Optional[int]
     offset_start_in_doc: Optional[int]
     offset_end_in_doc: Optional[int]
     document_id: Optional[str]
-    #maybe: change to doc_id: Optional[str] = None
+    # maybe: change to doc_id: Optional[str] = None
     meta: Optional[Dict[str, Any]]
-    #maybe add: source
+    # maybe add: source
+
 
 # class ExtractiveQAFeedback(BaseModel):
 #     question: str = Field(..., description="The question input by the user, i.e., the query.")
@@ -135,20 +145,20 @@ class Answer:
 #         ..., description="The answer start offset in the original doc. Only required for doc-qa feedback."
 #     )
 
-#TODO: Verify compliance with FAST API usage
+# TODO: Verify compliance with FAST API usage
 class Label:
     def __init__(self,
                  query: str,
-                 answer: Optional[Answer], # maybe replace str -> Answer object?
-                 document: Document, # make it suitable for Retrieval?
+                 answer: Optional[Answer],  # maybe replace str -> Answer object?
+                 document: Document,  # make it suitable for Retrieval?
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: Literal["user-feedback", "gold-annotation"],
                  id: Optional[str] = None,
-                 #document_id: Optional[str] = None, # if we have Document up there we don't need the ID here
-                 #offset_start_in_doc: Optional[int] = None, # part of Answer object?
+                 # document_id: Optional[str] = None, # if we have Document up there we don't need the ID here
+                 # offset_start_in_doc: Optional[int] = None, # part of Answer object?
                  no_answer: Optional[bool] = None,
-                 model_id: Optional[int] = None, #switch to pipeline_id/name/hash?
+                 model_id: Optional[int] = None,  # switch to pipeline_id/name/hash?
                  created_at: Optional[str] = None,
                  updated_at: Optional[str] = None,
                  meta: Optional[dict] = None

@@ -119,7 +119,7 @@ class PDFToTextConverter(BaseConverter):
                 )
 
         text = "\f".join(cleaned_pages)
-        document = {"text": text, "meta": meta}
+        document = {"content": text, "content_type": "text", "meta": meta}
         return document
 
     def _read_pdf(self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1") -> List[str]:

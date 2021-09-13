@@ -73,6 +73,6 @@ class TextConverter(BaseConverter):
                 )
 
         text = "".join(cleaned_pages)
-        document = {"text": text, "meta": meta}
+        document = {"content": text, "content_type": "text", "meta": meta}
         return document
 
