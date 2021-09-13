@@ -28,6 +28,7 @@ from networkx.drawing.nx_agraph import to_agraph
 
 from haystack import BaseComponent, MultiLabel, Document
 from haystack.generator.base import BaseGenerator
+from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 from haystack.summarizer.base import BaseSummarizer
@@ -1329,3 +1330,30 @@ class Docs2Answers(BaseComponent):
         output = {"query": query, "answers": answers}
 
         return output, "output_1"
+
+class MostSimilarDocumentsPipeline(BaseStandardPipeline):
+    def __init__(self, document_store: BaseDocumentStore):
+        """
+        Initialize a Pipeline for finding the most similar documents to a given document.
+        This pipeline can be helpful if you already show a relevant document to your end users and they want to search for just similar ones.  
+
+        :param document_store: Document Store instance with already stored embeddings. 
+        """
+        self.document_store = document_store
+
+    def run(self, document_ids: List[str], top_k: int = 5):
+        """
+        :param document_ids: document ids
+        :param top_k: How many documents id to return against single document
+        """
+        similar_documents: list = []
+        self.document_store.return_embedding = True  # type: ignore
+
+        for document in self.document_store.get_documents_by_id(ids=document_ids):
+            similar_documents.append(self.document_store.query_by_embedding(query_emb=document.embedding,
+                                                                            return_embedding=False,
+                                                                            top_k=top_k))
+
+        self.document_store.return_embedding = False  # type: ignore
+        return similar_documents
+

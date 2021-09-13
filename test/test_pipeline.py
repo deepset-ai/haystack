@@ -14,9 +14,11 @@ from haystack.pipeline import (
     RootNode,
     SklearnQueryClassifier,
     TransformersQueryClassifier,
+    MostSimilarDocumentsPipeline,
 )
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.schema import Document
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
@@ -587,3 +589,41 @@ def test_query_keyword_statement_classifier():
 
     output = pipeline.run(query="How old is John?")
     assert output["output"] == "question"
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize(
+        "retriever,document_store",
+        [
+            ("embedding", "faiss"),
+            ("embedding", "milvus"),
+            ("embedding", "elasticsearch"),
+        ],
+        indirect=True,
+)
+def test_document_search_pipeline(retriever, document_store):
+    documents = [
+        {"id": "a", "text": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"id": "b", "text": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"text": "Sample text for document-3", "meta": {"source": "wiki3"}},
+        {"text": "Sample text for document-4", "meta": {"source": "wiki4"}},
+        {"text": "Sample text for document-5", "meta": {"source": "wiki5"}},
+    ]
+
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever)
+
+    docs_id: list = ["a", "b"]
+    pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
+    list_of_documents = pipeline.run(document_ids=docs_id)
+
+    assert len(list_of_documents[0]) > 1
+    assert isinstance(list_of_documents, list)
+    assert len(list_of_documents) == len(docs_id)
+
+    for another_list in list_of_documents:
+        assert isinstance(another_list, list)
+        for document in another_list:
+            assert isinstance(document, Document)
+            assert isinstance(document.id, str)
+            assert isinstance(document.text, str)
