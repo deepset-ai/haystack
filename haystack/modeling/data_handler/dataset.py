@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, ConcatDataset, TensorDataset
 
-from haystack.basics.utils import flatten_list
+from haystack.modeling.utils import flatten_list
 
 logger = logging.getLogger(__name__)
 

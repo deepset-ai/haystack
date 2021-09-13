@@ -1,16 +1,15 @@
-import pytest
 import logging
 from pathlib import Path
 
-from haystack.basics.data_handler.data_silo import DataSilo
-from haystack.basics.modeling.language_model import LanguageModel
-from haystack.basics.modeling.optimization import initialize_optimizer
-from haystack.basics.modeling.prediction_head import QuestionAnsweringHead
-from haystack.basics.modeling.tokenization import Tokenizer
-from haystack.basics.train import Trainer
-from haystack.basics.utils import set_all_seeds, initialize_device_settings
-from haystack.basics.data_handler.processor import SquadProcessor
-from haystack.basics.modeling.adaptive_model import AdaptiveModel
+from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.optimization import initialize_optimizer
+from haystack.modeling.model.prediction_head import QuestionAnsweringHead
+from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.training.base import Trainer
+from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 
 def test_training(caplog=None):

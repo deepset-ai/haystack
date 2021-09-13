@@ -31,11 +31,9 @@ from transformers import (
     DPRQuestionEncoderTokenizer, DPRQuestionEncoderTokenizerFast,
     BigBirdTokenizer, BigBirdTokenizerFast
 )
-
 from transformers import AutoConfig
 
-from haystack.basics.data_handler.samples import SampleBasket
-
+from haystack.modeling.data_handler.samples import SampleBasket
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,8 @@ import logging
 from typing import Union, Optional, List
 
 import numpy as np
-from haystack.basics.visual.ascii.images import SAMPLE
+
+from haystack.modeling.visual.ascii.images import SAMPLE
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
 
-from haystack.basics.data_handler.processor import SquadProcessor
-from haystack.basics.modeling.tokenization import Tokenizer
-from haystack.basics.utils import set_all_seeds
+from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.utils import set_all_seeds
 import torch
 
 

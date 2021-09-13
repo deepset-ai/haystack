@@ -1,8 +1,8 @@
 import logging
+from functools import reduce
 from typing import Callable, Dict, List
 
 import numpy as np
-from functools import reduce
 from scipy.stats import pearsonr, spearmanr
 from seqeval.metrics import classification_report as token_classification_report
 from sklearn.metrics import (
@@ -13,9 +13,8 @@ from sklearn.metrics import (
     classification_report
 )
 
-from haystack.basics.utils import flatten_list
-
-from haystack.basics.modeling.prediction_head import PredictionHead
+from haystack.modeling.model.prediction_head import PredictionHead
+from haystack.modeling.utils import flatten_list
 
 logger = logging.getLogger(__name__)
 

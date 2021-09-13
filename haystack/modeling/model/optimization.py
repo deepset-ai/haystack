@@ -1,16 +1,12 @@
 #TODO analyse if this optimization is needed or weather we can use HF transformers code
-
-from importlib import import_module
+import inspect
 import logging
 import sys
-import inspect
+from importlib import import_module
 
 import torch
-from torch.nn.parallel import DistributedDataParallel
 from torch.nn import DataParallel
-
-# Used indirectly in _get_optim() to avoid name collision with torch's AdamW
-from transformers.optimization import AdamW as TransformersAdamW
+from torch.nn.parallel import DistributedDataParallel
 
 try:
     from apex import amp
@@ -24,7 +20,7 @@ except ImportError:
     AMP_AVAILABLE = False
     APEX_PARALLEL_AVAILABLE = False
 
-from haystack.basics.utils import MLFlowLogger as MlLogger
+from haystack.modeling.utils import MLFlowLogger as MlLogger
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +81,7 @@ def initialize_optimizer(model,
                            transformers.optimization by supplying the class name and the parameters for the constructor.
                            Examples:
                            1) AdamW from Transformers (Default):
-                           {"name": "TransformersAdamW", "correct_bias": False, "weight_decay": 0.01}
+                           {"name": "AdamW", "correct_bias": False, "weight_decay": 0.01}
                            2) SGD from pytorch:
                            {"name": "SGD", "momentum": 0.0}
                            3) FusedLAMB from apex:
@@ -132,7 +128,7 @@ def initialize_optimizer(model,
 
     # Use some defaults to simplify life of inexperienced users
     if optimizer_opts is None:
-        optimizer_opts = {"name": "TransformersAdamW", "correct_bias": False, "weight_decay": 0.01}
+        optimizer_opts = {"name": "AdamW", "correct_bias": False, "weight_decay": 0.01}
     optimizer_opts["lr"] = learning_rate
 
     if schedule_opts is None:

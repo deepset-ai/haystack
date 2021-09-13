@@ -1,20 +1,19 @@
 import json
 import logging
 import os
-import numpy as np
-
 from pathlib import Path
-from transformers import AutoModelForQuestionAnswering
 from typing import List, Tuple, Optional, Union, Dict
 
+import numpy as np
 import torch
 from torch import nn
 from torch import optim
 from torch.nn import CrossEntropyLoss, NLLLoss
-from haystack.basics.data_handler.utils import is_json
-from haystack.basics.data_handler.samples import SampleBasket
-from haystack.basics.utils import try_get, all_gather_list
-from haystack.basics.modeling.predictions import QACandidate, QAPred
+from transformers import AutoModelForQuestionAnswering
+
+from haystack.modeling.data_handler.samples import SampleBasket
+from haystack.modeling.model.predictions import QACandidate, QAPred
+from haystack.modeling.utils import try_get, all_gather_list
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +88,7 @@ class PredictionHead(nn.Module):
         for key, value in self.__dict__.items():
             if type(value) is np.ndarray:
                 value = value.tolist()
-            if is_json(value) and key[0] != "_":
+            if _is_json(value) and key[0] != "_":
                 config[key] = value
             if self.task_name == "text_similarity" and key == "similarity_function":
                 config['similarity_function'] = value
@@ -272,7 +271,7 @@ class QuestionAnsweringHead(PredictionHead):
 
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore[override]
+    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore
         """
         Load a prediction head from a saved Haystack or transformers model. `pretrained_model_name_or_path`
         can be one of the following:
@@ -935,7 +934,7 @@ class TextSimilarityHead(PredictionHead):
         softmax_scores = nn.functional.log_softmax(scores, dim=1)
         return softmax_scores
 
-    def logits_to_loss(self, logits: Tuple[torch.Tensor, torch.Tensor], label_ids, **kwargs):  # type: ignore[override]
+    def logits_to_loss(self, logits: Tuple[torch.Tensor, torch.Tensor], label_ids, **kwargs):  # type: ignore
         """
         Computes the loss (Default: NLLLoss) by applying a similarity function (Default: dot product) to the input
         tuple of (query_vectors, passage_vectors) and afterwards applying the loss function on similarity scores.
@@ -1012,7 +1011,7 @@ class TextSimilarityHead(PredictionHead):
         _, sorted_scores = torch.sort(softmax_scores, dim=1, descending=True)
         return sorted_scores
 
-    def prepare_labels(self, label_ids, **kwargs) -> torch.Tensor:  # type: ignore[override]
+    def prepare_labels(self, label_ids, **kwargs) -> torch.Tensor:  # type: ignore
         """
         Returns a tensor with passage labels(0:hard_negative/1:positive) for each query
 
@@ -1028,3 +1027,12 @@ class TextSimilarityHead(PredictionHead):
 
     def formatted_preds(self, logits: Tuple[torch.Tensor, torch.Tensor], **kwargs):
         raise NotImplementedError("formatted_preds is not supported in TextSimilarityHead yet!")
+
+def _is_json(x):
+    if issubclass(type(x), Path):
+        return True
+    try:
+        json.dumps(x)
+        return True
+    except:
+        return False

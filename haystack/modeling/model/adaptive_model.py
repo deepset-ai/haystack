@@ -1,23 +1,22 @@
 import copy
 import json
 import logging
+import multiprocessing
 import os
 from pathlib import Path
 from typing import Iterable, Dict, Union, List, Optional, Callable
 
-import multiprocessing
 import numpy
 import torch
 from torch import nn
 from transformers import AutoConfig
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
-
-from haystack.basics.data_handler.processor import Processor
-from haystack.basics.modeling.language_model import LanguageModel
-from haystack.basics.modeling.prediction_head import PredictionHead
-from haystack.basics.utils import MLFlowLogger as MlLogger
-import haystack.basics.conversion.transformers as conv
+import haystack.modeling.conversion.transformers as conv
+from haystack.modeling.data_handler.processor import Processor
+from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.prediction_head import PredictionHead
+from haystack.modeling.utils import MLFlowLogger as MlLogger
 
 logger = logging.getLogger(__name__)
 
@@ -102,28 +101,6 @@ class BaseAdaptiveModel:
                 preds_final += preds
             elif type(preds) == dict and "predictions" in preds:
                 preds_final.append(preds)
-
-        # todo> remove?
-        # else:
-        #     preds_final = [list() for _ in range(n_heads)]
-        #     preds = kwargs["preds"]
-        #     preds_for_heads = stack(preds)
-        #     logits_for_heads = [None] * n_heads
-        #
-        #     samples = [s for b in kwargs["baskets"] for s in b.samples]
-        #     kwargs["samples"] = samples
-        #
-        #     del kwargs["preds"]
-        #
-        #     for i, (head, preds_for_head, logits_for_head) in enumerate(zip(self.prediction_heads, preds_for_heads,  # type: ignore
-        #                                                                     logits_for_heads)):
-        #         preds = head.formatted_preds(logits=logits_for_head, preds=preds_for_head, **kwargs)
-        #         preds_final[i].append(preds)
-        #
-        #     # Look for a merge() function amongst the heads and if a single one exists, apply it to preds_final
-        #     merge_fn = pick_single_fn(self.prediction_heads, "merge_formatted_preds")
-        #     if merge_fn:
-        #         preds_final = merge_fn(preds_final)
 
         return preds_final
 

@@ -1,22 +1,19 @@
-import pytest
-import torch
 import logging
-import numpy as np
 from pathlib import Path
 
+import numpy as np
+import pytest
+import torch
 from torch.utils.data import SequentialSampler
 from tqdm import tqdm
 
-from haystack.basics.data_handler.dataloader import NamedDataLoader
-from haystack.basics.data_handler.processor import TextSimilarityProcessor
-from haystack.basics.data_handler.data_silo import DataSilo
-from haystack.basics.train import Trainer
-from haystack.basics.modeling.optimization import initialize_optimizer
-from haystack.basics.modeling.biadaptive_model import BiAdaptiveModel
-from haystack.basics.modeling.language_model import LanguageModel, DPRContextEncoder, DPRQuestionEncoder
-from haystack.basics.modeling.prediction_head import TextSimilarityHead
-from haystack.basics.modeling.tokenization import Tokenizer
-from haystack.basics.utils import set_all_seeds, initialize_device_settings
+from haystack.modeling.data_handler.dataloader import NamedDataLoader
+from haystack.modeling.data_handler.processor import TextSimilarityProcessor
+from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
+from haystack.modeling.model.language_model import LanguageModel, DPRContextEncoder, DPRQuestionEncoder
+from haystack.modeling.model.prediction_head import TextSimilarityHead
+from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 
 def test_dpr_modules(caplog=None):
@@ -803,6 +800,6 @@ def test_dpr_processor_save_load_non_bert_tokenizer(query_and_passage_model):
 
 
 if __name__=="__main__":
-    test_dpr_training()
-    #test_dpr_context_only()
+    # test_dpr_training()
+    test_dpr_context_only()
     # test_dpr_modules()
