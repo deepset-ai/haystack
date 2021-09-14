@@ -20,7 +20,7 @@ services:
       - 8000:8000
     environment:
       # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
-      - ELASTICSEARCHDOCUMENTSTORE_PARAMS_HOST=elasticsearch
+      - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
     restart: always
     depends_on:
       - elasticsearch
