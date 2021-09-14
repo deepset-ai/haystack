@@ -23,15 +23,28 @@ jobs:
     needs: type-check
     runs-on: ${{ matrix.os }}
     strategy:
-        fail-fast: false
-        matrix:
-          os: [ ubuntu-latest, macos-latest, windows-latest ]
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
 
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
+      - name: Set up Ubuntu
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          apt install tesseract-ocr libtesseract-dev poppler-utils
+      - name: Set up Mac
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          brew install jq tesseract
+      - name: Set up Windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          chocolatey install jq xpdf-utils
+          chocolatey install tesseract --pre
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - name: Cache
         id: cache-python-env
@@ -54,10 +67,13 @@ jobs:
   prepare-build:
     needs: build-cache
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
-        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           echo "::set-output name=matrix::$(cd test && ls -d test_*.py | jq -R . | jq -cs .)"
     outputs:
@@ -68,6 +84,7 @@ jobs:
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
       fail-fast: false
     steps:
     - uses: actions/checkout@v2
@@ -98,14 +115,6 @@ jobs:
 
 #    - name: Run Ray
 #      run: RAY_DISABLE_MEMORY_MONITOR=1 ray start --head
-
-    - name: Install pdftotext
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
-
-    - name: Install tesseract
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Run tests
       run: cd test && pytest -s ${{ matrix.test-path }}
