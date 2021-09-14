@@ -76,11 +76,11 @@ jobs:
       - name: List test files on Linux
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          echo "test_files=$(cd test && ls -d test_*.py | jq -R . | jq -cs .)"
+          echo "test_files=$(cd test && ls -d test_*.py | jq -R . | jq -cs .)" >> $GITHUB_ENV
       - name: List test files on Windows
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          echo "test_files=$(cd test && ls -Name test_*.py | jq -R . | jq -cs .)"
+          echo "test_files=$(cd test && ls -Name test_*.py | jq -R . | jq -cs .)" >> $GITHUB_ENV
       - id: set-matrix
         run: |
           echo "::set-output name=matrix::${{ env.test_files }}"
