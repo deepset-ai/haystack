@@ -77,16 +77,15 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           echo "test_files=$(cd test && ls -d test_*.py | jq -R . | jq -cs .)" >> $GITHUB_ENV
-          echo "${{ env.test_files }}"
       - name: List test files on Windows
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           echo "test_files=$(cd test && ls -Name test_*.py | jq -R . | jq -cs .)" >>  $env:GITHUB_ENV
-          echo "${{ env.test_files }}"
-      - id: set-matrix
+      - name: Set-matrix
+        id: set-matrix
         run: |
-          echo "${{ env.test_files }}"
           echo "::set-output name=matrix::${{ env.test_files }}"
+          echo "JSON: ${{ fromJson(steps.set-matrix.outputs.matrix) }}"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
   build:
@@ -103,7 +102,10 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+    - if: ${{ matrix.os != 'windows-latest' }}
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+    - if: ${{ matrix.os == 'windows-latest' }}
+      run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
     - name: Cache
       uses: actions/cache@v2
       with:
