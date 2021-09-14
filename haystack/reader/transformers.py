@@ -3,6 +3,7 @@ from typing import List, Optional
 from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering
 import torch
 import numpy as np
+import pandas as pd
 
 from haystack import Document
 from haystack.reader.base import BaseReader
@@ -17,17 +18,17 @@ class TransformersReader(BaseReader):
     """
 
     def __init__(
-            self,
-            model_name_or_path: str = "distilbert-base-uncased-distilled-squad",
-            model_version: Optional[str] = None,
-            tokenizer: Optional[str] = None,
-            context_window_size: int = 70,
-            use_gpu: int = 0,
-            top_k: int = 10,
-            top_k_per_candidate: int = 4,
-            return_no_answers: bool = True,
-            max_seq_len: int = 256,
-            doc_stride: int = 128
+        self,
+        model_name_or_path: str = "distilbert-base-uncased-distilled-squad",
+        model_version: Optional[str] = None,
+        tokenizer: Optional[str] = None,
+        context_window_size: int = 70,
+        use_gpu: int = 0,
+        top_k: int = 10,
+        top_k_per_candidate: int = 4,
+        return_no_answers: bool = True,
+        max_seq_len: int = 256,
+        doc_stride: int = 128
     ):
         """
         Load a QA model from Transformers.
@@ -195,7 +196,7 @@ class TableReader:
         self.top_k = top_k
         self.max_seq_len = max_seq_len
 
-    def predict(self, query, tables, top_k=None):
+    def predict(self, query: str, tables: List[pd.DataFrame], top_k: Optional[int] = None):
 
         if top_k is None:
             top_k = self.top_k
@@ -223,19 +224,9 @@ class TableReader:
 
             # Get aggregation operator
             current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
-
+            
             # Calculate answer score
-            # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
-            logits = outputs.logits.detach()
-            logits[logits < -88.7] = -88.7
-            token_probabilities = 1 / (1 + np.exp(-logits)) * inputs.attention_mask
-            segment_ids = inputs.token_type_ids[0, :, 0].tolist()
-            column_ids = inputs.token_type_ids[0, :, 1].tolist()
-            row_ids = inputs.token_type_ids[0, :, 2].tolist()
-            all_cell_probabilities = self.tokenizer._get_mean_cell_probs(token_probabilities[0].tolist(), segment_ids,
-                                                                         row_ids, column_ids)
-            answer_cell_probabilities = [all_cell_probabilities[coord] for coord in current_answer_coordinates]
-            current_score = np.mean(answer_cell_probabilities)
+            current_score = self._calculate_answer_score(outputs.logits.detach(), inputs, current_answer_coordinates)
 
             answers.append({
                 "answer_coordinates": current_answer_coordinates,
@@ -252,5 +243,23 @@ class TableReader:
                    "answers": answers}
 
         return results
+    
+    def _calculate_answer_score(self, logits, inputs, answer_coordinates):
+
+        # Calculate answer score
+        # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
+        logits[logits < -88.7] = -88.7
+        token_probabilities = 1 / (1 + np.exp(-logits)) * inputs.attention_mask
+
+        segment_ids = inputs.token_type_ids[0, :, 0].tolist()
+        column_ids = inputs.token_type_ids[0, :, 1].tolist()
+        row_ids = inputs.token_type_ids[0, :, 2].tolist()
+        all_cell_probabilities = self.tokenizer._get_mean_cell_probs(token_probabilities[0].tolist(), segment_ids,
+                                                                     row_ids, column_ids)
+        # _get_mean_cell_probs seems to index cells by (col, row). DataFrames are, however, indexed by (row, col).
+        all_cell_probabilities = {(row, col): prob for (col, row), prob in all_cell_probabilities.items()}
+        answer_cell_probabilities = [all_cell_probabilities[coord] for coord in answer_coordinates]
+        
+        return np.mean(answer_cell_probabilities)
 
 
