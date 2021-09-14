@@ -86,7 +86,7 @@ jobs:
           echo "test_files=$(cd test && ls -Name test_*.py | jq -R . | jq -cs .)" >>  $env:GITHUB_ENV
       - id: set-matrix
         run: |
-          echo "Test Files: ${{ env.test_files }}"
+          echo "${{ env.test_files }}"
           echo "Test Files with JQ: $(echo ${{ env.test_files }} | jq -cs .)"
           echo "::set-output name=matrix::$(echo ${{ env.test_files }} | jq -cs .)"
           echo "Ourput: ${{ steps.set-matrix.outputs.matrix }}"
