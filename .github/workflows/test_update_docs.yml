@@ -28,15 +28,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt install watchdog
           python -m pip install --upgrade pip
-          pip install 'pydoc-markdown==3.11.0'
+          pip install pydoc-markdown
           pip install mkdocs
           pip install jupytercontrib
 
       # Generates the docstrings and tutorials so that we have the latest for the deployment
       - name: Generate Docstrings and Tutorials
         run: |
+          watchdog --version
           cd docs/_src/api/api/
           ./generate_docstrings.sh 
           cd ../../tutorials/tutorials/
