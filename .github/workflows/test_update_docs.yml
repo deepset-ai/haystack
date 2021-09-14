@@ -28,6 +28,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt install watchdog
           python -m pip install --upgrade pip
           pip install 'pydoc-markdown==3.11.0'
           pip install mkdocs
