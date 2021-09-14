@@ -39,6 +39,10 @@ jobs:
         with:
           path: ${{ env.pythonLocation }}
           key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+      - name: Install Pytorch on windows
+        if: steps.cache-python-env.outputs.cache-hit != 'true' && ${{ matrix.os == 'windows-latest' }}
+        run: |
+          pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
