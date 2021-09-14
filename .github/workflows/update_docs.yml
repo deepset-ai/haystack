@@ -4,9 +4,10 @@ name: Update Docstrings and Tutorials
 # events but only for the master branch
 on:
   push:
-    branches-ignore:
-      - master
-      - benchmarks
+    branches: [ automate_updates_docstrings_tutorials ]
+    #branches-ignore:
+    #  - master
+    #  - benchmarks
 
 jobs:
   # This workflow contains a single job called "build"
