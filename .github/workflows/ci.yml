@@ -84,7 +84,7 @@ jobs:
       - name: Set-matrix
         id: set-matrix
         run: |
-          echo "::set-output name=matrix::${{ env.test_files }}"
+          echo "::set-output name=matrix::$(echo ${{ env.test_files }} | jq -cs .)"
           echo "JSON: ${{ fromJson(steps.set-matrix.outputs.matrix) }}"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
