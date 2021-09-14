@@ -92,16 +92,10 @@ pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassi
 pipe.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
 
 # Pass a question -> run DPR
-res_1 = pipe.run(
-    query="Who is the father of Arya Stark?",
-    top_k_retriever=10
-)
+res_1 = pipe.run(query="Who is the father of Arya Stark?")
 
 # Pass keywords -> run the ElasticsearchRetriever
-res_2 = pipe.run(
-    query="arya stark father",
-    top_k_retriever=10
-)
+res_2 = pipe.run(query="arya stark father")
 
 ```
 ### Usage in a pipeline: Run QA only on proper questions
@@ -121,16 +115,10 @@ pipe.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifi
 pipe.add_node(component=reader, name="QAReader", inputs=["DPRRetriever"])
 
 # Pass a question -> run DPR + QA -> return answers
-res_1 = pipe.run(
-    query="Who is the father of Arya Stark?",
-    top_k_retriever=10
-)
+res_1 = pipe.run(query="Who is the father of Arya Stark?")
 
 # Pass keywords -> run only ElasticsearchRetriever -> return docs
-res_2 = pipe.run(
-    query="arya stark father",
-    top_k_retriever=10
-)
+res_2 = pipe.run(query="arya stark father")
 
 ```
 

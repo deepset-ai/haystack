@@ -52,5 +52,5 @@ from haystack.pipeline import Pipeline
 p = Pipeline()
 p.add_node(component=retriever, name="ESRetriever1", inputs=["Query"])
 p.add_node(component=summarizer, name="Summarizer", inputs=["ESRetriever1"])
-res = p.run(query="What did Einstein work on?", top_k_retriever=10)
+res = p.run(query="What did Einstein work on?", params={"ESRetriever1": {"top_k": 10}})
 ``` 

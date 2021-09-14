@@ -177,7 +177,7 @@ from haystack.pipeline import  ExtractiveQAPipeline
 qa_pipe = ExtractiveQAPipeline(reader=reader, retriever=retriever)
 
 # 3. Replace get_answers() with run()
-res = qa_pipe.run(query="When was Kant born?", top_k_retriever=3, top_k_reader=5)
+res = qa_pipe.run(query="When was Kant born?", params={"retriever": {"top_k": 3}, "reader": {"top_k": 5}})
 
 # 4. Access your results from ["documents"] rather than ["answers"]
 print(res["documents"])

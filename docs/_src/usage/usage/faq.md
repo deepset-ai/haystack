@@ -34,7 +34,7 @@ The Reader is usually the most computationally expensive component in a pipeline
 and you can often speed up your system by using a smaller model, like `deepset/minilm-uncased-squad2` (see [benchmarks](https://huggingface.co/deepset/minilm-uncased-squad2)). This usually comes with a small trade-off in accuracy.
 
 You can reduce the work load on the Reader by instructing the Retriever to pass on less documents. 
-This is done by setting the `top_k_retriever` parameter to a lower value.
+This is done by setting the `top_k` of the Retriever to a lower value.
 
 Making sure that your documents are shorter can also increase the speed of your system. You can split
 your documents into smaller chunks by using the `PreProcessor` (see [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md)).
