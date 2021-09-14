@@ -45,7 +45,10 @@ jobs:
         run: |
           chocolatey install jq xpdf-utils
           chocolatey install tesseract --pre
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      - if: ${{ matrix.os != 'windows-latest' }}
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      - if: ${{ matrix.os == 'windows-latest' }}
+        run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
@@ -84,7 +87,11 @@ jobs:
       - name: Set-matrix
         id: set-matrix
         run: |
+          echo "Test Files: ${{ env.test_files }}"
+          echo "Test Files with JQ: $(echo ${{ env.test_files }} | jq -cs .)"
           echo "::set-output name=matrix::$(echo ${{ env.test_files }} | jq -cs .)"
+          echo "Ourput: ${{ steps.set-matrix.outputs.matrix }}"
+          echo "JSON env.test_files: ${{ fromJson(env.test_files) }}"
           echo "JSON: ${{ fromJson(steps.set-matrix.outputs.matrix) }}"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
