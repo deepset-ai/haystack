@@ -21,7 +21,12 @@ jobs:
 
   build-cache:
     needs: type-check
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+        fail-fast: false
+        matrix:
+          os: [ ubuntu-latest, macos-latest, windows-latest ]
+
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -33,7 +38,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: ${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+          key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
@@ -44,17 +49,18 @@ jobs:
 
   prepare-build:
     needs: build-cache
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           echo "::set-output name=matrix::$(cd test && ls -d test_*.py | jq -R . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
   build:
     needs: prepare-build
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
@@ -70,7 +76,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: ${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+        key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
@@ -90,9 +96,11 @@ jobs:
 #      run: RAY_DISABLE_MEMORY_MONITOR=1 ray start --head
 
     - name: Install pdftotext
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
 
     - name: Install tesseract
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Run tests
