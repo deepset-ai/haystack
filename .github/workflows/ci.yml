@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@v2
       - id: set-matrix
         run: |
-          echo "::set-output name=matrix::$(cd test && ls -d test_*.py | jq -R . | jq -cs .)"
+          echo "::set-output name=matrix::$(cd test && ls test_*.py | jq -R . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
   build:
