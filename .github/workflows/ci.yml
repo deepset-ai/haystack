@@ -35,7 +35,7 @@ jobs:
       - name: Set up Ubuntu
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          apt install tesseract-ocr libtesseract-dev poppler-utils
+          sudo apt install tesseract-ocr libtesseract-dev poppler-utils
       - name: Set up Mac
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
