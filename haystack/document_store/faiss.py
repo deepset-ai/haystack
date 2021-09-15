@@ -461,7 +461,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         :return: None
         """
         if not init_params_path:
-            init_params_path = f"{file_path[:file_path.rfind(':')]}.json"
+            file_path = Path(file_path)
+            init_params_path = file_path.with_suffix(".json")
 
         faiss.write_index(self.faiss_indexes[self.index], str(file_path))
         with open(init_params_path, 'w') as ipp:
@@ -491,13 +492,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
 
         # Default path for the faiss init parameters file
-        params_path = faiss_init_params_path
-        if not faiss_init_params_path:
-            params_path = f"{faiss_file_path[:faiss_file_path.rfind(':')]}.json"
+        if faiss_init_params_path:
+            init_params_path: Union[str, Path] = faiss_init_params_path
+        else:
+            faiss_file_path = Path(faiss_file_path)
+            init_params_path = faiss_file_path.with_suffix(".json")
 
         # Load the config file
         try:
-            with open(params_path, 'r') as ipp:
+            with open(init_params_path, 'r') as ipp:
                 init_params = json.load(ipp)
         except OSError:
             if faiss_init_params_path:
