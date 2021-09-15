@@ -33,11 +33,11 @@ class Crawler(BaseComponent):
 
         :param output_dir: Path for the directory to store files
         :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
-        :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
-                           All URLs not matching at least one of the regular expressions will be dropped.
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options: 
+            0: Only initial list of urls 
+            1: Follow links found on the initial URLs (but no further) 
+        :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with. 
+            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         """
         IN_COLAB = "google.colab" in sys.modules
