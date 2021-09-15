@@ -1,3 +1,5 @@
+import os
+import json
 import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
@@ -116,6 +118,23 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
+
+        # Store the init parameters to be able to save them is needed
+        self._init_parameters = {
+            "sql_url": sql_url,
+            "vector_dim": vector_dim,
+            "faiss_index_factory_str": faiss_index_factory_str,
+            "faiss_index": faiss_index,
+            "return_embedding": return_embedding,
+            "index": index,
+            "similarity": similarity,
+            "embedding_field": embedding_field,
+            "progress_bar": progress_bar,
+            "duplicate_documents": duplicate_documents,
+        }
+        for key, value in kwargs.items():
+            if value:
+                self._init_parameters[key] = value
 
         super().__init__(
             url=sql_url,
@@ -432,21 +451,29 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def save(self, file_path: Union[str, Path]):
+    def save(self, file_path: Union[str, Path], init_params_path: Union[str, Path] = None):
         """
         Save FAISS Index to the specified file.
 
         :param file_path: Path to save to.
+        :param init_params_path: Path to save the init parameter's file to. 
+            Defaults to the same as the file path, save the extension (.json)
         :return: None
         """
+        if not init_params_path:
+            init_params_path = f"{file_path[:file_path.rfind(':')]}.json"
+
         faiss.write_index(self.faiss_indexes[self.index], str(file_path))
+        with open(init_params_path, 'w') as ipp:
+            json.dump(self._init_parameters, ipp)
 
     @classmethod
     def load(
         cls,
         faiss_file_path: Union[str, Path],
-        sql_url: str,
-        index: str,
+        faiss_init_params_path: Union[str, Path] = None,
+        sql_url: str = None,
+        index: str = None,
     ):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
@@ -454,18 +481,36 @@ class FAISSDocumentStore(SQLDocumentStore):
               make sure to use the same SQL DB that you used when calling `save()`.
 
         :param faiss_file_path: Stored FAISS index file. Can be created via calling `save()`
+        :param faiss_init_params_path: Stored FAISS init parameters. Can be created via calling `save()`
         :param sql_url: Connection string to the SQL database that contains your docs and metadata.
+            Overrides the value defined in the `faiss_init_params_path` file, if present
         :param index: Index name to load the FAISS index as. It must match the index name used for
-                      when creating the FAISS index.
-        :return:
+                      when creating the FAISS index. Overrides the value defined in the 
+                      `faiss_init_params_path` file, if present
+        :return: the DocumentStore
         """
-        """
-        """
+
+        # Default path for the faiss init parameters file
+        params_path = faiss_init_params_path
+        if not faiss_init_params_path:
+            params_path = f"{faiss_file_path[:faiss_file_path.rfind(':')]}.json"
+
+        # Load the config file
+        try:
+            with open(params_path, 'r') as ipp:
+                init_params = json.load(ipp)
+        except OSError:
+            if faiss_init_params_path:
+                raise
+            init_params = {}
+
         faiss_index = faiss.read_index(str(faiss_file_path))
-        return cls(
-            faiss_index=faiss_index,
-            sql_url=sql_url,
-            vector_dim=faiss_index.d,
-            index=index,
-        )
+
+        # Add other init params to override the ones defined in the config file
+        init_params["faiss_index"] = faiss_index
+        init_params["sql_url"]=sql_url
+        init_params["vector_dim"]=faiss_index.d
+        init_params["index"]=index
+
+        return cls(**init_params)
 
