@@ -36,7 +36,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def __init__(
         self,
-        sql_url: str = "sqlite:///",
+        sql_url: str = "sqlite:///faiss_document_store.db",
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional["faiss.swigfaiss.Index"] = None,
@@ -511,5 +511,10 @@ class FAISSDocumentStore(SQLDocumentStore):
         if index:
             init_params["index"]=index
 
-        return cls(**init_params)
+        # Create the document store
+        document_store = cls(**init_params)
+        
+        # Make sure the SQL documents count and the FAISS embeddigs count match
+        assert document_store.get_document_count() == document_store.get_embedding_count()
 
+        return document_store
