@@ -35,7 +35,7 @@ jobs:
       - name: Set up Ubuntu
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          sudo apt install tesseract-ocr libtesseract-dev poppler-utils
+          sudo apt install tesseract-ocr libtesseract-dev poppler-utils docker-machine docker
       - name: Set up Mac
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
@@ -44,6 +44,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           chocolatey install jq xpdf-utils
+          choco install elasticsearch --version=7.9.2
           chocolatey install tesseract --pre
       - if: ${{ matrix.os != 'windows-latest' }}
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
@@ -112,7 +113,9 @@ jobs:
       with:
         path: ${{ env.pythonLocation }}
         key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
-    - name: Run Elasticsearch
+
+    - name: Run Elasticsearch in Linux
+      if: ${{ matrix.os != 'windows-latest' }}
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
     - name: Run Milvus
