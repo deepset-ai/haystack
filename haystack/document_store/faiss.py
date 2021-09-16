@@ -4,6 +4,8 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
+
+from haystack.document_store import sql
 try:
     import faiss
 except ImportError:
@@ -81,13 +83,18 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            sql_url=sql_url, vector_dim=vector_dim, faiss_index_factory_str=faiss_index_factory_str,
-            faiss_index=faiss_index, return_embedding=return_embedding,
-            duplicate_documents=duplicate_documents, index=index, similarity=similarity,
-            embedding_field=embedding_field, progress_bar=progress_bar
+            sql_url=sql_url, 
+            vector_dim=vector_dim, 
+            faiss_index_factory_str=faiss_index_factory_str,
+            faiss_index=faiss_index, 
+            return_embedding=return_embedding,
+            duplicate_documents=duplicate_documents, 
+            index=index, 
+            similarity=similarity,
+            embedding_field=embedding_field, 
+            progress_bar=progress_bar
         )
 
         if similarity == "dot_product":
@@ -118,23 +125,6 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
-
-        # Store the init parameters to be able to save them is needed
-        self._init_parameters = {
-            "sql_url": sql_url,
-            "vector_dim": vector_dim,
-            "faiss_index_factory_str": faiss_index_factory_str,
-            "faiss_index": faiss_index,
-            "return_embedding": return_embedding,
-            "index": index,
-            "similarity": similarity,
-            "embedding_field": embedding_field,
-            "progress_bar": progress_bar,
-            "duplicate_documents": duplicate_documents,
-        }
-        for key, value in kwargs.items():
-            if value:
-                self._init_parameters[key] = value
 
         super().__init__(
             url=sql_url,
@@ -466,7 +456,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         faiss.write_index(self.faiss_indexes[self.index], str(file_path))
         with open(init_params_path, 'w') as ipp:
-            json.dump(self._init_parameters, ipp)
+            json.dump(self.pipeline_config["params"], ipp)
 
     @classmethod
     def load(
@@ -490,30 +480,36 @@ class FAISSDocumentStore(SQLDocumentStore):
                       `faiss_init_params_path` file, if present
         :return: the DocumentStore
         """
-
-        # Default path for the faiss init parameters file
+        # Find the path to the FAISS init parameters file
+        init_params_path: Union[str, Path]
         if faiss_init_params_path:
-            init_params_path: Union[str, Path] = faiss_init_params_path
+            init_params_path = faiss_init_params_path
         else:
             faiss_file_path = Path(faiss_file_path)
             init_params_path = faiss_file_path.with_suffix(".json")
 
-        # Load the config file
+        # Load the FAISS init parameters file
         try:
             with open(init_params_path, 'r') as ipp:
                 init_params = json.load(ipp)
         except OSError:
+
+            # Raise only if the init_params file was passed explicitly passed,
+            # ignore silently if it wasn't
             if faiss_init_params_path:
                 raise
             init_params = {}
 
+        # Load the index
         faiss_index = faiss.read_index(str(faiss_file_path))
 
-        # Add other init params to override the ones defined in the config file
+        # Add other init params to override the ones defined in the init params file
         init_params["faiss_index"] = faiss_index
-        init_params["sql_url"]=sql_url
         init_params["vector_dim"]=faiss_index.d
-        init_params["index"]=index
+        if sql_url:
+            init_params["sql_url"]=sql_url
+        if index:
+            init_params["index"]=index
 
         return cls(**init_params)
 
