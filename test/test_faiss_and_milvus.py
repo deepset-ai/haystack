@@ -21,6 +21,7 @@ def test_faiss_index_save_and_load(tmp_path):
     document_store = FAISSDocumentStore(
         sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
         index="haystack_test",
+        progress_bar=False
     )
     document_store.write_documents(DOCUMENTS)
 
@@ -44,6 +45,8 @@ def test_faiss_index_save_and_load(tmp_path):
     assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
     # check if documents are restored
     assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
+    # Check if the init parameters are kept
+    assert not new_document_store.progress_bar
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
