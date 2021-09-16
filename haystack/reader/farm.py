@@ -17,7 +17,7 @@ from farm.train import Trainer
 from farm.eval import Evaluator
 from farm.utils import set_all_seeds, initialize_device_settings
 
-from haystack import Document, Answer
+from haystack import Document, Answer, Span
 from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
 
@@ -576,10 +576,9 @@ class FARMReader(BaseReader):
                                  type="extractive",
                                  score=ans.confidence if self.use_confidence_scores else ans.score,
                                  context=ans.context_window,
-                                 offset_start=ans.offset_answer_start - ans.offset_context_window_start,
-                                 offset_end=ans.offset_answer_end - ans.offset_context_window_start,
-                                 offset_start_in_doc=ans.offset_answer_start,
-                                 offset_end_in_doc=ans.offset_answer_end,
+                                 offsets_in_context=[Span(start=ans.offset_answer_start - ans.offset_context_window_start,
+                                                         end=ans.offset_answer_end - ans.offset_context_window_start)],
+                                 offsets_in_document=[Span(start=ans.offset_answer_start, end=ans.offset_answer_end)]
                                  )
 
                     answers_per_document.append(cur)

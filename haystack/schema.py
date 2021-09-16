@@ -116,18 +116,40 @@ class Document:
         """ Enable sorting of Documents by score """
         return self.score < other.score
 
+
+@dataclass
+class Span:
+    start: int
+    end: int
+
+
 @dataclass
 class Answer:
     answer: Optional[str]
     type: Literal["generative", "extractive"]
     score: float
     context: Optional[Union[str, pd.DataFrame]] = None
-    offset_start: Optional[int] = None
-    offset_end: Optional[int] = None
-    offset_start_in_doc: Optional[int] = None
-    offset_end_in_doc: Optional[int] = None
+    offsets_in_document: Optional[List[Span]] = None
+    offsets_in_context: Optional[List[Span]] = None
     document_id: Optional[str] = None
     meta: Optional[Dict[str, Any]] = None
+
+    """
+    The fundamental object in Haystack to represent any type of Answers (e.g. extractive QA, generative QA or TableQA).
+    For example, it's used within some Nodes like the Reader but also in the REST API.
+
+    :param answer: The answer string.
+    :param type: Whether this answer comes from an extractive model (i.e. we can locate an exact answer string in one
+                 of the documents) or from a generative model (i.e. no pointer to a specific document, no offsets ...) 
+    :param score: The relevance score of the Answer determined by a model (e.g. Reader or Generator).
+                  In the range of [0,1], where 1 means extremely relevant.
+    :param context: The related content that was used to create the answer (i.e. a text passage, part of a table, image ...)
+    :param offsets_in_document: TODO
+    :param offsets_in_context: TODO
+    :param document_id: TODO
+    :param meta: TODO
+    """
+
 
     def __lt__(self, other):
         """ Enable sorting of Answers by score """
