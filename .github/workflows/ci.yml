@@ -79,16 +79,20 @@ jobs:
       - name: List test files on Linux
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          echo "test_files=$(cd test && ls -d test_*.py | jq -R . | jq -cs .)" >> $GITHUB_ENV
+          cd test
+          echo "test_files=$(ls -d test_*.py | jq -R . | jq -cs .)" >> $GITHUB_ENV
+          echo "${{ env.testfiles }}"
       - name: List test files on Windows
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          echo "test_files=$(cd test && ls -Name test_*.py | jq -R . | jq -cs .)" >>  $env:GITHUB_ENV
+          cd test
+          echo "testfiles=$(ls -Name test_*.py | jq -R . | jq -cs .)" >>  $env:GITHUB_ENV
+          echo "${{ env.testfiles }}"
       - id: set-matrix
         run: |
-          echo "${{ env.test_files }}"
-          echo "Test Files with JQ: $(echo ${{ env.test_files }} | jq -cs .)"
-          echo "::set-output name=matrix::$(echo ${{ env.test_files }} | jq -cs .)"
+          echo "${{ env.testfiles }}"
+          echo "Test Files with JQ: $(echo ${{ env.testfiles }} | jq -cs .)"
+          echo "::set-output name=matrix::$(echo ${{ env.testfiles }} | jq -cs .)"
           echo "Ourput: ${{ steps.set-matrix.outputs.matrix }}"
           echo "JSON env.test_files: ${{ fromJson(env.test_files) }}"
           echo "JSON: ${{ fromJson(steps.set-matrix.outputs.matrix) }}"
