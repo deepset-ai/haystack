@@ -86,7 +86,7 @@ jobs:
           echo "testfiles=$(cd test && ls -Name test_*.py | jq -R . | jq -cs .)" >>  $env:GITHUB_ENV
       - id: set-matrix
         run: |
-          echo "::set-output name=matrix::${{ toJson(env.testfiles) }}"
+          echo "::set-output name=matrix::${{ env.testfiles }}"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
   build:
@@ -94,7 +94,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        test-path: ${{ fromJson(needs.prepare-build.outputs.matrix) }}
+        test-path: ${{ fromJson(toJson(needs.prepare-build.outputs.matrix)) }}
         os: [ ubuntu-latest, macos-latest, windows-latest ]
       fail-fast: false
     steps:
