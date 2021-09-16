@@ -35,11 +35,11 @@ jobs:
       - name: Set up Ubuntu
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          sudo apt install tesseract-ocr libtesseract-dev poppler-utils docker-machine docker
+          sudo apt install tesseract-ocr libtesseract-dev poppler-utils
       - name: Set up Mac
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
-          brew install jq tesseract
+          brew install jq tesseract docker-machine docker
       - name: Set up Windows
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
