@@ -1,13 +1,10 @@
-<a id="base"></a>
-
+<a name="base"></a>
 # Module base
 
-<a id="text_to_sparql"></a>
-
+<a name="text_to_sparql"></a>
 # Module text\_to\_sparql
 
-<a id="text_to_sparql.Text2SparqlRetriever"></a>
-
+<a name="text_to_sparql.Text2SparqlRetriever"></a>
 ## Text2SparqlRetriever Objects
 
 ```python
@@ -17,12 +14,11 @@ class Text2SparqlRetriever(BaseGraphRetriever)
 Graph retriever that uses a pre-trained Bart model to translate natural language questions given in text form to queries in SPARQL format.
 The generated SPARQL query is executed on a knowledge graph.
 
-<a id="text_to_sparql.Text2SparqlRetriever.__init__"></a>
-
+<a name="text_to_sparql.Text2SparqlRetriever.__init__"></a>
 #### \_\_init\_\_
 
 ```python
-def __init__(knowledge_graph, model_name_or_path, top_k: int = 1)
+ | __init__(knowledge_graph, model_name_or_path, top_k: int = 1)
 ```
 
 Init the Retriever by providing a knowledge graph and a pre-trained BART model
@@ -33,12 +29,11 @@ Init the Retriever by providing a knowledge graph and a pre-trained BART model
 - `model_name_or_path`: Name of or path to a pre-trained BartForConditionalGeneration model.
 - `top_k`: How many SPARQL queries to generate per text query.
 
-<a id="text_to_sparql.Text2SparqlRetriever.retrieve"></a>
-
+<a name="text_to_sparql.Text2SparqlRetriever.retrieve"></a>
 #### retrieve
 
 ```python
-def retrieve(query: str, top_k: Optional[int] = None)
+ | retrieve(query: str, top_k: Optional[int] = None)
 ```
 
 Translate a text query to SPARQL and execute it on the knowledge graph to retrieve a list of answers
@@ -48,12 +43,11 @@ Translate a text query to SPARQL and execute it on the knowledge graph to retrie
 - `query`: Text query that shall be translated to SPARQL and then executed on the knowledge graph
 - `top_k`: How many SPARQL queries to generate per text query.
 
-<a id="text_to_sparql.Text2SparqlRetriever.format_result"></a>
-
+<a name="text_to_sparql.Text2SparqlRetriever.format_result"></a>
 #### format\_result
 
 ```python
-def format_result(result)
+ | format_result(result)
 ```
 
 Generate formatted dictionary output with text answer and additional info

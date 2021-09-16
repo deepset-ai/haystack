@@ -1,9 +1,7 @@
-<a id="base"></a>
-
+<a name="base"></a>
 # Module base
 
-<a id="base.BaseTranslator"></a>
-
+<a name="base.BaseTranslator"></a>
 ## BaseTranslator Objects
 
 ```python
@@ -12,33 +10,29 @@ class BaseTranslator(BaseComponent)
 
 Abstract class for a Translator component that translates either a query or a doc from language A to language B.
 
-<a id="base.BaseTranslator.translate"></a>
-
+<a name="base.BaseTranslator.translate"></a>
 #### translate
 
 ```python
-@abstractmethod
-def translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]
+ | @abstractmethod
+ | translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]
 ```
 
 Translate the passed query or a list of documents from language A to B.
 
-<a id="base.BaseTranslator.run"></a>
-
+<a name="base.BaseTranslator.run"></a>
 #### run
 
 ```python
-def run(query: Optional[str] = None, documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None, answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None)
+ | run(query: Optional[str] = None, documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None, answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None)
 ```
 
 Method that gets executed when this class is used as a Node in a Haystack Pipeline
 
-<a id="transformers"></a>
-
+<a name="transformers"></a>
 # Module transformers
 
-<a id="transformers.TransformersTranslator"></a>
-
+<a name="transformers.TransformersTranslator"></a>
 ## TransformersTranslator Objects
 
 ```python
@@ -63,12 +57,11 @@ We currently recommend using OPUS models (see __init__() for details)
 |    res = translator.translate(documents=DOCS, query=None)
 ```
 
-<a id="transformers.TransformersTranslator.__init__"></a>
-
+<a name="transformers.TransformersTranslator.__init__"></a>
 #### \_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True)
+ | __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True)
 ```
 
 Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
@@ -85,19 +78,18 @@ They also have a few multilingual models that support multiple languages at once
 
 **Arguments**:
 
-                           Can be a remote name from Huggingface's modelhub or a local path.
-                       tokenizer.
 - `model_name_or_path`: Name of the seq2seq model that shall be used for translation.
+                           Can be a remote name from Huggingface's modelhub or a local path.
 - `tokenizer_name`: Optional tokenizer name. If not supplied, `model_name_or_path` will also be used for the
+                       tokenizer.
 - `max_seq_len`: The maximum sentence length the model accepts. (Optional)
 - `clean_up_tokenization_spaces`: Whether or not to clean up the tokenization spaces. (default True)
 
-<a id="transformers.TransformersTranslator.translate"></a>
-
+<a name="transformers.TransformersTranslator.translate"></a>
 #### translate
 
 ```python
-def translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]
+ | translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]
 ```
 
 Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.

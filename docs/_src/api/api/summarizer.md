@@ -1,9 +1,7 @@
-<a id="base"></a>
-
+<a name="base"></a>
 # Module base
 
-<a id="base.BaseSummarizer"></a>
-
+<a name="base.BaseSummarizer"></a>
 ## BaseSummarizer Objects
 
 ```python
@@ -12,35 +10,33 @@ class BaseSummarizer(BaseComponent)
 
 Abstract class for Summarizer
 
-<a id="base.BaseSummarizer.predict"></a>
-
+<a name="base.BaseSummarizer.predict"></a>
 #### predict
 
 ```python
-@abstractmethod
-def predict(documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]
+ | @abstractmethod
+ | predict(documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]
 ```
 
 Abstract method for creating a summary.
 
 **Arguments**:
 
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
                                 If set to "True", all docs will be joined to a single string that will then
                                 be summarized.
                                 Important: The summary will depend on the order of the supplied documents!
-- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
 
 **Returns**:
 
 List of Documents, where Document.text contains the summarization and Document.meta["context"]
+         the original, not summarized text
 
-<a id="transformers"></a>
-
+<a name="transformers"></a>
 # Module transformers
 
-<a id="transformers.TransformersSummarizer"></a>
-
+<a name="transformers.TransformersSummarizer"></a>
 ## TransformersSummarizer Objects
 
 ```python
@@ -81,12 +77,11 @@ See the up-to-date list of available models on
 |      },
 ```
 
-<a id="transformers.TransformersSummarizer.__init__"></a>
-
+<a name="transformers.TransformersSummarizer.__init__"></a>
 #### \_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: int = 0, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False)
+ | __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: int = 0, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False)
 ```
 
 Load a Summarization model from Transformers.
@@ -95,13 +90,9 @@ https://huggingface.co/models?filter=summarization
 
 **Arguments**:
 
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
                            'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                            See https://huggingface.co/models?filter=summarization for full list of available models.
-                                     into a single text. This separator appears between those subsequent docs.
-                                If set to "True", all docs will be joined to a single string that will then
-                                be summarized.
-                                Important: The summary will depend on the order of the supplied documents!
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `max_length`: Maximum length of summarized text
@@ -109,14 +100,17 @@ https://huggingface.co/models?filter=summarization
 - `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
 - `clean_up_tokenization_spaces`: Whether or not to clean up the potential extra spaces in the text output
 - `separator_for_single_summary`: If `generate_single_summary=True` in `predict()`, we need to join all docs
+                                     into a single text. This separator appears between those subsequent docs.
 - `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
+                                If set to "True", all docs will be joined to a single string that will then
+                                be summarized.
+                                Important: The summary will depend on the order of the supplied documents!
 
-<a id="transformers.TransformersSummarizer.predict"></a>
-
+<a name="transformers.TransformersSummarizer.predict"></a>
 #### predict
 
 ```python
-def predict(documents: List[Document], generate_single_summary: Optional[bool] = None, truncation: bool = True) -> List[Document]
+ | predict(documents: List[Document], generate_single_summary: Optional[bool] = None, truncation: bool = True) -> List[Document]
 ```
 
 Produce the summarization from the supplied documents.
@@ -124,14 +118,15 @@ These document can for example be retrieved via the Retriever.
 
 **Arguments**:
 
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
                                 If set to "True", all docs will be joined to a single string that will then
                                 be summarized.
                                 Important: The summary will depend on the order of the supplied documents!
-- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
 - `truncation`: Truncate to a maximum length accepted by the model
 
 **Returns**:
 
 List of Documents, where Document.text contains the summarization and Document.meta["context"]
+         the original, not summarized text
 
