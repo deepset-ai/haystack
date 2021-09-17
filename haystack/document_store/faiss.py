@@ -441,46 +441,44 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def save(self, file_path: Union[str, Path], init_params_path: Union[str, Path] = None):
+    def save(self, faiss_file_path: Union[str, Path], faiss_config_path: Optional[Union[str, Path]] = None):
         """
         Save FAISS Index to the specified file.
 
-        :param file_path: Path to save to.
-        :param init_params_path: Path to save the init parameter's file to. 
-            Defaults to the same as the file path, save the extension (.json)
+        :param faiss_file_path: Path to save the FAISS index to.
+        :param faiss_config_path: Path to save the initial configuration parameters to. 
+            Defaults to the same as the file path, save the extension (.json).
+            This file contains all the parameters passed to FAISSDocumentStore()
+            at creation time (for example the SQL path, vector_dim, etc), and will be 
+            used by the `load` method to restore the index with the appropriate configuration.
         :return: None
         """
-        if not init_params_path:
-            file_path = Path(file_path)
-            init_params_path = file_path.with_suffix(".json")
+        if not faiss_config_path:
+            faiss_file_path = Path(faiss_file_path)
+            faiss_config_path = faiss_file_path.with_suffix(".json")
 
-        faiss.write_index(self.faiss_indexes[self.index], str(file_path))
-        with open(init_params_path, 'w') as ipp:
+        faiss.write_index(self.faiss_indexes[self.index], str(faiss_file_path))
+        with open(faiss_config_path, 'w') as ipp:
             json.dump(self.pipeline_config["params"], ipp)
 
     @classmethod
-    def load(
-        cls,
-        faiss_file_path: Union[str, Path],
-        sql_url: str = None,
-        index: str = None,
-        faiss_init_params_path: Union[str, Path] = None
-    ):
+    def load(cls, faiss_file_path: Union[str, Path], faiss_config_path: Optional[Union[str, Path]] = None):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
         Note: In order to have a correct mapping from FAISS to SQL,
               make sure to use the same SQL DB that you used when calling `save()`.
 
         :param faiss_file_path: Stored FAISS index file. Can be created via calling `save()`
+        :param faiss_config_path: Stored FAISS initial configuration parameters. 
+            Can be created via calling `save()`
         :param sql_url: Connection string to the SQL database that contains your docs and metadata.
             Overrides the value defined in the `faiss_init_params_path` file, if present
         :param index: Index name to load the FAISS index as. It must match the index name used for
                       when creating the FAISS index. Overrides the value defined in the 
                       `faiss_init_params_path` file, if present
-        :param faiss_init_params_path: Stored FAISS init parameters. Can be created via calling `save()`
         :return: the DocumentStore
         """
-        if not faiss_init_params_path:
+        if not faiss_config_path:
             faiss_file_path = Path(faiss_file_path)
             faiss_init_params_path = faiss_file_path.with_suffix(".json")
 
@@ -492,19 +490,16 @@ class FAISSDocumentStore(SQLDocumentStore):
         # Add other init params to override the ones defined in the init params file
         init_params["faiss_index"] = faiss_index
         init_params["vector_dim"]=faiss_index.d
-        
-        # NOTE: The following block could be removed if we don't care about backwards API compatibility
-        # (along with the sql_url and index parameters, which now can become confusing)
-        if sql_url:
-            init_params["sql_url"]=sql_url
-        if index:
-            init_params["index"]=index
 
         document_store = cls(**init_params)
 
         # This check ensures the correct document database was loaded.
         # If it fails, make sure you provided the path to the database
         # used when creating the original FAISS index
-        assert document_store.get_document_count() == document_store.get_embedding_count()
+        if not document_store.get_document_count() == document_store.get_embedding_count():
+            raise ValueError("The number of documents present in the SQL database does not "
+                             "match the number of embeddings in FAISS. Make sure your FAISS "
+                             "configuration file correctly points to the same database that "
+                             "was used when creating the original index.")
 
         return document_store
