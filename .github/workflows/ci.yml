@@ -89,12 +89,8 @@ jobs:
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         brew install tesseract
-        brew install docker docker-machine
-        brew install --cask virtualbox
-        brew services start docker-machine
-        docker-machine create --driver virtualbox default
-        docker-machine env default
-        eval "$(docker-machine env default)"
+        brew install --cask docker
+        open --background -a Docker
         docker run hello-world
 
     - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
