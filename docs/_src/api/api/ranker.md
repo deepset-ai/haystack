@@ -62,12 +62,24 @@ class FARMRanker(BaseRanker)
 ```
 
 Transformer based model for Document Re-ranking using the TextPairClassifier of FARM framework (https://github.com/deepset-ai/FARM).
+Re-Ranking can be used on top of a retriever to boost the performance for document search. This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
 While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interface remains the same.
+FARMRanker handles Cross-Encoder models that internally use two logits and output the classifier's probability of label "1" as similarity score.
+This includes TextPairClassification models trained within FARM.
+In contrast, SentenceTransformersRanker handles Cross-Encoder models that use a single logit as similarity score.
+https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
 
 |  With a FARMRanker, you can:
-
  - directly get predictions via predict()
  - fine-tune the model on TextPair data via train()
+
+Usage example:
+...
+retriever = ElasticsearchRetriever(document_store=document_store)
+ranker = FARMRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
+p = Pipeline()
+p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 
 <a name="farm.FARMRanker.__init__"></a>
 #### \_\_init\_\_
@@ -108,7 +120,7 @@ Fine-tune a model on a TextPairClassification dataset. Options:
 
 **Arguments**:
 
-- `data_dir`: Path to directory containing your training data in SQuAD style
+- `data_dir`: Path to directory containing your training data
 - `train_filename`: Filename of training data
 - `dev_filename`: Filename of dev / eval data
 - `test_filename`: Filename of test data
@@ -187,7 +199,7 @@ List of dictionaries containing query and ranked list of Document
 #### predict
 
 ```python
- | predict(query: str, documents: List[Document], top_k: Optional[int] = None)
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]
 ```
 
 Use loaded ranker model to re-rank the supplied list of Document.
