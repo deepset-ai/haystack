@@ -489,7 +489,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         except OSError as e:
             raise ValueError(f"Can't open FAISS configuration file `{faiss_init_params_path}`. "
                              "Make sure the file exists and the you have the correct permissions "
-                             "to access if") from e
+                             "to access it.") from e
 
         faiss_index = faiss.read_index(str(index_path))
 
