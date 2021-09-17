@@ -1,11 +1,69 @@
 <a name="pipeline"></a>
 # Module pipeline
 
+<a name="pipeline.BasePipeline"></a>
+## BasePipeline Objects
+
+```python
+class BasePipeline()
+```
+
+<a name="pipeline.BasePipeline.load_from_yaml"></a>
+#### load\_from\_yaml
+
+```python
+ | @classmethod
+ | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+```
+
+Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+    ```yaml
+    |   version: '0.8'
+    |
+    |    components:    # define all the building-blocks for Pipeline
+    |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+    |      type: FARMReader    # Haystack Class name for the component
+    |      params:
+    |        no_ans_boost: -10
+    |        model_name_or_path: deepset/roberta-base-squad2
+    |    - name: MyESRetriever
+    |      type: ElasticsearchRetriever
+    |      params:
+    |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+    |        custom_query: null
+    |    - name: MyDocumentStore
+    |      type: ElasticsearchDocumentStore
+    |      params:
+    |        index: haystack_test
+    |
+    |    pipelines:    # multiple Pipelines can be defined using the components from above
+    |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+    |      nodes:
+    |      - name: MyESRetriever
+    |        inputs: [Query]
+    |      - name: MyReader
+    |        inputs: [MyESRetriever]
+    ```
+
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+                                     to change index name param for an ElasticsearchDocumentStore, an env
+                                     variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                     `_` sign must be used to specify nested hierarchical properties.
+
 <a name="pipeline.Pipeline"></a>
 ## Pipeline Objects
 
 ```python
-class Pipeline()
+class Pipeline(BasePipeline)
 ```
 
 Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
@@ -62,6 +120,37 @@ Set the component for a node in the Pipeline.
 
 - `name`: The name of the node.
 - `component`: The component object to be set at the node.
+
+<a name="pipeline.Pipeline.get_nodes_by_class"></a>
+#### get\_nodes\_by\_class
+
+```python
+ | get_nodes_by_class(class_type) -> List[Any]
+```
+
+Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
+This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
+Example:
+| from haystack.document_store.base import BaseDocumentStore
+| INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
+| res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
+
+**Returns**:
+
+List of components that are an instance the requested class
+
+<a name="pipeline.Pipeline.get_document_store"></a>
+#### get\_document\_store
+
+```python
+ | get_document_store() -> Optional[BaseDocumentStore]
+```
+
+Return the document store object used in the current pipeline.
+
+**Returns**:
+
+Instance of DocumentStore or None
 
 <a name="pipeline.Pipeline.draw"></a>
 #### draw
@@ -231,6 +320,19 @@ Initialize a Pipeline for Extractive Question Answering.
 - `reader`: Reader instance
 - `retriever`: Retriever instance
 
+<a name="pipeline.ExtractiveQAPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None)
+```
+
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `reader`. For instance,
+               params={"retriever": {"top_k": 10}, "reader": {"top_k": 5}}
+
 <a name="pipeline.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline Objects
 
@@ -250,6 +352,18 @@ Initialize a Pipeline for semantic document search.
 **Arguments**:
 
 - `retriever`: Retriever instance
+
+<a name="pipeline.DocumentSearchPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None)
+```
+
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
 
 <a name="pipeline.GenerativeQAPipeline"></a>
 ## GenerativeQAPipeline Objects
@@ -272,6 +386,19 @@ Initialize a Pipeline for Generative Question Answering.
 - `generator`: Generator instance
 - `retriever`: Retriever instance
 
+<a name="pipeline.GenerativeQAPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None)
+```
+
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `generator`. For instance,
+               params={"retriever": {"top_k": 10}, "generator": {"top_k": 5}}
+
 <a name="pipeline.SearchSummarizationPipeline"></a>
 ## SearchSummarizationPipeline Objects
 
@@ -283,7 +410,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline)
 #### \_\_init\_\_
 
 ```python
- | __init__(summarizer: BaseSummarizer, retriever: BaseRetriever)
+ | __init__(summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False)
 ```
 
 Initialize a Pipeline that retrieves documents for a query and then summarizes those documents.
@@ -292,23 +419,22 @@ Initialize a Pipeline that retrieves documents for a query and then summarizes t
 
 - `summarizer`: Summarizer instance
 - `retriever`: Retriever instance
+- `return_in_answer_format`: Whether the results should be returned as documents (False) or in the answer
+                                format used in other QA pipelines (True). With the latter, you can use this
+                                pipeline as a "drop-in replacement" for other QA pipelines.
 
 <a name="pipeline.SearchSummarizationPipeline.run"></a>
 #### run
 
 ```python
- | run(query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None, generate_single_summary: Optional[bool] = None, return_in_answer_format: bool = False)
+ | run(query: str, params: Optional[dict] = None)
 ```
 
 **Arguments**:
 
-- `query`: Your search query
-- `filters`: 
-- `top_k_retriever`: Number of top docs the retriever should pass to the summarizer.
-                        The higher this value, the slower your pipeline.
-- `generate_single_summary`: Whether to generate single summary from all retrieved docs (True) or one per doc (False).
-- `return_in_answer_format`: Whether the results should be returned as documents (False) or in the answer format used in other QA pipelines (True).
-                                With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
+- `query`: the query string.
+- `params`: params for the `retriever` and `summarizer`. For instance,
+               params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
 
 <a name="pipeline.FAQPipeline"></a>
 ## FAQPipeline Objects
@@ -329,6 +455,18 @@ Initialize a Pipeline for finding similar FAQs using semantic document search.
 **Arguments**:
 
 - `retriever`: Retriever instance
+
+<a name="pipeline.FAQPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None)
+```
+
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
 
 <a name="pipeline.TranslationWrapperPipeline"></a>
 ## TranslationWrapperPipeline Objects
@@ -355,6 +493,45 @@ Wrap a given `pipeline` with the `input_translator` and `output_translator`.
 - `output_translator`: A Translator node that shall translate the pipeline results from language B to A
 - `pipeline`: The pipeline object (e.g. ExtractiveQAPipeline) you want to "wrap".
                  Note that pipelines with split or merge nodes are currently not supported.
+
+<a name="pipeline.QuestionGenerationPipeline"></a>
+## QuestionGenerationPipeline Objects
+
+```python
+class QuestionGenerationPipeline(BaseStandardPipeline)
+```
+
+A simple pipeline that takes documents as input and generates
+questions that it thinks can be answered by the documents.
+
+<a name="pipeline.RetrieverQuestionGenerationPipeline"></a>
+## RetrieverQuestionGenerationPipeline Objects
+
+```python
+class RetrieverQuestionGenerationPipeline(BaseStandardPipeline)
+```
+
+A simple pipeline that takes a query as input, performs retrieval, and then generates
+questions that it thinks can be answered by the retrieved documents.
+
+<a name="pipeline.QuestionAnswerGenerationPipeline"></a>
+## QuestionAnswerGenerationPipeline Objects
+
+```python
+class QuestionAnswerGenerationPipeline(BaseStandardPipeline)
+```
+
+This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
+this document, and then performs question answering of this questions using that single document.
+
+<a name="pipeline.RootNode"></a>
+## RootNode Objects
+
+```python
+class RootNode(BaseComponent)
+```
+
+RootNode feeds inputs together with corresponding params to a Pipeline.
 
 <a name="pipeline.SklearnQueryClassifier"></a>
 ## SklearnQueryClassifier Objects
@@ -387,21 +564,21 @@ and the further processing can be customized. You can define this by connecting 
   
   Pass your own `Sklearn` binary classification model or use one of the following pretrained ones:
   1) Keywords vs. Questions/Statements (Default)
-  query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/model.pickle)
-  query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/vectorizer.pickle)
+  query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle)
+  query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle)
   output_1 => question/statement
   output_2 => keyword query
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/readme.txt)
+  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
   
   
   2) Questions vs. Statements
-  query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier\_statements/model.pickle)
-  query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier\_statements/vectorizer.pickle)
+  query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle)
+  query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle)
   output_1 => question
   output_2 => statement
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier\_statements/readme.txt)
+  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
   
-  See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
+  See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
 <a name="pipeline.SklearnQueryClassifier.__init__"></a>
 #### \_\_init\_\_
@@ -409,9 +586,9 @@ and the further processing can be customized. You can define this by connecting 
 ```python
  | __init__(model_name_or_path: Union[
  |             str, Any
- |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/model.pickle", vectorizer_name_or_path: Union[
+ |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
  |             str, Any
- |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/vectorizer.pickle")
+ |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle")
 ```
 
 **Arguments**:
@@ -454,16 +631,16 @@ and the further processing can be customized. You can define this by connecting 
   model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
   output_1 => question/statement
   output_2 => keyword query
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier/readme.txt)
+  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
   
   
   2) Questions vs. Statements
   `model_name_or_path`="shahrukhx01/question-vs-statement-classifier"
   output_1 => question
   output_2 => statement
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost\_query\_classifier\_statements/readme.txt)
+  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
   
-  See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
+  See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
 <a name="pipeline.TransformersQueryClassifier.__init__"></a>
 #### \_\_init\_\_
@@ -507,4 +684,176 @@ The node allows multiple join modes:
                 adjusting document scores when using the `merge` join_mode. By default, equal weight is given
                 to each retriever score. This param is not compatible with the `concatenate` join_mode.
 - `top_k_join`: Limit documents to top_k based on the resulting scores of the join.
+
+<a name="pipeline.RayPipeline"></a>
+## RayPipeline Objects
+
+```python
+class RayPipeline(Pipeline)
+```
+
+Ray (https://ray.io) is a framework for distributed computing.
+
+Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
+Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
+of the Reader and a single replica for the Retriever. It enables efficient resource utilization by horizontally
+scaling Components.
+
+To set the number of replicas, add  `replicas` in the YAML config for the node in a pipeline:
+
+        ```yaml
+        |    components:
+        |        ...
+        |
+        |    pipelines:
+        |        - name: ray_query_pipeline
+        |          type: RayPipeline
+        |          nodes:
+        |            - name: ESRetriever
+        |              replicas: 2  # number of replicas to create on the Ray cluster
+        |              inputs: [ Query ]
+        ```
+
+A RayPipeline can only be created with a YAML Pipeline config.
+>>> from haystack.pipeline import RayPipeline
+>>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
+>>> pipeline.run(query="What is the capital of Germany?")
+
+By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
+set the `address` parameter when creating the RayPipeline instance.
+
+<a name="pipeline.RayPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(address: str = None, **kwargs)
+```
+
+**Arguments**:
+
+- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+- `kwargs`: Optional parameters for initializing Ray.
+
+<a name="pipeline.RayPipeline.load_from_yaml"></a>
+#### load\_from\_yaml
+
+```python
+ | @classmethod
+ | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, **kwargs, ,)
+```
+
+Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+    ```yaml
+    |   version: '0.8'
+    |
+    |    components:    # define all the building-blocks for Pipeline
+    |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+    |      type: FARMReader    # Haystack Class name for the component
+    |      params:
+    |        no_ans_boost: -10
+    |        model_name_or_path: deepset/roberta-base-squad2
+    |    - name: MyESRetriever
+    |      type: ElasticsearchRetriever
+    |      params:
+    |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+    |        custom_query: null
+    |    - name: MyDocumentStore
+    |      type: ElasticsearchDocumentStore
+    |      params:
+    |        index: haystack_test
+    |
+    |    pipelines:    # multiple Pipelines can be defined using the components from above
+    |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+    |      nodes:
+    |      - name: MyESRetriever
+    |        inputs: [Query]
+    |      - name: MyReader
+    |        inputs: [MyESRetriever]
+    ```
+
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+                                     to change index name param for an ElasticsearchDocumentStore, an env
+                                     variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                     `_` sign must be used to specify nested hierarchical properties.
+- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+
+<a name="pipeline._RayDeploymentWrapper"></a>
+## \_RayDeploymentWrapper Objects
+
+```python
+class _RayDeploymentWrapper()
+```
+
+Ray Serve supports calling of __init__ methods on the Classes to create "deployment" instances.
+
+In case of Haystack, some Components like Retrievers have complex init methods that needs objects
+like Document Stores.
+
+This wrapper class encapsulates the initialization of Components. Given a Component Class
+name, it creates an instance using the YAML Pipeline config.
+
+<a name="pipeline._RayDeploymentWrapper.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(pipeline_config: dict, component_name: str)
+```
+
+Create an instance of Component.
+
+**Arguments**:
+
+- `pipeline_config`: Pipeline YAML parsed as a dict.
+- `component_name`: Component Class name.
+
+<a name="pipeline._RayDeploymentWrapper.__call__"></a>
+#### \_\_call\_\_
+
+```python
+ | __call__(*args, **kwargs)
+```
+
+Ray calls this method which is then re-directed to the corresponding component's run().
+
+<a name="pipeline.MostSimilarDocumentsPipeline"></a>
+## MostSimilarDocumentsPipeline Objects
+
+```python
+class MostSimilarDocumentsPipeline(BaseStandardPipeline)
+```
+
+<a name="pipeline.MostSimilarDocumentsPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(document_store: BaseDocumentStore)
+```
+
+Initialize a Pipeline for finding the most similar documents to a given document.
+This pipeline can be helpful if you already show a relevant document to your end users and they want to search for just similar ones.
+
+**Arguments**:
+
+- `document_store`: Document Store instance with already stored embeddings.
+
+<a name="pipeline.MostSimilarDocumentsPipeline.run"></a>
+#### run
+
+```python
+ | run(document_ids: List[str], top_k: int = 5)
+```
+
+**Arguments**:
+
+- `document_ids`: document ids
+- `top_k`: How many documents id to return against single document
 
