@@ -21,7 +21,7 @@ def test_faiss_index_save_and_load(tmp_path):
     document_store = FAISSDocumentStore(
         sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
         index="haystack_test",
-        progress_bar=False
+        progress_bar=False  # Just to check if the init parameters are kept
     )
     document_store.write_documents(DOCUMENTS)
 

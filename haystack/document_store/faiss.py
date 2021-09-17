@@ -462,9 +462,9 @@ class FAISSDocumentStore(SQLDocumentStore):
     def load(
         cls,
         faiss_file_path: Union[str, Path],
-        faiss_init_params_path: Union[str, Path] = None,
         sql_url: str = None,
         index: str = None,
+        faiss_init_params_path: Union[str, Path] = None
     ):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
@@ -472,49 +472,39 @@ class FAISSDocumentStore(SQLDocumentStore):
               make sure to use the same SQL DB that you used when calling `save()`.
 
         :param faiss_file_path: Stored FAISS index file. Can be created via calling `save()`
-        :param faiss_init_params_path: Stored FAISS init parameters. Can be created via calling `save()`
         :param sql_url: Connection string to the SQL database that contains your docs and metadata.
             Overrides the value defined in the `faiss_init_params_path` file, if present
         :param index: Index name to load the FAISS index as. It must match the index name used for
                       when creating the FAISS index. Overrides the value defined in the 
                       `faiss_init_params_path` file, if present
+        :param faiss_init_params_path: Stored FAISS init parameters. Can be created via calling `save()`
         :return: the DocumentStore
         """
-        # Find the path to the FAISS init parameters file
-        init_params_path: Union[str, Path]
-        if faiss_init_params_path:
-            init_params_path = faiss_init_params_path
-        else:
+        if not faiss_init_params_path:
             faiss_file_path = Path(faiss_file_path)
-            init_params_path = faiss_file_path.with_suffix(".json")
+            faiss_init_params_path = faiss_file_path.with_suffix(".json")
 
-        # Load the FAISS init parameters file
-        try:
-            with open(init_params_path, 'r') as ipp:
-                init_params = json.load(ipp)
-        except OSError:
+        with open(faiss_init_params_path, 'r') as ipp:
+            init_params = json.load(ipp)
 
-            # Raise only if the init_params file was passed explicitly passed,
-            # ignore silently if it wasn't
-            if faiss_init_params_path:
-                raise
-            init_params = {}
-
-        # Load the index
         faiss_index = faiss.read_index(str(faiss_file_path))
 
         # Add other init params to override the ones defined in the init params file
         init_params["faiss_index"] = faiss_index
         init_params["vector_dim"]=faiss_index.d
+        
+        # NOTE: The following block could be removed if we don't care about backwards API compatibility
+        # (along with the sql_url and index parameters, which now can become confusing)
         if sql_url:
             init_params["sql_url"]=sql_url
         if index:
             init_params["index"]=index
 
-        # Create the document store
         document_store = cls(**init_params)
-        
-        # Make sure the SQL documents count and the FAISS embeddigs count match
+
+        # This check ensures the correct document database was loaded.
+        # If it fails, make sure you provided the path to the database
+        # used when creating the original FAISS index
         assert document_store.get_document_count() == document_store.get_embedding_count()
 
         return document_store
