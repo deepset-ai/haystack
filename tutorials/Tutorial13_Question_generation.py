@@ -1,3 +1,4 @@
+# THIS IS A TEST
 from haystack.question_generator import QuestionGenerator
 from haystack.utils import launch_es
 from haystack.document_store import ElasticsearchDocumentStore
@@ -35,21 +36,21 @@ The most basic version of a question generator pipeline takes a document as inpu
 which the the document can answer.
 """
 
-# QuestionGenerationPipeline
-question_generation_pipeline = QuestionGenerationPipeline(question_generator)
-for document in document_store:
-        result = question_generation_pipeline.run(documents=[document])
-        pprint(result)
+# # QuestionGenerationPipeline
+# question_generation_pipeline = QuestionGenerationPipeline(question_generator)
+# for document in document_store:
+#         result = question_generation_pipeline.run(documents=[document])
+#         pprint(result)
 
 """
 This pipeline takes a query as input. It retrievers relevant documents and then generates questions based on these.
 """
 
-# RetrieverQuestionGenerationPipeline
-retriever = ElasticsearchRetriever(document_store=document_store)
-rqg_pipeline = RetrieverQuestionGenerationPipeline(retriever, question_generator)
-result = rqg_pipeline.run(query="Arya Stark")
-pprint(result)
+# # RetrieverQuestionGenerationPipeline
+# retriever = ElasticsearchRetriever(document_store=document_store)
+# rqg_pipeline = RetrieverQuestionGenerationPipeline(retriever, question_generator)
+# result = rqg_pipeline.run(query="Arya Stark")
+# pprint(result)
 
 """
 This pipeline takes a document as input, generates questions on it, and attempts to answer these questions using
@@ -60,7 +61,7 @@ a Reader model
 reader = FARMReader("deepset/roberta-base-squad2")
 qag_pipeline = QuestionAnswerGenerationPipeline(question_generator, reader)
 for document in tqdm(document_store):
-    result = qag_pipeline.run(document=document)
+    result = qag_pipeline.run(documents=[document])
     pprint(result)
 
 # This Haystack script was made with love by deepset in Berlin, Germany
