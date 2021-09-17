@@ -93,7 +93,7 @@ jobs:
         open --background -a Docker
         echo "wait for docker app to create symlinks"
         sleep 60
-        /usr/local/bin/docker run hello-world
+        /Applications/Docker.app/Contents/Resources/bin/docker run hello-world
 
     - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
