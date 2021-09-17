@@ -7,16 +7,16 @@ import psutil
 import pytest
 import requests
 from elasticsearch import Elasticsearch
+from pymilvus import Milvus
 
 from haystack.classifier import FARMClassifier
 from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
-from milvus import Milvus
 
 import weaviate
 from haystack.document_store.weaviate import WeaviateDocumentStore
 
-from haystack.document_store.milvus import MilvusDocumentStore
+from haystack.document_store import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.ranker import FARMRanker, SentenceTransformersRanker
@@ -126,7 +126,6 @@ def milvus_fixture():
     # Make sure you have given > 6GB memory to docker engine
     try:
         milvus_server = Milvus(uri="tcp://localhost:19530", timeout=5, wait_timeout=5)
-        milvus_server.server_status(timeout=5)
     except:
         print("Starting Milvus ...")
         status = subprocess.run(['docker run -d --name milvus_cpu_0.10.5 -p 19530:19530 -p 19121:19121 '

@@ -74,7 +74,7 @@ jobs:
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
     - name: Run Milvus
-      run: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
+      run: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:v2.0.0-rc6-20210910-020f109
 
     - name: Run Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.0
