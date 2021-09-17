@@ -93,8 +93,9 @@ jobs:
     - name: Set up Mac
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
-        brew install jq tesseract docker-machine docker
-        brew services start docker-machine
+        brew install tesseract
+        brew install --cask docker
+        docker run hello-world
 
     - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
