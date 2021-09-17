@@ -110,7 +110,7 @@ https://huggingface.co/models?filter=summarization
 #### predict
 
 ```python
- | predict(documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]
+ | predict(documents: List[Document], generate_single_summary: Optional[bool] = None, truncation: bool = True) -> List[Document]
 ```
 
 Produce the summarization from the supplied documents.
@@ -123,6 +123,7 @@ These document can for example be retrieved via the Retriever.
                                 If set to "True", all docs will be joined to a single string that will then
                                 be summarized.
                                 Important: The summary will depend on the order of the supplied documents!
+- `truncation`: Truncate to a maximum length accepted by the model
 
 **Returns**:
 

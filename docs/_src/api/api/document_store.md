@@ -131,7 +131,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite')
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat")
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -181,6 +181,8 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+- `index_type`: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
+                   ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -467,17 +469,48 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 None
 
+<a name="elasticsearch.OpenSearchDocumentStore"></a>
+## OpenSearchDocumentStore Objects
+
+```python
+class OpenSearchDocumentStore(ElasticsearchDocumentStore)
+```
+
+Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
+
+In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
+the KNN plugin that can scale to a large number of documents.
+
+<a name="elasticsearch.OpenSearchDocumentStore.query_by_embedding"></a>
+#### query\_by\_embedding
+
+```python
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `filters`: Optional filters to narrow down the search space.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `top_k`: How many documents to return
+- `index`: Index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
+
+**Returns**:
+
+
+
 <a name="elasticsearch.OpenDistroElasticsearchDocumentStore"></a>
 ## OpenDistroElasticsearchDocumentStore Objects
 
 ```python
-class OpenDistroElasticsearchDocumentStore(ElasticsearchDocumentStore)
+class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore)
 ```
 
-Document Store using the Open Distro for Elasticsearch. It is compatible with the AWS Elasticsearch Service.
-
-In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
-the KNN plugin that can scale to a large number of documents.
+A DocumentStore which has an Open Distro for Elasticsearch service behind it.
 
 <a name="memory"></a>
 # Module memory
@@ -1704,6 +1737,24 @@ None
 
 ```python
  | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete documents in an index. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
+
+<a name="weaviate.WeaviateDocumentStore.delete_documents"></a>
+#### delete\_documents
+
+```python
+ | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
