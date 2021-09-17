@@ -21,19 +21,33 @@ jobs:
 
   build-cache:
     needs: type-check
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
+      - name: Set up Ubuntu
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          sudo apt install tesseract-ocr libtesseract-dev poppler-utils
+      - name: Set up Mac
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          brew install jq tesseract docker-machine docker
+          brew services start docker-machine
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: ${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+          key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
@@ -43,7 +57,11 @@ jobs:
 
   prepare-build:
     needs: build-cache
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
@@ -53,23 +71,29 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
   build:
     needs: prepare-build
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
+        os: [ ubuntu-latest, macos-latest ]
       fail-fast: false
+
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
+
     - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
     - name: Cache
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: ${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+        key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
@@ -84,15 +108,6 @@ jobs:
 
     - name: Run Apache Tika
       run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
-
-#    - name: Run Ray
-#      run: RAY_DISABLE_MEMORY_MONITOR=1 ray start --head
-
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
-
-    - name: Install tesseract
-      run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Run tests
       run: cd test && pytest -s ${{ matrix.test-path }}
