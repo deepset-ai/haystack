@@ -90,7 +90,8 @@ jobs:
       run: |
         brew install tesseract
         brew install docker docker-machine
-        brew cask install virtualbox
+        brew install --cask virtualbox
+        brew services start docker-machine
         docker-machine create --driver virtualbox default
         docker-machine env default
         eval "$(docker-machine env default)"
