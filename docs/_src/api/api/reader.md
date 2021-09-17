@@ -8,6 +8,15 @@
 class BaseReader(BaseComponent)
 ```
 
+<a name="base.BaseReader.run_batch"></a>
+#### run\_batch
+
+```python
+ | run_batch(query_doc_list: List[Dict], top_k: Optional[int] = None)
+```
+
+A unoptimized implementation of running Reader queries in batch
+
 <a name="base.BaseReader.timing"></a>
 #### timing
 
@@ -39,7 +48,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0)
+ | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True)
 ```
 
 **Arguments**:
@@ -158,7 +167,7 @@ Saves the Reader model so that it can be reused at a later point in time.
 
 Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
 
-Returns list of dictionaries containing answers sorted by (desc.) probability
+Returns list of dictionaries containing answers sorted by (desc.) score
 
 **Arguments**:
 
@@ -179,7 +188,7 @@ List of dictionaries containing query and answers
 
 Use loaded QA model to find answers for a query in the supplied list of Document.
 
-Returns dictionaries containing answers sorted by (desc.) probability.
+Returns dictionaries containing answers sorted by (desc.) score.
 Example:
  ```python
     |{
@@ -189,8 +198,7 @@ Example:
     |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
     |                 'offset_answer_start': 147,
     |                 'offset_answer_end': 154,
-    |                 'probability': 0.9787139466668613,
-    |                 'score': None,
+    |                 'score': 0.9787139466668613,
     |                 'document_id': '1337'
     |                 },...
     |              ]
@@ -211,7 +219,7 @@ Dict containing query and answers
 #### eval\_on\_file
 
 ```python
- | eval_on_file(data_dir: str, test_filename: str, device: str)
+ | eval_on_file(data_dir: str, test_filename: str, device: Optional[str] = None)
 ```
 
 Performs evaluation on a SQuAD-formatted file.
@@ -226,14 +234,14 @@ Returns a dict containing the following metrics:
 :type data_dir: Path or str
 - `test_filename`: The name of the file containing the test data in SQuAD format.
 :type test_filename: str
-- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
 :type device: str
 
 <a name="farm.FARMReader.eval"></a>
 #### eval
 
 ```python
- | eval(document_store: BaseDocumentStore, device: str, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", calibrate_conf_scores: bool = False)
+ | eval(document_store: BaseDocumentStore, device: Optional[str] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -245,7 +253,7 @@ Returns a dict containing the following metrics:
 **Arguments**:
 
 - `document_store`: DocumentStore containing the evaluation documents
-- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
@@ -255,7 +263,7 @@ Returns a dict containing the following metrics:
 #### calibrate\_confidence\_scores
 
 ```python
- | calibrate_confidence_scores(document_store: BaseDocumentStore, device: str, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
+ | calibrate_confidence_scores(document_store: BaseDocumentStore, device: Optional[str] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
 ```
 
 Calibrates confidence scores on evaluation documents in the DocumentStore.
@@ -263,7 +271,7 @@ Calibrates confidence scores on evaluation documents in the DocumentStore.
 **Arguments**:
 
 - `document_store`: DocumentStore containing the evaluation documents
-- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
@@ -276,7 +284,7 @@ Calibrates confidence scores on evaluation documents in the DocumentStore.
 ```
 
 Use loaded QA model to find answers for a question in the supplied list of Document.
-Returns dictionaries containing answers sorted by (desc.) probability.
+Returns dictionaries containing answers sorted by (desc.) score.
 Example:
  ```python
     |{
@@ -286,8 +294,7 @@ Example:
     |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
     |                 'offset_answer_start': 147,
     |                 'offset_answer_end': 154,
-    |                 'probability': 0.9787139466668613,
-    |                 'score': None,
+    |                 'score': 0.9787139466668613,
     |                 'document_id': '1337'
     |                 },...
     |              ]
@@ -395,7 +402,7 @@ If you would like to set no_answer_boost, use a `FARMReader`.
 
 Use loaded QA model to find answers for a query in the supplied list of Document.
 
-Returns dictionaries containing answers sorted by (desc.) probability.
+Returns dictionaries containing answers sorted by (desc.) score.
 Example:
 
  ```python
@@ -406,8 +413,7 @@ Example:
     |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
     |                 'offset_answer_start': 147,
     |                 'offset_answer_end': 154,
-    |                 'probability': 0.9787139466668613,
-    |                 'score': None,
+    |                 'score': 0.9787139466668613,
     |                 'document_id': '1337'
     |                 },...
     |              ]
