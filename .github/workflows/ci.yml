@@ -91,6 +91,8 @@ jobs:
         brew install tesseract
         brew install --cask docker
         open --background -a Docker
+        echo "wait for docker app to create symlinks"
+        sleep 10
         docker run hello-world
 
     - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
