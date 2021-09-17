@@ -32,22 +32,21 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-      - name: Set up Ubuntu
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: |
-          sudo apt install tesseract-ocr libtesseract-dev poppler-utils
-      - name: Set up Mac
+
+      - name: Install jq on Mac
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
-          brew install jq tesseract docker-machine docker
-          brew services start docker-machine
+          brew install jq
+
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
           key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
@@ -85,6 +84,17 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
+
+    - name: Set up Ubuntu
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        sudo apt install tesseract-ocr libtesseract-dev poppler-utils
+
+    - name: Set up Mac
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: |
+        brew install jq tesseract docker-machine docker
+        brew services start docker-machine
 
     - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
