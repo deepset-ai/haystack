@@ -35,11 +35,7 @@ def test_faiss_index_save_and_load(tmp_path):
     assert document_store.faiss_indexes[document_store.index].ntotal == 0
 
     # test loading the index
-    new_document_store = FAISSDocumentStore.load(
-        sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
-        faiss_file_path=tmp_path / "haystack_test_faiss",
-        index=document_store.index
-    )
+    new_document_store = FAISSDocumentStore.load(tmp_path / "haystack_test_faiss")
 
     # check faiss index is restored
     assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)

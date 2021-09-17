@@ -441,35 +441,35 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def save(self, faiss_file_path: Union[str, Path], faiss_config_path: Optional[Union[str, Path]] = None):
+    def save(self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
         Save FAISS Index to the specified file.
 
-        :param faiss_file_path: Path to save the FAISS index to.
-        :param faiss_config_path: Path to save the initial configuration parameters to. 
+        :param index_path: Path to save the FAISS index to.
+        :param config_path: Path to save the initial configuration parameters to. 
             Defaults to the same as the file path, save the extension (.json).
             This file contains all the parameters passed to FAISSDocumentStore()
             at creation time (for example the SQL path, vector_dim, etc), and will be 
             used by the `load` method to restore the index with the appropriate configuration.
         :return: None
         """
-        if not faiss_config_path:
-            faiss_file_path = Path(faiss_file_path)
-            faiss_config_path = faiss_file_path.with_suffix(".json")
+        if not config_path:
+            index_path = Path(index_path)
+            config_path = index_path.with_suffix(".json")
 
-        faiss.write_index(self.faiss_indexes[self.index], str(faiss_file_path))
-        with open(faiss_config_path, 'w') as ipp:
+        faiss.write_index(self.faiss_indexes[self.index], str(index_path))
+        with open(config_path, 'w') as ipp:
             json.dump(self.pipeline_config["params"], ipp)
 
     @classmethod
-    def load(cls, faiss_file_path: Union[str, Path], faiss_config_path: Optional[Union[str, Path]] = None):
+    def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
         Note: In order to have a correct mapping from FAISS to SQL,
               make sure to use the same SQL DB that you used when calling `save()`.
 
-        :param faiss_file_path: Stored FAISS index file. Can be created via calling `save()`
-        :param faiss_config_path: Stored FAISS initial configuration parameters. 
+        :param index_path: Stored FAISS index file. Can be created via calling `save()`
+        :param config_path: Stored FAISS initial configuration parameters. 
             Can be created via calling `save()`
         :param sql_url: Connection string to the SQL database that contains your docs and metadata.
             Overrides the value defined in the `faiss_init_params_path` file, if present
@@ -478,14 +478,20 @@ class FAISSDocumentStore(SQLDocumentStore):
                       `faiss_init_params_path` file, if present
         :return: the DocumentStore
         """
-        if not faiss_config_path:
-            faiss_file_path = Path(faiss_file_path)
-            faiss_init_params_path = faiss_file_path.with_suffix(".json")
+        if not config_path:
+            index_path = Path(index_path)
+            faiss_init_params_path = index_path.with_suffix(".json")
 
-        with open(faiss_init_params_path, 'r') as ipp:
-            init_params = json.load(ipp)
+        init_params: dict = {}
+        try:
+            with open(faiss_init_params_path, 'r') as ipp:
+                init_params = json.load(ipp)
+        except OSError as e:
+            raise ValueError(f"Can't open FAISS configuration file `{faiss_init_params_path}`. "
+                             "Make sure the file exists and the you have the correct permissions "
+                             "to access if") from e
 
-        faiss_index = faiss.read_index(str(faiss_file_path))
+        faiss_index = faiss.read_index(str(index_path))
 
         # Add other init params to override the ones defined in the init params file
         init_params["faiss_index"] = faiss_index
