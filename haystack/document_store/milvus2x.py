@@ -147,7 +147,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         )
 
     def __del__(self):
-        return connections.disconnect()
+        return connections.get_connection().close()
 
     def _create_collection_and_index_if_not_exist(
         self,
