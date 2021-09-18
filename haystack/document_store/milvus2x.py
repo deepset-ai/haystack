@@ -135,7 +135,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.id_field = id_field
         self.custom_fields = custom_fields
 
-        self._create_collection_and_index_if_not_exist(self.index)
+        self.collection = self._create_collection_and_index_if_not_exist(self.index)
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
@@ -187,6 +187,8 @@ class MilvusDocumentStore(SQLDocumentStore):
                 }
             )
 
+        return collection
+
     def _create_document_field_map(self) -> Dict:
         return {
             self.index: self.embedding_field,
@@ -215,15 +217,14 @@ class MilvusDocumentStore(SQLDocumentStore):
         duplicate_documents = duplicate_documents or self.duplicate_documents
         assert duplicate_documents in self.duplicate_documents_options, \
             f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
-        self._create_collection_and_index_if_not_exist(index=index, index_param=index_param)
+        collection = self._create_collection_and_index_if_not_exist(index=index, index_param=index_param)
         field_map = self._create_document_field_map()
 
         if len(documents) == 0:
             logger.warning("Calling DocumentStore.write_documents() with empty list")
             return
 
-        connection = connections.get_connection()
-        field_to_idx = self._get_field_to_idx(connection, index)
+        field_to_idx = self._get_field_to_idx(index)
 
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
         document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
@@ -260,7 +261,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                         existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
                         self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
 
-                    vector_ids = connection.insert(index, records)
+                    vector_ids = collection.insert(records)
 
                 docs_to_write_in_sql = []
                 for idx, doc in enumerate(document_batch):
@@ -273,14 +274,14 @@ class MilvusDocumentStore(SQLDocumentStore):
                 progress_bar.update(batch_size)
         progress_bar.close()
 
-        connection.flush(collection_names=[index])
         # TODO: Equivalent in 2.0?
 #        if duplicate_documents == 'overwrite':
 #            connection.compact(collection_name=index)
 
     @staticmethod
-    def _get_field_to_idx(connection, index):
-        resp = connection.describe_collection(index)
+    def _get_field_to_idx(index):
+        connection = connections.get_connection()
+        resp = connection.describe_collection
         collection_schema = CollectionSchema.construct_from_dict(resp)
         field_to_idx: Dict[str, int] = {}
         count = 0
@@ -314,7 +315,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :return: None
         """
         index = index or self.index
-        self._create_collection_and_index_if_not_exist(index)
+        collection = self._create_collection_and_index_if_not_exist(index)
 
         document_count = self.get_document_count(index=index)
         if document_count == 0:
@@ -323,8 +324,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         logger.info(f"Updating embeddings for {document_count} docs...")
 
-        connection = connections.get_connection()
-        field_to_idx = self._get_field_to_idx(connection, index)
+        field_to_idx = self._get_field_to_idx(index)
 
         result = self._query(
             index=index,
@@ -355,7 +355,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                             # TODO: check whether to throw error or not?
                             pass
 
-                vector_ids = connection.insert(index, records)
+                vector_ids = collection.insert(records)
 
                 vector_id_map = {}
                 for vector_id, doc in zip(vector_ids, document_batch):
@@ -365,7 +365,6 @@ class MilvusDocumentStore(SQLDocumentStore):
                 progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
 
-        connection.flush(collection_names=[index])
         # TODO: Equivalent in 2.0?
         # self.milvus_server.compact(collection_name=index)
 
