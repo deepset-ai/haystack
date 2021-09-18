@@ -486,7 +486,6 @@ class MilvusDocumentStore(SQLDocumentStore):
             else:
                 connection.drop_collection(collection_name=index)
 
-            connection.flush(collection_names=[index])
             # TODO: Equivalent in 2.0?
             # self.milvus_server.compact(collection_name=index)
 
