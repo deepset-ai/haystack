@@ -7,7 +7,7 @@ import psutil
 import pytest
 import requests
 from elasticsearch import Elasticsearch
-from pymilvus import Milvus
+from pymilvus import Milvus, connections
 
 from haystack.classifier import FARMClassifier
 from haystack.generator.transformers import Seq2SeqGenerator
@@ -449,10 +449,12 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
             embedding_field=embedding_field,
             index="haystack_test",
         )
-        _, collections = document_store.milvus_server.list_collections()
+
+        connection = connections.get_connection()
+        _, collections = connection.list_collections()
         for collection in collections:
             if collection.startswith("haystack_test"):
-                document_store.milvus_server.drop_collection(collection)
+                connection.drop_collection(collection)
         return document_store
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(

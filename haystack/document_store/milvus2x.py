@@ -46,7 +46,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             vector_dim: int = 768,
             index_file_size: int = 1024,
             similarity: str = "dot_product",
-            index_type: str = "FLAT",
+            index_type: str = "IVF_FLAT",
             index_param: Optional[Dict[str, Any]] = None,
             search_param: Optional[Dict[str, Any]] = None,
             return_embedding: bool = False,
@@ -155,13 +155,12 @@ class MilvusDocumentStore(SQLDocumentStore):
         index_param: Optional[Dict[str, Any]] = None,
     ):
         index = index or self.index
+        index_param = index_param or self.index_param
+        custom_fields = self.custom_fields or []
 
         connection = connections.get_connection()
         has_collection = connection.has_collection(collection_name=index)
         if not has_collection:
-            index_param = index_param or self.index_param
-            custom_fields = self.custom_fields or []
-
             fields = [
                 FieldSchema(name=self.id_field, dtype=DataType.INT64, is_primary=True, auto_id=True),
                 FieldSchema(name=self.embedding_field, dtype=DataType.FLOAT_VECTOR, dim=self.vector_dim)
