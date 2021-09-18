@@ -281,7 +281,7 @@ class MilvusDocumentStore(SQLDocumentStore):
     @staticmethod
     def _get_field_to_idx(index):
         connection = connections.get_connection()
-        resp = connection.describe_collection
+        resp = connection.describe_collection(index)
         collection_schema = CollectionSchema.construct_from_dict(resp)
         field_to_idx: Dict[str, int] = {}
         count = 0
