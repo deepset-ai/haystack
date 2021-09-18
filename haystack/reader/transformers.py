@@ -1,12 +1,16 @@
 from typing import List, Optional
+import logging
 
 from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering
 import torch
 import numpy as np
 import pandas as pd
 
-from haystack import Document
+from haystack import Document, Answer, Span
 from haystack.reader.base import BaseReader
+
+
+logger = logging.getLogger(__name__)
 
 
 class TransformersReader(BaseReader):
@@ -196,13 +200,18 @@ class TableReader:
         self.top_k = top_k
         self.max_seq_len = max_seq_len
 
-    def predict(self, query: str, tables: List[pd.DataFrame], top_k: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
 
         if top_k is None:
             top_k = self.top_k
 
         answers = []
-        for table in tables:
+        for document in documents:
+            if document.content_type != "table":
+                logger.warning(f"Skipping document with id {document.id} in TableReader, as it is not of type table.")
+                continue
+
+            table = document.content
             # Tokenize query and current table
             inputs = self.tokenizer(table=table,
                                     queries=query,
@@ -228,15 +237,27 @@ class TableReader:
             # Calculate answer score
             current_score = self._calculate_answer_score(outputs.logits.detach(), inputs, current_answer_coordinates)
 
-            answers.append({
-                "answer_coordinates": current_answer_coordinates,
-                "answer_cells": current_answer_cells,
-                "aggregation_operator": current_aggregation_operator,
-                "score": current_score
-            })
+            if current_aggregation_operator != "NONE":
+                answer_str = ", ".join(current_answer_cells)
+            else:
+                answer_str = f"{current_aggregation_operator} > {', '.join(current_answer_cells)}"
+            answer_offsets = self._calculate_answer_offsets(current_answer_coordinates, table)
+
+            answers.append(
+                Answer(
+                    answer=answer_str,
+                    type="extractive",
+                    score=current_score,
+                    context=table,
+                    offsets_in_document=answer_offsets,
+                    offsets_in_context=answer_offsets,
+                    document_id=document.id,
+                    meta={"aggregation_operator": current_aggregation_operator}
+                )
+            )
 
         # Sort answers by score and select top-k answers
-        answers = sorted(answers, key=lambda k: k["score"], reverse=True)
+        answers = sorted(answers, key=lambda k: k.score, reverse=True)
         answers = answers[:top_k]
 
         results = {"query": query,
@@ -261,5 +282,16 @@ class TableReader:
         answer_cell_probabilities = [all_cell_probabilities[coord] for coord in answer_coordinates]
         
         return np.mean(answer_cell_probabilities)
+
+
+    @staticmethod
+    def _calculate_answer_offsets(answer_coordinates, table):
+        answer_offsets = []
+        n_rows, n_columns = table.shape
+        for coord in answer_coordinates:
+            answer_cell_offset = (coord[0] * n_columns) + coord[1]
+            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
+            
+        return answer_offsets
 
 
