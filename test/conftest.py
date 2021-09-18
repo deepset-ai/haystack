@@ -451,7 +451,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         )
 
         connection = connections.get_connection()
-        _, collections = connection.list_collections()
+        collections = connection.list_collections()
         for collection in collections:
             if collection.startswith("haystack_test"):
                 connection.drop_collection(collection)
