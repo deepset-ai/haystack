@@ -438,7 +438,10 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = float(expit(np.asarray(raw_score / 100)))
+            if self.similarity == 'cosine':
+                doc.score = (raw_score + 1) / 2
+            else:
+                doc.score = float(expit(np.asarray(raw_score / 100)))
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
 

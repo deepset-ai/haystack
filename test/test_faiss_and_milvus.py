@@ -234,7 +234,7 @@ def test_faiss_cosine_similarity(tmp_path):
         assert np.allclose(original_emb[0], result_emb, rtol=0.01)
         
         # check if the score is plausible for cosine similarity
-        assert -1.0 <= doc.score <= 1.0
+        assert 0 <= doc.score <= 1.0
 
     # now check if vectors are normalized when updating embeddings
     class MockRetriever():
@@ -263,7 +263,8 @@ def test_faiss_cosine_sanity_check(tmp_path):
     VEC_2 = np.array([.4, .5, .6], dtype="float32")
 
     # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
-    KNOWN_COSINE = 0.9746317
+    # The score is normalized to yield a value between 0 and 1.
+    KNOWN_COSINE = (0.9746317 + 1) / 2
 
     docs = [{"name": "vec_1", "text": "vec_1", "embedding": VEC_1}]
     document_store.write_documents(documents=docs)
