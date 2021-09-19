@@ -1,7 +1,7 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import logging
 
-from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering
+from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
 import torch
 import numpy as np
 import pandas as pd
@@ -177,7 +177,12 @@ class TransformersReader(BaseReader):
         raise NotImplementedError("Batch prediction not yet available in TransformersReader.")
 
 
-class TableReader:
+class TableReader(BaseReader):
+    """
+    Transformer-based model for extractive Question Answering on Tables with TaPas
+    using the HuggingFace's transformers framework (https://github.com/huggingface/transformers).
+    With this reader, you can directly get predictions via predict()
+    """
 
     def __init__(
             self,
@@ -189,6 +194,24 @@ class TableReader:
             max_seq_len: int = 256,
 
     ):
+        """
+        Load a TableQA model from Transformers.
+        Available models include:
+
+        - ``'google/tapas-base-finetuned-wtq`'``
+        - ``'google/tapas-base-finetuned-wikisql-supervised``'
+
+        See https://huggingface.co/models?pipeline_tag=table-question-answering
+        for full list of available TableQA models.
+
+        :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
+        See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param tokenizer: Name of the tokenizer (usually the same as model)
+        :param use_gpu: Whether to make use of a GPU (if available).
+        :param top_k: The maximum number of answers to return
+        :param max_seq_len: Max sequence length of one input text for the model.
+        """
 
         self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
         if use_gpu and torch.cuda.is_available():
@@ -199,8 +222,24 @@ class TableReader:
             self.tokenizer = TapasTokenizer.from_pretrained(tokenizer)
         self.top_k = top_k
         self.max_seq_len = max_seq_len
+        self.return_no_answers = False
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+        """
+        Use loaded TableQA model to find answers for a query in the supplied list of Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+                 a question cannot be answered by a given table.
+
+        :param query: Query string
+        :param documents: List of Document in which to search for the answer. Documents should be
+                          of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return
+        :return: Dict containing query and answers
+
+        """
 
         if top_k is None:
             top_k = self.top_k
@@ -265,7 +304,12 @@ class TableReader:
 
         return results
     
-    def _calculate_answer_score(self, logits, inputs, answer_coordinates):
+    def _calculate_answer_score(self, logits: torch.Tensor, inputs: BatchEncoding,
+                                answer_coordinates: List[Tuple[int, int]]):
+        """
+        Calculates the answer score by computing each cell's probability of being part of the answer
+        and taking the mean probability of the answer cells.
+        """
 
         # Calculate answer score
         # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
@@ -285,7 +329,11 @@ class TableReader:
 
 
     @staticmethod
-    def _calculate_answer_offsets(answer_coordinates, table):
+    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame):
+        """
+        Calculates the answer cell offsets of the linearized table based on the
+        answer cell coordinates.
+        """
         answer_offsets = []
         n_rows, n_columns = table.shape
         for coord in answer_coordinates:
@@ -294,4 +342,6 @@ class TableReader:
             
         return answer_offsets
 
+    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
 
+        raise NotImplementedError("Batch prediction not yet available in TableReader.")
