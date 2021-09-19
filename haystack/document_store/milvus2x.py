@@ -231,6 +231,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         add_vectors = False if document_objects[0].embedding is None else True
 
+        mutation_result: Any = None
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             records: List[Dict[str, Any]] = [
