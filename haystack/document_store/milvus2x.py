@@ -233,7 +233,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
-            records: List[Dict[str, any]] = [
+            records: List[Dict[str, Any]] = [
                 {
                     "name": field_name,
                     "type": dtype,
@@ -347,7 +347,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         with tqdm(total=document_count, disable=not self.progress_bar, position=0, unit=" docs",
                   desc="Updating Embedding") as progress_bar:
             for document_batch in batched_documents:
-                records: List[Dict[str, any]] = [
+                records: List[Dict[str, Any]] = [
                     {
                         "name": field_name,
                         "type": dtype,
@@ -412,7 +412,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
 
         connection.load_collection(index)
-        
+
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
         dsl: Dict[str, Any] = {
