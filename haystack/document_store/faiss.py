@@ -1,7 +1,11 @@
+import os
+import json
 import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
+
+from haystack.document_store import sql
 try:
     import faiss
 except ImportError:
@@ -32,7 +36,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def __init__(
         self,
-        sql_url: str = "sqlite:///",
+        sql_url: str = "sqlite:///faiss_document_store.db",
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional["faiss.swigfaiss.Index"] = None,
@@ -82,13 +86,18 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            sql_url=sql_url, vector_dim=vector_dim, faiss_index_factory_str=faiss_index_factory_str,
-            faiss_index=faiss_index, return_embedding=return_embedding,
-            duplicate_documents=duplicate_documents, index=index, similarity=similarity,
-            embedding_field=embedding_field, progress_bar=progress_bar
+            sql_url=sql_url, 
+            vector_dim=vector_dim, 
+            faiss_index_factory_str=faiss_index_factory_str,
+            faiss_index=faiss_index, 
+            return_embedding=return_embedding,
+            duplicate_documents=duplicate_documents, 
+            index=index, 
+            similarity=similarity,
+            embedding_field=embedding_field, 
+            progress_bar=progress_bar
         )
 
         if similarity == "dot_product" or similarity == 'cosine':
@@ -450,40 +459,71 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def save(self, file_path: Union[str, Path]):
+    def save(self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
         Save FAISS Index to the specified file.
 
-        :param file_path: Path to save to.
+        :param index_path: Path to save the FAISS index to.
+        :param config_path: Path to save the initial configuration parameters to. 
+            Defaults to the same as the file path, save the extension (.json).
+            This file contains all the parameters passed to FAISSDocumentStore()
+            at creation time (for example the SQL path, vector_dim, etc), and will be 
+            used by the `load` method to restore the index with the appropriate configuration.
         :return: None
         """
-        faiss.write_index(self.faiss_indexes[self.index], str(file_path))
+        if not config_path:
+            index_path = Path(index_path)
+            config_path = index_path.with_suffix(".json")
+
+        faiss.write_index(self.faiss_indexes[self.index], str(index_path))
+        with open(config_path, 'w') as ipp:
+            json.dump(self.pipeline_config["params"], ipp)
 
     @classmethod
-    def load(
-        cls,
-        faiss_file_path: Union[str, Path],
-        sql_url: str,
-        index: str,
-    ):
+    def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
         Note: In order to have a correct mapping from FAISS to SQL,
               make sure to use the same SQL DB that you used when calling `save()`.
 
-        :param faiss_file_path: Stored FAISS index file. Can be created via calling `save()`
+        :param index_path: Stored FAISS index file. Can be created via calling `save()`
+        :param config_path: Stored FAISS initial configuration parameters. 
+            Can be created via calling `save()`
         :param sql_url: Connection string to the SQL database that contains your docs and metadata.
+            Overrides the value defined in the `faiss_init_params_path` file, if present
         :param index: Index name to load the FAISS index as. It must match the index name used for
-                      when creating the FAISS index.
-        :return:
+                      when creating the FAISS index. Overrides the value defined in the 
+                      `faiss_init_params_path` file, if present
+        :return: the DocumentStore
         """
-        """
-        """
-        faiss_index = faiss.read_index(str(faiss_file_path))
-        return cls(
-            faiss_index=faiss_index,
-            sql_url=sql_url,
-            vector_dim=faiss_index.d,
-            index=index,
-        )
+        if not config_path:
+            index_path = Path(index_path)
+            faiss_init_params_path = index_path.with_suffix(".json")
 
+        init_params: dict = {}
+        try:
+            with open(faiss_init_params_path, 'r') as ipp:
+                init_params = json.load(ipp)
+        except OSError as e:
+            raise ValueError(f"Can't open FAISS configuration file `{faiss_init_params_path}`. "
+                             "Make sure the file exists and the you have the correct permissions "
+                             "to access it.") from e
+
+        faiss_index = faiss.read_index(str(index_path))
+
+        # Add other init params to override the ones defined in the init params file
+        init_params["faiss_index"] = faiss_index
+        init_params["vector_dim"]=faiss_index.d
+
+        document_store = cls(**init_params)
+
+        # This check ensures the correct document database was loaded.
+        # If it fails, make sure you provided the path to the database
+        # used when creating the original FAISS index
+        if not document_store.get_document_count() == document_store.get_embedding_count():
+            raise ValueError("The number of documents present in the SQL database does not "
+                             "match the number of embeddings in FAISS. Make sure your FAISS "
+                             "configuration file correctly points to the same database that "
+                             "was used when creating the original index.")
+
+        return document_store
