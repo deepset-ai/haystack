@@ -40,7 +40,7 @@ def tutorial1_basic_qa_pipeline():
     #
     # Start an Elasticsearch server
     # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
-    # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
+    # your environment (e.g. in Colab notebooks), then you can manually download and execute Elasticsearch from source.
 
     launch_es()
 
