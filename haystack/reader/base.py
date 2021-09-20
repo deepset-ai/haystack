@@ -17,7 +17,7 @@ class BaseReader(BaseComponent):
     query_time = 0
 
     @abstractmethod
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None)-> List[Answer]:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         pass
 
     @abstractmethod
@@ -47,8 +47,8 @@ class BaseReader(BaseComponent):
                                    type="extractive",
                                    score=float(expit(np.asarray(no_ans_score) / 8)) if use_confidence_scores else no_ans_score,  # just a pseudo prob for now or old score,
                                    context=None,
-                                   offsets_in_context=Span(start=0, end=0),
-                                   offsets_in_document=Span(start=0, end=0),
+                                   offsets_in_context=[Span(start=0, end=0)],
+                                   offsets_in_document=[Span(start=0, end=0)],
                                    document_id=None,
                                    meta=None)
 

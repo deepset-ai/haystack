@@ -156,7 +156,6 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             if not qa.get("is_impossible", False):
                 for answer in qa["answers"]:
                     ans = answer["text"]
-                    cur_ans_start = None
                     # TODO The following block of code means that answer_start is never calculated
                     #  and cur_id is always None for open_domain
                     #  This can be rewritten so that this function could try to calculate offsets

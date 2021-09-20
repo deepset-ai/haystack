@@ -127,7 +127,7 @@ class BaseDocumentStore(BaseComponent):
             if open_domain:
                 group_by_id_list = [l.query]
             else:
-                group_by_id_list = [l.document_id, l.query]
+                group_by_id_list = [l.document.id, l.query]
             if aggregate_by_meta:
                 if type(aggregate_by_meta) == str:
                     aggregate_by_meta = [aggregate_by_meta]

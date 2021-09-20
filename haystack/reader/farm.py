@@ -345,7 +345,7 @@ class FARMReader(BaseReader):
 
         return result
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None)->List[Answer]:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use loaded QA model to find answers for a query in the supplied list of Document.
 
@@ -388,6 +388,7 @@ class FARMReader(BaseReader):
         )
         # assemble answers from all the different documents & format them.
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
+        # TODO: potentially simplify return here to List[Answer] and handle no_ans_gap differently
         result = {"query": query,
                   "no_ans_gap": max_no_ans_gap,
                   "answers": answers}

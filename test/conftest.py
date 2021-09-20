@@ -270,9 +270,9 @@ def de_to_en_translator():
 def test_docs_xs():
     return [
         # current "dict" format for a document
-        {"text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
+        {"content": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
         # meta_field at the top level for backward compatibility
-        {"text": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
+        {"content": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
         # Document object for a doc
         Document(content="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"})
     ]
