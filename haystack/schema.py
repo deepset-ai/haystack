@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from typing import Any, Optional, Dict, List, Union, Tuple
 from dataclasses import dataclass
 
 try:
     from typing import Literal
 except ImportError:
-    from typing_extensions import Literal
+    from typing_extensions import Literal #type: ignore
 
 from uuid import uuid4
 from copy import deepcopy
@@ -13,6 +15,7 @@ import numpy as np
 from abc import abstractmethod
 import inspect
 import logging
+import time
 
 import pandas as pd
 
@@ -178,10 +181,8 @@ class Label:
                  document: Document,
                  is_correct_answer: bool,
                  is_correct_document: bool,
-                 origin: Literal["user-feedback", "gold-annotation"],
+                 origin: Literal["user-feedback", "gold-label"],
                  id: Optional[str] = None,
-                 # document_id: Optional[str] = None, # if we have Document up there we don't need the ID here
-                 # offset_start_in_doc: Optional[int] = None, # part of Answer object?
                  no_answer: Optional[bool] = None,
                  pipeline_id: Optional[str] = None,  # switch to pipeline_id/name/hash?
                  created_at: Optional[str] = None,
@@ -217,32 +218,40 @@ class Label:
         else:
             self.id = str(uuid4())
 
-        # TODO autocreate timestamp if None
+        if created_at is None:
+            created_at = time.strftime("%Y-%m-%d %H:%M:%S")
         self.created_at = created_at
+
         self.updated_at = updated_at
         self.query = query
         self.answer = answer
+        self.document = document
         self.is_correct_answer = is_correct_answer
         self.is_correct_document = is_correct_document
         self.origin = origin
-        self.document_id = document_id
-        self.offset_start_in_doc = offset_start_in_doc
 
-        if no_answer == True:
-            if self.answer.answer != ""  or self.answer.context or self.answer.offsets_in_context or self.answer.offsets_in_document:
-                raise ValueError(f"Got no_answer == True while there seems to be an possible Answer: {self.answer}")
-        if no_answer == False:
-            if self.answer.answer == "":
-                raise ValueError(f"Got no_answer == False while there seems to be no possible Answer: {self.answer}")
-        else:
-            # Automatically infer no_answer from Answer object
-            if self.answer.answer == "" or self.answer.answer is None:
-                no_answer = True
+        # Remove
+        # self.document_id = document_id
+        # self.offset_start_in_doc = offset_start_in_doc
+
+        # If an Answer is provided we need to make sure that it's consistent with the `no_answer` value
+        # TODO: reassess if we want to enforce Span.start=0 and Span.end=0 for no_answer=True
+        if self.answer is not None:
+            if no_answer == True:
+                if self.answer.answer != ""  or self.answer.context:
+                    raise ValueError(f"Got no_answer == True while there seems to be an possible Answer: {self.answer}")
+            if no_answer == False:
+                if self.answer.answer == "":
+                    raise ValueError(f"Got no_answer == False while there seems to be no possible Answer: {self.answer}")
             else:
-                no_answer = False
+                # Automatically infer no_answer from Answer object
+                if self.answer.answer == "" or self.answer.answer is None:
+                    no_answer = True
+                else:
+                    no_answer = False
         self.no_answer = no_answer
 
-        self.model_id = model_id
+        self.pipeline_id = pipeline_id
         if not meta:
             self.meta = dict()
         else:
@@ -258,17 +267,14 @@ class Label:
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
-                getattr(other, 'question', None) == self.query and
+                getattr(other, 'query', None) == self.query and
                 getattr(other, 'answer', None) == self.answer and
                 getattr(other, 'is_correct_answer', None) == self.is_correct_answer and
                 getattr(other, 'is_correct_document', None) == self.is_correct_document and
                 getattr(other, 'origin', None) == self.origin and
-                getattr(other, 'document_id', None) == self.document_id and
-                getattr(other, 'offset_start_in_doc', None) == self.offset_start_in_doc and
+                getattr(other, 'document', None) == self.document and
                 getattr(other, 'no_answer', None) == self.no_answer and
-                getattr(other, 'model_id', None) == self.model_id and
-                getattr(other, 'created_at', None) == self.created_at and
-                getattr(other, 'updated_at', None) == self.updated_at)
+                getattr(other, 'pipeline_id', None) == self.pipeline_id)
 
     def __hash__(self):
         return hash(self.query +
@@ -276,10 +282,9 @@ class Label:
                     str(self.is_correct_answer) +
                     str(self.is_correct_document) +
                     str(self.origin) +
-                    str(self.document_id) +
-                    str(self.offset_start_in_doc) +
+                    str(self.document) +
                     str(self.no_answer) +
-                    str(self.model_id)
+                    str(self.pipeline_id)
                     )
 
     def __repr__(self):
@@ -319,6 +324,7 @@ class MultiLabel:
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
         self.no_answer = False in [l.no_answer for l.no_answer in labels]
+        self.document_ids = [l.document.id for l in labels]
 
         # TODO which attributes do we still really need here?
         # self.is_correct_answer = is_correct_answer
@@ -333,7 +339,7 @@ class MultiLabel:
             self.meta = meta
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
-        unique_values = Set([l.get_attr(key) for l in self.labels])
+        unique_values = set([l.get_attr(key) for l in self.labels])
         if must_be_single_value and len(unique_values > 1):
                 raise ValueError(f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}")
         else:

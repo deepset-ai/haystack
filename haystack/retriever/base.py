@@ -5,7 +5,7 @@ from time import perf_counter
 from functools import wraps
 from tqdm import tqdm
 from copy import deepcopy
-from haystack import Document, BaseComponent
+from haystack import Document, BaseComponent, MultiLabel
 from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters, open_domain=open_domain)
+        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters, open_domain=open_domain)
 
         correct_retrievals = 0
         summed_avg_precision = 0.0
@@ -96,11 +96,11 @@ class BaseRetriever(BaseComponent):
         # Collect questions and corresponding answers/document_ids in a dict
         question_label_dict = {}
         for label in labels:
-            id_question_tuple = (label.multiple_document_ids[0], label.question)
+            id_question_tuple = (label.document_ids[0], label.query)
             if open_domain:
-                question_label_dict[id_question_tuple] = label.multiple_answers
+                question_label_dict[id_question_tuple] = [a.answer for a in label.answers]
             else:
-                deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
+                deduplicated_doc_ids = list(set([str(x) for x in label.document_ids]))
                 question_label_dict[id_question_tuple] = deduplicated_doc_ids
 
         predictions = []

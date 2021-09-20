@@ -7,7 +7,7 @@ from functools import wraps
 from time import perf_counter
 
 
-from haystack import Document, BaseComponent, Answer
+from haystack import Document, BaseComponent, Answer, Span
 
 
 class BaseReader(BaseComponent):
@@ -43,7 +43,7 @@ class BaseReader(BaseComponent):
         else:  # case: at least one passage predicts an answer (positive no_ans_gap)
             no_ans_score = best_score_answer - max_no_ans_gap
 
-        no_ans_prediction = Answer(answer=None,
+        no_ans_prediction = Answer(answer="",
                                    type="extractive",
                                    score=float(expit(np.asarray(no_ans_score) / 8)) if use_confidence_scores else no_ans_score,  # just a pseudo prob for now or old score,
                                    context=None,

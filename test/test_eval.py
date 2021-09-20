@@ -30,18 +30,21 @@ def test_add_eval_data(document_store, batch_size):
         if l.query == "In what country is Normandy located?":
             label = l
             break
-    assert label.answer == "France"
+    assert label.answer.answer == "France"
     assert label.no_answer == False
     assert label.is_correct_answer == True
     assert label.is_correct_document == True
-    assert label.question == "In what country is Normandy located?"
-    assert label.origin == "gold_label"
-    assert label.offset_start_in_doc == 159
+    assert label.query == "In what country is Normandy located?"
+    assert label.origin == "gold-label"
+    assert label.answer.offsets_in_document[0].start == 159
+    assert label.answer.context[label.answer.offsets_in_context[0].start:label.answer.offsets_in_context[0].end] == "France"
+    assert label.answer.document_id == label.document.id
 
     # check combination
-    doc = document_store.get_document_by_id(label.document_id, index="haystack_test_eval_document")
-    start = label.offset_start_in_doc
-    end = start + len(label.answer)
+    doc = document_store.get_document_by_id(label.document.id, index="haystack_test_eval_document")
+    start = label.answer.offsets_in_document[0].start
+    end = label.answer.offsets_in_document[0].end
+    assert end == start + len(label.answer.answer)
     assert doc.content[start:end] == "France"
 
 

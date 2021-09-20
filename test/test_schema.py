@@ -1,4 +1,30 @@
 from haystack import Document
+from haystack import Label
+from haystack import Answer
+
+def test_equal_label():
+    label1 = Label(query="some",
+                   answer=Answer(answer="an answer",type="extractive", score=0.1, document_id=123),
+                   document=Document(content="some text", content_type="text"),
+                   is_correct_answer=True,
+                   is_correct_document=True,
+                   origin="user-feedback")
+    label2 = Label(query="some",
+                   answer=Answer(answer="annother answer", type="extractive", score=0.1, document_id=123),
+                   document=Document(content="some text", content_type="text"),
+                   is_correct_answer = True,
+                   is_correct_document = True,
+                   origin = "user-feedback")
+
+    label3 = Label(query="some",
+                   answer=Answer(answer="an answer",type="extractive", score=0.1, document_id=123),
+                   document=Document(content="some text", content_type="text"),
+                   is_correct_answer = True,
+                   is_correct_document = True,
+                   origin = "user-feedback")
+
+    assert label3 == label1
+    assert label2 != label1
 
 
 def test_generate_doc_id_using_text():
