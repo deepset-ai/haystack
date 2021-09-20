@@ -1097,9 +1097,10 @@ class RayPipeline(Pipeline):
                          continues to run even after exiting the script.
         :param kwargs: Optional parameters for initializing Ray.
         """
+        super().__init__()
         ray.init(address=address, **kwargs)
         serve.start(detached=detached)
-        super().__init__()
+        self._ray_handle = None
 
     @classmethod
     def load_from_yaml(
@@ -1157,8 +1158,8 @@ class RayPipeline(Pipeline):
         )
         pipeline = cls(address=address, **kwargs)
 
-        _RayPipelineWrapperNode.deploy(data, pipeline_config, definitions)
-        pipeline._ray_handle = _RayPipelineWrapperNode.get_handle()
+        _RayPipelineWrapperNode.deploy(data, pipeline_config, definitions)  # type: ignore
+        pipeline._ray_handle = _RayPipelineWrapperNode.get_handle()  # type: ignore
 
         return pipeline
 
