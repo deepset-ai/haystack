@@ -37,7 +37,7 @@ def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction["answers"][0].context == None
     assert no_answer_prediction["answers"][0].document_id == None
     answers = [x.answer for x in no_answer_prediction["answers"]]
-    assert answers.count(None) == 1
+    assert answers.count("") == 1
     assert len(no_answer_prediction["answers"]) == 5
 
 
