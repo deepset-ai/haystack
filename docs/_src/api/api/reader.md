@@ -183,7 +183,7 @@ List of dictionaries containing query and answers
 #### predict
 
 ```python
- | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Answer]
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None)
 ```
 
 Use loaded QA model to find answers for a query in the supplied list of Document.
