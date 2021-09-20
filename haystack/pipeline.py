@@ -1090,13 +1090,15 @@ class RayPipeline(Pipeline):
     By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
     set the `address` parameter when creating the RayPipeline instance.
     """
-    def __init__(self, address: str = None, **kwargs):
+    def __init__(self, address: str = None, detached: bool = False, **kwargs):
         """
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+        :param detached: Whether the Pipeline should be detached to this script. If set to True, the Pipeline
+                         continues to run even after exiting the script.
         :param kwargs: Optional parameters for initializing Ray.
         """
         ray.init(address=address, **kwargs)
-        serve.start()
+        serve.start(detached=detached)
         super().__init__()
 
     @classmethod
@@ -1155,13 +1157,32 @@ class RayPipeline(Pipeline):
         )
         pipeline = cls(address=address, **kwargs)
 
+        _RayPipelineWrapperNode.deploy(data, pipeline_config, definitions)
+        pipeline._ray_handle = _RayPipelineWrapperNode.get_handle()
+
+        return pipeline
+
+    def run(self, **kwargs):
+        output = ray.get(self._ray_handle.remote(**kwargs))
+        return output
+
+    def add_node(self, component, name: str, inputs: List[str]):
+        raise NotImplementedError(
+            "The current implementation of RayPipeline only supports loading Pipelines from a YAML file."
+        )
+
+
+@serve.deployment
+class _RayPipelineWrapperNode(Pipeline):
+    def __init__(self, data, pipeline_config, definitions):
+        super().__init__()
         for node_config in pipeline_config["nodes"]:
-            if pipeline.root_node is None:
+            if self.root_node is None:
                 root_node = node_config["inputs"][0]
                 if root_node in ["Query", "File"]:
-                    pipeline.root_node = root_node
-                    handle = cls._create_ray_deployment(component_name=root_node, pipeline_config=data)
-                    pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1,  inputs=[])
+                    self.root_node = root_node
+                    handle = self._create_ray_deployment(component_name=root_node, pipeline_config=data)
+                    self._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1, inputs=[])
                 else:
                     raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
 
@@ -1169,15 +1190,13 @@ class RayPipeline(Pipeline):
             component_type = definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
             replicas = next(node for node in pipeline_config["nodes"] if node["name"] == name).get("replicas", 1)
-            handle = cls._create_ray_deployment(component_name=name, pipeline_config=data, replicas=replicas)
-            pipeline._add_ray_deployment_in_graph(
+            handle = self._create_ray_deployment(component_name=name, pipeline_config=data, replicas=replicas)
+            self._add_ray_deployment_in_graph(
                 handle=handle,
                 name=name,
                 outgoing_edges=component_class.outgoing_edges,
                 inputs=node_config.get("inputs", []),
             )
-
-        return pipeline
 
     @classmethod
     def _create_ray_deployment(cls, component_name: str, pipeline_config: dict, replicas: int = 1):
@@ -1243,10 +1262,11 @@ class RayPipeline(Pipeline):
 
         return output_dict
 
-    def add_node(self, component, name: str, inputs: List[str]):
-        raise NotImplementedError(
-            "The current implementation of RayPipeline only supports loading Pipelines from a YAML file."
-        )
+    def __call__(self, **kwargs):
+        """
+        Ray calls this method which is then re-directed to the corresponding component's run().
+        """
+        return self.run(**kwargs)
 
     def _add_ray_deployment_in_graph(self, handle, name: str, outgoing_edges: int, inputs: List[str]):
         """
