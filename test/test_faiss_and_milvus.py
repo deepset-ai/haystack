@@ -1,4 +1,5 @@
 import faiss
+import math
 import numpy as np
 import pytest
 from haystack import Document
@@ -66,7 +67,6 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
-
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
@@ -205,3 +205,71 @@ def test_faiss_passing_index_from_outside(tmp_path):
         assert 0 <= int(doc.meta["vector_id"]) <= 7
 
 
+def test_faiss_cosine_similarity(tmp_path):
+    document_store = FAISSDocumentStore(
+        sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", similarity='cosine'
+    )
+
+    # below we will write documents to the store and then query it to see if vectors were normalized
+
+    document_store.write_documents(documents=DOCUMENTS)
+
+    # note that the same query will be used later when querying after updating the embeddings
+    query = np.random.rand(768).astype(np.float32)
+
+    query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+
+    # check if search with cosine similarity returns the correct number of results
+    assert len(query_results) == len(DOCUMENTS)
+    indexed_docs = {}
+    for doc in DOCUMENTS:
+        indexed_docs[doc["text"]] = doc["embedding"]
+
+    for doc in query_results:
+        result_emb = doc.embedding
+        original_emb = np.array([indexed_docs[doc.text]], dtype="float32")
+        faiss.normalize_L2(original_emb)
+
+        # check if the stored embedding was normalized
+        assert np.allclose(original_emb[0], result_emb, rtol=0.01)
+        
+        # check if the score is plausible for cosine similarity
+        assert 0 <= doc.score <= 1.0
+
+    # now check if vectors are normalized when updating embeddings
+    class MockRetriever():
+        def embed_passages(self, docs):
+            return [np.random.rand(768).astype(np.float32) for doc in docs]
+
+    retriever = MockRetriever()
+    document_store.update_embeddings(retriever=retriever)
+    query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+
+    for doc in query_results:
+        original_emb = np.array([indexed_docs[doc.text]], dtype="float32")
+        faiss.normalize_L2(original_emb)
+        # check if the original embedding has changed after updating the embeddings
+        assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
+
+
+
+def test_faiss_cosine_sanity_check(tmp_path):
+    document_store = FAISSDocumentStore(
+        sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", similarity='cosine',
+        vector_dim=3
+    )
+
+    VEC_1 = np.array([.1, .2, .3], dtype="float32")
+    VEC_2 = np.array([.4, .5, .6], dtype="float32")
+
+    # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
+    # The score is normalized to yield a value between 0 and 1.
+    KNOWN_COSINE = (0.9746317 + 1) / 2
+
+    docs = [{"name": "vec_1", "text": "vec_1", "embedding": VEC_1}]
+    document_store.write_documents(documents=docs)
+
+    query_results = document_store.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
+
+    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
+    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.000001)
