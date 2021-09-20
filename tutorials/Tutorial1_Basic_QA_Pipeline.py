@@ -7,7 +7,7 @@
 # In this tutorial we will work on a slightly different domain: "Game of Thrones".
 #
 # Let's see how we can use a bunch of Wikipedia articles to answer a variety of questions about the
-# marvellous seven kingdoms...
+# marvellous seven kingdoms.
 
 import logging
 import subprocess
