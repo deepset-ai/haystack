@@ -67,8 +67,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                             or one with docs that you used in Haystack before and want to load again.
         :param return_embedding: To return document embedding
         :param index: Name of index in document store to use.
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
-                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
+                   In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+                   For `dot_product`: expit(np.asarray(raw_score / 100))
+                   FOr `cosine`: (raw_score + 1) / 2
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
@@ -88,15 +91,15 @@ class FAISSDocumentStore(SQLDocumentStore):
             embedding_field=embedding_field, progress_bar=progress_bar
         )
 
-        if similarity == "dot_product":
+        if similarity == "dot_product" or similarity == 'cosine':
             self.similarity = similarity
             self.metric_type = faiss.METRIC_INNER_PRODUCT
         elif similarity == "l2":
             self.similarity = similarity
             self.metric_type = faiss.METRIC_L2
         else:
-            raise ValueError("The FAISS document store can currently only support dot_product similarity. "
-                             "Please set similarity=\"dot_product\"")
+            raise ValueError("The FAISS document store can currently only support dot_product, cosine and l2 similarity. "
+                             "Please set similarity to one of the above.")
 
         self.vector_dim = vector_dim
         self.faiss_index_factory_str = faiss_index_factory_str
@@ -184,6 +187,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                 embeddings_to_index = np.array(embeddings, dtype="float32")
+
+                if self.similarity == 'cosine':
+                    faiss.normalize_L2(embeddings_to_index)
+
                 self.faiss_indexes[index].add(embeddings_to_index)
 
             docs_to_write_in_sql = []
@@ -261,6 +268,10 @@ class FAISSDocumentStore(SQLDocumentStore):
                 assert len(document_batch) == len(embeddings)
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
+
+                if self.similarity == 'cosine':
+                    faiss.normalize_L2(embeddings_to_index)
+
                 self.faiss_indexes[index].add(embeddings_to_index)
 
                 vector_id_map = {}
@@ -417,6 +428,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
+
+        if self.similarity == 'cosine':
+            faiss.normalize_L2(query_emb)
+
         score_matrix, vector_id_matrix = self.faiss_indexes[index].search(query_emb, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
 
@@ -426,7 +441,10 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = float(expit(np.asarray(raw_score / 100)))
+            if self.similarity == 'cosine':
+                doc.score = (raw_score + 1) / 2
+            else:
+                doc.score = float(expit(np.asarray(raw_score / 100)))
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
 
