@@ -44,10 +44,11 @@ class BaseReader(BaseComponent):
             no_ans_score = best_score_answer - max_no_ans_gap
 
         no_ans_prediction = Answer(answer=None,
+                                   type="extractive",
                                    score=float(expit(np.asarray(no_ans_score) / 8)) if use_confidence_scores else no_ans_score,  # just a pseudo prob for now or old score,
                                    context=None,
-                                   offset_start=0,
-                                   offset_end=0,
+                                   offsets_in_context=Span(start=0, end=0),
+                                   offsets_in_document=Span(start=0, end=0),
                                    document_id=None,
                                    meta=None)
 
