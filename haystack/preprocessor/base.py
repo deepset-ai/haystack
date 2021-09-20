@@ -47,7 +47,6 @@ class BasePreProcessor(BaseComponent):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
-        **kwargs,
     ):
         documents = self.process(
             documents=documents,
@@ -59,5 +58,5 @@ class BasePreProcessor(BaseComponent):
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
         )
-        result = {"documents": documents, **kwargs}
+        result = {"documents": documents}
         return result, "output_1"

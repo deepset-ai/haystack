@@ -5,7 +5,7 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from haystack import MultiLabel, Label
+from haystack import MultiLabel, Label, BaseComponent, Document
 
 from farm.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
 from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
@@ -13,7 +13,7 @@ from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
 logger = logging.getLogger(__name__)
 
 
-class EvalDocuments:
+class EvalDocuments(BaseComponent):
     """
     This is a pipeline node that should be placed after a node that returns a List of Document, e.g., Retriever or
     Ranker, in order to assess its performance. Performance metrics are stored in this class and updated as each
@@ -22,21 +22,22 @@ class EvalDocuments:
     a look at our evaluation tutorial for more info about open vs closed domain eval (
     https://haystack.deepset.ai/tutorials/evaluation).
     """
-    def __init__(self, debug: bool=False, open_domain: bool=True, top_k_eval_documents: int=10, name="EvalDocuments"):
+
+    outgoing_edges = 1
+
+    def __init__(self, debug: bool=False, open_domain: bool=True, top_k: int=10):
         """
         :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
                             When False, correct retrieval is evaluated based on document_id.
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
         :param top_k: calculate eval metrics for top k results, e.g., recall@k
         """
-        self.outgoing_edges = 1
         self.init_counts()
         self.no_answer_warning = False
         self.debug = debug
         self.log: List = []
         self.open_domain = open_domain
-        self.top_k_eval_documents = top_k_eval_documents
-        self.name = name
+        self.top_k = top_k
         self.too_few_docs_warning = False
         self.top_k_used = 0
 
@@ -53,25 +54,25 @@ class EvalDocuments:
         self.reciprocal_rank_sum = 0.0
         self.has_answer_reciprocal_rank_sum = 0.0
 
-    def run(self, documents, labels: dict, top_k_eval_documents: Optional[int]=None, **kwargs):
+    def run(self, documents: List[Document], labels: List[Label], top_k: Optional[int] = None):  # type: ignore
         """Run this node on one sample and its labels"""
         self.query_count += 1
-        retriever_labels = get_label(labels, kwargs["node_id"])
-        if not top_k_eval_documents:
-            top_k_eval_documents = self.top_k_eval_documents
+        retriever_labels = get_label(labels, self.name)
+        if not top_k:
+            top_k = self.top_k
 
         if not self.top_k_used:
-            self.top_k_used = top_k_eval_documents
-        elif self.top_k_used != top_k_eval_documents:
+            self.top_k_used = top_k
+        elif self.top_k_used != top_k:
             logger.warning(f"EvalDocuments was last run with top_k_eval_documents={self.top_k_used} but is "
-                           f"being run again with top_k_eval_documents={self.top_k_eval_documents}. "
+                           f"being run again with top_k={self.top_k}. "
                            f"The evaluation counter is being reset from this point so that the evaluation "
                            f"metrics are interpretable.")
             self.init_counts()
 
-        if len(documents) < top_k_eval_documents and not self.too_few_docs_warning:
-            logger.warning(f"EvalDocuments is being provided less candidate documents than top_k_eval_documents "
-                           f"(currently set to {top_k_eval_documents}).")
+        if len(documents) < top_k and not self.too_few_docs_warning:
+            logger.warning(f"EvalDocuments is being provided less candidate documents than top_k "
+                           f"(currently set to {top_k}).")
             self.too_few_docs_warning = True
 
         # TODO retriever_labels is currently a Multilabel object but should eventually be a RetrieverLabel object
@@ -89,7 +90,7 @@ class EvalDocuments:
         # If there are answer span annotations in the labels
         else:
             self.has_answer_count += 1
-            retrieved_reciprocal_rank = self.reciprocal_rank_retrieved(retriever_labels, documents, top_k_eval_documents)
+            retrieved_reciprocal_rank = self.reciprocal_rank_retrieved(retriever_labels, documents, top_k)
             self.reciprocal_rank_sum += retrieved_reciprocal_rank
             correct_retrieval = True if retrieved_reciprocal_rank > 0 else False
             self.has_answer_correct += int(correct_retrieval)
@@ -101,11 +102,11 @@ class EvalDocuments:
         self.recall = self.correct_retrieval_count / self.query_count
         self.mean_reciprocal_rank = self.reciprocal_rank_sum / self.query_count
         
-        self.top_k_used = top_k_eval_documents
+        self.top_k_used = top_k
 
         if self.debug:
-            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank, **kwargs})
-        return {"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank, **kwargs}, "output_1"
+            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank})
+        return {"correct_retrieval": correct_retrieval}, "output_1"
 
     def is_correctly_retrieved(self, retriever_labels, predictions):
         return self.reciprocal_rank_retrieved(retriever_labels, predictions) > 0
@@ -142,7 +143,7 @@ class EvalDocuments:
         print(f"mean_reciprocal_rank@{self.top_k_used}: {self.mean_reciprocal_rank:.4f}")
 
 
-class EvalAnswers:
+class EvalAnswers(BaseComponent):
     """
     This is a pipeline node that should be placed after a Reader in order to assess the performance of the Reader
     individually or to assess the extractive QA performance of the whole pipeline. Performance metrics are stored in
@@ -151,6 +152,8 @@ class EvalAnswers:
     since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
     open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
     """
+
+    outgoing_edges = 1
 
     def __init__(self,
                  skip_incorrect_retrieval: bool = True,
@@ -174,7 +177,6 @@ class EvalAnswers:
                           - Large model for German only: "deepset/gbert-large-sts"
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
         """
-        self.outgoing_edges = 1
         self.log: List = []
         self.debug = debug
         self.skip_incorrect_retrieval = skip_incorrect_retrieval
@@ -203,14 +205,14 @@ class EvalAnswers:
             self.top_1_sas = 0.0
             self.top_k_sas = 0.0
 
-    def run(self, labels, answers, **kwargs):
+    def run(self, labels: List[Label], answers: List[dict], correct_retrieval: bool):  # type: ignore
         """Run this node on one sample and its labels"""
         self.query_count += 1
         predictions = answers
-        skip = self.skip_incorrect_retrieval and not kwargs.get("correct_retrieval")
+        skip = self.skip_incorrect_retrieval and not correct_retrieval
         if predictions and not skip:
             self.correct_retrieval_count += 1
-            multi_labels = get_label(labels, kwargs["node_id"])
+            multi_labels = get_label(labels, self.name)
             # If this sample is impossible to answer and expects a no_answer response
             if multi_labels.no_answer:
                 self.no_answer_count += 1
@@ -254,7 +256,7 @@ class EvalAnswers:
                 self.top_k_em_count += top_k_em
                 self.top_k_f1_sum += top_k_f1
                 self.update_has_answer_metrics()
-        return {**kwargs}, "output_1"
+        return {}, "output_1"
 
     def evaluate_extraction(self, gold_labels, predictions):
         if self.open_domain:

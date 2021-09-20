@@ -34,19 +34,24 @@ def test_api(reader, document_store):
     assert response_json["answers"][0]["answer"] == "Adobe Systems"
     document_id = response_json["answers"][0]["document_id"]
 
-    query_with_filter = {"query": "Who made the PDF specification?", "filters": {"meta_key": "meta_value"}}
+    query_with_filter = {"query": "Who made the PDF specification?", "params": {"filters": {"meta_key": "meta_value"}}}
     response = client.post(url="/query", json=query_with_filter)
     assert 200 == response.status_code
     response_json = response.json()
     assert response_json["answers"][0]["answer"] == "Adobe Systems"
 
-    query_with_filter_list = {"query": "Who made the PDF specification?", "filters": {"meta_key": ["meta_value", "another_value"]}}
+    query_with_filter_list = {
+        "query": "Who made the PDF specification?",
+        "params": {"filters": {"meta_key": ["meta_value", "another_value"]}}
+    }
     response = client.post(url="/query", json=query_with_filter_list)
     assert 200 == response.status_code
     response_json = response.json()
     assert response_json["answers"][0]["answer"] == "Adobe Systems"
 
-    query_with_invalid_filter = {"query": "Who made the PDF specification?", "filters": {"meta_key": "invalid_value"}}
+    query_with_invalid_filter = {
+        "query": "Who made the PDF specification?", "params": {"filters": {"meta_key": "invalid_value"}}
+    }
     response = client.post(url="/query", json=query_with_invalid_filter)
     assert 200 == response.status_code
     response_json = response.json()

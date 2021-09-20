@@ -115,7 +115,7 @@ def tutorial7_rag_generator():
     from haystack.pipeline import GenerativeQAPipeline
     pipe = GenerativeQAPipeline(generator=generator, retriever=retriever)
     for question in QUESTIONS:
-        res = pipe.run(query=question, top_k_generator=1, top_k_retriever=5)
+        res = pipe.run(query=question, params={"Generator": {"top_k": 1}, "Retriever": {"top_k": 5}})
         print(res)
 
 if __name__ == "__main__":

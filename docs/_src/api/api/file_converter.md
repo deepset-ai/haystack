@@ -77,6 +77,15 @@ class FileTypeClassifier(BaseComponent)
 
 Route files in an Indexing Pipeline to corresponding file converters.
 
+<a name="base.FileTypeClassifier.run"></a>
+#### run
+
+```python
+ | run(file_paths: Union[Path, List[Path]])
+```
+
+Return the output based on file extension
+
 <a name="txt"></a>
 # Module txt
 
@@ -271,4 +280,61 @@ Extract text from a .pdf file using the pdftotext library (https://www.xpdfreade
                  Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
                  "xef\xac\x81c" (see test cases). That's why we keep "Latin 1" as default here.
                  (See list of available encodings by running `pdftotext -listencodings` in the terminal)
+
+<a name="pdf.PDFToTextOCRConverter"></a>
+## PDFToTextOCRConverter Objects
+
+```python
+class PDFToTextOCRConverter(BaseConverter)
+```
+
+<a name="pdf.PDFToTextOCRConverter.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = ["eng"])
+```
+
+Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
+
+**Arguments**:
+
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+                              The tabular structures in documents might be noise for the reader model if it
+                              does not have table parsing capability for finding answers. However, tables
+                              may also have long strings that could possible candidate for searching answers.
+                              The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages supported by tessarect
+                        (https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html).
+                        This option can be used to add test for encoding errors. If the extracted text is
+                        not one of the valid languages, then it might likely be encoding error resulting
+                        in garbled text.
+
+<a name="pdf.PDFToTextOCRConverter.convert"></a>
+#### convert
+
+```python
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
+```
+
+Convert a file to a dictionary containing the text and any associated meta data.
+
+File converters may extract file meta like name or size. In addition to it, user
+supplied meta data like author, url, external IDs can be supplied as a dictionary.
+
+**Arguments**:
+
+- `file_path`: path of the file to convert
+- `meta`: dictionary of meta data key-value pairs to append in the returned document.
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+                              The tabular structures in documents might be noise for the reader model if it
+                              does not have table parsing capability for finding answers. However, tables
+                              may also have long strings that could possible candidate for searching answers.
+                              The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
+                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
+                        This option can be used to add test for encoding errors. If the extracted text is
+                        not one of the valid languages, then it might likely be encoding error resulting
+                        in garbled text.
+- `encoding`: Select the file encoding (default is `utf-8`)
 

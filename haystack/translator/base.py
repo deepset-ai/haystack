@@ -17,7 +17,6 @@ class BaseTranslator(BaseComponent):
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
-        **kwargs
     ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
         """
         Translate the passed query or a list of documents from language A to B.
@@ -30,29 +29,26 @@ class BaseTranslator(BaseComponent):
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
         answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
-        **kwargs
     ):
         """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
 
-        results: Dict = {
-            **kwargs
-        }
+        results = {}
 
         # This will cover input query stage
         if query:
             results["query"] = self.translate(query=query)
         # This will cover retriever and summarizer
         if documents:
-            dict_key = dict_key or "text"
-            results["documents"] = self.translate(documents=documents, dict_key=dict_key)
+            _dict_key = dict_key or "text"
+            results["documents"] = self.translate(documents=documents, dict_key=_dict_key)
 
         if answers:
-            dict_key = dict_key or "answer"
+            _dict_key = dict_key or "answer"
             if isinstance(answers, Mapping):
                 # This will cover reader
-                results["answers"] = self.translate(documents=answers["answers"], dict_key=dict_key)
+                results["answers"] = self.translate(documents=answers["answers"], dict_key=_dict_key)
             else:
                 # This will cover generator
-                results["answers"] = self.translate(documents=answers, dict_key=dict_key)
+                results["answers"] = self.translate(documents=answers, dict_key=_dict_key)
 
         return results, "output_1"

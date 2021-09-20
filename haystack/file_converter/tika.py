@@ -21,7 +21,9 @@ class TikaXHTMLParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         # find page div
-        pagediv = [value for attr, value in attrs if attr == "class" and value == "page"]
+        pagediv = [
+            value for attr, value in attrs if attr == "class" and value == "page"
+        ]
         if tag == "div" and pagediv:
             self.ingest = True
 
@@ -43,7 +45,7 @@ class TikaConverter(BaseConverter):
         self,
         tika_url: str = "http://localhost:9998/tika",
         remove_numeric_tables: bool = False,
-        valid_languages: Optional[List[str]] = None
+        valid_languages: Optional[List[str]] = None,
     ):
         """
         :param tika_url: URL of the Tika server
@@ -61,15 +63,21 @@ class TikaConverter(BaseConverter):
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            tika_url=tika_url, remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
+            tika_url=tika_url,
+            remove_numeric_tables=remove_numeric_tables,
+            valid_languages=valid_languages,
         )
 
         ping = requests.get(tika_url)
         if ping.status_code != 200:
-            raise Exception(f"Apache Tika server is not reachable at the URL '{tika_url}'. To run it locally"
-                            f"with Docker, execute: 'docker run -p 9998:9998 apache/tika:1.24.1'")
+            raise Exception(
+                f"Apache Tika server is not reachable at the URL '{tika_url}'. To run it locally"
+                f"with Docker, execute: 'docker run -p 9998:9998 apache/tika:1.24.1'"
+            )
         self.tika_url = tika_url
-        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        super().__init__(
+            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
+        )
 
     def convert(
         self,
@@ -101,7 +109,9 @@ class TikaConverter(BaseConverter):
         if valid_languages is None:
             valid_languages = self.valid_languages
 
-        parsed = tikaparser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
+        parsed = tikaparser.from_file(
+            file_path.as_posix(), self.tika_url, xmlContent=True
+        )
         parser = TikaXHTMLParser()
         parser.feed(parsed["content"])
 
@@ -116,7 +126,11 @@ class TikaConverter(BaseConverter):
 
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
-                    if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
+                    if (
+                        words
+                        and len(digits) / len(words) > 0.4
+                        and not line.strip().endswith(".")
+                    ):
                         logger.debug(f"Removing line '{line}' from {file_path}")
                         continue
 

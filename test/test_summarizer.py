@@ -67,8 +67,8 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
         document_store.update_embeddings(retriever=retriever)
 
     query = "Where is Eiffel Tower?"
-    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer)
-    output = pipeline.run(query=query, top_k_retriever=1, return_in_answer_format=True)
+    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
+    output = pipeline.run(query=query, params={"top_k": 1})
     answers = output["answers"]
     assert len(answers) == 1
     assert "The Eiffel Tower is a landmark in Paris, France." == answers[0]["answer"]
@@ -89,8 +89,8 @@ def test_summarization_pipeline_one_summary(document_store, retriever, summarize
         document_store.update_embeddings(retriever=retriever)
 
     query = "Where is Eiffel Tower?"
-    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer)
-    output = pipeline.run(query=query, top_k_retriever=2, generate_single_summary=True, return_in_answer_format=True)
+    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
+    output = pipeline.run(query=query, params={"Retriever": {"top_k": 2}, "generate_single_summary": True})
     answers = output["answers"]
     assert len(answers) == 1
     assert answers[0]["answer"] in EXPECTED_ONE_SUMMARIES
@@ -124,7 +124,7 @@ def test_summarization_pipeline_with_translator(
         output_translator=en_to_de_translator,
         pipeline=base_pipeline
     )
-    output = pipeline.run(query=query, top_k_retriever=2, generate_single_summary=True)
+    output = pipeline.run(query=query, params={"Retriever": {"top_k": 2}, "generate_single_summary": True})
     # SearchSummarizationPipeline return answers but Summarizer return documents
     documents = output["documents"]
     assert len(documents) == 1

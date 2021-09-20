@@ -35,6 +35,8 @@ overview_json = "../../docs/_src/benchmarks/retriever_performance.json"
 map_json = "../../docs/_src/benchmarks/retriever_map.json"
 speed_json = "../../docs/_src/benchmarks/retriever_speed.json"
 
+DEVICES = None
+
 
 seed = 42
 random.seed(42)
@@ -47,7 +49,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
             logger.info(f"##### Start indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
             try:
                 doc_store = get_document_store(doc_store_name)
-                retriever = get_retriever(retriever_name, doc_store)
+                retriever = get_retriever(retriever_name, doc_store, DEVICES)
                 docs, _ = prepare_data(data_dir=data_dir,
                                        filename_gold=filename_gold,
                                        filename_negative=filename_negative,
@@ -143,7 +145,7 @@ def benchmark_querying(n_docs_options,
                 else:
                     similarity = "dot_product"
                 doc_store = get_document_store(doc_store_name, similarity=similarity)
-                retriever = get_retriever(retriever_name, doc_store)
+                retriever = get_retriever(retriever_name, doc_store, DEVICES)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
                 docs, labels = prepare_data(data_dir=data_dir,

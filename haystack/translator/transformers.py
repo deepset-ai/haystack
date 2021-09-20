@@ -75,7 +75,6 @@ class TransformersTranslator(BaseTranslator):
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
-        **kwargs
     ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
         """
         Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.

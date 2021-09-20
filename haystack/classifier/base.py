@@ -26,7 +26,7 @@ class BaseClassifier(BaseComponent):
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         pass
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, **kwargs): # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None): # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
@@ -36,11 +36,7 @@ class BaseClassifier(BaseComponent):
 
         document_ids = [doc.id for doc in results]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
-        output = {
-            "query": query,
-            "documents": results,
-            **kwargs
-        }
+        output = {"documents": results}
 
         return output, "output_1"
 

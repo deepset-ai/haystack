@@ -87,6 +87,8 @@ The quickest way to see what Haystack offers is to start a [Docker Compose](http
     cd haystack
     docker-compose pull
     docker-compose up
+    
+    # Or on a GPU machine: docker-compose -f docker-compose-gpu.yml up
 ```
 
 You should be able to see the following in your terminal window as part of the log output:
@@ -316,16 +318,17 @@ Please also refer to our [documentation](https://haystack.deepset.ai/overview/in
 
 **What**
 
-Different converters to extract text from your original files (pdf, docx, txt, html).
-While it's almost impossible to cover all types, layouts, and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta-information (e.g., page splits). The converters are easily extendable so that you can customize them for your files if needed.
+Different converters to extract text from your original files (pdf, docx, txt, md, html).
+While it's almost impossible to cover all types, layouts, and special cases (especially in PDFs), we cover the most common formats (incl. multi-column) and extract meta-information (e.g., page splits). The converters are easily extendable so that you can customize them for your files if needed. We also provide an OCR based approach for converting images or PDFs. 
 
 **Available options**
 
 - Txt
-- PDF
+- PDF (incl. OCR)
 - Docx
 - Apache Tika (Supports > 340 file formats)
 - Markdown
+- Images
 
 **Example**
 
@@ -509,7 +512,7 @@ A minimal Open-Domain QA Pipeline:
 p = Pipeline()
 p.add_node(component=retriever, name="ESRetriever1", inputs=["Query"])
 p.add_node(component=reader, name="QAReader", inputs=["ESRetriever1"])
-res = p.run(query="What did Einstein work on?", top_k_retriever=1)
+res = p.run(query="What did Einstein work on?", params={"retriever": {"top_k": 1}})
 
 ```
 You can **draw the DAG** to inspect better what you are building:
@@ -566,7 +569,7 @@ You can launch them like this:
 ```
 docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
-docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.5.0
+docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.0
 docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
 ```
