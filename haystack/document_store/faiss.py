@@ -67,8 +67,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                             or one with docs that you used in Haystack before and want to load again.
         :param return_embedding: To return document embedding
         :param index: Name of index in document store to use.
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
-                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
+                   In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+                   For `dot_product`: expit(np.asarray(raw_score / 100))
+                   FOr `cosine`: (raw_score + 1) / 2
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
