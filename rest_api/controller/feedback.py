@@ -102,7 +102,7 @@ def export_extractive_qa_feedback(
             raise HTTPException(
                 status_code=500, detail="Could not find document with id {label.document_id} for label id {label.id}"
             )
-
+        #TODO offsets
         if full_document_context:
             context = document.content
             answer_start = label.offset_start_in_doc

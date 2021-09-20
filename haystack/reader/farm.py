@@ -496,6 +496,7 @@ class FARMReader(BaseReader):
             if doc_id in aggregated_per_doc:
                 for label in aggregated_per_doc[doc_id]:
                     # add to existing answers
+                    #TODO offsets (whole block)
                     if id_question_tuple in aggregated_per_question.keys():
                         if label.offset_start_in_doc == 0 and label.answer == "":
                             continue

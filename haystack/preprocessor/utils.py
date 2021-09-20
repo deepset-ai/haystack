@@ -191,6 +191,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                         is_correct_answer=True,
                         is_correct_document=True,
                         document_id=cur_id,
+                        #TODO offsets
                         offset_start_in_doc=cur_ans_start,
                         no_answer=qa.get("is_impossible", False),
                         origin="gold_label",
@@ -205,6 +206,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                         is_correct_answer=True,
                         is_correct_document=True,
                         document_id=s.id,
+                        #TODO offsets
                         offset_start_in_doc=0,
                         no_answer=qa.get("is_impossible", False),
                         origin="gold_label",

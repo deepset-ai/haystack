@@ -3,6 +3,7 @@ from typing import Any, Optional, Dict, List, Union
 try:
     from typing import Literal
 except ImportError:
+    logger
     from typing_extensions import Literal
 
 from uuid import uuid4
@@ -125,7 +126,7 @@ class Span:
 
 @dataclass
 class Answer:
-    answer: Optional[str]
+    answer: str
     type: Literal["generative", "extractive"]
     score: float
     context: Optional[Union[str, pd.DataFrame]] = None
@@ -138,7 +139,7 @@ class Answer:
     The fundamental object in Haystack to represent any type of Answers (e.g. extractive QA, generative QA or TableQA).
     For example, it's used within some Nodes like the Reader but also in the REST API.
 
-    :param answer: The answer string.
+    :param answer: The answer string. If there's no possible answer (aka "no_answer" or "is_impossible) this will be an empty string.
     :param type: Whether this answer comes from an extractive model (i.e. we can locate an exact answer string in one
                  of the documents) or from a generative model (i.e. no pointer to a specific document, no offsets ...) 
     :param score: The relevance score of the Answer determined by a model (e.g. Reader or Generator).
@@ -181,9 +182,9 @@ class Label:
                  origin: Literal["user-feedback", "gold-annotation"],
                  id: Optional[str] = None,
                  # document_id: Optional[str] = None, # if we have Document up there we don't need the ID here
-                 offset_start_in_doc: Optional[int] = None, # part of Answer object?
+                 # offset_start_in_doc: Optional[int] = None, # part of Answer object?
                  no_answer: Optional[bool] = None,
-                 model_id: Optional[int] = None,  # switch to pipeline_id/name/hash?
+                 pipeline_id: Optional[str] = None,  # switch to pipeline_id/name/hash?
                  created_at: Optional[str] = None,
                  updated_at: Optional[str] = None,
                  meta: Optional[dict] = None
@@ -194,7 +195,7 @@ class Label:
         or, user-feedback from the Haystack REST API.
 
         :param query: the question (or query) for finding answers.
-        :param answer: the answer string.
+        :param answer: the answer object.
         :param is_correct_answer: whether the sample is positive or negative.
         :param is_correct_document: in case of negative sample(is_correct_answer is False), there could be two cases;
                                     incorrect answer but correct document & incorrect document. This flag denotes if
@@ -217,6 +218,7 @@ class Label:
         else:
             self.id = str(uuid4())
 
+        # TODO autocreate timestamp if None
         self.created_at = created_at
         self.updated_at = updated_at
         self.query = query
@@ -226,7 +228,21 @@ class Label:
         self.origin = origin
         self.document_id = document_id
         self.offset_start_in_doc = offset_start_in_doc
+
+        if no_answer == True:
+            if self.answer.answer != ""  or self.answer.context or self.answer.offsets_in_context or self.answer.offsets_in_document:
+                raise ValueError(f"Got no_answer == True while there seems to be an possible Answer: {self.answer}")
+        if no_answer == False:
+            if self.answer.answer == "":
+                raise ValueError(f"Got no_answer == False while there seems to be no possible Answer: {self.answer}")
+        else:
+            # Automatically infer no_answer from Answer object
+            if self.answer.answer == "" or self.answer.answer is None:
+                no_answer = True
+            else:
+                no_answer = False
         self.no_answer = no_answer
+
         self.model_id = model_id
         if not meta:
             self.meta = dict()
@@ -274,48 +290,55 @@ class Label:
         return str(self.to_dict())
 
 
-# Can we switch to an object that rather consists of List[Label] or is that nasty in the handling?
 class MultiLabel:
     def __init__(self,
-                 question: str,
-                 multiple_answers: List[str],
-                 is_correct_answer: bool,
-                 is_correct_document: bool,
-                 origin: str,
-                 multiple_document_ids: List[Any],
-                 multiple_offset_start_in_docs: List[Any],
-                 no_answer: Optional[bool] = None,
-                 model_id: Optional[int] = None,
-                 meta: dict = None
+                 labels = List[Label],
+                 drop_negative_labels=False
                  ):
         """
-        Object used to aggregate multiple possible answers for the same question
+        There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
+        answers for one question or multiple documents contain the information you want for a query.
+        This class is "syntactic sugar" that simplifies the work with such a list of related Labels.
+        It stored the original labels in MultiLabel.labels and provides additional aggregated attributes that are
+        automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
+        underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
 
-        :param question: the question(or query) for finding answers.
-        :param multiple_answers: list of possible answer strings
-        :param is_correct_answer: whether the sample is positive or negative.
-        :param is_correct_document: in case of negative sample(is_correct_answer is False), there could be two cases;
-                                    incorrect answer but correct document & incorrect document. This flag denotes if
-                                    the returned document was correct.
-        :param origin: the source for the labels. It can be used to later for filtering.
-        :param multiple_document_ids: the document_store's IDs for the returned answer documents.
-        :param multiple_offset_start_in_docs: the answer start offsets in the document.
-        :param no_answer: whether the question in unanswerable.
-        :param model_id: model_id used for prediction (in-case of user feedback).
+        :param labels: A list lof labels that belong to a similar query
+        :param drop_negative_labels: list of possible answer strings
         """
-        self.question = question
-        self.multiple_answers = multiple_answers
-        self.is_correct_answer = is_correct_answer
-        self.is_correct_document = is_correct_document
-        self.origin = origin
-        self.multiple_document_ids = multiple_document_ids
-        self.multiple_offset_start_in_docs = multiple_offset_start_in_docs
-        self.no_answer = no_answer
-        self.model_id = model_id
+
+        # drop duplicate labels and remove negative labels if needed.
+        if drop_negative_labels:
+            self.labels = [l for l in set(labels)
+                           if ((l.is_correct_answer and l.is_correct_document)
+                               or (l.answer is None and l.is_correct_document))]
+        else:
+            self.labels = list(set(labels))
+
+        self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
+        self.answers = [l.answer for l in labels]
+        # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
+        # users decided which aggregation logic they want
+        self.no_answer = False in [l.no_answer for l.no_answer in labels]
+
+        # TODO which attributes do we still really need here?
+        # self.is_correct_answer = is_correct_answer
+        # self.is_correct_document = is_correct_document
+        # self.origin = origin
+        # self.multiple_document_ids = multiple_document_ids
+        # self.multiple_offset_start_in_docs = multiple_offset_start_in_docs
+        # self.model_id = model_id
         if not meta:
             self.meta = dict()
         else:
             self.meta = meta
+
+    def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
+        unique_values = Set([l.get_attr(key) for l in self.labels])
+        if must_be_single_value and len(unique_values > 1):
+                raise ValueError(f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}")
+        else:
+            return list(unique_values)
 
     @classmethod
     def from_dict(cls, dict):
@@ -390,7 +413,7 @@ class BaseComponent:
         return component_instance
 
     @abstractmethod
-    def run(self, *args: Any, **kwargs: Any):
+    def run(self, *args: Any, **kwargs: Any)->Tuple[Dict,str]:
         """
         Method that will be executed when the node in the graph is called.
         The argument that are passed can vary between different types of nodes

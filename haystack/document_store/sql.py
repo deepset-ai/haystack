@@ -346,6 +346,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 is_correct_answer=label.is_correct_answer,
                 is_correct_document=label.is_correct_document,
                 answer=label.answer,
+                #TODO offsets
                 offset_start_in_doc=label.offset_start_in_doc,
                 model_id=label.model_id,
                 index=index,
@@ -441,6 +442,7 @@ class SQLDocumentStore(BaseDocumentStore):
             is_correct_answer=row.is_correct_answer,
             is_correct_document=row.is_correct_document,
             answer=row.answer,
+            #TODO offsets
             offset_start_in_doc=row.offset_start_in_doc,
             model_id=row.model_id,
             created_at=row.created_at,

@@ -355,6 +355,7 @@ def test_labels(document_store):
         is_correct_answer=True,
         is_correct_document=True,
         document_id="123",
+        #TODO offsets
         offset_start_in_doc=12,
         no_answer=False,
         origin="gold_label",

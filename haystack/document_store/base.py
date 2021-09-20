@@ -146,49 +146,10 @@ class BaseDocumentStore(BaseComponent):
             else:
                 question_ans_dict[group_by_id] = [l]
 
-        # Aggregate labels
+        # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
+        # aggregated attributes like `no_answer`
         for q, ls in question_ans_dict.items():
-            ls = list(set(ls))  # get rid of exact duplicates
-            # check if there are both text answer and "no answer" present
-            t_present = False
-            no_present = False
-            no_idx = []
-            for idx, l in enumerate(ls):
-                if len(l.answer) == 0:
-                    no_present = True
-                    no_idx.append(idx)
-                else:
-                    t_present = True
-            # if both text and no answer are present, remove no answer labels
-            if t_present and no_present:
-                logger.warning(
-                    f"Both text label and 'no answer possible' label is present for question: {ls[0].query}")
-                for remove_idx in no_idx[::-1]:
-                    ls.pop(remove_idx)
-
-            # construct Aggregated_label
-            for i, l in enumerate(ls):
-                if i == 0:
-                    # Keep only the label metadata that we are aggregating by
-                    if aggregate_by_meta:
-                        meta_new = {k: v for k, v in l.meta.items() if k in aggregate_by_meta}
-                    else:
-                        meta_new = {}
-
-                    agg_label = MultiLabel(question=l.query,
-                                           multiple_answers=[l.answer],
-                                           is_correct_answer=l.is_correct_answer,
-                                           is_correct_document=l.is_correct_document,
-                                           origin=l.origin,
-                                           multiple_document_ids=[l.document_id],
-                                           multiple_offset_start_in_docs=[l.offset_start_in_doc],
-                                           no_answer=l.no_answer,
-                                           model_id=l.model_id,
-                                           meta=meta_new)
-                else:
-                    agg_label.multiple_answers.append(l.answer)
-                    agg_label.multiple_document_ids.append(l.document_id)
-                    agg_label.multiple_offset_start_in_docs.append(l.offset_start_in_doc)
+            agg_label = MultiLabel(labels=ls, drop_negative_labels=False)
             aggregated_labels.append(agg_label)
         return aggregated_labels
 
