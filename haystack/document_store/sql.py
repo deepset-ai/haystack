@@ -5,7 +5,7 @@ from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
 import numpy as np
-from sqlalchemy import and_, func, create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, text
+from sqlalchemy import and_, func, create_engine, Column, Integer, Float, String, DateTime, ForeignKey, Boolean, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
@@ -30,7 +30,7 @@ class ORMBase(Base):
 class DocumentORM(ORMBase):
     __tablename__ = "document"
 
-    text = Column(Text, nullable=False)
+    content = Column(Text, nullable=False)
     index = Column(String(100), nullable=False)
     vector_id = Column(String(100), unique=True, nullable=True)
 
@@ -58,15 +58,37 @@ class LabelORM(ORMBase):
 
     #TODO adjust to new Label format
     document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    answer_id = Column(String(100), ForeignKey("answer.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     index = Column(String(100), nullable=False)
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String(100), nullable=False)
-    question = Column(Text, nullable=False)
+    query = Column(Text, nullable=False)
     is_correct_answer = Column(Boolean, nullable=False)
     is_correct_document = Column(Boolean, nullable=False)
-    answer = Column(Text, nullable=False)
-    offset_start_in_doc = Column(Integer, nullable=False)
-    model_id = Column(Integer, nullable=True)
+    # answer = Column(Text, nullable=False)
+    # offset_start_in_doc = Column(Integer, nullable=False)
+    pipeline_id = Column(Integer, nullable=True)
+
+
+class AnswerORM(ORMBase):
+    __tablename__ = "answer"
+
+    answer =  Column(Text, nullable=False)
+    type =   Column(String(100), nullable=False)
+    score = Column(Float(), nullable=False)
+    context = Column(Text, nullable=False)
+    # offsets_in_document: Optional[List[Span]] = None
+    # offsets_in_context: Optional[List[Span]] = None
+    document_id =  Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    # ?  meta = relationship("MetaORM", back_populates="answer", lazy="joined")
+
+
+class SpanORM(ORMBase):
+    __tablename__ = "span"
+
+    start = Column(Integer, nullable=False)
+    end = Column(Integer, nullable=False)
+    answer_id =  Column(String(100), ForeignKey("answer.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
 
 class SQLDocumentStore(BaseDocumentStore):
@@ -210,7 +232,7 @@ class SQLDocumentStore(BaseDocumentStore):
         # Refer https://stackoverflow.com/questions/23185319/why-is-loading-sqlalchemy-objects-via-the-orm-5-8x-slower-than-rows-via-a-raw-my
         documents_query = self.session.query(
             DocumentORM.id,
-            DocumentORM.text,
+            DocumentORM.content,
             DocumentORM.vector_id
         ).filter_by(index=index)
 
@@ -444,7 +466,7 @@ class SQLDocumentStore(BaseDocumentStore):
             answer=row.answer,
             #TODO offsets
             offset_start_in_doc=row.offset_start_in_doc,
-            model_id=row.model_id,
+            model_id=row.pipeline_id,
             created_at=row.created_at,
             updated_at=row.updated_at,
             id=row.id

@@ -267,7 +267,7 @@ class EvalAnswers(BaseComponent):
             top_k_em = max([calculate_em_str_multi(gold_labels_list, p) for p in predictions_str])
             top_k_f1 = max([calculate_f1_str_multi(gold_labels_list, p) for p in predictions_str])
         else:
-            logger.error("Closed Domain Reader Evaluation not yet implemented")
+            logger.error("Closed Domain Reader Evaluation not yet implemented for Pipelines. Use Reader.eval() instead.")
             return 0,0,0,0
         return top_1_em, top_1_f1, top_k_em, top_k_f1
 

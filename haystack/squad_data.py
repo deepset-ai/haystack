@@ -78,6 +78,7 @@ class SquadData:
         ]
         return documents
 
+    # TODO refactor to new Label objects
     def to_label_objs(self):
         """Export all labels stored in this object to haystack.Label objects"""
         df_labels = self.df[["id", "question", "answer_text", "answer_start"]]
