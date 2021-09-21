@@ -7,7 +7,7 @@ import torch
 from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from typing import List, Optional, Dict, Union, Generator
+from typing import List, Optional, Dict, Union, Generator, Set, Any
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
@@ -76,7 +76,7 @@ class Inferencer:
         self.language = self.model.get_language()
         self.task_type = task_type
         self.disable_tqdm = disable_tqdm
-        self.problematic_sample_ids = set()  # type ignore
+        self.problematic_sample_ids: Set[List[int]] = set()  # type ignore
 
         # TODO add support for multiple prediction heads
 
@@ -294,7 +294,7 @@ class Inferencer:
             aggregate_preds = hasattr(self.model.prediction_heads[0], "aggregate_preds")
 
         if self.process_pool is None:  # multiprocessing disabled (helpful for debugging or using in web frameworks)
-            predictions = self._inference_without_multiprocessing(dicts, return_json, aggregate_preds)
+            predictions: Any = self._inference_without_multiprocessing(dicts, return_json, aggregate_preds)
             return predictions
         else:  # use multiprocessing for inference
             # Calculate values of multiprocessing_chunksize and num_processes if not supplied in the parameters.
@@ -305,14 +305,14 @@ class Inferencer:
 
             predictions = self._inference_with_multiprocessing(
                 dicts, return_json, aggregate_preds, multiprocessing_chunksize,
-            )  # type ignore
+            )
 
             self.processor.log_problematic(self.problematic_sample_ids)
             # cast the generator to a list if it isnt already a list.
             if type(predictions) != list:
                 return list(predictions)
             else:
-                return predictions  # type ignore
+                return predictions
 
     def _inference_without_multiprocessing(self, dicts: List[Dict], return_json: bool, aggregate_preds: bool) -> List:
         """
@@ -362,11 +362,12 @@ class Inferencer:
 
         # We group the input dicts into chunks and feed each chunk to a different process
         # in the pool, where it gets converted to a pytorch dataset
-        results = self.process_pool.imap(
-            partial(self._create_datasets_chunkwise, processor=self.processor),
-            grouper(iterable=dicts, n=multiprocessing_chunksize),
-            1,
-        )  # type ignore
+        if self.process_pool is not None:
+            results = self.process_pool.imap(
+                partial(self._create_datasets_chunkwise, processor=self.processor),
+                grouper(iterable=dicts, n=multiprocessing_chunksize),
+                1,
+            )
 
         # Once a process spits out a preprocessed chunk. we feed this dataset directly to the model.
         # So we don't need to wait until all preprocessing has finished before getting first predictions.
@@ -402,7 +403,7 @@ class Inferencer:
         dataset, tensor_names, problematic_sample_ids, baskets = processor.dataset_from_dicts(dicts, indices, return_baskets=True)
         return dataset, tensor_names, problematic_sample_ids, baskets
 
-    def _get_predictions(self, dataset: Dataset, tensor_names: List, baskets: List[SampleBasket]):
+    def _get_predictions(self, dataset: Dataset, tensor_names: List, baskets):
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
@@ -413,7 +414,7 @@ class Inferencer:
                         Example: QA - input string to convert the predicted answer from indices back to string space
         :return: list of predictions
         """
-        samples = [s for b in baskets for s in b.samples]  # type ignore
+        samples = [s for b in baskets for s in b.samples]
 
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
