@@ -38,6 +38,7 @@ class Answer(BaseModel):
 
 class Response(BaseModel):
     query: str
+    loading: bool = False
     answers: List[Answer]
 
 
@@ -67,7 +68,13 @@ def _process_request(pipeline, request) -> Response:
                 values = [values]
             filters[key] = values
     params["filters"] = filters
-    result = pipeline.run(query=request.query, params=params)
+
+    try:
+        result = pipeline.run(query=request.query, params=params)
+    except Exception as e:
+        logging.exception(e)
+        return {"query": query, "loading": True, "answers": []}
+    
     end_time = time.time()
     logger.info({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"})
 
