@@ -7,7 +7,7 @@
 # In this tutorial we will work on a slightly different domain: "Game of Thrones".
 #
 # Let's see how we can use a bunch of Wikipedia articles to answer a variety of questions about the
-# marvellous seven kingdoms...
+# marvellous seven kingdoms.
 
 import logging
 import subprocess
@@ -40,7 +40,7 @@ def tutorial1_basic_qa_pipeline():
     #
     # Start an Elasticsearch server
     # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
-    # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
+    # your environment (e.g. in Colab notebooks), then you can manually download and execute Elasticsearch from source.
 
     launch_es()
 
