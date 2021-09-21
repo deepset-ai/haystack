@@ -174,6 +174,7 @@ class Answer:
 #     )
 
 # TODO: Verify compliance with FAST API usage
+@dataclass
 class Label:
     def __init__(self,
                  query: str,
@@ -293,7 +294,7 @@ class Label:
     def __str__(self):
         return str(self.to_dict())
 
-
+@dataclass
 class MultiLabel:
     def __init__(self,
                  labels = List[Label],
