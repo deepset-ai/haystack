@@ -457,19 +457,18 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def _convert_sql_row_to_label(self, row) -> Label:
         label = Label(
-            document_id=row.document_id,
-            no_answer=row.no_answer,
-            origin=row.origin,
             query=row.query,
+            answer=row.answer,
+            document=row.document,
             is_correct_answer=row.is_correct_answer,
             is_correct_document=row.is_correct_document,
-            answer=row.answer,
-            #TODO offsets
-            offset_start_in_doc=row.offset_start_in_doc,
-            model_id=row.pipeline_id,
+            origin=row.origin,
+            id = row.id,
+            no_answer=row.no_answer,
+            pipeline_id=row.pipeline_id,
             created_at=row.created_at,
             updated_at=row.updated_at,
-            id=row.id
+            meta=row.meta
         )
         return label
 

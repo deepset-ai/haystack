@@ -341,7 +341,7 @@ class MultiLabel:
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         unique_values = set([l.get_attr(key) for l in self.labels])
-        if must_be_single_value and len(unique_values > 1):
+        if must_be_single_value and len(unique_values) > 1:
                 raise ValueError(f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}")
         else:
             return list(unique_values)
