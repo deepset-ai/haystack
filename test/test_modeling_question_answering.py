@@ -7,6 +7,26 @@ from haystack.modeling.infer import QAInferencer
 from haystack.modeling.data_handler.inputs import QAInput, Question
 
 
+@pytest.fixture()
+def span_inference_result(bert_base_squad2, caplog=None):
+    if caplog:
+        caplog.set_level(logging.CRITICAL)
+    obj_input = [QAInput(doc_text="Twilight Princess was released to universal critical acclaim and commercial success. It received perfect scores from major publications such as 1UP.com, Computer and Video Games, Electronic Gaming Monthly, Game Informer, GamesRadar, and GameSpy. On the review aggregators GameRankings and Metacritic, Twilight Princess has average scores of 95% and 95 for the Wii version and scores of 95% and 96 for the GameCube version. GameTrailers in their review called it one of the greatest games ever created.",
+                         questions=Question("Who counted the game among the best ever made?", uid="best_id_ever"))]
+    result = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
+    return result
+
+
+@pytest.fixture()
+def no_answer_inference_result(bert_base_squad2, caplog=None):
+    if caplog:
+        caplog.set_level(logging.CRITICAL)
+    obj_input = [QAInput(doc_text="The majority of the forest is contained within Brazil, with 60% of the rainforest, followed by Peru with 13%, Colombia with 10%, and with minor amounts in Venezuela, Ecuador, Bolivia, Guyana, Suriname and French Guiana. States or departments in four nations contain \"Amazonas\" in their names. The Amazon represents over half of the planet's remaining rainforests, and comprises the largest and most biodiverse tract of tropical rainforest in the world, with an estimated 390 billion individual trees divided into 16,000 species.",
+                         questions=Question("The Amazon represents less than half of the planets remaining what?", uid="best_id_ever"))]
+    result = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
+    return result
+
+
 def test_inference_different_inputs(bert_base_squad2):
     qa_format_1 = [
         {
@@ -20,16 +40,6 @@ def test_inference_different_inputs(bert_base_squad2):
     result1 = bert_base_squad2.inference_from_dicts(dicts=qa_format_1)
     result2 = bert_base_squad2.inference_from_objects(objects=[qa_format_2])
     assert result1 == result2
-
-
-@pytest.fixture()
-def span_inference_result(bert_base_squad2, caplog=None):
-    if caplog:
-        caplog.set_level(logging.CRITICAL)
-    obj_input = [QAInput(doc_text="Twilight Princess was released to universal critical acclaim and commercial success. It received perfect scores from major publications such as 1UP.com, Computer and Video Games, Electronic Gaming Monthly, Game Informer, GamesRadar, and GameSpy. On the review aggregators GameRankings and Metacritic, Twilight Princess has average scores of 95% and 95 for the Wii version and scores of 95% and 96 for the GameCube version. GameTrailers in their review called it one of the greatest games ever created.",
-                         questions=Question("Who counted the game among the best ever made?", uid="best_id_ever"))]
-    result = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
-    return result
 
 
 def test_span_inference_result_ranking_by_confidence(bert_base_squad2, caplog=None):
@@ -48,16 +58,6 @@ def test_span_inference_result_ranking_by_confidence(bert_base_squad2, caplog=No
     result_ranked_by_confidence = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
     assert all(result_ranked_by_confidence.prediction[i].confidence >= result_ranked_by_confidence.prediction[i + 1].confidence for i in range(len(result_ranked_by_confidence.prediction) - 1))
     assert not all(result_ranked_by_confidence.prediction[i].score >= result_ranked_by_confidence.prediction[i + 1].score for i in range(len(result_ranked_by_confidence.prediction) - 1))
-
-
-@pytest.fixture()
-def no_answer_inference_result(bert_base_squad2, caplog=None):
-    if caplog:
-        caplog.set_level(logging.CRITICAL)
-    obj_input = [QAInput(doc_text="The majority of the forest is contained within Brazil, with 60% of the rainforest, followed by Peru with 13%, Colombia with 10%, and with minor amounts in Venezuela, Ecuador, Bolivia, Guyana, Suriname and French Guiana. States or departments in four nations contain \"Amazonas\" in their names. The Amazon represents over half of the planet's remaining rainforests, and comprises the largest and most biodiverse tract of tropical rainforest in the world, with an estimated 390 billion individual trees divided into 16,000 species.",
-                         questions=Question("The Amazon represents less than half of the planets remaining what?", uid="best_id_ever"))]
-    result = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
-    return result
 
 
 def test_inference_objs(span_inference_result, caplog=None):
@@ -122,7 +122,7 @@ def test_qa_candidate_attributes(span_inference_result, caplog=None):
                        'n_passages_in_doc', 'offset_answer_end', 'offset_answer_start', 'offset_answer_support_end',
                        'offset_answer_support_start', 'offset_context_window_end', 'offset_context_window_start',
                        'offset_unit', 'passage_id', 'probability', 'score', 'set_answer_string', 'set_context_window',
-                       'to_doc_level', 'to_list'] #'add_cls'
+                       'to_doc_level', 'to_list']
 
     for ag in attributes_gold:
         assert ag in dir(qa_candidate)
