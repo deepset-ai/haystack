@@ -18,7 +18,7 @@ from haystack.document_store.weaviate import WeaviateDocumentStore
 
 from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
-from haystack.modeling.infer import Inferencer
+from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.ranker import FARMRanker, SentenceTransformersRanker
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
@@ -495,3 +495,16 @@ def adaptive_model_qa(num_processes):
     current_process = psutil.Process()
     children = current_process.children()
     assert len(children) == 0
+
+
+@pytest.fixture(scope="module")
+def bert_base_squad2(request):
+    model = QAInferencer.load(
+            "deepset/minilm-uncased-squad2",
+            task_type="question_answering",
+            batch_size=4,
+            num_processes=0,
+            multithreading_rust=False,
+            use_fast=True # TODO parametrize this to test slow as well
+    )
+    return model
