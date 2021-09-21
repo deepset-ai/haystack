@@ -985,7 +985,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1012,8 +1012,11 @@ the vector embeddings are indexed in a FAISS Index.
                     or one with docs that you used in Haystack before and want to load again.
 - `return_embedding`: To return document embedding
 - `index`: Name of index in document store to use.
-- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
-           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
+           In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+           For `dot_product`: expit(np.asarray(raw_score / 100))
+           FOr `cosine`: (raw_score + 1) / 2
 - `embedding_field`: Name of field containing an embedding vector.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
                      Can be helpful to disable in production deployments to keep the logs clean.
@@ -1174,14 +1177,19 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 #### save
 
 ```python
- | save(file_path: Union[str, Path])
+ | save(index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None)
 ```
 
 Save FAISS Index to the specified file.
 
 **Arguments**:
 
-- `file_path`: Path to save to.
+- `index_path`: Path to save the FAISS index to.
+- `config_path`: Path to save the initial configuration parameters to.
+    Defaults to the same as the file path, save the extension (.json).
+    This file contains all the parameters passed to FAISSDocumentStore()
+    at creation time (for example the SQL path, vector_dim, etc), and will be 
+    used by the `load` method to restore the index with the appropriate configuration.
 
 **Returns**:
 
@@ -1192,7 +1200,7 @@ None
 
 ```python
  | @classmethod
- | load(cls, faiss_file_path: Union[str, Path], sql_url: str, index: str)
+ | load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None)
 ```
 
 Load a saved FAISS index from a file and connect to the SQL database.
@@ -1201,14 +1209,18 @@ Note: In order to have a correct mapping from FAISS to SQL,
 
 **Arguments**:
 
-- `faiss_file_path`: Stored FAISS index file. Can be created via calling `save()`
+- `index_path`: Stored FAISS index file. Can be created via calling `save()`
+- `config_path`: Stored FAISS initial configuration parameters.
+    Can be created via calling `save()`
 - `sql_url`: Connection string to the SQL database that contains your docs and metadata.
+    Overrides the value defined in the `faiss_init_params_path` file, if present
 - `index`: Index name to load the FAISS index as. It must match the index name used for
-              when creating the FAISS index.
+              when creating the FAISS index. Overrides the value defined in the 
+              `faiss_init_params_path` file, if present
 
 **Returns**:
 
-
+the DocumentStore
 
 <a name="milvus"></a>
 # Module milvus
