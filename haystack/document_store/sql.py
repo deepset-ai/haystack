@@ -358,19 +358,19 @@ class SQLDocumentStore(BaseDocumentStore):
                            f" the answer annotation and not the question."
                            f" Problematic ids: {','.join(duplicate_ids)}")
         # TODO: Use batch_size
+
+        # TODO verify functionality after refactor
         for label in labels:
             label_orm = LabelORM(
                 id=label.id,
-                document_id=label.document_id,
                 no_answer=label.no_answer,
+                document=label.document,
                 origin=label.origin,
-                question=label.query,
+                query=label.query,
                 is_correct_answer=label.is_correct_answer,
                 is_correct_document=label.is_correct_document,
                 answer=label.answer,
-                #TODO offsets
-                offset_start_in_doc=label.offset_start_in_doc,
-                model_id=label.model_id,
+                pipeline_id=label.pipeline_id,
                 index=index,
             )
             if label.id in duplicate_ids:
