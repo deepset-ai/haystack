@@ -34,9 +34,9 @@ class DocumentORM(ORMBase):
     index = Column(String(100), nullable=False)
     vector_id = Column(String(100), unique=True, nullable=True)
 
+    labels = relationship(LabelORM, back_populates="document")
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaORM", back_populates="documents", lazy="joined")
-
 
 class MetaORM(ORMBase):
     __tablename__ = "meta"
@@ -56,23 +56,24 @@ class MetaORM(ORMBase):
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
-    #TODO adjust to new Label format
     document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     answer_id = Column(String(100), ForeignKey("answer.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+
     index = Column(String(100), nullable=False)
+    query = Column(Text, nullable=False)
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String(100), nullable=False)
-    query = Column(Text, nullable=False)
     is_correct_answer = Column(Boolean, nullable=False)
     is_correct_document = Column(Boolean, nullable=False)
-    # answer = Column(Text, nullable=False)
-    # offset_start_in_doc = Column(Integer, nullable=False)
-    pipeline_id = Column(Integer, nullable=True)
+    pipeline_id = Column(String(500), nullable=True)
+
+    document = relationship(DocumentORM, back_populates="labels")
 
 
 class AnswerORM(ORMBase):
     __tablename__ = "answer"
 
+    #TODO
     answer =  Column(Text, nullable=False)
     type =   Column(String(100), nullable=False)
     score = Column(Float(), nullable=False)
@@ -80,8 +81,7 @@ class AnswerORM(ORMBase):
     # offsets_in_document: Optional[List[Span]] = None
     # offsets_in_context: Optional[List[Span]] = None
     document_id =  Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
-    # ?  meta = relationship("MetaORM", back_populates="answer", lazy="joined")
-
+    #  meta = relationship("MetaORM", back_populates="answer", lazy="joined")
 
 class SpanORM(ORMBase):
     __tablename__ = "span"
