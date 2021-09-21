@@ -86,7 +86,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.set_config(
             host=host, port=port, timeout_config=timeout_config, username=username, password=password,
             index=index, embedding_dim=embedding_dim, text_field=text_field, name_field=name_field,
-            faq_question_field=faq_question_field, similarity=similarity, index_type=index_type,
+            similarity=similarity, index_type=index_type,
             custom_schema=custom_schema,return_embedding=return_embedding, embedding_field=embedding_field,
             progress_bar=progress_bar, duplicate_documents=duplicate_documents
         )
