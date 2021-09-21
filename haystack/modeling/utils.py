@@ -12,7 +12,6 @@ import torch
 import torch.distributed as dist
 from torch import multiprocessing as mp
 from requests.exceptions import ConnectionError
-import time
 
 from haystack.modeling.visual.ascii.images import WORKER_M, WORKER_F, WORKER_X
 
@@ -411,43 +410,3 @@ def log_ascii_workers(n, logger):
     zipped = zip(*all_worker_lines)
     for z in zipped:
         logger.info("  ".join(z))
-
-
-class Benchmarker:
-    """ This is used to measure the time it takes for an inference model to perform preprocessing and then the model
-    processing. After initializing the object, the record() method needs to be called at the timing checkpoints.
-    When finished, Benchmarker.summary() will return the recorded times for the preprocessing stage and model
-    processing stage.
-
-    init            dataset         forward (depr)   formatted
-      |     proc       |     ph         |       ph      |
-      |                |     lm         |               |
-
-    """
-
-    def __init__(self):
-        self.timing = {}
-        self.cuda = torch.cuda.is_available()
-        if self.cuda:
-            self.timing = {"init": torch.cuda.Event(enable_timing=True),
-                           "dataset_single_proc": torch.cuda.Event(enable_timing=True),
-                           "formatted_preds": torch.cuda.Event(enable_timing=True)}
-        self.record("init")
-
-    def record(self, name):
-        if self.cuda:
-            self.timing[name].record()
-            torch.cuda.synchronize()
-        else:
-            self.timing[name] = time.perf_counter()
-
-    def summary(self):
-        preproc_time = self.calc_duration(self.timing["init"], self.timing["dataset_single_proc"])
-        model_time = self.calc_duration(self.timing["dataset_single_proc"], self.timing["formatted_preds"])
-        return preproc_time, model_time
-
-    def calc_duration(self, start, end):
-        if type(start) == torch.cuda.Event and type(end) == torch.cuda.Event:
-            return start.elapsed_time(end) / 1000
-        else:
-            return end - start

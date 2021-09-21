@@ -2,7 +2,6 @@ import logging
 import multiprocessing as mp
 import os
 from functools import partial
-from pathlib import Path
 
 import torch
 from torch.utils.data.sampler import SequentialSampler
@@ -17,7 +16,7 @@ from haystack.modeling.utils import grouper
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.utils import initialize_device_settings, MLFlowLogger
-from haystack.modeling.utils import set_all_seeds, calc_chunksize, log_ascii_workers, Benchmarker
+from haystack.modeling.utils import set_all_seeds, calc_chunksize, log_ascii_workers
 from haystack.modeling.model.predictions import QAPred
 
 logger = logging.getLogger(__name__)
@@ -34,15 +33,13 @@ class Inferencer:
         self,
         model: AdaptiveModel,
         processor: Processor,
-        task_type: str,
+        task_type: Optional[str],
         batch_size: int =4,
         gpu: bool =False,
-        name: str =None,
+        name: Optional[str] =None,
         return_class_probs: bool=False,
-        num_processes: int =None,
-        disable_tqdm: bool =False,
-        benchmarking: bool =False,
-        dummy_ph: bool =False
+        num_processes: Optional[int] =None,
+        disable_tqdm: bool =False
     ):
         """
         Initializes Inferencer from an AdaptiveModel and a Processor instance.
@@ -63,24 +60,10 @@ class Inferencer:
                               :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
                               done using this class. The garbage collector will not do this for you!
         :param disable_tqdm: Whether to disable tqdm logging (can get very verbose in multiprocessing)
-        :param dummy_ph: If True, methods of the prediction head will be replaced
-                     with a dummy method. This is used to isolate lm run time from ph run time.
-        :param benchmarking: If True, a benchmarking object will be initialised within the class and
-                             certain parts of the code will be timed for benchmarking. Should be kept
-                             False if not benchmarking since these timing checkpoints require synchronization
-                             of the asynchronous Pytorch operations and may slow down the model.
         :return: An instance of the Inferencer.
 
         """
         MLFlowLogger.disable()
-
-        # For benchmarking
-        if dummy_ph:
-            model.bypass_ph()
-
-        self.benchmarking = benchmarking
-        if self.benchmarking:
-            self.benchmarker = Benchmarker()
 
         # Init device and distributed settings
         device, n_gpu = initialize_device_settings(use_cuda=gpu, local_rank=-1, use_amp=None)
@@ -93,7 +76,7 @@ class Inferencer:
         self.language = self.model.get_language()
         self.task_type = task_type
         self.disable_tqdm = disable_tqdm
-        self.problematic_sample_ids = set()
+        self.problematic_sample_ids = set()  # type ignore
 
         # TODO add support for multiple prediction heads
 
@@ -108,23 +91,21 @@ class Inferencer:
     @classmethod
     def load(
         cls,
-        model_name_or_path: Union[str, Path],
-        revision: str = None,
+        model_name_or_path: str,
+        revision: Optional[str] = None,
         batch_size: int = 4,
         gpu: bool = False,
-        task_type: str =None,
+        task_type: Optional[str] =None,
         return_class_probs: bool = False,
         strict: bool = True,
         max_seq_len: int = 256,
         doc_stride: int = 128,
         num_processes: Optional[int] =None,
         disable_tqdm: bool = False,
-        tokenizer_class: str = None,
+        tokenizer_class: Optional[str] = None,
         use_fast: bool = True,
         tokenizer_args: Dict =None,
         multithreading_rust: bool = True,
-        dummy_ph: bool = False,
-        benchmarking: bool = False,
         **kwargs
     ):
         """
@@ -161,12 +142,6 @@ class Inferencer:
         :param multithreading_rust: Whether to allow multithreading in Rust, e.g. for FastTokenizers.
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
-        :param dummy_ph: If True, methods of the prediction head will be replaced
-                             with a dummy method. This is used to isolate lm run time from ph run time.
-        :param benchmarking: If True, a benchmarking object will be initialised within the class and
-                             certain parts of the code will be timed for benchmarking. Should be kept
-                             False if not benchmarking since these timing checkpoints require synchronization
-                             of the asynchronous Pytorch operations and may slow down the model.
         :return: An instance of the Inferencer.
 
         """
@@ -221,12 +196,10 @@ class Inferencer:
             name=name,
             return_class_probs=return_class_probs,
             num_processes=num_processes,
-            disable_tqdm=disable_tqdm,
-            benchmarking=benchmarking,
-            dummy_ph=dummy_ph
+            disable_tqdm=disable_tqdm
         )
 
-    def _set_multiprocessing_pool(self, num_processes: int):
+    def _set_multiprocessing_pool(self, num_processes: Optional[int]):
         """
         Initialize a multiprocessing.Pool for instances of Inferencer.
 
@@ -270,7 +243,7 @@ class Inferencer:
                 self.process_pool.join()
             self.process_pool = None
 
-    def save(self, path: Union[str, Path]):
+    def save(self, path: str):
         self.model.save(path)
         self.processor.save(path)
 
@@ -293,7 +266,7 @@ class Inferencer:
         return list(preds_all)
 
     def inference_from_dicts(
-        self, dicts: Union[List[Dict], Generator[Dict, None, None]], return_json: bool = True, multiprocessing_chunksize: int = None
+        self, dicts: List[Dict], return_json: bool = True, multiprocessing_chunksize: Optional[int] = None
     ) -> List:
         """
         Runs down-stream inference on samples created from input dictionaries.
@@ -332,14 +305,14 @@ class Inferencer:
 
             predictions = self._inference_with_multiprocessing(
                 dicts, return_json, aggregate_preds, multiprocessing_chunksize,
-            )
+            )  # type ignore
 
             self.processor.log_problematic(self.problematic_sample_ids)
             # cast the generator to a list if it isnt already a list.
             if type(predictions) != list:
                 return list(predictions)
             else:
-                return predictions
+                return predictions  # type ignore
 
     def _inference_without_multiprocessing(self, dicts: List[Dict], return_json: bool, aggregate_preds: bool) -> List:
         """
@@ -357,8 +330,6 @@ class Inferencer:
             dicts, indices=indices, return_baskets=True
         )
         self.problematic_sample_ids = problematic_ids
-        if self.benchmarking:
-            self.benchmarker.record("dataset_single_proc")
 
         # TODO change format of formatted_preds in QA (list of dicts)
         if aggregate_preds:
@@ -395,7 +366,7 @@ class Inferencer:
             partial(self._create_datasets_chunkwise, processor=self.processor),
             grouper(iterable=dicts, n=multiprocessing_chunksize),
             1,
-        )
+        )  # type ignore
 
         # Once a process spits out a preprocessed chunk. we feed this dataset directly to the model.
         # So we don't need to wait until all preprocessing has finished before getting first predictions.
@@ -442,11 +413,11 @@ class Inferencer:
                         Example: QA - input string to convert the predicted answer from indices back to string space
         :return: list of predictions
         """
-        samples = [s for b in baskets for s in b.samples]
+        samples = [s for b in baskets for s in b.samples]  # type ignore
 
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
-        )
+        )  # type ignore
         preds_all = []
         for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)):
             batch = {key: batch[key].to(self.device) for key in batch}
@@ -482,7 +453,7 @@ class Inferencer:
 
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
-        )
+        )  # type ignore
         # TODO Sometimes this is the preds of one head, sometimes of two. We need a more advanced stacking operation
         # TODO so that preds of the right shape are passed in to formatted_preds
         unaggregated_preds_all = []
@@ -511,9 +482,7 @@ class Inferencer:
         logits = [None]
         preds_all = self.model.formatted_preds(logits=logits, # For QA we collected preds per batch and do not want to pass logits
                                                preds=unaggregated_preds_all,
-                                               baskets=baskets)
-        if self.benchmarking:
-            self.benchmarker.record("formatted_preds")
+                                               baskets=baskets)  # type ignore
         return preds_all
 
 
@@ -526,7 +495,7 @@ class QAInferencer(Inferencer):
             self.task_type = "question_answering"
 
     def inference_from_dicts(self,
-                             dicts: Union[list[dict], Generator[dict, None, None]],
+                             dicts: List[dict],
                              return_json: bool = True,
                              multiprocessing_chunksize: Optional[int] = None) -> List[QAPred]:
         return Inferencer.inference_from_dicts(self, dicts, return_json=return_json,
