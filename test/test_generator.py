@@ -499,7 +499,6 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever):
 # Keeping few (retriever,document_store) combination to reduce test time
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.inmemory
 @pytest.mark.parametrize(
     "retriever,document_store",
     [("embedding", "memory")],

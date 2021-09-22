@@ -38,7 +38,7 @@ DOCS = [
     ),
 ]
 
-@pytest.mark.elasticsearch
+#TODO check if we this works with only "memory" arg
 @pytest.mark.parametrize(
     "retriever_with_docs,document_store_with_docs",
     [

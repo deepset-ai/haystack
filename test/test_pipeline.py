@@ -86,14 +86,31 @@ def test_load_and_save_yaml(document_store, tmp_path):
     ).replace("\n", "")
 
 
-@pytest.mark.slow
-@pytest.mark.elasticsearch
+# @pytest.mark.slow
+# @pytest.mark.elasticsearch
+# @pytest.mark.parametrize(
+#     "retriever_with_docs, document_store_with_docs",
+#     [("elasticsearch", "elasticsearch")],
+#     indirect=True,
+# )
 @pytest.mark.parametrize(
-    "retriever_with_docs, document_store_with_docs",
-    [("elasticsearch", "elasticsearch")],
+    "retriever_with_docs,document_store_with_docs",
+    [
+        ("dpr", "elasticsearch"),
+        ("dpr", "faiss"),
+        ("dpr", "memory"),
+        ("dpr", "milvus"),
+        ("embedding", "elasticsearch"),
+        ("embedding", "faiss"),
+        ("embedding", "memory"),
+        ("embedding", "milvus"),
+        ("elasticsearch", "elasticsearch"),
+        ("es_filter_only", "elasticsearch"),
+        ("tfidf", "memory"),
+    ],
     indirect=True,
 )
-def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
+def test_graph_creation(retriever_with_docs, document_store_with_docs):
     pipeline = Pipeline()
     pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["Query"])
 
@@ -136,13 +153,7 @@ def test_invalid_run_args():
     assert "Invalid parameter 'invalid' for the node 'ESRetriever'" in str(exc.value)
 
 
-#TODO verify that docstore selection works here indirectly
 @pytest.mark.slow
-@pytest.mark.parametrize(
-    "retriever_with_docs, document_store_with_docs",
-    [("elasticsearch", "elasticsearch")],
-    indirect=True,
-)
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
@@ -163,7 +174,6 @@ def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_without_normalized_scores(reader_without_normalized_scores, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader_without_normalized_scores, retriever=retriever_with_docs)
@@ -183,7 +193,6 @@ def test_extractive_qa_answers_without_normalized_scores(reader_without_normaliz
     assert len(prediction["answers"]) == 3
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_offsets(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
@@ -200,7 +209,6 @@ def test_extractive_qa_offsets(reader, retriever_with_docs):
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
@@ -210,7 +218,6 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     assert len(prediction["answers"]) == 1
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize(
     "retriever,document_store",
     [
@@ -260,17 +267,7 @@ def test_faq_pipeline(retriever, document_store):
         assert len(output["answers"]) == 1
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [
-        ("embedding", "memory"),
-        ("embedding", "faiss"),
-        ("embedding", "milvus"),
-        ("embedding", "elasticsearch"),
-    ],
-    indirect=True,
-)
+@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_document_search_pipeline(retriever, document_store):
     documents = [
         {"text": "Sample text for document-1", "meta": {"source": "wiki1"}},
@@ -293,7 +290,6 @@ def test_document_search_pipeline(retriever, document_store):
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_with_translator(
     reader, retriever_with_docs, en_to_de_translator, de_to_en_translator
@@ -317,6 +313,7 @@ def test_extractive_qa_answers_with_translator(
     )
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_join_document_pipeline(document_store_with_docs, reader):
