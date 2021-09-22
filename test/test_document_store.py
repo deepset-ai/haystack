@@ -324,7 +324,6 @@ def test_delete_documents(document_store_with_docs):
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
     document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2"]})
@@ -498,15 +497,15 @@ def test_multilabel_no_answer(document_store):
 def test_update_meta(document_store):
     documents = [
         Document(
-            content="Doc1",
+            text="Doc1",
             meta={"meta_key_1": "1", "meta_key_2": "1"}
         ),
         Document(
-            content="Doc2",
+            text="Doc2",
             meta={"meta_key_1": "2", "meta_key_2": "2"}
         ),
         Document(
-            content="Doc3",
+            text="Doc3",
             meta={"meta_key_1": "3", "meta_key_2": "3"}
         )
     ]
