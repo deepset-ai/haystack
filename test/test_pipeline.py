@@ -594,7 +594,6 @@ def test_query_keyword_statement_classifier():
     assert output["output"] == "question"
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize(
         "retriever,document_store",
         [
