@@ -91,9 +91,10 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-@pytest.mark.sql
-@pytest.mark.parametrize("document_store_with_docs", ["sql"], indirect=True)
-def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_with_docs):
+def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs):
+    document_store_with_docs = get_document_store("sql")
+    document_store_with_docs.write_documents(test_docs_xs)
+
     document_store_with_docs.use_windowed_query = False
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
     assert len(documents) == 1
@@ -492,7 +493,7 @@ def test_multilabel_no_answer(document_store):
     document_store.delete_documents(index="haystack_test_multilabel_no_answer")
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "sql"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
