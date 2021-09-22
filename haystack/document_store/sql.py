@@ -5,7 +5,7 @@ from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
 import numpy as np
-from sqlalchemy import and_, func, create_engine, Column, Integer, Float, String, DateTime, ForeignKey, Boolean, Text, text
+from sqlalchemy import and_, func, create_engine, Column, Integer, Float, String, DateTime, ForeignKey, Boolean, Text, text, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
@@ -34,12 +34,12 @@ class DocumentORM(ORMBase):
     index = Column(String(100), nullable=False)
     vector_id = Column(String(100), unique=True, nullable=True)
 
-    labels = relationship(LabelORM, back_populates="document")
+    labels = relationship("LabelORM", back_populates="document")
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
-    meta = relationship("MetaORM", back_populates="documents", lazy="joined")
+    meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
 
-class MetaORM(ORMBase):
-    __tablename__ = "meta"
+class MetaDocumentORM(ORMBase):
+    __tablename__ = "meta_document"
 
     name = Column(String(100), index=True)
     value = Column(String(1000), index=True)
@@ -50,45 +50,39 @@ class MetaORM(ORMBase):
         index=True
     )
 
-    documents = relationship(DocumentORM, back_populates="meta")
+    documents = relationship("DocumentORM", back_populates="meta")
+
+class MetaLabelORM(ORMBase):
+    __tablename__ = "meta_label"
+
+    name = Column(String(100), index=True)
+    value = Column(String(1000), index=True)
+    label_id = Column(
+        String(100),
+        ForeignKey("label.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    labels = relationship("LabelORM", back_populates="meta")
 
 
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
     document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
-    answer_id = Column(String(100), ForeignKey("answer.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
     index = Column(String(100), nullable=False)
     query = Column(Text, nullable=False)
+    answer = Column(JSON, nullable=True)
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String(100), nullable=False)
     is_correct_answer = Column(Boolean, nullable=False)
     is_correct_document = Column(Boolean, nullable=False)
     pipeline_id = Column(String(500), nullable=True)
 
-    document = relationship(DocumentORM, back_populates="labels")
-
-
-class AnswerORM(ORMBase):
-    __tablename__ = "answer"
-
-    #TODO
-    answer =  Column(Text, nullable=False)
-    type =   Column(String(100), nullable=False)
-    score = Column(Float(), nullable=False)
-    context = Column(Text, nullable=False)
-    # offsets_in_document: Optional[List[Span]] = None
-    # offsets_in_context: Optional[List[Span]] = None
-    document_id =  Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
-    #  meta = relationship("MetaORM", back_populates="answer", lazy="joined")
-
-class SpanORM(ORMBase):
-    __tablename__ = "span"
-
-    start = Column(Integer, nullable=False)
-    end = Column(Integer, nullable=False)
-    answer_id =  Column(String(100), ForeignKey("answer.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    meta = relationship("MetaLabelORM", back_populates="labels", lazy="joined")
+    document = relationship("DocumentORM", back_populates="labels")
 
 
 class SQLDocumentStore(BaseDocumentStore):
@@ -237,12 +231,12 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
-            documents_query = documents_query.join(MetaORM)
+            documents_query = documents_query.join(MetaDocumentORM)
             for key, values in filters.items():
                 documents_query = documents_query.filter(
-                    MetaORM.name == key,
-                    MetaORM.value.in_(values),
-                    DocumentORM.id == MetaORM.document_id
+                    MetaDocumentORM.name == key,
+                    MetaDocumentORM.value.in_(values),
+                    DocumentORM.id == MetaDocumentORM.document_id
                 )
         if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
@@ -271,10 +265,10 @@ class SQLDocumentStore(BaseDocumentStore):
     def _get_documents_meta(self, documents_map):
         doc_ids = documents_map.keys()
         meta_query = self.session.query(
-         MetaORM.document_id,
-         MetaORM.name,
-         MetaORM.value
-        ).filter(MetaORM.document_id.in_(doc_ids))
+         MetaDocumentORM.document_id,
+         MetaDocumentORM.name,
+         MetaDocumentORM.value
+        ).filter(MetaDocumentORM.document_id.in_(doc_ids))
 
         for row in meta_query.all():
             documents_map[row.document_id].meta[row.name] = row.value
@@ -329,11 +323,11 @@ class SQLDocumentStore(BaseDocumentStore):
             for doc in document_objects[i: i + batch_size]:
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
-                meta_orms = [MetaORM(name=key, value=value) for key, value in meta_fields.items()]
-                doc_orm = DocumentORM(id=doc.id, text=doc.content, vector_id=vector_id, meta=meta_orms, index=index)
+                meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
+                doc_orm = DocumentORM(id=doc.id, content=doc.content, vector_id=vector_id, meta=meta_orms, index=index)
                 if duplicate_documents == "overwrite":
                     # First old meta data cleaning is required
-                    self.session.query(MetaORM).filter_by(document_id=doc.id).delete()
+                    self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)
                 else:
                     self.session.add(doc_orm)
@@ -356,7 +350,7 @@ class SQLDocumentStore(BaseDocumentStore):
             logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
                            f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
                            f" the answer annotation and not the question."
-                           f" Problematic ids: {','.join(duplicate_ids)}")
+                           f"   Problematic ids: {','.join(duplicate_ids)}")
         # TODO: Use batch_size
 
         # TODO verify functionality after refactor
@@ -417,8 +411,8 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
-        self.session.query(MetaORM).filter_by(document_id=id).delete()
-        meta_orms = [MetaORM(name=key, value=value, document_id=id) for key, value in meta.items()]
+        self.session.query(MetaDocumentORM).filter_by(document_id=id).delete()
+        meta_orms = [MetaDocumentORM(name=key, value=value, document_id=id) for key, value in meta.items()]
         for m in meta_orms:
             self.session.add(m)
         self.session.commit()
@@ -431,9 +425,9 @@ class SQLDocumentStore(BaseDocumentStore):
         query = self.session.query(DocumentORM).filter_by(index=index)
 
         if filters:
-            query = query.join(MetaORM)
+            query = query.join(MetaDocumentORM)
             for key, values in filters.items():
-                query = query.filter(MetaORM.name == key, MetaORM.value.in_(values))
+                query = query.filter(MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values))
 
         count = query.count()
         return count
@@ -514,9 +508,9 @@ class SQLDocumentStore(BaseDocumentStore):
             document_ids_to_delete = self.session.query(DocumentORM.id).filter_by(index=index)
             for key, values in filters.items():
                 document_ids_to_delete = document_ids_to_delete.filter(
-                        MetaORM.name == key,
-                        MetaORM.value.in_(values),
-                        DocumentORM.id == MetaORM.document_id
+                    MetaDocumentORM.name == key,
+                        MetaDocumentORM.value.in_(values),
+                    DocumentORM.id == MetaDocumentORM.document_id
                 )
             self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(
                     synchronize_session=False)

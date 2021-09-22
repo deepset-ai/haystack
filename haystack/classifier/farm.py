@@ -270,8 +270,8 @@ class FARMClassifier(BaseClassifier):
         if top_k is None:
             top_k = self.top_k
 
-        # documents should follow the structure {"text": "Schartau sagte dem Tagesspiegel, dass Fischer ein ... sei"},
-        docs = [{"content": doc.content} for doc in documents]
+        # documents for FARM should follow the structure {"text": "Schartau sagte dem Tagesspiegel, dass Fischer ein ... sei"},
+        docs = [{"text": doc.content} for doc in documents]
         results = self.inferencer.inference_from_dicts(dicts=docs)[0]["predictions"]
 
         classified_docs: List[Document] = []

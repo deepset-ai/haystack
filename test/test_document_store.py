@@ -3,7 +3,7 @@ import pytest
 from elasticsearch import Elasticsearch
 
 from conftest import get_document_store
-from haystack import Document, Label
+from haystack import Document, Label, Answer, Span
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
 
@@ -31,7 +31,6 @@ def test_init_elastic_client():
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
 
 
-@pytest.mark.elasticsearch
 def test_write_with_duplicate_doc_ids(document_store):
     documents = [
         Document(
@@ -48,7 +47,6 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(documents, duplicate_documents="fail")
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
@@ -57,7 +55,6 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3"}
 
 
-@pytest.mark.elasticsearch
 def test_get_all_document_filter_duplicate_text_value(document_store):
     documents = [
         Document(
@@ -83,7 +80,6 @@ def test_get_all_document_filter_duplicate_text_value(document_store):
     assert {d.meta["meta_id"] for d in documents} == {"0"}
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_with_correct_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
     assert len(documents) == 1
@@ -95,6 +91,7 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
+@pytest.mark.sql
 @pytest.mark.parametrize("document_store_with_docs", ["sql"], indirect=True)
 def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_with_docs):
     document_store_with_docs.use_windowed_query = False
@@ -108,19 +105,16 @@ def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_wit
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_with_incorrect_filter_name(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"incorrect_meta_field": ["test2"]})
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["incorrect_value"]})
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 def test_get_documents_by_id(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     doc = document_store_with_docs.get_document_by_id(documents[0].id)
@@ -128,13 +122,12 @@ def test_get_documents_by_id(document_store_with_docs):
     assert doc.content == documents[0].content
 
 
-@pytest.mark.elasticsearch
 def test_get_document_count(document_store):
     documents = [
-        {"text": "text1", "id": "1", "meta_field_for_count": "a"},
-        {"text": "text2", "id": "2", "meta_field_for_count": "b"},
-        {"text": "text3", "id": "3", "meta_field_for_count": "b"},
-        {"text": "text4", "id": "4", "meta_field_for_count": "b"},
+        {"content": "text1", "id": "1", "meta_field_for_count": "a"},
+        {"content": "text2", "id": "2", "meta_field_for_count": "b"},
+        {"content": "text3", "id": "3", "meta_field_for_count": "b"},
+        {"content": "text4", "id": "4", "meta_field_for_count": "b"},
     ]
     document_store.write_documents(documents)
     assert document_store.get_document_count() == 4
@@ -142,29 +135,27 @@ def test_get_document_count(document_store):
     assert document_store.get_document_count(filters={"meta_field_for_count": ["b"]}) == 3
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_generator(document_store):
     documents = [
-        {"text": "text1", "id": "1", "meta_field_for_count": "a"},
-        {"text": "text2", "id": "2", "meta_field_for_count": "b"},
-        {"text": "text3", "id": "3", "meta_field_for_count": "b"},
-        {"text": "text4", "id": "4", "meta_field_for_count": "b"},
-        {"text": "text5", "id": "5", "meta_field_for_count": "b"},
+        {"content": "text1", "id": "1", "meta_field_for_count": "a"},
+        {"content": "text2", "id": "2", "meta_field_for_count": "b"},
+        {"content": "text3", "id": "3", "meta_field_for_count": "b"},
+        {"content": "text4", "id": "4", "meta_field_for_count": "b"},
+        {"content": "text5", "id": "5", "meta_field_for_count": "b"},
     ]
 
     document_store.write_documents(documents)
     assert len(list(document_store.get_all_documents_generator(batch_size=2))) == 5
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("update_existing_documents", [True, False])
 def test_update_existing_documents(document_store, update_existing_documents):
     original_docs = [
-        {"text": "text1_orig", "id": "1", "meta_field_for_count": "a"},
+        {"content": "text1_orig", "id": "1", "meta_field_for_count": "a"},
     ]
 
     updated_docs = [
-        {"text": "text1_new", "id": "1", "meta_field_for_count": "a"},
+        {"content": "text1_new", "id": "1", "meta_field_for_count": "a"},
     ]
 
     document_store.write_documents(original_docs)
@@ -179,16 +170,15 @@ def test_update_existing_documents(document_store, update_existing_documents):
     stored_docs = document_store.get_all_documents()
     assert len(stored_docs) == 1
     if update_existing_documents:
-        assert stored_docs[0].content == updated_docs[0]["text"]
+        assert stored_docs[0].content == updated_docs[0]["content"]
     else:
-        assert stored_docs[0].content == original_docs[0]["text"]
+        assert stored_docs[0].content == original_docs[0]["content"]
 
 
-@pytest.mark.elasticsearch
 def test_write_document_meta(document_store):
     documents = [
-        {"text": "dict_without_meta", "id": "1"},
-        {"text": "dict_with_meta", "meta_field": "test2", "name": "filename2", "id": "2"},
+        {"content": "dict_without_meta", "id": "1"},
+        {"content": "dict_with_meta", "meta_field": "test2", "name": "filename2", "id": "2"},
         Document(content="document_object_without_meta", id="3"),
         Document(content="document_object_with_meta", meta={"meta_field": "test4", "name": "filename3"}, id="4"),
     ]
@@ -202,11 +192,10 @@ def test_write_document_meta(document_store):
     assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
 
 
-@pytest.mark.elasticsearch
 def test_write_document_index(document_store):
     documents = [
-        {"text": "text1", "id": "1"},
-        {"text": "text2", "id": "2"},
+        {"content": "text1", "id": "1"},
+        {"content": "text2", "id": "2"},
     ]
     document_store.write_documents([documents[0]], index="haystack_test_1")
     assert len(document_store.get_all_documents(index="haystack_test_1")) == 1
@@ -218,13 +207,12 @@ def test_write_document_index(document_store):
     assert len(document_store.get_all_documents()) == 0
 
 
-@pytest.mark.elasticsearch
 def test_document_with_embeddings(document_store):
     documents = [
-        {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
-        {"text": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
-        {"text": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
-        {"text": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
+        {"content": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
+        {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
+        {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
+        {"content": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
     ]
     document_store.write_documents(documents, index="haystack_test_1")
     assert len(document_store.get_all_documents(index="haystack_test_1")) == 4
@@ -240,8 +228,8 @@ def test_document_with_embeddings(document_store):
 def test_update_embeddings(document_store, retriever):
     documents = []
     for i in range(6):
-        documents.append({"text": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
-    documents.append({"text": "text_0", "id": "6", "meta_field": "value_0"})
+        documents.append({"content": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
+    documents.append({"content": "text_0", "id": "6", "meta_field": "value_0"})
 
     document_store.write_documents(documents, index="haystack_test_1")
     document_store.update_embeddings(retriever, index="haystack_test_1", batch_size=3)
@@ -272,13 +260,13 @@ def test_update_embeddings(document_store, retriever):
         documents[1].embedding
     )
 
-    doc = {"text": "text_7", "id": "7", "meta_field": "value_7",
+    doc = {"content": "text_7", "id": "7", "meta_field": "value_7",
            "embedding": retriever.embed_queries(texts=["a random string"])[0]}
     document_store.write_documents([doc], index="haystack_test_1")
 
     documents = []
     for i in range(8, 11):
-        documents.append({"text": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
+        documents.append({"content": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
     document_store.write_documents(documents, index="haystack_test_1")
 
     doc_before_update = document_store.get_all_documents(index="haystack_test_1", filters={"meta_field": ["value_7"]})[0]
@@ -314,13 +302,12 @@ def test_update_embeddings(document_store, retriever):
     # test update embeddings for newly added docs
     documents = []
     for i in range(12, 15):
-        documents.append({"text": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
+        documents.append({"content": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
     document_store.write_documents(documents, index="haystack_test_1")
     document_store.update_embeddings(retriever, index="haystack_test_1", batch_size=3, update_existing_embeddings=False)
     assert document_store.get_embedding_count(index="haystack_test_1") == 14
 
 
-@pytest.mark.elasticsearch
 def test_delete_all_documents(document_store_with_docs):
     assert len(document_store_with_docs.get_all_documents()) == 3
 
@@ -329,7 +316,6 @@ def test_delete_all_documents(document_store_with_docs):
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 def test_delete_documents(document_store_with_docs):
     assert len(document_store_with_docs.get_all_documents()) == 3
 
@@ -347,18 +333,21 @@ def test_delete_documents_with_filters(document_store_with_docs):
     assert documents[0].meta["meta_field"] == "test3"
 
 
-@pytest.mark.elasticsearch
 def test_labels(document_store):
     label = Label(
         query="question",
-        answer="answer",
+        answer=Answer(answer="answer",
+                      type="extractive",
+                      score=0.0,
+                      context="something",
+                      offsets_in_document=[Span(start=12,end = 14)],
+                      offsets_in_context=[Span(start=12,end = 14)],
+                      ),
         is_correct_answer=True,
         is_correct_document=True,
-        document_id="123",
-        #TODO offsets
-        offset_start_in_doc=12,
+        document=Document(content="something", id="123"),
         no_answer=False,
-        origin="gold_label",
+        origin="gold-label",
     )
     document_store.write_labels([label], index="haystack_test_label")
     labels = document_store.get_all_labels(index="haystack_test_label")
@@ -368,7 +357,6 @@ def test_labels(document_store):
     assert len(labels) == 0
 
 
-@pytest.mark.elasticsearch
 def test_multilabel(document_store):
     labels =[
         Label(
@@ -447,7 +435,6 @@ def test_multilabel(document_store):
     document_store.delete_documents(index="haystack_test_multilabel")
 
 
-@pytest.mark.elasticsearch
 def test_multilabel_no_answer(document_store):
     labels = [
         Label(
@@ -513,6 +500,7 @@ def test_multilabel_no_answer(document_store):
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "sql"], indirect=True)
+# Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
         Document(
@@ -543,7 +531,7 @@ def test_custom_embedding_field(document_store_type):
     document_store = get_document_store(
         document_store_type=document_store_type, embedding_field="custom_embedding_field"
     )
-    doc_to_write = {"text": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
+    doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
     document_store.write_documents([doc_to_write])
     documents = document_store.get_all_documents(return_embedding=True)
     assert len(documents) == 1
@@ -607,13 +595,13 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
 @pytest.mark.elasticsearch
 def test_get_document_count_only_documents_without_embedding_arg():
     documents = [
-        {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32), "meta_field_for_count": "a"},
-        {"text": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64), "meta_field_for_count": "b"},
-        {"text": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
-        {"text": "text4", "id": "4", "meta_field_for_count": "b"},
-        {"text": "text5", "id": "5", "meta_field_for_count": "b"},
-        {"text": "text6", "id": "6", "meta_field_for_count": "c"},
-        {"text": "text7", "id": "7", "embedding": np.random.rand(768).astype(np.float64), "meta_field_for_count": "c"},
+        {"content": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32), "meta_field_for_count": "a"},
+        {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64), "meta_field_for_count": "b"},
+        {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
+        {"content": "text4", "id": "4", "meta_field_for_count": "b"},
+        {"content": "text5", "id": "5", "meta_field_for_count": "b"},
+        {"content": "text6", "id": "6", "meta_field_for_count": "c"},
+        {"content": "text7", "id": "7", "embedding": np.random.rand(768).astype(np.float64), "meta_field_for_count": "c"},
     ]
 
     _index: str = "haystack_test_count"
