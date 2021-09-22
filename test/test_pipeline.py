@@ -21,6 +21,7 @@ from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.schema import Document
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_load_and_save_yaml(document_store, tmp_path):
     # test correct load of indexing pipeline from yaml
@@ -135,10 +136,15 @@ def test_invalid_run_args():
     assert "Invalid parameter 'invalid' for the node 'ESRetriever'" in str(exc.value)
 
 
+#TODO verify that docstore selection works here indirectly
 @pytest.mark.slow
-@pytest.mark.elasticsearch
+@pytest.mark.parametrize(
+    "retriever_with_docs, document_store_with_docs",
+    [("elasticsearch", "elasticsearch")],
+    indirect=True,
+)
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-def test_extractive_qa_answers(reader, retriever_with_docs):
+def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     prediction = pipeline.run(
         query="Who lives in Berlin?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},

@@ -301,6 +301,7 @@ def reader_without_normalized_scores():
         use_confidence_scores=False
     )
 
+
 @pytest.fixture(params=["farm", "transformers"], scope="module")
 def reader(request):
     if request.param == "farm":
