@@ -493,7 +493,6 @@ def test_multilabel_no_answer(document_store):
     document_store.delete_documents(index="haystack_test_multilabel_no_answer")
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "sql"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):

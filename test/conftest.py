@@ -54,6 +54,13 @@ def pytest_generate_tests(metafunc):
             break
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
     if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
+        # TODO: Remove the following if-condition once weaviate is fully compliant
+        # Background: Currently, weaviate is not fully compliant (e.g. "_" in "meta_field", problems with uuids ...)
+        # Therefore, we have separate tests in test_weaviate.py and we don't want to parametrize our generic
+        # tests (e.g. in test_document_store.py) with the weaviate fixture. However, we still need the weaviate option
+        # in the CLI arg as we want to skip test_weaviate.py if weaviate is not selected from CLI
+        if "weaviate" in selected_doc_stores:
+            selected_doc_stores.remove("weaviate")
         metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
 
 
@@ -282,7 +289,7 @@ def test_docs_xs():
     return [
         # current "dict" format for a document
         {"text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
-        # meta_field at the top level for backward compatibility
+        # metafield at the top level for backward compatibility
         {"text": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
         # Document object for a doc
         Document(text="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"})
