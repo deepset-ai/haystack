@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, Dict, List, Union, Tuple
 from dataclasses import dataclass
-
+from dataclasses_json import dataclass_json
 try:
     from typing import Literal
 except ImportError:
@@ -126,6 +126,7 @@ class Span:
     end: int
 
 
+@dataclass_json
 @dataclass
 class Answer:
     answer: str
@@ -279,7 +280,7 @@ class Label:
 
     def __hash__(self):
         return hash(self.query +
-                    self.answer +
+                    str(self.answer) +
                     str(self.is_correct_answer) +
                     str(self.is_correct_document) +
                     str(self.origin) +

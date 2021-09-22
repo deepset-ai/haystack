@@ -91,7 +91,6 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-@pytest.mark.sql
 @pytest.mark.parametrize("document_store_with_docs", ["sql"], indirect=True)
 def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_with_docs):
     document_store_with_docs.use_windowed_query = False
@@ -352,6 +351,7 @@ def test_labels(document_store):
     document_store.write_labels([label], index="haystack_test_label")
     labels = document_store.get_all_labels(index="haystack_test_label")
     assert len(labels) == 1
+    assert label == labels[0]
 
     labels = document_store.get_all_labels()
     assert len(labels) == 0

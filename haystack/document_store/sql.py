@@ -10,7 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
 
-from haystack import Document, Label
+from haystack import Document, Label, Answer
 from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
@@ -355,15 +355,20 @@ class SQLDocumentStore(BaseDocumentStore):
 
         # TODO verify functionality after refactor
         for label in labels:
+            meta_fields = label.document.meta or {}
+            vector_id = meta_fields.pop("vector_id", None)
+            meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
+            doc_orm = DocumentORM(id=label.document.id, content=label.document.content, vector_id=vector_id, meta=meta_orms, index=index)
+
             label_orm = LabelORM(
                 id=label.id,
                 no_answer=label.no_answer,
-                document=label.document,
+                document=doc_orm,
                 origin=label.origin,
                 query=label.query,
                 is_correct_answer=label.is_correct_answer,
                 is_correct_document=label.is_correct_document,
-                answer=label.answer,
+                answer=label.answer.to_json(),
                 pipeline_id=label.pipeline_id,
                 index=index,
             )
@@ -450,10 +455,12 @@ class SQLDocumentStore(BaseDocumentStore):
         return document
 
     def _convert_sql_row_to_label(self, row) -> Label:
+        doc = self._convert_sql_row_to_document(row.document)
+
         label = Label(
             query=row.query,
-            answer=row.answer,
-            document=row.document,
+            answer=Answer.from_json(row.answer),
+            document=doc,
             is_correct_answer=row.is_correct_answer,
             is_correct_document=row.is_correct_document,
             origin=row.origin,
