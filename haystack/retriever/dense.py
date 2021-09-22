@@ -6,7 +6,7 @@ from torch.nn import DataParallel
 import numpy as np
 from pathlib import Path
 
-from farm.utils import initialize_device_settings
+from haystack.modeling.utils import initialize_device_settings
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModel
 
@@ -14,16 +14,16 @@ from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
 
-from farm.infer import Inferencer
-from farm.modeling.tokenization import Tokenizer
-from farm.modeling.language_model import LanguageModel
-from farm.modeling.biadaptive_model import BiAdaptiveModel
-from farm.modeling.prediction_head import TextSimilarityHead
-from farm.data_handler.processor import TextSimilarityProcessor, InferenceProcessor
-from farm.data_handler.data_silo import DataSilo
-from farm.data_handler.dataloader import NamedDataLoader
-from farm.modeling.optimization import initialize_optimizer
-from farm.train import Trainer
+from haystack.modeling.infer import Inferencer
+from haystack.model.tokenization import Tokenizer
+from haystack.model.language_model import LanguageModel
+from haystack.model.biadaptive_model import BiAdaptiveModel
+from haystack.model.prediction_head import TextSimilarityHead
+from haystack.modeling.data_handler.processor import TextSimilarityProcessor, InferenceProcessor
+from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.data_handler.dataloader import NamedDataLoader
+from haystack.model.optimization import initialize_optimizer
+from haystack.modeling.train import Trainer
 from torch.utils.data.sampler import SequentialSampler
 
 

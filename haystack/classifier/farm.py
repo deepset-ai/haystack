@@ -3,12 +3,12 @@ import multiprocessing
 from pathlib import Path
 from typing import List, Optional, Union
 
-from farm.data_handler.data_silo import DataSilo
-from farm.data_handler.processor import TextClassificationProcessor
-from farm.infer import Inferencer
-from farm.modeling.optimization import initialize_optimizer
-from farm.train import Trainer
-from farm.utils import set_all_seeds, initialize_device_settings
+from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.data_handler.processor import TextClassificationProcessor
+from haystack.modeling.infer import Inferencer
+from haystack.model.optimization import initialize_optimizer
+from haystack.modeling.train import Trainer
+from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 from haystack import Document
 from haystack.classifier.base import BaseClassifier

@@ -5,17 +5,17 @@ from typing import List, Optional, Union, Dict, Any
 from collections import defaultdict
 from time import perf_counter
 
-from farm.data_handler.data_silo import DataSilo
-from farm.data_handler.processor import SquadProcessor
-from farm.data_handler.dataloader import NamedDataLoader
-from farm.data_handler.inputs import QAInput, Question
-from farm.infer import QAInferencer
-from farm.modeling.optimization import initialize_optimizer
-from farm.modeling.predictions import QAPred, QACandidate
-from farm.modeling.adaptive_model import AdaptiveModel
-from farm.train import Trainer
-from farm.eval import Evaluator
-from farm.utils import set_all_seeds, initialize_device_settings
+from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.data_handler.dataloader import NamedDataLoader
+from haystack.modeling.data_handler.inputs import QAInput, Question
+from haystack.modeling.infer import QAInferencer
+from haystack.model.optimization import initialize_optimizer
+from haystack.model.predictions import QAPred, QACandidate
+from haystack.model.adaptive_model import AdaptiveModel
+from haystack.modeling.train import Trainer
+from haystack.modeling.eval import Evaluator
+from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore

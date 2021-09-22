@@ -1,6 +1,6 @@
 from utils import get_document_store, index_to_doc_store, get_reader
 from haystack.preprocessor.utils import eval_data_from_json
-from farm.data_handler.utils import _download_extract_downstream_data
+from haystack.modeling.data_handler.utils import _download_extract_downstream_data
 
 from pathlib import Path
 import pandas as pd
