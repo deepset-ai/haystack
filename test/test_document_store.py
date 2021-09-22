@@ -520,7 +520,6 @@ def test_update_meta(document_store):
     assert updated_document.meta["meta_key_2"] == "2"
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type):
     document_store = get_document_store(
@@ -534,7 +533,6 @@ def test_custom_embedding_field(document_store_type):
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_get_meta_values_by_key(document_store):
     documents = [

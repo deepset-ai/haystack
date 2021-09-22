@@ -49,11 +49,7 @@ def pytest_generate_tests(metafunc):
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
     found_mark_parametrize_document_store = False
     for marker in metafunc.definition.iter_markers('parametrize'):
-        if 'document_store' in marker.args[0] or 'document_store_with_docs' in marker.args[0]:
-            # TODO if there's a parametrization marker already, remove those docstores that are not selected by user
-            default_doc_stores = marker.args[1]
-            updated_doc_stores = [d for d in default_doc_stores if d in selected_doc_stores]
-            marker.args[1] = updated_doc_stores
+        if 'document_store' in marker.args[0] or 'document_store_with_docs' in marker.args[0] or 'document_store_type' in marker.args[0]:
             found_mark_parametrize_document_store = True
             break
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
@@ -80,10 +76,6 @@ SQLDocumentStore.__getattribute__ = _sql_session_rollback
 
 
 def pytest_collection_modifyitems(config,items):
-    # for item in items:
-    #     if "elasticsearch" in item.keywords:
-    #         item.add_marker(skip_docstore)
-
     for item in items:
 
         # add pytest markers for tests that are not explicitly marked but include some keywords
@@ -108,7 +100,7 @@ def pytest_collection_modifyitems(config,items):
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
-        for cur_doc_store in ["elasticsearch", "faiss", "memory", "milvus", "weaviate"]:
+        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate"]:
             if cur_doc_store in item.keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
