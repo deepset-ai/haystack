@@ -36,7 +36,7 @@ from haystack.question_generator import QuestionGenerator
 
 
 def pytest_addoption(parser):
-    parser.addoption("--document_store_type", action="store", default="all")
+    parser.addoption("--document_store_type", action="store", default="elasticsearch, faiss, memory, milvus, weaviate")
 
 
 def pytest_generate_tests(metafunc):
@@ -45,15 +45,12 @@ def pytest_generate_tests(metafunc):
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
     found_mark_parametrize_document_store = False
     for marker in metafunc.definition.iter_markers('parametrize'):
-        if 'document_store' in marker.args[0]:
+        if 'document_store' in marker.args[0] or 'document_store_with_docs' in marker.args[0]:
             found_mark_parametrize_document_store = True
             break
-
+    # for all others that don't have explicit parametrization, we add the ones from the CLI arg
     if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
         document_store_type = metafunc.config.option.document_store_type
-        if "all" in document_store_type:
-            document_store_type = "elasticsearch, faiss, memory, milvus"
-
         document_store_types = [item.strip() for item in document_store_type.split(",")]
         metafunc.parametrize("document_store", document_store_types, indirect=True)
 
@@ -76,8 +73,15 @@ def _sql_session_rollback(self, attr):
 SQLDocumentStore.__getattribute__ = _sql_session_rollback
 
 
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(config,items):
+    # for item in items:
+    #     if "elasticsearch" in item.keywords:
+    #         item.add_marker(skip_docstore)
+
     for item in items:
+
+        # add pytest markers for tests that are not explicitly marked but include some keywords
+        # in the test name (e.g. test_elasticsearch_client would get the "elasticsearch" marker)
         if "generator" in item.nodeid:
             item.add_marker(pytest.mark.generator)
         elif "summarizer" in item.nodeid:
@@ -94,6 +98,15 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.slow)
         elif "weaviate" in item.nodeid:
             item.add_marker(pytest.mark.weaviate)
+
+        # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
+        # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
+        document_store_types_to_run = config.getoption("--document_store_type")
+        for cur_doc_store in ["elasticsearch", "faiss", "memory", "milvus", "weaviate"]:
+            if cur_doc_store in item.keywords and cur_doc_store not in document_store_types_to_run:
+                skip_docstore = pytest.mark.skip(
+                    reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
+                item.add_marker(skip_docstore)
 
 
 @pytest.fixture(scope="session")
@@ -400,13 +413,11 @@ def get_retriever(retriever_type, document_store):
 
     return retriever
 
-
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "sql", "milvus"])
-def document_store_with_docs(request, test_docs_xs):
-    document_store = get_document_store(request.param)
+@pytest.fixture
+def document_store_with_docs(document_store, test_docs_xs):
+    # document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_documents()
 
 
 @pytest.fixture
