@@ -40,19 +40,25 @@ def pytest_addoption(parser):
 
 
 def pytest_generate_tests(metafunc):
+    # Get selected docstores from CLI arg
+    document_store_type = metafunc.config.option.document_store_type
+    selected_doc_stores = [item.strip() for item in document_store_type.split(",")]
+
     # parametrize document_store fixture if it's in the test function argument list
     # but does not have an explicit parametrize annotation e.g
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
     found_mark_parametrize_document_store = False
     for marker in metafunc.definition.iter_markers('parametrize'):
         if 'document_store' in marker.args[0] or 'document_store_with_docs' in marker.args[0]:
+            # TODO if there's a parametrization marker already, remove those docstores that are not selected by user
+            default_doc_stores = marker.args[1]
+            updated_doc_stores = [d for d in default_doc_stores if d in selected_doc_stores]
+            marker.args[1] = updated_doc_stores
             found_mark_parametrize_document_store = True
             break
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
     if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
-        document_store_type = metafunc.config.option.document_store_type
-        document_store_types = [item.strip() for item in document_store_type.split(",")]
-        metafunc.parametrize("document_store", document_store_types, indirect=True)
+        metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
 
 
 def _sql_session_rollback(self, attr):
