@@ -448,7 +448,6 @@ def test_lfqa_pipeline(document_store, retriever, eli5_generator):
 
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.inmemory
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
@@ -470,7 +469,6 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever):
 
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.inmemory
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
