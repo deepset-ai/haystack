@@ -452,7 +452,7 @@ class SquadProcessor(Processor):
         # Logging
         if indices:
             if 0 in indices:
-                self._log_samples(1, baskets)
+                self._log_samples(n_samples=1, baskets=self.baskets)
 
         # During inference we need to keep the information contained in baskets.
         if return_baskets:
@@ -1328,7 +1328,7 @@ class TextClassificationProcessor(Processor):
         if indices and 0 not in indices:
             pass
         else:
-            self._log_samples(1)
+            self._log_samples(n_samples=1, baskets=self.baskets)
 
         # TODO populate problematic ids
         problematic_ids: set = set()
