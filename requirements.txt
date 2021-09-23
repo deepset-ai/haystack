@@ -37,7 +37,6 @@ dill
 # onnxruntime_tools
 psutil
 sentencepiece
-
 # haystack
 --find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
