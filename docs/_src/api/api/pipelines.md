@@ -824,6 +824,17 @@ Create an instance of Component.
 
 Ray calls this method which is then re-directed to the corresponding component's run().
 
+<a name="pipeline.Docs2Answers"></a>
+## Docs2Answers Objects
+
+```python
+class Docs2Answers(BaseComponent)
+```
+
+This Node is used to convert retrieved documents into predicted answers format.
+It is useful for situations where you are calling a Retriever only pipeline via REST API.
+This ensures that your output is in a compatible format.
+
 <a name="pipeline.MostSimilarDocumentsPipeline"></a>
 ## MostSimilarDocumentsPipeline Objects
 

@@ -91,8 +91,10 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["sql"], indirect=True)
-def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_with_docs):
+def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs):
+    document_store_with_docs = get_document_store("sql")
+    document_store_with_docs.write_documents(test_docs_xs)
+
     document_store_with_docs.use_windowed_query = False
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
     assert len(documents) == 1
@@ -323,7 +325,6 @@ def test_delete_documents(document_store_with_docs):
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
     document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2"]})
@@ -358,6 +359,7 @@ def test_labels(document_store):
 
 
 def test_multilabel(document_store):
+    #TODO update to new schema
     labels =[
         Label(
             query="question",
@@ -498,8 +500,7 @@ def test_multilabel_no_answer(document_store):
     document_store.delete_documents(index="haystack_test_multilabel_no_answer")
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "sql"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
@@ -525,7 +526,6 @@ def test_update_meta(document_store):
     assert updated_document.meta["meta_key_2"] == "2"
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type):
     document_store = get_document_store(
@@ -539,7 +539,6 @@ def test_custom_embedding_field(document_store_type):
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_get_meta_values_by_key(document_store):
     documents = [

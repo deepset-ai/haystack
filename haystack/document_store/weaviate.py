@@ -29,6 +29,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
     Usage:
     1. Start a Weaviate server (see https://www.semi.technology/developers/weaviate/current/getting-started/installation.html)
     2. Init a WeaviateDocumentStore in Haystack
+
+    Limitations:
+    The current implementation is not supporting the storage of labels, so you cannot run any evaluation workflows.
     """
 
     def __init__(
