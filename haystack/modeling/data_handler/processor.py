@@ -11,12 +11,14 @@ from tqdm import tqdm
 from abc import ABC, abstractmethod
 from inspect import signature
 from pathlib import Path
-from typing import Optional, Dict, List, Union
+from typing import Optional, Dict, List, Union, Any
 
 import numpy as np
 from haystack.modeling.model.tokenization import (
     Tokenizer,
-    tokenize_batch_question_answering
+    tokenize_batch_question_answering,
+    tokenize_with_metadata,
+    truncate_sequences
 )
 
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset
@@ -26,6 +28,7 @@ from haystack.modeling.data_handler.samples import (
     get_passage_offsets,
     offset_to_token_idx_vecorized,
 )
+from haystack.modeling.data_handler.input_features import sample_to_features_text
 from haystack.modeling.utils import MLFlowLogger as MlLogger
 
 
@@ -1154,169 +1157,6 @@ class TextSimilarityProcessor(Processor):
         return res
 
 
-# helper fcts
-def write_squad_predictions(predictions, out_filename, predictions_filename=None):
-    predictions_json = {}
-    for x in predictions:
-        for p in x["predictions"]:
-            if p["answers"][0]["answer"] is not None:
-                predictions_json[p["question_id"]] = p["answers"][0]["answer"]
-            else:
-                predictions_json[p["question_id"]] = "" #convert No answer = None to format understood by the SQuAD eval script
-
-    if predictions_filename:
-        dev_labels = {}
-        temp = json.load(open(predictions_filename, "r"))
-        for d in temp["data"]:
-            for p in d["paragraphs"]:
-                for q in p["qas"]:
-                    if q.get("is_impossible",False):
-                        dev_labels[q["id"]] = "is_impossible"
-                    else:
-                        dev_labels[q["id"]] = q["answers"][0]["text"]
-        not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
-        if len(not_included) > 0:
-            logger.info(f"There were missing predicitons for question ids: {list(not_included)}")
-        for x in not_included:
-            predictions_json[x] = ""
-
-    # os.makedirs("model_output", exist_ok=True)
-    # filepath = Path("model_output") / out_filename
-    json.dump(predictions_json, open(out_filename, "w"))
-    logger.info(f"Written Squad predictions to: {out_filename}")
-
-def _read_dpr_json(file, max_samples=None, proxies=None, num_hard_negatives=1, num_positives=1, shuffle_negatives=True, shuffle_positives=False):
-    """
-    Reads a Dense Passage Retrieval (DPR) data file in json format and returns a list of dictionaries.
-
-    :param file: filename of DPR data in json format
-
-    Returns:
-        list of dictionaries: List[dict]
-        each dictionary: {
-                    "query": str -> query_text
-                    "passages": List[dictionaries] -> [{"text": document_text, "title": xxx, "label": "positive", "external_id": abb123},
-                                {"text": document_text, "title": xxx, "label": "hard_negative", "external_id": abb134},
-                                ...]
-                    }
-        example:
-                ["query": 'who sings does he love me with reba'
-                "passages" : [{'title': 'Does He Love You',
-                    'text': 'Does He Love You "Does He Love You" is a song written by Sandy Knox and Billy Stritch, and recorded as a duet by American country music artists Reba McEntire and Linda Davis. It was released in August 1993 as the first single from Reba\'s album "Greatest Hits Volume Two". It is one of country music\'s several songs about a love triangle. "Does He Love You" was written in 1982 by Billy Stritch. He recorded it with a trio in which he performed at the time, because he wanted a song that could be sung by the other two members',
-                    'label': 'positive',
-                    'external_id': '11828866'},
-                    {'title': 'When the Nightingale Sings',
-                    'text': "When the Nightingale Sings When The Nightingale Sings is a Middle English poem, author unknown, recorded in the British Library's Harley 2253 manuscript, verse 25. It is a love poem, extolling the beauty and lost love of an unknown maiden. When þe nyhtegale singes þe wodes waxen grene.<br> Lef ant gras ant blosme springes in aueryl y wene,<br> Ant love is to myn herte gon wiþ one spere so kene<br> Nyht ant day my blod hit drynkes myn herte deþ me tene. Ich have loved al þis er þat y may love namore,<br> Ich have siked moni syk lemmon for",
-                    'label': 'hard_negative',
-                    'external_id': '10891637'}]
-                ]
-
-    """
-    # get remote dataset if needed
-    if not (os.path.exists(file)):
-        logger.info(f" Couldn't find {file} locally. Trying to download ...")
-        _download_extract_downstream_data(file, proxies=proxies)
-
-    if file.suffix.lower() == ".jsonl":
-        dicts = []
-        with open(file, encoding='utf-8') as f:
-            for line in f:
-                dicts.append(json.loads(line))
-    else:
-        dicts = json.load(open(file, encoding='utf-8'))
-
-    if max_samples:
-        dicts = random.sample(dicts, min(max_samples, len(dicts)))
-
-    # convert DPR dictionary to standard dictionary
-    query_json_keys = ["question", "questions", "query"]
-    positive_context_json_keys = ["positive_contexts", "positive_ctxs", "positive_context", "positive_ctx"]
-    hard_negative_json_keys = ["hard_negative_contexts", "hard_negative_ctxs", "hard_negative_context", "hard_negative_ctx"]
-    standard_dicts = []
-    for dict in dicts:
-        sample = {}
-        passages = []
-        for key, val in dict.items():
-            if key in query_json_keys:
-                sample["query"] = val
-            elif key in positive_context_json_keys:
-                if shuffle_positives:
-                    random.shuffle(val)
-                for passage in val[:num_positives]:
-                    passages.append({
-                        "title": passage["title"],
-                        "text": passage["text"],
-                        "label": "positive",
-                        "external_id": passage.get("passage_id", uuid.uuid4().hex.upper()[0:8])
-                        })
-            elif key in hard_negative_json_keys:
-                if shuffle_negatives:
-                    random.shuffle(val)
-                for passage in val[:num_hard_negatives]:
-                    passages.append({
-                        "title": passage["title"],
-                        "text": passage["text"],
-                        "label": "hard_negative",
-                        "external_id": passage.get("passage_id", uuid.uuid4().hex.upper()[0:8])
-                        })
-        sample["passages"] = passages
-        standard_dicts.append(sample)
-    return standard_dicts
-
-
-def _read_squad_file(filename, proxies=None):
-    """Read a SQuAD json file"""
-    if not (os.path.exists(filename)):
-        logger.info(f" Couldn't find {filename} locally. Trying to download ...")
-        _download_extract_downstream_data(filename, proxies)
-    with open(filename, "r", encoding="utf-8") as reader:
-        input_data = json.load(reader)["data"]
-    return input_data
-
-def _http_get(url, temp_file, proxies=None):
-    req = requests.get(url, stream=True, proxies=proxies)
-    content_length = req.headers.get("Content-Length")
-    total = int(content_length) if content_length is not None else None
-    progress = tqdm(unit="B", total=total)
-    for chunk in req.iter_content(chunk_size=1024):
-        if chunk:  # filter out keep-alive new chunks
-            progress.update(len(chunk))
-            temp_file.write(chunk)
-    progress.close()
-
-def _download_extract_downstream_data(input_file, proxies=None):
-    # download archive to temp dir and extract to correct position
-    full_path = Path(os.path.realpath(input_file))
-    directory = full_path.parent
-    taskname = directory.stem
-    datadir = directory.parent
-    logger.info(
-        "downloading and extracting file {} to dir {}".format(taskname, datadir)
-    )
-    if taskname not in DOWNSTREAM_TASK_MAP:
-        logger.error("Cannot download {}. Unknown data source.".format(taskname))
-    else:
-        if os.name == "nt":  # make use of NamedTemporaryFile compatible with Windows
-            delete_tmp_file = False
-        else:
-            delete_tmp_file = True
-        with tempfile.NamedTemporaryFile(delete=delete_tmp_file) as temp_file:
-            _http_get(DOWNSTREAM_TASK_MAP[taskname], temp_file, proxies=proxies)
-            temp_file.flush()
-            temp_file.seek(0)  # making tempfile accessible
-            tfile = tarfile.open(temp_file.name)
-            tfile.extractall(datadir)
-        # temp_file gets deleted here
-
-def _is_json(x):
-    if issubclass(type(x), Path):
-        return True
-    try:
-        json.dumps(x)
-        return True
-    except:
-        return False
-
 class TextClassificationProcessor(Processor):
     """
     Used to handle the text classification datasets that come in tabular format (CSV, TSV, etc.)
@@ -1429,23 +1269,9 @@ class TextClassificationProcessor(Processor):
             logger.info("Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
                         "using the default task or add a custom task later via processor.add_task()")
 
-    def file_to_dicts(self, file: str) -> [dict]:
-        column_mapping = {}
-        for task in self.tasks.values():
-            column_mapping[task["label_column_name"]] = task["label_name"]
-            column_mapping[task["text_column_name"]] = "text"
-        dicts = read_tsv(
-            filename=file,
-            delimiter=self.delimiter,
-            skiprows=self.skiprows,
-            quotechar=self.quote_char,
-            rename_columns=column_mapping,
-            header=self.header,
-            proxies=self.proxies,
-            max_samples=self.max_samples
-            )
+    def file_to_dicts(self, file: str) -> List[Dict]:
+        raise NotImplementedError
 
-        return dicts
 
     def dataset_from_dicts(self, dicts, indices=None, return_baskets=False, debug=False):
         self.baskets = []
@@ -1510,8 +1336,8 @@ class TextClassificationProcessor(Processor):
             return dataset, tensornames, problematic_ids
 
 
-    def convert_labels(self, dictionary):
-        ret = {}
+    def convert_labels(self, dictionary: Dict):
+        ret: Dict = {}
         # Add labels for different tasks
         for task_name, task in self.tasks.items():
             label_name = task["label_name"]
@@ -1528,51 +1354,6 @@ class TextClassificationProcessor(Processor):
                         label_ids[label_list.index(l)] = 1
             ret[task["label_tensor_name"]] = label_ids
         return ret
-
-
-    def _create_dataset(self):
-        # TODO this is the proposed new version to replace the mother function
-        features_flat = []
-        basket_to_remove = []
-        for basket in self.baskets:
-            if self._check_sample_features(basket):
-                for sample in basket.samples:
-                    features_flat.extend(sample.features)
-            else:
-                # remove the entire basket
-                basket_to_remove.append(basket)
-        dataset, tensor_names = convert_features_to_dataset(features=features_flat)
-        return dataset, tensor_names
-
-
-class TextPairClassificationProcessor(TextClassificationProcessor):
-    """
-    Used to handle text pair classification datasets (e.g. Answer Selection or Natural Inference) that come in
-    tsv format. The columns should be called text, text_b and label.
-    """
-    def __init__(self, **kwargs):
-        super(TextPairClassificationProcessor, self).__init__(**kwargs)
-
-    def file_to_dicts(self, file: str) -> [dict]:
-        column_mapping = {}
-        for task in self.tasks.values():
-            column_mapping[task["label_column_name"]] = task["label_name"]
-
-        dicts = read_tsv_sentence_pair(
-            rename_columns=column_mapping,
-            filename=file,
-            delimiter=self.delimiter,
-            skiprows=self.skiprows,
-            proxies=self.proxies,
-        )
-
-
-        # during tokenization inside TextClassificationProcessor only the "text" field is tokenized
-        # To convert text pairs we combine text and text_b into a tuple, then the tokenizer takes care of
-        # adding separator tokens and correct segment IDs
-        for d in dicts:
-            d["text"] = (d["text"], d["text_b"])
-        return dicts
 
 
 class InferenceProcessor(TextClassificationProcessor):
@@ -1602,8 +1383,9 @@ class InferenceProcessor(TextClassificationProcessor):
             tasks={},
         )
 
+
     @classmethod
-    def load_from_dir(cls, load_dir):
+    def load_from_dir(cls, load_dir: str):
         """
          Overwriting method from parent class to **always** load the InferenceProcessor instead of the specific class stored in the config.
 
@@ -1627,15 +1409,15 @@ class InferenceProcessor(TextClassificationProcessor):
 
         return processor
 
-    def file_to_dicts(self, file: str) -> [dict]:
+    def file_to_dicts(self, file: str) -> List[Dict]:
         raise NotImplementedError
 
-    def convert_labels(self, dictionary: dict):
+    def convert_labels(self, dictionary: Dict):
         # For inference we do not need labels
         ret = {}
         return ret
 
-    def dataset_from_dicts(self, dicts, indices=None, return_baskets=False, debug=False):
+    def dataset_from_dicts(self, dicts: List[Dict], indices=None, return_baskets: bool = False, debug: bool = False):
         """
         Function to convert input dictionaries containing text into a torch dataset.
         For normal operation with Language Models it calls the superclass' TextClassification.dataset_from_dicts method.
@@ -1666,12 +1448,12 @@ class InferenceProcessor(TextClassificationProcessor):
             return ret
         else:
             return super().dataset_from_dicts(dicts=dicts,
-                                       indices=indices,
-                                       return_baskets=return_baskets,
-                                       debug=debug)
+                                              indices=indices,
+                                              return_baskets=return_baskets,
+                                              debug=debug)
 
     # Private method to keep s3e pooling and embedding extraction working
-    def _dict_to_samples(self, dictionary: dict, **kwargs) -> [Sample]:
+    def _dict_to_samples(self, dictionary: Dict, **kwargs) -> List[Sample]:
         # this tokenization also stores offsets
         tokenized = tokenize_with_metadata(dictionary["text"], self.tokenizer)
         # truncate tokens, offsets and start_of_word to max_seq_len that can be handled by the model
@@ -1682,7 +1464,7 @@ class InferenceProcessor(TextClassificationProcessor):
         return Sample(id=None, clear_text=dictionary, tokenized=tokenized)
 
     # Private method to keep s3e pooling and embedding extraction working
-    def _sample_to_features(self, sample) -> dict:
+    def _sample_to_features(self, sample: Sample) -> Dict:
         features = sample_to_features_text(
             sample=sample,
             tasks=self.tasks,
@@ -1690,3 +1472,181 @@ class InferenceProcessor(TextClassificationProcessor):
             tokenizer=self.tokenizer,
         )
         return features
+
+    def _create_dataset(self):
+        # TODO this is the proposed new version to replace the mother function
+        features_flat = []
+        basket_to_remove = []
+        for basket in self.baskets:
+            if self._check_sample_features(basket):
+                for sample in basket.samples:
+                    features_flat.extend(sample.features)
+            else:
+                # remove the entire basket
+                basket_to_remove.append(basket)
+        dataset, tensor_names = convert_features_to_dataset(features=features_flat)
+        return dataset, tensor_names
+
+
+# helper fcts
+def write_squad_predictions(predictions, out_filename, predictions_filename=None):
+    predictions_json = {}
+    for x in predictions:
+        for p in x["predictions"]:
+            if p["answers"][0]["answer"] is not None:
+                predictions_json[p["question_id"]] = p["answers"][0]["answer"]
+            else:
+                predictions_json[p["question_id"]] = "" #convert No answer = None to format understood by the SQuAD eval script
+
+    if predictions_filename:
+        dev_labels = {}
+        temp = json.load(open(predictions_filename, "r"))
+        for d in temp["data"]:
+            for p in d["paragraphs"]:
+                for q in p["qas"]:
+                    if q.get("is_impossible",False):
+                        dev_labels[q["id"]] = "is_impossible"
+                    else:
+                        dev_labels[q["id"]] = q["answers"][0]["text"]
+        not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
+        if len(not_included) > 0:
+            logger.info(f"There were missing predicitons for question ids: {list(not_included)}")
+        for x in not_included:
+            predictions_json[x] = ""
+
+    # os.makedirs("model_output", exist_ok=True)
+    # filepath = Path("model_output") / out_filename
+    json.dump(predictions_json, open(out_filename, "w"))
+    logger.info(f"Written Squad predictions to: {out_filename}")
+
+def _read_dpr_json(file: str, max_samples: int = None, proxies: Any = None, num_hard_negatives: int = 1, num_positives: int = 1, shuffle_negatives: bool = True, shuffle_positives: bool = False):
+    """
+    Reads a Dense Passage Retrieval (DPR) data file in json format and returns a list of dictionaries.
+
+    :param file: filename of DPR data in json format
+
+    Returns:
+        list of dictionaries: List[dict]
+        each dictionary: {
+                    "query": str -> query_text
+                    "passages": List[dictionaries] -> [{"text": document_text, "title": xxx, "label": "positive", "external_id": abb123},
+                                {"text": document_text, "title": xxx, "label": "hard_negative", "external_id": abb134},
+                                ...]
+                    }
+        example:
+                ["query": 'who sings does he love me with reba'
+                "passages" : [{'title': 'Does He Love You',
+                    'text': 'Does He Love You "Does He Love You" is a song written by Sandy Knox and Billy Stritch, and recorded as a duet by American country music artists Reba McEntire and Linda Davis. It was released in August 1993 as the first single from Reba\'s album "Greatest Hits Volume Two". It is one of country music\'s several songs about a love triangle. "Does He Love You" was written in 1982 by Billy Stritch. He recorded it with a trio in which he performed at the time, because he wanted a song that could be sung by the other two members',
+                    'label': 'positive',
+                    'external_id': '11828866'},
+                    {'title': 'When the Nightingale Sings',
+                    'text': "When the Nightingale Sings When The Nightingale Sings is a Middle English poem, author unknown, recorded in the British Library's Harley 2253 manuscript, verse 25. It is a love poem, extolling the beauty and lost love of an unknown maiden. When þe nyhtegale singes þe wodes waxen grene.<br> Lef ant gras ant blosme springes in aueryl y wene,<br> Ant love is to myn herte gon wiþ one spere so kene<br> Nyht ant day my blod hit drynkes myn herte deþ me tene. Ich have loved al þis er þat y may love namore,<br> Ich have siked moni syk lemmon for",
+                    'label': 'hard_negative',
+                    'external_id': '10891637'}]
+                ]
+
+    """
+    # get remote dataset if needed
+    if not (os.path.exists(file)):
+        logger.info(f" Couldn't find {file} locally. Trying to download ...")
+        _download_extract_downstream_data(file, proxies=proxies)
+
+    if file.suffix.lower() == ".jsonl":
+        dicts = []
+        with open(file, encoding='utf-8') as f:
+            for line in f:
+                dicts.append(json.loads(line))
+    else:
+        dicts = json.load(open(file, encoding='utf-8'))
+
+    if max_samples:
+        dicts = random.sample(dicts, min(max_samples, len(dicts)))
+
+    # convert DPR dictionary to standard dictionary
+    query_json_keys = ["question", "questions", "query"]
+    positive_context_json_keys = ["positive_contexts", "positive_ctxs", "positive_context", "positive_ctx"]
+    hard_negative_json_keys = ["hard_negative_contexts", "hard_negative_ctxs", "hard_negative_context", "hard_negative_ctx"]
+    standard_dicts = []
+    for dict in dicts:
+        sample = {}
+        passages = []
+        for key, val in dict.items():
+            if key in query_json_keys:
+                sample["query"] = val
+            elif key in positive_context_json_keys:
+                if shuffle_positives:
+                    random.shuffle(val)
+                for passage in val[:num_positives]:
+                    passages.append({
+                        "title": passage["title"],
+                        "text": passage["text"],
+                        "label": "positive",
+                        "external_id": passage.get("passage_id", uuid.uuid4().hex.upper()[0:8])
+                        })
+            elif key in hard_negative_json_keys:
+                if shuffle_negatives:
+                    random.shuffle(val)
+                for passage in val[:num_hard_negatives]:
+                    passages.append({
+                        "title": passage["title"],
+                        "text": passage["text"],
+                        "label": "hard_negative",
+                        "external_id": passage.get("passage_id", uuid.uuid4().hex.upper()[0:8])
+                        })
+        sample["passages"] = passages
+        standard_dicts.append(sample)
+    return standard_dicts
+
+
+def _read_squad_file(filename: str, proxies=None):
+    """Read a SQuAD json file"""
+    if not (os.path.exists(filename)):
+        logger.info(f" Couldn't find {filename} locally. Trying to download ...")
+        _download_extract_downstream_data(filename, proxies)
+    with open(filename, "r", encoding="utf-8") as reader:
+        input_data = json.load(reader)["data"]
+    return input_data
+
+def http_get(url, temp_file, proxies=None):
+    req = requests.get(url, stream=True, proxies=proxies)
+    content_length = req.headers.get("Content-Length")
+    total = int(content_length) if content_length is not None else None
+    progress = tqdm(unit="B", total=total)
+    for chunk in req.iter_content(chunk_size=1024):
+        if chunk:  # filter out keep-alive new chunks
+            progress.update(len(chunk))
+            temp_file.write(chunk)
+    progress.close()
+
+def _download_extract_downstream_data(input_file: str, proxies=None):
+    # download archive to temp dir and extract to correct position
+    full_path = Path(os.path.realpath(input_file))
+    directory = full_path.parent
+    taskname = directory.stem
+    datadir = directory.parent
+    logger.info(
+        "downloading and extracting file {} to dir {}".format(taskname, datadir)
+    )
+    if taskname not in DOWNSTREAM_TASK_MAP:
+        logger.error("Cannot download {}. Unknown data source.".format(taskname))
+    else:
+        if os.name == "nt":  # make use of NamedTemporaryFile compatible with Windows
+            delete_tmp_file = False
+        else:
+            delete_tmp_file = True
+        with tempfile.NamedTemporaryFile(delete=delete_tmp_file) as temp_file:
+            _http_get(DOWNSTREAM_TASK_MAP[taskname], temp_file, proxies=proxies)
+            temp_file.flush()
+            temp_file.seek(0)  # making tempfile accessible
+            tfile = tarfile.open(temp_file.name)
+            tfile.extractall(datadir)
+        # temp_file gets deleted here
+
+def _is_json(x):
+    if issubclass(type(x), Path):
+        return True
+    try:
+        json.dumps(x)
+        return True
+    except:
+        return False

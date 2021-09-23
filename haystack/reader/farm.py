@@ -10,11 +10,11 @@ from haystack.modeling.data_handler.processor import SquadProcessor
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.inputs import QAInput, Question
 from haystack.modeling.infer import QAInferencer
-from haystack.model.optimization import initialize_optimizer
-from haystack.model.predictions import QAPred, QACandidate
-from haystack.model.adaptive_model import AdaptiveModel
-from haystack.modeling.train import Trainer
-from haystack.modeling.eval import Evaluator
+from haystack.modeling.model.optimization import initialize_optimizer
+from haystack.modeling.model.predictions import QAPred, QACandidate
+from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.training.base import Trainer
+from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 from haystack import Document

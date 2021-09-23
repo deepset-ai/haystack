@@ -6,8 +6,8 @@ from typing import List, Optional, Union
 from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.data_handler.processor import TextClassificationProcessor
 from haystack.modeling.infer import Inferencer
-from haystack.model.optimization import initialize_optimizer
-from haystack.modeling.train import Trainer
+from haystack.modeling.model.optimization import initialize_optimizer
+from haystack.modeling.training.base import Trainer
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 from haystack import Document

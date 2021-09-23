@@ -19,7 +19,7 @@ from haystack.document_store.weaviate import WeaviateDocumentStore
 from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
-from haystack.ranker import FARMRanker, SentenceTransformersRanker
+from haystack.ranker import SentenceTransformersRanker
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
@@ -306,16 +306,11 @@ def reader(request):
             use_gpu=-1
         )
 
-@pytest.fixture(params=["farm", "sentencetransformers"], scope="module")
-def ranker(request):
-    if request.param == "farm":
-        return FARMRanker(
-            model_name_or_path="deepset/gbert-base-germandpr-reranking"
-        )
-    if request.param == "sentencetransformers":
-        return SentenceTransformersRanker(
-            model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
-        )
+@pytest.fixture(scope="module")
+def ranker():
+    return SentenceTransformersRanker(
+        model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
+    )
 
 
 @pytest.fixture(params=["farm"], scope="module")
