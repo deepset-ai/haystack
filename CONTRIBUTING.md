@@ -89,6 +89,8 @@ Do not parameterize it yourself.
 Example:
 ```
 def test_write_with_duplicate_doc_ids(document_store):
+        ...
+        document_store.write(docs)
         ....
 
 ```
