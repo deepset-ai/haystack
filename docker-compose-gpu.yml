@@ -21,7 +21,6 @@ services:
     environment:
       # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
-    restart: always
     depends_on:
       - elasticsearch
     command: "/bin/bash -c 'sleep 15 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180'"
