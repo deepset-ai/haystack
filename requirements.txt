@@ -8,8 +8,6 @@ wheel
 torch>1.5,<1.10
 # progress bars in model download and training scripts
 tqdm
-# Accessing files from S3 directly.
-boto3
 # Used for downloading models over HTTP
 requests
 # Scipy & sklearn for stats in run_classifier
@@ -21,22 +19,12 @@ mlflow<=1.13.1
 # huggingface repository
 transformers==4.7.0
 sentence-transformers
-# accessing dictionary elements with dot notation
-dotmap
-# for inference-rest-apis
-Werkzeug==0.16.1
-flask
-flask-restplus
-flask-cors
 # pickle extension for (de-)serialization
 dill
-# optional for inference
-# fasttext==0.9.1
 # Inference with ONNX models. Install onnxruntime-gpu for Inference on GPUs
 # onnxruntime
 # onnxruntime_tools
 psutil
-sentencepiece
 # haystack
 --find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
