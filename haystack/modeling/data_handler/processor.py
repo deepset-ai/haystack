@@ -216,6 +216,9 @@ class Processor(ABC):
                 data_dir="data",
                 doc_stride=doc_stride
             )
+        elif task_type == "embeddings":
+            processor = InferenceProcessor(tokenizer=tokenizer, max_seq_len=max_seq_len)
+
         else:
             raise ValueError(f"`task_type` {task_type} is not supported yet. "
                              f"Valid options for arg `task_type`: 'question_answering', "
