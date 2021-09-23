@@ -1,6 +1,7 @@
 import os
 import sys
 
+import logging
 import pandas as pd
 import streamlit as st
 from annotated_text import annotated_text
@@ -9,9 +10,7 @@ from annotated_text import annotated_text
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
 # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 import SessionState
-from utils import feedback_doc
-from utils import retrieve_doc
-from utils import upload_doc
+from utils import feedback_doc, haystack_is_ready, retrieve_doc, upload_doc
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
 DEFAULT_QUESTION_AT_STARTUP = "Who is the father of Arya Stark?"
@@ -101,10 +100,10 @@ if eval_mode:
         random_question, random_answer = random_questions(df)
         state_question.random_question = random_question
         state_question.random_answer = random_answer
-        state_question.next_question = "true"
-        state_question.run_query = "false"
+        state_question.next_question = True
+        state_question.run_query = False
     else:
-        state_question.next_question = "false"
+        state_question.next_question = False
 
 # Search bar
 question = st.text_input("Please provide your query:", value=random_question)
@@ -117,6 +116,11 @@ else:
 
 raw_json_feedback = ""
 
+with st.spinner("Haystack is starting..."):
+    if not haystack_is_ready():
+        st.write("Connection Error! Is Haystack running?")
+        run_query = False
+
 # Get results for query
 if run_query:
     with st.spinner(
@@ -124,7 +128,11 @@ if run_query:
         "Do you want to optimize speed or accuracy? \n"
         "Check out the docs: https://haystack.deepset.ai/usage/optimization "
     ):
-        results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+        try:
+            results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+        except ConnectionError as e:
+            logging.exception(e)
+            st.write("Connection Error! Is Haystack running?")
 
     # Show if we use a question of the given set
     if question == random_question and eval_mode:
