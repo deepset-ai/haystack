@@ -12,10 +12,9 @@ from haystack.pipeline import (
     FAQPipeline,
     DocumentSearchPipeline,
     RootNode,
-    SklearnQueryClassifier,
-    TransformersQueryClassifier,
     MostSimilarDocumentsPipeline,
 )
+from haystack.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.schema import Document
