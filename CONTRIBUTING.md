@@ -46,6 +46,13 @@ pytest
 #### Recommendation: Running a subset of tests
 In most cases you rather want to run a **subset of tests** locally that are related to your dev:
 
+The most important option to reduce the number of tests in a meaningful way, is to shrink the "test grid" of document stores.
+This is possible by adding the `--doc_store_type` arg to your pytest command. Possible values are: `"elasticsearch, faiss, memory, milvus, weaviate"`.
+For example, calling `pytest . --doc_store_type="memory"` will run all tests that can be run with the InMemoryDocumentStore, i.e.: 
+- all the tests that we typically run on the whole "document store grid" will only be run for InMemoryDocumentStore
+- any test that is specific to other document stores (e.g. elasticsearch) and is not supported by the chosen document store will be skipped (and marked in the logs accordingly)
+
+
 Run tests that are possible for a **selected document store**. The InMemoryDocument store is a very good starting point as it doesn't require any of the external docker containers from above: 
 ```
 pytest . --doc_store_type="memory"
