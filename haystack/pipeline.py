@@ -1320,6 +1320,12 @@ class _RayDeploymentWrapper:
 
 
 class Docs2Answers(BaseComponent):
+    """
+    This Node is used to convert retrieved documents into predicted answers format.
+    It is useful for situations where you are calling a Retriever only pipeline via REST API.
+    This ensures that your output is in a compatible format.
+    """
+
     outgoing_edges = 1
 
     def __init__(self):

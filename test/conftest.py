@@ -3,6 +3,7 @@ import time
 from subprocess import run
 from sys import platform
 
+import psutil
 import pytest
 import requests
 from elasticsearch import Elasticsearch
@@ -17,6 +18,7 @@ from haystack.document_store.weaviate import WeaviateDocumentStore
 
 from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
+from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.ranker import FARMRanker, SentenceTransformersRanker
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
@@ -465,3 +467,44 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
     return document_store
+
+
+@pytest.fixture(scope="module")
+def adaptive_model_qa(num_processes):
+    """
+    PyTest Fixture for a Question Answering Inferencer based on PyTorch.
+    """
+    try:
+        model = Inferencer.load(
+            "deepset/bert-base-cased-squad2",
+            task_type="question_answering",
+            batch_size=16,
+            num_processes=num_processes,
+            gpu=False,
+        )
+        yield model
+    finally:
+        if num_processes != 0:
+            # close the pool
+            # we pass join=True to wait for all sub processes to close
+            # this is because below we want to test if all sub-processes
+            # have exited
+            model.close_multiprocessing_pool(join=True)
+
+    # check if all workers (sub processes) are closed
+    current_process = psutil.Process()
+    children = current_process.children()
+    assert len(children) == 0
+
+
+@pytest.fixture(scope="module")
+def bert_base_squad2(request):
+    model = QAInferencer.load(
+            "deepset/minilm-uncased-squad2",
+            task_type="question_answering",
+            batch_size=4,
+            num_processes=0,
+            multithreading_rust=False,
+            use_fast=True # TODO parametrize this to test slow as well
+    )
+    return model

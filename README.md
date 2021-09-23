@@ -591,7 +591,7 @@ pytest -m tika
 pytest -m not slow
 ...
 ```
-If you want to run all test cases but not with all document store variants, you can make use of our `--document_store`:
+If you want to run all test cases but not with all document store variants, you can make use of the arg `--document_store_type`:
 ```
 pytest -v test_retriever.py::test_dpr_embedding --document_store_type="faiss"
 pytest -v test_retriever.py::test_dpr_embedding --document_store_type="faiss, memory"

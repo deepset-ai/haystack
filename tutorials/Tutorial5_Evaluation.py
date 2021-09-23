@@ -63,8 +63,8 @@ def tutorial5_evaluation():
         clean_empty_lines=False,
         clean_whitespace=False
     )
-    document_store.delete_all_documents(index=doc_index)
-    document_store.delete_all_documents(index=label_index)
+    document_store.delete_documents(index=doc_index)
+    document_store.delete_documents(index=label_index)
     document_store.add_eval_data(
         filename="../data/nq/nq_dev_subset_v2.json",
         doc_index=doc_index,
