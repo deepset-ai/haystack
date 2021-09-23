@@ -49,7 +49,7 @@ class Processor(ABC):
         self,
         tokenizer,
         max_seq_len: int,
-        train_filename: Union[Path,str],
+        train_filename: Optional[Union[Path,str]],
         dev_filename: Optional[Union[Path,str]],
         test_filename: Optional[Union[Path,str]],
         dev_split: float,
@@ -1355,6 +1355,20 @@ class TextClassificationProcessor(Processor):
             ret[task["label_tensor_name"]] = label_ids
         return ret
 
+    def _create_dataset(self):
+        # TODO this is the proposed new version to replace the mother function
+        features_flat = []
+        basket_to_remove = []
+        for basket in self.baskets:
+            if self._check_sample_features(basket):
+                for sample in basket.samples:
+                    features_flat.extend(sample.features)
+            else:
+                # remove the entire basket
+                basket_to_remove.append(basket)
+        dataset, tensor_names = convert_features_to_dataset(features=features_flat)
+        return dataset, tensor_names
+
 
 class InferenceProcessor(TextClassificationProcessor):
     """
@@ -1472,20 +1486,6 @@ class InferenceProcessor(TextClassificationProcessor):
             tokenizer=self.tokenizer,
         )
         return features
-
-    def _create_dataset(self):
-        # TODO this is the proposed new version to replace the mother function
-        features_flat = []
-        basket_to_remove = []
-        for basket in self.baskets:
-            if self._check_sample_features(basket):
-                for sample in basket.samples:
-                    features_flat.extend(sample.features)
-            else:
-                # remove the entire basket
-                basket_to_remove.append(basket)
-        dataset, tensor_names = convert_features_to_dataset(features=features_flat)
-        return dataset, tensor_names
 
 
 # helper fcts
