@@ -62,7 +62,7 @@ __print_documents(res, max_text_len=100)__
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, batch_size: int = 50, use_gpu: bool = True, top_k: int = 10, num_processes: Optional[int] = None, max_seq_len: int = 256, progress_bar: bool = True)
+ | __init__(model_name_or_path: str, model_version: Optional[str] = None, batch_size: int = 50, use_gpu: bool = True, top_k: int = 10, num_processes: Optional[int] = None, max_seq_len: int = 256, progress_bar: bool = True)
 ```
 
 **Arguments**:
