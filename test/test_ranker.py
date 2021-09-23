@@ -1,5 +1,4 @@
 from haystack import Document
-from haystack.ranker import FARMRanker
 from haystack.ranker.base import BaseRanker
 from haystack.ranker.sentence_transformers import SentenceTransformersRanker
 
