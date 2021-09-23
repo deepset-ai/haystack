@@ -327,6 +327,9 @@ class Processor(ABC):
 
     def _log_samples(self, n_samples:int, baskets:List[SampleBasket]):
         logger.info("*** Show {} random examples ***".format(n_samples))
+        if len(baskets) == 0:
+            logger.info("*** No samples to show because there are no baskets ***")
+            return
         for i in range(n_samples):
             random_basket = random.choice(baskets)
             random_sample = random.choice(random_basket.samples) # type: ignore
