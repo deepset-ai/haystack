@@ -451,10 +451,9 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         vector_ids_for_query = []
         scores_for_vector_ids: Dict[str, float] = {}
-        for vector_id_list, distance_list in zip(search_result[0].ids, search_result[0].distances):
-            for vector_id, distance in zip(vector_id_list, distance_list):
-                vector_ids_for_query.append(str(vector_id))
-                scores_for_vector_ids[str(vector_id)] = distance
+        for vector_id, distance in zip(search_result[0].ids, search_result[0].distances):
+            vector_ids_for_query.append(str(vector_id))
+            scores_for_vector_ids[str(vector_id)] = distance
 
         documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
 
@@ -614,8 +613,8 @@ class MilvusDocumentStore(SQLDocumentStore):
             output_fields=[self.embedding_field],
         )
 
-        for embedding, doc in zip(search_result[0].embeddings, docs_with_vector_ids):
-            doc.embedding = numpy.array(embedding, dtype="float32")
+        for result, doc in zip(search_result, docs_with_vector_ids):
+            doc.embedding = numpy.array(result["embedding"], dtype="float32")
 
     def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
         logger.warning("`_delete_vector_ids_from_milvus` is not implemented")
