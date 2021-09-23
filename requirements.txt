@@ -1,4 +1,3 @@
-# farm==0.8.0
 # basics
 setuptools
 wheel

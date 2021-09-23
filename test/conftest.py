@@ -8,7 +8,6 @@ import pytest
 import requests
 from elasticsearch import Elasticsearch
 
-from haystack.classifier import FARMClassifier
 from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
@@ -311,14 +310,6 @@ def ranker():
     return SentenceTransformersRanker(
         model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
     )
-
-
-@pytest.fixture(params=["farm"], scope="module")
-def classifier(request):
-    if request.param == "farm":
-        return FARMClassifier(
-            model_name_or_path="deepset/bert-base-german-cased-sentiment-Germeval17"
-        )
 
 
 # TODO Fix bug in test_no_answer_output when using
