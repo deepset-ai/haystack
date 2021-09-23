@@ -1,7 +1,11 @@
+import os
+import json
 import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
+
+from haystack.document_store import sql
 try:
     import faiss
 except ImportError:
@@ -32,7 +36,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def __init__(
         self,
-        sql_url: str = "sqlite:///",
+        sql_url: str = "sqlite:///faiss_document_store.db",
         vector_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional["faiss.swigfaiss.Index"] = None,
@@ -67,8 +71,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                             or one with docs that you used in Haystack before and want to load again.
         :param return_embedding: To return document embedding
         :param index: Name of index in document store to use.
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
-                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
+                   In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+                   For `dot_product`: expit(np.asarray(raw_score / 100))
+                   FOr `cosine`: (raw_score + 1) / 2
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
@@ -79,24 +86,29 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            sql_url=sql_url, vector_dim=vector_dim, faiss_index_factory_str=faiss_index_factory_str,
-            faiss_index=faiss_index, return_embedding=return_embedding,
-            duplicate_documents=duplicate_documents, index=index, similarity=similarity,
-            embedding_field=embedding_field, progress_bar=progress_bar
+            sql_url=sql_url, 
+            vector_dim=vector_dim, 
+            faiss_index_factory_str=faiss_index_factory_str,
+            faiss_index=faiss_index, 
+            return_embedding=return_embedding,
+            duplicate_documents=duplicate_documents, 
+            index=index, 
+            similarity=similarity,
+            embedding_field=embedding_field, 
+            progress_bar=progress_bar
         )
 
-        if similarity == "dot_product":
+        if similarity == "dot_product" or similarity == 'cosine':
             self.similarity = similarity
             self.metric_type = faiss.METRIC_INNER_PRODUCT
         elif similarity == "l2":
             self.similarity = similarity
             self.metric_type = faiss.METRIC_L2
         else:
-            raise ValueError("The FAISS document store can currently only support dot_product similarity. "
-                             "Please set similarity=\"dot_product\"")
+            raise ValueError("The FAISS document store can currently only support dot_product, cosine and l2 similarity. "
+                             "Please set similarity to one of the above.")
 
         self.vector_dim = vector_dim
         self.faiss_index_factory_str = faiss_index_factory_str
@@ -184,6 +196,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             if add_vectors:
                 embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                 embeddings_to_index = np.array(embeddings, dtype="float32")
+
+                if self.similarity == 'cosine':
+                    faiss.normalize_L2(embeddings_to_index)
+
                 self.faiss_indexes[index].add(embeddings_to_index)
 
             docs_to_write_in_sql = []
@@ -261,6 +277,10 @@ class FAISSDocumentStore(SQLDocumentStore):
                 assert len(document_batch) == len(embeddings)
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
+
+                if self.similarity == 'cosine':
+                    faiss.normalize_L2(embeddings_to_index)
+
                 self.faiss_indexes[index].add(embeddings_to_index)
 
                 vector_id_map = {}
@@ -417,6 +437,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
+
+        if self.similarity == 'cosine':
+            faiss.normalize_L2(query_emb)
+
         score_matrix, vector_id_matrix = self.faiss_indexes[index].search(query_emb, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
 
@@ -426,46 +450,80 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = float(expit(np.asarray(raw_score / 100)))
+            if self.similarity == 'cosine':
+                doc.score = (raw_score + 1) / 2
+            else:
+                doc.score = float(expit(np.asarray(raw_score / 100)))
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
 
         return documents
 
-    def save(self, file_path: Union[str, Path]):
+    def save(self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
         Save FAISS Index to the specified file.
 
-        :param file_path: Path to save to.
+        :param index_path: Path to save the FAISS index to.
+        :param config_path: Path to save the initial configuration parameters to. 
+            Defaults to the same as the file path, save the extension (.json).
+            This file contains all the parameters passed to FAISSDocumentStore()
+            at creation time (for example the SQL path, vector_dim, etc), and will be 
+            used by the `load` method to restore the index with the appropriate configuration.
         :return: None
         """
-        faiss.write_index(self.faiss_indexes[self.index], str(file_path))
+        if not config_path:
+            index_path = Path(index_path)
+            config_path = index_path.with_suffix(".json")
+
+        faiss.write_index(self.faiss_indexes[self.index], str(index_path))
+        with open(config_path, 'w') as ipp:
+            json.dump(self.pipeline_config["params"], ipp)
 
     @classmethod
-    def load(
-        cls,
-        faiss_file_path: Union[str, Path],
-        sql_url: str,
-        index: str,
-    ):
+    def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
         Note: In order to have a correct mapping from FAISS to SQL,
               make sure to use the same SQL DB that you used when calling `save()`.
 
-        :param faiss_file_path: Stored FAISS index file. Can be created via calling `save()`
+        :param index_path: Stored FAISS index file. Can be created via calling `save()`
+        :param config_path: Stored FAISS initial configuration parameters. 
+            Can be created via calling `save()`
         :param sql_url: Connection string to the SQL database that contains your docs and metadata.
+            Overrides the value defined in the `faiss_init_params_path` file, if present
         :param index: Index name to load the FAISS index as. It must match the index name used for
-                      when creating the FAISS index.
-        :return:
+                      when creating the FAISS index. Overrides the value defined in the 
+                      `faiss_init_params_path` file, if present
+        :return: the DocumentStore
         """
-        """
-        """
-        faiss_index = faiss.read_index(str(faiss_file_path))
-        return cls(
-            faiss_index=faiss_index,
-            sql_url=sql_url,
-            vector_dim=faiss_index.d,
-            index=index,
-        )
+        if not config_path:
+            index_path = Path(index_path)
+            faiss_init_params_path = index_path.with_suffix(".json")
 
+        init_params: dict = {}
+        try:
+            with open(faiss_init_params_path, 'r') as ipp:
+                init_params = json.load(ipp)
+        except OSError as e:
+            raise ValueError(f"Can't open FAISS configuration file `{faiss_init_params_path}`. "
+                             "Make sure the file exists and the you have the correct permissions "
+                             "to access it.") from e
+
+        faiss_index = faiss.read_index(str(index_path))
+
+        # Add other init params to override the ones defined in the init params file
+        init_params["faiss_index"] = faiss_index
+        init_params["vector_dim"]=faiss_index.d
+
+        document_store = cls(**init_params)
+
+        # This check ensures the correct document database was loaded.
+        # If it fails, make sure you provided the path to the database
+        # used when creating the original FAISS index
+        if not document_store.get_document_count() == document_store.get_embedding_count():
+            raise ValueError("The number of documents present in the SQL database does not "
+                             "match the number of embeddings in FAISS. Make sure your FAISS "
+                             "configuration file correctly points to the same database that "
+                             "was used when creating the original index.")
+
+        return document_store
