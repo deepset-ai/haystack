@@ -183,7 +183,7 @@ class DensePassageRetriever(BaseRetriever):
             embeds_dropout_prob=0.1,
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
-            device=self.devices[0],
+            device=str(self.devices[0]),
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)

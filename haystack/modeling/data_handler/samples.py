@@ -13,7 +13,7 @@ class Sample(object):
     the human readable clear_text. Over the course of data preprocessing, this object is populated
     with tokenized and featurized versions of the data."""
 
-    def __init__(self, id: Optional[str], clear_text: dict, tokenized: Optional[dict] = None, features: Optional[dict] = None):
+    def __init__(self, id: str, clear_text: dict, tokenized: Optional[dict] = None, features: Optional[dict] = None):
         """
         :param id: The unique id of the sample
         :param clear_text: A dictionary containing various human readable fields (e.g. text, label).
@@ -71,7 +71,7 @@ class SampleBasket:
     is needed for tasks like question answering where the source text can generate multiple input - label
     pairs."""
 
-    def __init__(self, id_internal: Union[int, str], raw: dict, id_external: str = None, samples: Optional[List[Sample]] = None):
+    def __init__(self, id_internal: Union[int, str, None], raw: dict, id_external: str = None, samples: Optional[List[Sample]] = None):
         """
         :param id_internal: A unique identifying id. Used for identification within Haystack.
         :param external_id: Used for identification outside of Haystack. E.g. if another framework wants to pass along its own id with the results.

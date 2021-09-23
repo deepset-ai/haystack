@@ -53,7 +53,7 @@ class Processor(ABC):
         dev_filename: Optional[Union[Path,str]],
         test_filename: Optional[Union[Path,str]],
         dev_split: float,
-        data_dir: Optional[str],
+        data_dir: Optional[Union[Path,str]],
         tasks : Dict = {},
         proxies: Optional[Dict] = None,
         multithreading_rust: Optional[bool] = True,
@@ -349,11 +349,11 @@ class SquadProcessor(Processor):
         self,
         tokenizer, #type: ignore
         max_seq_len: int,
-        data_dir: str,
+        data_dir: Optional[Union[Path,str]],
         label_list: Optional[List[str]] = None,
         metric = "squad", #type: ignore
-        train_filename: Union[Path,str] = Path("train-v2.0.json"),
-        dev_filename: Union[Path,str] = Path("dev-v2.0.json"),
+        train_filename: Optional[Union[Path,str]] = Path("train-v2.0.json"),
+        dev_filename: Optional[Union[Path,str]] = Path("dev-v2.0.json"),
         test_filename: Optional[Union[Path,str]] = None,
         dev_split: float = 0,
         doc_stride: int = 128,
@@ -1121,7 +1121,7 @@ class TextSimilarityProcessor(Processor):
         """
         features_flat: List[dict] = []
         basket_to_remove = []
-        problematic_ids = set()
+        problematic_ids: set = set()
         for basket in baskets:
             if self._check_sample_features(basket):
                 for sample in basket.samples:  # type: ignore
@@ -1312,7 +1312,7 @@ class TextClassificationProcessor(Processor):
                 feat_dict.update(label_dict)
 
             # Add Basket to self.baskets
-            curr_sample = Sample(id=None,
+            curr_sample = Sample(id="",
                                  clear_text=dictionary,
                                  tokenized=tokenized,
                                  features=[feat_dict])
@@ -1328,7 +1328,7 @@ class TextClassificationProcessor(Processor):
             self._log_samples(1)
 
         # TODO populate problematic ids
-        problematic_ids = set()
+        problematic_ids: set = set()
         dataset, tensornames = self._create_dataset()
         if return_baskets:
             return dataset, tensornames, problematic_ids, self.baskets
@@ -1414,7 +1414,7 @@ class InferenceProcessor(TextClassificationProcessor):
 
     def convert_labels(self, dictionary: Dict):
         # For inference we do not need labels
-        ret = {}
+        ret: Dict = {}
         return ret
 
     def dataset_from_dicts(self, dicts: List[Dict], indices=None, return_baskets: bool = False, debug: bool = False):
@@ -1438,9 +1438,9 @@ class InferenceProcessor(TextClassificationProcessor):
             if indices and 0 not in indices:
                 pass
             else:
-                self._log_samples(1)
+                self._log_samples(n_samples=1, baskets=self.baskets)
 
-            problematic_ids = set()
+            problematic_ids: set = set()
             dataset, tensornames = self._create_dataset()
             ret = [dataset, tensornames, problematic_ids]
             if return_baskets:
@@ -1453,7 +1453,7 @@ class InferenceProcessor(TextClassificationProcessor):
                                               debug=debug)
 
     # Private method to keep s3e pooling and embedding extraction working
-    def _dict_to_samples(self, dictionary: Dict, **kwargs) -> List[Sample]:
+    def _dict_to_samples(self, dictionary: Dict, **kwargs) -> Sample:
         # this tokenization also stores offsets
         tokenized = tokenize_with_metadata(dictionary["text"], self.tokenizer)
         # truncate tokens, offsets and start_of_word to max_seq_len that can be handled by the model
@@ -1461,7 +1461,7 @@ class InferenceProcessor(TextClassificationProcessor):
             tokenized[seq_name], _, _ = truncate_sequences(seq_a=tokenized[seq_name], seq_b=None,
                                                            tokenizer=self.tokenizer,
                                                            max_seq_len=self.max_seq_len)
-        return Sample(id=None, clear_text=dictionary, tokenized=tokenized)
+        return Sample(id="", clear_text=dictionary, tokenized=tokenized)
 
     # Private method to keep s3e pooling and embedding extraction working
     def _sample_to_features(self, sample: Sample) -> Dict:
@@ -1551,7 +1551,7 @@ def _read_dpr_json(file: str, max_samples: int = None, proxies: Any = None, num_
         logger.info(f" Couldn't find {file} locally. Trying to download ...")
         _download_extract_downstream_data(file, proxies=proxies)
 
-    if file.suffix.lower() == ".jsonl":
+    if Path(file).suffix.lower() == ".jsonl":
         dicts = []
         with open(file, encoding='utf-8') as f:
             for line in f:
@@ -1635,7 +1635,7 @@ def _download_extract_downstream_data(input_file: str, proxies=None):
         else:
             delete_tmp_file = True
         with tempfile.NamedTemporaryFile(delete=delete_tmp_file) as temp_file:
-            _http_get(DOWNSTREAM_TASK_MAP[taskname], temp_file, proxies=proxies)
+            http_get(DOWNSTREAM_TASK_MAP[taskname], temp_file, proxies=proxies)
             temp_file.flush()
             temp_file.seek(0)  # making tempfile accessible
             tfile = tarfile.open(temp_file.name)
