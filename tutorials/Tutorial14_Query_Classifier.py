@@ -2,7 +2,7 @@ from haystack.utils import print_answers
 from haystack.preprocessor.utils import fetch_archive_from_http, convert_files_to_dicts
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack import Pipeline
-from haystack.query_classifier import TransformersQueryClassifier, SklearnQueryClassifier
+from haystack.classifier import TransformersQueryClassifier, SklearnQueryClassifier
 from haystack.utils import launch_es
 from haystack.document_store import ElasticsearchDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever
