@@ -89,7 +89,7 @@ class BaseDocumentStore(BaseComponent):
                                   index: Optional[str] = None,
                                   filters: Optional[Dict[str, List[str]]] = None,
                                   open_domain: bool=True,
-                                  drop_negative_labels: bool=True,
+                                  drop_negative_labels: bool=False,
                                   drop_no_answers: bool=False,
                                   aggregate_by_meta: Optional[Union[str, list]]=None) -> List[MultiLabel]:
         """
@@ -139,10 +139,6 @@ class BaseDocumentStore(BaseComponent):
                     if curr_meta:
                         group_by_id_list.append(curr_meta)
             group_by_id = tuple(group_by_id_list)
-
-            # only aggregate labels with correct answers, as only those can be currently used in evaluation
-            if not l.is_correct_answer:
-                continue
 
             if group_by_id in question_ans_dict:
                 question_ans_dict[group_by_id].append(l)

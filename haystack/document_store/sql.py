@@ -354,29 +354,17 @@ class SQLDocumentStore(BaseDocumentStore):
                            f" the answer annotation and not the question."
                            f"   Problematic ids: {','.join(duplicate_ids)}")
         # TODO: Use batch_size
-
-        # TODO verify functionality after refactor
         for label in labels:
-
-            # meta_fields = label.document.meta or {}
-            # vector_id = meta_fields.pop("vector_id", None)
-            # meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
-            # doc_orm = DocumentORM(id=label.document.id, content=label.document.content, vector_id=vector_id, meta=meta_orms, index=index)
-
             #TODO verify how the logic of index vs labelindex should work here.
             # As of now, we would write documents to the same "index" as the one of label
             # This can cause problems when you already have some docs in a separate "documents" index
             self.write_documents(documents=[label.document], index=index, duplicate_documents="skip")
             # TODO: Handle label meta data
 
-            # 1. doc is in db => don' insert / or update (?)
-            # 2. doc is NOT in db + NOT in other labels => just insert
-            # 3. doc is NOT in db, but in other labels => insert once only
-
             label_orm = LabelORM(
                 id=label.id,
                 no_answer=label.no_answer,
-                document_id= label.document.id,
+                document_id=label.document.id,
                 # document=doc_orm,
                 origin=label.origin,
                 query=label.query,
@@ -390,7 +378,9 @@ class SQLDocumentStore(BaseDocumentStore):
                 self.session.merge(label_orm)
             else:
                 self.session.add(label_orm)
-        self.session.commit()
+            #TODO: investigate why test_multilabel() failed when not committing within the loop
+            # Seems that in some cases only the last label get than "committed"
+            self.session.commit()
 
     def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None, batch_size: int = 10_000):
         """

@@ -398,6 +398,7 @@ def test_labels(document_store):
     assert label in labels
     assert label2 in labels
 
+
 def test_multilabel(document_store):
     labels =[
         Label(
@@ -463,26 +464,37 @@ def test_multilabel(document_store):
     document_store.write_labels(labels, index="haystack_test_multilabel")
     # regular labels - not aggregated
     list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
-    # assert list_labels == labels
-    assert len(list_labels) == 5
-    list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
+    assert list_labels == labels
     assert len(list_labels) == 5
 
-    multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=True)
-    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=False)
 
-
-    docs = document_store.get_all_documents()
+    # Are associated docs also there?
+    docs = document_store.get_all_documents(index="haystack_test_multilabel")
     assert len(docs) == 3
 
-    # for open-domain we group all together as they have the same question
+    # Multi labels (open domain)
+    multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel",
+                                                                 open_domain=True, drop_negative_labels=True)
+
+    # for open-domain we group all together as long as they have the same question
     assert len(multi_labels_open) == 1
     # all labels are in there except the negative one
     assert len(multi_labels_open[0].answers) == 4
     assert "5-negative" not in [l.id for l in multi_labels_open[0].labels]
 
+    # Don't drop the negative label
+    multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=True,
+                                                                 drop_no_answers=False, drop_negative_labels=False)
+    assert len(multi_labels_open[0].answers) == 5
+
+    # Drop no answer + negative
+    multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=True,
+                                                                 drop_no_answers=True, drop_negative_labels=True)
+    assert len(multi_labels_open[0].answers) == 3
 
     # for closed domain we group by document so we expect 3 multilabels with 2,1,1 labels each (negative dropped again)
+    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel",
+                                                            open_domain=False, drop_negative_labels=True)
     assert len(multi_labels) == 3
     label_counts = set([len(ml.labels) for ml in multi_labels])
     assert label_counts == set([2,1,1])
@@ -490,10 +502,13 @@ def test_multilabel(document_store):
     assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
 
 
-
-    # nothing in another index
+    # make sure there' nothing stored in another index
     multi_labels = document_store.get_all_labels_aggregated()
     assert len(multi_labels) == 0
+    docs = document_store.get_all_documents()
+    assert len(docs) == 0
+
+    #
 
     # clean up
     document_store.delete_documents(index="haystack_test_multilabel")

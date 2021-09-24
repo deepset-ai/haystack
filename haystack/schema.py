@@ -21,6 +21,7 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class Document:
     def __init__(
@@ -130,8 +131,8 @@ class Span:
 @dataclass
 class Answer:
     answer: str
-    type: Literal["generative", "extractive"]
-    score: float
+    type: Literal["generative", "extractive"] = "extractive"
+    score: Optional[float] = None
     context: Optional[Union[str, pd.DataFrame]] = None
     offsets_in_document: Optional[List[Span]] = None
     offsets_in_context: Optional[List[Span]] = None
@@ -173,6 +174,7 @@ class Answer:
 #     offset_start_in_doc: int = Field(
 #         ..., description="The answer start offset in the original doc. Only required for doc-qa feedback."
 #     )
+
 
 # TODO: Verify compliance with FAST API usage
 @dataclass
@@ -295,11 +297,13 @@ class Label:
     def __str__(self):
         return str(self.to_dict())
 
+
 @dataclass
 class MultiLabel:
     def __init__(self,
-                 labels = List[Label],
-                 drop_negative_labels=False
+                 labels: List[Label],
+                 drop_negative_labels=False,
+                 drop_no_answers=False
                  ):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -315,17 +319,20 @@ class MultiLabel:
 
         # drop duplicate labels and remove negative labels if needed.
         if drop_negative_labels:
-            self.labels = [l for l in set(labels)
+            labels = [l for l in set(labels)
                            if ((l.is_correct_answer and l.is_correct_document)
                                or (l.answer is None and l.is_correct_document))]
-        else:
-            self.labels = list(set(labels))
+
+        if drop_no_answers:
+            labels = [l for l in labels if l.no_answer == False]
+
+        self.labels = list(set(labels))
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
         self.answers = [l.answer for l in labels]
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
-        self.no_answer = False in [l.no_answer for l.no_answer in labels]
+        self.no_answer = False in [l.no_answer for l in labels]
         self.document_ids = [l.document.id for l in labels]
 
         # TODO which attributes do we still really need here?
@@ -335,13 +342,14 @@ class MultiLabel:
         # self.multiple_document_ids = multiple_document_ids
         # self.multiple_offset_start_in_docs = multiple_offset_start_in_docs
         # self.model_id = model_id
-        if not meta:
-            self.meta = dict()
-        else:
-            self.meta = meta
+
+        # if not meta:
+        #     self.meta = dict()
+        # else:
+        #     self.meta = meta
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
-        unique_values = set([l.get_attr(key) for l in self.labels])
+        unique_values = set([getattr(l, key) for l in self.labels])
         if must_be_single_value and len(unique_values) > 1:
                 raise ValueError(f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}")
         else:
