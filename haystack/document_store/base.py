@@ -89,6 +89,8 @@ class BaseDocumentStore(BaseComponent):
                                   index: Optional[str] = None,
                                   filters: Optional[Dict[str, List[str]]] = None,
                                   open_domain: bool=True,
+                                  drop_negative_labels: bool=True,
+                                  drop_no_answers: bool=False,
                                   aggregate_by_meta: Optional[Union[str, list]]=None) -> List[MultiLabel]:
         """
         Return all labels in the DocumentStore, aggregated into MultiLabel objects. 
@@ -111,6 +113,7 @@ class BaseDocumentStore(BaseComponent):
                             When False, labels are aggregated in a closed domain fashion based on the question text
                             and also the id of the document that the label is tied to. In this setting, this function
                             might return multiple MultiLabel objects with the same question string.
+        :param TODO drop params
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
 
         """
@@ -149,7 +152,7 @@ class BaseDocumentStore(BaseComponent):
         # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
         # aggregated attributes like `no_answer`
         for q, ls in question_ans_dict.items():
-            agg_label = MultiLabel(labels=ls, drop_negative_labels=False)
+            agg_label = MultiLabel(labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers)
             aggregated_labels.append(agg_label)
         return aggregated_labels
 
@@ -276,7 +279,10 @@ class BaseDocumentStore(BaseComponent):
 
         return _documents
 
-    def _handle_duplicate_documents(self, documents: List[Document], duplicate_documents: Optional[str] = None):
+    def _handle_duplicate_documents(self,
+                                    documents: List[Document],
+                                    index: Optional[str] = None,
+                                    duplicate_documents: Optional[str] = None):
         """
         Handle duplicates documents
 
@@ -289,14 +295,16 @@ class BaseDocumentStore(BaseComponent):
                                     exists.
         :return: A list of Haystack Document objects.
        """
+
+        index = index or self.index
         if duplicate_documents in ('skip', 'fail'):
             documents = self._drop_duplicate_documents(documents)
-            documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=self.index)
+            documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=index)
             ids_exist_in_db = [doc.id for doc in documents_found]
 
             if len(ids_exist_in_db) > 0 and duplicate_documents == 'fail':
                 raise DuplicateDocumentError(f"Document with ids '{', '.join(ids_exist_in_db)} already exists"
-                                             f" in index = '{self.index}'.")
+                                             f" in index = '{index}'.")
 
             documents = list(filter(lambda doc: doc.id not in ids_exist_in_db, documents))
 

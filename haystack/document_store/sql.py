@@ -318,7 +318,9 @@ class SQLDocumentStore(BaseDocumentStore):
         else:
             document_objects = documents
 
-        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
+        document_objects = self._handle_duplicate_documents(documents=document_objects,
+                                                            index=index,
+                                                            duplicate_documents=duplicate_documents)
         for i in range(0, len(document_objects), batch_size):
             for doc in document_objects[i: i + batch_size]:
                 meta_fields = doc.meta or {}
@@ -355,15 +357,27 @@ class SQLDocumentStore(BaseDocumentStore):
 
         # TODO verify functionality after refactor
         for label in labels:
-            meta_fields = label.document.meta or {}
-            vector_id = meta_fields.pop("vector_id", None)
-            meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
-            doc_orm = DocumentORM(id=label.document.id, content=label.document.content, vector_id=vector_id, meta=meta_orms, index=index)
+
+            # meta_fields = label.document.meta or {}
+            # vector_id = meta_fields.pop("vector_id", None)
+            # meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
+            # doc_orm = DocumentORM(id=label.document.id, content=label.document.content, vector_id=vector_id, meta=meta_orms, index=index)
+
+            #TODO verify how the logic of index vs labelindex should work here.
+            # As of now, we would write documents to the same "index" as the one of label
+            # This can cause problems when you already have some docs in a separate "documents" index
+            self.write_documents(documents=[label.document], index=index, duplicate_documents="skip")
+            # TODO: Handle label meta data
+
+            # 1. doc is in db => don' insert / or update (?)
+            # 2. doc is NOT in db + NOT in other labels => just insert
+            # 3. doc is NOT in db, but in other labels => insert once only
 
             label_orm = LabelORM(
                 id=label.id,
                 no_answer=label.no_answer,
-                document=doc_orm,
+                document_id= label.document.id,
+                # document=doc_orm,
                 origin=label.origin,
                 query=label.query,
                 is_correct_answer=label.is_correct_answer,
@@ -459,12 +473,12 @@ class SQLDocumentStore(BaseDocumentStore):
 
         label = Label(
             query=row.query,
-            answer=Answer.from_json, #type:ignore
+            answer=Answer.from_json(row.answer),
             document=doc,
             is_correct_answer=row.is_correct_answer,
             is_correct_document=row.is_correct_document,
             origin=row.origin,
-            id = row.id,
+            id=row.id,
             no_answer=row.no_answer,
             pipeline_id=row.pipeline_id,
             created_at=row.created_at,

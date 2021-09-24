@@ -47,6 +47,22 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(documents, duplicate_documents="fail")
 
 
+def test_write_with_duplicate_doc_ids_custom_index(document_store):
+    documents = [
+        Document(
+            content="Doc1",
+            id_hash_keys=["key1"]
+        ),
+        Document(
+            content="Doc2",
+            id_hash_keys=["key1"]
+        )
+    ]
+    document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="skip")
+    with pytest.raises(Exception):
+        document_store.write_documents(documents, duplicate_documents="fail")
+
+
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
@@ -225,7 +241,7 @@ def test_document_with_embeddings(document_store):
     assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
 
 
-@pytest.mark.parametrize("retriever", ["dpr", "embedding"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
     for i in range(6):
@@ -354,82 +370,128 @@ def test_labels(document_store):
     assert len(labels) == 1
     assert label == labels[0]
 
+    # different index
     labels = document_store.get_all_labels()
     assert len(labels) == 0
 
+    # write second label + duplicate
+    label2 = Label(
+        query="question",
+        answer=Answer(answer="another answer",
+                      type="extractive",
+                      score=0.0,
+                      context="something",
+                      offsets_in_document=[Span(start=12,end = 14)],
+                      offsets_in_context=[Span(start=12,end = 14)],
+                      ),
+        is_correct_answer=True,
+        is_correct_document=True,
+        document=Document(content="something", id="324"),
+        no_answer=False,
+        origin="gold-label",
+    )
+    document_store.write_labels([label, label2], index="haystack_test_label")
+    labels = document_store.get_all_labels(index="haystack_test_label")
+
+    # duplicate should not be there
+    assert len(labels) == 2
+    assert label in labels
+    assert label2 in labels
 
 def test_multilabel(document_store):
-    #TODO update to new schema
     labels =[
         Label(
+            id="standard",
             query="question",
-            answer="answer1",
+            answer=Answer(answer="answer1",
+                          offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            document_id="123",
-            offset_start_in_doc=12,
             no_answer=False,
-            origin="gold_label",
+            origin="gold-label",
         ),
         # different answer in same doc
         Label(
+            id="diff-answer-same-doc",
             query="question",
-            answer="answer2",
+            answer=Answer(answer="answer2",
+                          offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            document_id="123",
-            offset_start_in_doc=42,
             no_answer=False,
-            origin="gold_label",
+            origin="gold-label",
         ),
         # answer in different doc
         Label(
+            id="diff-answer-diff-doc",
             query="question",
-            answer="answer3",
+            answer=Answer(answer="answer3",
+                          offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            document_id="321",
-            offset_start_in_doc=7,
             no_answer=False,
-            origin="gold_label",
+            origin="gold-label",
         ),
         # 'no answer', should be excluded from MultiLabel
         Label(
+            id="4-no-answer",
             query="question",
-            answer="",
+            answer=Answer(answer="",
+                          offsets_in_document=[Span(start=0, end=0)]),
+            document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            document_id="777",
-            offset_start_in_doc=0,
             no_answer=True,
-            origin="gold_label",
+            origin="gold-label",
         ),
-        # is_correct_answer=False, should be excluded from MultiLabel
+        # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
         Label(
+            id="5-negative",
             query="question",
-            answer="answer5",
+            answer=Answer(answer="answer5",
+                          offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
             is_correct_answer=False,
             is_correct_document=True,
-            document_id="123",
-            offset_start_in_doc=99,
-            no_answer=True,
-            origin="gold_label",
+            no_answer=False,
+            origin="gold-label",
         ),
     ]
     document_store.write_labels(labels, index="haystack_test_multilabel")
+    # regular labels - not aggregated
+    list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
+    # assert list_labels == labels
+    assert len(list_labels) == 5
+    list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
+    assert len(list_labels) == 5
+
     multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=True)
     multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=False)
-    labels = document_store.get_all_labels(index="haystack_test_multilabel")
 
+
+    docs = document_store.get_all_documents()
+    assert len(docs) == 3
+
+    # for open-domain we group all together as they have the same question
     assert len(multi_labels_open) == 1
+    # all labels are in there except the negative one
+    assert len(multi_labels_open[0].answers) == 4
+    assert "5-negative" not in [l.id for l in multi_labels_open[0].labels]
+
+
+    # for closed domain we group by document so we expect 3 multilabels with 2,1,1 labels each (negative dropped again)
     assert len(multi_labels) == 3
-    assert len(labels) == 5
+    label_counts = set([len(ml.labels) for ml in multi_labels])
+    assert label_counts == set([2,1,1])
 
-    assert len(multi_labels[0].multiple_answers) == 2
-    assert len(multi_labels[0].multiple_answers) \
-           == len(multi_labels[0].multiple_document_ids) \
-           == len(multi_labels[0].multiple_offset_start_in_docs)
+    assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
 
+
+
+    # nothing in another index
     multi_labels = document_store.get_all_labels_aggregated()
     assert len(multi_labels) == 0
 
