@@ -1,5 +1,5 @@
 from haystack import Document
-from haystack.classifier.base import BaseClassifier
+from haystack.classifier import BaseClassifier
 
 
 def test_classifier(classifier):

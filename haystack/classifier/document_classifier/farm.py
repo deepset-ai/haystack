@@ -11,7 +11,7 @@ from farm.train import Trainer
 from farm.utils import set_all_seeds, initialize_device_settings
 
 from haystack import Document
-from haystack.classifier.base import BaseClassifier
+from haystack.classifier import BaseClassifier
 
 logger = logging.getLogger(__name__)
 
