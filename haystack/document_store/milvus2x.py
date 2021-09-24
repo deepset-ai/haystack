@@ -169,7 +169,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                 else:
                     fields.append(field)
 
-            collection_schema = CollectionSchema(fields=fields )
+            collection_schema = CollectionSchema(fields=fields)
         else:
             resp = connection.describe_collection(index)
             collection_schema = CollectionSchema.construct_from_dict(resp)
@@ -224,24 +224,26 @@ class MilvusDocumentStore(SQLDocumentStore):
             logger.warning("Calling DocumentStore.write_documents() with empty list")
             return
 
-        connection = connections.get_connection()
-        field_to_idx, field_to_type = self._get_field_to_idx(connection, index)
-
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
         document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
         add_vectors = False if document_objects[0].embedding is None else True
 
-        mutation_result: Any = None
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
-            records: List[Dict[str, Any]] = [
-                {
-                    "name": field_name,
-                    "type": dtype,
-                    "values": [],
-                }
-                for field_name, dtype in field_to_type.items()
-            ]
+            mutation_result: Any = None
+
+            if add_vectors:
+                connection = connections.get_connection()
+                field_to_idx, field_to_type = self._get_field_to_idx(connection, index)
+
+                records: List[Dict[str, Any]] = [
+                    {
+                        "name": field_name,
+                        "type": dtype,
+                        "values": [],
+                    }
+                    for field_name, dtype in field_to_type.items()
+                ]
             for document_batch in batched_documents:
                 if add_vectors:
                     doc_ids = []
@@ -272,12 +274,12 @@ class MilvusDocumentStore(SQLDocumentStore):
                     mutation_result = connection.insert(index, records)
 
                 docs_to_write_in_sql = []
-                if mutation_result is not None:
-                    for idx, doc in enumerate(document_batch):
-                        meta = doc.meta
-                        if add_vectors:
-                            meta["vector_id"] = mutation_result.primary_keys[idx]
-                        docs_to_write_in_sql.append(doc)
+
+                for idx, doc in enumerate(document_batch):
+                    meta = doc.meta
+                    if add_vectors and mutation_result is not None:
+                        meta["vector_id"] = str(mutation_result.primary_keys[idx])
+                    docs_to_write_in_sql.append(doc)
 
                 super().write_documents(docs_to_write_in_sql, index=index, duplicate_documents=duplicate_documents)
                 progress_bar.update(batch_size)
@@ -377,7 +379,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
                 vector_id_map = {}
                 for vector_id, doc in zip(mutation_result.primary_keys, document_batch):
-                    vector_id_map[doc.id] = vector_id
+                    vector_id_map[doc.id] = str(vector_id)
 
                 self.update_vector_ids(vector_id_map, index=index)
                 progress_bar.set_description_str("Documents Processed")
@@ -617,20 +619,16 @@ class MilvusDocumentStore(SQLDocumentStore):
             doc.embedding = numpy.array(result["embedding"], dtype="float32")
 
     def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
-        logger.warning("`_delete_vector_ids_from_milvus` is not implemented")
-        return
-#        index = index or self.index
-#        existing_vector_ids = []
-#        for doc in documents:
-#            if "vector_id" in doc.meta:
-#                existing_vector_ids.append(int(doc.meta["vector_id"]))
-#        if len(existing_vector_ids) > 0:
-#            status = self.milvus_server.delete_entity_by_id(
-#                collection_name=index,
-#                id_array=existing_vector_ids
-#            )
-#            if status.code != Status.SUCCESS:
-#                raise RuntimeError("E existing vector ids deletion failed: {status}")
+        index = index or self.index
+        existing_vector_ids = []
+        for doc in documents:
+            if "vector_id" in doc.meta:
+                existing_vector_ids.append(str(doc.meta["vector_id"]))
+
+        if len(existing_vector_ids) > 0:
+            expression = f'{self.id_field} in [ {",".join(existing_vector_ids)} ]'
+            res = self.collection.delete(expression)
+            assert len(res) == len(existing_vector_ids)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
         """
