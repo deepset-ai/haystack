@@ -87,7 +87,10 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters, open_domain=open_domain)
+        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters,
+                                                                                 open_domain=open_domain,
+                                                                                 drop_negative_labels=True,
+                                                                                 drop_no_answers=False)
 
         correct_retrievals = 0
         summed_avg_precision = 0.0

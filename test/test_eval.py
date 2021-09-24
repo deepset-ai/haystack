@@ -105,7 +105,9 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
         label_index="haystack_test_feedback",
     )
 
-    labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
+    labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback",
+                                                      drop_negative_labels=True,
+                                                      drop_no_answers=False)
 
     eval_retriever = EvalDocuments()
     eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-MiniLM-L3-v2",debug=True)
