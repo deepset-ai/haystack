@@ -63,7 +63,7 @@ Get documents from the document store.
 #### get\_all\_labels\_aggregated
 
 ```python
- | get_all_labels_aggregated(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, open_domain: bool = True, drop_negative_labels: bool = True, drop_no_answers: bool = False, aggregate_by_meta: Optional[Union[str, list]] = None) -> List[MultiLabel]
+ | get_all_labels_aggregated(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, open_domain: bool = True, drop_negative_labels: bool = False, drop_no_answers: bool = False, aggregate_by_meta: Optional[Union[str, list]] = None) -> List[MultiLabel]
 ```
 
 Return all labels in the DocumentStore, aggregated into MultiLabel objects.
