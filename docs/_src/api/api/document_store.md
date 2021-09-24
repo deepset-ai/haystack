@@ -63,7 +63,7 @@ Get documents from the document store.
 #### get\_all\_labels\_aggregated
 
 ```python
- | get_all_labels_aggregated(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, open_domain: bool = True, aggregate_by_meta: Optional[Union[str, list]] = None) -> List[MultiLabel]
+ | get_all_labels_aggregated(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, open_domain: bool = True, drop_negative_labels: bool = True, drop_no_answers: bool = False, aggregate_by_meta: Optional[Union[str, list]] = None) -> List[MultiLabel]
 ```
 
 Return all labels in the DocumentStore, aggregated into MultiLabel objects.
@@ -88,6 +88,7 @@ object, provided that they have the same product_id (to be found in Label.meta["
                     When False, labels are aggregated in a closed domain fashion based on the question text
                     and also the id of the document that the label is tied to. In this setting, this function
                     might return multiple MultiLabel objects with the same question string.
+:param TODO drop params
 - `aggregate_by_meta`: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
 
 <a name="base.BaseDocumentStore.add_eval_data"></a>
