@@ -16,7 +16,7 @@ from abc import abstractmethod
 import inspect
 import logging
 import time
-
+import json
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Document:
+    content: Union[str, pd.DataFrame]
+    content_type: Literal["text", "table", "image"] = None
+    id: Optional[str] = None
+    score: Optional[float] = None
+    meta: Dict[str, Any] = None
+    embedding: Optional[np.ndarray] = None
+    id_hash_keys: Optional[List[str]] = None
+
+    # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
+    # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
     def __init__(
             self,
             content: Union[str, pd.DataFrame],
@@ -110,6 +120,29 @@ class Document:
 
         return cls(**_new_doc)
 
+    def to_json(self, field_map={}) -> str:
+        d = self.to_dict(field_map=field_map)
+        j = json.dumps(d, cls=NumpyEncoder)
+        return j
+
+    @classmethod
+    def from_json(cls, data: str, field_map={}):
+        d = json.loads(data)
+        if "embedding" in d.keys():
+            if d["embedding"] is not None:
+                d["embedding"] = np.asarray(d["embedding"])
+        return cls.from_dict(d, field_map=field_map)
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+                getattr(other, 'content', None) == self.content and
+                getattr(other, 'content_type', None) == self.content_type and
+                getattr(other, 'id', None) == self.id and
+                getattr(other, 'score', None) == self.score and
+                getattr(other, 'meta', None) == self.meta and
+                np.array_equal(getattr(other, 'embedding', None), self.embedding) and
+                getattr(other, 'id_hash_keys', None) == self.id_hash_keys)
+
     def __repr__(self):
         return str(self.to_dict())
 
@@ -177,8 +210,24 @@ class Answer:
 
 
 # TODO: Verify compliance with FAST API usage
+@dataclass_json
 @dataclass
 class Label:
+    query: str
+    answer: Optional[Answer]
+    document: Document
+    is_correct_answer: bool
+    is_correct_document: bool
+    origin: Literal["user-feedback", "gold-label"]
+    id: Optional[str] = None
+    no_answer: Optional[bool] = None
+    pipeline_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    meta: Optional[dict] = None
+
+    # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
+    # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
     def __init__(self,
                  query: str,
                  answer: Optional[Answer],  # maybe replace str -> Answer object?
@@ -513,3 +562,10 @@ class BaseComponent:
                     self.pipeline_config["params"][k] = v.pipeline_config
                 elif v is not None:
                     self.pipeline_config["params"][k] = v
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
