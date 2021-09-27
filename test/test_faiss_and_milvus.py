@@ -46,6 +46,34 @@ def test_faiss_index_save_and_load(tmp_path):
     assert not new_document_store.progress_bar
 
 
+def test_faiss_index_save_and_load_custom_path(tmp_path):
+    document_store = FAISSDocumentStore(
+        sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
+        index="haystack_test",
+        progress_bar=False  # Just to check if the init parameters are kept
+    )
+    document_store.write_documents(DOCUMENTS)
+
+    # test saving the index
+    document_store.save(index_path=tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
+
+    # clear existing faiss_index
+    document_store.faiss_indexes[document_store.index].reset()
+
+    # test faiss index is cleared
+    assert document_store.faiss_indexes[document_store.index].ntotal == 0
+
+    # test loading the index
+    new_document_store = FAISSDocumentStore.load(index_path=tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
+
+    # check faiss index is restored
+    assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
+    # check if documents are restored
+    assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
+    # Check if the init parameters are kept
+    assert not new_document_store.progress_bar
+
+
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
 @pytest.mark.parametrize("index_buffer_size", [10_000, 2])
 @pytest.mark.parametrize("batch_size", [2])
