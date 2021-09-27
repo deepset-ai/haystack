@@ -398,7 +398,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
-        if filters:
-            raise NotImplementedError("Delete by filters is not implemented for InMemoryDocumentStore.")
         index = index or self.index
-        self.indexes[index] = {}
+        if not filters:
+            self.indexes[index] = {}
+            return            
+        for doc in self.get_all_documents(filters=filters):
+            del self.indexes[index][doc.id]
