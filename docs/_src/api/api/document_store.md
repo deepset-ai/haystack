@@ -1149,7 +1149,16 @@ Delete all documents from the document store.
  | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
-Delete all documents from the document store.
+Delete documents from the document store. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+
+**Returns**:
+
+None
 
 <a name="faiss.FAISSDocumentStore.query_by_embedding"></a>
 #### query\_by\_embedding
