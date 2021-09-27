@@ -498,14 +498,14 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         if not config_path:
             index_path = Path(index_path)
-            faiss_init_params_path = index_path.with_suffix(".json")
+            config_path = index_path.with_suffix(".json")
 
         init_params: dict = {}
         try:
-            with open(faiss_init_params_path, 'r') as ipp:
+            with open(config_path, 'r') as ipp:
                 init_params = json.load(ipp)
         except OSError as e:
-            raise ValueError(f"Can't open FAISS configuration file `{faiss_init_params_path}`. "
+            raise ValueError(f"Can't open FAISS configuration file `{config_path}`. "
                              "Make sure the file exists and the you have the correct permissions "
                              "to access it.") from e
 
