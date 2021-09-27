@@ -310,7 +310,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     # TODO: Add flexibility to define other non-meta and meta fields expected by the Document class
     def _create_document_field_map(self) -> Dict:
         return {
-            self.content_field: "text",
+            self.content_field: "content",
             self.embedding_field: "embedding"
         }
 
