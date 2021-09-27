@@ -281,16 +281,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         mapping = {
             "mappings": {
                 "properties": {
-                    "question": {"type": "text"},
-                    "answer": {"type": "text"},
+                    "query": {"type": "text"},
+                    "answer": {"type": "flattened"}, #light-weight but less search options than full object
+                    "document": {"type": "flattened"},
                     "is_correct_answer": {"type": "boolean"},
                     "is_correct_document": {"type": "boolean"},
                     "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
                     "document_id": {"type": "keyword"},
-                    "offset_start_in_doc": {"type": "long"},
                     "no_answer": {"type": "boolean"},
-                    "model_id": {"type": "keyword"},
-                    "type": {"type": "keyword"},
+                    "pipeline_id": {"type": "keyword"},
                     "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
                     "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
                     #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
