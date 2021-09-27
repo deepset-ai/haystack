@@ -855,7 +855,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.content_field, self.embedding_field)}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.content_field, "content_type", self.embedding_field)}
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
@@ -880,6 +880,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         document = Document(
             id=hit["_id"],
             content=hit["_source"].get(self.content_field),
+            content_type=hit["_source"].get("content_type", None),
             meta=meta_data,
             score=score,
             embedding=embedding,
