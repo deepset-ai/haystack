@@ -25,19 +25,21 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Document:
     content: Union[str, pd.DataFrame]
-    content_type: Literal["text", "table", "image"] = None
-    id: Optional[str] = None
+    content_type: Literal["text", "table", "image"]
+    id: str
+    meta: Dict[str, Any]
     score: Optional[float] = None
-    meta: Dict[str, Any] = None
     embedding: Optional[np.ndarray] = None
     id_hash_keys: Optional[List[str]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
+    # They also help in annotating which object attributes will always be present (e.g. "id") even though they
+    # don't need to passed by the user in init and are rather initialized automatically in the init
     def __init__(
             self,
             content: Union[str, pd.DataFrame],
-            content_type: Literal["text", "table", "image"] = None,
+            content_type: Literal["text", "table", "image"] = "text",
             id: Optional[str] = None,
             score: Optional[float] = None,
             meta: Dict[str, Any] = None,
@@ -72,10 +74,6 @@ class Document:
         """
 
         self.content = content
-        if content_type is None:
-            content_type = "text"
-            # logger.warning("Initialized Document() without value for `content_type`, "
-            #                "which will be a mandatory arg soon. Time to level up your code :)")
         self.content_type = content_type
         self.score = score
         self.meta = meta or {}
@@ -83,9 +81,9 @@ class Document:
 
         # Create a unique ID (either new one, or one from user input)
         if id:
-            self.id = str(id)
+            self.id: str = str(id)
         else:
-            self.id = self._get_id(id_hash_keys)
+            self.id: str = self._get_id(id_hash_keys)
 
     def _get_id(self, id_hash_keys):
         final_hash_key = ":".join(id_hash_keys) if id_hash_keys else self.content

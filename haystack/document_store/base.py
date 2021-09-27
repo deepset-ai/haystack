@@ -134,6 +134,8 @@ class BaseDocumentStore(BaseComponent):
             if aggregate_by_meta:
                 if type(aggregate_by_meta) == str:
                     aggregate_by_meta = [aggregate_by_meta]
+                if l.meta is None:
+                    l.meta = {}
                 for meta_key in aggregate_by_meta:
                     curr_meta = l.meta.get(meta_key, None)
                     if curr_meta:
@@ -296,7 +298,7 @@ class BaseDocumentStore(BaseComponent):
         if duplicate_documents in ('skip', 'fail'):
             documents = self._drop_duplicate_documents(documents)
             documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=index)
-            ids_exist_in_db = [doc.id for doc in documents_found]
+            ids_exist_in_db: List[str] = [doc.id for doc in documents_found]
 
             if len(ids_exist_in_db) > 0 and duplicate_documents == 'fail':
                 raise DuplicateDocumentError(f"Document with ids '{', '.join(ids_exist_in_db)} already exists"

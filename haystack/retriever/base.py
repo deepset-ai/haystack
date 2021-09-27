@@ -101,7 +101,7 @@ class BaseRetriever(BaseComponent):
         for label in labels:
             id_question_tuple = (label.document_ids[0], label.query)
             if open_domain:
-                question_label_dict[id_question_tuple] = [a.answer for a in label.answers]
+                question_label_dict[id_question_tuple] = [a.answer for a in label.answers if a.answer is not None]
             else:
                 deduplicated_doc_ids = list(set([str(x) for x in label.document_ids]))
                 question_label_dict[id_question_tuple] = deduplicated_doc_ids
