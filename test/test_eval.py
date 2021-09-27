@@ -5,7 +5,6 @@ from haystack.eval import EvalAnswers, EvalDocuments
 from haystack import Pipeline
 
 @pytest.mark.parametrize("batch_size", [None, 20])
-@pytest.mark.elasticsearch
 def test_add_eval_data(document_store, batch_size):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
@@ -45,7 +44,6 @@ def test_add_eval_data(document_store, batch_size):
     assert doc.text[start:end] == "France"
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_eval_reader(reader, document_store: BaseDocumentStore):
     # add eval data (SQUAD format)
@@ -91,6 +89,7 @@ def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, 
         assert results["map"] == 1.0
 
 
+# TODO simplify with a mock retriever and make it independent of elasticsearch documentstore
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
@@ -131,7 +130,7 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     assert round(eval_reader_cross.top_k_sas, 3) == 0.671
     assert eval_reader.top_k_em == eval_reader_vanila.top_k_em
 
-@pytest.mark.elasticsearch
+
 def test_eval_data_split_word(document_store):
     # splitting by word
     preprocessor = PreProcessor(
@@ -156,7 +155,6 @@ def test_eval_data_split_word(document_store):
     assert len(set(labels[0].multiple_document_ids)) == 2
 
 
-@pytest.mark.elasticsearch
 def test_eval_data_split_passage(document_store):
     # splitting by passage
     preprocessor = PreProcessor(
