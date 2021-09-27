@@ -94,29 +94,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
-
-
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
-@pytest.mark.parametrize("index_buffer_size", [10_000, 2])
-@pytest.mark.parametrize("batch_size", [2])
-def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
-    document_store.index_buffer_size = index_buffer_size
-
-    # Write in small batches
-    for i in range(0, len(DOCUMENTS), batch_size):
-        document_store.write_documents(DOCUMENTS[i: i + batch_size])
-
-    documents_indexed = document_store.get_all_documents()
-    assert len(documents_indexed) == len(DOCUMENTS)
-
-    # test if correct vectors are associated with docs
-    for i, doc in enumerate(documents_indexed):
-        # we currently don't get the embeddings back when we call document_store.get_all_documents()
-        original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
-        stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
-        # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
-
+        
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
