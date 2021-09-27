@@ -38,7 +38,7 @@ DOCS = [
     ),
 ]
 
-@pytest.mark.elasticsearch
+#TODO check if we this works with only "memory" arg
 @pytest.mark.parametrize(
     "retriever_with_docs,document_store_with_docs",
     [
@@ -139,7 +139,6 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store, retriever):
 
@@ -162,7 +161,6 @@ def test_dpr_embedding(document_store, retriever):
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
 def test_retribert_embedding(document_store, retriever):

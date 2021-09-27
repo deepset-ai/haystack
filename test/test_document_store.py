@@ -31,7 +31,6 @@ def test_init_elastic_client():
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
 
 
-@pytest.mark.elasticsearch
 def test_write_with_duplicate_doc_ids(document_store):
     documents = [
         Document(
@@ -48,7 +47,6 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(documents, duplicate_documents="fail")
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
@@ -57,7 +55,6 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3"}
 
 
-@pytest.mark.elasticsearch
 def test_get_all_document_filter_duplicate_text_value(document_store):
     documents = [
         Document(
@@ -83,7 +80,6 @@ def test_get_all_document_filter_duplicate_text_value(document_store):
     assert {d.meta["meta_id"] for d in documents} == {"0"}
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_with_correct_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
     assert len(documents) == 1
@@ -95,8 +91,10 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["sql"], indirect=True)
-def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_with_docs):
+def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs):
+    document_store_with_docs = get_document_store("sql")
+    document_store_with_docs.write_documents(test_docs_xs)
+
     document_store_with_docs.use_windowed_query = False
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
     assert len(documents) == 1
@@ -108,19 +106,16 @@ def test_get_all_documents_with_correct_filters_legacy_sqlite(document_store_wit
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_with_incorrect_filter_name(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"incorrect_meta_field": ["test2"]})
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["incorrect_value"]})
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 def test_get_documents_by_id(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     doc = document_store_with_docs.get_document_by_id(documents[0].id)
@@ -128,7 +123,6 @@ def test_get_documents_by_id(document_store_with_docs):
     assert doc.text == documents[0].text
 
 
-@pytest.mark.elasticsearch
 def test_get_document_count(document_store):
     documents = [
         {"text": "text1", "id": "1", "meta_field_for_count": "a"},
@@ -142,7 +136,6 @@ def test_get_document_count(document_store):
     assert document_store.get_document_count(filters={"meta_field_for_count": ["b"]}) == 3
 
 
-@pytest.mark.elasticsearch
 def test_get_all_documents_generator(document_store):
     documents = [
         {"text": "text1", "id": "1", "meta_field_for_count": "a"},
@@ -156,7 +149,6 @@ def test_get_all_documents_generator(document_store):
     assert len(list(document_store.get_all_documents_generator(batch_size=2))) == 5
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("update_existing_documents", [True, False])
 def test_update_existing_documents(document_store, update_existing_documents):
     original_docs = [
@@ -184,7 +176,6 @@ def test_update_existing_documents(document_store, update_existing_documents):
         assert stored_docs[0].text == original_docs[0]["text"]
 
 
-@pytest.mark.elasticsearch
 def test_write_document_meta(document_store):
     documents = [
         {"text": "dict_without_meta", "id": "1"},
@@ -202,7 +193,6 @@ def test_write_document_meta(document_store):
     assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
 
 
-@pytest.mark.elasticsearch
 def test_write_document_index(document_store):
     documents = [
         {"text": "text1", "id": "1"},
@@ -218,7 +208,6 @@ def test_write_document_index(document_store):
     assert len(document_store.get_all_documents()) == 0
 
 
-@pytest.mark.elasticsearch
 def test_document_with_embeddings(document_store):
     documents = [
         {"text": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -320,7 +309,6 @@ def test_update_embeddings(document_store, retriever):
     assert document_store.get_embedding_count(index="haystack_test_1") == 14
 
 
-@pytest.mark.elasticsearch
 def test_delete_all_documents(document_store_with_docs):
     assert len(document_store_with_docs.get_all_documents()) == 3
 
@@ -329,7 +317,6 @@ def test_delete_all_documents(document_store_with_docs):
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 def test_delete_documents(document_store_with_docs):
     assert len(document_store_with_docs.get_all_documents()) == 3
 
@@ -338,7 +325,6 @@ def test_delete_documents(document_store_with_docs):
     assert len(documents) == 0
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
     document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2"]})
@@ -347,7 +333,6 @@ def test_delete_documents_with_filters(document_store_with_docs):
     assert documents[0].meta["meta_field"] == "test3"
 
 
-@pytest.mark.elasticsearch
 def test_labels(document_store):
     label = Label(
         question="question",
@@ -367,7 +352,6 @@ def test_labels(document_store):
     assert len(labels) == 0
 
 
-@pytest.mark.elasticsearch
 def test_multilabel(document_store):
     labels =[
         Label(
@@ -446,7 +430,6 @@ def test_multilabel(document_store):
     document_store.delete_documents(index="haystack_test_multilabel")
 
 
-@pytest.mark.elasticsearch
 def test_multilabel_no_answer(document_store):
     labels = [
         Label(
@@ -510,8 +493,8 @@ def test_multilabel_no_answer(document_store):
     document_store.delete_documents(index="haystack_test_multilabel_no_answer")
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "sql"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
+# Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
         Document(
@@ -536,7 +519,6 @@ def test_update_meta(document_store):
     assert updated_document.meta["meta_key_2"] == "2"
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type):
     document_store = get_document_store(
@@ -550,7 +532,6 @@ def test_custom_embedding_field(document_store_type):
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_get_meta_values_by_key(document_store):
     documents = [
