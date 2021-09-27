@@ -518,60 +518,69 @@ def test_multilabel_no_answer(document_store):
     labels = [
         Label(
             query="question",
-            answer="",
+            answer=Answer(answer=""),
             is_correct_answer=True,
             is_correct_document=True,
-            document_id="777",
-            offset_start_in_doc=0,
+            document=Document(content="some", id="777"),
             no_answer=True,
-            origin="gold_label",
+            origin="gold-label",
         ),
         # no answer in different doc
         Label(
             query="question",
-            answer="",
+            answer=Answer(answer=""),
             is_correct_answer=True,
             is_correct_document=True,
-            document_id="123",
-            offset_start_in_doc=0,
+            document=Document(content="some", id="123"),
             no_answer=True,
-            origin="gold_label",
+            origin="gold-label",
         ),
         # no answer in same doc, should be excluded
         Label(
             query="question",
-            answer="",
+            answer=Answer(answer=""),
             is_correct_answer=True,
             is_correct_document=True,
-            document_id="777",
-            offset_start_in_doc=0,
+            document=Document(content="some", id="777"),
             no_answer=True,
-            origin="gold_label",
+            origin="gold-label",
         ),
         # no answer with is_correct_answer=False, should be excluded
         Label(
             query="question",
-            answer="",
+            answer=Answer(answer=""),
             is_correct_answer=False,
             is_correct_document=True,
-            document_id="321",
-            offset_start_in_doc=0,
+            document=Document(content="some", id="777"),
             no_answer=True,
-            origin="gold_label",
+            origin="gold-label",
         ),
     ]
 
     document_store.write_labels(labels, index="haystack_test_multilabel_no_answer")
-    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel_no_answer")
-    labels = document_store.get_all_labels(index="haystack_test_multilabel_no_answer")
 
-    assert len(multi_labels) == 1
+
+    labels = document_store.get_all_labels(index="haystack_test_multilabel_no_answer")
     assert len(labels) == 4
 
-    assert len(multi_labels[0].multiple_document_ids) == 2
-    assert len(multi_labels[0].multiple_answers) \
-           == len(multi_labels[0].multiple_document_ids) \
-           == len(multi_labels[0].multiple_offset_start_in_docs)
+    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel_no_answer",
+                                                            open_domain=True,
+                                                            drop_no_answers=False,
+                                                            drop_negative_labels=True)
+    assert len(multi_labels) == 1
+    assert multi_labels[0].no_answer == True
+    assert len(multi_labels[0].document_ids) == 2
+    assert len(multi_labels[0].answers) == 2
+
+    multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel_no_answer",
+                                                            open_domain=True,
+                                                            drop_no_answers=False,
+                                                            drop_negative_labels=False)
+    assert len(multi_labels) == 1
+    assert multi_labels[0].no_answer == True
+    assert len(multi_labels[0].document_ids) == 3
+    assert len(multi_labels[0].labels) == 3
+    assert len(multi_labels[0].answers) == 3
 
     # clean up
     document_store.delete_documents(index="haystack_test_multilabel_no_answer")

@@ -243,6 +243,8 @@ class Label:
                  meta: Optional[dict] = None
                  ):
         """
+        #TODO update docstring
+
         Object used to represent label/feedback in a standardized way within Haystack.
         This includes labels from dataset like SQuAD, annotations from labeling tools,
         or, user-feedback from the Haystack REST API.
@@ -293,7 +295,7 @@ class Label:
             if no_answer == True:
                 if self.answer.answer != ""  or self.answer.context:
                     raise ValueError(f"Got no_answer == True while there seems to be an possible Answer: {self.answer}")
-            if no_answer == False:
+            elif no_answer == False:
                 if self.answer.answer == "":
                     raise ValueError(f"Got no_answer == False while there seems to be no possible Answer: {self.answer}")
             else:
@@ -303,6 +305,8 @@ class Label:
                 else:
                     no_answer = False
         self.no_answer = no_answer
+
+        # TODO autofill answer.document_id if Document is provided
 
         self.pipeline_id = pipeline_id
         if not meta:
@@ -378,11 +382,11 @@ class MultiLabel:
         self.labels = list(set(labels))
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
-        self.answers = [l.answer for l in labels]
+        self.answers = [l.answer for l in self.labels]
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
-        self.no_answer = False in [l.no_answer for l in labels]
-        self.document_ids = [l.document.id for l in labels]
+        self.no_answer = False not in [l.no_answer for l in self.labels]
+        self.document_ids = [l.document.id for l in self.labels]
 
         # TODO which attributes do we still really need here?
         # self.is_correct_answer = is_correct_answer

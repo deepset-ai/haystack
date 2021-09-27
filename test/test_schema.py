@@ -22,6 +22,51 @@ LABELS = [
                    is_correct_document = True,
                    origin = "user-feedback")]
 
+
+def test_no_answer_label():
+    labels = [
+        Label(
+            query="question",
+            answer=Answer(answer=""),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="some", id="777"),
+            origin="gold-label",
+        ),
+        Label(
+            query="question",
+            answer=Answer(answer=""),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="some", id="777"),
+            no_answer=True,
+            origin="gold-label",
+        ),
+        Label(
+            query="question",
+            answer=Answer(answer="some"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="some", id="777"),
+            origin="gold-label",
+        ),
+        Label(
+            query="question",
+            answer=Answer(answer="some"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="some", id="777"),
+            no_answer=False,
+            origin="gold-label",
+        )
+    ]
+
+    assert labels[0].no_answer == True
+    assert labels[1].no_answer == True
+    assert labels[2].no_answer == False
+    assert labels[3].no_answer == False
+
+
 def test_equal_label():
     assert LABELS[2] == LABELS[0]
     assert LABELS[1] != LABELS[0]
