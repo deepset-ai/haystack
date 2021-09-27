@@ -43,6 +43,7 @@ def test_write_with_duplicate_doc_ids(document_store):
         )
     ]
     document_store.write_documents(documents, duplicate_documents="skip")
+    assert len(document_store.get_all_documents()) == 1
     with pytest.raises(Exception):
         document_store.write_documents(documents, duplicate_documents="fail")
 
@@ -58,10 +59,13 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
             id_hash_keys=["key1"]
         )
     ]
+    document_store.delete_documents(index="haystack_custom_test")
     document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="skip")
     with pytest.raises(Exception):
-        document_store.write_documents(documents, duplicate_documents="fail")
+        document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="fail")
 
+    # writing to the default, empty index should still work
+    document_store.write_documents(documents, duplicate_documents="fail")
 
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()

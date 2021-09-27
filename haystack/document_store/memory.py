@@ -100,7 +100,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         documents = deepcopy(documents)
         documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in
                              documents]
-
+        documents_objects = self._drop_duplicate_documents(documents=documents_objects)
         for document in documents_objects:
             if document.id in self.indexes[index]:
                 if duplicate_documents == "fail":

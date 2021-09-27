@@ -31,7 +31,8 @@ class DocumentORM(ORMBase):
     __tablename__ = "document"
 
     content = Column(Text, nullable=False)
-    index = Column(String(100), nullable=False)
+    # primary key in combination with id to allow the same doc in different indices
+    index = Column(String(100), nullable=False, primary_key=True)
     vector_id = Column(String(100), unique=True, nullable=True)
 
     labels = relationship("LabelORM", back_populates="document")
@@ -72,7 +73,7 @@ class LabelORM(ORMBase):
 
     document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
-    index = Column(String(100), nullable=False)
+    index = Column(String(100), nullable=False, primary_key=True)
     query = Column(Text, nullable=False)
     answer = Column(JSON, nullable=True)
     no_answer = Column(Boolean, nullable=False)
