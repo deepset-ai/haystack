@@ -211,13 +211,13 @@ class Answer:
 @dataclass_json
 @dataclass
 class Label:
+    id: str
     query: str
-    answer: Optional[Answer]
     document: Document
     is_correct_answer: bool
     is_correct_document: bool
     origin: Literal["user-feedback", "gold-label"]
-    id: Optional[str] = None
+    answer: Optional[Answer] = None
     no_answer: Optional[bool] = None
     pipeline_id: Optional[str] = None
     created_at: Optional[str] = None
@@ -228,14 +228,14 @@ class Label:
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
     def __init__(self,
                  query: str,
-                 answer: Optional[Answer],  # maybe replace str -> Answer object?
                  document: Document,
                  is_correct_answer: bool,
                  is_correct_document: bool,
                  origin: Literal["user-feedback", "gold-label"],
+                 answer: Optional[Answer],
                  id: Optional[str] = None,
                  no_answer: Optional[bool] = None,
-                 pipeline_id: Optional[str] = None,  # switch to pipeline_id/name/hash?
+                 pipeline_id: Optional[str] = None,
                  created_at: Optional[str] = None,
                  updated_at: Optional[str] = None,
                  meta: Optional[dict] = None
