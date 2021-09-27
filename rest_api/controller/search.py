@@ -46,6 +46,18 @@ logger.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
 concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
 
 
+@router.get("/initialized")
+def initialized():
+    """
+    This endpoint can be used during startup to understand if the 
+    server is ready to take any requests, or is still loading.
+
+    The recommended approach is to call this endpoint with a short timeout,
+    like 500ms, and in case of no reply, consider the server busy.
+    """
+    return True
+
+
 @router.post("/query", response_model=Response)
 def query(request: Request):
     with concurrency_limiter.run():
