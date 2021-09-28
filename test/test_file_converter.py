@@ -10,7 +10,8 @@ from haystack.file_converter.tika import TikaConverter
 
 @pytest.mark.tika
 @pytest.mark.parametrize(
-    "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
+    # "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
+    "Converter", [PDFToTextOCRConverter]
 )
 def test_convert(Converter, xpdf_fixture):
     converter = Converter()
