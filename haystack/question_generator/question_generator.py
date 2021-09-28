@@ -66,13 +66,13 @@ class QuestionGenerator(BaseComponent):
         # Performing splitting because T5 has a max input length
         # Also currently, it seems that it only generates about 3 questions for the beginning section of text
         split_texts_dict = self.preprocessor.split(
-            document={"text": text},
+            document={"content": text},
             split_by="word",
             split_respect_sentence_boundary=False,
             split_overlap=self.split_overlap,
             split_length=self.split_length
         )
-        split_texts = [x["text"] for x in split_texts_dict]
+        split_texts = [x["content"] for x in split_texts_dict]
         ret = []
         for split_text in split_texts:
             if self.prompt not in split_text:
