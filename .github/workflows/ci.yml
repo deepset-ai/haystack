@@ -88,12 +88,12 @@ jobs:
     - name: Set up Mac
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
-        brew install tesseract
+        brew install tesseract elasticsearch tika
         brew install --cask docker
-        open --background -a Docker
-        echo "wait for docker app to create symlinks"
-        sleep 60
-        /Applications/Docker.app/Contents/Resources/bin/docker run hello-world
+        # open --background -a Docker
+        # echo "wait for docker app to create symlinks"
+        # sleep 60
+        # /Applications/Docker.app/Contents/Resources/bin/docker run hello-world
 
     - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
@@ -104,18 +104,23 @@ jobs:
         key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
 
     - name: Run Elasticsearch
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
     - name: Run Milvus
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
 
     - name: Run Weaviate
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.0
 
     - name: Run GraphDB
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
     - name: Run Apache Tika
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
 
     - name: Run tests
