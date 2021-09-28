@@ -188,7 +188,7 @@ def test_extractive_qa_answers_without_normalized_scores(reader_without_normaliz
     assert prediction["answers"][0].score >= 10
     assert prediction["answers"][0].meta["meta_field"] == "test1"
     assert (
-            prediction["answers"][0].meta == "My name is Carla and I live in Berlin"
+            prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     )
 
     assert len(prediction["answers"]) == 3
