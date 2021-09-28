@@ -64,10 +64,10 @@ class BaseReader(BaseComponent):
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
-            ans["meta"] = {}
+            ans.meta = {}
             for doc in documents:
-                if doc.id == ans["document_id"]:
-                    ans["meta"] = deepcopy(doc.meta)
+                if doc.id == ans.document_id:
+                    ans.meta = deepcopy(doc.meta)
 
         return results, "output_1"
 

@@ -41,7 +41,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
         query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0]["answer"] == "Adobe Systems"
+    assert prediction["answers"][0].answer == "Adobe Systems"
 
     # test invalid pipeline name
     with pytest.raises(Exception):

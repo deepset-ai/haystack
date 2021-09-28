@@ -103,7 +103,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             host=host, port=port, username=username, password=password, api_key_id=api_key_id, api_key=api_key,
-            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields, text_field=content_field,
+            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields, content_field=content_field,
             name_field=name_field, embedding_field=embedding_field, embedding_dim=embedding_dim,
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
