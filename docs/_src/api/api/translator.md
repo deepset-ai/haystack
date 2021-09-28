@@ -89,7 +89,7 @@ They also have a few multilingual models that support multiple languages at once
 #### translate
 
 ```python
- | translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]
+ | translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]
 ```
 
 Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
@@ -98,5 +98,5 @@ Run the actual translation. You can supply a query or a list of documents. Whate
 
 - `query`: The query string to translate
 - `documents`: The documents to translate
-- `dict_key`: 
+- `dict_key`: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
 
