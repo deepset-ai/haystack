@@ -329,7 +329,7 @@ def tika_convert_files_to_dicts(
         document = converter.convert(path)
         meta = document["meta"] or {}
         meta["name"] = path.name
-        text = document["text"]
+        text = document["content"]
         pages = text.split("\f")
 
         if split_paragraphs:
@@ -361,15 +361,15 @@ def tika_convert_files_to_dicts(
                             last_para += ' ' + para
                         else:
                             if last_para:
-                                documents.append({"text": last_para, "meta": meta})
+                                documents.append({"content": last_para, "meta": meta})
                             last_para = para
                     # don't forget the last one
                     if last_para:
-                        documents.append({"text": last_para, "meta": meta})
+                        documents.append({"content": last_para, "meta": meta})
         else:
             if clean_func:
                 text = clean_func(text)
-            documents.append({"text": text, "meta": meta})
+            documents.append({"content": text, "meta": meta})
 
     return documents
 
