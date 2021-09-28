@@ -26,7 +26,7 @@ import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
-from haystack import BaseComponent, MultiLabel, Document
+from haystack import BaseComponent, MultiLabel, Document, Answer, Span
 from haystack.generator.base import BaseGenerator
 from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
@@ -680,6 +680,7 @@ class FAQPipeline(BaseStandardPipeline):
         """
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        self.pipeline.add_node(component=Docs2Answers(), name="Docs2Answers", inputs=["Retriever"])
 
     def run(self, query: str, params: Optional[dict] = None):
         """
@@ -687,24 +688,7 @@ class FAQPipeline(BaseStandardPipeline):
         :param params: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
         """
         output = self.pipeline.run(query=query, params=params)
-        documents = output["documents"]
-
-        results: Dict = {"query": query, "answers": []}
-        for doc in documents:
-            # TODO proper calibration of pseudo probabilities
-            cur_answer = {
-                "query": doc.content,
-                "answer": doc.meta["answer"],
-                "document_id": doc.id,
-                "context": doc.meta["answer"],
-                "score": doc.score,
-                "offset_start": 0,
-                "offset_end": len(doc.meta["answer"]),
-                "meta": doc.meta,
-            }
-
-            results["answers"].append(cur_answer)
-        return results
+        return output
 
 
 class TranslationWrapperPipeline(BaseStandardPipeline):
@@ -1333,37 +1317,34 @@ class Docs2Answers(BaseComponent):
 
     def run(self, query, documents):  # type: ignore
         # conversion from Document -> Answer
-        answers = []
+        answers: List[Answer] = []
         for doc in documents:
             # For FAQ style QA use cases
             if "answer" in doc.meta:
-                cur_answer = {
-                    "query": doc.content,
-                    "answer": doc.meta["answer"],
-                    "document_id": doc.id,
-                    "context": doc.meta["answer"],
-                    "score": doc.score,
-                    "offset_start": 0,
-                    "offset_end": len(doc.meta["answer"]),
-                    "meta": doc.meta,
-                }
+                doc.meta["query"] = doc.content # question from the existing FAQ
+                cur_answer = Answer(answer=doc.meta["answer"],
+                                    type="other",
+                                    score=doc.score,
+                                    context=doc.meta["answer"],
+                                    offsets_in_context=[Span(start=0, end=len(doc.meta["answer"]))],
+                                    document_id=doc.id,
+                                    meta=doc.meta,
+                                    )
             else:
                 # Regular docs
-                cur_answer = {
-                    "query": None,
-                    "answer": None,
-                    "document_id": doc.id,
-                    "context": doc.content,
-                    "score": doc.score,
-                    "offset_start": None,
-                    "offset_end": None,
-                    "meta": doc.meta,
-                }
+                cur_answer = Answer(answer="",
+                                    type="other",
+                                    score=doc.score,
+                                    context=doc.content,
+                                    document_id=doc.id,
+                                    meta=doc.meta,
+                                    )
             answers.append(cur_answer)
 
         output = {"query": query, "answers": answers}
 
         return output, "output_1"
+
 
 class MostSimilarDocumentsPipeline(BaseStandardPipeline):
     def __init__(self, document_store: BaseDocumentStore):

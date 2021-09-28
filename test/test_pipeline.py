@@ -262,7 +262,7 @@ def test_faq_pipeline(retriever, document_store):
 
     output = pipeline.run(query="How to test this?", params={"top_k": 3})
     assert len(output["answers"]) == 3
-    assert output["answers"][0].query.startswith("How to")
+    assert output["query"].startswith("How to")
     assert output["answers"][0].answer.startswith("Using tests")
 
     if isinstance(document_store, ElasticsearchDocumentStore):
@@ -631,4 +631,4 @@ def test_document_search_pipeline(retriever, document_store):
         for document in another_list:
             assert isinstance(document, Document)
             assert isinstance(document.id, str)
-            assert isinstance(document.text, str)
+            assert isinstance(document.content, str)

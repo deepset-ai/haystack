@@ -162,7 +162,7 @@ class Span:
 @dataclass
 class Answer:
     answer: str
-    type: Literal["generative", "extractive"] = "extractive"
+    type: Literal["generative", "extractive", "other"] = "extractive"
     score: Optional[float] = None
     context: Optional[Union[str, pd.DataFrame]] = None
     offsets_in_document: Optional[List[Span]] = None
@@ -185,7 +185,6 @@ class Answer:
     :param document_id: TODO
     :param meta: TODO
     """
-
 
     def __lt__(self, other):
         """ Enable sorting of Answers by score """
