@@ -533,7 +533,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                 id_array=existing_vector_ids
             )
             if status.code != Status.SUCCESS:
-                raise RuntimeError("E existing vector ids deletion failed: {status}")
+                raise RuntimeError(f"Existing vector ids deletion failed: {status}")
 
     def get_all_vectors(self, index: Optional[str] = None) -> List[np.ndarray]:
         """

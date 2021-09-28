@@ -1,3 +1,4 @@
+import time
 import faiss
 import math
 import numpy as np
@@ -200,11 +201,13 @@ def test_finding(document_store, retriever):
 def test_delete_docs_with_filters(document_store, retriever, batch_size):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=batch_size)
+    assert document_store.get_embedding_count() == 6
 
     document_store.delete_documents(filters={"name": ["name_1", "name_2", "name_3", "name_4"]})
 
     documents = document_store.get_all_documents()
     assert len(documents) == 2
+    assert document_store.get_embedding_count() == 2
     assert {doc.meta["name"] for doc in documents} == {"name_5", "name_6"}
 
 
