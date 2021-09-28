@@ -99,11 +99,11 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
         index="haystack_test_custom", content_field="custom_text_field", embedding_field="custom_embedding_field"
     )
     documents = [
-        {"text": "test_1", "meta": {"year": "2019"}},
-        {"text": "test_2", "meta": {"year": "2020"}},
-        {"text": "test_3", "meta": {"year": "2021"}},
-        {"text": "test_4", "meta": {"year": "2021"}},
-        {"text": "test_5", "meta": {"year": "2021"}},
+        {"content": "test_1", "meta": {"year": "2019"}},
+        {"content": "test_2", "meta": {"year": "2020"}},
+        {"content": "test_3", "meta": {"year": "2021"}},
+        {"content": "test_4", "meta": {"year": "2021"}},
+        {"content": "test_5", "meta": {"year": "2021"}},
     ]
     document_store.write_documents(documents)
 
@@ -116,7 +116,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                 "query": {
                     "bool": {
                         "should": [{
-                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
+                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
                             "filter": [{"terms": {"year": ${years}}}]}}}""",
     )
     results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
@@ -131,7 +131,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                     "query": {
                         "bool": {
                             "should": [{
-                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
+                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
                                 "filter": [{"term": {"year": ${years}}}]}}}""",
     )
     results = retriever.retrieve(query="test", filters={"years": "2021"})
