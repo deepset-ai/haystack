@@ -1,14 +1,13 @@
+import io
 import re
 import logging
 import tarfile
-import tempfile
 import zipfile
-import gzip
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union, Generator
 import json
 
-from farm.data_handler.utils import http_get
+import requests
 
 from haystack.file_converter.base import BaseConverter
 from haystack.file_converter.docx import DocxToTextConverter
@@ -380,28 +379,19 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
     else:
         logger.info(f"Fetching from {url} to `{output_dir}`")
 
-        # download & extract
-        with tempfile.NamedTemporaryFile() as temp_file:
-            http_get(url, temp_file, proxies=proxies)
-            temp_file.flush()
-            temp_file.seek(0)  # making tempfile accessible
-            # extract
-            if url[-4:] == ".zip":
-                zip_archive = zipfile.ZipFile(temp_file.name)
-                zip_archive.extractall(output_dir)
-            elif url[-7:] == ".tar.gz":
-                tar_archive = tarfile.open(temp_file.name)
-                tar_archive.extractall(output_dir)
-            elif url[-3:] == ".gz":
-                filename = url.split("/")[-1].replace(".gz", "")
-                output_filename = Path(output_dir) / filename
-                with gzip.open(temp_file.name) as f, open(output_filename, "wb") as output:
-                        for line in f:
-                               output.write(line)
-            else:
-                logger.warning('Skipped url {0} as file type is not supported here. '
-                               'See haystack documentation for support of more file types'.format(url))
-            # temp_file gets deleted here
+        _, _, archive_extension = url.rpartition(".")
+        request_data = requests.get(url, proxies=proxies)
+
+        if archive_extension == "zip":
+            zip_archive = zipfile.ZipFile(io.BytesIO(request_data.content))
+            zip_archive.extractall(output_dir)
+        elif archive_extension in ["gz", "bz2", "xz"]:
+            tar_archive = tarfile.open(fileobj=io.BytesIO(request_data.content), mode="r|*")
+            tar_archive.extractall(output_dir)
+        else:
+            logger.warning('Skipped url {0} as file type is not supported here. '
+                           'See haystack documentation for support of more file types'.format(url))
+
         return True
 
 

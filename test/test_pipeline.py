@@ -19,6 +19,7 @@ from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.schema import Document
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_load_and_save_yaml(document_store, tmp_path):
     # test correct load of indexing pipeline from yaml
@@ -83,14 +84,31 @@ def test_load_and_save_yaml(document_store, tmp_path):
     ).replace("\n", "")
 
 
-@pytest.mark.slow
-@pytest.mark.elasticsearch
+# @pytest.mark.slow
+# @pytest.mark.elasticsearch
+# @pytest.mark.parametrize(
+#     "retriever_with_docs, document_store_with_docs",
+#     [("elasticsearch", "elasticsearch")],
+#     indirect=True,
+# )
 @pytest.mark.parametrize(
-    "retriever_with_docs, document_store_with_docs",
-    [("elasticsearch", "elasticsearch")],
+    "retriever_with_docs,document_store_with_docs",
+    [
+        ("dpr", "elasticsearch"),
+        ("dpr", "faiss"),
+        ("dpr", "memory"),
+        ("dpr", "milvus"),
+        ("embedding", "elasticsearch"),
+        ("embedding", "faiss"),
+        ("embedding", "memory"),
+        ("embedding", "milvus"),
+        ("elasticsearch", "elasticsearch"),
+        ("es_filter_only", "elasticsearch"),
+        ("tfidf", "memory"),
+    ],
     indirect=True,
 )
-def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
+def test_graph_creation(retriever_with_docs, document_store_with_docs):
     pipeline = Pipeline()
     pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["Query"])
 
@@ -134,9 +152,8 @@ def test_invalid_run_args():
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-def test_extractive_qa_answers(reader, retriever_with_docs):
+def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     prediction = pipeline.run(
         query="Who lives in Berlin?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
@@ -155,7 +172,6 @@ def test_extractive_qa_answers(reader, retriever_with_docs):
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_without_normalized_scores(reader_without_normalized_scores, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader_without_normalized_scores, retriever=retriever_with_docs)
@@ -175,7 +191,6 @@ def test_extractive_qa_answers_without_normalized_scores(reader_without_normaliz
     assert len(prediction["answers"]) == 3
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_offsets(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
@@ -192,7 +207,6 @@ def test_extractive_qa_offsets(reader, retriever_with_docs):
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
@@ -202,7 +216,6 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     assert len(prediction["answers"]) == 1
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize(
     "retriever,document_store",
     [
@@ -252,17 +265,7 @@ def test_faq_pipeline(retriever, document_store):
         assert len(output["answers"]) == 1
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [
-        ("embedding", "memory"),
-        ("embedding", "faiss"),
-        ("embedding", "milvus"),
-        ("embedding", "elasticsearch"),
-    ],
-    indirect=True,
-)
+@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_document_search_pipeline(retriever, document_store):
     documents = [
         {"text": "Sample text for document-1", "meta": {"source": "wiki1"}},
@@ -285,7 +288,6 @@ def test_document_search_pipeline(retriever, document_store):
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_with_translator(
     reader, retriever_with_docs, en_to_de_translator, de_to_en_translator
@@ -309,6 +311,7 @@ def test_extractive_qa_answers_with_translator(
     )
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_join_document_pipeline(document_store_with_docs, reader):
@@ -529,7 +532,66 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
     assert output["output"] == "ACABEABD"
 
 
-@pytest.mark.elasticsearch
+def test_query_keyword_statement_classifier():
+    class KeywordOutput(RootNode):
+        outgoing_edges = 2
+
+        def run(self, **kwargs):
+            kwargs["output"] = "keyword"
+            return kwargs, "output_1"
+
+    class QuestionOutput(RootNode):
+        outgoing_edges = 2
+
+        def run(self, **kwargs):
+            kwargs["output"] = "question"
+            return kwargs, "output_2"
+
+    pipeline = Pipeline()
+    pipeline.add_node(
+        name="SkQueryKeywordQuestionClassifier",
+        component=SklearnQueryClassifier(),
+        inputs=["Query"],
+    )
+    pipeline.add_node(
+        name="KeywordNode",
+        component=KeywordOutput(),
+        inputs=["SkQueryKeywordQuestionClassifier.output_2"],
+    )
+    pipeline.add_node(
+        name="QuestionNode",
+        component=QuestionOutput(),
+        inputs=["SkQueryKeywordQuestionClassifier.output_1"],
+    )
+    output = pipeline.run(query="morse code")
+    assert output["output"] == "keyword"
+
+    output = pipeline.run(query="How old is John?")
+    assert output["output"] == "question"
+
+    pipeline = Pipeline()
+    pipeline.add_node(
+        name="TfQueryKeywordQuestionClassifier",
+        component=TransformersQueryClassifier(),
+        inputs=["Query"],
+    )
+    pipeline.add_node(
+        name="KeywordNode",
+        component=KeywordOutput(),
+        inputs=["TfQueryKeywordQuestionClassifier.output_2"],
+    )
+    pipeline.add_node(
+        name="QuestionNode",
+        component=QuestionOutput(),
+        inputs=["TfQueryKeywordQuestionClassifier.output_1"],
+    )
+    output = pipeline.run(query="morse code")
+    assert output["output"] == "keyword"
+
+    output = pipeline.run(query="How old is John?")
+    assert output["output"] == "question"
+
+
 @pytest.mark.parametrize(
         "retriever,document_store",
         [

@@ -558,41 +558,11 @@ You will find the Swagger API documentation at
 
 ## :heart: Contributing
 
-We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
+We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. 
+To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
+You can also find instructions to run the tests locally there.
+
 
 We'd also like to invite you to our Slack community channels. Please join [here](https://haystack.deepset.ai/community/join)!
 
-#### Tests
-Tests will automatically run in our CI for every commit you push to your PR. You can also run them locally by executing pytest in your terminal from the root folder of this repository.
-If you want to run **all** tests locally, you'll need **all** document stores running in the background.
-You can launch them like this:
-```
-docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
-docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
-docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.0
-docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
-docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
-```
-Then run all tests:
-```
-cd test
-pytest
-```
-To just run individual tests:
-```
-pytest -v test_retriever.py::test_dpr_embedding
-```
-To just select a logical subset of tests via markers and the optional "not" keyword:
-```
-pytest -m not elasticsearch
-pytest -m elasticsearch
-pytest -m generator
-pytest -m tika
-pytest -m not slow
-...
-```
-If you want to run all test cases but not with all document store variants, you can make use of the arg `--document_store_type`:
-```
-pytest -v test_retriever.py::test_dpr_embedding --document_store_type="faiss"
-pytest -v test_retriever.py::test_dpr_embedding --document_store_type="faiss, memory"
-```
+
