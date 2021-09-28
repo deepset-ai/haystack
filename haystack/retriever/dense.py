@@ -12,6 +12,8 @@ from transformers import AutoTokenizer, AutoModel
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
+from haystack.modeling.data_handler.processor import MultimodalSimilarityProcessor
+from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
 from haystack.retriever.base import BaseRetriever
 
 from farm.infer import Inferencer
@@ -465,6 +467,199 @@ class DensePassageRetriever(BaseRetriever):
 
         return dpr
 
+
+class MultimodalRetriever(BaseRetriever):
+    """
+    Retriever that uses a tri-encoder (one transformer for query, one transformer for text passages,
+    one transformer for tables).
+    See the original paper for more details:
+    Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using Tri-encoder Models"
+    (https://arxiv.org/abs/2108.04049),
+    """
+
+    def __init__(self,
+                 document_store: BaseDocumentStore,
+                 query_embedding_model: Union[Path, str],
+                 passage_embedding_model: Union[Path, str],
+                 table_embedding_model: Union[Path, str],
+                 model_version: Optional[str] = None,
+                 max_seq_len_query: int = 64,
+                 max_seq_len_passage: int = 256,
+                 max_seq_len_table: int = 256,
+                 top_k: int = 10,
+                 use_gpu: bool = True,
+                 batch_size: int = 16,
+                 embed_title: bool = True,
+                 use_fast_tokenizers: bool = True,
+                 infer_tokenizer_classes: bool = False,
+                 similarity_function: str = "dot_product",
+                 global_loss_buffer_size: int = 150000,
+                 progress_bar: bool = True,
+                 devices: Optional[List[Union[int, str, torch.device]]] = None
+                 ):
+        """
+        Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
+        The checkpoint format matches huggingface transformers' model format
+
+        :param document_store: An instance of DocumentStore from which to retrieve documents.
+        :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
+                                      one used by hugging-face transformers' modelhub models.
+        :param passage_embedding_model: Local path or remote name of passage encoder checkpoint. The format equals the
+                                        one used by hugging-face transformers' modelhub models.
+        :param table_embedding_model: Local path or remote name of table encoder checkpoint. The format equala the
+                                      one used by hugging-face transformers' modelhub models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
+        :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
+        :param top_k: How many documents to return per query.
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+        :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
+                            This is the approach used in the original paper and is likely to improve performance if your
+                            titles contain meaningful information for retrieval (topic, entities etc.) .
+                            The title is expected to be present in doc.meta["name"] and can be supplied in the documents
+                            before writing them to the DocumentStore like this:
+                            {"text": "my text", "meta": {"name": "my title"}}.
+        :param use_fast_tokenizers: Whether to use fast Rust tokenizers
+        :param infer_tokenizer_classes: Whether to infer tokenizer class from the model config / name.
+                                        If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
+        :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
+                                    Options: `dot_product` (Default) or `cosine`
+        :param global_loss_buffer_size: Buffer size for all_gather() in DDP.
+                                        Increase if errors like "encoded data exceeds max_size ..." come up
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+                             Can be helpful to disable in production deployments to keep the logs clean.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        """
+        # save init parameters to enable export of component config as YAML
+        self.set_config(
+            document_store=document_store, query_embedding_model=query_embedding_model,
+            passage_embedding_model=passage_embedding_model, table_embedding_model=table_embedding_model,
+            model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
+            max_seq_len_table=max_seq_len_table, top_k=top_k, use_gpu=use_gpu, batch_size=batch_size,
+            embed_title=embed_title, use_fast_tokenizers=use_fast_tokenizers,
+            infer_tokenizer_classes=infer_tokenizer_classes, similarity_function=similarity_function,
+            progress_bar=progress_bar, devices=devices
+        )
+
+        if devices is not None:
+            self.devices = devices
+        elif use_gpu and torch.cuda.is_available():
+            self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
+        else:
+            self.devices = [torch.device("cpu")]
+
+        if batch_size < len(self.devices):
+            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
+
+        self.document_store = document_store
+        self.batch_size = batch_size
+        self.progress_bar = progress_bar
+        self.top_k = top_k
+
+        if document_store is None:
+           logger.warning("DensePassageRetriever initialized without a document store. "
+                          "This is fine if you are performing DPR training. "
+                          "Otherwise, please provide a document store in the constructor.")
+        elif document_store.similarity != "dot_product":
+            logger.warning(f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
+                           "We recommend you use dot_product instead. "
+                           "This can be set when initializing the DocumentStore")
+
+        self.infer_tokenizer_classes = infer_tokenizer_classes
+        tokenizers_default_classes = {
+            "query": "DPRQuestionEncoderTokenizer",
+            "passage": "DPRContextEncoderTokenizer",
+            "table": "DPRContextEncoderTokenizer"
+        }
+        if self.infer_tokenizer_classes:
+            tokenizers_default_classes["query"] = None   # type: ignore
+            tokenizers_default_classes["passage"] = None # type: ignore
+            tokenizers_default_classes["table"] = None  # type: ignore
+
+        # Init & Load Encoders
+        self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
+                                              revision=model_version,
+                                              do_lower_case=True,
+                                              use_fast=use_fast_tokenizers,
+                                              tokenizer_class=tokenizers_default_classes["query"])
+        self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
+                                                revision=model_version,
+                                                language_model_class="DPRQuestionEncoder")
+        self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
+                                                revision=model_version,
+                                                do_lower_case=True,
+                                                use_fast=use_fast_tokenizers,
+                                                tokenizer_class=tokenizers_default_classes["passage"])
+        self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
+                                                  revision=model_version,
+                                                  language_model_class="DPRContextEncoder")
+        self.table_tokenizer = Tokenizer.load(pretrained_model_name_or_path=table_embedding_model,
+                                              revision=model_version,
+                                              do_lower_case=True,
+                                              use_fast=use_fast_tokenizers,
+                                              tokenizer_class=tokenizers_default_classes["table"])
+        self.table_encoder = LanguageModel.load(pretrained_model_name_or_path=table_embedding_model,
+                                                revision=model_version,
+                                                language_model_class="DPRContextEncoder")
+
+        self.processor = MultimodalSimilarityProcessor(query_tokenizer=self.query_tokenizer,
+                                                       passage_tokenizer=self.passage_tokenizer,
+                                                       table_tokenizer=self.table_tokenizer,
+                                                       max_seq_len_query=max_seq_len_query,
+                                                       max_seq_len_passage=max_seq_len_passage,
+                                                       max_seq_len_table=max_seq_len_table,
+                                                       label_list=["hard_negative", "positive"],
+                                                       metric="text_similarity_metric",
+                                                       embed_title=embed_title,
+                                                       num_hard_negatives=0,
+                                                       num_positives=1)
+
+        prediction_head = TextSimilarityHead(similarity_function=similarity_function,
+                                             global_loss_buffer_size=global_loss_buffer_size)
+
+        self.model = TriAdaptiveModel(language_model1=self.query_encoder,
+                                      language_model2=self.passage_encoder,
+                                      language_model3=self.table_encoder,
+                                      prediction_heads=[prediction_head],
+                                      embeds_dropout_prob=0.1,
+                                      lm1_output_types=["per_sequence"],
+                                      lm2_output_types=["per_sequence"],
+                                      lm3_output_types=["per_sequence"],
+                                      device=self.devices[0])
+
+        self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
+
+        if len(self.devices) > 1:
+            self.model = DataParallel(self.model, device_ids=self.devices)
+
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+        pass
+
+    def _get_predictions(self):
+        pass
+
+    def embed_queries(self):
+        pass
+
+    def embed_documents(self):
+        pass
+
+    def embed_passages(self):
+        pass
+
+    def embed_tables(self):
+        pass
+
+    def train(self):
+        pass
+
+    def save(self):
+        pass
+
+    def load(self):
+        pass
 
 class EmbeddingRetriever(BaseRetriever):
     def __init__(
