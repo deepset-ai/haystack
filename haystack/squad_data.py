@@ -7,7 +7,7 @@ import random
 
 from haystack.schema import Document, Label
 
-from farm.data_handler.utils import read_squad_file
+from haystack.modeling.data_handler.utils import read_squad_file
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
