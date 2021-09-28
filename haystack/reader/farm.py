@@ -346,6 +346,7 @@ class FARMReader(BaseReader):
         return result
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+        #TODO update example in docstring
         """
         Use loaded QA model to find answers for a query in the supplied list of Document.
 
@@ -586,6 +587,7 @@ class FARMReader(BaseReader):
                                  type="extractive",
                                  score=ans.confidence if self.use_confidence_scores else ans.score,
                                  context=ans.context_window,
+                                 document_id=pred.id,
                                  offsets_in_context=[Span(start=ans.offset_answer_start - ans.offset_context_window_start,
                                                          end=ans.offset_answer_end - ans.offset_context_window_start)],
                                  offsets_in_document=[Span(start=ans.offset_answer_start, end=ans.offset_answer_end)]
