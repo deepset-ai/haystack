@@ -325,8 +325,6 @@ def test_delete_documents(document_store_with_docs):
     assert len(documents) == 0
 
     
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "memory", "sql", "milvus"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
     document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2"]})
     documents = document_store_with_docs.get_all_documents()
