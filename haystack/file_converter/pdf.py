@@ -232,6 +232,6 @@ class PDFToTextOCRConverter(BaseConverter):
             logger.error(f"File {file_path} has an error \n {exception}")
 
         raw_text = "\f".join(pages)
-        document = {"text": raw_text, "meta": meta}
+        document = {"content": raw_text, "meta": meta}
 
         return document
