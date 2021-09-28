@@ -1525,7 +1525,7 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
     json.dump(predictions_json, open(out_filename, "w"))
     logger.info(f"Written Squad predictions to: {out_filename}")
 
-def _read_dpr_json(file: str, max_samples: int = None, proxies: Any = None, num_hard_negatives: int = 1, num_positives: int = 1, shuffle_negatives: bool = True, shuffle_positives: bool = False):
+def _read_dpr_json(file: str, max_samples: Optional[int] = None, proxies: Any = None, num_hard_negatives: int = 1, num_positives: int = 1, shuffle_negatives: bool = True, shuffle_positives: bool = False):
     """
     Reads a Dense Passage Retrieval (DPR) data file in json format and returns a list of dictionaries.
 

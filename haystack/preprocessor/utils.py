@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union, Generator
 import json
 
-from haystack.modeling.data_handler.processor import http_get
 import requests
 
 from haystack.file_converter.base import BaseConverter
