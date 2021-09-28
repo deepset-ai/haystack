@@ -105,7 +105,7 @@ class ElasticsearchRetriever(BaseRetriever)
                         |                "should": [{"multi_match": {
                         |                    "query": ${query},                 // mandatory query placeholder
                         |                    "type": "most_fields",
-                        |                    "fields": ["text", "title"]}}],
+                        |                    "fields": ["content", "title"]}}],
                         |                "filter": [                                 // optional custom filters
                         |                    {"terms": {"year": ${years}}},
                         |                    {"terms": {"quarter": ${quarters}}},
