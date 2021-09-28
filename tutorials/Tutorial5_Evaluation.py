@@ -8,7 +8,7 @@ from haystack.preprocessor import PreProcessor
 from haystack.utils import launch_es
 from haystack import Pipeline
 
-from farm.utils import initialize_device_settings
+from haystack.modeling.utils import initialize_device_settings
 
 import logging
 

@@ -10,7 +10,7 @@ from tqdm import tqdm
 from typing import List, Optional, Dict, Union, Generator, Set, Any
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.data_handler.processor import Processor
+from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
 from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.utils import grouper
 from haystack.modeling.data_handler.inputs import QAInput
@@ -38,6 +38,8 @@ class Inferencer:
         gpu: bool =False,
         name: Optional[str] =None,
         return_class_probs: bool=False,
+        extraction_strategy: Optional[str] = None,
+        extraction_layer: Optional[int] = None,
         num_processes: Optional[int] =None,
         disable_tqdm: bool =False
     ):
@@ -51,6 +53,10 @@ class Inferencer:
         :param gpu: If GPU shall be used
         :param name: Name for the current Inferencer model, displayed in the REST API
         :param return_class_probs: either return probability distribution over all labels or the prob of the associated label
+        :param extraction_strategy: Strategy to extract vectors. Choices: 'cls_token' (sentence vector), 'reduce_mean'
+                               (sentence vector), reduce_max (sentence vector), 'per_token' (individual token vectors),
+                               's3e' (sentence vector via S3E pooling, see https://arxiv.org/abs/2002.09620)
+        :param extraction_layer: number of layer from which the embeddings shall be extracted. Default: -1 (very last layer).
         :param num_processes: the number of processes for `multiprocessing.Pool`.
                               Set to value of 1 (or 0) to disable multiprocessing.
                               Set to None to let Inferencer use all CPU cores minus one.
@@ -78,6 +84,14 @@ class Inferencer:
         self.disable_tqdm = disable_tqdm
         self.problematic_sample_ids: Set[List[int]] = set()  # type ignore
 
+        if task_type == "embeddings":
+            if not extraction_layer or not extraction_strategy:
+                    logger.warning("Using task_type='embeddings', but couldn't find one of the args `extraction_layer` and `extraction_strategy`. "
+                                   "Since FARM 0.4.2, you set both when initializing the Inferencer and then call inferencer.inference_from_dicts() instead of inferencer.extract_vectors()")
+            self.model.prediction_heads = torch.nn.ModuleList([])
+            self.model.language_model.extraction_layer = extraction_layer
+            self.model.language_model.extraction_strategy = extraction_strategy
+
         # TODO add support for multiple prediction heads
 
         self.name = name if name != None else f"anonymous-{self.task_type}"
@@ -100,6 +114,8 @@ class Inferencer:
         strict: bool = True,
         max_seq_len: int = 256,
         doc_stride: int = 128,
+        extraction_strategy: Optional[str] = None,
+        extraction_layer: Optional[int] = None,
         num_processes: Optional[int] =None,
         disable_tqdm: bool = False,
         tokenizer_class: Optional[str] = None,
@@ -125,6 +141,9 @@ class Inferencer:
                        Set to `False` for backwards compatibility with PHs saved with older version of FARM.
         :param max_seq_len: maximum length of one text sample
         :param doc_stride: Only QA: When input text is longer than max_seq_len it gets split into parts, strided by doc_stride
+        :param extraction_strategy: Strategy to extract vectors. Choices: 'cls_token' (sentence vector), 'reduce_mean'
+                               (sentence vector), reduce_max (sentence vector), 'per_token' (individual token vectors)
+        :param extraction_layer: number of layer from which the embeddings shall be extracted. Default: -1 (very last layer).
         :param num_processes: the number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
                               multiprocessing. Set to None to let Inferencer use all CPU cores minus one. If you want to
                               debug the Language Model, you might need to disable multiprocessing!
@@ -154,7 +173,10 @@ class Inferencer:
         # a) either from local dir
         if os.path.exists(model_name_or_path):
             model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=device, strict=strict)
-            processor = Processor.load_from_dir(model_name_or_path)
+            if task_type == "embeddings":
+                processor = InferenceProcessor.load_from_dir(model_name_or_path)
+            else:
+                processor = Processor.load_from_dir(model_name_or_path)
 
         # b) or from remote transformers model hub
         else:
@@ -195,6 +217,8 @@ class Inferencer:
             gpu=gpu,
             name=name,
             return_class_probs=return_class_probs,
+            extraction_strategy=extraction_strategy,
+            extraction_layer=extraction_layer,
             num_processes=num_processes,
             disable_tqdm=disable_tqdm
         )
@@ -485,6 +509,29 @@ class Inferencer:
                                                preds=unaggregated_preds_all,
                                                baskets=baskets)  # type ignore
         return preds_all
+
+
+    def extract_vectors(self, dicts: List[Dict], extraction_strategy: Optional[str] = "cls_token", extraction_layer: Optional[int] = -1):
+        """
+        Converts a text into vector(s) using the language model only (no prediction head involved).
+
+        Example:
+            basic_texts = [{"text": "Some text we want to embed"}, {"text": "And a second one"}]
+            result = inferencer.extract_vectors(dicts=basic_texts)
+
+        :param dicts: Samples to run inference on provided as a list of dicts. One dict per sample.
+        :param extraction_strategy: Strategy to extract vectors. Choices: 'cls_token' (sentence vector), 'reduce_mean'
+                               (sentence vector), reduce_max (sentence vector), 'per_token' (individual token vectors)
+        :param extraction_layer: number of layer from which the embeddings shall be extracted. Default: -1 (very last layer).
+        :return: dict of predictions
+        """
+
+        logger.warning("Deprecated! Please use Inferencer.inference_from_dicts() instead.")
+        self.model.prediction_heads = torch.nn.ModuleList([])
+        self.model.language_model.extraction_layer = extraction_layer
+        self.model.language_model.extraction_strategy = extraction_strategy
+
+        return self.inference_from_dicts(dicts)
 
 
 class QAInferencer(Inferencer):
