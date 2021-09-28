@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy
 import torch
-from farm.utils import initialize_device_settings
+from haystack.modeling.utils import initialize_device_settings
 from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, \
     AutoModelForSeq2SeqLM, PreTrainedTokenizer, BatchEncoding
 
