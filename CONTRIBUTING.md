@@ -47,19 +47,19 @@ pytest
 In most cases you rather want to run a **subset of tests** locally that are related to your dev:
 
 The most important option to reduce the number of tests in a meaningful way, is to shrink the "test grid" of document stores.
-This is possible by adding the `--doc_store_type` arg to your pytest command. Possible values are: `"elasticsearch, faiss, memory, milvus, weaviate"`.
-For example, calling `pytest . --doc_store_type="memory"` will run all tests that can be run with the InMemoryDocumentStore, i.e.: 
+This is possible by adding the `--document_store_type` arg to your pytest command. Possible values are: `"elasticsearch, faiss, memory, milvus, weaviate"`.
+For example, calling `pytest . --document_store_type="memory"` will run all tests that can be run with the InMemoryDocumentStore, i.e.: 
 - all the tests that we typically run on the whole "document store grid" will only be run for InMemoryDocumentStore
 - any test that is specific to other document stores (e.g. elasticsearch) and is not supported by the chosen document store will be skipped (and marked in the logs accordingly)
 
 
 Run tests that are possible for a **selected document store**. The InMemoryDocument store is a very good starting point as it doesn't require any of the external docker containers from above: 
 ```
-pytest . --doc_store_type="memory"
+pytest . --document_store_type="memory"
 ```
 Run tests using a **combination of document stores**:
 ```
-pytest . --doc_store_type="memory,elasticsearch"
+pytest . --document_store_type="memory,elasticsearch"
 ```
 *Note: You will need to launch the elasticsearch container here as described above'*
 
@@ -82,7 +82,7 @@ pytest -m not slow
 
 If you are writing a test that depend on a document store, there are a few conventions to define on which document store type this test should/can run:
 
-### Option 1: The test should run on all document stores / those supplied in the CLI arg `--doc_store_type`: 
+### Option 1: The test should run on all document stores / those supplied in the CLI arg `--document_store_type`: 
 Use one of the fixtures `document_store` or `document_store_with_docs` or `document_store_type`.
 Do not parameterize it yourself. 
 
