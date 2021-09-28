@@ -109,8 +109,14 @@ def pytest_collection_modifyitems(config,items):
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
+        keywords = []
+        for i in item.keywords:
+            if "-" in i:
+                keywords.extend(i.split("-"))
+            else:
+                keywords.append(i)
         for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate"]:
-            if cur_doc_store in item.keywords and cur_doc_store not in document_store_types_to_run:
+            if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
                 item.add_marker(skip_docstore)
@@ -386,7 +392,8 @@ def retriever(request, document_store):
     return get_retriever(request.param, document_store)
 
 
-@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
+# @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
+@pytest.fixture(params=["tfidf"])
 def retriever_with_docs(request, document_store_with_docs):
     return get_retriever(request.param, document_store_with_docs)
 
@@ -423,6 +430,7 @@ def get_retriever(retriever_type, document_store):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
+# @pytest.fixture(params=["memory"])
 def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)

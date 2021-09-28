@@ -34,7 +34,7 @@ class ElasticsearchRetriever(BaseRetriever):
                                 |                "should": [{"multi_match": {
                                 |                    "query": ${query},                 // mandatory query placeholder
                                 |                    "type": "most_fields",
-                                |                    "fields": ["text", "title"]}}],
+                                |                    "fields": ["content", "title"]}}],
                                 |                "filter": [                                 // optional custom filters
                                 |                    {"terms": {"year": ${years}}},
                                 |                    {"terms": {"quarter": ${quarters}}},
@@ -104,7 +104,7 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         return documents
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
-Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "text", "meta"])
+Paragraph = namedtuple("Paragraph", ["paragraph_id", "document_id", "content", "meta"])
 
 
 class TfidfRetriever(BaseRetriever):
@@ -152,7 +152,7 @@ class TfidfRetriever(BaseRetriever):
                 if not p.strip():  # skip empty paragraphs
                     continue
                 paragraphs.append(
-                    Paragraph(document_id=doc.id, paragraph_id=p_id, text=(p,), meta=doc.meta)
+                    Paragraph(document_id=doc.id, paragraph_id=p_id, content=(p,), meta=doc.meta)
                 )
                 p_id += 1
         logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
@@ -226,5 +226,5 @@ class TfidfRetriever(BaseRetriever):
                 return
 
         self.df = pd.DataFrame.from_dict(self.paragraphs)
-        self.df["text"] = self.df["text"].apply(lambda x: " ".join(x))
-        self.tfidf_matrix = self.vectorizer.fit_transform(self.df["text"])
+        self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))
+        self.tfidf_matrix = self.vectorizer.fit_transform(self.df["content"])
