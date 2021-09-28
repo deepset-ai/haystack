@@ -398,7 +398,6 @@ class MilvusDocumentStore(SQLDocumentStore):
         :return: None
         """
         index = index or self.index
-        super().delete_documents(index=index, filters=filters)
         status, ok = self.milvus_server.has_collection(collection_name=index)
         if status.code != Status.SUCCESS:
             raise RuntimeError(f'Milvus has collection check failed: {status}')
@@ -413,6 +412,9 @@ class MilvusDocumentStore(SQLDocumentStore):
 
             self.milvus_server.flush([index])
             self.milvus_server.compact(collection_name=index)
+
+        # Delete from SQL at the end to allow the above .get_all_documents() to work properly
+        super().delete_documents(index=index, filters=filters)
 
     def get_all_documents_generator(
         self,
