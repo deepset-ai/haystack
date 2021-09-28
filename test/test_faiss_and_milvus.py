@@ -197,10 +197,9 @@ def test_finding(document_store, retriever):
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
-@pytest.mark.parametrize("batch_size", [4, 6])
-def test_delete_docs_with_filters(document_store, retriever, batch_size):
+def test_delete_docs_with_filters(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
-    document_store.update_embeddings(retriever=retriever, batch_size=batch_size)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
     assert document_store.get_embedding_count() == 6
 
     document_store.delete_documents(filters={"name": ["name_1", "name_2", "name_3", "name_4"]})

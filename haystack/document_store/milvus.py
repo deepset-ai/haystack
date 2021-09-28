@@ -391,8 +391,10 @@ class MilvusDocumentStore(SQLDocumentStore):
 
     def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents (from SQL AND Milvus).
-        :param index: (SQL) index name for storing the docs and metadata
+        Delete documents in an index. All documents are deleted if no filters are passed.
+
+        :param index: Index name to delete the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the search space.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
