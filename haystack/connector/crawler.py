@@ -147,7 +147,7 @@ class Crawler(BaseComponent):
             logger.info(f"writing contents from `{link}`")
             self.driver.get(link)
             el = self.driver.find_element_by_tag_name('body')
-            text = el.content
+            text = el.text
 
             link_split_values = link.replace('https://', '').split('/')
             file_name = f"{'_'.join(link_split_values)}.json"
@@ -157,7 +157,7 @@ class Crawler(BaseComponent):
             data['meta'] = {'url': link}
             if base_url:
                 data['meta']['base_url'] = base_url
-            data['text'] = text
+            data['content'] = text
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f)
             paths.append(file_path)
