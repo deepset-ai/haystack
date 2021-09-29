@@ -83,15 +83,10 @@ class TransformersClassifier(BaseClassifier):
         :return: List of Document enriched with meta information
 
         """
-
-        for doc in documents:
-            transformers_query = {"context": doc.text, "question": query}
-            predictions = self.model(transformers_query,
-                                     max_seq_len=self.max_seq_len,
-                                     doc_stride=self.doc_stride)
-            # for single preds (e.g. via top_k=1) transformers returns a dict instead of a list
-            if type(predictions) == dict:
-                predictions = [predictions]
+        texts = [doc.text for doc in documents]
+        predictions = self.model(texts,
+                                max_seq_len=self.max_seq_len,
+                                doc_stride=self.doc_stride)
 
         classified_docs: List[Document] = []
 

@@ -18,6 +18,6 @@ def test_classifier(classifier):
         ),
     ]
     results = classifier.predict(documents=docs)
-    expected_labels = ["positive", "negative"]
+    expected_labels = ["joy", "sadness"]
     for i, doc in enumerate(results):
         assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]
