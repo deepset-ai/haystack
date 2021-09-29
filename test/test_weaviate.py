@@ -183,6 +183,7 @@ def test_update_existing_documents(document_store, update_existing_documents):
     else:
         assert stored_docs[0].content == original_docs[0]["content"]
 
+
 @pytest.mark.weaviate
 @pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
 def test_write_document_meta(document_store):
