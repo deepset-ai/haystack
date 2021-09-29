@@ -1001,6 +1001,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
         index = index or self.index
