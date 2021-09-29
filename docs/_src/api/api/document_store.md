@@ -1544,7 +1544,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, text_field: str = "text", name_field: str = "name", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1557,7 +1557,7 @@ The current implementation is not supporting the storage of labels, so you canno
 - `password`: password (standard authentication via http_auth)
 - `index`: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
 - `embedding_dim`: The embedding vector size. Default: 768.
-- `text_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                    If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default.
