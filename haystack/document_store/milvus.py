@@ -391,14 +391,15 @@ class MilvusDocumentStore(SQLDocumentStore):
 
     def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents (from SQL AND Milvus).
-        :param index: (SQL) index name for storing the docs and metadata
+        Delete documents in an index. All documents are deleted if no filters are passed.
+
+        :param index: Index name to delete the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the search space.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
         index = index or self.index
-        super().delete_documents(index=index, filters=filters)
         status, ok = self.milvus_server.has_collection(collection_name=index)
         if status.code != Status.SUCCESS:
             raise RuntimeError(f'Milvus has collection check failed: {status}')
@@ -413,6 +414,9 @@ class MilvusDocumentStore(SQLDocumentStore):
 
             self.milvus_server.flush([index])
             self.milvus_server.compact(collection_name=index)
+
+        # Delete from SQL at the end to allow the above .get_all_documents() to work properly
+        super().delete_documents(index=index, filters=filters)
 
     def get_all_documents_generator(
         self,
@@ -533,7 +537,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                 id_array=existing_vector_ids
             )
             if status.code != Status.SUCCESS:
-                raise RuntimeError("E existing vector ids deletion failed: {status}")
+                raise RuntimeError(f"Existing vector ids deletion failed: {status}")
 
     def get_all_vectors(self, index: Optional[str] = None) -> List[np.ndarray]:
         """
