@@ -71,7 +71,7 @@ class SampleBasket:
     is needed for tasks like question answering where the source text can generate multiple input - label
     pairs."""
 
-    def __init__(self, id_internal: Union[int, str], raw: dict, id_external: str = None, samples: Optional[List[Sample]] = None):
+    def __init__(self, id_internal: Optional[Union[int, str]], raw: dict, id_external: str = None, samples: Optional[List[Sample]] = None):
         """
         :param id_internal: A unique identifying id. Used for identification within Haystack.
         :param external_id: Used for identification outside of Haystack. E.g. if another framework wants to pass along its own id with the results.

@@ -1,4 +1,30 @@
-farm==0.8.0
+# basics
+setuptools
+wheel
+# PyTorch
+# Temp. disabled the next line as it gets currently resolved to https://download.pytorch.org/whl/rocm3.8/torch-1.7.1%2Brocm3.8-cp38-cp38-linux_x86_64.whl
+# --find-links=https://download.pytorch.org/whl/torch_stable.html
+torch>1.5,<1.10
+# progress bars in model download and training scripts
+tqdm
+# Used for downloading models over HTTP
+requests
+# Scipy & sklearn for stats in run_classifier
+scipy>=1.3.2
+sklearn
+# Metrics or logging related
+seqeval
+mlflow<=1.13.1
+# huggingface repository
+transformers==4.7.0
+sentence-transformers
+# pickle extension for (de-)serialization
+dill
+# Inference with ONNX models. Install onnxruntime-gpu for Inference on GPUs
+# onnxruntime
+# onnxruntime_tools
+psutil
+# haystack
 --find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn

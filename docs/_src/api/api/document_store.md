@@ -465,6 +465,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 - `index`: Index name to delete the document from.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+    Example filters: {"name": ["some", "more"], "category": ["only_one"]}
 
 **Returns**:
 
@@ -743,8 +744,10 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 **Arguments**:
 
-- `index`: Index name to delete the document from.
+- `index`: Index name to delete the document from. If None, the
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
 
 **Returns**:
 
@@ -957,8 +960,10 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 **Arguments**:
 
-- `index`: Index name to delete the document from.
+- `index`: Index name to delete the document from. If None, the
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
 
 **Returns**:
 
@@ -1150,7 +1155,18 @@ Delete all documents from the document store.
  | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
-Delete all documents from the document store.
+Delete documents from the document store. All documents are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the document from. If None, the
+              DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to be deleted.
+                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
 
 <a name="faiss.FAISSDocumentStore.query_by_embedding"></a>
 #### query\_by\_embedding
@@ -1404,11 +1420,12 @@ None
  | delete_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
-Delete all documents (from SQL AND Milvus).
+Delete documents in an index. All documents are deleted if no filters are passed.
 
 **Arguments**:
 
-- `index`: (SQL) index name for storing the docs and metadata
+- `index`: Index name to delete the document from. If None, the
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the search space.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 
@@ -1776,8 +1793,10 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 **Arguments**:
 
-- `index`: Index name to delete the document from.
+- `index`: Index name to delete the document from. If None, the
+              DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
 
 **Returns**:
 

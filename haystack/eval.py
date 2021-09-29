@@ -7,8 +7,8 @@ import numpy as np
 
 from haystack import MultiLabel, Label, BaseComponent, Document
 
-from farm.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
-from farm.evaluation.squad_evaluation import compute_exact as calculate_em_str
+from haystack.modeling.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
+from haystack.modeling.evaluation.squad_evaluation import compute_exact as calculate_em_str
 
 logger = logging.getLogger(__name__)
 

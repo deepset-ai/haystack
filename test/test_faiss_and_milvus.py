@@ -1,3 +1,4 @@
+import time
 import faiss
 import math
 import numpy as np
@@ -94,6 +95,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
+        
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
@@ -190,6 +192,22 @@ def test_finding(document_store, retriever):
     prediction = pipe.run(query="How to test this?", params={"top_k": 1})
 
     assert len(prediction.get('documents', [])) == 1
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_delete_docs_with_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    document_store.delete_documents(filters={"name": ["name_1", "name_2", "name_3", "name_4"]})
+
+    documents = document_store.get_all_documents()
+    assert len(documents) == 2
+    assert document_store.get_embedding_count() == 2
+    assert {doc.meta["name"] for doc in documents} == {"name_5", "name_6"}
 
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)

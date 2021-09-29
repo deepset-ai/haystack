@@ -15,7 +15,6 @@ import random
 import traceback
 import os
 import requests
-from farm.file_utils import http_get
 import json
 from results_to_json import retriever as retriever_json
 from templates import RETRIEVER_TEMPLATE, RETRIEVER_MAP_TEMPLATE, RETRIEVER_SPEED_TEMPLATE

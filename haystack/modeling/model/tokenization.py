@@ -299,3 +299,118 @@ def _get_start_of_word_QA(word_ids):
     return start_of_word_single
 
 
+def tokenize_with_metadata(text, tokenizer):
+    """
+    Performing tokenization while storing some important metadata for each token:
+
+    * offsets: (int) Character index where the token begins in the original text
+    * start_of_word: (bool) If the token is the start of a word. Particularly helpful for NER and QA tasks.
+
+    We do this by first doing whitespace tokenization and then applying the model specific tokenizer to each "word".
+
+    .. note::  We don't assume to preserve exact whitespaces in the tokens!
+               This means: tabs, new lines, multiple whitespace etc will all resolve to a single " ".
+               This doesn't make a difference for BERT + XLNet but it does for RoBERTa.
+               For RoBERTa it has the positive effect of a shorter sequence length, but some information about whitespace
+               type is lost which might be helpful for certain NLP tasks ( e.g tab for tables).
+
+    :param text: Text to tokenize
+    :type text: str
+    :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
+    :return: Dictionary with "tokens", "offsets" and "start_of_word"
+    :rtype: dict
+
+    """
+    # normalize all other whitespace characters to " "
+    # Note: using text.split() directly would destroy the offset,
+    # since \n\n\n would be treated similarly as a single \n
+    text = re.sub(r"\s", " ", text)
+    # Fast Tokenizers return offsets, so we don't need to calculate them ourselves
+    if tokenizer.is_fast:
+        #tokenized = tokenizer(text, return_offsets_mapping=True, return_special_tokens_mask=True)
+        tokenized2 = tokenizer.encode_plus(text, return_offsets_mapping=True, return_special_tokens_mask=True)
+
+        tokens2 = tokenized2["input_ids"]
+        offsets2 = np.array([x[0] for x in tokenized2["offset_mapping"]])
+        #offsets2 = [x[0] for x in tokenized2["offset_mapping"]]
+        words = np.array(tokenized2.encodings[0].words)
+
+        # TODO check for validity for all tokenizer and special token types
+        words[0] = -1
+        words[-1] = words[-2]
+        words += 1
+        start_of_word2 = [0] + list(np.ediff1d(words))
+        #######
+
+        # start_of_word3 = []
+        # last_word = -1
+        # for word_id in tokenized2.encodings[0].words:
+        #     if word_id is None or word_id == last_word:
+        #         start_of_word3.append(0)
+        #     else:
+        #         start_of_word3.append(1)
+        #         last_word = word_id
+
+        tokenized_dict = {"tokens": tokens2, "offsets": offsets2, "start_of_word": start_of_word2}
+    else:
+        # split text into "words" (here: simple whitespace tokenizer).
+        words = text.split(" ")
+        word_offsets = []
+        cumulated = 0
+        for idx, word in enumerate(words):
+            word_offsets.append(cumulated)
+            cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
+
+        # split "words" into "subword tokens"
+        tokens, offsets, start_of_word = _words_to_tokens(
+            words, word_offsets, tokenizer
+        )
+
+        tokenized_dict = {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
+
+    return tokenized_dict
+
+
+def truncate_sequences(seq_a, seq_b, tokenizer, max_seq_len, truncation_strategy='longest_first',
+                       with_special_tokens=True, stride=0):
+    """
+    Reduces a single sequence or a pair of sequences to a maximum sequence length.
+    The sequences can contain tokens or any other elements (offsets, masks ...).
+    If `with_special_tokens` is enabled, it'll remove some additional tokens to have exactly enough space for later adding special tokens (CLS, SEP etc.)
+
+    Supported truncation strategies:
+
+    - longest_first: (default) Iteratively reduce the inputs sequence until the input is under max_length starting from the longest one at each token (when there is a pair of input sequences). Overflowing tokens only contains overflow from the first sequence.
+    - only_first: Only truncate the first sequence. raise an error if the first sequence is shorter or equal to than num_tokens_to_remove.
+    - only_second: Only truncate the second sequence
+    - do_not_truncate: Does not truncate (raise an error if the input sequence is longer than max_length)
+
+    :param seq_a: First sequence of tokens/offsets/...
+    :type seq_a: list
+    :param seq_b: Optional second sequence of tokens/offsets/...
+    :type seq_b: None or list
+    :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
+    :param max_seq_len:
+    :type max_seq_len: int
+    :param truncation_strategy: how the sequence(s) should be truncated down. Default: "longest_first" (see above for other options).
+    :type truncation_strategy: str
+    :param with_special_tokens: If true, it'll remove some additional tokens to have exactly enough space for later adding special tokens (CLS, SEP etc.)
+    :type with_special_tokens: bool
+    :param stride: optional stride of the window during truncation
+    :type stride: int
+    :return: truncated seq_a, truncated seq_b, overflowing tokens
+
+    """
+    pair = bool(seq_b is not None)
+    len_a = len(seq_a)
+    len_b = len(seq_b) if pair else 0
+    num_special_tokens = tokenizer.num_special_tokens_to_add(pair=pair) if with_special_tokens else 0
+    total_len = len_a + len_b + num_special_tokens
+    overflowing_tokens = []
+
+    if max_seq_len and total_len > max_seq_len:
+        seq_a, seq_b, overflowing_tokens = tokenizer.truncate_sequences(seq_a, pair_ids=seq_b,
+                                                                        num_tokens_to_remove=total_len - max_seq_len,
+                                                                        truncation_strategy=truncation_strategy,
+                                                                        stride=stride)
+    return (seq_a, seq_b, overflowing_tokens)
