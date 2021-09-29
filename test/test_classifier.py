@@ -4,7 +4,6 @@ from haystack.classifier import BaseClassifier
 
 def test_classifier(classifier):
     assert isinstance(classifier, BaseClassifier)
-
     query = "not used at the moment"
     docs = [
         Document(

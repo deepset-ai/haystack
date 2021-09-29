@@ -324,4 +324,3 @@ and the further processing can be customized. You can define this by connecting 
 **Arguments**:
 
 - `model_name_or_path`: Transformer based fine tuned mini bert model for query classification
-
