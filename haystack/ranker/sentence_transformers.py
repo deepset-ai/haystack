@@ -18,8 +18,6 @@ class SentenceTransformersRanker(BaseRanker):
 
     SentenceTransformerRanker handles Cross-Encoder models that use a single logit as similarity score.
     https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
-    In contrast, FARMRanker handles Cross-Encoder models that internally use two logits and output the classifier's probability of label "1" as similarity score.
-    This includes TextPairClassification models trained within FARM.
 
     |  With a SentenceTransformersRanker, you can:
      - directly get predictions via predict()
@@ -77,7 +75,7 @@ class SentenceTransformersRanker(BaseRanker):
         """
         Use loaded ranker model to re-rank the supplied list of Document.
 
-        Returns list of Document sorted by (desc.) TextPairClassification similarity with the query.
+        Returns list of Document sorted by (desc.) similarity with the query.
 
         :param query: Query string
         :param documents: List of Document to be re-ranked
@@ -90,7 +88,7 @@ class SentenceTransformersRanker(BaseRanker):
         features = self.transformer_tokenizer([query for doc in documents], [doc.text for doc in documents],
                                               padding=True, truncation=True, return_tensors="pt")
 
-        # In contrast to FARMRanker, SentenceTransformerRanker uses the logit as similarity score and not the classifier's probability of label "1"
+        # SentenceTransformerRanker uses the logit as similarity score and not the classifier's probability of label "1"
         # https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
         with torch.no_grad():
             similarity_scores = self.transformer_model(**features).logits
