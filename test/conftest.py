@@ -19,6 +19,7 @@ from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.ranker import SentenceTransformersRanker
+from haystack.classifier.transformers import TransformersClassifier
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
@@ -334,6 +335,13 @@ def reader(request):
 def ranker():
     return SentenceTransformersRanker(
         model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
+    )
+
+
+@pytest.fixture(scope="module")
+def classifier(request):
+    return TransformersClassifier(
+        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion"
     )
 
 
