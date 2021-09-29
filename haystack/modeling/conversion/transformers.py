@@ -72,7 +72,7 @@ class Converter:
                 task_type = "question_answering"
             else:
                 logger.error("Could not infer task type from model config. Please provide task type manually. "
-                             "('lm', 'question_answering', 'regression', 'text_classification', 'ner' or 'embeddings')")
+                             "('question_answering' or 'embeddings')")
 
 
         if task_type == "question_answering":
