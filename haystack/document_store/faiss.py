@@ -398,14 +398,23 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents from the document store.
+        Delete documents from the document store. All documents are deleted if no filters are passed.
+
+        :param index: Index name to delete the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to be deleted. 
+                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+        :return: None
         """
-        if filters:
-            logger.warning("Filters are not supported for deleting documents in FAISSDocumentStore.")
         index = index or self.index
         if index in self.faiss_indexes.keys():
-            self.faiss_indexes[index].reset()
-        super().delete_documents(index=index)
+            if filters:
+                affected_docs = self.get_all_documents(filters=filters)
+                doc_ids = [doc.meta.get("vector_id") for doc in affected_docs if doc.meta and doc.meta.get("vector_id") is not None]
+                self.faiss_indexes[index].remove_ids(np.array(doc_ids, dtype="int64"))
+            else:
+                self.faiss_indexes[index].reset()
+        super().delete_documents(index=index, filters=filters)
 
     def query_by_embedding(
         self,
