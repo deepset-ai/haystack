@@ -21,10 +21,6 @@ class BaseClassifier(BaseComponent):
     def predict(self, documents: List[Document]):
         pass
 
-    @abstractmethod
-    def predict_batch(self, query_doc_list: List[dict], batch_size: Optional[int] = None):
-        pass
-
     def run(self, query: str, documents: List[Document]): # type: ignore
         self.query_count += 1
         if documents:

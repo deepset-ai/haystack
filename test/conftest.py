@@ -341,7 +341,8 @@ def ranker():
 @pytest.fixture(scope="module")
 def classifier(request):
     return TransformersClassifier(
-        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion"
+        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
+        use_gpu=-1
     )
 
 

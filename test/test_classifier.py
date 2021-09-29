@@ -1,13 +1,16 @@
+import pytest
+
 from haystack import Document
 from haystack.classifier.base import BaseClassifier
 
 
+@pytest.mark.slow
 def test_classifier(classifier):
     assert isinstance(classifier, BaseClassifier)
 
     docs = [
         Document(
-            text="""That's good. I like it.""",
+            text="""That's good. I like it."""*700, # extra long text to check truncation
             meta={"name": "0"},
             id="1",
         ),
