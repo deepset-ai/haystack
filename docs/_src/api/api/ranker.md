@@ -66,8 +66,6 @@ Re-Ranking can be used on top of a retriever to boost the performance for docume
 
 SentenceTransformerRanker handles Cross-Encoder models that use a single logit as similarity score.
 https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
-In contrast, FARMRanker handles Cross-Encoder models that internally use two logits and output the classifier's probability of label "1" as similarity score.
-This includes TextPairClassification models trained within FARM.
 
 |  With a SentenceTransformersRanker, you can:
  - directly get predictions via predict()
@@ -125,7 +123,7 @@ List of dictionaries containing query and ranked list of Document
 
 Use loaded ranker model to re-rank the supplied list of Document.
 
-Returns list of Document sorted by (desc.) TextPairClassification similarity with the query.
+Returns list of Document sorted by (desc.) similarity with the query.
 
 **Arguments**:
 
