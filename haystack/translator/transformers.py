@@ -75,7 +75,7 @@ class TransformersTranslator(BaseTranslator):
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
-    ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
+    ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
         """
         Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
         :param query: The query string to translate
@@ -98,7 +98,7 @@ class TransformersTranslator(BaseTranslator):
             if isinstance(documents[0], Document):
                 text_for_translator = [doc.content for doc in documents]   # type: ignore
             elif isinstance(documents[0], Answer):
-                text_for_translator = [answer.answer for answer in documents]
+                text_for_translator = [answer.answer for answer in documents] # type: ignore
             elif isinstance(documents[0], str):
                 text_for_translator = documents   # type: ignore
             else:
