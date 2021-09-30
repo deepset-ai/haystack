@@ -16,9 +16,10 @@ def test_qg_pipeline(question_generator):
     assert len(result["generated_questions"][0]["questions"]) > 0
 
 
-@pytest.mark.parametrize("retriever,document_store", [("elasticsearch", "elasticsearch")], indirect=True)
+@pytest.mark.parametrize("retriever,document_store", [("tfidf", "memory")], indirect=True)
 def test_rqg_pipeline(question_generator, retriever):
-    retriever.document_store.write_documents([{"text": text}])
+    retriever.document_store.write_documents([document])
+    retriever.fit()
     p = RetrieverQuestionGenerationPipeline(retriever, question_generator)
     result = p.run(query)
     keys = list(result)
@@ -31,6 +32,7 @@ def test_qag_pipeline(question_generator, reader):
     p = QuestionAnswerGenerationPipeline(question_generator, reader)
     results = p.run(documents=[document])["results"]
     assert len(results) > 0
-    assert results[0]["query"]
-    assert len(results[0]["answers"]) > 0
-    assert results[0]["answers"][0]["answer"]
+    assert results["query"]
+    assert len(results["answers"]) > 0
+    assert results["answers"][0].answer is not None
+

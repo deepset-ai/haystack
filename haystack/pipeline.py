@@ -34,6 +34,7 @@ from haystack.retriever.base import BaseRetriever
 from haystack.summarizer.base import BaseSummarizer
 from haystack.translator.base import BaseTranslator
 from haystack.document_store.base import BaseDocumentStore
+from haystack.question_generator import QuestionGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -742,7 +743,7 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
     A simple pipeline that takes documents as input and generates
     questions that it thinks can be answered by the documents.
     """
-    def __init__(self, question_generator):
+    def __init__(self, question_generator: QuestionGenerator):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
 
@@ -756,7 +757,7 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
     A simple pipeline that takes a query as input, performs retrieval, and then generates
     questions that it thinks can be answered by the retrieved documents.
     """
-    def __init__(self, retriever, question_generator):
+    def __init__(self, retriever: BaseRetriever, question_generator: QuestionGenerator):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
@@ -771,7 +772,7 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
     This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
     this document, and then performs question answering of this questions using that single document.
     """
-    def __init__(self, question_generator, reader):
+    def __init__(self, question_generator: QuestionGenerator, reader: BaseReader):
         question_generator.run = self.formatting_wrapper(question_generator.run)
         # Overwrite reader.run function so it can handle a batch of questions being passed on by the QuestionGenerator
         reader.run = reader.run_batch
