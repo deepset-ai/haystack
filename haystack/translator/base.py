@@ -15,7 +15,7 @@ class BaseTranslator(BaseComponent):
     def translate(
         self,
         query: Optional[str] = None,
-        documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
     ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
         """
