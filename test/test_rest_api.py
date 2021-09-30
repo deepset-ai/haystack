@@ -3,10 +3,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from rest_api.application import DOCUMENT_STORE
+
 
 def get_test_client_and_override_dependencies():
     import os
-    os.environ["PIPELINE_YAML_PATH"] = "samples/pipeline/test_pipeline.yaml"
+    os.environ["PIPELINE_YAML_PATH"] = str((Path(__file__).parent / "samples"/"pipeline"/"test_pipeline.yaml").absolute())
     os.environ["QUERY_PIPELINE_NAME"] = "query_pipeline"
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_pipeline"
 
@@ -16,13 +18,13 @@ def get_test_client_and_override_dependencies():
 
 @pytest.mark.slow
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_api(reader, document_store):
+#@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+#@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_api():#reader, document_store):
     client = get_test_client_and_override_dependencies()
 
     # test file upload API
-    file_to_upload = {'files': Path("samples/pdf/sample_pdf_1.pdf").open('rb')}
+    file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
     assert 200 == response.status_code
 
