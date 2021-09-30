@@ -32,7 +32,7 @@ def test_qag_pipeline(question_generator, reader):
     p = QuestionAnswerGenerationPipeline(question_generator, reader)
     results = p.run(documents=[document])["results"]
     assert len(results) > 0
-    assert results["query"]
-    assert len(results["answers"]) > 0
-    assert results["answers"][0].answer is not None
+    assert results[0]["query"]
+    assert len(results[0]["answers"]) > 0
+    assert results[0]["answers"][0].answer is not None
 
