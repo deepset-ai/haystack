@@ -15,7 +15,7 @@ Abstract class for a Translator component that translates either a query or a do
 
 ```python
  | @abstractmethod
- | translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
+ | translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
 ```
 
 Translate the passed query or a list of documents from language A to B.
