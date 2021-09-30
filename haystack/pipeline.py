@@ -773,9 +773,9 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
     this document, and then performs question answering of this questions using that single document.
     """
     def __init__(self, question_generator: QuestionGenerator, reader: BaseReader):
-        question_generator.run = self.formatting_wrapper(question_generator.run)
+        setattr(question_generator, "run", self.formatting_wrapper(question_generator.run))
         # Overwrite reader.run function so it can handle a batch of questions being passed on by the QuestionGenerator
-        reader.run = reader.run_batch
+        setattr(reader, "run", reader.run_batch)
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["QuestionGenerator"])
