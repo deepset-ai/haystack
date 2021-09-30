@@ -19,7 +19,7 @@ from haystack.document_store.milvus import MilvusDocumentStore
 from haystack.generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.ranker import SentenceTransformersRanker
-from haystack.classifier.transformers import TransformersClassifier
+from haystack.document_classifier.transformers import TransformersDocumentClassifier
 
 from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
@@ -339,10 +339,19 @@ def ranker():
 
 
 @pytest.fixture(scope="module")
-def classifier(request):
-    return TransformersClassifier(
+def document_classifier():
+    return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
         use_gpu=-1
+    )
+
+@pytest.fixture(scope="module")
+def zero_shot_document_classifier():
+    return TransformersDocumentClassifier(
+        model_name_or_path="cross-encoder/nli-distilroberta-base",
+        use_gpu=-1,
+        task="zero-shot-classification",
+        labels=["negative", "positive"]
     )
 
 

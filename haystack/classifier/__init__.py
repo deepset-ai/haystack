@@ -1,1 +1,0 @@
-from haystack.classifier.transformers import TransformersClassifier
