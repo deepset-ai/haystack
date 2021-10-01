@@ -29,7 +29,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     p.add_node(component=document_classifier, name="Classifier", inputs=["Retriever"])
     res = p.run(
         query="Who is the father of Arya Stark?",
-        params={"Retriever": {"top_k": 10}, "Classifier": {"top_k": 5}}
+        params={"Retriever": {"top_k": 10}}
     )
 
     # print the classification results
