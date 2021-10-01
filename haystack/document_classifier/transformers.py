@@ -31,11 +31,11 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         query="Who is the father of Arya Stark?",
         params={"Retriever": {"top_k": 10}, "Classifier": {"top_k": 5}}
     )
-    print(res["documents"][0].to_dict()["meta"]["classification"]["label"])
-    # Note that print_documents() does not output the content of the classification field in the meta data
-    # document_dicts = [doc.to_dict() for doc in res["documents"]]
-    # res["documents"] = document_dicts
-    # print_documents(res, max_text_len=100)
+
+    # print the classification results
+    print_documents(res, max_text_len=100, print_meta=True)
+    # or access the predicted class label directly
+    res["documents"][0].to_dict()["meta"]["classification"]["label"]
     """
 
     def __init__(
