@@ -4,7 +4,7 @@ from itertools import islice
 import logging
 import pprint
 import pandas as pd
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from haystack.document_store.sql import DocumentORM
 import subprocess
 import time
@@ -134,8 +134,7 @@ def print_answers(results: dict, details: str = "all"):
             pp.pprint(results)
 
 
-
-def print_documents(results: dict, max_text_len: int=None):
+def print_documents(results: dict, max_text_len: Optional[int] = None, print_meta: bool = False):
     print(f"Query: {results['query']}")
     pp = pprint.PrettyPrinter(indent=4)
     for d in results["documents"]:
@@ -147,6 +146,8 @@ def print_documents(results: dict, max_text_len: int=None):
             "name": d["meta"]["name"],
             "text": new_text
         }
+        if print_meta:
+            results["meta"] = d["meta"]
         pp.pprint(results)
 
 

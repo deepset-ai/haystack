@@ -1,0 +1,1 @@
+from haystack.document_classifier.transformers import TransformersDocumentClassifier
