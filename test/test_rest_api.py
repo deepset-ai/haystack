@@ -20,7 +20,7 @@ def populated_client(client: TestClient) -> TestClient:
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
     client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
     yield client
-    client.delete(url="/documents", data={"meta_key": ["meta_value"]})
+    client.post(url="/documents/delete_by_filters", data={"meta_key": ["meta_value"]})
 
 
 
@@ -33,8 +33,7 @@ def test_delete_documents(client: TestClient):
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
 
-    filters = {"filters": {"meta_key": ["meta_value"]}}
-    response = client.delete(url="/documents", json=filters)
+    client.post(url="/documents/delete_by_filters", data={"meta_key": ["meta_value"]})
     assert 200 == response.status_code
 
 def test_query_with_no_filter(populated_client: TestClient):

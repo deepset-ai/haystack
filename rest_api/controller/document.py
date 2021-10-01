@@ -14,7 +14,7 @@ logger = logging.getLogger("haystack")
 router = APIRouter()
 
 
-@router.delete("/documents", response_model=bool)
+@router.post("/documents/delete_by_filters", response_model=bool)
 def delete_documents(filters: FilterRequest):
     """
     Can be used to delete documents from a document store.
