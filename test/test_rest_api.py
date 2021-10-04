@@ -5,7 +5,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from rest_api.application import app
-from rest_api.application import DOCUMENT_STORE
 
 
 @pytest.fixture(scope="session")
