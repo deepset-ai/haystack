@@ -1,10 +1,12 @@
 import os
+from pathlib import Path
 
-PIPELINE_YAML_PATH = os.getenv("PIPELINE_YAML_PATH", "rest_api/pipeline/pipelines.yaml")
+
+PIPELINE_YAML_PATH = os.getenv("PIPELINE_YAML_PATH", str((Path(__file__).parent / "pipeline" / "pipelines.yaml").absolute()))
 QUERY_PIPELINE_NAME = os.getenv("QUERY_PIPELINE_NAME", "query")
 INDEXING_PIPELINE_NAME = os.getenv("INDEXING_PIPELINE_NAME", "indexing")
 
-FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", "./file-upload")
+FILE_UPLOAD_PATH = os.getenv("FILE_UPLOAD_PATH", str((Path(__file__).parent / "file-upload").absolute()))
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 ROOT_PATH = os.getenv("ROOT_PATH", "/")
