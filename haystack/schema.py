@@ -1,10 +1,16 @@
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, Dict, List, Callable, Tuple, Optional
+
 from uuid import uuid4
 from copy import deepcopy
 import mmh3
 import numpy as np
 from abc import abstractmethod
 import inspect
+import logging
+import io
+from functools import wraps
+import types
+
 
 class Document:
     def __init__(
@@ -249,6 +255,42 @@ class MultiLabel:
         return str(self.to_dict())
 
 
+class InMemoryLogger(io.TextIOBase):
+
+    def __init__(self, *args):
+        io.TextIOBase.__init__(self, *args)
+        self.logs = []
+    
+    def write(self, x):
+        self.logs.append(x[:100])
+
+
+def supports_debug(func: Callable, debug: Optional[bool] = False):
+    """
+    Captures the debug logs of the wrapped functions and 
+    saves it in a _debug key of the output dictionary.
+    """
+    @wraps(func)
+    def inner(*args, **kwargs):
+        if not debug:
+            return func(*args, **kwargs)
+
+        with InMemoryLogger() as logs_container:
+            logger = logging.getLogger()
+
+            handler = logging.StreamHandler(logs_container)
+            handler.setLevel(logging.DEBUG)
+            logger.addHandler(handler)      
+
+            output, stream = func(*args, **kwargs)
+
+            output["_debug"] = logs_container.logs
+            logger.removeHandler(handler)            
+            return output, stream  
+
+    return inner
+
+
 class BaseComponent:
     """
     A base class for implementing nodes in a Pipeline.
@@ -265,6 +307,22 @@ class BaseComponent:
         """
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
+
+    def __getattribute__(self, name):
+        """
+        This modified `__getattribute__` automagically decorates
+        every `BaseComponent.run()` implementation with the 
+        `@supports_debug` decorator, which makes the function
+        dump its debug logs into a `_debug` key of the output
+        dictionary.
+
+        Relies on a class attribute called `enable_debug` to know
+        if it should actually populate the `_debug` key or not.
+        """
+        if name == "run":
+            func = getattr(type(self), "run")
+            return types.MethodType(supports_debug(func, getattr(self, 'enable_debug', False)), self)
+        return object.__getattribute__(self, name)
 
     @classmethod
     def get_subclass(cls, component_type: str):

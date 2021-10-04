@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Union, Any
 import pickle
 import urllib
 from functools import wraps
+from networkx.algorithms.boundary import node_boundary
 
 try:
     from ray import serve
@@ -259,9 +260,10 @@ class Pipeline(BasePipeline):
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
-        params: Optional[dict] = None,
+        params: Optional[dict] = None
     ):
         node_output = None
+        debug_output = {}
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
@@ -286,6 +288,7 @@ class Pipeline(BasePipeline):
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
                     node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
+                    debug_output.update(node_output.get("_debug", {}))
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
@@ -315,6 +318,8 @@ class Pipeline(BasePipeline):
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+        if debug_output:
+            node_output["_debug"] = debug_output
         return node_output
 
     def get_next_nodes(self, node_id: str, stream_id: str):
@@ -1029,6 +1034,8 @@ class JoinDocuments(BaseComponent):
         self.top_k_join = top_k_join
 
     def run(self, inputs: List[dict]):  # type: ignore
+        logging.debug("Test debug message for JoinDocuments nodes")
+
         if self.join_mode == "concatenate":
             document_map = {}
             for input_from_node in inputs:
