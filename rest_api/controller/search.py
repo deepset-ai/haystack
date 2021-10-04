@@ -1,9 +1,11 @@
 import logging
 import time
+from pathlib import Path
 
 from fastapi import APIRouter
 
-from rest_api.application import PIPELINE
+from haystack import Pipeline
+from rest_api.config import PIPELINE_YAML_PATH, QUERY_PIPELINE_NAME
 from rest_api.config import LOG_LEVEL, CONCURRENT_REQUEST_PER_WORKER
 from rest_api.schema import QueryRequest, QueryResponse
 from rest_api.controller.utils import RequestLimiter
@@ -14,6 +16,14 @@ logger = logging.getLogger("haystack")
 
 
 router = APIRouter()
+
+
+PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
+# TODO make this generic for other pipelines with different naming
+RETRIEVER = PIPELINE.get_node(name="Retriever")
+DOCUMENT_STORE = RETRIEVER.document_store if RETRIEVER else None
+logging.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
+
 concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
 
 

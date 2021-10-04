@@ -4,7 +4,7 @@ from typing import Dict, Union, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from rest_api.schema import ExtractiveQAFeedback, FilterRequest
-from rest_api.application import DOCUMENT_STORE
+from rest_api.controller.search import DOCUMENT_STORE
 
 router = APIRouter()
 
