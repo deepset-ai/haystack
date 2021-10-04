@@ -146,6 +146,7 @@ class FARMReader(BaseReader):
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
         use_amp: str = None,
+        checkpoint_root_dir: Optional[Path] = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -180,6 +181,8 @@ class FARMReader(BaseReader):
                         "O2" (Almost FP16)
                         "O3" (Pure FP16).
                         See details on: https://nvidia.github.io/apex/amp.html
+        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+               checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :return: None
         """
 
@@ -234,7 +237,19 @@ class FARMReader(BaseReader):
             use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = create_or_load_checkpoint()
+        trainer = create_or_load_checkpoint(
+            model=model,
+            optimizer=optimizer,
+            data_silo=data_silo,
+            epochs=n_epochs,
+            n_gpu=n_gpu,
+            lr_schedule=lr_schedule,
+            evaluate_every=evaluate_every,
+            device=device,
+            use_amp=use_amp,
+            disable_tqdm=not self.progress_bar,
+            checkpoint_root_dir=checkpoint_root_dir,
+        )
 
         # 5. Let it grow!
         self.inferencer.model = trainer.train()
