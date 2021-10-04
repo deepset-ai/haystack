@@ -14,7 +14,6 @@ from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.model.predictions import QAPred, QACandidate
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.training.base import Trainer
-from haystack.modeling.training.base import create_or_load_checkpoint
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
@@ -237,7 +236,7 @@ class FARMReader(BaseReader):
             use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = create_or_load_checkpoint(
+        trainer = Trainer.create_or_load_checkpoint(
             model=model,
             optimizer=optimizer,
             data_silo=data_silo,
