@@ -1,40 +1,22 @@
-import json
 import logging
 import time
-from pathlib import Path
-from typing import Dict, List, Optional, Union, Any
 
 from fastapi import APIRouter
-from pydantic import BaseModel
 
-from haystack import Pipeline
-from haystack import Answer
-from rest_api.config import PIPELINE_YAML_PATH, LOG_LEVEL, QUERY_PIPELINE_NAME, CONCURRENT_REQUEST_PER_WORKER
+from rest_api.application import PIPELINE
+from rest_api.config import LOG_LEVEL, CONCURRENT_REQUEST_PER_WORKER
+from rest_api.schema import QueryRequest, QueryResponse
 from rest_api.controller.utils import RequestLimiter
+
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
 logger = logging.getLogger("haystack")
-
-router = APIRouter()
 
 from pydantic import BaseConfig
 
 BaseConfig.arbitrary_types_allowed = True
 
-class Request(BaseModel):
-    query: str
-    params: Optional[dict] = None
-
-
-class Response(BaseModel):
-    query: str
-    answers: List[Answer]
-    #maybe add: documents?
-
-
-
-PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
-logger.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
+router = APIRouter()
 concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
 
 
@@ -50,14 +32,14 @@ def initialized():
     return True
 
 
-@router.post("/query", response_model=Response)
-def query(request: Request):
+@router.post("/query", response_model=QueryResponse)
+def query(request: QueryRequest):
     with concurrency_limiter.run():
         result = _process_request(PIPELINE, request)
         return result
 
 
-def _process_request(pipeline, request) -> Response:
+def _process_request(pipeline, request) -> QueryResponse:
     start_time = time.time()
 
     params = request.params or {}
