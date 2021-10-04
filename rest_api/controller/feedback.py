@@ -3,41 +3,17 @@ import logging
 from typing import Dict, Union, List, Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from rest_api.controller.search import PIPELINE
+from rest_api.schema import ExtractiveQAFeedback, FilterRequest
+from rest_api.application import DOCUMENT_STORE
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-# TODO make this generic for other pipelines with different naming
-retriever = PIPELINE.get_node(name="ESRetriever")
-document_store = retriever.document_store if retriever else None
-
-
-class ExtractiveQAFeedback(BaseModel):
-    question: str = Field(..., description="The question input by the user, i.e., the query.")
-    is_correct_answer: bool = Field(..., description="Whether the answer is correct or not.")
-    document_id: str = Field(..., description="The document in the query result for which feedback is given.")
-    model_id: Optional[int] = Field(None, description="The model used for the query.")
-    is_correct_document: bool = Field(
-        ...,
-        description="In case of negative feedback, there could be two cases; incorrect answer but correct "
-        "document & incorrect document. This flag denotes if the returned document was correct.",
-    )
-    answer: str = Field(..., description="The answer string.")
-    offset_start_in_doc: int = Field(
-        ..., description="The answer start offset in the original doc. Only required for doc-qa feedback."
-    )
-
-
-class FilterRequest(BaseModel):
-    filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
-
 
 @router.post("/feedback")
 def user_feedback(feedback: ExtractiveQAFeedback):
-    document_store.write_labels([{"origin": "user-feedback", **feedback.dict()}])
+    DOCUMENT_STORE.write_labels([{"origin": "user-feedback", **feedback.dict()}])
 
 
 @router.post("/eval-feedback")
@@ -62,7 +38,7 @@ def eval_extractive_qa_feedback(filters: FilterRequest = None):
     else:
         filters = {"origin": ["user-feedback"]}
 
-    labels = document_store.get_all_labels(filters=filters)
+    labels = DOCUMENT_STORE.get_all_labels(filters=filters)
 
     if len(labels) > 0:
         answer_feedback = [1 if l.is_correct_answer else 0 for l in labels]
@@ -87,9 +63,9 @@ def export_extractive_qa_feedback(
     The context_size param can be used to limit response size for large documents.
     """
     if only_positive_labels:
-        labels = document_store.get_all_labels(filters={"is_correct_answer": [True], "origin": ["user-feedback"]})
+        labels = DOCUMENT_STORE.get_all_labels(filters={"is_correct_answer": [True], "origin": ["user-feedback"]})
     else:
-        labels = document_store.get_all_labels(filters={"origin": ["user-feedback"]})
+        labels = DOCUMENT_STORE.get_all_labels(filters={"origin": ["user-feedback"]})
         # Filter out the labels where the passage is correct but answer is wrong (in SQuAD this matches
         # neither a "positive example" nor a negative "is_impossible" one)
         labels = [l for l in labels if not (l.is_correct_document is True and l.is_correct_answer is False)]
@@ -97,7 +73,7 @@ def export_extractive_qa_feedback(
     export_data = []
 
     for label in labels:
-        document = document_store.get_document_by_id(label.document_id)
+        document = DOCUMENT_STORE.get_document_by_id(label.document_id)
         if document is None:
             raise HTTPException(
                 status_code=500, detail="Could not find document with id {label.document_id} for label id {label.id}"
