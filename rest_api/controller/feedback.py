@@ -6,6 +6,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from rest_api.controller.search import PIPELINE
 
+from haystack import Label
+
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
@@ -15,20 +17,21 @@ retriever = PIPELINE.get_node(name="ESRetriever")
 document_store = retriever.document_store if retriever else None
 
 
-class ExtractiveQAFeedback(BaseModel):
-    question: str = Field(..., description="The question input by the user, i.e., the query.")
-    is_correct_answer: bool = Field(..., description="Whether the answer is correct or not.")
-    document_id: str = Field(..., description="The document in the query result for which feedback is given.")
-    model_id: Optional[int] = Field(None, description="The model used for the query.")
-    is_correct_document: bool = Field(
-        ...,
-        description="In case of negative feedback, there could be two cases; incorrect answer but correct "
-        "document & incorrect document. This flag denotes if the returned document was correct.",
-    )
-    answer: str = Field(..., description="The answer string.")
-    offset_start_in_doc: int = Field(
-        ..., description="The answer start offset in the original doc. Only required for doc-qa feedback."
-    )
+# class ExtractiveQAFeedback(BaseModel):
+#     question: str = Field(..., description="The question input by the user, i.e., the query.")
+#     is_correct_answer: bool = Field(..., description="Whether the answer is correct or not.")
+#     document_id: str = Field(..., description="The document in the query result for which feedback is given.")
+#     model_id: Optional[int] = Field(None, description="The model used for the query.")
+#     is_correct_document: bool = Field(
+#         ...,
+#         description="In case of negative feedback, there could be two cases; incorrect answer but correct "
+#         "document & incorrect document. This flag denotes if the returned document was correct.",
+#     )
+#     answer: str = Field(..., description="The answer string.")
+#     offset_start_in_doc: int = Field(
+#         ..., description="The answer start offset in the original doc. Only required for doc-qa feedback."
+#     )
+
 
 
 class FilterRequest(BaseModel):
@@ -36,8 +39,12 @@ class FilterRequest(BaseModel):
 
 
 @router.post("/feedback")
-def user_feedback(feedback: ExtractiveQAFeedback):
-    document_store.write_labels([{"origin": "user-feedback", **feedback.dict()}])
+def user_feedback(feedback: Dict):
+    print(feedback)
+    l = Label.from_dict(feedback)
+    if feedback.origin is None:
+        feedback.origin = "user-feedback"
+    document_store.write_labels([feedback])
 
 
 @router.post("/eval-feedback")

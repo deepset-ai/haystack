@@ -17,6 +17,9 @@ logger = logging.getLogger("haystack")
 
 router = APIRouter()
 
+from pydantic import BaseConfig
+
+BaseConfig.arbitrary_types_allowed = True
 
 class Request(BaseModel):
     query: str
@@ -27,6 +30,7 @@ class Response(BaseModel):
     query: str
     answers: List[Answer]
     #maybe add: documents?
+
 
 
 PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
