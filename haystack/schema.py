@@ -342,18 +342,18 @@ class BaseComponent:
         `_debug` key of the output dictionary.
 
         The logs collection is not always performed. Before applying the decorator,
-        it checks for an instance attribute called `enable_debug_in_output` to know
+        it checks for an instance attribute called `enable_debug` to know
         whether it should or not. The decorator is applied if the attribute is 
         defined and True.
 
-        In addition, the value of the instance attribute `enable_debug_in_console` is
+        In addition, the value of the instance attribute `console_debug` is
         passed to the decorator. If it's defined and True, the same logs collected in 
         `_debug` are also printed in the console during the execution.
         """
         if name == "run":
             func = getattr(type(self), "run")
-            if getattr(self, 'enable_debug_in_output', False):
-                return types.MethodType(record_debug_logs(func, getattr(self, 'enable_debug_in_console', False)), self)
+            if getattr(self, 'enable_debug', False):
+                return types.MethodType(record_debug_logs(func, getattr(self, 'console_debug', False)), self)
         return object.__getattribute__(self, name)
 
     @classmethod
@@ -426,6 +426,7 @@ class BaseComponent:
 
         It takes care of the following:
           - inspect run() signature to validate if all necessary arguments are available
+          - pop `enable_debug` and `console_debug` and sets them on the instance to control debug output
           - call run() with the corresponding arguments and gather output
           - collate _debug information if present
           - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
@@ -439,9 +440,17 @@ class BaseComponent:
         for key, value in params.items():
             if key == self.name:  # targeted params for this node
                 if isinstance(value, dict):
+                    
+                    # Debug attributes
+                    if "enable_debug" in value.keys():
+                        self.enable_debug = value.pop("enable_debug")
+                    if "console_debug" in value.keys():
+                        self.console_debug = value.pop("console_debug")
+
                     for _k, _v in value.items():
                         if _k not in run_signature_args:
                             raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
+
                 run_params.update(**value)
             elif key in run_signature_args:  # global params
                 run_params[key] = value
