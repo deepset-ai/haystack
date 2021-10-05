@@ -265,27 +265,37 @@ class InMemoryLogger(io.TextIOBase):
         self.logs.append(x[:100])
 
 
-def supports_debug(func: Callable, debug: Optional[bool] = False):
+def record_debug_logs(func: Callable, to_console_too: Optional[bool] = False):
     """
     Captures the debug logs of the wrapped functions and 
-    saves it in a _debug key of the output dictionary.
+    saves it in a _debug key of the output dictionary. If `to_console_too`
+    is True, dumps the same logs to the console as well.
+
+    Used in BaseComponent.__getattribute__() to wrap run() functions.
+    This makes sure that every implementation of run() by a subclass will
+    be automagically decorated
     """
     @wraps(func)
     def inner(*args, **kwargs):
-        if not debug:
-            return func(*args, **kwargs)
-
         with InMemoryLogger() as logs_container:
             logger = logging.getLogger()
 
             handler = logging.StreamHandler(logs_container)
             handler.setLevel(logging.DEBUG)
-            logger.addHandler(handler)      
+            logger.addHandler(handler)    
+
+            if to_console_too:
+                handler_console = logging.StreamHandler()
+                handler_console.setLevel(logging.DEBUG)
+                logger.addHandler(handler_console)
 
             output, stream = func(*args, **kwargs)
-
             output["_debug"] = logs_container.logs
-            logger.removeHandler(handler)            
+            
+            logger.removeHandler(handler)
+            if to_console_too:
+                logger.removeHandler(handler_console) 
+
             return output, stream  
 
     return inner
@@ -316,12 +326,20 @@ class BaseComponent:
         dump its debug logs into a `_debug` key of the output
         dictionary.
 
-        Relies on a class attribute called `enable_debug` to know
-        if it should actually populate the `_debug` key or not.
+        Relies on a class attribute called `enable_debug_in_output` to know
+        if it should actually decorate the function or not. Therefore
+        the `enable_debug_in_output` flag turns on and off this functionality.
+
+        `enable_debug_in_output` does not have to be defined, default behavior
+        is False (do not enable debug dump).
+
+        if `enable_debug_in_console`, the same logs collected in `_debug`
+        are also printed in the console during the execution.
         """
         if name == "run":
             func = getattr(type(self), "run")
-            return types.MethodType(supports_debug(func, getattr(self, 'enable_debug', False)), self)
+            if getattr(self, 'enable_debug_in_output', False):
+                return types.MethodType(record_debug_logs(func, getattr(self, 'enable_debug_in_console', False)), self)
         return object.__getattribute__(self, name)
 
     @classmethod
