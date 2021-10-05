@@ -263,7 +263,7 @@ class Pipeline(BasePipeline):
         params: Optional[dict] = None
     ):
         node_output = None
-        debug_output = {}
+        debug_output: Dict[str, List[str]] = {}
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
