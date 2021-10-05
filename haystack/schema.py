@@ -421,7 +421,7 @@ class BaseComponent:
 
         run_signature_args = inspect.signature(self.run).parameters.keys()
 
-        run_params = {}
+        run_params: Dict[str, Any] = {}
         for key, value in params.items():
             if key == self.name:  # targeted params for this node
                 if isinstance(value, dict):
