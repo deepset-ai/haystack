@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter
 
-from rest_api.application import DOCUMENT_STORE
+from rest_api.controller.search import DOCUMENT_STORE
 from rest_api.config import LOG_LEVEL
 from rest_api.schema import FilterRequest
 
