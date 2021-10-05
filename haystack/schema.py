@@ -393,7 +393,7 @@ class BaseComponent:
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         params: Optional[dict] = None,
-    ):
+    ) -> Tuple[Dict, str]:
         """
         Method that will be executed when the node in the graph is called.
 
@@ -406,7 +406,7 @@ class BaseComponent:
         """
         pass
 
-    def _dispatch_run(self, **kwargs):
+    def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
         The Pipelines call this method which in turn executes the run() method of Component.
 
