@@ -6,6 +6,7 @@ from torch.nn import DataParallel
 import numpy as np
 from pathlib import Path
 
+from haystack.modeling.data_handler.dataset import convert_features_to_dataset
 from haystack.modeling.utils import initialize_device_settings
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModel
@@ -19,7 +20,7 @@ from haystack.modeling.model.tokenization import Tokenizer
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.modeling.data_handler.processor import TextSimilarityProcessor, InferenceProcessor
+from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
@@ -693,11 +694,8 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
         else:
             self.device = torch.device("cpu")
 
-        embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model,
-                                                            use_fast_tokenizers=True)
+        self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
         self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)
-        self.processor = InferenceProcessor(tokenizer=embedding_tokenizer,
-                                            max_seq_len=embedding_tokenizer.max_len_single_sentence)
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
@@ -735,8 +733,29 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
 
     def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
 
-        dataset, tensor_names, _ = self.processor.dataset_from_dicts(text_to_encode,
-                                                                     indices=[i for i in range(len(text_to_encode))])
+        dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
         dataloader = NamedDataLoader(dataset=dataset, sampler=SequentialSampler(dataset),
                                      batch_size=32, tensor_names=tensor_names)
         return dataloader
+
+    def dataset_from_dicts(self, dicts: List[dict]):
+        texts = [x["text"] for x in dicts]
+        tokenized_batch = self.embedding_tokenizer(
+            texts,
+            return_token_type_ids=True,
+            return_attention_mask=True,
+            truncation=True,
+            padding=True
+        )
+
+        features_flat = []
+        for input_ids, segment_ids, padding_mask in zip(
+                tokenized_batch["input_ids"], tokenized_batch["token_type_ids"], tokenized_batch["attention_mask"]
+        ):
+            feat_dict = {"input_ids": input_ids,
+                         "padding_mask": padding_mask,
+                         "segment_ids": segment_ids}
+            features_flat.append(feat_dict)
+
+        dataset, tensornames = convert_features_to_dataset(features=features_flat)
+        return dataset, tensornames
