@@ -307,7 +307,7 @@ def record_debug_logs(func: Callable, to_console_too: Optional[bool] = False) ->
             if not "_debug" in output.keys():
                 output["_debug"] = {}
             output["_debug"]["logs"] = logs_container.logs
-
+            
             # Remove both handlers
             logger.removeHandler(handler)
             if to_console_too:

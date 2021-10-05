@@ -293,9 +293,9 @@ class Pipeline(BasePipeline):
                     if self.graph.nodes[node_id]["component"].enable_debug:
                         debug_output[node_id] = {}
                         if "_debug" in node_output.keys():
-                            debug_output[node_id]["run"] = node_output.pop("_debug")[node_id]
-                        #debug_output[node_id]["input"] = node_input
-                        #debug_output[node_id]["output"] = node_output
+                            debug_output[node_id] = node_output.pop("_debug")[node_id]
+                        debug_output[node_id]["input"] = node_input
+                        debug_output[node_id]["output"] = node_output
         
                 except Exception as e:
                     tb = traceback.format_exc()
