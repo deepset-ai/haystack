@@ -267,7 +267,7 @@ class InMemoryLogger(io.TextIOBase):
         self.logs = []
     
     def write(self, x):
-        self.logs.append(x[:100])
+        self.logs.append(x)
 
 
 def record_debug_logs(func: Callable, to_console_too: Optional[bool] = False) -> Callable:
@@ -297,15 +297,18 @@ def record_debug_logs(func: Callable, to_console_too: Optional[bool] = False) ->
             logger.addHandler(handler)    
 
             # Add a handler that prints DEBUG messages in the console
-            if to_console_too:
+            if to_console_too and logger.level != logging.DEBUG:
                 handler_console = logging.StreamHandler()
                 handler_console.setLevel(logging.DEBUG)
                 logger.addHandler(handler_console)
 
             output, stream = func(*args, **kwargs)
-            output["_debug"] = logs_container.logs
 
-            # Remove both handlers            
+            if not "_debug" in output.keys():
+                output["_debug"] = {}
+            output["_debug"]["logs"] = logs_container.logs
+
+            # Remove both handlers
             logger.removeHandler(handler)
             if to_console_too:
                 logger.removeHandler(handler_console)
@@ -352,10 +355,18 @@ class BaseComponent:
         """
         if name == "run":
             func = getattr(type(self), "run")
-            if getattr(self, 'enable_debug', False):
-                return types.MethodType(record_debug_logs(func, getattr(self, 'console_debug', False)), self)
+            if self.enable_debug:
+                return types.MethodType(record_debug_logs(func, self.console_debug), self)
         return object.__getattribute__(self, name)
 
+    def __getattr__(self, name):
+        """
+        Ensures that `enable_debug` and `console_debug` are always defined.
+        """
+        if name in ["enable_debug", "console_debug"]:
+            return False
+        raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
+        
     @classmethod
     def get_subclass(cls, component_type: str):
         if component_type not in cls.subclasses.keys():

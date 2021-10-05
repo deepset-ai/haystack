@@ -288,7 +288,15 @@ class Pipeline(BasePipeline):
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
                     node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
-                    debug_output.update(node_output.get("_debug", {}))
+
+                    # Collect all debug information
+                    if self.graph.nodes[node_id]["component"].enable_debug:
+                        debug_output[node_id] = {}
+                        if "_debug" in node_output.keys():
+                            debug_output[node_id]["run"] = node_output.pop("_debug")[node_id]
+                        #debug_output[node_id]["input"] = node_input
+                        #debug_output[node_id]["output"] = node_output
+        
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
