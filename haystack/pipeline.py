@@ -1034,8 +1034,6 @@ class JoinDocuments(BaseComponent):
         self.top_k_join = top_k_join
 
     def run(self, inputs: List[dict]):  # type: ignore
-        logging.debug("Test debug message for JoinDocuments nodes")
-
         if self.join_mode == "concatenate":
             document_map = {}
             for input_from_node in inputs:

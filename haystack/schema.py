@@ -256,6 +256,11 @@ class MultiLabel:
 
 
 class InMemoryLogger(io.TextIOBase):
+    """
+    Implementation of a logger that keeps track
+    of the log lines in a list called `logs`,
+    from where they can be accessed freely.
+    """
 
     def __init__(self, *args):
         io.TextIOBase.__init__(self, *args)
@@ -265,25 +270,33 @@ class InMemoryLogger(io.TextIOBase):
         self.logs.append(x[:100])
 
 
-def record_debug_logs(func: Callable, to_console_too: Optional[bool] = False):
+def record_debug_logs(func: Callable, to_console_too: Optional[bool] = False) -> Callable:
     """
-    Captures the debug logs of the wrapped functions and 
-    saves it in a _debug key of the output dictionary. If `to_console_too`
-    is True, dumps the same logs to the console as well.
+    Captures the debug logs of the wrapped function and 
+    saves them in the `_debug` key of the output dictionary. 
+    If `to_console_too` is True, dumps the same logs to the console as well.
 
-    Used in BaseComponent.__getattribute__() to wrap run() functions.
-    This makes sure that every implementation of run() by a subclass will
-    be automagically decorated
+    Used in `BaseComponent.__getattribute__()` to wrap `run()` functions.
+    This makes sure that every implementation of `run()` by a subclass will
+    be automagically decorated with this method when requested.
+
+    :param func: the function to decorate (must be an implementation of 
+                 `BaseComponent.run()`).
+    :param to_console_too: whether the captured logs should also be displayed
+                           in the console during the execution of the pipeline.
     """
     @wraps(func)
-    def inner(*args, **kwargs):
+    def inner(*args, **kwargs) -> Tuple[Dict[str, Any], str]:
+
         with InMemoryLogger() as logs_container:
             logger = logging.getLogger()
 
+            # Adds a handler that stores the logs in a variable
             handler = logging.StreamHandler(logs_container)
             handler.setLevel(logging.DEBUG)
             logger.addHandler(handler)    
 
+            # Add a handler that prints DEBUG messages in the console
             if to_console_too:
                 handler_console = logging.StreamHandler()
                 handler_console.setLevel(logging.DEBUG)
@@ -291,12 +304,13 @@ def record_debug_logs(func: Callable, to_console_too: Optional[bool] = False):
 
             output, stream = func(*args, **kwargs)
             output["_debug"] = logs_container.logs
-            
+
+            # Remove both handlers            
             logger.removeHandler(handler)
             if to_console_too:
-                logger.removeHandler(handler_console) 
+                logger.removeHandler(handler_console)
 
-            return output, stream  
+            return output, stream
 
     return inner
 
@@ -320,21 +334,21 @@ class BaseComponent:
 
     def __getattribute__(self, name):
         """
-        This modified `__getattribute__` automagically decorates
+        This modified `__getattribute__` method automagically decorates
         every `BaseComponent.run()` implementation with the 
-        `@supports_debug` decorator, which makes the function
-        dump its debug logs into a `_debug` key of the output
-        dictionary.
+        `record_debug_logs` decorator defined above. 
+        
+        This decorator makes the function collect its debug logs into a 
+        `_debug` key of the output dictionary.
 
-        Relies on a class attribute called `enable_debug_in_output` to know
-        if it should actually decorate the function or not. Therefore
-        the `enable_debug_in_output` flag turns on and off this functionality.
+        The logs collection is not always performed. Before applying the decorator,
+        it checks for an instance attribute called `enable_debug_in_output` to know
+        whether it should or not. The decorator is applied if the attribute is 
+        defined and True.
 
-        `enable_debug_in_output` does not have to be defined, default behavior
-        is False (do not enable debug dump).
-
-        if `enable_debug_in_console`, the same logs collected in `_debug`
-        are also printed in the console during the execution.
+        In addition, the value of the instance attribute `enable_debug_in_console` is
+        passed to the decorator. If it's defined and True, the same logs collected in 
+        `_debug` are also printed in the console during the execution.
         """
         if name == "run":
             func = getattr(type(self), "run")
