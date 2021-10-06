@@ -169,15 +169,15 @@ def test_debug_attributes_per_node(document_store, tmp_path):
     # Test node-specific arguments
     prediction = pipeline.run(
         query="Who made the PDF specification?", 
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True, "debug_logs": True}},
+        params={"Retriever": {"top_k": 10, "debug": True, "debug_logs": True}, "Reader": {"top_k": 3, "debug": True,}},
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0]["answer"] == "Adobe Systems"
     assert "_debug" in prediction.keys()
     assert "Query" not in prediction["_debug"].keys()
-    assert "ESRetriever" not in prediction["_debug"].keys()
+    assert "ESRetriever" in prediction["_debug"].keys()
     assert "Reader" in prediction["_debug"].keys()
-    assert any(key in prediction["_debug"]["Reader"].keys() for key in ["input", "output"])
+    assert any(key in prediction["_debug"]["ESRetriever"].keys() for key in ["input", "output"])
     assert prediction["_debug"]["Reader"]["output"]["answers"][0]["answer"] == "Adobe Systems"
 
     # test config export does not contain debug attributes
@@ -234,11 +234,35 @@ def test_global_debug_attributes_override_node_ones(document_store, tmp_path):
     # Test node-specific arguments
     prediction = pipeline.run(
         query="Who made the PDF specification?", 
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}},#, "debug_logs": True}},
+        params={"Retriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3}},
         debug=False,
-        #debug_logs=False
     )
     assert "_debug" not in prediction.keys()
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_last_node_debug_does_not_contain_output(document_store, tmp_path):
+    # test correct load of pipelines from yaml
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+    )
+    pipeline.run(
+        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
+    )
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+    )
+    # Test node-specific arguments
+    prediction = pipeline.run(
+        query="Who made the PDF specification?", 
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True,}},
+    )
+    assert "Reader" in prediction["_debug"].keys()
+    assert "input" in prediction["_debug"]["ESRetriever"].keys() 
+    assert "output" not in prediction["_debug"]["ESRetriever"].keys()
+
 
 
 # @pytest.mark.slow
