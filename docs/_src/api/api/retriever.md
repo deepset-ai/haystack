@@ -39,7 +39,7 @@ Wrapper method used to time functions.
 #### eval
 
 ```python
- | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+ | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
 ```
 
 Performs evaluation on the Retriever.
