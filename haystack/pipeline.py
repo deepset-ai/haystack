@@ -260,7 +260,9 @@ class Pipeline(BasePipeline):
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
-        params: Optional[dict] = None
+        params: Optional[dict] = None,
+        debug: Optional[bool] = False,
+        debug_logs: Optional[bool] = False
     ):
         node_output = {}
         debug_output = {}
@@ -283,6 +285,14 @@ class Pipeline(BasePipeline):
             node_id = list(queue.keys())[i]
             node_input = queue[node_id]
             node_input["node_id"] = node_id
+
+            # Apply debug attributes to the node input params
+            if debug:
+                if node_id not in node_input["params"].keys():
+                    node_input["params"][node_id] = {}
+                node_input["params"][node_id]["debug"] = debug
+                node_input["params"][node_id]["debug_logs"] = debug_logs
+
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
@@ -290,7 +300,7 @@ class Pipeline(BasePipeline):
                     node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
                     # Collect all debug information
-                    if self.graph.nodes[node_id]["component"].enable_debug:
+                    if debug:
                         debug_output[node_id] = {}
                         if "_debug" in node_output.keys():
                             debug_output[node_id] = node_output.pop("_debug")[node_id]
@@ -300,6 +310,7 @@ class Pipeline(BasePipeline):
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
+                    
                 queue.pop(node_id)
                 next_nodes = self.get_next_nodes(node_id, stream_id)
                 for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
