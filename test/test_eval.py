@@ -124,7 +124,7 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     p.add_node(component=eval_reader_vanila, name="EvalAnswers_vanilla", inputs=["QAReader"])
     for l in labels:
         res = p.run(
-            query=l.question,
+            query=l.query,
             labels=l,
             params={"index": "haystack_test_eval_document"}
         )

@@ -138,7 +138,7 @@ def tutorial5_evaluation():
 
         for l in labels:
             res = p.run(
-                query=l.question,
+                query=l.query,
                 labels=l,
                 params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
             )

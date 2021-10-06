@@ -367,7 +367,8 @@ class MultiLabel:
         self.labels = list(set(labels))
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
-        self.answers = [l.answer for l in self.labels]
+        # answer strings as this is mostly relevant in usage
+        self.answers = [l.answer.answer for l in self.labels if l.answer is not None]
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
         self.no_answer = False not in [l.no_answer for l in self.labels]

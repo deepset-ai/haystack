@@ -50,7 +50,7 @@ class BaseRetriever(BaseComponent):
         self,
         label_index: str = "label",
         doc_index: str = "eval_document",
-        label_origin: str = "gold_label",
+        label_origin: str = "gold-label",
         top_k: int = 10,
         open_domain: bool = False,
         return_preds: bool = False,
@@ -101,7 +101,7 @@ class BaseRetriever(BaseComponent):
         for label in labels:
             id_question_tuple = (label.document_ids[0], label.query)
             if open_domain:
-                question_label_dict[id_question_tuple] = [a.answer for a in label.answers if a is not None]
+                question_label_dict[id_question_tuple] = [a for a in label.answers if a is not None]
             else:
                 deduplicated_doc_ids = list(set([str(x) for x in label.document_ids]))
                 question_label_dict[id_question_tuple] = deduplicated_doc_ids
