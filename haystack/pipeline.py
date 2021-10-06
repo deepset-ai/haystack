@@ -10,7 +10,6 @@ from typing import List, Optional, Dict, Union, Any
 import pickle
 import urllib
 from functools import wraps
-from networkx.algorithms.boundary import node_boundary
 
 try:
     from ray import serve
