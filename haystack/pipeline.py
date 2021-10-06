@@ -307,7 +307,8 @@ class Pipeline(BasePipeline):
                         if "_debug" in node_output.keys():
                             debug_output[node_id] = node_output.pop("_debug")[node_id]
                         debug_output[node_id]["input"] = node_input
-                        debug_output[node_id]["output"] = node_output
+                        if len(queue) > 1:  # Exclude the output of the last node to avoid infinite recursion
+                            debug_output[node_id]["output"] = node_output
         
                 except Exception as e:
                     tb = traceback.format_exc()
