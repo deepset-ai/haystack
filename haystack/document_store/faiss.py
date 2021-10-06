@@ -197,8 +197,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                 embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                if self.similarity == 'cosine':
-                    faiss.normalize_L2(embeddings_to_index)
+                if self.similarity == 'cosine': self.normalize_embedding(embeddings_to_index)
 
                 self.faiss_indexes[index].add(embeddings_to_index)
 
@@ -278,8 +277,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                if self.similarity == 'cosine':
-                    faiss.normalize_L2(embeddings_to_index)
+                if self.similarity == 'cosine': self.normalize_embedding(embeddings_to_index)
 
                 self.faiss_indexes[index].add(embeddings_to_index)
 
@@ -415,7 +413,13 @@ class FAISSDocumentStore(SQLDocumentStore):
             else:
                 self.faiss_indexes[index].reset()
         super().delete_documents(index=index, filters=filters)
-
+    
+    def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
+        """
+            Performs L2 normalization of embeddings vector inplace.
+        """
+        faiss.normalize_L2(query_emb)
+        
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
@@ -447,8 +451,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
-        if self.similarity == 'cosine':
-            faiss.normalize_L2(query_emb)
+        if self.similarity == 'cosine': self.normalize_embedding(query_emb)
 
         score_matrix, vector_id_matrix = self.faiss_indexes[index].search(query_emb, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]

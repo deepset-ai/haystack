@@ -745,7 +745,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
-
+    
+    def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
+        """
+            Performs L2 normalization of embeddings vector inplace.
+        """
+        pass
+    
+    def normalize_documents_embeddings(self, kind:str="L2")->None:
+        """
+            Performs L2 normalization of embeddings of already existing documents.
+        """
+        pass
+        
     def query_by_embedding(self,
                            query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,

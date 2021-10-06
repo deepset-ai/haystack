@@ -199,7 +199,21 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         pass
-
+    
+    @abstractmethod
+    def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
+        """
+            Performs L2 normalization of embeddings vector inplace.
+        """
+        pass
+    
+    @abstractmethod
+    def normalize_documents_embeddings(self, kind:str="L2")->None:
+        """
+            Performs L2 normalization of embeddings of already existing documents.
+        """
+        pass
+        
     @abstractmethod
     def query_by_embedding(self,
                            query_emb: np.ndarray,
