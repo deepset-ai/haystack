@@ -1,5 +1,7 @@
 import logging
 
+from transformers import AutoTokenizer
+
 from haystack.modeling.data_handler.processor import SquadProcessor
 from haystack.modeling.model.tokenization import Tokenizer
 
@@ -81,6 +83,45 @@ def test_dataset_from_dicts_qa_inference(caplog=None):
                     assert baskets[0].samples[0].features[0]["input_ids"][:10] == \
                            [101, 2129, 2116, 2111, 2444, 1999, 4068, 1029, 102, 4068], \
                         f"Processing for {model} and {sample_type}-testsample has changed."
+
+
+def test_batch_encoding_flatten_rename():
+    from haystack.modeling.data_handler.dataset import flatten_rename
+
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    batch_sentences = ["Hello I'm a single sentence", "And another sentence", "And the very very last one"]
+    encoded_inputs = tokenizer(batch_sentences, padding=True, truncation=True)
+
+    keys = ["input_ids", "token_type_ids", "attention_mask"]
+    rename_keys = ["input_ids", "segment_ids", "padding_mask"]
+    features_flat = flatten_rename(encoded_inputs, keys, rename_keys)
+
+    assert len(features_flat) == 3, "should have three elements in the feature dict list"
+    for e in features_flat:
+        for k in rename_keys:
+            assert k in e, f"feature dict list item {e} in a list should have a key {k}"
+
+    # rename no keys/rename keys
+    features_flat = flatten_rename(encoded_inputs)
+    assert len(features_flat) == 3, "should have three elements in the feature dict list"
+    for e in features_flat:
+        for k in keys:
+            assert k in e, f"feature dict list item {e} in a list should have a key {k}"
+
+    # empty input keys
+    flatten_rename(encoded_inputs, [])
+
+    # empty keys and rename keys
+    flatten_rename(encoded_inputs, [], [])
+
+    # no encoding_batch provided
+    flatten_rename(None, [], [])
+
+    # keys and renamed_keys have different sizes
+    try:
+        flatten_rename(encoded_inputs, [], ["blah"])
+    except AssertionError:
+        pass
 
 
 def test_dataset_from_dicts_qa_labelconversion(caplog=None):
