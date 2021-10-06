@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Union, List, Optional
 
 from fastapi import APIRouter, HTTPException
-from rest_api.schema import ExtractiveQAFeedback, FilterRequest
+from rest_api.schema import FilterRequest
 from rest_api.controller.search import DOCUMENT_STORE
 
 from haystack import Label
@@ -77,39 +77,33 @@ def export_extractive_qa_feedback(
     export_data = []
 
     for label in labels:
-        document = DOCUMENT_STORE.get_document_by_id(label.document_id)
-        if document is None:
-            raise HTTPException(
-                status_code=500, detail="Could not find document with id {label.document_id} for label id {label.id}"
-            )
-        #TODO offsets
         if full_document_context:
-            context = document.content
-            answer_start = label.offset_start_in_doc
+            context = label.document.content
+            answer_start = label.answer.offsets_in_document[0].start
         else:
-            text = document.content
+            text = label.document.content
             # the final length of context(including the answer string) is 'context_size'.
             # we try to add equal characters for context before and after the answer string.
             # if either beginning or end of text is reached, we correspondingly
             # append more context characters at the other end of answer string.
-            context_to_add = int((context_size - len(label.answer)) / 2)
-            start_pos = max(label.offset_start_in_doc - context_to_add, 0)
-            additional_context_at_end = max(context_to_add - label.offset_start_in_doc, 0)
-            end_pos = min(label.offset_start_in_doc + len(label.answer) + context_to_add, len(text) - 1)
+            context_to_add = int((context_size - len(label.answer.answer)) / 2)
+            start_pos = max(label.answer.offsets_in_document[0].start - context_to_add, 0)
+            additional_context_at_end = max(context_to_add - label.answer.offsets_in_document[0].start, 0)
+            end_pos = min(label.answer.offsets_in_document[0].start + len(label.answer.answer) + context_to_add, len(text) - 1)
             additional_context_at_start = max(
-                label.offset_start_in_doc + len(label.answer) + context_to_add - len(text), 0
+                label.answer.offsets_in_document[0].start + len(label.answer.answer) + context_to_add - len(text), 0
             )
             start_pos = max(0, start_pos - additional_context_at_start)
             end_pos = min(len(text) - 1, end_pos + additional_context_at_end)
             context = text[start_pos:end_pos]
-            answer_start = label.offset_start_in_doc - start_pos
+            answer_start = label.answer.offsets_in_document[0].start - start_pos
 
         if label.is_correct_answer is False and label.is_correct_document is False:  # No answer
             squad_label = {
                 "paragraphs": [
                     {
                         "context": context,
-                        "id": label.document_id,
+                        "id": label.document.id,
                         "qas": [{"question": label.query, "id": label.id, "is_impossible": True, "answers": []}],
                     }
                 ]
@@ -119,13 +113,13 @@ def export_extractive_qa_feedback(
                 "paragraphs": [
                     {
                         "context": context,
-                        "id": label.document_id,
+                        "id": label.document.id,
                         "qas": [
                             {
                                 "question": label.query,
                                 "id": label.id,
                                 "is_impossible": False,
-                                "answers": [{"text": label.answer, "answer_start": answer_start}],
+                                "answers": [{"text": label.answer.answer, "answer_start": answer_start}],
                             }
                         ],
                     }
