@@ -418,7 +418,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
             Performs L2 normalization of embeddings vector inplace.
         """
-        faiss.normalize_L2(query_emb)
+        faiss.normalize_L2(emb)
         
     def query_by_embedding(
         self,
