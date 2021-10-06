@@ -367,7 +367,7 @@ class BaseComponent:
         """
         if name in ["debug", "debug_logs"]:
             return None
-        raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
+        raise AttributeError(name)
         
     @classmethod
     def get_subclass(cls, component_type: str):
