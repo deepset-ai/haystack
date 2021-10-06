@@ -208,7 +208,7 @@ class EvalAnswers(BaseComponent):
     def run(self, labels: List[Label], answers: List[Answer], correct_retrieval: bool):  # type: ignore
         """Run this node on one sample and its labels"""
         self.query_count += 1
-        predictions = answers
+        predictions: List[Answer] = answers
         skip = self.skip_incorrect_retrieval and not correct_retrieval
         if predictions and not skip:
             self.correct_retrieval_count += 1
@@ -227,14 +227,14 @@ class EvalAnswers(BaseComponent):
             # If there are answer span annotations in the labels
             else:
                 self.has_answer_count += 1
-                predictions = [p.answer for p in predictions if p.answer]
-                top_1_em, top_1_f1, top_k_em, top_k_f1 = self.evaluate_extraction(multi_labels.answers, predictions)
+                predictions_str: List[str] = [p.answer for p in predictions if p.answer]
+                top_1_em, top_1_f1, top_k_em, top_k_f1 = self.evaluate_extraction(multi_labels.answers, predictions_str)
 
                 # Compute Semantic Answer Similarity if model is supplied
                 if self.sas_model is not None:
                     # sas works on batches, so we pack the labels into a list of lists, and unpack the return values as well
                     top_1_sas, top_k_sas = semantic_answer_similarity(
-                        predictions=[predictions],
+                        predictions=[predictions_str],
                         gold_labels=[multi_labels.answers],
                         sas_model_name_or_path=self.sas_model)
                     self.top_1_sas_sum += top_1_sas[0]
@@ -258,8 +258,6 @@ class EvalAnswers(BaseComponent):
 
     def evaluate_extraction(self, gold_labels: List[str], predictions: List[str]):
         if self.open_domain:
-            # gold_labels_list = gold_labels.answers
-            # predictions_str = [p["answer"] for p in predictions]
             top_1_em = calculate_em_str_multi(gold_labels, predictions[0])
             top_1_f1 = calculate_f1_str_multi(gold_labels, predictions[0])
             top_k_em = max([calculate_em_str_multi(gold_labels, p) for p in predictions])
