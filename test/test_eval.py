@@ -157,7 +157,7 @@ def test_eval_data_split_word(document_store):
     labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
     docs = document_store.get_all_documents(index="haystack_test_eval_document")
     assert len(docs) == 5
-    assert len(set(labels[0].multiple_document_ids)) == 2
+    assert len(set(labels[0].document_ids)) == 2
 
 
 def test_eval_data_split_passage(document_store):

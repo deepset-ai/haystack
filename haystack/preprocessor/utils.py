@@ -134,7 +134,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             for d in splits_dicts:
                 id = f"{d['id']}-{d['meta']['_split_id']}"
                 d["meta"]["_split_offset"] = offset
-                offset += len(d["text"])
+                offset += len(d["content"])
                 # offset correction based on splitting method
                 if preprocessor.split_by == "word":
                     offset += 1
@@ -142,7 +142,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                     offset += 2
                 else:
                     raise NotImplementedError
-                mydoc = Document(content=d["text"],
+                mydoc = Document(content=d["content"],
                                  id=id,
                                  meta=d["meta"])
                 splits.append(mydoc)
