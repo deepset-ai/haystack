@@ -286,11 +286,13 @@ class Pipeline(BasePipeline):
             node_input["node_id"] = node_id
 
             # Apply debug attributes to the node input params
-            if debug:
+            # NOTE: global debug attributes will override the value specified
+            # in each node's params dictionary.
+            if debug is not None:
                 if node_id not in node_input["params"].keys():
                     node_input["params"][node_id] = {}
                 node_input["params"][node_id]["debug"] = debug
-                if debug_logs:
+                if debug_logs is not None:
                     node_input["params"][node_id]["debug_logs"] = debug_logs
 
             predecessors = set(nx.ancestors(self.graph, node_id))
@@ -337,7 +339,7 @@ class Pipeline(BasePipeline):
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-        if debug_output:
+        if debug:
             node_output["_debug"] = debug_output
         return node_output
 

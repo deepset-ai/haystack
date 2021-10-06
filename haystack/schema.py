@@ -270,7 +270,7 @@ class InMemoryLogger(io.TextIOBase):
         self.logs.append(x)
 
 
-def record_debug_logs(func: Callable, node_name: str, logs: Optional[bool] = False) -> Callable:
+def record_debug_logs(func: Callable, node_name: str, logs: bool) -> Callable:
     """
     Captures the debug logs of the wrapped function and 
     saves them in the `_debug` key of the output dictionary. 
