@@ -145,7 +145,9 @@ class FARMReader(BaseReader):
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
         use_amp: str = None,
-        checkpoint_root_dir: Optional[Path] = None,
+        checkpoint_root_dir: Path = "model_checkpoints",
+        checkpoint_every: int = 1000,
+        checkpoints_to_keep: int = 3,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -182,6 +184,8 @@ class FARMReader(BaseReader):
                         See details on: https://nvidia.github.io/apex/amp.html
         :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :return: None
         """
 
@@ -248,6 +252,8 @@ class FARMReader(BaseReader):
             use_amp=use_amp,
             disable_tqdm=not self.progress_bar,
             checkpoint_root_dir=checkpoint_root_dir,
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
         )
 
         # 5. Let it grow!
