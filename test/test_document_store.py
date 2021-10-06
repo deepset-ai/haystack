@@ -384,8 +384,8 @@ def test_labels(document_store):
                       type="extractive",
                       score=0.0,
                       context="something",
-                      offsets_in_document=[Span(start=12,end = 14)],
-                      offsets_in_context=[Span(start=12,end = 14)],
+                      offsets_in_document=[Span(start=12, end=14)],
+                      offsets_in_context=[Span(start=12, end=14)],
                       ),
         is_correct_answer=True,
         is_correct_document=True,
@@ -470,10 +470,10 @@ def test_multilabel(document_store):
     assert list_labels == labels
     assert len(list_labels) == 5
 
-
-    # Are associated docs also there?
-    docs = document_store.get_all_documents(index="haystack_test_multilabel")
-    assert len(docs) == 3
+    # Currently we don't enforce writing (missing) docs automatically when adding labels and there's no DB relationship between the two.
+    # We should introduce this when we refactored the logic of "index" to be rather a "collection" of labels+documents
+    # docs = document_store.get_all_documents(index="haystack_test_multilabel")
+    # assert len(docs) == 3
 
     # Multi labels (open domain)
     multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel",
@@ -511,13 +511,9 @@ def test_multilabel(document_store):
     docs = document_store.get_all_documents()
     assert len(docs) == 0
 
-    #
-
-    # clean up
-    document_store.delete_documents(index="haystack_test_multilabel")
-
 
 def test_multilabel_no_answer(document_store):
+
     labels = [
         Label(
             query="question",
@@ -584,9 +580,6 @@ def test_multilabel_no_answer(document_store):
     assert len(multi_labels[0].document_ids) == 3
     assert len(multi_labels[0].labels) == 3
     assert len(multi_labels[0].answers) == 3
-
-    # clean up
-    document_store.delete_documents(index="haystack_test_multilabel_no_answer")
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)

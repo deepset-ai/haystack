@@ -35,7 +35,8 @@ class DocumentORM(ORMBase):
     index = Column(String(100), nullable=False, primary_key=True)
     vector_id = Column(String(100), unique=True, nullable=True)
 
-    labels = relationship("LabelORM", back_populates="document")
+    # labels = relationship("LabelORM", back_populates="document")
+
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
 
@@ -71,11 +72,12 @@ class MetaLabelORM(ORMBase):
 class LabelORM(ORMBase):
     __tablename__ = "label"
 
-    document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
+    # document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
     index = Column(String(100), nullable=False, primary_key=True)
     query = Column(Text, nullable=False)
     answer = Column(JSON, nullable=True)
+    document = Column(JSON, nullable=False)
     no_answer = Column(Boolean, nullable=False)
     origin = Column(String(100), nullable=False)
     is_correct_answer = Column(Boolean, nullable=False)
@@ -83,7 +85,7 @@ class LabelORM(ORMBase):
     pipeline_id = Column(String(500), nullable=True)
 
     meta = relationship("MetaLabelORM", back_populates="labels", lazy="joined")
-    document = relationship("DocumentORM", back_populates="labels")
+    # document = relationship("DocumentORM", back_populates="labels")
 
 
 class SQLDocumentStore(BaseDocumentStore):
@@ -355,18 +357,21 @@ class SQLDocumentStore(BaseDocumentStore):
                            f" the answer annotation and not the question."
                            f"   Problematic ids: {','.join(duplicate_ids)}")
         # TODO: Use batch_size
-        for label in labels:
-            #TODO verify how the logic of index vs labelindex should work here.
-            # As of now, we would write documents to the same "index" as the one of label
-            # This can cause problems when you already have some docs in a separate "documents" index
-            self.write_documents(documents=[label.document], index=index, duplicate_documents="skip")
-            # TODO: Handle label meta data
 
+        for label in labels:
+            # TODO As of now, we write documents as part of the Label table as this is consistent with the other
+            #  document stores (e.g. elasticsearch) where "indices" are completely independent.
+            # We should eventually switch to an approach here that writes related documents to the document table if not already existing.
+            # See Issue XXX
+
+            # self.write_documents(documents=[label.document], index=index, duplicate_documents="skip")
+
+            # TODO: Handle label meta data
             label_orm = LabelORM(
                 id=label.id,
                 no_answer=label.no_answer,
-                document_id=label.document.id,
-                # document=doc_orm,
+                # document_id=label.document.id,
+                document=label.document.to_json(),
                 origin=label.origin,
                 query=label.query,
                 is_correct_answer=label.is_correct_answer,
@@ -379,6 +384,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 self.session.merge(label_orm)
             else:
                 self.session.add(label_orm)
+
             #TODO: investigate why test_multilabel() failed when not committing within the loop
             # Seems that in some cases only the last label get than "committed"
             self.session.commit()
@@ -460,12 +466,12 @@ class SQLDocumentStore(BaseDocumentStore):
         return document
 
     def _convert_sql_row_to_label(self, row) -> Label:
-        doc = self._convert_sql_row_to_document(row.document)
+        # doc = self._convert_sql_row_to_document(row.document)
 
         label = Label(
             query=row.query,
             answer=Answer.from_json(row.answer), #type: ignore
-            document=doc,
+            document=Document.from_json(row.document),
             is_correct_answer=row.is_correct_answer,
             is_correct_document=row.is_correct_document,
             origin=row.origin,

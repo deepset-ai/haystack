@@ -289,6 +289,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     ):
         index = index or self.index
         documents = deepcopy(list(self.indexes[index].values()))
+        documents = [d for d in documents if isinstance(d, Document)]
 
         filtered_documents = []
 

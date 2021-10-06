@@ -73,6 +73,9 @@ class Document:
                              not unique, you can provide custom strings here that will be used (e.g. ["filename_xy", "text_of_doc"].
         """
 
+        if content is None:
+            raise ValueError(f"Can't create 'Document': Mandatory 'content' field is None")
+
         self.content = content
         self.content_type = content_type
         self.score = score
