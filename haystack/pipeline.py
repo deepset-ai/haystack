@@ -261,8 +261,8 @@ class Pipeline(BasePipeline):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         params: Optional[dict] = None,
-        debug: Optional[bool] = False,
-        debug_logs: Optional[bool] = False
+        debug: Optional[bool] = None,
+        debug_logs: Optional[bool] = None
     ):
         node_output = {}
         debug_output = {}
@@ -291,7 +291,8 @@ class Pipeline(BasePipeline):
                 if node_id not in node_input["params"].keys():
                     node_input["params"][node_id] = {}
                 node_input["params"][node_id]["debug"] = debug
-                node_input["params"][node_id]["debug_logs"] = debug_logs
+                if debug_logs:
+                    node_input["params"][node_id]["debug_logs"] = debug_logs
 
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
