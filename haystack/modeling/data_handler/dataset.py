@@ -12,7 +12,7 @@ from haystack.modeling.utils import flatten_list
 logger = logging.getLogger(__name__)
 
 
-def flatten(encoded_batch: BatchEncoding, keys: List[str], renamed_keys: List[str] = None):
+def flatten_rename(encoded_batch: BatchEncoding, keys: List[str] = None, renamed_keys: List[str] = None):
     if encoded_batch is None:
         return []
     if not keys:

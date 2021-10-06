@@ -6,7 +6,7 @@ from torch.nn import DataParallel
 import numpy as np
 from pathlib import Path
 
-from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten
+from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.utils import initialize_device_settings
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModel
@@ -748,8 +748,8 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
             padding=True
         )
 
-        features_flat = flatten(tokenized_batch,
-                                ["input_ids", "token_type_ids", "attention_mask"],
-                                ["input_ids", "segment_ids", "padding_mask"])
+        features_flat = flatten_rename(tokenized_batch,
+                                       ["input_ids", "token_type_ids", "attention_mask"],
+                                       ["input_ids", "segment_ids", "padding_mask"])
         dataset, tensornames = convert_features_to_dataset(features=features_flat)
         return dataset, tensornames
