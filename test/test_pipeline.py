@@ -26,30 +26,95 @@ from haystack.schema import Document
 def test_load_and_save_yaml(document_store, tmp_path):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="indexing_pipeline"
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path("samples/pdf/sample_pdf_1.pdf"),
+        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
         params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
     )
-
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="query_pipeline"
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0]["answer"] == "Adobe Systems"
+    assert "_debug" not in prediction.keys()
 
     # test invalid pipeline name
     with pytest.raises(Exception):
         Pipeline.load_from_yaml(
-            path=Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="invalid"
+            path=Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
         )
-
     # test config export
+    pipeline.save_to_yaml(tmp_path / "test.yaml")
+    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
+        saved_yaml = stream.read()
+    expected_yaml = """
+        components:
+        - name: ESRetriever
+          params:
+            document_store: ElasticsearchDocumentStore
+          type: ElasticsearchRetriever
+        - name: ElasticsearchDocumentStore
+          params:
+            index: haystack_test
+            label_index: haystack_test_label
+          type: ElasticsearchDocumentStore
+        - name: Reader
+          params:
+            model_name_or_path: deepset/roberta-base-squad2
+            no_ans_boost: -10
+          type: FARMReader
+        pipelines:
+        - name: query
+          nodes:
+          - inputs:
+            - Query
+            name: ESRetriever
+          - inputs:
+            - ESRetriever
+            name: Reader
+          type: Pipeline
+        version: '0.8'
+    """
+    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(
+        " ", ""
+    ).replace("\n", "")
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_debug_attributes(document_store, tmp_path):
+    # test correct load of pipelines from yaml
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+    )
+    pipeline.run(
+        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
+    )
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+    )
+    prediction = pipeline.run(
+        query="Who made the PDF specification?", 
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True, "debug_logs": True}},
+        debug=True,
+        debug_logs=True
+    )
+    assert prediction["query"] == "Who made the PDF specification?"
+    assert prediction["answers"][0]["answer"] == "Adobe Systems"
+    assert "_debug" in prediction.keys()
+    assert any(node in prediction["_debug"].keys() for node in ["Query", "ESRetriever", "Reader"])
+    assert any(key in prediction["_debug"]["Query"].keys() for key in ["input", "output"])
+    assert any(key in prediction["_debug"]["ESRetriever"].keys() for key in ["input", "output"])
+    assert any(key in prediction["_debug"]["Reader"].keys() for key in ["input", "output"])
+    assert prediction["_debug"]["Reader"]["output"]["answers"][0]["answer"] == "Adobe Systems"
+
+    # test config export does not contain debug attributes
     pipeline.save_to_yaml(tmp_path / "test.yaml")
     with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
         saved_yaml = stream.read()
