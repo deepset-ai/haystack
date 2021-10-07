@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
-from haystack.utils import get_batches_from_generator
+from haystack.utils import get_batches_from_generator, normalize_vector_l2
 
 from weaviate import client, auth, AuthClientPassword
 from weaviate import ObjectsBatchRequest
@@ -573,20 +573,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         return documents
     
-    @njit(fastmath=True)
     def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
         """
             Performs L2 normalization of embeddings vector inplace.
         """
-        norm = np.sqrt(emb.dot(emb))
-        if norm != 0.0:
-            emb /= norm
+        normalize_vector_l2(emb)
         
-    def normalize_documents_embeddings(self, kind:str="L2")->None:
-        """
-            Performs L2 normalization of embeddings of already existing documents.
-        """
-        pass
         
     def query_by_embedding(self,
                            query_emb: np.ndarray,
@@ -613,9 +605,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         properties = self._get_current_properties(index)
         properties.append("_additional {id, certainty, vector}")
 
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
-        
         if self.similarity == 'cosine': self.normalize_embedding(query_emb)
+        
+        query_emb = query_emb.reshape(1, -1).astype(np.float32)                
         
         query_string = {
             "vector" : query_emb

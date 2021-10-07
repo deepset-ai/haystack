@@ -9,7 +9,8 @@ from haystack.document_store.sql import DocumentORM
 import subprocess
 import time
 import torch
-
+import numpy as np
+from numba import njit
 
 logger = logging.getLogger(__name__)
 
@@ -246,3 +247,12 @@ def get_batches_from_generator(iterable, n):
     while x:
         yield x
         x = tuple(islice(it, n))
+
+@njit(fastmath=True)
+def normalize_vector_l2(emb: np.ndarray)->None:
+    """
+        Performs L2 normalization of embeddings vector inplace.
+    """
+    norm = np.sqrt(emb.dot(emb))
+    if norm != 0.0:
+        emb /= norm

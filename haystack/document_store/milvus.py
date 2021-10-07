@@ -11,10 +11,8 @@ from tqdm import tqdm
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
-from haystack.utils import get_batches_from_generator
+from haystack.utils import get_batches_from_generator, normalize_vector_l2
 from haystack.document_store.base import DuplicateDocumentError
-
-from numba import njit
 
 logger = logging.getLogger(__name__)
 
@@ -327,20 +325,8 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.milvus_server.flush([index])
         self.milvus_server.compact(collection_name=index)
     
-    @njit(fastmath=True)
     def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
-        """
-            Performs L2 normalization of embeddings vector inplace.
-        """
-        norm = np.sqrt(emb.dot(emb))
-        if norm != 0.0:
-            emb /= norm
-        
-    def normalize_documents_embeddings(self, kind:str="L2")->None:
-        """
-            Performs L2 normalization of embeddings of already existing documents.
-        """
-        pass
+        normalize_vector_l2(emb)
         
     def query_by_embedding(self,
                            query_emb: np.ndarray,
@@ -373,9 +359,9 @@ class MilvusDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
         index = index or self.index
 
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
-        
         if self.similarity == 'cosine': self.normalize_embedding(query_emb)
+        
+        query_emb = query_emb.reshape(1, -1).astype(np.float32)               
         
         status, search_result = self.milvus_server.search(
             collection_name=index,
