@@ -1,3 +1,4 @@
+import io
 import json
 from collections import defaultdict
 from itertools import islice
