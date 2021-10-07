@@ -135,7 +135,7 @@ Runs the pipeline, one node at a time.
 - `query`: The search query (for query pipelines only)
 - `file_paths`: The files to index (for indexing pipelines only)
 - `labels`: 
-- `documents`: The documents to create question on, for question-generating pipelines
+- `documents`: 
 - `meta`: 
 - `params`: Dictionary of parameters to be dispatched to the nodes.
                If you want to pass a param to all nodes, you can just use: {"top_k":10}
