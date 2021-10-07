@@ -1,10 +1,15 @@
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, Dict, List, Callable, Tuple, Optional
+
 from uuid import uuid4
 from copy import deepcopy
 import mmh3
 import numpy as np
 from abc import abstractmethod
 import inspect
+import logging
+import io
+from functools import wraps
+
 
 class Document:
     def __init__(
@@ -249,6 +254,72 @@ class MultiLabel:
         return str(self.to_dict())
 
 
+class InMemoryLogger(io.TextIOBase):
+    """
+    Implementation of a logger that keeps track
+    of the log lines in a list called `logs`,
+    from where they can be accessed freely.
+    """
+
+    def __init__(self, *args):
+        io.TextIOBase.__init__(self, *args)
+        self.logs = []
+    
+    def write(self, x):
+        self.logs.append(x)
+
+
+def record_debug_logs(func: Callable, node_name: str, logs: bool) -> Callable:
+    """
+    Captures the debug logs of the wrapped function and 
+    saves them in the `_debug` key of the output dictionary. 
+    If `logs` is True, dumps the same logs to the console as well.
+
+    Used in `BaseComponent.__getattribute__()` to wrap `run()` functions.
+    This makes sure that every implementation of `run()` by a subclass will
+    be automagically decorated with this method when requested.
+
+    :param func: the function to decorate (must be an implementation of 
+                 `BaseComponent.run()`).
+    :param logs: whether the captured logs should also be displayed
+                 in the console during the execution of the pipeline.
+    """
+    @wraps(func)
+    def inner(*args, **kwargs) -> Tuple[Dict[str, Any], str]:
+
+        with InMemoryLogger() as logs_container:
+            logger = logging.getLogger()
+
+            # Adds a handler that stores the logs in a variable
+            handler = logging.StreamHandler(logs_container)
+            handler.setLevel(logger.level or logging.DEBUG)
+            logger.addHandler(handler)    
+
+            # Add a handler that prints log messages in the console
+            # to the specified level for the node
+            if logs:
+                handler_console = logging.StreamHandler()
+                handler_console.setLevel(logging.DEBUG)
+                formatter = logging.Formatter(f'[{node_name} logs] %(message)s')
+                handler_console.setFormatter(formatter)
+                logger.addHandler(handler_console)
+
+            output, stream = func(*args, **kwargs)
+
+            if not "_debug" in output.keys():
+                output["_debug"] = {}
+            output["_debug"]["logs"] = logs_container.logs
+            
+            # Remove both handlers
+            logger.removeHandler(handler)
+            if logs:
+                logger.removeHandler(handler_console)
+
+            return output, stream
+
+    return inner
+
+
 class BaseComponent:
     """
     A base class for implementing nodes in a Pipeline.
@@ -266,6 +337,37 @@ class BaseComponent:
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
 
+    def __getattribute__(self, name):
+        """
+        This modified `__getattribute__` method automagically decorates
+        every `BaseComponent.run()` implementation with the 
+        `record_debug_logs` decorator defined above. 
+        
+        This decorator makes the function collect its debug logs into a 
+        `_debug` key of the output dictionary.
+
+        The logs collection is not always performed. Before applying the decorator,
+        it checks for an instance attribute called `debug` to know
+        whether it should or not. The decorator is applied if the attribute is 
+        defined and True.
+
+        In addition, the value of the instance attribute `debug_logs` is
+        passed to the decorator. If it's True, it will print the 
+        logs in the console as well.
+        """
+        if name == "run" and self.debug:
+            func = getattr(type(self), "run")
+            return record_debug_logs(func=func, node_name=self.__class__.__name__, logs=self.debug_logs).__get__(self)
+        return object.__getattribute__(self, name)
+
+    def __getattr__(self, name):
+        """
+        Ensures that `debug` and `debug_logs` are always defined.
+        """
+        if name in ["debug", "debug_logs"]:
+            return None
+        raise AttributeError(name)
+        
     @classmethod
     def get_subclass(cls, component_type: str):
         if component_type not in cls.subclasses.keys():
@@ -317,7 +419,7 @@ class BaseComponent:
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         params: Optional[dict] = None,
-    ):
+    ) -> Tuple[Dict, str]:
         """
         Method that will be executed when the node in the graph is called.
 
@@ -330,14 +432,15 @@ class BaseComponent:
         """
         pass
 
-    def _dispatch_run(self, **kwargs):
+    def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
         The Pipelines call this method which in turn executes the run() method of Component.
 
         It takes care of the following:
           - inspect run() signature to validate if all necessary arguments are available
+          - pop `debug` and `debug_logs` and sets them on the instance to control debug output
           - call run() with the corresponding arguments and gather output
-          - collate _debug information if present
+          - collate `_debug` information if present
           - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
         """
         arguments = deepcopy(kwargs)
@@ -345,13 +448,21 @@ class BaseComponent:
 
         run_signature_args = inspect.signature(self.run).parameters.keys()
 
-        run_params = {}
+        run_params: Dict[str, Any] = {}
         for key, value in params.items():
             if key == self.name:  # targeted params for this node
                 if isinstance(value, dict):
+                    
+                    # Extract debug attributes
+                    if "debug" in value.keys():
+                        self.debug = value.pop("debug")
+                    if "debug_logs" in value.keys():
+                        self.debug_logs = value.pop("debug_logs")
+
                     for _k, _v in value.items():
                         if _k not in run_signature_args:
                             raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
+
                 run_params.update(**value)
             elif key in run_signature_args:  # global params
                 run_params[key] = value
@@ -363,9 +474,19 @@ class BaseComponent:
 
         output, stream = self.run(**run_inputs, **run_params)
 
+        # Collect debug information
+        current_debug = output.get("_debug", {})
+        if self.debug:
+            current_debug["input"] = {**run_inputs, **run_params}
+            if self.debug:
+                current_debug["input"]["debug"] = self.debug
+            if self.debug_logs:
+                current_debug["input"]["debug_logs"] = self.debug_logs
+            filtered_output = {key: value for key, value in output.items() if key != "_debug"} # Exclude _debug to avoid recursion
+            current_debug["output"] = filtered_output        
+
         # append _debug information from nodes
         all_debug = arguments.get("_debug", {})
-        current_debug = output.get("_debug")
         if current_debug:
             all_debug[self.name] = current_debug
         if all_debug:
