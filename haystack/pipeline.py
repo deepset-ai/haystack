@@ -269,7 +269,7 @@ class Pipeline(BasePipeline):
             :param query: The question, for question answering pipelines
             :param file_paths: The files to index, for indexing pipelines
             :param labels: 
-            :param documents: The documents to create question on, for question-generating pipelines
+            :param documents:
             :param meta:
             :param params: Dictionary of parameters to be dispatched to every node. Example:
                            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}

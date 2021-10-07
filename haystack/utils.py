@@ -15,21 +15,6 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-class InMemoryLogger(io.TextIOBase):
-    """
-    Implementation of a logger that keeps track
-    of the log lines in a list called `logs`,
-    from where they can be accessed freely.
-    """
-
-    def __init__(self, *args):
-        io.TextIOBase.__init__(self, *args)
-        self.logs = []
-    
-    def write(self, x):
-        self.logs.append(x)
-
-
 def launch_es(sleep=15):
     # Start an Elasticsearch server via Docker
 
