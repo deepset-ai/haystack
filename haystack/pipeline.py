@@ -263,7 +263,7 @@ class Pipeline(BasePipeline):
         debug: Optional[bool] = None,
         debug_logs: Optional[bool] = None
     ):
-        node_output = {}
+        node_output = None
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
@@ -302,7 +302,6 @@ class Pipeline(BasePipeline):
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
-
                 queue.pop(node_id)
                 next_nodes = self.get_next_nodes(node_id, stream_id)
                 for n in next_nodes:  # add successor nodes with corresponding inputs to the queue

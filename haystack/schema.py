@@ -9,7 +9,6 @@ import inspect
 import logging
 import io
 from functools import wraps
-import types
 
 
 class Document:
@@ -358,7 +357,7 @@ class BaseComponent:
         """
         if name == "run" and self.debug:
             func = getattr(type(self), "run")
-            return types.MethodType(record_debug_logs(func=func, node_name=self.__class__.__name__, logs=self.debug_logs), self)
+            return record_debug_logs(func=func, node_name=self.__class__.__name__, logs=self.debug_logs).__get__(self)
         return object.__getattribute__(self, name)
 
     def __getattr__(self, name):
