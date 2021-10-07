@@ -1,14 +1,31 @@
 import logging
 import numbers
-from typing import Iterable
+from typing import Iterable, List
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset, ConcatDataset, TensorDataset
+from transformers import BatchEncoding
 
 from haystack.modeling.utils import flatten_list
 
 logger = logging.getLogger(__name__)
+
+
+def flatten_rename(encoded_batch: BatchEncoding, keys: List[str] = None, renamed_keys: List[str] = None):
+    if encoded_batch is None:
+        return []
+    if not keys:
+        keys = list(encoded_batch.keys())
+    if not renamed_keys:
+        renamed_keys = keys
+    assert len(keys) == len(renamed_keys), f"keys and renamed_keys have different size {len(keys)} != {len(renamed_keys)}"
+    assert any([key in encoded_batch for key in keys]), f"one of the keys {keys} is not in batch {encoded_batch.keys()}"
+    features_flat = []
+    for item in range(len(encoded_batch[keys[0]])):
+        feat_dict = {k: v for k, v in zip(renamed_keys, [encoded_batch[k][item] for k in keys])}
+        features_flat.append(feat_dict)
+    return features_flat
 
 
 def convert_features_to_dataset(features):
