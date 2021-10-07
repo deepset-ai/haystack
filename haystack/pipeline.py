@@ -260,7 +260,29 @@ class Pipeline(BasePipeline):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+        debug_logs: Optional[bool] = None
     ):
+        """
+            Runs the pipeline, one node at a time.
+
+            :param query: The search query (for query pipelines only)
+            :param file_paths: The files to index (for indexing pipelines only)
+            :param labels: 
+            :param documents:
+            :param meta:
+            :param params: Dictionary of parameters to be dispatched to the nodes. 
+                           If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                           If you want to pass it to targeted nodes, you can do:
+                           {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+            :param debug: Whether the pipeline should instruct nodes to collect debug information
+                          about their execution. By default these include the input parameters
+                          they received, the output they generated, and eventual logs (of any severity)
+                          emitted. All debug information can then be found in the dict returned
+                          by this method under the key "_debug"
+            :param debug_logs: Whether all the logs of the node should be printed in the console,
+                               regardless of their severity and of the existing logger's settings.
+        """
         node_output = None
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
@@ -281,6 +303,17 @@ class Pipeline(BasePipeline):
             node_id = list(queue.keys())[i]
             node_input = queue[node_id]
             node_input["node_id"] = node_id
+
+            # Apply debug attributes to the node input params
+            # NOTE: global debug attributes will override the value specified
+            # in each node's params dictionary.
+            if debug is not None:
+                if node_id not in node_input["params"].keys():
+                    node_input["params"][node_id] = {}
+                node_input["params"][node_id]["debug"] = debug
+                if debug_logs is not None:
+                    node_input["params"][node_id]["debug_logs"] = debug_logs
+
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
