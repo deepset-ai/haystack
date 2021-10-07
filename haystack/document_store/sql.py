@@ -1,5 +1,6 @@
 import itertools
 import logging
+import collections
 from typing import Any, Dict, Union, List, Optional, Generator
 from uuid import uuid4
 
@@ -34,7 +35,7 @@ class DocumentORM(ORMBase):
     vector_id = Column(String(100), unique=True, nullable=True)
 
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
-    meta = relationship("MetaORM", backref="Document", lazy="joined")
+    meta = relationship("MetaORM", back_populates="documents", lazy="joined")
 
 
 class MetaORM(ORMBase):
@@ -49,7 +50,7 @@ class MetaORM(ORMBase):
         index=True
     )
 
-    documents = relationship(DocumentORM, backref="Meta")
+    documents = relationship(DocumentORM, back_populates="meta")
 
 
 class LabelORM(ORMBase):
@@ -73,7 +74,8 @@ class SQLDocumentStore(BaseDocumentStore):
         url: str = "sqlite://",
         index: str = "document",
         label_index: str = "label",
-        duplicate_documents: str = "overwrite"
+        duplicate_documents: str = "overwrite",
+        check_same_thread: bool = False
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -88,14 +90,15 @@ class SQLDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior) 
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-                url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents
+                url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents, check_same_thread=check_same_thread
         )
 
-        engine = create_engine(url)
+        engine = create_engine(url,connect_args={'check_same_thread': check_same_thread})
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
@@ -326,6 +329,13 @@ class SQLDocumentStore(BaseDocumentStore):
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
         index = index or self.label_index
+
+        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
+        if len(duplicate_ids) > 0:
+            logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                           f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                           f" the answer annotation and not the question."
+                           f" Problematic ids: {','.join(duplicate_ids)}")
         # TODO: Use batch_size
         for label in labels:
             label_orm = LabelORM(
@@ -341,7 +351,10 @@ class SQLDocumentStore(BaseDocumentStore):
                 model_id=label.model_id,
                 index=index,
             )
-            self.session.add(label_orm)
+            if label.id in duplicate_ids:
+                self.session.merge(label_orm)
+            else:
+                self.session.add(label_orm)
         self.session.commit()
 
     def update_vector_ids(self, vector_id_map: Dict[str, str], index: Optional[str] = None, batch_size: int = 10_000):
@@ -432,7 +445,8 @@ class SQLDocumentStore(BaseDocumentStore):
             offset_start_in_doc=row.offset_start_in_doc,
             model_id=row.model_id,
             created_at=row.created_at,
-            updated_at=row.updated_at
+            updated_at=row.updated_at,
+            id=row.id
         )
         return label
 
@@ -467,8 +481,10 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from.
+        :param index: Index name to delete the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to be deleted.
+                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
         index = index or self.index

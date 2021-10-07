@@ -23,15 +23,15 @@
 
 |  |  |
 |-|-|
-| :ledger: [Docs](https://haystack.deepset.ai/docs/intromd) | Usage, Guides, API documentation ...|
+| :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Usage, Guides, API documentation ...|
 | :beginner: [Quick Demo](https://github.com/deepset-ai/haystack/#quick-demo) | Quickly see what Haystack offers |
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :art: [Key Components](https://github.com/deepset-ai/haystack/#key-components) | Overview of core concepts |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | Jupyter/Colab Notebooks & Scripts |
 | :eyes: [How to use Haystack](https://github.com/deepset-ai/haystack/#how-to-use-haystack) | Basic explanation of concepts, options and usage |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
-| :bar_chart: [Benchmarks](https://haystack.deepset.ai/bm/benchmarks) | Speed & Accuracy of Retriever, Readers and DocumentStores |
-| :telescope: [Roadmap](https://haystack.deepset.ai/docs/latest/roadmapmd) | Public roadmap of Haystack |
+| :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/v0.9.0) | Speed & Accuracy of Retriever, Readers and DocumentStores |
+| :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap) | Public roadmap of Haystack |
 | :pray: [Slack](https://haystack.deepset.ai/community/join) | Join our community on Slack |
 | :bird: [Twitter](https://twitter.com/deepset_ai) | Follow us on Twitter for news and updates |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |

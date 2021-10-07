@@ -5,12 +5,14 @@ services:
       context: .
       dockerfile: Dockerfile
     image: "deepset/haystack-cpu:latest"
+    # Mount custom Pipeline YAML and custom Components.
+    # volumes:
+    #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
     ports:
       - 8000:8000
     environment:
       # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
-      - ELASTICSEARCHDOCUMENTSTORE_PARAMS_HOST=elasticsearch
-    restart: always
+      - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
     depends_on:
       - elasticsearch
     command: "/bin/bash -c 'sleep 15 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180'"
@@ -27,6 +29,7 @@ services:
     build:
       context: ui
       dockerfile: Dockerfile
+    image: "deepset/haystack-streamlit-ui:latest"
     ports:
       - 8501:8501
     environment:

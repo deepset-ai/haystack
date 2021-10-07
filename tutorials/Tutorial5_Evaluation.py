@@ -8,7 +8,7 @@ from haystack.preprocessor import PreProcessor
 from haystack.utils import launch_es
 from haystack import Pipeline
 
-from farm.utils import initialize_device_settings
+from haystack.modeling.utils import initialize_device_settings
 
 import logging
 
@@ -63,8 +63,8 @@ def tutorial5_evaluation():
         clean_empty_lines=False,
         clean_whitespace=False
     )
-    document_store.delete_all_documents(index=doc_index)
-    document_store.delete_all_documents(index=label_index)
+    document_store.delete_documents(index=doc_index)
+    document_store.delete_documents(index=label_index)
     document_store.add_eval_data(
         filename="../data/nq/nq_dev_subset_v2.json",
         doc_index=doc_index,
@@ -93,13 +93,13 @@ def tutorial5_evaluation():
     # Initialize Reader
     reader = FARMReader(
         model_name_or_path="deepset/roberta-base-squad2",
-        top_k_per_candidate=4,
+        top_k=4,
         return_no_answer=True
     )
 
     # Here we initialize the nodes that perform evaluation
     eval_retriever = EvalDocuments()
-    eval_reader = EvalAnswers()
+    eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
 
 
     ## Evaluate Retriever on its own in closed domain fashion
@@ -139,10 +139,8 @@ def tutorial5_evaluation():
         for l in labels:
             res = p.run(
                 query=l.question,
-                top_k_retriever=10,
                 labels=l,
-                top_k_reader=10,
-                index=doc_index,
+                params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
             )
             results.append(res)
 

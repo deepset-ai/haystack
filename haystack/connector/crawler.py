@@ -1,3 +1,5 @@
+import sys
+import json
 import logging
 import re
 from pathlib import Path
@@ -15,10 +17,9 @@ class Crawler(BaseComponent):
     ```python
     |    from haystack.connector import Crawler
     |
-    |    crawler = Crawler()
-    |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/docs/
-    |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/docs/latest/get_startedmd"],
-    |                         output_dir="crawled_files",
+    |    crawler = Crawler(output_dir="crawled_files")
+    |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
+    |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
     |                         filter_urls= ["haystack\.deepset\.ai\/docs\/"])
     ```
     """
@@ -32,13 +33,15 @@ class Crawler(BaseComponent):
 
         :param output_dir: Path for the directory to store files
         :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
-        :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
-                           All URLs not matching at least one of the regular expressions will be dropped.
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options: 
+            0: Only initial list of urls 
+            1: Follow links found on the initial URLs (but no further) 
+        :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with. 
+            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         """
+        IN_COLAB = "google.colab" in sys.modules
+        
         try:
             from webdriver_manager.chrome import ChromeDriverManager
         except ImportError:
@@ -53,7 +56,23 @@ class Crawler(BaseComponent):
 
         options = webdriver.chrome.options.Options()
         options.add_argument('--headless')
-        self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+        if IN_COLAB:
+            try:
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                self.driver = webdriver.Chrome('chromedriver', options=options)
+            except :
+                raise Exception(
+        """
+        \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
+                        !apt-get update
+                        !apt install chromium-driver
+                        !cp /usr/lib/chromium-browser/chromedriver /usr/bin
+        If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
+        )
+        else:
+            logger.info("'chrome-driver' will be automatically installed.")
+            self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
         self.urls = urls
         self.output_dir = output_dir
         self.crawler_depth = crawler_depth
@@ -98,22 +117,19 @@ class Crawler(BaseComponent):
         if not output_dir.exists():
             output_dir.mkdir(parents=True)
 
+        file_paths: list = []
         is_not_empty = len(list(output_dir.rglob("*"))) > 0
         if is_not_empty and not overwrite_existing_files:
             logger.info(
                 f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data."
             )
-            return []
         else:
             logger.info(f"Fetching from {urls} to `{output_dir}`")
-
-            filepaths = []
-
             sub_links: Dict[str, List] = {}
 
             # don't go beyond the initial list of urls
             if crawler_depth == 0:
-                filepaths += self._write_to_files(urls, output_dir=output_dir)
+                file_paths += self._write_to_files(urls, output_dir=output_dir)
             # follow one level of sublinks
             elif crawler_depth == 1:
                 for url_ in urls:
@@ -121,9 +137,9 @@ class Crawler(BaseComponent):
                     sub_links[url_] = list(self._extract_sublinks_from_url(base_url=url_, filter_urls=filter_urls,
                                                                      existed_links=existed_links))
                 for url in sub_links:
-                    filepaths += self._write_to_files(sub_links[url], output_dir=output_dir, base_url=url)
+                    file_paths += self._write_to_files(sub_links[url], output_dir=output_dir, base_url=url)
 
-            return filepaths
+        return file_paths
 
     def _write_to_files(self, urls: List[str], output_dir: Path, base_url: str = None) -> List[Path]:
         paths = []
@@ -143,14 +159,20 @@ class Crawler(BaseComponent):
                 data['meta']['base_url'] = base_url
             data['text'] = text
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(str(data))
+                json.dump(data, f)
             paths.append(file_path)
 
         return paths
 
-    def run(self, output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, # type: ignore
-            crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, # type: ignore
-            overwrite_existing_files: Optional[bool] = None, **kwargs) -> Tuple[Dict, str]: # type: ignore
+    def run(  # type: ignore
+            self, 
+            output_dir: Union[str, Path, None] = None,
+            urls: Optional[List[str]] = None,
+            crawler_depth: Optional[int] = None,
+            filter_urls: Optional[List] = None,
+            overwrite_existing_files: Optional[bool] = None,
+            return_documents: Optional[bool] = False,
+    ) -> Tuple[Dict, str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
@@ -162,14 +184,19 @@ class Crawler(BaseComponent):
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
+        :param return_documents:  Return json files content
 
         :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
         """
 
-        filepaths = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth, filter_urls=filter_urls,
-                               overwrite_existing_files=overwrite_existing_files)
-        results = {"paths": filepaths}
-        results.update(**kwargs)
+        file_paths = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth,
+                                  filter_urls=filter_urls, overwrite_existing_files=overwrite_existing_files)
+        if return_documents:
+            crawled_data = [self._read_json_file(_file) for _file in file_paths]
+            results = {"documents": crawled_data}
+        else:
+            results = {"paths": file_paths}
+
         return results, "output_1"
 
     @staticmethod
@@ -207,3 +234,8 @@ class Crawler(BaseComponent):
                         sub_links.add(sub_link)
 
         return sub_links
+
+    def _read_json_file(self, file_path: Path):
+        """Read the json file and return the content"""
+        with open(file_path.absolute(), "r") as read_file:
+            return json.load(read_file)

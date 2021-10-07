@@ -1,19 +1,32 @@
 import os
 
+import logging
 import requests
 import streamlit as st
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
+STATUS = "initialized"
 DOC_REQUEST = "query"
 DOC_FEEDBACK = "feedback"
 DOC_UPLOAD = "file-upload"
+
+
+def haystack_is_ready():
+    url = f"{API_ENDPOINT}/{STATUS}"
+    try:
+        if requests.get(url).json():
+            return True
+    except Exception as e:
+        logging.exception(e)
+    return False
 
 
 @st.cache(show_spinner=False)
 def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
     # Query Haystack API
     url = f"{API_ENDPOINT}/{DOC_REQUEST}"
-    req = {"query": query, "filters": filters, "top_k_retriever": top_k_retriever, "top_k_reader": top_k_reader}
+    params = {"filters": filters, "ESRetriever": {"top_k": top_k_retriever}, "Reader": {"top_k": top_k_reader}}
+    req = {"query": query, "params": params}
     response_raw = requests.post(url, json=req).json()
 
     # Format response
@@ -24,7 +37,7 @@ def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
         if answer:
             context = "..." + answers[i]["context"] + "..."
             meta_name = answers[i]["meta"]["name"]
-            relevance = round(answers[i]["probability"] * 100, 2)
+            relevance = round(answers[i]["score"] * 100, 2)
             document_id = answers[i]["document_id"]
             offset_start_in_doc = answers[i]["offset_start_in_doc"]
             result.append(

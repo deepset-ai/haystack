@@ -416,17 +416,12 @@ def test_rag_token_generator(rag_generator):
 
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("elasticsearch", "elasticsearch")],
-    indirect=True,
-)
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_generator_pipeline(document_store, retriever, rag_generator):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     query = "What is capital of the Germany?"
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    output = pipeline.run(query=query, top_k_generator=2, top_k_retriever=1)
+    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
     answers = output["answers"]
     assert len(answers) == 2
     assert "berlin" in answers[0]["answer"]
@@ -434,7 +429,6 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
 
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
 def test_lfqa_pipeline(document_store, retriever, eli5_generator):
@@ -446,7 +440,7 @@ def test_lfqa_pipeline(document_store, retriever, eli5_generator):
     document_store.update_embeddings(retriever)
     query = "Tell me about Berlin?"
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=eli5_generator)
-    output = pipeline.run(query=query, top_k_generator=1, top_k_retriever=1)
+    output = pipeline.run(query=query, params={"top_k": 1})
     answers = output["answers"]
     assert len(answers) == 1
     assert "Germany" in answers[0]
@@ -470,7 +464,7 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever):
 
     # raises exception as we don't have converter for "patrickvonplaten/t5-tiny-random" in Seq2SeqGenerator
     with pytest.raises(Exception):
-        output = pipeline.run(query=query, top_k_generator=1, top_k_retriever=1)
+        output = pipeline.run(query=query, params={"top_k": 1})
 
 
 @pytest.mark.slow
@@ -497,16 +491,15 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever):
 
     # raises exception as we are using invalid method signature in _InvalidConverter
     with pytest.raises(Exception):
-        output = pipeline.run(query=query, top_k_generator=1, top_k_retriever=1)
+        output = pipeline.run(query=query, params={"top_k": 1})
 
 
 # Keeping few (retriever,document_store) combination to reduce test time
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("elasticsearch", "elasticsearch")],
+    [("embedding", "memory")],
     indirect=True,
 )
 def test_generator_pipeline_with_translator(
@@ -524,7 +517,7 @@ def test_generator_pipeline_with_translator(
         output_translator=en_to_de_translator,
         pipeline=base_pipeline
     )
-    output = pipeline.run(query=query, top_k_generator=2, top_k_retriever=1)
+    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
     answers = output["answers"]
     assert len(answers) == 2
     assert "berlin" in answers[0]["answer"]

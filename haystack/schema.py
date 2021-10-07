@@ -1,10 +1,10 @@
 from typing import Any, Optional, Dict, List
 from uuid import uuid4
-
+from copy import deepcopy
 import mmh3
 import numpy as np
 from abc import abstractmethod
-
+import inspect
 
 class Document:
     def __init__(
@@ -12,7 +12,6 @@ class Document:
         text: str,
         id: Optional[str] = None,
         score: Optional[float] = None,
-        probability: Optional[float] = None,
         question: Optional[str] = None,
         meta: Dict[str, Any] = None,
         embedding: Optional[np.ndarray] = None,
@@ -35,7 +34,6 @@ class Document:
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
         :param score: Retriever's query score for a retrieved document
-        :param probability: a pseudo probability by scaling score in the range 0 to 1
         :param question: Question text (e.g. for FAQs where one document usually consists of one question and one answer text).
         :param meta: Meta fields for a document like name, url, or author.
         :param embedding: Vector encoding of the text
@@ -46,7 +44,6 @@ class Document:
 
         self.text = text
         self.score = score
-        self.probability = probability
         self.question = question
         self.meta = meta or {}
         self.embedding = embedding
@@ -72,7 +69,7 @@ class Document:
     @classmethod
     def from_dict(cls, dict, field_map={}):
         _doc = dict.copy()
-        init_args = ["text", "id", "score", "probability", "question", "meta", "embedding"]
+        init_args = ["text", "id", "score", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
@@ -260,6 +257,7 @@ class BaseComponent:
     outgoing_edges: int
     subclasses: dict = {}
     pipeline_config: dict = {}
+    name: Optional[str] = None
 
     def __init_subclass__(cls, **kwargs):
         """ This automatically keeps track of all available subclasses.
@@ -269,6 +267,13 @@ class BaseComponent:
         cls.subclasses[cls.__name__] = cls
 
     @classmethod
+    def get_subclass(cls, component_type: str):
+        if component_type not in cls.subclasses.keys():
+            raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
+        subclass = cls.subclasses[component_type]
+        return subclass
+
+    @classmethod
     def load_from_args(cls, component_type: str, **kwargs):
         """
         Load a component instance of the given type using the kwargs.
@@ -276,22 +281,103 @@ class BaseComponent:
         :param component_type: name of the component class to load.
         :param kwargs: parameters to pass to the __init__() for the component. 
         """
-        if component_type not in cls.subclasses.keys():
-            raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
-        instance = cls.subclasses[component_type](**kwargs)
+        subclass = cls.get_subclass(component_type)
+        instance = subclass(**kwargs)
         return instance
 
+    @classmethod
+    def load_from_pipeline_config(cls, pipeline_config: dict, component_name: str):
+        """
+        Load an individual component from a YAML config for Pipelines.
+
+        :param pipeline_config: the Pipelines YAML config parsed as a dict.
+        :param component_name: the name of the component to load.
+        """
+        if pipeline_config:
+            all_component_configs = pipeline_config["components"]
+            all_component_names = [comp["name"] for comp in all_component_configs]
+            component_config = next(comp for comp in all_component_configs if comp["name"] == component_name)
+            component_params = component_config["params"]
+
+            for key, value in component_params.items():
+                if value in all_component_names:  # check if the param value is a reference to another component
+                    component_params[key] = cls.load_from_pipeline_config(pipeline_config, value)
+
+            component_instance = cls.load_from_args(component_config["type"], **component_params)
+        else:
+            component_instance = cls.load_from_args(component_name)
+        return component_instance
+
     @abstractmethod
-    def run(self, *args: Any, **kwargs: Any):
+    def run(
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ):
         """
         Method that will be executed when the node in the graph is called.
+
         The argument that are passed can vary between different types of nodes
         (e.g. retriever nodes expect different args than a reader node)
+
+
         See an example for an implementation in haystack/reader/base/BaseReader.py
-        :param kwargs:
         :return:
         """
         pass
+
+    def _dispatch_run(self, **kwargs):
+        """
+        The Pipelines call this method which in turn executes the run() method of Component.
+
+        It takes care of the following:
+          - inspect run() signature to validate if all necessary arguments are available
+          - call run() with the corresponding arguments and gather output
+          - collate _debug information if present
+          - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
+        """
+        arguments = deepcopy(kwargs)
+        params = arguments.get("params") or {}
+
+        run_signature_args = inspect.signature(self.run).parameters.keys()
+
+        run_params = {}
+        for key, value in params.items():
+            if key == self.name:  # targeted params for this node
+                if isinstance(value, dict):
+                    for _k, _v in value.items():
+                        if _k not in run_signature_args:
+                            raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
+                run_params.update(**value)
+            elif key in run_signature_args:  # global params
+                run_params[key] = value
+
+        run_inputs = {}
+        for key, value in arguments.items():
+            if key in run_signature_args:
+                run_inputs[key] = value
+
+        output, stream = self.run(**run_inputs, **run_params)
+
+        # append _debug information from nodes
+        all_debug = arguments.get("_debug", {})
+        current_debug = output.get("_debug")
+        if current_debug:
+            all_debug[self.name] = current_debug
+        if all_debug:
+            output["_debug"] = all_debug
+
+        # add "extra" args that were not used by the node
+        for k, v in arguments.items():
+            if k not in output.keys():
+                output[k] = v
+
+        output["params"] = params
+        return output, stream
 
     def set_config(self, **kwargs):
         """

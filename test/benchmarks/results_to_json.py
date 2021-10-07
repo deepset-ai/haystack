@@ -47,7 +47,9 @@ def retriever(index_csv="retriever_index_results.csv", query_csv="retriever_quer
         "faiss_hnsw": "FAISS (HNSW)",
         "milvus_flat": "Milvus (flat)",
         "milvus_hnsw": "Milvus (HNSW)",
-        "sentence_transformers": "Sentence Transformers"
+        "sentence_transformers": "Sentence Transformers",
+        "opensearch_flat": "OpenSearch (flat)",
+        "opensearch_hnsw": "OpenSearch (HNSW)"
     }
 
     index = pd.read_csv(index_csv)

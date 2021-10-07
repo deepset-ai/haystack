@@ -7,6 +7,7 @@ from typing import List, Optional, Generator, Set, Union
 
 import nltk
 from more_itertools import windowed
+from tqdm import tqdm
 
 from haystack.preprocessor.base import BasePreProcessor
 
@@ -89,6 +90,7 @@ class PreProcessor(BasePreProcessor):
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
         self.language = iso639_to_nltk.get(language, language)
+        self.print_log: Set[str] = set()
 
     def process(
         self,
@@ -181,7 +183,7 @@ class PreProcessor(BasePreProcessor):
         documents: List[dict],
         **kwargs
     ) -> List[dict]:
-        nested_docs = [self.process(d, **kwargs) for d in documents]
+        nested_docs = [self._process_single(d, **kwargs) for d in tqdm(documents, unit="docs")]
         return [d for x in nested_docs for d in x]
 
     def clean(
@@ -248,7 +250,10 @@ class PreProcessor(BasePreProcessor):
             for sen in sentences:
                 current_word_count = len(sen.split(" "))
                 if current_word_count > split_length:
-                    logger.warning(f"A sentence found with word count higher than the split length.")
+                    long_sentence_message = f"One or more sentence found with word count higher than the split length."
+                    if long_sentence_message not in self.print_log:
+                        self.print_log.add(long_sentence_message)
+                        logger.warning(long_sentence_message)
                 if word_count + current_word_count > split_length:
                     list_splits.append(current_slice)
                     # Enable split_stride with split_by='word' while respecting sentence boundaries.

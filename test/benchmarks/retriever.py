@@ -15,10 +15,10 @@ import random
 import traceback
 import os
 import requests
-from farm.file_utils import http_get
 import json
 from results_to_json import retriever as retriever_json
 from templates import RETRIEVER_TEMPLATE, RETRIEVER_MAP_TEMPLATE, RETRIEVER_SPEED_TEMPLATE
+from haystack.utils import stop_service
 
 logger = logging.getLogger(__name__)
 logging.getLogger("haystack.retriever.base").setLevel(logging.WARN)
@@ -34,6 +34,8 @@ overview_json = "../../docs/_src/benchmarks/retriever_performance.json"
 map_json = "../../docs/_src/benchmarks/retriever_map.json"
 speed_json = "../../docs/_src/benchmarks/retriever_speed.json"
 
+DEVICES = None
+
 
 seed = 42
 random.seed(42)
@@ -46,7 +48,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
             logger.info(f"##### Start indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
             try:
                 doc_store = get_document_store(doc_store_name)
-                retriever = get_retriever(retriever_name, doc_store)
+                retriever = get_retriever(retriever_name, doc_store, DEVICES)
                 docs, _ = prepare_data(data_dir=data_dir,
                                        filename_gold=filename_gold,
                                        filename_negative=filename_negative,
@@ -86,6 +88,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     with open(md_file, "w") as f:
                         f.write(str(retriever_df.to_markdown()))
                 time.sleep(10)
+                stop_service(doc_store)
                 del doc_store
                 del retriever
 
@@ -108,6 +111,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
                     doc_store.delete_all_documents(index=doc_index)
                     doc_store.delete_all_documents(index=label_index)
                 time.sleep(10)
+                stop_service(doc_store)
                 del doc_store
                 del retriever
     if update_json:
@@ -126,6 +130,7 @@ def benchmark_querying(n_docs_options,
                        embeddings_dir,
                        update_json,
                        save_markdown,
+                       wait_write_limit=100,
                        **kwargs):
     """ Benchmark the time it takes to perform querying. Doc embeddings are loaded from file."""
     retriever_results = []
@@ -139,7 +144,7 @@ def benchmark_querying(n_docs_options,
                 else:
                     similarity = "dot_product"
                 doc_store = get_document_store(doc_store_name, similarity=similarity)
-                retriever = get_retriever(retriever_name, doc_store)
+                retriever = get_retriever(retriever_name, doc_store, DEVICES)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
                 docs, labels = prepare_data(data_dir=data_dir,
@@ -153,6 +158,7 @@ def benchmark_querying(n_docs_options,
                                             add_precomputed=add_precomputed)
                 logger.info("Start indexing...")
                 index_to_doc_store(doc_store, docs, retriever, labels)
+
                 logger.info("Start queries...")
 
                 raw_results = retriever.eval()
@@ -178,6 +184,7 @@ def benchmark_querying(n_docs_options,
                     doc_store.delete_all_documents(index=doc_index)
                     doc_store.delete_all_documents(index=label_index)
                 time.sleep(5)
+                stop_service(doc_store)
                 del doc_store
                 del retriever
             except Exception:

@@ -1,14 +1,14 @@
-version: '0.7'
+version: '0.9'
 
 components:    # define all the building-blocks for Pipeline
-  - name: ElasticsearchDocumentStore
+  - name: DocumentStore
     type: ElasticsearchDocumentStore
     params:
       host: localhost
-  - name: ESRetriever
+  - name: Retriever
     type: ElasticsearchRetriever
     params:
-      document_store: ElasticsearchDocumentStore    # params can reference other components defined in the YAML
+      document_store: DocumentStore    # params can reference other components defined in the YAML
       top_k: 5
   - name: Reader       # custom-name for the component; helpful for visualization & debugging
     type: FARMReader    # Haystack Class name for the component
@@ -30,11 +30,10 @@ pipelines:
   - name: query    # a sample extractive-qa Pipeline
     type: Query
     nodes:
-      - name: ESRetriever
+      - name: Retriever
         inputs: [Query]
       - name: Reader
-        inputs: [ESRetriever]
-
+        inputs: [Retriever]
   - name: indexing
     type: Indexing
     nodes:
@@ -46,5 +45,7 @@ pipelines:
         inputs: [FileTypeClassifier.output_2]
       - name: Preprocessor
         inputs: [PDFFileConverter, TextFileConverter]
-      - name: ElasticsearchDocumentStore
+      - name: Retriever
         inputs: [Preprocessor]
+      - name: DocumentStore
+        inputs: [Retriever]

@@ -1,3 +1,4 @@
+import copy
 import inspect
 import logging
 import os
@@ -8,6 +9,15 @@ from pathlib import Path
 from typing import List, Optional, Dict, Union, Any
 import pickle
 import urllib
+from functools import wraps
+
+try:
+    from ray import serve
+    import ray
+except:
+    ray = None  # type: ignore
+    serve = None  # type: ignore
+
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 
@@ -16,20 +26,149 @@ import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
-from haystack import BaseComponent
+from haystack import BaseComponent, MultiLabel, Document
 from haystack.generator.base import BaseGenerator
+from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
 from haystack.retriever.base import BaseRetriever
 from haystack.summarizer.base import BaseSummarizer
 from haystack.translator.base import BaseTranslator
-from haystack.knowledge_graph.base import BaseKnowledgeGraph
-from haystack.graph_retriever.base import BaseGraphRetriever
-
+from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
 
 
-class Pipeline:
+class BasePipeline:
+
+    def run(self, **kwargs):
+        raise NotImplementedError
+
+    @classmethod
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+        """
+        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        be passed.
+
+        Here's a sample configuration:
+
+            ```yaml
+            |   version: '0.8'
+            |
+            |    components:    # define all the building-blocks for Pipeline
+            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+            |      type: FARMReader    # Haystack Class name for the component
+            |      params:
+            |        no_ans_boost: -10
+            |        model_name_or_path: deepset/roberta-base-squad2
+            |    - name: MyESRetriever
+            |      type: ElasticsearchRetriever
+            |      params:
+            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+            |        custom_query: null
+            |    - name: MyDocumentStore
+            |      type: ElasticsearchDocumentStore
+            |      params:
+            |        index: haystack_test
+            |
+            |    pipelines:    # multiple Pipelines can be defined using the components from above
+            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+            |      nodes:
+            |      - name: MyESRetriever
+            |        inputs: [Query]
+            |      - name: MyReader
+            |        inputs: [MyESRetriever]
+            ```
+
+        :param path: path of the YAML file.
+        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        """
+        pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
+        if pipeline_config["type"] == "Pipeline":
+            return Pipeline.load_from_yaml(
+                path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+            )
+        elif pipeline_config["type"] == "RayPipeline":
+            return RayPipeline.load_from_yaml(
+                path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+            )
+        else:
+            raise KeyError(f"Pipeline Type '{pipeline_config['type']}' is not a valid. The available types are"
+                           f"'Pipeline' and 'RayPipeline'.")
+
+    @classmethod
+    def _get_pipeline_config_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None):
+        """
+        Get the definition of Pipeline from a given YAML. If the YAML contains more than one Pipeline,
+        then the pipeline_name must be supplied.
+
+        :param path: Path of Pipeline YAML file.
+        :param pipeline_name: name of the Pipeline.
+        """
+        with open(path, "r", encoding='utf-8') as stream:
+            data = yaml.safe_load(stream)
+
+        if pipeline_name is None:
+            if len(data["pipelines"]) == 1:
+                pipeline_config = data["pipelines"][0]
+            else:
+                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
+        else:
+            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
+            if not pipelines_in_yaml:
+                raise KeyError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+            pipeline_config = pipelines_in_yaml[0]
+
+        return pipeline_config
+
+    @classmethod
+    def _read_yaml(cls, path: Path, pipeline_name: Optional[str], overwrite_with_env_variables: bool):
+        """
+        Parse the YAML and return the full YAML config, pipeline_config, and definitions of all components.
+
+        :param path: path of the YAML file.
+        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        """
+        with open(path, "r", encoding="utf-8") as stream:
+            data = yaml.safe_load(stream)
+
+        pipeline_config = cls._get_pipeline_config_from_yaml(path=path, pipeline_name=pipeline_name)
+
+        definitions = {}  # definitions of each component from the YAML.
+        component_definitions = copy.deepcopy(data["components"])
+        for definition in component_definitions:
+            if overwrite_with_env_variables:
+                cls._overwrite_with_env_variables(definition)
+            name = definition.pop("name")
+            definitions[name] = definition
+
+        return data, pipeline_config, definitions
+
+    @classmethod
+    def _overwrite_with_env_variables(cls, definition: dict):
+        """
+        Overwrite the YAML configuration with environment variables. For example, to change index name param for an
+        ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+        `_` sign must be used to specify nested hierarchical properties.
+
+        :param definition: a dictionary containing the YAML definition of a component.
+        """
+        env_prefix = f"{definition['name']}_params_".upper()
+        for key, value in os.environ.items():
+            if key.startswith(env_prefix):
+                param_name = key.replace(env_prefix, "").lower()
+                definition["params"][param_name] = value
+
+
+class Pipeline(BasePipeline):
     """
     Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
 
@@ -38,18 +177,9 @@ class Pipeline:
     Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
 
-    def __init__(self, pipeline_type: str = "Query"):
+    def __init__(self):
         self.graph = DiGraph()
-        if pipeline_type == "Query":
-            self.root_node_id = "Query"
-            self.graph.add_node("Query", component=RootNode())
-        elif pipeline_type == "Indexing":
-            self.root_node_id = "File"
-            self.graph.add_node("File", component=RootNode())
-        else:
-            raise Exception(f"pipeline_type '{pipeline_type}' is not valid. Supported types are 'Query' & 'Indexing'.")
-
-        self.pipeline_type = pipeline_type
+        self.root_node = None
         self.components: dict = {}
 
     def add_node(self, component, name: str, inputs: List[str]):
@@ -67,13 +197,21 @@ class Pipeline:
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
         """
+        if self.root_node is None:
+            root_node = inputs[0]
+            if root_node in ["Query", "File"]:
+                self.root_node = root_node
+                self.graph.add_node(root_node, component=RootNode())
+            else:
+                raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
+        component.name = name
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node_id, \
-                f"The '{name}' node can only input from {self.root_node_id}. " \
-                f"Set the 'inputs' parameter to ['{self.root_node_id}']"
-            self.graph.add_edge(self.root_node_id, name, label="output_1")
+            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node, \
+                f"The '{name}' node can only input from {self.root_node}. " \
+                f"Set the 'inputs' parameter to ['{self.root_node}']"
+            self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
         for i in inputs:
@@ -114,11 +252,30 @@ class Pipeline:
         """
         self.graph.nodes[name]["component"] = component
 
-    def run(self, **kwargs):
+    def run(  # type: ignore
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ):
         node_output = None
         queue = {
-            self.root_node_id: {"pipeline_type": self.pipeline_type, **kwargs}
+            self.root_node: {"root_node": self.root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
+        if query:
+            queue[self.root_node]["query"] = query
+        if file_paths:
+            queue[self.root_node]["file_paths"] = file_paths
+        if labels:
+            queue[self.root_node]["labels"] = labels
+        if documents:
+            queue[self.root_node]["documents"] = documents
+        if meta:
+            queue[self.root_node]["meta"] = meta
+
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
             node_id = list(queue.keys())[i]
@@ -128,7 +285,7 @@ class Pipeline:
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
-                    node_output, stream_id = self.graph.nodes[node_id]["component"].run(**node_input)
+                    node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
@@ -138,7 +295,17 @@ class Pipeline:
                     if queue.get(n):  # concatenate inputs if it's a join node
                         existing_input = queue[n]
                         if "inputs" not in existing_input.keys():
-                            updated_input = {"inputs": [existing_input, node_output]}
+                            updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
+                            if query:
+                                updated_input["query"] = query
+                            if file_paths:
+                                updated_input["file_paths"] = file_paths
+                            if labels:
+                                updated_input["labels"] = labels
+                            if documents:
+                                updated_input["documents"] = documents
+                            if meta:
+                                updated_input["meta"] = meta
                         else:
                             existing_input["inputs"].append(node_output)
                             updated_input = existing_input
@@ -158,6 +325,37 @@ class Pipeline:
             if not stream_id or data["label"] == stream_id or stream_id == "output_all"
         ]
         return next_nodes
+
+    def get_nodes_by_class(self, class_type) -> List[Any]:
+        """
+        Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
+        This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
+        Example:
+        | from haystack.document_store.base import BaseDocumentStore
+        | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
+        | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
+
+        :return: List of components that are an instance the requested class
+        """
+
+        matches = [self.graph.nodes.get(node)["component"]
+                   for node in self.graph.nodes
+                   if isinstance(self.graph.nodes.get(node)["component"], class_type)]
+        return matches
+
+    def get_document_store(self) -> Optional[BaseDocumentStore]:
+        """
+        Return the document store object used in the current pipeline.
+
+        :return: Instance of DocumentStore or None
+        """
+        matches = self.get_nodes_by_class(class_type=BaseDocumentStore)
+        if len(matches) > 1:
+            raise Exception(f"Multiple Document Stores found in Pipeline: {matches}")
+        elif len(matches) == 0:
+            return None
+        else:
+            return matches[0]
 
     def draw(self, path: Path = Path("pipeline.png")):
         """
@@ -220,28 +418,11 @@ class Pipeline:
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        with open(path, "r", encoding='utf-8') as stream:
-            data = yaml.safe_load(stream)
+        data, pipeline_config, definitions = cls._read_yaml(
+            path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+        )
 
-        if pipeline_name is None:
-            if len(data["pipelines"]) == 1:
-                pipeline_config = data["pipelines"][0]
-            else:
-                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
-        else:
-            pipelines_in_yaml = list(filter(lambda p: p["name"] == pipeline_name, data["pipelines"]))
-            if not pipelines_in_yaml:
-                raise KeyError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
-            pipeline_config = pipelines_in_yaml[0]
-
-        definitions = {}  # definitions of each component from the YAML.
-        for definition in data["components"]:
-            if overwrite_with_env_variables:
-                cls._overwrite_with_env_variables(definition)
-            name = definition.pop("name")
-            definitions[name] = definition
-
-        pipeline = cls(pipeline_type=pipeline_config["type"])
+        pipeline = cls()
 
         components: dict = {}  # instances of component objects.
         for node_config in pipeline_config["nodes"]:
@@ -282,21 +463,6 @@ class Pipeline:
             raise Exception(f"Failed loading pipeline component '{name}': {e}")
         return instance
 
-    @classmethod
-    def _overwrite_with_env_variables(cls, definition: dict):
-        """
-        Overwrite the YAML configuration with environment variables. For example, to change index name param for an
-        ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-        `_` sign must be used to specify nested hierarchical properties.
-
-        :param definition: a dictionary containing the YAML definition of a component.
-        """
-        env_prefix = f"{definition['name']}_params_".upper()
-        for key, value in os.environ.items():
-            if key.startswith(env_prefix):
-                param_name = key.replace(env_prefix, "").lower()
-                definition["params"][param_name] = value
-
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
         """
         Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
@@ -306,13 +472,12 @@ class Pipeline:
         """
         nodes = self.graph.nodes
 
-        pipeline_name = self.pipeline_type.lower()
-        pipeline_type = self.pipeline_type
-        pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": pipeline_type, "nodes": []}}
+        pipeline_name = self.root_node.lower()
+        pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": "Pipeline", "nodes": []}}
 
         components = {}
         for node in nodes:
-            if node == self.root_node_id:
+            if node == self.root_node:
                 continue
             component_instance = self.graph.nodes.get(node)["component"]
             component_type = component_instance.pipeline_config["type"]
@@ -407,10 +572,13 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: int = 10, top_k_reader: int = 10):
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_reader=top_k_reader
-        )
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `reader`. For instance,
+                       params={"retriever": {"top_k": 10}, "reader": {"top_k": 5}}
+        """
+        output = self.pipeline.run(query=query, params=params)
         return output
 
 
@@ -424,8 +592,12 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+        """
+        output = self.pipeline.run(query=query, params=params)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
@@ -443,54 +615,42 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: Optional[int] = None,
-        top_k_generator: Optional[int] = None
-    ):
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, top_k_generator=top_k_generator
-        )
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever` and `generator`. For instance,
+                       params={"retriever": {"top_k": 10}, "generator": {"top_k": 5}}
+        """
+        output = self.pipeline.run(query=query, params=params)
         return output
 
 
 class SearchSummarizationPipeline(BaseStandardPipeline):
-    def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever):
+    def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False):
         """
         Initialize a Pipeline that retrieves documents for a query and then summarizes those documents.
 
         :param summarizer: Summarizer instance
         :param retriever: Retriever instance
+        :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer
+                                        format used in other QA pipelines (True). With the latter, you can use this
+                                        pipeline as a "drop-in replacement" for other QA pipelines.
         """
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
+        self.return_in_answer_format = return_in_answer_format
 
-    def run(
-        self,
-        query: str,
-        filters: Optional[Dict] = None,
-        top_k_retriever: Optional[int] = None,
-        generate_single_summary: Optional[bool] = None,
-        return_in_answer_format: bool = False,
-    ):
+    def run(self, query: str, params: Optional[dict] = None):
         """
-        :param query: Your search query
-        :param filters:
-        :param top_k_retriever: Number of top docs the retriever should pass to the summarizer.
-                                The higher this value, the slower your pipeline.
-        :param generate_single_summary: Whether to generate single summary from all retrieved docs (True) or one per doc (False).
-        :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer format used in other QA pipelines (True).
-                                        With the latter, you can use this pipeline as a "drop-in replacement" for other QA pipelines.
-        """
-        output = self.pipeline.run(
-            query=query, filters=filters, top_k_retriever=top_k_retriever, generate_single_summary=generate_single_summary
-        )
+        :param query: the query string.
+        :param params: params for the `retriever` and `summarizer`. For instance,
+                       params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+                """
+        output = self.pipeline.run(query=query, params=params)
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
-        if return_in_answer_format:
+        if self.return_in_answer_format:
             results: Dict = {"query": query, "answers": []}
             docs = deepcopy(output["documents"])
             for doc in docs:
@@ -500,7 +660,6 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
                     "document_id": doc.id,
                     "context": doc.meta.pop("context"),
                     "score": None,
-                    "probability": None,
                     "offset_start": None,
                     "offset_end": None,
                     "meta": doc.meta,
@@ -522,8 +681,12 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, filters: Optional[Dict] = None, top_k_retriever: Optional[int] = None):
-        output = self.pipeline.run(query=query, filters=filters, top_k_retriever=top_k_retriever)
+    def run(self, query: str, params: Optional[dict] = None):
+        """
+        :param query: the query string.
+        :param params: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+        """
+        output = self.pipeline.run(query=query, params=params)
         documents = output["documents"]
 
         results: Dict = {"query": query, "answers": []}
@@ -535,7 +698,6 @@ class FAQPipeline(BaseStandardPipeline):
                 "document_id": doc.id,
                 "context": doc.meta["answer"],
                 "score": doc.score,
-                "probability": doc.probability,
                 "offset_start": 0,
                 "offset_end": len(doc.meta["answer"]),
                 "meta": doc.meta,
@@ -591,11 +753,75 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         return output
 
 
-class RootNode:
+class QuestionGenerationPipeline(BaseStandardPipeline):
+    """
+    A simple pipeline that takes documents as input and generates
+    questions that it thinks can be answered by the documents.
+    """
+    def __init__(self, question_generator):
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
+
+    def run(self, documents, params: Optional[dict] = None):
+        output = self.pipeline.run(documents=documents, params=params)
+        return output
+
+
+class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
+    """
+    A simple pipeline that takes a query as input, performs retrieval, and then generates
+    questions that it thinks can be answered by the retrieved documents.
+    """
+    def __init__(self, retriever, question_generator):
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
+
+    def run(self, query, params: Optional[dict] = None):
+        output = self.pipeline.run(query=query, params=params)
+        return output
+
+
+class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
+    """
+    This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
+    this document, and then performs question answering of this questions using that single document.
+    """
+    def __init__(self, question_generator, reader):
+        question_generator.run = self.formatting_wrapper(question_generator.run)
+        # Overwrite reader.run function so it can handle a batch of questions being passed on by the QuestionGenerator
+        reader.run = reader.run_batch
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
+        self.pipeline.add_node(component=reader, name="Reader", inputs=["QuestionGenerator"])
+
+    # This is used to format the output of the QuestionGenerator so that its questions are ready to be answered by the reader
+    def formatting_wrapper(self, fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            output, output_stream = fn(*args, **kwargs)
+            questions = output["generated_questions"][0]["questions"]
+            documents = output["documents"]
+            query_doc_list = []
+            for q in questions:
+                query_doc_list.append({"queries": q, "docs": documents})
+            kwargs["query_doc_list"] = query_doc_list
+            return kwargs, output_stream
+        return wrapper
+
+    def run(self, documents: List[Document], params: Optional[dict] = None):  # type: ignore
+        output = self.pipeline.run(documents=documents, params=params)
+        return output
+
+
+class RootNode(BaseComponent):
+    """
+    RootNode feeds inputs together with corresponding params to a Pipeline.
+    """
     outgoing_edges = 1
 
-    def run(self, **kwargs):
-        return kwargs, "output_1"
+    def run(self, root_node: str):  # type: ignore
+        return {}, "output_1"
 
 
 class SklearnQueryClassifier(BaseComponent):
@@ -637,7 +863,7 @@ class SklearnQueryClassifier(BaseComponent):
        output_2 => statement
        [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
 
-    See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
+    See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
     """
 
@@ -683,14 +909,14 @@ class SklearnQueryClassifier(BaseComponent):
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
 
 
-    def run(self, **kwargs):
-        query_vector = self.vectorizer.transform([kwargs["query"]])
+    def run(self, query):
+        query_vector = self.vectorizer.transform([query])
 
         is_question: bool = self.model.predict(query_vector)[0]
         if is_question:
-            return (kwargs, "output_1")
+            return {}, "output_1"
         else:
-            return (kwargs, "output_2")
+            return {}, "output_2"
 
 
 class TransformersQueryClassifier(BaseComponent):
@@ -730,7 +956,7 @@ class TransformersQueryClassifier(BaseComponent):
      output_2 => statement
      [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
 
-     See also the [tutorial](https://haystack.deepset.ai/docs/latest/tutorial11md) on pipelines.
+     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
     """
 
     outgoing_edges = 2
@@ -754,16 +980,16 @@ class TransformersQueryClassifier(BaseComponent):
             model=model, tokenizer=tokenizer
         )
 
-    def run(self, **kwargs):
+    def run(self, query):
 
         is_question: bool = (
-            self.query_classification_pipeline(kwargs["query"])[0]["label"] == "LABEL_1"
+            self.query_classification_pipeline(query)[0]["label"] == "LABEL_1"
         )
 
         if is_question:
-            return (kwargs, "output_1")
+            return {}, "output_1"
         else:
-            return (kwargs, "output_2")
+            return {}, "output_2"
 
 
 class JoinDocuments(BaseComponent):
@@ -799,12 +1025,10 @@ class JoinDocuments(BaseComponent):
         self.set_config(join_mode=join_mode, weights=weights, top_k_join=top_k_join)
 
         self.join_mode = join_mode
-        self.weights = weights
+        self.weights = [float(i)/sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
 
-    def run(self, **kwargs):
-        inputs = kwargs["inputs"]
-
+    def run(self, inputs: List[dict]):  # type: ignore
         if self.join_mode == "concatenate":
             document_map = {}
             for input_from_node in inputs:
@@ -830,5 +1054,340 @@ class JoinDocuments(BaseComponent):
 
         if self.top_k_join:
             documents = documents[: self.top_k_join]
-        output = {"query": inputs[0]["query"], "documents": documents, "labels": inputs[0].get("labels", None)}
+        output = {"documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"
+
+
+class RayPipeline(Pipeline):
+    """
+    Ray (https://ray.io) is a framework for distributed computing.
+
+    Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
+    Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
+    of the Reader and a single replica for the Retriever. It enables efficient resource utilization by horizontally
+    scaling Components.
+
+    To set the number of replicas, add  `replicas` in the YAML config for the node in a pipeline:
+
+            ```yaml
+            |    components:
+            |        ...
+            |
+            |    pipelines:
+            |        - name: ray_query_pipeline
+            |          type: RayPipeline
+            |          nodes:
+            |            - name: ESRetriever
+            |              replicas: 2  # number of replicas to create on the Ray cluster
+            |              inputs: [ Query ]
+            ```
+
+    A RayPipeline can only be created with a YAML Pipeline config.
+    >>> from haystack.pipeline import RayPipeline
+    >>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
+    >>> pipeline.run(query="What is the capital of Germany?")
+
+    By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
+    set the `address` parameter when creating the RayPipeline instance.
+    """
+    def __init__(self, address: str = None, **kwargs):
+        """
+        :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+        :param kwargs: Optional parameters for initializing Ray.
+        """
+        ray.init(address=address, **kwargs)
+        serve.start()
+        super().__init__()
+
+    @classmethod
+    def load_from_yaml(
+            cls,
+            path: Path, pipeline_name: Optional[str] = None,
+            overwrite_with_env_variables: bool = True,
+            address: Optional[str] = None,
+            **kwargs,
+    ):
+        """
+        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        be passed.
+
+        Here's a sample configuration:
+
+            ```yaml
+            |   version: '0.8'
+            |
+            |    components:    # define all the building-blocks for Pipeline
+            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+            |      type: FARMReader    # Haystack Class name for the component
+            |      params:
+            |        no_ans_boost: -10
+            |        model_name_or_path: deepset/roberta-base-squad2
+            |    - name: MyESRetriever
+            |      type: ElasticsearchRetriever
+            |      params:
+            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+            |        custom_query: null
+            |    - name: MyDocumentStore
+            |      type: ElasticsearchDocumentStore
+            |      params:
+            |        index: haystack_test
+            |
+            |    pipelines:    # multiple Pipelines can be defined using the components from above
+            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+            |      nodes:
+            |      - name: MyESRetriever
+            |        inputs: [Query]
+            |      - name: MyReader
+            |        inputs: [MyESRetriever]
+            ```
+
+        :param path: path of the YAML file.
+        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+        """
+        data, pipeline_config, definitions = cls._read_yaml(
+            path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+        )
+        pipeline = cls(address=address, **kwargs)
+
+        for node_config in pipeline_config["nodes"]:
+            if pipeline.root_node is None:
+                root_node = node_config["inputs"][0]
+                if root_node in ["Query", "File"]:
+                    pipeline.root_node = root_node
+                    handle = cls._create_ray_deployment(component_name=root_node, pipeline_config=data)
+                    pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1,  inputs=[])
+                else:
+                    raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
+
+            name = node_config["name"]
+            component_type = definitions[name]["type"]
+            component_class = BaseComponent.get_subclass(component_type)
+            replicas = next(node for node in pipeline_config["nodes"] if node["name"] == name).get("replicas", 1)
+            handle = cls._create_ray_deployment(component_name=name, pipeline_config=data, replicas=replicas)
+            pipeline._add_ray_deployment_in_graph(
+                handle=handle,
+                name=name,
+                outgoing_edges=component_class.outgoing_edges,
+                inputs=node_config.get("inputs", []),
+            )
+
+        return pipeline
+
+    @classmethod
+    def _create_ray_deployment(cls, component_name: str, pipeline_config: dict, replicas: int = 1):
+        """
+        Create a Ray Deployment for the Component.
+
+        :param component_name: Class name of the Haystack Component.
+        :param pipeline_config: The Pipeline config YAML parsed as a dict.
+        :param replicas: By default, a single replica of the component is created. It can be
+                         configured by setting `replicas` parameter in the Pipeline YAML.
+        """
+        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)  # type: ignore
+        RayDeployment.deploy(pipeline_config, component_name)
+        handle = RayDeployment.get_handle()
+        return handle
+
+    def run(  # type: ignore
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ):
+        has_next_node = True
+        current_node_id = self.root_node
+        input_dict = {"root_node": self.root_node, "params": params}
+        if query:
+            input_dict["query"] = query
+        if file_paths:
+            input_dict["file_paths"] = file_paths
+        if labels:
+            input_dict["labels"] = labels
+        if documents:
+            input_dict["documents"] = documents
+        if meta:
+            input_dict["meta"] = meta
+
+        output_dict = None
+
+        while has_next_node:
+            output_dict, stream_id = ray.get(self.graph.nodes[current_node_id]["component"].remote(**input_dict))
+            input_dict = output_dict
+            next_nodes = self.get_next_nodes(current_node_id, stream_id)
+
+            if len(next_nodes) > 1:
+                join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
+                if set(self.graph.predecessors(join_node_id)) != set(next_nodes):
+                    raise NotImplementedError(
+                        "The current pipeline does not support multiple levels of parallel nodes."
+                    )
+                inputs_for_join_node: dict = {"inputs": []}
+                for n_id in next_nodes:
+                    output = self.graph.nodes[n_id]["component"].run(**input_dict)
+                    inputs_for_join_node["inputs"].append(output)
+                input_dict = inputs_for_join_node
+                current_node_id = join_node_id
+            elif len(next_nodes) == 1:
+                current_node_id = next_nodes[0]
+            else:
+                has_next_node = False
+
+        return output_dict
+
+    def add_node(self, component, name: str, inputs: List[str]):
+        raise NotImplementedError(
+            "The current implementation of RayPipeline only supports loading Pipelines from a YAML file."
+        )
+
+    def _add_ray_deployment_in_graph(self, handle, name: str, outgoing_edges: int, inputs: List[str]):
+        """
+        Add the Ray deployment handle in the Pipeline Graph.
+
+        :param handle: Ray deployment `handle` to add in the Pipeline Graph. The handle allow calling a Ray deployment
+                       from Python: https://docs.ray.io/en/master/serve/package-ref.html#servehandle-api.
+        :param name: The name for the node. It must not contain any dots.
+        :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+
+                       In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
+                       must be specified explicitly as "QueryClassifier.output_2".
+        """
+        self.graph.add_node(name, component=handle, inputs=inputs, outgoing_edges=outgoing_edges)
+
+        if len(self.graph.nodes) == 2:  # first node added; connect with Root
+            self.graph.add_edge(self.root_node, name, label="output_1")
+            return
+
+        for i in inputs:
+            if "." in i:
+                [input_node_name, input_edge_name] = i.split(".")
+                assert "output_" in input_edge_name, f"'{input_edge_name}' is not a valid edge name."
+                outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
+                assert int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node, (
+                    f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
+                    f"{outgoing_edges_input_node} outgoing edge(s)."
+                )
+            else:
+                outgoing_edges_input_node = self.graph.nodes[i]["outgoing_edges"]
+                assert outgoing_edges_input_node == 1, (
+                    f"Adding an edge from {i} to {name} is ambiguous as {i} has {outgoing_edges_input_node} edges. "
+                    f"Please specify the output explicitly."
+                )
+                input_node_name = i
+                input_edge_name = "output_1"
+            self.graph.add_edge(input_node_name, name, label=input_edge_name)
+
+
+class _RayDeploymentWrapper:
+    """
+    Ray Serve supports calling of __init__ methods on the Classes to create "deployment" instances.
+
+    In case of Haystack, some Components like Retrievers have complex init methods that needs objects
+    like Document Stores.
+
+    This wrapper class encapsulates the initialization of Components. Given a Component Class
+    name, it creates an instance using the YAML Pipeline config.
+    """
+    node: BaseComponent
+
+    def __init__(self, pipeline_config: dict, component_name: str):
+        """
+        Create an instance of Component.
+
+        :param pipeline_config: Pipeline YAML parsed as a dict.
+        :param component_name: Component Class name.
+        """
+        if component_name in ["Query", "File"]:
+            self.node = RootNode()
+        else:
+            self.node = BaseComponent.load_from_pipeline_config(pipeline_config, component_name)
+
+    def __call__(self, *args, **kwargs):
+        """
+        Ray calls this method which is then re-directed to the corresponding component's run().
+        """
+        return self.node._dispatch_run(*args, **kwargs)
+
+
+class Docs2Answers(BaseComponent):
+    """
+    This Node is used to convert retrieved documents into predicted answers format.
+    It is useful for situations where you are calling a Retriever only pipeline via REST API.
+    This ensures that your output is in a compatible format.
+    """
+
+    outgoing_edges = 1
+
+    def __init__(self):
+        self.set_config()
+
+    def run(self, query, documents):  # type: ignore
+        # conversion from Document -> Answer
+        answers = []
+        for doc in documents:
+            # For FAQ style QA use cases
+            if "answer" in doc.meta:
+                cur_answer = {
+                    "query": doc.text,
+                    "answer": doc.meta["answer"],
+                    "document_id": doc.id,
+                    "context": doc.meta["answer"],
+                    "score": doc.score,
+                    "offset_start": 0,
+                    "offset_end": len(doc.meta["answer"]),
+                    "meta": doc.meta,
+                }
+            else:
+                # Regular docs
+                cur_answer = {
+                    "query": None,
+                    "answer": None,
+                    "document_id": doc.id,
+                    "context": doc.text,
+                    "score": doc.score,
+                    "offset_start": None,
+                    "offset_end": None,
+                    "meta": doc.meta,
+                }
+            answers.append(cur_answer)
+
+        output = {"query": query, "answers": answers}
+
+        return output, "output_1"
+
+class MostSimilarDocumentsPipeline(BaseStandardPipeline):
+    def __init__(self, document_store: BaseDocumentStore):
+        """
+        Initialize a Pipeline for finding the most similar documents to a given document.
+        This pipeline can be helpful if you already show a relevant document to your end users and they want to search for just similar ones.  
+
+        :param document_store: Document Store instance with already stored embeddings. 
+        """
+        self.document_store = document_store
+
+    def run(self, document_ids: List[str], top_k: int = 5):
+        """
+        :param document_ids: document ids
+        :param top_k: How many documents id to return against single document
+        """
+        similar_documents: list = []
+        self.document_store.return_embedding = True  # type: ignore
+
+        for document in self.document_store.get_documents_by_id(ids=document_ids):
+            similar_documents.append(self.document_store.query_by_embedding(query_emb=document.embedding,
+                                                                            return_embedding=False,
+                                                                            top_k=top_k))
+
+        self.document_store.return_embedding = False  # type: ignore
+        return similar_documents
+

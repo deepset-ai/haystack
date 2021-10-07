@@ -23,7 +23,7 @@ Add any other context about the problem here, like document types / preprocessin
 Steps to reproduce the behavior
 
 **FAQ Check**
-- [ ] Have you had a look at [our new FAQ page](https://haystack.deepset.ai/docs/latest/faqmd)?
+- [ ] Have you had a look at [our new FAQ page](https://haystack.deepset.ai/overview/faq)?
 
 **System:**
  - OS: 
