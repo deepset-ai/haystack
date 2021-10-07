@@ -263,6 +263,23 @@ class Pipeline(BasePipeline):
         debug: Optional[bool] = None,
         debug_logs: Optional[bool] = None
     ):
+        """
+            Runs the pipeline, one note at a time.
+
+            :param query: The question, for question answering pipelines
+            :param file_paths: The files to index, for indexing pipelines
+            :param labels: 
+            :param documents:
+            :param meta:
+            :param params: Dictionary of parameters to be dispatched to every node. Example:
+                           {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+            :param debug: Whether the pipeline should instruct nodes to collect debug information
+                          about their execution. By default these include the input parameters
+                          they received, the output they generated, and eventual logs (of any severity)
+                          emitted.
+            :param debug_logs: Whether all the logs of the node should be printed in the console,
+                               regardless of their severity and of the existing logger's settings.
+        """
         node_output = None
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
