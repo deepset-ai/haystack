@@ -225,6 +225,7 @@ def convert_files_to_dicts(
     :param dir_path: path for the documents to be written to the DocumentStore
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
+    :param encoding: character encoding to use when converting pdf documents.
 
     :return: None
     """
