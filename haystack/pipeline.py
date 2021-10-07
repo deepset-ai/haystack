@@ -264,19 +264,22 @@ class Pipeline(BasePipeline):
         debug_logs: Optional[bool] = None
     ):
         """
-            Runs the pipeline, one note at a time.
+            Runs the pipeline, one node at a time.
 
-            :param query: The question, for question answering pipelines
-            :param file_paths: The files to index, for indexing pipelines
+            :param query: The search query (for query pipelines only)
+            :param file_paths: The files to index (for indexing pipelines only)
             :param labels: 
             :param documents: The documents to create question on, for question-generating pipelines
             :param meta:
-            :param params: Dictionary of parameters to be dispatched to every node. Example:
+            :param params: Dictionary of parameters to be dispatched to the nodes. 
+                           If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                           If you want to pass it to targeted nodes, you can do:
                            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
             :param debug: Whether the pipeline should instruct nodes to collect debug information
                           about their execution. By default these include the input parameters
                           they received, the output they generated, and eventual logs (of any severity)
-                          emitted.
+                          emitted. All debug information can then be found in the dict returned
+                          by this method under the key "_debug"
             :param debug_logs: Whether all the logs of the node should be printed in the console,
                                regardless of their severity and of the existing logger's settings.
         """
