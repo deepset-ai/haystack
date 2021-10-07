@@ -300,16 +300,6 @@ class Pipeline(BasePipeline):
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
                     node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
-
-                    # Collect all debug information
-                    if debug:
-                        debug_output[node_id] = {}
-                        if "_debug" in node_output.keys():
-                            debug_output[node_id] = node_output.pop("_debug")[node_id]
-                        debug_output[node_id]["input"] = node_input
-                        if len(queue) > 1:  # Exclude the output of the last node to avoid infinite recursion
-                            debug_output[node_id]["output"] = node_output
-        
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
@@ -337,10 +327,22 @@ class Pipeline(BasePipeline):
                         queue[n] = updated_input
                     else:
                         queue[n] = node_output
+    
+                # Collect all debug information
+                #if "_debug" in node_output.keys():
+                if node_input.get("params", {}).get(node_id, {}).get("debug", False):
+                    debug_output[node_id] = node_output.get("_debug", {}).get(node_id, {})
+                    debug_output[node_id]["input"] = node_input
+                    # Exclude the _debug key from the output to avoid infinite recursion
+                    node_output_without_debug = {key: value for key, value in node_output.items() if key != "_debug"}
+                    node_output_without_debug["_debug"] = "<removed to avoid recursion>"
+                    debug_output[node_id]["output"] = node_output_without_debug
+
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-        if debug:
+
+        if debug_output:
             node_output["_debug"] = debug_output
         return node_output
 

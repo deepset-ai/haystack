@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import json
 import math
 import pytest
 
@@ -16,6 +17,7 @@ from haystack.pipeline import (
     TransformersQueryClassifier,
     MostSimilarDocumentsPipeline,
 )
+from haystack.reader import FARMReader
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.schema import Document
@@ -86,182 +88,107 @@ def test_load_and_save_yaml(document_store, tmp_path):
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_debug_attributes_global(document_store, tmp_path):
-    # test correct load of pipelines from yaml
-    pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-    )
-    pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
-    )
-    # Test global arguments
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_debug_attributes_global(document_store_with_docs, tmp_path):
+    
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
+    pipeline.add_node(component=reader, name="Reader", inputs=["ESRetriever"])
+
     prediction = pipeline.run(
-        query="Who made the PDF specification?", 
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
+        query="Who lives in Berlin?", 
+        params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}},
         debug=True,
         debug_logs=True
     )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0]["answer"] == "Adobe Systems"
     assert "_debug" in prediction.keys()
-    assert any(node in prediction["_debug"].keys() for node in ["Query", "ESRetriever", "Reader"])
-    assert any(key in prediction["_debug"]["Query"].keys() for key in ["input", "output"])
-    assert any(key in prediction["_debug"]["ESRetriever"].keys() for key in ["input", "output"])
-    assert any(key in prediction["_debug"]["Reader"].keys() for key in ["input", "output"])
-    assert prediction["_debug"]["Reader"]["output"]["answers"][0]["answer"] == "Adobe Systems"
-
-    # test config export does not contain debug attributes
-    pipeline.save_to_yaml(tmp_path / "test.yaml")
-    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
-        saved_yaml = stream.read()
-    expected_yaml = """
-        components:
-        - name: ESRetriever
-          params:
-            document_store: ElasticsearchDocumentStore
-          type: ElasticsearchRetriever
-        - name: ElasticsearchDocumentStore
-          params:
-            index: haystack_test
-            label_index: haystack_test_label
-          type: ElasticsearchDocumentStore
-        - name: Reader
-          params:
-            model_name_or_path: deepset/roberta-base-squad2
-            no_ans_boost: -10
-          type: FARMReader
-        pipelines:
-        - name: query
-          nodes:
-          - inputs:
-            - Query
-            name: ESRetriever
-          - inputs:
-            - ESRetriever
-            name: Reader
-          type: Pipeline
-        version: '0.8'
-    """
-    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(
-        " ", ""
-    ).replace("\n", "")
-
-
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_debug_attributes_per_node(document_store, tmp_path):
-    # test correct load of pipelines from yaml
-    pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-    )
-    pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
-    )
-    # Test node-specific arguments
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", 
-        params={"Retriever": {"top_k": 10, "debug": True, "debug_logs": True}, "Reader": {"top_k": 3, "debug": True,}},
-    )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0]["answer"] == "Adobe Systems"
-    assert "_debug" in prediction.keys()
-    assert "Query" not in prediction["_debug"].keys()
     assert "ESRetriever" in prediction["_debug"].keys()
     assert "Reader" in prediction["_debug"].keys()
-    assert any(key in prediction["_debug"]["ESRetriever"].keys() for key in ["input", "output"])
-    assert prediction["_debug"]["Reader"]["output"]["answers"][0]["answer"] == "Adobe Systems"
+    assert "input" in prediction["_debug"]["ESRetriever"].keys()
+    assert "output" in prediction["_debug"]["ESRetriever"].keys()
+    assert "input" in prediction["_debug"]["Reader"].keys()
+    assert "output" in prediction["_debug"]["Reader"].keys()
+    assert prediction["_debug"]["ESRetriever"]["input"]
+    assert prediction["_debug"]["ESRetriever"]["output"]
+    assert prediction["_debug"]["Reader"]["input"]
+    assert prediction["_debug"]["Reader"]["output"]
 
-    # test config export does not contain debug attributes
-    pipeline.save_to_yaml(tmp_path / "test.yaml")
-    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
-        saved_yaml = stream.read()
-    expected_yaml = """
-        components:
-        - name: ESRetriever
-          params:
-            document_store: ElasticsearchDocumentStore
-          type: ElasticsearchRetriever
-        - name: ElasticsearchDocumentStore
-          params:
-            index: haystack_test
-            label_index: haystack_test_label
-          type: ElasticsearchDocumentStore
-        - name: Reader
-          params:
-            model_name_or_path: deepset/roberta-base-squad2
-            no_ans_boost: -10
-          type: FARMReader
-        pipelines:
-        - name: query
-          nodes:
-          - inputs:
-            - Query
-            name: ESRetriever
-          - inputs:
-            - ESRetriever
-            name: Reader
-          type: Pipeline
-        version: '0.8'
-    """
-    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(
-        " ", ""
-    ).replace("\n", "")
+    # Avoid circular reference: easiest way to detect those is to use json.dumps
+    json.dumps(prediction, default=str)
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
+    
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
+    pipeline.add_node(component=reader, name="Reader", inputs=["ESRetriever"])
+
+    prediction = pipeline.run(
+        query="Who lives in Berlin?", 
+        params={
+            "ESRetriever": {"top_k": 10, "debug": True, "debug_logs":True}, 
+            "Reader": {"top_k": 3}
+        },
+    )
+    assert "_debug" in prediction.keys()
+    assert "ESRetriever" in prediction["_debug"].keys()
+    assert "Reader" not in prediction["_debug"].keys()
+    assert "input" in prediction["_debug"]["ESRetriever"].keys()
+    assert "output" in prediction["_debug"]["ESRetriever"].keys()
+    assert prediction["_debug"]["ESRetriever"]["input"]
+    assert prediction["_debug"]["ESRetriever"]["output"]
+
+    # Avoid circular reference: easiest way to detect those is to use json.dumps
+    json.dumps(prediction, default=str)
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_global_debug_attributes_override_node_ones(document_store, tmp_path):
-    # test correct load of pipelines from yaml
-    pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-    )
-    pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
-    )
-    # Test node-specific arguments
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_global_debug_attributes_override_node_ones(document_store_with_docs, tmp_path):
+
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
+    pipeline.add_node(component=reader, name="Reader", inputs=["ESRetriever"])
+
     prediction = pipeline.run(
-        query="Who made the PDF specification?", 
-        params={"Retriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3}},
-        debug=False,
+        query="Who lives in Berlin?", 
+        params={
+            "ESRetriever": {"top_k": 10, "debug": True, "debug_logs":True}, 
+            "Reader": {"top_k": 3, "debug": True}
+        },
+        debug=False
     )
     assert "_debug" not in prediction.keys()
 
-
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_last_node_debug_does_not_contain_output(document_store, tmp_path):
-    # test correct load of pipelines from yaml
-    pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-    )
-    pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
-    )
-    # Test node-specific arguments
     prediction = pipeline.run(
-        query="Who made the PDF specification?", 
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True,}},
+        query="Who lives in Berlin?", 
+        params={
+            "ESRetriever": {"top_k": 10, "debug": False}, 
+            "Reader": {"top_k": 3, "debug": False}
+        },
+        debug=True
     )
+    assert "_debug" in prediction.keys()
+    assert "ESRetriever" in prediction["_debug"].keys()
     assert "Reader" in prediction["_debug"].keys()
-    assert "input" in prediction["_debug"]["ESRetriever"].keys() 
-    assert "output" not in prediction["_debug"]["ESRetriever"].keys()
+    assert "input" in prediction["_debug"]["ESRetriever"].keys()
+    assert "output" in prediction["_debug"]["ESRetriever"].keys()
+    assert "input" in prediction["_debug"]["Reader"].keys()
+    assert "output" in prediction["_debug"]["Reader"].keys()
+    assert prediction["_debug"]["ESRetriever"]["input"]
+    assert prediction["_debug"]["ESRetriever"]["output"]
+    assert prediction["_debug"]["Reader"]["input"]
+    assert prediction["_debug"]["Reader"]["output"]
 
 
 
@@ -317,7 +244,7 @@ def test_graph_creation(retriever_with_docs, document_store_with_docs):
 
 def test_invalid_run_args():
     pipeline = Pipeline.load_from_yaml(
-        Path("samples/pipeline/test_pipeline.yaml"), pipeline_name="query_pipeline"
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     with pytest.raises(Exception) as exc:
         pipeline.run(params={"ESRetriever": {"top_k": 10}})
@@ -551,7 +478,7 @@ def test_debug_info_propagation():
     class A(RootNode):
         def run(self):
             test = "A"
-            return {"test": test, "_debug": "debug_from_a"}, "output_1"
+            return {"test": test, "_debug": {"debug_key_a": "debug_value_a"}}, "output_1"
 
     class B(RootNode):
         def run(self, test):
@@ -575,7 +502,7 @@ def test_debug_info_propagation():
     pipeline.add_node(name="C", component=C(), inputs=["B"])
     pipeline.add_node(name="D", component=D(), inputs=["C"])
     output = pipeline.run(query="test")
-    assert output["_debug"]["A"] == "debug_from_a"
+    assert output["_debug"]["A"]["debug_key_a"] == "debug_value_a"
     assert output["_debug"]["B"]["debug_key_b"] == "debug_value_b"
 
 
