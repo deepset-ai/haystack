@@ -329,8 +329,7 @@ class Pipeline(BasePipeline):
                         queue[n] = node_output
     
                 # Collect all debug information
-                #if "_debug" in node_output.keys():
-                if node_input.get("params", {}).get(node_id, {}).get("debug", False):
+                if node_input and node_input.get("params", {}).get(node_id, {}).get("debug", False):
                     debug_output[node_id] = node_output.get("_debug", {}).get(node_id, {})
                     debug_output[node_id]["input"] = node_input
                     # Exclude the _debug key from the output to avoid infinite recursion
