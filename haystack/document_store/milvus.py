@@ -5,14 +5,13 @@ import numpy
 import numpy as np
 
 from milvus import IndexType, MetricType, Milvus, Status
-from scipy.special import expit
 from tqdm import tqdm
 
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
-from haystack.utils import get_batches_from_generator, normalize_vector_l2
 from haystack.document_store.base import DuplicateDocumentError
+from haystack.utils import get_batches_from_generator, normalize_vector_l2, finalize_raw_score
 
 logger = logging.getLogger(__name__)
 
@@ -386,7 +385,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = float(expit(np.asarray(raw_score / 100)))
+            doc.score = finalize_raw_score(raw_score,self.similarity)
 
         return documents
 

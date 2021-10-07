@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
-from haystack.utils import get_batches_from_generator, normalize_vector_l2
+from haystack.utils import get_batches_from_generator, normalize_vector_l2, finalize_raw_score
 
 from weaviate import client, auth, AuthClientPassword
 from weaviate import ObjectsBatchRequest
@@ -227,7 +227,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
-
+        
+        #score = finalize_raw_score(score,self.similarity)
+        #if self.similarity == "cosine": score = ((logit(score) * 100) + 1) / 2
+        
         document = Document(
             id=id,
             text=text,

@@ -15,9 +15,8 @@ import numpy as np
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
-from haystack.utils import get_batches_from_generator
-from scipy.special import expit
 from haystack.document_store.base import DuplicateDocumentError
+from haystack.utils import get_batches_from_generator, normalize_vector_l2, finalize_raw_score
 
 logger = logging.getLogger(__name__)
 
@@ -462,10 +461,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            if self.similarity == 'cosine':
-                doc.score = (raw_score + 1) / 2
-            else:
-                doc.score = float(expit(np.asarray(raw_score / 100)))
+            doc.score = finalize_raw_score(raw_score,self.similarity)
+
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
 
