@@ -256,6 +256,8 @@ def convert_files_to_dicts(
     documents = []
     for suffix, paths in suffix2paths.items():
         for path in paths:
+            if encoding is None and suffix == '.pdf':
+                encoding = "Latin1"
             logger.info('Converting {}'.format(path))
             document = suffix2converter[suffix].convert(
                     file_path=path, 
