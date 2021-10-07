@@ -475,9 +475,19 @@ class BaseComponent:
 
         output, stream = self.run(**run_inputs, **run_params)
 
+        # Collect debug information
+        current_debug = output.get("_debug", {})
+        if self.debug:
+            current_debug["input"] = {**run_inputs, **run_params}
+            if self.debug:
+                current_debug["input"]["debug"] = self.debug
+            if self.debug_logs:
+                current_debug["input"]["debug_logs"] = self.debug_logs
+            filtered_output = {key: value for key, value in output.items() if key != "_debug"} # Exclude _debug to avoid recursion
+            current_debug["output"] = filtered_output        
+
         # append _debug information from nodes
         all_debug = arguments.get("_debug", {})
-        current_debug = output.get("_debug")
         if current_debug:
             all_debug[self.name] = current_debug
         if all_debug:

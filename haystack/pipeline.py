@@ -264,7 +264,6 @@ class Pipeline(BasePipeline):
         debug_logs: Optional[bool] = None
     ):
         node_output = {}
-        debug_output: Dict[str, Dict[str, Any]] = {}
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
@@ -303,7 +302,7 @@ class Pipeline(BasePipeline):
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
-                    
+
                 queue.pop(node_id)
                 next_nodes = self.get_next_nodes(node_id, stream_id)
                 for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
@@ -327,22 +326,9 @@ class Pipeline(BasePipeline):
                         queue[n] = updated_input
                     else:
                         queue[n] = node_output
-    
-                # Collect all debug information
-                if node_input and node_input.get("params", {}).get(node_id, {}).get("debug", False):
-                    debug_output[node_id] = node_output.get("_debug", {}).get(node_id, {})
-                    debug_output[node_id]["input"] = node_input
-                    # Exclude the _debug key from the output to avoid infinite recursion
-                    node_output_without_debug = {key: value for key, value in node_output.items() if key != "_debug"}
-                    node_output_without_debug["_debug"] = "<removed to avoid recursion>"
-                    debug_output[node_id]["output"] = node_output_without_debug
-
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-
-        if debug_output:
-            node_output["_debug"] = debug_output
         return node_output
 
     def get_next_nodes(self, node_id: str, stream_id: str):
