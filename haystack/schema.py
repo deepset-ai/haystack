@@ -9,6 +9,7 @@ import inspect
 import logging
 import io
 from functools import wraps
+from haystack.utils import InMemoryLogger
 
 
 class Document:
@@ -252,21 +253,6 @@ class MultiLabel:
 
     def __str__(self):
         return str(self.to_dict())
-
-
-class InMemoryLogger(io.TextIOBase):
-    """
-    Implementation of a logger that keeps track
-    of the log lines in a list called `logs`,
-    from where they can be accessed freely.
-    """
-
-    def __init__(self, *args):
-        io.TextIOBase.__init__(self, *args)
-        self.logs = []
-    
-    def write(self, x):
-        self.logs.append(x)
 
 
 def record_debug_logs(func: Callable, node_name: str, logs: bool) -> Callable:
