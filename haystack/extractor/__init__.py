@@ -1,1 +1,1 @@
-from haystack.extractor.entity import EntityExtractor
+from haystack.extractor.entity import EntityExtractor, print_ner_and_qa
