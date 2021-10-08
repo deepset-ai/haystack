@@ -1,0 +1,1 @@
+from haystack.extractor.entity import EntityExtractor
