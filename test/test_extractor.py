@@ -22,11 +22,10 @@ def test_extractor(document_store_with_docs):
     prediction = pipeline.run(
         query="Who lives in Berlin?", 
         params={
-            "ESRetriever": {"top_k": 3}, 
-            "Reader": {"top_k": 3},
+            "ESRetriever": {"top_k": 1}, 
+            "Reader": {"top_k": 1},
         }
     )
-    assert prediction["answers"][0]["meta"]["entities"]
-    print(prediction)
-
-
+    entities = [entity["word"] for entity in prediction["answers"][0]["meta"]["entities"]]
+    assert "Carla" in entities
+    assert "Berlin" in entities
