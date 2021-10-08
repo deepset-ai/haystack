@@ -1,4 +1,3 @@
-# type: ignore
 from typing import List, Union, Dict, Optional, Tuple
 
 import json
@@ -16,7 +15,6 @@ class EntityExtractor(BaseComponent):
     or it can be placed in an indexing pipeline so that all documents in the document store have extracted entities.
     The entities extracted by this Node will populate Document.entities
     """
-
     outgoing_edges = 1
 
     def __init__(self,
