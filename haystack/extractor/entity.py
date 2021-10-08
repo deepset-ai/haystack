@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union, Dict
 
 from haystack import BaseComponent, Document
 from transformers import AutoTokenizer, AutoModelForTokenClassification, TokenClassificationPipeline
@@ -15,11 +15,14 @@ class EntityExtractor(BaseComponent):
         token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.model = pipeline("ner", model=token_classifier, tokenizer=tokenizer, aggregation_strategy="simple")
 
-    def run(self, documents: List[Document]):
+    def run(self, documents: Union[List[Document], List[Dict]]):
         for doc in documents:
-            doc.meta["entities"] = self.extract(doc.text)
-            for entity in doc.meta["entities"]:
-                del entity["index"]
+            # In a querying pipeline, doc is a haystack.schema.Document object
+            try:
+                doc.meta["entities"] = self.extract(doc.text)
+            # In an indexing pipeline, doc is a dictionary
+            except AttributeError:
+                doc["meta"]["entities"] = self.extract(doc["text"])
         output = {"documents": documents}
         return output, "output_1"
 
