@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Optional, Dict, List, Union, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from dataclasses_json import dataclass_json
 try:
     from typing import Literal
@@ -161,7 +161,6 @@ class Span:
     end: int
 
 
-@dataclass_json
 @dataclass
 class Answer:
     answer: str
@@ -189,12 +188,29 @@ class Answer:
     :param meta: TODO
     """
 
+    def __post_init__(self):
+        # In case offsets are passed as dicts rather than Span objects we convert them here
+        # For example, this is used when instantiating an object via from_json()
+        if self.offsets_in_document is not None:
+            self.offsets_in_document = [Span(**e) for e in self.offsets_in_document if isinstance(e, dict)]
+        if self.offsets_in_context is not None:
+            self.offsets_in_context = [Span(**e) for e in self.offsets_in_context if isinstance(e, dict)]
+
     def __lt__(self, other):
         """ Enable sorting of Answers by score """
         return self.score < other.score
 
+    def to_json(self):
+        # usage of dataclass_json seems to break autocomplete in the IDE, so we implement the methods ourselves here
+        j = json.dumps(asdict(self))
+        return j
 
-# TODO: Verify compliance with FAST API usage
+    @classmethod
+    def from_json(cls, data):
+        d = json.loads(data)
+        return cls(**d)
+
+
 @dataclass_json
 @dataclass
 class Label:
@@ -299,12 +315,12 @@ class Label:
         else:
             self.meta = meta
 
-    @classmethod
-    def from_dict(cls, dict):
-        return cls(**dict)
-
-    def to_dict(self):
-        return self.__dict__
+    # @classmethod
+    # def from_dict(cls, dict):
+    #     return cls(**dict)
+    #
+    # def to_dict(self):
+    #     return self.__dict__
 
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):

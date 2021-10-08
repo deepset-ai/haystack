@@ -20,6 +20,14 @@ def user_feedback(feedback: Label):
     DOCUMENT_STORE.write_labels([feedback])
 
 
+@router.get("/feedback")
+def user_feedback():
+    labels = DOCUMENT_STORE.get_all_labels()
+    print(len(labels))
+    print(labels)
+    return labels
+
+
 @router.post("/eval-feedback")
 def eval_extractive_qa_feedback(filters: FilterRequest = None):
     """
@@ -77,8 +85,12 @@ def export_extractive_qa_feedback(
     export_data = []
 
     for label in labels:
+        print("##############")
+        print(label)
+
         if full_document_context:
             context = label.document.content
+
             answer_start = label.answer.offsets_in_document[0].start
         else:
             text = label.document.content
