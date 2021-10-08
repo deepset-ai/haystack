@@ -26,7 +26,7 @@ def test_extractor(document_store_with_docs):
             "Reader": {"top_k": 3},
         }
     )
-    assert prediction["answers"]["meta"]["entities"]
+    assert prediction["answers"][0]["meta"]["entities"]
     print(prediction)
 
 
