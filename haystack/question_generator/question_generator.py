@@ -2,6 +2,8 @@ from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
 from haystack import BaseComponent, Document
 from haystack.preprocessor import PreProcessor
+from haystack.modeling.utils import initialize_device_settings
+
 from typing import List
 
 
@@ -26,6 +28,7 @@ class QuestionGenerator(BaseComponent):
                  early_stopping=True,
                  split_length=50,
                  split_overlap=10,
+                 use_gpu=True,
                  prompt="generate questions:"):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -34,6 +37,8 @@ class QuestionGenerator(BaseComponent):
         generation is not currently supported.
         """
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
+        self.model.to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version,
@@ -78,8 +83,8 @@ class QuestionGenerator(BaseComponent):
             if self.prompt not in split_text:
                 split_text = self.prompt + " " + split_text
             tokenized = self.tokenizer([split_text], return_tensors="pt")
-            input_ids = tokenized["input_ids"]
-            attention_mask = tokenized["attention_mask"]   # necessary if padding is enabled so the model won't attend pad tokens
+            input_ids = tokenized["input_ids"].to(self.device)
+            attention_mask = tokenized["attention_mask"].to(self.device)   # necessary if padding is enabled so the model won't attend pad tokens
             tokens_output = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
