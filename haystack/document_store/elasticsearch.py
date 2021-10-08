@@ -1026,7 +1026,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def autosuggest(self,
                     query: Optional[str],
                     filters: Optional[Dict[str, List[str]]] = None,
-                    top_k: int = 10):
+                    top_k: int = 5):
 
         # get batch of suggestions from meta["related_queries"] which could be populated via QuestionGenerator
         # or from user feedback

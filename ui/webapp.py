@@ -125,7 +125,7 @@ def main():
         for q in suggested_queries:
             col1, col2 = st.columns(2)
             col1.write(f"{q}")
-            # col2.button(label="->", key=q, on_click=set_query, args=(q,))
+            #TODO we could add a button here to populate the search field from the suggestions
 
     raw_json_feedback = ""
 
@@ -142,7 +142,11 @@ def main():
             "Check out the docs: https://haystack.deepset.ai/usage/optimization "
         ):
             try:
-                results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+                if question:
+                    results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+                else:
+                    results = []
+                    raw_json = {}
             except Exception as e:
                 logging.exception(e)
                 st.error("🐞 &nbsp;&nbsp; An error occurred during the request. Check the logs in the console to know more.")

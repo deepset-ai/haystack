@@ -40,10 +40,14 @@ def initialized():
 
 @router.post("/autosuggest")
 def autosuggest(request: QueryRequest):
-    params = _parse_params(request)
-    if request.query == "":
-        request.query = None
-    queries = DOCUMENT_STORE.autosuggest(query=request.query, filters=params["filters"])
+    """ Experimental autosuggest endpoint - just works with ElasticsearchDocumentStore at the moment"""
+    try:
+        params = _parse_params(request)
+        if request.query == "":
+            request.query = None
+        queries = DOCUMENT_STORE.autosuggest(query=request.query, filters=params["filters"])
+    except:
+        queries = []
     return queries
 
 
