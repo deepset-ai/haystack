@@ -25,14 +25,7 @@ class EntityExtractor(BaseComponent):
         token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.model = pipeline("ner", model=token_classifier, tokenizer=tokenizer)#, aggregation_strategy="simple")
 
-    def run(self, 
-        query: Optional[str] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[MultiLabel] = None,
-        documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
-        params: Optional[dict] = None
-        ) -> Tuple[Dict, str]:
+    def run(self, documents: Optional[List[Document]] = None) -> Tuple[Dict, str]:  # type: ignore
         """
         This is the method called when this node is used in a pipeline
         """
