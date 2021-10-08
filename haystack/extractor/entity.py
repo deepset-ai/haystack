@@ -35,7 +35,7 @@ class EntityExtractor(BaseComponent):
                     doc.meta["entities"] = self.extract(doc.text)  # type: ignore
                 # In an indexing pipeline, doc is a dictionary
                 except AttributeError:
-                    doc["meta"]["entities"] = self.extract(doc["text"])
+                    doc["meta"]["entities"] = self.extract(doc["text"])  # type: ignore
         output = {"documents": documents}
         return output, "output_1"
 
