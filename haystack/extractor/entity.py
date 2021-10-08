@@ -1,3 +1,4 @@
+# type: ignore
 from typing import List, Union, Dict, Optional, Tuple
 
 import json
@@ -33,7 +34,7 @@ class EntityExtractor(BaseComponent):
             for doc in documents:
                 # In a querying pipeline, doc is a haystack.schema.Document object
                 try:
-                    doc.meta["entities"] = self.extract(doc.text)  # type: ignore[code, attr-defined]
+                    doc.meta["entities"] = self.extract(doc.text)  # type: ignore
                 # In an indexing pipeline, doc is a dictionary
                 except AttributeError:
                     doc["meta"]["entities"] = self.extract(doc["text"])
