@@ -56,15 +56,26 @@ class QuestionGenerator(BaseComponent):
         self.preprocessor = PreProcessor()
         self.prompt = prompt
 
-    def run(self, documents: List[Document]):  # type: ignore
-        generated_questions = []
-        for d in documents:
-            questions = self.generate(d.text)
-            curr_dict = {"document_id": d.id,
-                         "document_sample": d.text[:200],
-                         "questions": questions}
-            generated_questions.append(curr_dict)
-        output = {"generated_questions": generated_questions, "documents": documents}
+    def run(self, documents: List[Document], root_node: str = "Query"):  # type: ignore
+        # for query pipelines we currently return the generated questions as a separate output
+        if root_node == "Query":
+            generated_questions = []
+            for d in documents:
+                questions = self.generate(d.text)
+                curr_dict = {"document_id": d.id,
+                             "document_sample": d.text[:200],
+                             "questions": [q.strip() for q in questions]}
+
+                generated_questions.append(curr_dict)
+            output = {"generated_questions": generated_questions, "documents": documents}
+
+        # For indexing pipelines we just write the questions directly to the meta data of the docs
+        elif root_node == "File":
+            for d in documents:
+                questions = self.generate(d.text)
+                d.meta["related_queries"] = [q.strip() for q in questions]
+            output = {"documents": documents}
+
         return output, "output_1"
 
     def generate(self, text):

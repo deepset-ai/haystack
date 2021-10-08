@@ -38,6 +38,14 @@ def initialized():
     """
     return True
 
+@router.post("/autosuggest")
+def autosuggest(request: QueryRequest):
+    params = _parse_params(request)
+    if request.query == "":
+        request.query = None
+    queries = DOCUMENT_STORE.autosuggest(query=request.query, filters=params["filters"])
+    return queries
+
 
 @router.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest):
@@ -45,10 +53,7 @@ def query(request: QueryRequest):
         result = _process_request(PIPELINE, request)
         return result
 
-
-def _process_request(pipeline, request) -> QueryResponse:
-    start_time = time.time()
-
+def _parse_params(request):
     params = request.params or {}
     params["filters"] = params.get("filters") or {}
     filters = {}
@@ -60,6 +65,12 @@ def _process_request(pipeline, request) -> QueryResponse:
                 values = [values]
             filters[key] = values
     params["filters"] = filters
+    return params
+
+def _process_request(pipeline, request) -> QueryResponse:
+    start_time = time.time()
+
+    params = _parse_params(request)
     result = pipeline.run(query=request.query, params=params)
     end_time = time.time()
     logger.info({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"})

@@ -106,6 +106,8 @@ def main():
         else:
             state_question.next_question = False
 
+
+
     # Search bar
     question = st.text_input("Please provide your query:", value=random_question)
     if state_question and state_question.run_query:
@@ -114,6 +116,16 @@ def main():
     else:
         run_query = st.button("Run")
         state_question.run_query = run_query
+
+    # Suggested questions
+    from utils import get_suggestions
+    suggested_queries = get_suggestions(question)
+    my_expander = st.expander(label='Show suggested queries')
+    with my_expander:
+        for q in suggested_queries:
+            col1, col2 = st.columns(2)
+            col1.write(f"{q}")
+            # col2.button(label="->", key=q, on_click=set_query, args=(q,))
 
     raw_json_feedback = ""
 

@@ -245,6 +245,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "properties": {
                         self.name_field: {"type": "keyword"},
                         self.text_field: {"type": "text"},
+                        "related_queries": {"type": "text"}
                     },
                     "dynamic_templates": [
                         {
@@ -1022,6 +1023,32 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
+    def autosuggest(self,
+                    query: Optional[str],
+                    filters: Optional[Dict[str, List[str]]] = None,
+                    top_k: int = 10):
+
+        # get batch of suggestions from meta["related_queries"] which could be populated via QuestionGenerator
+        # or from user feedback
+        ES_CUSTOM_QUERY = """
+         {
+                    "size": 6,
+                    "query": {
+                        "bool": {
+                            "should": [
+                                {"multi_match": {"query": ${query}, "type": "most_fields", "fields": "related_queries"}}
+                                ]
+                        }
+                    }
+                }
+
+        """
+        documents = self.query(query=query, custom_query=ES_CUSTOM_QUERY, filters=filters, top_k=top_k)
+        queries = []
+        for d in documents:
+            queries.extend(d.meta.get("related_queries", []))
+        queries = queries[:top_k]
+        return queries
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     """

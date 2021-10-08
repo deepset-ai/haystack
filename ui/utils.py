@@ -3,12 +3,20 @@ import os
 import logging
 import requests
 import streamlit as st
+import time
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
 STATUS = "initialized"
 DOC_REQUEST = "query"
 DOC_FEEDBACK = "feedback"
 DOC_UPLOAD = "file-upload"
+
+
+def get_suggestions(query):
+    url = f"{API_ENDPOINT}/autosuggest"
+    req = {"query": query.replace('"', "'")}
+    response_raw = requests.post(url, json=req).json()
+    return response_raw
 
 
 def haystack_is_ready():
