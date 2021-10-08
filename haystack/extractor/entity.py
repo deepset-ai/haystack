@@ -47,14 +47,18 @@ class EntityExtractor(BaseComponent):
         return entities
 
 
-def print_ner_and_qa(output): 
+def simplify_ner_for_qa(output): 
     """
+    Returns a simplified version of the output dictionary
+    with the following structure:
     [
         { 
             answer: { ... }
             entities: [ { ... }, {} ]
         }
     ]
+    The entities included are only the ones that overlap with
+    the answer itself.
     """
     compact_output = []
     for answer in output["answers"]:
@@ -68,5 +72,4 @@ def print_ner_and_qa(output):
             "answer": answer["answer"],
             "entities": entities
         })
-        
-    print(json.dumps(compact_output, indent=4, default=str))
+    return compact_output
