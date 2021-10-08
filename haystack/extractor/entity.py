@@ -13,7 +13,7 @@ class EntityExtractor(BaseComponent):
         
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
-        self.model = pipeline("ner", model=token_classifier, tokenizer=tokenizer)
+        self.model = pipeline("ner", model=token_classifier, tokenizer=tokenizer, aggregation_strategy="simple")
 
     def run(self, documents: List[Document]):
         for doc in documents:
@@ -25,12 +25,7 @@ class EntityExtractor(BaseComponent):
 
     def extract(self, text):
         entities = self.model(text)
-        combined_entities = self.combine_ner_words(entities)
-        return combined_entities
-
-    def combine_ner_words(self, entities):
         return entities
-
 
 def print_ner_and_qa(self, output): 
     """
