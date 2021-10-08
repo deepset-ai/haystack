@@ -25,17 +25,18 @@ class EntityExtractor(BaseComponent):
         token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         self.model = pipeline("ner", model=token_classifier, tokenizer=tokenizer)#, aggregation_strategy="simple")
 
-    def run(self, documents: Optional[List[Document]] = None) -> Tuple[Dict, str]:  # type: ignore
+    def run(self, documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]:  # type: ignore
         """
         This is the method called when this node is used in a pipeline
         """
-        for doc in documents:
-            # In a querying pipeline, doc is a haystack.schema.Document object
-            try:
-                doc.meta["entities"] = self.extract(doc.text)
-            # In an indexing pipeline, doc is a dictionary
-            except AttributeError:
-                doc["meta"]["entities"] = self.extract(doc["text"])
+        if documents:
+            for doc in documents:
+                # In a querying pipeline, doc is a haystack.schema.Document object
+                try:
+                    doc.meta["entities"] = self.extract(doc.text)
+                # In an indexing pipeline, doc is a dictionary
+                except AttributeError:
+                    doc["meta"]["entities"] = self.extract(doc["text"])
         output = {"documents": documents}
         return output, "output_1"
 
