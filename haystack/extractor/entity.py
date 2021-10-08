@@ -61,7 +61,7 @@ def print_ner_and_qa(output):
 
         entities = []
         for entity in answer["meta"]["entities"]:
-            if entity["start"] >= answer["offset_start_in_doc"] and entity["end"] <= answer["offset_end_in_doc"]]:
+            if entity["start"] >= answer["offset_start_in_doc"] and entity["end"] <= answer["offset_end_in_doc"]:
                 entities.append(entity["word"])  
 
         compact_output.append({
