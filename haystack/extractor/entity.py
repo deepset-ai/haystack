@@ -33,7 +33,7 @@ class EntityExtractor(BaseComponent):
             for doc in documents:
                 # In a querying pipeline, doc is a haystack.schema.Document object
                 try:
-                    doc.meta["entities"] = self.extract(doc.text)
+                    doc.meta["entities"] = self.extract(doc.text)  # type: ignore[attr-defined]
                 # In an indexing pipeline, doc is a dictionary
                 except AttributeError:
                     doc["meta"]["entities"] = self.extract(doc["text"])
