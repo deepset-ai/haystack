@@ -56,12 +56,12 @@ class QuestionGenerator(BaseComponent):
         self.preprocessor = PreProcessor()
         self.prompt = prompt
 
-    def run(self, documents: List[Document], root_node: str = "Query"):  # type: ignore
+    def run(self, documents: List[Document], root_node: str = "Query", top_k=5):  # type: ignore
         # for query pipelines we currently return the generated questions as a separate output
         if root_node == "Query":
             generated_questions = []
             for d in documents:
-                questions = self.generate(d.text)
+                questions = self.generate(d.text)[:top_k]
                 curr_dict = {"document_id": d.id,
                              "document_sample": d.text[:200],
                              "questions": [q.strip() for q in questions]}
