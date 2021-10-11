@@ -279,7 +279,7 @@ Extract text from a .pdf file using the pdftotext library (https://www.xpdfreade
                  others if your doc contains special characters (e.g. German Umlauts, Cyrillic characters ...).
                  Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
                  "xef\xac\x81c" (see test cases). That's why we keep "Latin 1" as default here.
-                 (See list of available encodings by running `pdftotext -listencodings` in the terminal)
+                 (See list of available encodings by running `pdftotext -listenc` in the terminal)
 
 <a name="pdf.PDFToTextOCRConverter"></a>
 ## PDFToTextOCRConverter Objects
