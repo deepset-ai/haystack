@@ -212,8 +212,12 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
     return docs, labels, problematic_ids
 
 
-def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> \
-        List[dict]:
+def convert_files_to_dicts(
+        dir_path: str, 
+        clean_func: Optional[Callable] = None, 
+        split_paragraphs: bool = False,
+        encoding: Optional[str] = None
+) -> List[dict]:
     """
     Convert all files(.txt, .pdf, .docx) in the sub-directories of the given path to Python dicts that can be written to a
     Document Store.
@@ -221,6 +225,7 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
     :param dir_path: path for the documents to be written to the DocumentStore
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
+    :param encoding: character encoding to use when converting pdf documents.
 
     :return: None
     """
@@ -252,8 +257,14 @@ def convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None,
     documents = []
     for suffix, paths in suffix2paths.items():
         for path in paths:
+            if encoding is None and suffix == '.pdf':
+                encoding = "Latin1"
             logger.info('Converting {}'.format(path))
-            document = suffix2converter[suffix].convert(file_path=path, meta=None)
+            document = suffix2converter[suffix].convert(
+                    file_path=path, 
+                    meta=None,
+                    encoding=encoding,
+            )
             text = document["text"]
 
             if clean_func:
