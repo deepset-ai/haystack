@@ -68,7 +68,7 @@ class Document:
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
         :param score: The relevance score of the Document determined by a model (e.g. Retriever or Re-Ranker).
                       In the range of [0,1], where 1 means extremely relevant.
-        :param meta: Meta fields for a document like name, url, or author.
+        :param meta: Meta fields for a document like name, url, or author in the form of a custom dict (any keys and values allowed).
         :param embedding: Vector encoding of the text
         :param id_hash_keys: Generate the document id from a custom list of strings.
                              If you want ensure you don't have duplicate documents in your DocumentStore but texts are
@@ -161,6 +161,14 @@ class Document:
 class Span:
     start: int
     end: int
+    """
+    Defining a sequence of characters (Text span) or cells (Table span) via start and end index. 
+    For extractive QA: Character where answer starts/ends  
+    For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
+    
+    :param start: Position where the span starts
+    :param end:  Position where the spand ends
+    """
 
 @dataclass_json
 @dataclass
@@ -176,18 +184,28 @@ class Answer:
 
     """
     The fundamental object in Haystack to represent any type of Answers (e.g. extractive QA, generative QA or TableQA).
-    For example, it's used within some Nodes like the Reader but also in the REST API.
+    For example, it's used within some Nodes like the Reader, but also in the REST API.
 
     :param answer: The answer string. If there's no possible answer (aka "no_answer" or "is_impossible) this will be an empty string.
-    :param type: Whether this answer comes from an extractive model (i.e. we can locate an exact answer string in one
-                 of the documents) or from a generative model (i.e. no pointer to a specific document, no offsets ...) 
+    :param type: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model 
+                 (i.e. we can locate an exact answer string in one of the documents) or from a generative model 
+                 (i.e. no pointer to a specific document, no offsets ...). 
     :param score: The relevance score of the Answer determined by a model (e.g. Reader or Generator).
                   In the range of [0,1], where 1 means extremely relevant.
     :param context: The related content that was used to create the answer (i.e. a text passage, part of a table, image ...)
-    :param offsets_in_document: TODO
-    :param offsets_in_context: TODO
-    :param document_id: TODO
-    :param meta: TODO
+    :param offsets_in_document: List of `Span` objects with start and end positions of the answer **in the
+                                document** (as stored in the document store).
+                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+                                For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
+                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here) 
+    :param offsets_in_context: List of `Span` objects with start and end positions of the answer **in the
+                                context** (i.e. the surrounding text/table of a certain window size).
+                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+                                For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
+                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here) 
+    :param document_id: ID of the document that the answer was located it (if any)
+    :param meta: Dict that can be used to associate any kind of custom meta data with the answer. 
+                 In extractive QA, this will carry the meta data of the document where the answer was found.
     """
 
     def __post_init__(self):
@@ -202,6 +220,7 @@ class Answer:
         """ Enable sorting of Answers by score """
         return self.score < other.score
 
+    #TODO: switch to manual serialization instead of dataclass_json as it seems to break autocomplete of IDE in some cases
     # def to_json(self):
     #     # usage of dataclass_json seems to break autocomplete in the IDE, so we implement the methods ourselves here
     #     j = json.dumps(asdict(self))
@@ -246,13 +265,12 @@ class Label:
                  meta: Optional[dict] = None
                  ):
         """
-        #TODO update docstring
-
         Object used to represent label/feedback in a standardized way within Haystack.
         This includes labels from dataset like SQuAD, annotations from labeling tools,
         or, user-feedback from the Haystack REST API.
 
         :param query: the question (or query) for finding answers.
+        :param document:
         :param answer: the answer object.
         :param is_correct_answer: whether the sample is positive or negative.
         :param is_correct_document: in case of negative sample(is_correct_answer is False), there could be two cases;
@@ -260,14 +278,13 @@ class Label:
                                     the returned document was correct.
         :param origin: the source for the labels. It can be used to later for filtering.
         :param id: Unique ID used within the DocumentStore. If not supplied, a uuid will be generated automatically.
-        :param document_id: the document_store's ID for the returned answer document.
-        :param offset_start_in_doc: the answer start offset in the document.
         :param no_answer: whether the question in unanswerable.
-        :param model_id: model_id used for prediction (in-case of user feedback).
+        :param pipeline_id: pipeline identifier (any str) that was involved for generating this label (in-case of user feedback).
         :param created_at: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
         :param created_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
+        :param meta: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
         """
 
         # Create a unique ID (either new one, or one from user input)
@@ -369,8 +386,9 @@ class MultiLabel:
         automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
         underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
 
-        :param labels: A list lof labels that belong to a similar query
-        :param drop_negative_labels: list of possible answer strings
+        :param labels: A list lof labels that belong to a similar query and shall be "grouped" together
+        :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
+        :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
 
         # drop duplicate labels and remove negative labels if needed.
@@ -391,19 +409,6 @@ class MultiLabel:
         # users decided which aggregation logic they want
         self.no_answer = False not in [l.no_answer for l in self.labels]
         self.document_ids = [l.document.id for l in self.labels]
-
-        # TODO which attributes do we still really need here?
-        # self.is_correct_answer = is_correct_answer
-        # self.is_correct_document = is_correct_document
-        # self.origin = origin
-        # self.multiple_document_ids = multiple_document_ids
-        # self.multiple_offset_start_in_docs = multiple_offset_start_in_docs
-        # self.model_id = model_id
-
-        # if not meta:
-        #     self.meta = dict()
-        # else:
-        #     self.meta = meta
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         unique_values = set([getattr(l, key) for l in self.labels])
