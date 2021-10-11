@@ -10,8 +10,7 @@ from rest_api.application import app
 @pytest.fixture
 def client() -> TestClient:
     os.environ["PIPELINE_YAML_PATH"] = str((Path(__file__).parent / "samples"/"pipeline"/"test_pipeline.yaml").absolute())
-    os.environ["QUERY_PIPELINE_NAME"] = "query_pipeline"
-    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_pipeline"
+    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
     client = TestClient(app)
     yield client
     # Clean up
@@ -32,14 +31,18 @@ def populated_client(client: TestClient) -> TestClient:
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
 
 
-def test_get_documents(client: TestClient):
+def test_get_documents():
+    os.environ["PIPELINE_YAML_PATH"] = str((Path(__file__).parent / "samples"/"pipeline"/"test_pipeline.yaml").absolute())
+    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
+    client = TestClient(app)
+
     # Clean up to make sure the docstore is empty
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
 
     # Upload the files
     files_to_upload = [
-        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')},
-        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_2.pdf").open('rb')}
+        {'files': (Path(__file__).parent / "samples"/"docs"/"doc_1.txt").open('rb')},
+        {'files': (Path(__file__).parent / "samples"/"docs"/"doc_2.txt").open('rb')}
     ]
     for index, fi in enumerate(files_to_upload):
         response = client.post(url="/file-upload", files=fi, data={"meta": f'{{"meta_key": "meta_value_get"}}'})
@@ -53,20 +56,24 @@ def test_get_documents(client: TestClient):
     # Make sure the right docs are found
     assert len(response_json) == 2
     names = [doc["meta"]["name"] for doc in response_json]
-    assert "sample_pdf_1.pdf" in names
-    assert "sample_pdf_2.pdf" in names
+    assert "doc_1.txt" in names
+    assert "doc_2.txt" in names
     meta_keys = [doc["meta"]["meta_key"] for doc in response_json]
     assert all("meta_value_get"==meta_key for meta_key in meta_keys)
 
 
-def test_delete_documents(client: TestClient):
+def test_delete_documents():
+    os.environ["PIPELINE_YAML_PATH"] = str((Path(__file__).parent / "samples"/"pipeline"/"test_pipeline.yaml").absolute())
+    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
+    client = TestClient(app)
+
     # Clean up to make sure the docstore is empty
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
 
     # Upload the files
     files_to_upload = [
-        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')},
-        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_2.pdf").open('rb')}
+        {'files': (Path(__file__).parent / "samples"/"docs"/"doc_1.txt").open('rb')},
+        {'files': (Path(__file__).parent / "samples"/"docs"/"doc_2.txt").open('rb')}
     ]
     for index, fi in enumerate(files_to_upload):
         response = client.post(url="/file-upload", files=fi, data={"meta": f'{{"meta_key": "meta_value_del", "meta_index": "{index}"}}'})
