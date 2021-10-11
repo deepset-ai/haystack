@@ -40,6 +40,8 @@ def tutorial8_preprocessing():
     Haystack's converter classes are designed to help you turn files on your computer into the documents
     that can be processed by the Haystack pipeline.
     There are file converters for txt, pdf, docx files as well as a converter that is powered by Apache Tika.
+    The parameter `valid_langugages` does not convert files to the target language, but checks if the conversion worked as expected.
+    For converting PDFs, try changing the encoding to UTF-8 if the conversion isn't great.
     """
 
     # Here are some examples of how you would use file converters
@@ -105,11 +107,11 @@ def tutorial8_preprocessing():
     docs_nrsb = preprocessor_nrsb.process(doc_txt)
 
     print("RESPECTING SENTENCE BOUNDARY")
-    end_text = docs_default[0]["text"][-50:]
+    end_text = docs_default[0]["content"][-50:]
     print("End of document: \"..." + end_text + "\"")
     print()
     print("NOT RESPECTING SENTENCE BOUNDARY")
-    end_text_nrsb = docs_nrsb[0]["text"][-50:]
+    end_text_nrsb = docs_nrsb[0]["content"][-50:]
     print("End of document: \"..." + end_text_nrsb + "\"")
 
     """
@@ -133,9 +135,9 @@ def tutorial8_preprocessing():
     )
     docs_sliding_window = preprocessor_sliding_window.process(doc_txt)
 
-    doc1 = docs_sliding_window[0]["text"][:200]
-    doc2 = docs_sliding_window[1]["text"][:100]
-    doc3 = docs_sliding_window[2]["text"][:100]
+    doc1 = docs_sliding_window[0]["content"][:200]
+    doc2 = docs_sliding_window[1]["content"][:100]
+    doc3 = docs_sliding_window[2]["content"][:100]
 
     print("Document 1: \"" + doc1 + "...\"")
     print("Document 2: \"" + doc2 + "...\"")

@@ -75,7 +75,7 @@ i.e. the model can easily adjust to domain documents even after training has fin
 |            'meta': { 'doc_ids': [...],
 |                      'doc_scores': [80.42758 ...],
 |                      'doc_probabilities': [40.71379089355469, ...
-|                      'texts': ['Albert Einstein was a ...]
+|                      'content': ['Albert Einstein was a ...]
 |                      'titles': ['"Albert Einstein"', ...]
 |      }}]}
 ```
@@ -96,7 +96,7 @@ See https://huggingface.co/transformers/model_doc/rag.html for more details
                            'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                            See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `retriever`: `DensePassageRetriever` used to embedded passage
+- `retriever`: `DensePassageRetriever` used to embedded passages for the docs passed to `predict()`. This is optional and is only needed if the docs you pass don't already contain embeddings in `Document.embedding`.
 - `generator_type`: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
 - `top_k`: Number of independently generated text to return
 - `max_length`: Maximum length of generated text
@@ -134,7 +134,7 @@ Generated answers plus additional infos in a dict like this:
 |            'meta': { 'doc_ids': [...],
 |                      'doc_scores': [80.42758 ...],
 |                      'doc_probabilities': [40.71379089355469, ...
-|                      'texts': ['Albert Einstein was a ...]
+|                      'content': ['Albert Einstein was a ...]
 |                      'titles': ['"Albert Einstein"', ...]
 |      }}]}
 ```

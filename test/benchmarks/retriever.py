@@ -15,7 +15,6 @@ import random
 import traceback
 import os
 import requests
-from farm.file_utils import http_get
 import json
 from results_to_json import retriever as retriever_json
 from templates import RETRIEVER_TEMPLATE, RETRIEVER_MAP_TEMPLATE, RETRIEVER_SPEED_TEMPLATE
@@ -35,6 +34,8 @@ overview_json = "../../docs/_src/benchmarks/retriever_performance.json"
 map_json = "../../docs/_src/benchmarks/retriever_map.json"
 speed_json = "../../docs/_src/benchmarks/retriever_speed.json"
 
+DEVICES = None
+
 
 seed = 42
 random.seed(42)
@@ -47,7 +48,7 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
             logger.info(f"##### Start indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
             try:
                 doc_store = get_document_store(doc_store_name)
-                retriever = get_retriever(retriever_name, doc_store)
+                retriever = get_retriever(retriever_name, doc_store, DEVICES)
                 docs, _ = prepare_data(data_dir=data_dir,
                                        filename_gold=filename_gold,
                                        filename_negative=filename_negative,
@@ -143,7 +144,7 @@ def benchmark_querying(n_docs_options,
                 else:
                     similarity = "dot_product"
                 doc_store = get_document_store(doc_store_name, similarity=similarity)
-                retriever = get_retriever(retriever_name, doc_store)
+                retriever = get_retriever(retriever_name, doc_store, DEVICES)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
                 docs, labels = prepare_data(data_dir=data_dir,
@@ -285,9 +286,9 @@ def prepare_data(data_dir, filename_gold, filename_negative, remote_url, embeddi
     labels = [x for x in labels if x.document_id in doc_ids]
 
     # Filter labels down to n_queries
-    selected_queries = list(set(f"{x.document_id} | {x.question}" for x in labels))
+    selected_queries = list(set(f"{x.document_id} | {x.query}" for x in labels))
     selected_queries = selected_queries[:n_queries]
-    labels = [x for x in labels if f"{x.document_id} | {x.question}" in selected_queries]
+    labels = [x for x in labels if f"{x.document_id} | {x.query}" in selected_queries]
 
     n_neg_docs = max(0, n_docs - len(gold_docs))
     neg_docs = prepare_negative_passages(data_dir, filename_negative, n_neg_docs)

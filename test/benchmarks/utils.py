@@ -9,7 +9,7 @@ from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.utils import launch_milvus, launch_es, launch_opensearch
-from farm.file_utils import http_get
+from haystack.modeling.data_handler.processor import http_get
 
 import logging
 import subprocess
@@ -94,7 +94,7 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
         raise Exception(f"No document store fixture for '{document_store_type}'")
     return document_store
 
-def get_retriever(retriever_name, doc_store):
+def get_retriever(retriever_name, doc_store, devices):
     if retriever_name == "elastic":
         return ElasticsearchRetriever(doc_store)
     if retriever_name == "tfidf":
@@ -104,7 +104,8 @@ def get_retriever(retriever_name, doc_store):
                                       query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
                                       passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
                                       use_gpu=True,
-                                      use_fast_tokenizers=False)
+                                      use_fast_tokenizers=False,
+                                      devices=devices)
     if retriever_name == "sentence_transformers":
         return EmbeddingRetriever(document_store=doc_store,
                                   embedding_model="nq-distilbert-base-v1",

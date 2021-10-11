@@ -39,7 +39,7 @@ Wrapper method used to time functions.
 #### eval
 
 ```python
- | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+ | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
 ```
 
 Performs evaluation on the Retriever.
@@ -105,7 +105,7 @@ class ElasticsearchRetriever(BaseRetriever)
                         |                "should": [{"multi_match": {
                         |                    "query": ${query},                 // mandatory query placeholder
                         |                    "type": "most_fields",
-                        |                    "fields": ["text", "title"]}}],
+                        |                    "fields": ["content", "title"]}}],
                         |                "filter": [                                 // optional custom filters
                         |                    {"terms": {"year": ${years}}},
                         |                    {"terms": {"quarter": ${quarters}}},
@@ -238,7 +238,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", progress_bar: bool = True)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -270,8 +270,8 @@ The checkpoint format matches huggingface transformers' model format
 - `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
 - `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
 - `top_k`: How many documents to return per query.
-- `use_gpu`: Whether to use gpu or not
-- `batch_size`: Number of questions or passages to encode at once
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+- `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
 - `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
                     This is the approach used in the original paper and is likely to improve performance if your
                     titles contain meaningful information for retrieval (topic, entities etc.) .
@@ -283,8 +283,12 @@ The checkpoint format matches huggingface transformers' model format
                                 If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
 - `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
                             Options: `dot_product` (Default) or `cosine`
+- `global_loss_buffer_size`: Buffer size for all_gather() in DDP.
+                                Increase if errors like "encoded data exceeds max_size ..." come up
 - `progress_bar`: Whether to show a tqdm progress bar or not.
                      Can be helpful to disable in production deployments to keep the logs clean.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 
 <a name="dense.DensePassageRetriever.retrieve"></a>
 #### retrieve
@@ -341,7 +345,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_sample: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "TransformersAdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
+ | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "TransformersAdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
 ```
 
 train a DensePassageRetrieval model
@@ -352,7 +356,7 @@ train a DensePassageRetrieval model
 - `train_filename`: training filename
 - `dev_filename`: development set filename, file to be used by model in eval step of training
 - `test_filename`: test set filename, file to be used by model in test step after training
-- `max_sample`: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
+- `max_samples`: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
 - `max_processes`: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                       It can be set to 1 to disable the use of multiprocessing or make debugging easier.
 - `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None
@@ -426,7 +430,7 @@ class EmbeddingRetriever(BaseRetriever)
 **Arguments**:
 
 - `document_store`: An instance of DocumentStore from which to retrieve documents.
-- `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+- `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `use_gpu`: Whether to use gpu or not
 - `model_format`: Name of framework that was used for saving the model. Options:

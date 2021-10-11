@@ -8,7 +8,7 @@ from haystack.preprocessor import PreProcessor
 from haystack.utils import launch_es
 from haystack import Pipeline
 
-from farm.utils import initialize_device_settings
+from haystack.modeling.utils import initialize_device_settings
 
 import logging
 
@@ -63,8 +63,8 @@ def tutorial5_evaluation():
         clean_empty_lines=False,
         clean_whitespace=False
     )
-    document_store.delete_all_documents(index=doc_index)
-    document_store.delete_all_documents(index=label_index)
+    document_store.delete_documents(index=doc_index)
+    document_store.delete_documents(index=label_index)
     document_store.add_eval_data(
         filename="../data/nq/nq_dev_subset_v2.json",
         doc_index=doc_index,
@@ -73,7 +73,7 @@ def tutorial5_evaluation():
     )
 
     # Let's prepare the labels that we need for the retriever and the reader
-    labels = document_store.get_all_labels_aggregated(index=label_index)
+    labels = document_store.get_all_labels_aggregated(index=label_index, drop_negative_labels=True, drop_no_answers=False)
 
     # Initialize Retriever
     retriever = ElasticsearchRetriever(document_store=document_store)
@@ -138,11 +138,9 @@ def tutorial5_evaluation():
 
         for l in labels:
             res = p.run(
-                query=l.question,
-                top_k_retriever=10,
+                query=l.query,
                 labels=l,
-                top_k_reader=10,
-                index=doc_index,
+                params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
             )
             results.append(res)
 

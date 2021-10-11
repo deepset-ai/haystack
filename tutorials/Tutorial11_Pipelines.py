@@ -51,8 +51,7 @@ def tutorial11_pipelines():
     p_extractive_premade = ExtractiveQAPipeline(reader=reader, retriever=es_retriever)
     res = p_extractive_premade.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10,
-        top_k_reader=5
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
     )
     print_answers(res, details="minimal")
 
@@ -62,7 +61,8 @@ def tutorial11_pipelines():
     p_retrieval = DocumentSearchPipeline(es_retriever)
     res = p_retrieval.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10
+        params={"Retriever": {"top_k": 10}},
+
     )
     print_documents(res, max_text_len=200)
 
@@ -80,7 +80,8 @@ def tutorial11_pipelines():
     p_generator = GenerativeQAPipeline(generator=rag_generator, retriever=dpr_retriever)
     res = p_generator.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10
+        params={"Retriever": {"top_k": 10}},
+
     )
     print_answers(res, details="minimal")
 
@@ -111,8 +112,7 @@ def tutorial11_pipelines():
     # Now we can run it
     res = p_extractive.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10,
-        top_k_reader=5
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
     )
     print_answers(res, details="minimal")
     p_extractive.draw("pipeline_extractive.png")
@@ -131,7 +131,8 @@ def tutorial11_pipelines():
     # Run pipeline
     res = p_ensemble.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=5   #This is top_k per retriever
+        params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}},
+
     )
     print_answers(res, details="minimal")
 
@@ -146,11 +147,11 @@ def tutorial11_pipelines():
     class QueryClassifier():
         outgoing_edges = 2
 
-        def run(self, **kwargs):
-            if "?" in kwargs["query"]:
-                return (kwargs, "output_2")
+        def run(self, query):
+            if "?" in query:
+                return {}, "output_2"
             else:
-                return (kwargs, "output_1")
+                return {}, "output_1"
 
     # Here we build the pipeline
     p_classifier = Pipeline()
@@ -163,7 +164,6 @@ def tutorial11_pipelines():
     # Run only the dense retriever on the full sentence query
     res_1 = p_classifier.run(
         query="Who is the father of Arya Stark?",
-        top_k_retriever=10
     )
     print("DPR Results" + "\n" + "="*15)
     print_answers(res_1)
@@ -171,7 +171,6 @@ def tutorial11_pipelines():
     # Run only the sparse retriever on a keyword based query
     res_2 = p_classifier.run(
         query="Arya Stark father",
-        top_k_retriever=10
     )
     print("ES Results" + "\n" + "="*15)
     print_answers(res_2)

@@ -7,7 +7,7 @@
 # In this tutorial we will work on a slightly different domain: "Game of Thrones".
 #
 # Let's see how we can use a bunch of Wikipedia articles to answer a variety of questions about the
-# marvellous seven kingdoms...
+# marvellous seven kingdoms.
 
 import logging
 import subprocess
@@ -40,7 +40,7 @@ def tutorial1_basic_qa_pipeline():
     #
     # Start an Elasticsearch server
     # You can start Elasticsearch on your local machine instance using Docker. If Docker is not readily available in
-    # your environment (eg., in Colab notebooks), then you can manually download and execute Elasticsearch from source.
+    # your environment (e.g. in Colab notebooks), then you can manually download and execute Elasticsearch from source.
 
     launch_es()
 
@@ -133,10 +133,12 @@ def tutorial1_basic_qa_pipeline():
     pipe = ExtractiveQAPipeline(reader, retriever)
     
     ## Voilà! Ask a question!
-    prediction = pipe.run(query="Who is the father of Arya Stark?", top_k_retriever=10, top_k_reader=5)
+    prediction = pipe.run(
+        query="Who is the father of Arya Stark?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+    )
 
-    # prediction = pipe.run(query="Who created the Dothraki vocabulary?", top_k_reader=5)
-    # prediction = pipe.run(query="Who is the sister of Sansa?", top_k_reader=5)
+    # prediction = pipe.run(query="Who created the Dothraki vocabulary?", params={"Reader": {"top_k": 5}})
+    # prediction = pipe.run(query="Who is the sister of Sansa?", params={"Reader": {"top_k": 5}})
 
     print_answers(prediction, details="minimal")
 

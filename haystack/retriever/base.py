@@ -5,7 +5,7 @@ from time import perf_counter
 from functools import wraps
 from tqdm import tqdm
 from copy import deepcopy
-from haystack import Document, BaseComponent
+from haystack import Document, BaseComponent, MultiLabel
 from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class BaseRetriever(BaseComponent):
         self,
         label_index: str = "label",
         doc_index: str = "eval_document",
-        label_origin: str = "gold_label",
+        label_origin: str = "gold-label",
         top_k: int = 10,
         open_domain: bool = False,
         return_preds: bool = False,
@@ -87,7 +87,10 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters, open_domain=open_domain)
+        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters,
+                                                                                 open_domain=open_domain,
+                                                                                 drop_negative_labels=True,
+                                                                                 drop_no_answers=False)
 
         correct_retrievals = 0
         summed_avg_precision = 0.0
@@ -96,11 +99,11 @@ class BaseRetriever(BaseComponent):
         # Collect questions and corresponding answers/document_ids in a dict
         question_label_dict = {}
         for label in labels:
-            id_question_tuple = (label.multiple_document_ids[0], label.question)
+            id_question_tuple = (label.document_ids[0], label.query)
             if open_domain:
-                question_label_dict[id_question_tuple] = label.multiple_answers
+                question_label_dict[id_question_tuple] = [a for a in label.answers if a is not None]
             else:
-                deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
+                deduplicated_doc_ids = list(set([str(x) for x in label.document_ids]))
                 question_label_dict[id_question_tuple] = deduplicated_doc_ids
 
         predictions = []
@@ -118,7 +121,7 @@ class BaseRetriever(BaseComponent):
                 current_avg_precision = 0.0
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_answer in gold_answers:
-                        if gold_answer in doc.text:
+                        if gold_answer in doc.content:
                             relevant_docs_found += 1
                             if not found_relevant_doc:
                                 correct_retrievals += 1
@@ -174,15 +177,23 @@ class BaseRetriever(BaseComponent):
         else:
             return metrics
 
-    def run(self, root_node: str, **kwargs):  # type: ignore
+    def run(  # type: ignore
+        self,
+        root_node: str,
+        query: Optional[str] = None,
+        filters: Optional[dict] = None,
+        top_k: Optional[int] = None,
+        documents: Optional[List[dict]] = None,
+        index: Optional[str] = None,
+    ):
         if root_node == "Query":
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
-            output, stream = run_query_timed(**kwargs)
+            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index)
         elif root_node == "File":
-            self.index_count += len(kwargs["documents"])
+            self.index_count += len(documents)  # type: ignore
             run_indexing = self.timing(self.run_indexing, "index_time")
-            output, stream = run_indexing(**kwargs)
+            output, stream = run_indexing(documents=documents)
         else:
             raise Exception(f"Invalid root_node '{root_node}'.")
         return output, stream
@@ -191,29 +202,24 @@ class BaseRetriever(BaseComponent):
         self,
         query: str,
         filters: Optional[dict] = None,
-        top_k_retriever: Optional[int] = None,
-        **kwargs,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
     ):
-        index = kwargs.get("index", None)
-        documents = self.retrieve(query=query, filters=filters, top_k=top_k_retriever, index=index)
+        documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index)
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
-        output = {
-            "query": query,
-            "documents": documents,
-            **kwargs
-        }
+        output = {"documents": documents}
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[dict], **kwargs):
+    def run_indexing(self, documents: List[dict]):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             documents = deepcopy(documents)
             document_objects = [Document.from_dict(doc) for doc in documents]
             embeddings = self.embed_passages(document_objects)  # type: ignore
             for doc, emb in zip(documents, embeddings):
                 doc["embedding"] = emb
-        output = {**kwargs, "documents": documents}
+        output = {"documents": documents}
         return output, "output_1"
 
     def print_time(self):

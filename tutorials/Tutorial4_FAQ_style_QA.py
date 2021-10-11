@@ -60,7 +60,7 @@ def tutorial4_faq_style_qa():
     # Get embeddings for our questions from the FAQs
     questions = list(df["question"].values)
     df["question_emb"] = retriever.embed_queries(texts=questions)
-    df = df.rename(columns={"question": "text"})
+    df = df.rename(columns={"question": "content"})
 
     # Convert Dataframe to list of dicts and index them in our DocumentStore
     docs_to_index = df.to_dict(orient="records")
@@ -71,7 +71,7 @@ def tutorial4_faq_style_qa():
     from haystack.pipeline import FAQPipeline
     pipe = FAQPipeline(retriever=retriever)
 
-    prediction = pipe.run(query="How is the virus spreading?", top_k_retriever=10)
+    prediction = pipe.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})
     print_answers(prediction, details="all")
 
 
