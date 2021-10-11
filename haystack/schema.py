@@ -216,6 +216,9 @@ class Answer:
         if self.offsets_in_context is not None:
             self.offsets_in_context = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_context]
 
+        if self.meta is None:
+            self.meta = {}
+
     def __lt__(self, other):
         """ Enable sorting of Answers by score """
         return self.score < other.score
