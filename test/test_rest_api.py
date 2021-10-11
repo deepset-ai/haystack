@@ -123,7 +123,7 @@ def test_export_feedback(populated_client: TestClient):
         "/export-feedback?full_document_context=false&context_size=50000",
     ]
     for url in feedback_urls:
-        response = populated_client.get(url=url, json=feedback)
+        response = populated_client.get(url=url, json=FEEDBACK)
         response_json = response.json()
         context = response_json["data"][0]["paragraphs"][0]["context"]
         answer_start = response_json["data"][0]["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
