@@ -162,7 +162,7 @@ class Span:
     start: int
     end: int
 
-
+@dataclass_json
 @dataclass
 class Answer:
     answer: str
@@ -202,15 +202,15 @@ class Answer:
         """ Enable sorting of Answers by score """
         return self.score < other.score
 
-    def to_json(self):
-        # usage of dataclass_json seems to break autocomplete in the IDE, so we implement the methods ourselves here
-        j = json.dumps(asdict(self))
-        return j
-
-    @classmethod
-    def from_json(cls, data):
-        d = json.loads(data)
-        return cls(**d)
+    # def to_json(self):
+    #     # usage of dataclass_json seems to break autocomplete in the IDE, so we implement the methods ourselves here
+    #     j = json.dumps(asdict(self))
+    #     return j
+    #
+    # @classmethod
+    # def from_json(cls, data):
+    #     d = json.loads(data)
+    #     return cls(**d)
 
 
 @dataclass_json
@@ -317,12 +317,12 @@ class Label:
         else:
             self.meta = meta
 
-    # @classmethod
-    # def from_dict(cls, dict):
-    #     return cls(**dict)
-    #
-    # def to_dict(self):
-    #     return self.__dict__
+    @classmethod
+    def from_dict(cls, dict):
+        return cls(**dict)
+
+    def to_dict(self):
+        return self.__dict__
 
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):

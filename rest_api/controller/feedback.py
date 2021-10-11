@@ -23,8 +23,6 @@ def user_feedback(feedback: Label):
 @router.get("/feedback")
 def user_feedback():
     labels = DOCUMENT_STORE.get_all_labels()
-    print(len(labels))
-    print(labels)
     return labels
 
 
@@ -85,9 +83,6 @@ def export_extractive_qa_feedback(
     export_data = []
 
     for label in labels:
-        print("##############")
-        print(label)
-
         if full_document_context:
             context = label.document.content
 
