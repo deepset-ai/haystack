@@ -12,7 +12,11 @@ def client() -> TestClient:
     os.environ["PIPELINE_YAML_PATH"] = str((Path(__file__).parent / "samples"/"pipeline"/"test_pipeline.yaml").absolute())
     os.environ["QUERY_PIPELINE_NAME"] = "query_pipeline"
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_pipeline"
-    return TestClient(app)
+    client = TestClient(app)
+    yield client
+    # Clean up
+    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+
 
 @pytest.fixture
 def populated_client(client: TestClient) -> TestClient:
@@ -28,38 +32,68 @@ def populated_client(client: TestClient) -> TestClient:
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
 
 
-def test_get_documents(populated_client: TestClient):
-    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+def test_get_documents(client: TestClient):
+    # Clean up to make sure the docstore is empty
+    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+
+    # Upload the files
+    files_to_upload = [
+        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')},
+        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_2.pdf").open('rb')}
+    ]
+    for index, fi in enumerate(files_to_upload):
+        response = client.post(url="/file-upload", files=fi, data={"meta": f'{{"meta_key": "meta_value_get"}}'})
+        assert 200 == response.status_code
+
+    # Get the documents
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_get"]}}')
     assert 200 == response.status_code
     response_json = response.json()
+    
+    # Make sure the right docs are found
     assert len(response_json) == 2
     names = [doc["meta"]["name"] for doc in response_json]
     assert "sample_pdf_1.pdf" in names
     assert "sample_pdf_2.pdf" in names
     meta_keys = [doc["meta"]["meta_key"] for doc in response_json]
-    assert all("meta_value"==meta_key for meta_key in meta_keys)
+    assert all("meta_value_get"==meta_key for meta_key in meta_keys)
 
 
-def test_delete_documents(populated_client: TestClient):
-    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+def test_delete_documents(client: TestClient):
+    # Clean up to make sure the docstore is empty
+    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+
+    # Upload the files
+    files_to_upload = [
+        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')},
+        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_2.pdf").open('rb')}
+    ]
+    for index, fi in enumerate(files_to_upload):
+        response = client.post(url="/file-upload", files=fi, data={"meta": f'{{"meta_key": "meta_value_del", "meta_index": "{index}"}}'})
+        assert 200 == response.status_code
+
+    # Make sure there are two docs
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_del"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 2
-    
-    response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {"meta_index": ["0"]}}')
+
+    # Delete one doc    
+    response = client.post(url="/documents/delete_by_filters", data='{"filters": {"meta_index": ["0"]}}')
     assert 200 == response.status_code
 
-    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+    # Now there should be only one doc
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_del"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 1
     
-    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["0"]}}')
+    # Make sure the right doc was deleted
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["0"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 0
-
-    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["1"]}}')
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["1"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 1
