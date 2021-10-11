@@ -212,9 +212,9 @@ class Answer:
         # In case offsets are passed as dicts rather than Span objects we convert them here
         # For example, this is used when instantiating an object via from_json()
         if self.offsets_in_document is not None:
-            self.offsets_in_document = [Span(**e) for e in self.offsets_in_document if isinstance(e, dict)]
+            self.offsets_in_document = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_document]
         if self.offsets_in_context is not None:
-            self.offsets_in_context = [Span(**e) for e in self.offsets_in_context if isinstance(e, dict)]
+            self.offsets_in_context = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_context]
 
     def __lt__(self, other):
         """ Enable sorting of Answers by score """

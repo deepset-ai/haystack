@@ -26,7 +26,7 @@ def test_extractor(document_store_with_docs):
             "Reader": {"top_k": 1},
         }
     )
-    entities = [entity["word"] for entity in prediction["answers"][0]["meta"]["entities"]]
+    entities = [entity["word"] for entity in prediction["answers"][0].meta["entities"]]
     assert "Carla" in entities
     assert "Berlin" in entities
 
