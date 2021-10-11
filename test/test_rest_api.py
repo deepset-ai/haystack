@@ -28,12 +28,63 @@ def test_file_upload(client: TestClient):
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
     assert 200 == response.status_code
 
-def test_delete_documents(client: TestClient):
+def test_get_documents(client: TestClient):
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
-
-    client.post(url="/documents/delete_by_filters", data={"meta_key": ["meta_value"]})
     assert 200 == response.status_code
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert len(response_json) == 1
+    assert response_json[0]["meta"]["meta_key"] == "meta_value"
+    assert response_json[0]["meta"]["name"] == "sample_pdf_1.pdf"
+
+    file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_2.pdf").open('rb')}
+    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
+    assert 200 == response.status_code
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert len(response_json) == 2
+    names = [doc["meta"]["name"] for doc in response_json]
+    assert "sample_pdf_1.pdf" in names
+    assert "sample_pdf_2.pdf" in names
+    meta_keys = [doc["meta"]["meta_key"] for doc in response_json]
+    assert all("meta_value"==meta_key for meta_key in meta_keys)
+
+
+def test_delete_documents(client: TestClient):
+    files_to_upload = [
+        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')},
+        {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_2.pdf").open('rb')}
+    ]
+    for index, fi in enumerate(files_to_upload):
+        response = client.post(url="/file-upload", files=fi, data={"meta": f'{{"meta_key": "meta_value", "meta_index": "{index}"}}'})
+        assert 200 == response.status_code
+
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert len(response_json) == 2
+    
+    response = client.post(url="/documents/delete_by_filters", data='{"filters": {"meta_index": ["0"]}}')
+    assert 200 == response.status_code
+
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert len(response_json) == 1
+    
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["0"]}}')
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert len(response_json) == 0
+
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["1"]}}')
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert len(response_json) == 1
+
 
 def test_query_with_no_filter(populated_client: TestClient):
     query_with_no_filter_value = {"query": "Who made the PDF specification?"}
