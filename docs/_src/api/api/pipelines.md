@@ -121,6 +121,34 @@ Set the component for a node in the Pipeline.
 - `name`: The name of the node.
 - `component`: The component object to be set at the node.
 
+<a name="pipeline.Pipeline.run"></a>
+#### run
+
+```python
+ | run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+```
+
+Runs the pipeline, one node at a time.
+
+**Arguments**:
+
+- `query`: The search query (for query pipelines only)
+- `file_paths`: The files to index (for indexing pipelines only)
+- `labels`: 
+- `documents`: 
+- `meta`: 
+- `params`: Dictionary of parameters to be dispatched to the nodes.
+               If you want to pass a param to all nodes, you can just use: {"top_k":10}
+               If you want to pass it to targeted nodes, you can do:
+               {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+              about their execution. By default these include the input parameters
+              they received, the output they generated, and eventual logs (of any severity)
+              emitted. All debug information can then be found in the dict returned
+              by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
+
 <a name="pipeline.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
 

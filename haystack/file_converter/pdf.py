@@ -86,7 +86,7 @@ class PDFToTextConverter(BaseConverter):
                          others if your doc contains special characters (e.g. German Umlauts, Cyrillic characters ...).
                          Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
                          "xef\xac\x81c" (see test cases). That's why we keep "Latin 1" as default here.
-                         (See list of available encodings by running `pdftotext -listencodings` in the terminal)
+                         (See list of available encodings by running `pdftotext -listenc` in the terminal)
         """
 
         pages = self._read_pdf(file_path, layout=False, encoding=encoding)
