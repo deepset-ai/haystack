@@ -145,8 +145,8 @@ class FARMReader(BaseReader):
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
         use_amp: str = None,
-        checkpoint_root_dir: Path = "model_checkpoints",
-        checkpoint_every: int = 1000,
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
     ):
         """
