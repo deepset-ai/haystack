@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from rest_api.application import app
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def client() -> TestClient:
     os.environ["PIPELINE_YAML_PATH"] = str((Path(__file__).parent / "samples"/"pipeline"/"test_pipeline.yaml").absolute())
     os.environ["QUERY_PIPELINE_NAME"] = "query_pipeline"
