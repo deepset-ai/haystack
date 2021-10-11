@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple
 import logging
+from statistics import mean
 
 from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
 import torch
@@ -274,10 +275,11 @@ class TableReader(BaseReader):
             # Calculate answer score
             current_score = self._calculate_answer_score(outputs.logits.detach(), inputs, current_answer_coordinates)
 
-            if current_aggregation_operator != "NONE":
+            if current_aggregation_operator == "NONE":
                 answer_str = ", ".join(current_answer_cells)
             else:
-                answer_str = f"{current_aggregation_operator} > {', '.join(current_answer_cells)}"
+                answer_str = self._aggregate_answers(current_aggregation_operator, current_answer_cells)
+
             answer_offsets = self._calculate_answer_offsets(current_answer_coordinates, table)
 
             answers.append(
@@ -289,7 +291,8 @@ class TableReader(BaseReader):
                     offsets_in_document=answer_offsets,
                     offsets_in_context=answer_offsets,
                     document_id=document.id,
-                    meta={"aggregation_operator": current_aggregation_operator}
+                    meta={"aggregation_operator": current_aggregation_operator,
+                          "answer_cells": current_answer_cells}
                 )
             )
 
@@ -301,6 +304,27 @@ class TableReader(BaseReader):
                    "answers": answers}
 
         return results
+
+    @staticmethod
+    def _aggregate_answers(agg_operator, answer_cells):
+        if agg_operator == "COUNT":
+            return len(answer_cells)
+
+        try:
+            answer_cells = map(float, answer_cells)
+        except ValueError:
+            answer_cells = map(lambda cell: str.replace(cell, ",", ""), answer_cells)
+            answer_cells = map(lambda cell: str.replace(cell, " ", ""), answer_cells)
+            answer_cells = map(float, answer_cells)
+
+        if agg_operator == "SUM":
+            return sum(answer_cells)
+        elif agg_operator == "AVERAGE":
+            return mean(answer_cells)
+        else:
+            logger.warning(f"Unsuported aggregation operator {agg_operator}.")
+            answer_cells = map(str, answer_cells)
+            return ", ".join(answer_cells)
     
     def _calculate_answer_score(self, logits: torch.Tensor, inputs: BatchEncoding,
                                 answer_coordinates: List[Tuple[int, int]]):

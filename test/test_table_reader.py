@@ -17,9 +17,20 @@ def test_table_reader():
     query = "When was DiCaprio born?"
 
     prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
-    assert prediction["answers"][0].answer == "NONE > 10 june 1996"
-    assert prediction["answers"][0].answer.offsets_in_context[0].start == 7
-    assert prediction["answers"][0].answer.offsets_in_context[0].end == 8
+    assert prediction["answers"][0].answer == "10 june 1996"
+    assert prediction["answers"][0].offsets_in_context[0].start == 7
+    assert prediction["answers"][0].offsets_in_context[0].end == 8
+
+    # test aggregation
+    query = "How old are DiCaprio and Pitt on average?"
+    prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
+    assert prediction["answers"][0].answer == 51.5
+    assert prediction["answers"][0].meta["answer_cells"] == ["57", "46"]
+    assert prediction["answers"][0].meta["aggregation_operator"] == "AVERAGE"
+    assert prediction["answers"][0].offsets_in_context[0].start == 1
+    assert prediction["answers"][0].offsets_in_context[0].end == 2
+    assert prediction["answers"][0].offsets_in_context[1].start == 5
+    assert prediction["answers"][0].offsets_in_context[1].end == 6
 
 
 def test_table_reader_in_pipeline():
@@ -34,10 +45,13 @@ def test_table_reader_in_pipeline():
     }
 
     table = pd.DataFrame(data)
-    query = "How old is Clooney?"
+    query = "Which actors played in more than 60 movies?"
 
     prediction = pipeline.run(query=query, documents=[Document(content=table, content_type="table")])
 
-    assert prediction["answers"][0].answer == "NONE > 60"
-    assert prediction["answers"][0].answer.offsets_in_context[0].start == 9
-    assert prediction["answers"][0].answer.offsets_in_context[0].end == 10
+    assert prediction["answers"][0].answer == "brad pitt, george clooney"
+    assert prediction["answers"][0].meta["aggregation_operator"] == "NONE"
+    assert prediction["answers"][0].offsets_in_context[0].start == 0
+    assert prediction["answers"][0].offsets_in_context[0].end == 1
+    assert prediction["answers"][0].offsets_in_context[1].start == 8
+    assert prediction["answers"][0].offsets_in_context[1].end == 9
