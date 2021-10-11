@@ -14,7 +14,7 @@ def client() -> TestClient:
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_pipeline"
     return TestClient(app)
 
-@pytest.fixture(scope="session")
+#@pytest.fixture(scope="session")
 def populated_client(client: TestClient) -> TestClient:
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
     client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
