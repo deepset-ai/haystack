@@ -23,7 +23,9 @@ def get_documents_by_filter(filters: FilterRequest):
     Can be used to get documents from a document store.
 
     :param filters: Filters to narrow down the documents to delete.
-                    Example: {"name": ["some", "more"], "category": ["only_one"]}
+                    Example: '{"filters": {{"name": ["some", "more"], "category": ["only_one"]}}'
+                    To get all documents you should provide an empty dict, like:
+                    '{"filters": {}}'
     """
     docs = [doc.to_dict() for doc in DOCUMENT_STORE.get_all_documents(filters=filters.filters)]
     for doc in docs:
@@ -37,7 +39,9 @@ def delete_documents_by_filter(filters: FilterRequest):
     Can be used to delete documents from a document store.
 
     :param filters: Filters to narrow down the documents to delete.
-                    Example: {"name": ["some", "more"], "category": ["only_one"]}
+                    Example: '{"filters": {{"name": ["some", "more"], "category": ["only_one"]}}'
+                    To delete all documents you should provide an empty dict, like:
+                    '{"filters": {}}'
     """
     DOCUMENT_STORE.delete_documents(filters=filters.filters)
     return True
