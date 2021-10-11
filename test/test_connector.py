@@ -34,10 +34,10 @@ def test_crawler_depth(tmp_path):
         assert isinstance(json_file, Path)
         with open(json_file.absolute(), "r") as read_file:
             data = json.load(read_file)
-            assert 'text' in data
+            assert 'content' in data
             assert 'meta' in data
-            assert isinstance(data['text'], str)
-            assert len(data['text'].split()) > 2
+            assert isinstance(data['content'], str)
+            assert len(data['content'].split()) > 2
 
 
 def test_crawler_filter_urls(tmp_path):
@@ -88,10 +88,10 @@ def test_crawler_content(tmp_path):
             assert isinstance(json_file, Path)
             with open(json_file.absolute(), "r") as read_file:
                 content = json.load(read_file)
-                assert isinstance(content['text'], str)
+                assert isinstance(content['content'], str)
                 for partial_line in partial_content:
-                    assert search(partial_line, content['text'])
-                    assert partial_line in content['text']
+                    assert search(partial_line, content['content'])
+                    assert partial_line in content['content']
 
 
 def test_crawler_return_document(tmp_path):
@@ -110,4 +110,4 @@ def test_crawler_return_document(tmp_path):
         with open(json_file.absolute(), "r") as read_file:
             file_content = json.load(read_file)
             assert file_content['meta'] == document['meta']
-            assert file_content['text'] == document['text']
+            assert file_content['content'] == document['content']

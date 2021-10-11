@@ -72,13 +72,16 @@ class Converter:
                 task_type = "question_answering"
             else:
                 logger.error("Could not infer task type from model config. Please provide task type manually. "
-                             "('lm', 'question_answering', 'regression', 'text_classification', 'ner' or 'embeddings')")
+                             "('question_answering' or 'embeddings')")
 
 
         if task_type == "question_answering":
             ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, **kwargs)
             adaptive_model = am.AdaptiveModel(language_model=lm, prediction_heads=[ph], embeds_dropout_prob=0.1,
                                               lm_output_types="per_token", device=device)
+        elif task_type == "embeddings":
+            adaptive_model = am.AdaptiveModel(language_model=lm, prediction_heads=[], embeds_dropout_prob=0.1,
+                                              lm_output_types=["per_token", "per_sequence"], device=device)
 
         if processor:
             adaptive_model.connect_heads_with_processor(processor.tasks)

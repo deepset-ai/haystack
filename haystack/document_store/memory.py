@@ -100,7 +100,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         documents = deepcopy(documents)
         documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in
                              documents]
-
+        documents_objects = self._drop_duplicate_documents(documents=documents_objects)
         for document in documents_objects:
             if document.id in self.indexes[index]:
                 if duplicate_documents == "fail":
@@ -187,7 +187,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             curr_meta = deepcopy(doc.meta)
             new_document = Document(
                 id=doc.id,
-                text=doc.text,
+                content=doc.content,
                 meta=curr_meta,
                 embedding=doc.embedding
             )
@@ -289,6 +289,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     ):
         index = index or self.index
         documents = deepcopy(list(self.indexes[index].values()))
+        documents = [d for d in documents if isinstance(d, Document)]
 
         filtered_documents = []
 
@@ -394,11 +395,15 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from.
+        :param index: Index name to delete the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to be deleted.
+                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
-        if filters:
-            raise NotImplementedError("Delete by filters is not implemented for InMemoryDocumentStore.")
         index = index or self.index
-        self.indexes[index] = {}
+        if not filters:
+            self.indexes[index] = {}
+            return            
+        for doc in self.get_all_documents(filters=filters):
+            del self.indexes[index][doc.id]

@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/classifier]
-    modules: ['base', 'farm']
+    search_path: [../../../../haystack/document_classifier]
+    modules: ['base', 'transformers']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter
@@ -15,4 +15,4 @@ renderer:
   descriptive_module_title: true
   add_method_class_prefix: false
   add_member_class_prefix: false
-  filename: classifier.md
+  filename: document_classifier.md

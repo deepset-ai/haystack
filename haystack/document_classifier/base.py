@@ -1,36 +1,29 @@
 import logging
 from abc import abstractmethod
-from copy import deepcopy
-from typing import List, Optional
+from typing import List
 from functools import wraps
 from time import perf_counter
 
-from tqdm import tqdm
 
 from haystack import Document, BaseComponent
 
 logger = logging.getLogger(__name__)
 
 
-class BaseClassifier(BaseComponent):
-    return_no_answers: bool
+class BaseDocumentClassifier(BaseComponent):
     outgoing_edges = 1
     query_count = 0
     query_time = 0
 
     @abstractmethod
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(self, documents: List[Document]):
         pass
 
-    @abstractmethod
-    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
-        pass
-
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None): # type: ignore
+    def run(self, query: str, documents: List[Document]): # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
-            results = predict(query=query, documents=documents, top_k=top_k)
+            results = predict(documents=documents)
         else:
             results = []
 

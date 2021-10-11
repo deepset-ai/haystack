@@ -18,9 +18,10 @@ from haystack.pipeline import (
 )
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever
-from haystack.schema import Document
+from haystack.schema import Document, Answer
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_load_and_save_yaml(document_store, tmp_path):
     # test correct load of indexing pipeline from yaml
@@ -40,7 +41,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
         query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0]["answer"] == "Adobe Systems"
+    assert prediction["answers"][0].answer == "Adobe Systems"
 
     # test invalid pipeline name
     with pytest.raises(Exception):
@@ -85,14 +86,31 @@ def test_load_and_save_yaml(document_store, tmp_path):
     ).replace("\n", "")
 
 
-@pytest.mark.slow
-@pytest.mark.elasticsearch
+# @pytest.mark.slow
+# @pytest.mark.elasticsearch
+# @pytest.mark.parametrize(
+#     "retriever_with_docs, document_store_with_docs",
+#     [("elasticsearch", "elasticsearch")],
+#     indirect=True,
+# )
 @pytest.mark.parametrize(
-    "retriever_with_docs, document_store_with_docs",
-    [("elasticsearch", "elasticsearch")],
+    "retriever_with_docs,document_store_with_docs",
+    [
+        ("dpr", "elasticsearch"),
+        ("dpr", "faiss"),
+        ("dpr", "memory"),
+        ("dpr", "milvus"),
+        ("embedding", "elasticsearch"),
+        ("embedding", "faiss"),
+        ("embedding", "memory"),
+        ("embedding", "milvus"),
+        ("elasticsearch", "elasticsearch"),
+        ("es_filter_only", "elasticsearch"),
+        ("tfidf", "memory"),
+    ],
     indirect=True,
 )
-def test_graph_creation(reader, retriever_with_docs, document_store_with_docs):
+def test_graph_creation(retriever_with_docs, document_store_with_docs):
     pipeline = Pipeline()
     pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["Query"])
 
@@ -136,28 +154,27 @@ def test_invalid_run_args():
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-def test_extractive_qa_answers(reader, retriever_with_docs):
+def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     prediction = pipeline.run(
         query="Who lives in Berlin?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
     )
     assert prediction is not None
+    assert type(prediction["answers"][0]) == Answer
     assert prediction["query"] == "Who lives in Berlin?"
-    assert prediction["answers"][0]["answer"] == "Carla"
-    assert prediction["answers"][0]["score"] <= 1
-    assert prediction["answers"][0]["score"] >= 0
-    assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
+    assert prediction["answers"][0].answer == "Carla"
+    assert prediction["answers"][0].score <= 1
+    assert prediction["answers"][0].score >= 0
+    assert prediction["answers"][0].meta["meta_field"] == "test1"
     assert (
-        prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
+        prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     )
 
     assert len(prediction["answers"]) == 3
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_without_normalized_scores(reader_without_normalized_scores, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader_without_normalized_scores, retriever=retriever_with_docs)
@@ -166,35 +183,35 @@ def test_extractive_qa_answers_without_normalized_scores(reader_without_normaliz
     )
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
-    assert prediction["answers"][0]["answer"] == "Carla"
-    assert prediction["answers"][0]["score"] <= 11
-    assert prediction["answers"][0]["score"] >= 10
-    assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
+    assert prediction["answers"][0].answer == "Carla"
+    assert prediction["answers"][0].score <= 11
+    assert prediction["answers"][0].score >= 10
+    assert prediction["answers"][0].meta["meta_field"] == "test1"
     assert (
-            prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
+            prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     )
 
     assert len(prediction["answers"]) == 3
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_offsets(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     prediction = pipeline.run(query="Who lives in Berlin?", params={"Retriever": {"top_k": 5}})
 
-    assert prediction["answers"][0]["offset_start"] == 11
-    assert prediction["answers"][0]["offset_end"] == 16
-    start = prediction["answers"][0]["offset_start"]
-    end = prediction["answers"][0]["offset_end"]
+    start = prediction["answers"][0].offsets_in_context[0].start
+    end = prediction["answers"][0].offsets_in_context[0].end
+
+    assert start == 11
+    assert end == 16
+
     assert (
-        prediction["answers"][0]["context"][start:end]
-        == prediction["answers"][0]["answer"]
+        prediction["answers"][0].context[start:end]
+        == prediction["answers"][0].answer
     )
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
@@ -204,7 +221,6 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     assert len(prediction["answers"]) == 1
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize(
     "retriever,document_store",
     [
@@ -218,23 +234,23 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
 def test_faq_pipeline(retriever, document_store):
     documents = [
         {
-            "text": "How to test module-1?",
+            "content": "How to test module-1?",
             "meta": {"source": "wiki1", "answer": "Using tests for module-1"},
         },
         {
-            "text": "How to test module-2?",
+            "content": "How to test module-2?",
             "meta": {"source": "wiki2", "answer": "Using tests for module-2"},
         },
         {
-            "text": "How to test module-3?",
+            "content": "How to test module-3?",
             "meta": {"source": "wiki3", "answer": "Using tests for module-3"},
         },
         {
-            "text": "How to test module-4?",
+            "content": "How to test module-4?",
             "meta": {"source": "wiki4", "answer": "Using tests for module-4"},
         },
         {
-            "text": "How to test module-5?",
+            "content": "How to test module-5?",
             "meta": {"source": "wiki5", "answer": "Using tests for module-5"},
         },
     ]
@@ -246,32 +262,22 @@ def test_faq_pipeline(retriever, document_store):
 
     output = pipeline.run(query="How to test this?", params={"top_k": 3})
     assert len(output["answers"]) == 3
-    assert output["answers"][0]["query"].startswith("How to")
-    assert output["answers"][0]["answer"].startswith("Using tests")
+    assert output["query"].startswith("How to")
+    assert output["answers"][0].answer.startswith("Using tests")
 
     if isinstance(document_store, ElasticsearchDocumentStore):
         output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
         assert len(output["answers"]) == 1
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [
-        ("embedding", "memory"),
-        ("embedding", "faiss"),
-        ("embedding", "milvus"),
-        ("embedding", "elasticsearch"),
-    ],
-    indirect=True,
-)
+@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_document_search_pipeline(retriever, document_store):
     documents = [
-        {"text": "Sample text for document-1", "meta": {"source": "wiki1"}},
-        {"text": "Sample text for document-2", "meta": {"source": "wiki2"}},
-        {"text": "Sample text for document-3", "meta": {"source": "wiki3"}},
-        {"text": "Sample text for document-4", "meta": {"source": "wiki4"}},
-        {"text": "Sample text for document-5", "meta": {"source": "wiki5"}},
+        {"content": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"content": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"content": "Sample text for document-3", "meta": {"source": "wiki3"}},
+        {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
+        {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
     ]
 
     document_store.write_documents(documents)
@@ -287,7 +293,6 @@ def test_document_search_pipeline(retriever, document_store):
 
 
 @pytest.mark.slow
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_with_translator(
     reader, retriever_with_docs, en_to_de_translator, de_to_en_translator
@@ -302,15 +307,16 @@ def test_extractive_qa_answers_with_translator(
     prediction = pipeline.run(query="Wer lebt in Berlin?", params={"Reader": {"top_k": 3}})
     assert prediction is not None
     assert prediction["query"] == "Wer lebt in Berlin?"
-    assert "Carla" in prediction["answers"][0]["answer"]
-    assert prediction["answers"][0]["score"] <= 1
-    assert prediction["answers"][0]["score"] >= 0
-    assert prediction["answers"][0]["meta"]["meta_field"] == "test1"
+    assert "Carla" in prediction["answers"][0].answer
+    assert prediction["answers"][0].score <= 1
+    assert prediction["answers"][0].score >= 0
+    assert prediction["answers"][0].meta["meta_field"] == "test1"
     assert (
-        prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
+        prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     )
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_join_document_pipeline(document_store_with_docs, reader):
@@ -362,7 +368,7 @@ def test_join_document_pipeline(document_store_with_docs, reader):
     p.add_node(component=reader, name="Reader", inputs=["Join"])
     results = p.run(query=query)
     #check whether correct answer is within top 2 predictions
-    assert results["answers"][0]["answer"] == "Berlin" or results["answers"][1]["answer"] == "Berlin"
+    assert results["answers"][0].answer == "Berlin" or results["answers"][1].answer == "Berlin"
 
 
 def test_debug_info_propagation():
@@ -591,7 +597,6 @@ def test_query_keyword_statement_classifier():
     assert output["output"] == "question"
 
 
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize(
         "retriever,document_store",
         [
@@ -603,11 +608,11 @@ def test_query_keyword_statement_classifier():
 )
 def test_document_search_pipeline(retriever, document_store):
     documents = [
-        {"id": "a", "text": "Sample text for document-1", "meta": {"source": "wiki1"}},
-        {"id": "b", "text": "Sample text for document-2", "meta": {"source": "wiki2"}},
-        {"text": "Sample text for document-3", "meta": {"source": "wiki3"}},
-        {"text": "Sample text for document-4", "meta": {"source": "wiki4"}},
-        {"text": "Sample text for document-5", "meta": {"source": "wiki5"}},
+        {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"content": "Sample text for document-3", "meta": {"source": "wiki3"}},
+        {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
+        {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
     ]
 
     document_store.write_documents(documents)
@@ -626,4 +631,4 @@ def test_document_search_pipeline(retriever, document_store):
         for document in another_list:
             assert isinstance(document, Document)
             assert isinstance(document.id, str)
-            assert isinstance(document.text, str)
+            assert isinstance(document.content, str)

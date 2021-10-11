@@ -9,7 +9,7 @@ from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.utils import launch_milvus, launch_es, launch_opensearch
-from farm.file_utils import http_get
+from haystack.modeling.data_handler.processor import http_get
 
 import logging
 import subprocess

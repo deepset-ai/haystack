@@ -183,35 +183,38 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
-        add_vectors = False if document_objects[0].embedding is None else True
-
-        if self.duplicate_documents == "overwrite" and add_vectors:
-            logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
-                           "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
-                           "Please call `update_embeddings` method to repopulate `faiss_index`")
-
-        vector_id = self.faiss_indexes[index].ntotal
-        for i in range(0, len(document_objects), batch_size):
-            if add_vectors:
-                embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
-                embeddings_to_index = np.array(embeddings, dtype="float32")
-
-                if self.similarity == 'cosine':
-                    faiss.normalize_L2(embeddings_to_index)
-
-                self.faiss_indexes[index].add(embeddings_to_index)
-
-            docs_to_write_in_sql = []
-            for doc in document_objects[i: i + batch_size]:
-                meta = doc.meta
-                if add_vectors:
-                    meta["vector_id"] = vector_id
-                    vector_id += 1
-                docs_to_write_in_sql.append(doc)
-
-            super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
+        document_objects = self._handle_duplicate_documents(documents=document_objects,
+                                                            index=index,
                                                             duplicate_documents=duplicate_documents)
+        if len(document_objects) > 0:
+            add_vectors = False if document_objects[0].embedding is None else True
+
+            if self.duplicate_documents == "overwrite" and add_vectors:
+                logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
+                               "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
+                               "Please call `update_embeddings` method to repopulate `faiss_index`")
+
+            vector_id = self.faiss_indexes[index].ntotal
+            for i in range(0, len(document_objects), batch_size):
+                if add_vectors:
+                    embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
+                    embeddings_to_index = np.array(embeddings, dtype="float32")
+
+                    if self.similarity == 'cosine':
+                        faiss.normalize_L2(embeddings_to_index)
+
+                    self.faiss_indexes[index].add(embeddings_to_index)
+
+                docs_to_write_in_sql = []
+                for doc in document_objects[i: i + batch_size]:
+                    meta = doc.meta
+                    if add_vectors:
+                        meta["vector_id"] = vector_id
+                        vector_id += 1
+                    docs_to_write_in_sql.append(doc)
+
+                super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
+                                                                duplicate_documents=duplicate_documents)
 
     def _create_document_field_map(self) -> Dict:
         return {
@@ -398,14 +401,23 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
-        Delete all documents from the document store.
+        Delete documents from the document store. All documents are deleted if no filters are passed.
+
+        :param index: Index name to delete the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to be deleted. 
+                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+        :return: None
         """
-        if filters:
-            logger.warning("Filters are not supported for deleting documents in FAISSDocumentStore.")
         index = index or self.index
         if index in self.faiss_indexes.keys():
-            self.faiss_indexes[index].reset()
-        super().delete_documents(index=index)
+            if filters:
+                affected_docs = self.get_all_documents(filters=filters)
+                doc_ids = [doc.meta.get("vector_id") for doc in affected_docs if doc.meta and doc.meta.get("vector_id") is not None]
+                self.faiss_indexes[index].remove_ids(np.array(doc_ids, dtype="int64"))
+            else:
+                self.faiss_indexes[index].reset()
+        super().delete_documents(index=index, filters=filters)
 
     def query_by_embedding(
         self,
@@ -498,14 +510,14 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         if not config_path:
             index_path = Path(index_path)
-            faiss_init_params_path = index_path.with_suffix(".json")
+            config_path = index_path.with_suffix(".json")
 
         init_params: dict = {}
         try:
-            with open(faiss_init_params_path, 'r') as ipp:
+            with open(config_path, 'r') as ipp:
                 init_params = json.load(ipp)
         except OSError as e:
-            raise ValueError(f"Can't open FAISS configuration file `{faiss_init_params_path}`. "
+            raise ValueError(f"Can't open FAISS configuration file `{config_path}`. "
                              "Make sure the file exists and the you have the correct permissions "
                              "to access it.") from e
 
