@@ -14,35 +14,30 @@ def client() -> TestClient:
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_pipeline"
     return TestClient(app)
 
-#@pytest.fixture(scope="session")
+@pytest.fixture
 def populated_client(client: TestClient) -> TestClient:
+    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
     client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
     yield client
-    client.post(url="/documents/delete_by_filters", data={"meta_key": ["meta_value"]})
+    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
 
 
-
-def test_file_upload(client: TestClient):
-    file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
-    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
-    assert 200 == response.status_code
-
-def test_get_documents(client: TestClient):
-    file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
-    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
-    assert 200 == response.status_code
-    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+def test_get_documents(populated_client: TestClient):
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
     assert 200 == response.status_code
     response_json = response.json()
+
     assert len(response_json) == 1
     assert response_json[0]["meta"]["meta_key"] == "meta_value"
     assert response_json[0]["meta"]["name"] == "sample_pdf_1.pdf"
 
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_2.pdf").open('rb')}
-    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
+    response = populated_client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
     assert 200 == response.status_code
-    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
+    
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 2
@@ -85,6 +80,11 @@ def test_delete_documents(client: TestClient):
     response_json = response.json()
     assert len(response_json) == 1
 
+
+def test_file_upload(client: TestClient):
+    file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
+    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
+    assert 200 == response.status_code
 
 def test_query_with_no_filter(populated_client: TestClient):
     query_with_no_filter_value = {"query": "Who made the PDF specification?"}

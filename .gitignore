@@ -151,5 +151,6 @@ tutorials/model
 models
 saved_models
 *_build
-rest_api/file_upload/*
+rest_api/file-upload/*
+**/feedback_squad_direct.json
 .DS_Store
