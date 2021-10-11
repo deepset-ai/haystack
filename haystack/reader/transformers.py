@@ -249,7 +249,7 @@ class TableReader(BaseReader):
                 logger.warning(f"Skipping document with id {document.id} in TableReader, as it is not of type table.")
                 continue
 
-            table = document.content
+            table: pd.DataFrame = document.content
             # Tokenize query and current table
             inputs = self.tokenizer(table=table,
                                     queries=query,
@@ -297,7 +297,7 @@ class TableReader(BaseReader):
             )
 
         # Sort answers by score and select top-k answers
-        answers = sorted(answers, key=lambda k: k.score, reverse=True)
+        answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
         results = {"query": query,
