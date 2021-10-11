@@ -1158,7 +1158,8 @@ class TextSimilarityProcessor(Processor):
 
 class MultimodalSimilarityProcessor(Processor):
     """
-    ...
+    Used to handle the Multimodal Retrieval datasets that come in json format.
+
     """
     def __init__(
         self,
@@ -1315,26 +1316,34 @@ class MultimodalSimilarityProcessor(Processor):
 
     def file_to_dicts(self, file: str) -> [dict]:
         """
-        TODO Adapt format in docstrings!
-        Converts a Dense Passage Retrieval (DPR) data file in json format to a list of dictionaries.
+        Converts a Multimodal Retrieval data file in json format to a list of dictionaries.
 
         :param file: filename of DPR data in json format
                 Each sample is a dictionary of format:
-                {"dataset": str,
-                "question": str,
+                {"question": str,
                 "answers": list of str
-                "positive_ctxs": list of dictionaries of format {'title': str, 'text': str, 'score': int, 'title_score': int, 'passage_id': str}
-                "negative_ctxs": list of dictionaries of format {'title': str, 'text': str, 'score': int, 'title_score': int, 'passage_id': str}
-                "hard_negative_ctxs": list of dictionaries of format {'title': str, 'text': str, 'score': int, 'title_score': int, 'passage_id': str}
+                "positive_ctxs": list of dictionaries of format
+                    {'title': str, 'text': str, 'passage_id': str, 'type': 'text', 'source': str}
+                    or
+                    {'page_title': str, 'section_title': str, 'caption': str, 'columns': list of str,
+                     'rows': list of list of str, 'type': 'table', 'source': str}
+                "hard_negative_ctxs": list of dictionaries of format
+                    {'title': str, 'text': str, 'passage_id': str, 'type': 'text', 'source': str}
+                    or
+                    {'page_title': str, 'section_title': str, 'caption': str, 'columns': list of str,
+                     'rows': list of list of str, 'type': 'table', 'source': str}
                 }
 
 
         Returns:
-        list of dictionaries: List[dict]
+        List of dictionaries: List[dict]
             each dictionary:
             {"query": str,
-            "passages": [{"text": document_text, "title": xxx, "label": "positive", "external_id": abb123},
-            {"text": document_text, "title": xxx, "label": "hard_negative", "external_id": abb134},
+            "passages": [
+                {"title": str, "text": str, "label": "positive" / "hard_negative", "type": "text", "external_id": id}
+                or
+                {"page_title": str, "section_title": str, "caption": str, "columns": list of str,
+                 "rows": list of list of str, "label": "positive" / "hard_negative", "type": "table", "external_id": id}
             ...]}
         """
         dicts = self._read_multimodal_dpr_json(file, max_samples=self.max_samples)
@@ -1364,7 +1373,8 @@ class MultimodalSimilarityProcessor(Processor):
                                 "page_title": doc.get("page_title", ""),
                                 "section_title": doc.get("section_title", ""),
                                 "caption": doc.get("caption", ""),
-                                "tsv": doc.get("tsv", ""),
+                                "columns": doc.get("columns"),
+                                "rows": doc.get("rows"),
                                 "label": "positive" if key in positive_context_json_keys else "hard_negative",
                                 "type": "table",
                                 "external_id": doc["id"]
@@ -1384,7 +1394,7 @@ class MultimodalSimilarityProcessor(Processor):
 
     def dataset_from_dicts(self, dicts, indices=None, return_baskets = False):
         """
-        Convert input dictionaries into a pytorch dataset for TextSimilarity (e.g. DPR).
+        Convert input dictionaries into a pytorch dataset for TextSimilarity.
         For conversion we have an internal representation called "baskets".
         Each basket is one query and related text passages (positive passages fitting to the query and negative
         passages that do not fit the query)
@@ -1407,10 +1417,10 @@ class MultimodalSimilarityProcessor(Processor):
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
         baskets = self._fill_baskets(dicts, indices)
 
-        # Separat conversion of query
+        # Separate conversion of query
         baskets = self._convert_queries(baskets=baskets)
 
-        # and context passages. When converting the context the label is also assigned.
+        # and context passages and tables. When converting the context the label is also assigned.
         baskets = self._convert_contexts(baskets=baskets)
 
         # Convert features into pytorch dataset, this step also removes and logs potential errors during preprocessing
@@ -1480,6 +1490,8 @@ class MultimodalSimilarityProcessor(Processor):
         return baskets
 
     def _convert_contexts(self, baskets):
+        # Converts both text passages and tables.
+
         for basket in baskets:
             if "passages" in basket.raw:
                 try:
@@ -1507,7 +1519,9 @@ class MultimodalSimilarityProcessor(Processor):
                         elif pos_ctx["type"] == "table":
                             positive_ctx_titles.append(
                                 f"{pos_ctx.get('page_title', '')} {pos_ctx.get('section_title', '')} {pos_ctx.get('caption', '')}".strip())
-                            positive_ctx_texts.append(pos_ctx["tsv"])
+                            linearized_rows = [cell for row in pos_ctx["rows"] for cell in row]
+                            linearized_table = " ".join(pos_ctx["columns"]) + " " + " ".join(linearized_rows)
+                            positive_ctx_texts.append(linearized_table)
                             is_table.append(1)
 
                     for hn_ctx in hard_negative_context:
@@ -1518,7 +1532,9 @@ class MultimodalSimilarityProcessor(Processor):
                         elif hn_ctx["type"] == "table":
                             hard_negative_ctx_titles.append(
                                 f"{hn_ctx.get('page_title', '')} {hn_ctx.get('section_title', '')} {hn_ctx.get('caption', '')}".strip())
-                            hard_negative_ctx_texts.append(hn_ctx["tsv"])
+                            linearized_rows = [cell for row in hn_ctx["rows"] for cell in row]
+                            linearized_table = " ".join(hn_ctx["columns"]) + " " + " ".join(linearized_rows)
+                            hard_negative_ctx_texts.append(linearized_table)
                             is_table.append(1)
 
                     # all context passages and labels: 1 for positive context and 0 for hard-negative context
