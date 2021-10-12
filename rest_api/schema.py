@@ -20,3 +20,12 @@ class QueryResponse(BaseModel):
     answers: List[Answer]
     documents: Optional[List[Document]]
 
+
+class DocumentResponse(BaseModel):
+    text: str
+    id: Optional[str] = None
+    score: Optional[float] = None
+    question: Optional[str] = None
+    meta: Dict[str, Any] = None
+    #embedding: Optional[np.ndarray] = None
+    id_hash_keys: Optional[List[str]] = None
