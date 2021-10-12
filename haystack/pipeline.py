@@ -605,13 +605,24 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
-    def run(self, query: str, params: Optional[dict] = None):
+    def run(self,
+            query: str,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+            debug_logs: Optional[bool] = None):
         """
-        :param query: the query string.
-        :param params: params for the `retriever` and `reader`. For instance,
-                       params={"retriever": {"top_k": 10}, "reader": {"top_k": 5}}
+        :param query: The search query string.
+        :param params: Params for the `retriever` and `reader`. For instance,
+                       params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+                      about their execution. By default these include the input parameters
+                      they received, the output they generated, and eventual logs (of any severity)
+                      emitted. All debug information can then be found in the dict returned
+                      by this method under the key "_debug"
+        :param debug_logs: Whether all the logs of the node should be printed in the console,
+                           regardless of their severity and of the existing logger's settings.
         """
-        output = self.pipeline.run(query=query, params=params)
+        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
         return output
 
 
@@ -625,12 +636,23 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, params: Optional[dict] = None):
+    def run(self,
+            query: str,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+            debug_logs: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+              about their execution. By default these include the input parameters
+              they received, the output they generated, and eventual logs (of any severity)
+              emitted. All debug information can then be found in the dict returned
+              by this method under the key "_debug"
+        :param debug_logs: Whether all the logs of the node should be printed in the console,
+                           regardless of their severity and of the existing logger's settings.
         """
-        output = self.pipeline.run(query=query, params=params)
+        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
         document_dicts = [doc.to_dict() for doc in output["documents"]]
         output["documents"] = document_dicts
         return output
@@ -648,13 +670,24 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
 
-    def run(self, query: str, params: Optional[dict] = None):
+    def run(self,
+            query: str,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+            debug_logs: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `generator`. For instance,
-                       params={"retriever": {"top_k": 10}, "generator": {"top_k": 5}}
+                       params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+              about their execution. By default these include the input parameters
+              they received, the output they generated, and eventual logs (of any severity)
+              emitted. All debug information can then be found in the dict returned
+              by this method under the key "_debug"
+        :param debug_logs: Whether all the logs of the node should be printed in the console,
+                           regardless of their severity and of the existing logger's settings.
         """
-        output = self.pipeline.run(query=query, params=params)
+        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
         return output
 
 
@@ -674,13 +707,24 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
         self.return_in_answer_format = return_in_answer_format
 
-    def run(self, query: str, params: Optional[dict] = None):
+    def run(self,
+            query: str,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+            debug_logs: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `summarizer`. For instance,
                        params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+              about their execution. By default these include the input parameters
+              they received, the output they generated, and eventual logs (of any severity)
+              emitted. All debug information can then be found in the dict returned
+              by this method under the key "_debug"
+        :param debug_logs: Whether all the logs of the node should be printed in the console,
+                           regardless of their severity and of the existing logger's settings.
                 """
-        output = self.pipeline.run(query=query, params=params)
+        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
         if self.return_in_answer_format:
@@ -714,12 +758,23 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self, query: str, params: Optional[dict] = None):
+    def run(self,
+            query: str,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+            debug_logs: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+              about their execution. By default these include the input parameters
+              they received, the output they generated, and eventual logs (of any severity)
+              emitted. All debug information can then be found in the dict returned
+              by this method under the key "_debug"
+        :param debug_logs: Whether all the logs of the node should be printed in the console,
+                           regardless of their severity and of the existing logger's settings.
         """
-        output = self.pipeline.run(query=query, params=params)
+        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
         documents = output["documents"]
 
         results: Dict = {"query": query, "answers": []}
@@ -795,8 +850,13 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
 
-    def run(self, documents, params: Optional[dict] = None):
-        output = self.pipeline.run(documents=documents, params=params)
+    def run(self,
+            documents,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+            debug_logs: Optional[bool] = None
+            ):
+        output = self.pipeline.run(documents=documents, params=params, debug=debug, debug_logs=debug_logs)
         return output
 
 
@@ -810,8 +870,12 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
 
-    def run(self, query, params: Optional[dict] = None):
-        output = self.pipeline.run(query=query, params=params)
+    def run(self,
+            query: str,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+            debug_logs: Optional[bool] = None):
+        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
         return output
 
 
@@ -842,8 +906,12 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
             return kwargs, output_stream
         return wrapper
 
-    def run(self, documents: List[Document], params: Optional[dict] = None):  # type: ignore
-        output = self.pipeline.run(documents=documents, params=params)
+    def run(self,
+            documents: List[Document], # type: ignore
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
+            debug_logs: Optional[bool] = None):
+        output = self.pipeline.run(documents=documents, params=params, debug=debug, debug_logs=debug_logs)
         return output
 
 
