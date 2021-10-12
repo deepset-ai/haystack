@@ -255,12 +255,14 @@ class TableReader(BaseReader):
                                     queries=query,
                                     max_length=self.max_seq_len,
                                     return_tensors="pt")
+            inputs.to(self.model.device)
             # Forward query and table through model and convert logits to predictions
             outputs = self.model(**inputs)
+            inputs.to("cpu")
             predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
                 inputs,
-                outputs.logits.detach(),
-                outputs.logits_aggregation.detach()
+                outputs.logits.cpu().detach(),
+                outputs.logits_aggregation.cpu().detach()
             )
 
             # Get cell values
@@ -273,7 +275,7 @@ class TableReader(BaseReader):
             current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
             
             # Calculate answer score
-            current_score = self._calculate_answer_score(outputs.logits.detach(), inputs, current_answer_coordinates)
+            current_score = self._calculate_answer_score(outputs.logits.cpu().detach(), inputs, current_answer_coordinates)
 
             if current_aggregation_operator == "NONE":
                 answer_str = ", ".join(current_answer_cells)
