@@ -18,4 +18,5 @@ class FilterRequest(BaseModel):
 class QueryResponse(BaseModel):
     query: str
     answers: List[Answer]
+    documents: Optional[List[Document]]
 
