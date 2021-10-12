@@ -413,6 +413,62 @@ None
 
 Load DensePassageRetriever from the specified directory.
 
+<a name="dense.MultimodalRetriever"></a>
+## MultimodalRetriever Objects
+
+```python
+class MultimodalRetriever(BaseRetriever)
+```
+
+Retriever that uses a tri-encoder (one transformer for query, one transformer for text passages,
+one transformer for tables).
+See the original paper for more details:
+Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using Tri-encoder Models"
+(https://arxiv.org/abs/2108.04049),
+
+<a name="dense.MultimodalRetriever.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str], passage_embedding_model: Union[Path, str], table_embedding_model: Union[Path, str], model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
+```
+
+Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
+The checkpoint format matches huggingface transformers' model format
+
+**Arguments**:
+
+- `document_store`: An instance of DocumentStore from which to retrieve documents.
+- `query_embedding_model`: Local path or remote name of question encoder checkpoint. The format equals the
+                              one used by hugging-face transformers' modelhub models.
+- `passage_embedding_model`: Local path or remote name of passage encoder checkpoint. The format equals the
+                                one used by hugging-face transformers' modelhub models.
+- `table_embedding_model`: Local path or remote name of table encoder checkpoint. The format equala the
+                              one used by hugging-face transformers' modelhub models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
+- `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
+- `top_k`: How many documents to return per query.
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+- `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+- `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
+                    This is the approach used in the original paper and is likely to improve performance if your
+                    titles contain meaningful information for retrieval (topic, entities etc.) .
+                    The title is expected to be present in doc.meta["name"] and can be supplied in the documents
+                    before writing them to the DocumentStore like this:
+                    {"text": "my text", "meta": {"name": "my title"}}.
+- `use_fast_tokenizers`: Whether to use fast Rust tokenizers
+- `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
+                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
+- `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
+                            Options: `dot_product` (Default) or `cosine`
+- `global_loss_buffer_size`: Buffer size for all_gather() in DDP.
+                                Increase if errors like "encoded data exceeds max_size ..." come up
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+                     Can be helpful to disable in production deployments to keep the logs clean.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+
 <a name="dense.EmbeddingRetriever"></a>
 ## EmbeddingRetriever Objects
 
