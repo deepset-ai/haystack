@@ -856,7 +856,7 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
             debug: Optional[bool] = None,
             debug_logs: Optional[bool] = None
             ):
-        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
+        output = self.pipeline.run(documents=documents, params=params, debug=debug, debug_logs=debug_logs)
         return output
 
 
@@ -911,7 +911,7 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
             params: Optional[dict] = None,
             debug: Optional[bool] = None,
             debug_logs: Optional[bool] = None):
-        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
+        output = self.pipeline.run(documents=documents, params=params, debug=debug, debug_logs=debug_logs)
         return output
 
 
