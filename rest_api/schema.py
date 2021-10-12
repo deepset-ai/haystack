@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Union, Any
 from pydantic import BaseModel, Field
-from haystack import Answer
+from haystack import Answer, Document
 from pydantic import BaseConfig
 
 BaseConfig.arbitrary_types_allowed = True
