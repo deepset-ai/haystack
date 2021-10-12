@@ -137,7 +137,7 @@ If batch_size is set to None, this method will yield all documents and labels.
 #### convert\_files\_to\_dicts
 
 ```python
-convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False) -> List[dict]
+convert_files_to_dicts(dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False, encoding: Optional[str] = None) -> List[dict]
 ```
 
 Convert all files(.txt, .pdf, .docx) in the sub-directories of the given path to Python dicts that can be written to a
@@ -148,6 +148,7 @@ Document Store.
 - `dir_path`: path for the documents to be written to the DocumentStore
 - `clean_func`: a custom cleaning function that gets applied to each doc (input: str, output:str)
 - `split_paragraphs`: split text in paragraphs.
+- `encoding`: character encoding to use when converting pdf documents.
 
 **Returns**:
 
