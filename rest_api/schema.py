@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Union, Any
 from pydantic import BaseModel, Field
+from haystack import Document
 
 
 class QueryRequest(BaseModel):
@@ -28,6 +29,16 @@ class QueryAnswer(BaseModel):
 class QueryResponse(BaseModel):
     query: str
     answers: List[QueryAnswer]
+
+
+class DocumentResponse(BaseModel):
+    text: str
+    id: Optional[str] = None
+    score: Optional[float] = None
+    question: Optional[str] = None
+    meta: Dict[str, Any] = None
+    #embedding: Optional[np.ndarray] = None
+    id_hash_keys: Optional[List[str]] = None
 
 
 class ExtractiveQAFeedback(BaseModel):
