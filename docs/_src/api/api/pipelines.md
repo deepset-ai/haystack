@@ -720,7 +720,7 @@ The node allows multiple join modes:
 class RayPipeline(Pipeline)
 ```
 
-Ray (   ) is a framework for distributed computing.
+Ray (https://ray.io) is a framework for distributed computing.
 
 Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
 Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
