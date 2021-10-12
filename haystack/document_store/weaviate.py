@@ -3,11 +3,6 @@ from typing import Any, Dict, Generator, List, Optional, Union
 import numpy as np
 from tqdm import tqdm
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal #type: ignore
-
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
 from haystack.utils import get_batches_from_generator

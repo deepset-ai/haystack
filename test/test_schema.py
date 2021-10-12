@@ -104,6 +104,11 @@ def test_doc_to_json():
     assert d == d_new
 
 
+def test_answer_postinit():
+    a = Answer(answer="test", offsets_in_document=[{"start": 10, "end": 20}])
+    assert a.meta == {}
+    assert isinstance(a.offsets_in_document[0], Span)
+
 def test_generate_doc_id_using_text():
     text1 = "text1"
     text2 = "text2"

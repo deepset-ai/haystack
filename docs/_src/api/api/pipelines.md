@@ -121,6 +121,34 @@ Set the component for a node in the Pipeline.
 - `name`: The name of the node.
 - `component`: The component object to be set at the node.
 
+<a name="pipeline.Pipeline.run"></a>
+#### run
+
+```python
+ | run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+```
+
+Runs the pipeline, one node at a time.
+
+**Arguments**:
+
+- `query`: The search query (for query pipelines only)
+- `file_paths`: The files to index (for indexing pipelines only)
+- `labels`: 
+- `documents`: 
+- `meta`: 
+- `params`: Dictionary of parameters to be dispatched to the nodes.
+               If you want to pass a param to all nodes, you can just use: {"top_k":10}
+               If you want to pass it to targeted nodes, you can do:
+               {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+              about their execution. By default these include the input parameters
+              they received, the output they generated, and eventual logs (of any severity)
+              emitted. All debug information can then be found in the dict returned
+              by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
+
 <a name="pipeline.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
 
@@ -324,14 +352,21 @@ Initialize a Pipeline for Extractive Question Answering.
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
 ```
 
 **Arguments**:
 
-- `query`: the query string.
-- `params`: params for the `retriever` and `reader`. For instance,
-               params={"retriever": {"top_k": 10}, "reader": {"top_k": 5}}
+- `query`: The search query string.
+- `params`: Params for the `retriever` and `reader`. For instance,
+               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+              about their execution. By default these include the input parameters
+              they received, the output they generated, and eventual logs (of any severity)
+              emitted. All debug information can then be found in the dict returned
+              by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
 
 <a name="pipeline.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline Objects
@@ -357,13 +392,20 @@ Initialize a Pipeline for semantic document search.
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
 ```
 
 **Arguments**:
 
 - `query`: the query string.
 - `params`: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+      about their execution. By default these include the input parameters
+      they received, the output they generated, and eventual logs (of any severity)
+      emitted. All debug information can then be found in the dict returned
+      by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
 
 <a name="pipeline.GenerativeQAPipeline"></a>
 ## GenerativeQAPipeline Objects
@@ -390,14 +432,21 @@ Initialize a Pipeline for Generative Question Answering.
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
 ```
 
 **Arguments**:
 
 - `query`: the query string.
 - `params`: params for the `retriever` and `generator`. For instance,
-               params={"retriever": {"top_k": 10}, "generator": {"top_k": 5}}
+               params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+      about their execution. By default these include the input parameters
+      they received, the output they generated, and eventual logs (of any severity)
+      emitted. All debug information can then be found in the dict returned
+      by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
 
 <a name="pipeline.SearchSummarizationPipeline"></a>
 ## SearchSummarizationPipeline Objects
@@ -427,7 +476,7 @@ Initialize a Pipeline that retrieves documents for a query and then summarizes t
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -435,6 +484,13 @@ Initialize a Pipeline that retrieves documents for a query and then summarizes t
 - `query`: the query string.
 - `params`: params for the `retriever` and `summarizer`. For instance,
                params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+      about their execution. By default these include the input parameters
+      they received, the output they generated, and eventual logs (of any severity)
+      emitted. All debug information can then be found in the dict returned
+      by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
 
 <a name="pipeline.FAQPipeline"></a>
 ## FAQPipeline Objects
@@ -460,13 +516,20 @@ Initialize a Pipeline for finding similar FAQs using semantic document search.
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
 ```
 
 **Arguments**:
 
 - `query`: the query string.
 - `params`: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+      about their execution. By default these include the input parameters
+      they received, the output they generated, and eventual logs (of any severity)
+      emitted. All debug information can then be found in the dict returned
+      by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
 
 <a name="pipeline.TranslationWrapperPipeline"></a>
 ## TranslationWrapperPipeline Objects
@@ -692,7 +755,7 @@ The node allows multiple join modes:
 class RayPipeline(Pipeline)
 ```
 
-Ray (   ) is a framework for distributed computing.
+Ray (https://ray.io) is a framework for distributed computing.
 
 Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
 Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas

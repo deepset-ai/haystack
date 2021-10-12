@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Dict, List, Union, Tuple
+from typing import Any, Optional, Dict, List, Union, Callable, Tuple, Optional
 from dataclasses import dataclass, asdict
 from dataclasses_json import dataclass_json
 try:
@@ -15,6 +15,8 @@ import numpy as np
 from abc import abstractmethod
 import inspect
 import logging
+import io
+from functools import wraps
 import time
 import json
 import pandas as pd
@@ -66,7 +68,7 @@ class Document:
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
         :param score: The relevance score of the Document determined by a model (e.g. Retriever or Re-Ranker).
                       In the range of [0,1], where 1 means extremely relevant.
-        :param meta: Meta fields for a document like name, url, or author.
+        :param meta: Meta fields for a document like name, url, or author in the form of a custom dict (any keys and values allowed).
         :param embedding: Vector encoding of the text
         :param id_hash_keys: Generate the document id from a custom list of strings.
                              If you want ensure you don't have duplicate documents in your DocumentStore but texts are
@@ -159,8 +161,16 @@ class Document:
 class Span:
     start: int
     end: int
+    """
+    Defining a sequence of characters (Text span) or cells (Table span) via start and end index. 
+    For extractive QA: Character where answer starts/ends  
+    For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
+    
+    :param start: Position where the span starts
+    :param end:  Position where the spand ends
+    """
 
-
+@dataclass_json
 @dataclass
 class Answer:
     answer: str
@@ -174,41 +184,55 @@ class Answer:
 
     """
     The fundamental object in Haystack to represent any type of Answers (e.g. extractive QA, generative QA or TableQA).
-    For example, it's used within some Nodes like the Reader but also in the REST API.
+    For example, it's used within some Nodes like the Reader, but also in the REST API.
 
     :param answer: The answer string. If there's no possible answer (aka "no_answer" or "is_impossible) this will be an empty string.
-    :param type: Whether this answer comes from an extractive model (i.e. we can locate an exact answer string in one
-                 of the documents) or from a generative model (i.e. no pointer to a specific document, no offsets ...) 
+    :param type: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model 
+                 (i.e. we can locate an exact answer string in one of the documents) or from a generative model 
+                 (i.e. no pointer to a specific document, no offsets ...). 
     :param score: The relevance score of the Answer determined by a model (e.g. Reader or Generator).
                   In the range of [0,1], where 1 means extremely relevant.
     :param context: The related content that was used to create the answer (i.e. a text passage, part of a table, image ...)
-    :param offsets_in_document: TODO
-    :param offsets_in_context: TODO
-    :param document_id: TODO
-    :param meta: TODO
+    :param offsets_in_document: List of `Span` objects with start and end positions of the answer **in the
+                                document** (as stored in the document store).
+                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+                                For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
+                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here) 
+    :param offsets_in_context: List of `Span` objects with start and end positions of the answer **in the
+                                context** (i.e. the surrounding text/table of a certain window size).
+                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+                                For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
+                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here) 
+    :param document_id: ID of the document that the answer was located it (if any)
+    :param meta: Dict that can be used to associate any kind of custom meta data with the answer. 
+                 In extractive QA, this will carry the meta data of the document where the answer was found.
     """
 
     def __post_init__(self):
         # In case offsets are passed as dicts rather than Span objects we convert them here
         # For example, this is used when instantiating an object via from_json()
         if self.offsets_in_document is not None:
-            self.offsets_in_document = [Span(**e) for e in self.offsets_in_document if isinstance(e, dict)]
+            self.offsets_in_document = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_document]
         if self.offsets_in_context is not None:
-            self.offsets_in_context = [Span(**e) for e in self.offsets_in_context if isinstance(e, dict)]
+            self.offsets_in_context = [Span(**e) if isinstance(e, dict) else e for e in self.offsets_in_context]
+
+        if self.meta is None:
+            self.meta = {}
 
     def __lt__(self, other):
         """ Enable sorting of Answers by score """
         return self.score < other.score
 
-    def to_json(self):
-        # usage of dataclass_json seems to break autocomplete in the IDE, so we implement the methods ourselves here
-        j = json.dumps(asdict(self))
-        return j
-
-    @classmethod
-    def from_json(cls, data):
-        d = json.loads(data)
-        return cls(**d)
+    #TODO: switch to manual serialization instead of dataclass_json as it seems to break autocomplete of IDE in some cases
+    # def to_json(self):
+    #     # usage of dataclass_json seems to break autocomplete in the IDE, so we implement the methods ourselves here
+    #     j = json.dumps(asdict(self))
+    #     return j
+    #
+    # @classmethod
+    # def from_json(cls, data):
+    #     d = json.loads(data)
+    #     return cls(**d)
 
 
 @dataclass_json
@@ -244,13 +268,12 @@ class Label:
                  meta: Optional[dict] = None
                  ):
         """
-        #TODO update docstring
-
         Object used to represent label/feedback in a standardized way within Haystack.
         This includes labels from dataset like SQuAD, annotations from labeling tools,
         or, user-feedback from the Haystack REST API.
 
         :param query: the question (or query) for finding answers.
+        :param document:
         :param answer: the answer object.
         :param is_correct_answer: whether the sample is positive or negative.
         :param is_correct_document: in case of negative sample(is_correct_answer is False), there could be two cases;
@@ -258,14 +281,13 @@ class Label:
                                     the returned document was correct.
         :param origin: the source for the labels. It can be used to later for filtering.
         :param id: Unique ID used within the DocumentStore. If not supplied, a uuid will be generated automatically.
-        :param document_id: the document_store's ID for the returned answer document.
-        :param offset_start_in_doc: the answer start offset in the document.
         :param no_answer: whether the question in unanswerable.
-        :param model_id: model_id used for prediction (in-case of user feedback).
+        :param pipeline_id: pipeline identifier (any str) that was involved for generating this label (in-case of user feedback).
         :param created_at: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
         :param created_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
+        :param meta: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
         """
 
         # Create a unique ID (either new one, or one from user input)
@@ -315,12 +337,12 @@ class Label:
         else:
             self.meta = meta
 
-    # @classmethod
-    # def from_dict(cls, dict):
-    #     return cls(**dict)
-    #
-    # def to_dict(self):
-    #     return self.__dict__
+    @classmethod
+    def from_dict(cls, dict):
+        return cls(**dict)
+
+    def to_dict(self):
+        return self.__dict__
 
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):
@@ -367,8 +389,9 @@ class MultiLabel:
         automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
         underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
 
-        :param labels: A list lof labels that belong to a similar query
-        :param drop_negative_labels: list of possible answer strings
+        :param labels: A list lof labels that belong to a similar query and shall be "grouped" together
+        :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
+        :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
 
         # drop duplicate labels and remove negative labels if needed.
@@ -389,19 +412,6 @@ class MultiLabel:
         # users decided which aggregation logic they want
         self.no_answer = False not in [l.no_answer for l in self.labels]
         self.document_ids = [l.document.id for l in self.labels]
-
-        # TODO which attributes do we still really need here?
-        # self.is_correct_answer = is_correct_answer
-        # self.is_correct_document = is_correct_document
-        # self.origin = origin
-        # self.multiple_document_ids = multiple_document_ids
-        # self.multiple_offset_start_in_docs = multiple_offset_start_in_docs
-        # self.model_id = model_id
-
-        # if not meta:
-        #     self.meta = dict()
-        # else:
-        #     self.meta = meta
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         unique_values = set([getattr(l, key) for l in self.labels])
@@ -424,6 +434,72 @@ class MultiLabel:
         return str(self.to_dict())
 
 
+class InMemoryLogger(io.TextIOBase):
+    """
+    Implementation of a logger that keeps track
+    of the log lines in a list called `logs`,
+    from where they can be accessed freely.
+    """
+
+    def __init__(self, *args):
+        io.TextIOBase.__init__(self, *args)
+        self.logs = []
+
+    def write(self, x):
+        self.logs.append(x)
+
+
+def record_debug_logs(func: Callable, node_name: str, logs: bool) -> Callable:
+    """
+    Captures the debug logs of the wrapped function and
+    saves them in the `_debug` key of the output dictionary.
+    If `logs` is True, dumps the same logs to the console as well.
+
+    Used in `BaseComponent.__getattribute__()` to wrap `run()` functions.
+    This makes sure that every implementation of `run()` by a subclass will
+    be automagically decorated with this method when requested.
+
+    :param func: the function to decorate (must be an implementation of
+                 `BaseComponent.run()`).
+    :param logs: whether the captured logs should also be displayed
+                 in the console during the execution of the pipeline.
+    """
+    @wraps(func)
+    def inner(*args, **kwargs) -> Tuple[Dict[str, Any], str]:
+
+        with InMemoryLogger() as logs_container:
+            logger = logging.getLogger()
+
+            # Adds a handler that stores the logs in a variable
+            handler = logging.StreamHandler(logs_container)
+            handler.setLevel(logger.level or logging.DEBUG)
+            logger.addHandler(handler)
+
+            # Add a handler that prints log messages in the console
+            # to the specified level for the node
+            if logs:
+                handler_console = logging.StreamHandler()
+                handler_console.setLevel(logging.DEBUG)
+                formatter = logging.Formatter(f'[{node_name} logs] %(message)s')
+                handler_console.setFormatter(formatter)
+                logger.addHandler(handler_console)
+
+            output, stream = func(*args, **kwargs)
+
+            if not "_debug" in output.keys():
+                output["_debug"] = {}
+            output["_debug"]["logs"] = logs_container.logs
+
+            # Remove both handlers
+            logger.removeHandler(handler)
+            if logs:
+                logger.removeHandler(handler_console)
+
+            return output, stream
+
+    return inner
+
+
 class BaseComponent:
     """
     A base class for implementing nodes in a Pipeline.
@@ -440,6 +516,37 @@ class BaseComponent:
         """
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
+
+    def __getattribute__(self, name):
+        """
+        This modified `__getattribute__` method automagically decorates
+        every `BaseComponent.run()` implementation with the
+        `record_debug_logs` decorator defined above.
+
+        This decorator makes the function collect its debug logs into a
+        `_debug` key of the output dictionary.
+
+        The logs collection is not always performed. Before applying the decorator,
+        it checks for an instance attribute called `debug` to know
+        whether it should or not. The decorator is applied if the attribute is
+        defined and True.
+
+        In addition, the value of the instance attribute `debug_logs` is
+        passed to the decorator. If it's True, it will print the
+        logs in the console as well.
+        """
+        if name == "run" and self.debug:
+            func = getattr(type(self), "run")
+            return record_debug_logs(func=func, node_name=self.__class__.__name__, logs=self.debug_logs).__get__(self)
+        return object.__getattribute__(self, name)
+
+    def __getattr__(self, name):
+        """
+        Ensures that `debug` and `debug_logs` are always defined.
+        """
+        if name in ["debug", "debug_logs"]:
+            return None
+        raise AttributeError(name)
 
     @classmethod
     def get_subclass(cls, component_type: str):
@@ -492,7 +599,7 @@ class BaseComponent:
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         params: Optional[dict] = None,
-    ) -> Tuple[Dict,str]:
+    ) -> Tuple[Dict, str]:
         """
         Method that will be executed when the node in the graph is called.
 
@@ -505,14 +612,15 @@ class BaseComponent:
         """
         pass
 
-    def _dispatch_run(self, **kwargs):
+    def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
         The Pipelines call this method which in turn executes the run() method of Component.
 
         It takes care of the following:
           - inspect run() signature to validate if all necessary arguments are available
+          - pop `debug` and `debug_logs` and sets them on the instance to control debug output
           - call run() with the corresponding arguments and gather output
-          - collate _debug information if present
+          - collate `_debug` information if present
           - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
         """
         arguments = deepcopy(kwargs)
@@ -520,13 +628,21 @@ class BaseComponent:
 
         run_signature_args = inspect.signature(self.run).parameters.keys()
 
-        run_params = {}
+        run_params: Dict[str, Any] = {}
         for key, value in params.items():
             if key == self.name:  # targeted params for this node
                 if isinstance(value, dict):
+
+                    # Extract debug attributes
+                    if "debug" in value.keys():
+                        self.debug = value.pop("debug")
+                    if "debug_logs" in value.keys():
+                        self.debug_logs = value.pop("debug_logs")
+
                     for _k, _v in value.items():
                         if _k not in run_signature_args:
                             raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
+
                 run_params.update(**value)
             elif key in run_signature_args:  # global params
                 run_params[key] = value
@@ -538,9 +654,19 @@ class BaseComponent:
 
         output, stream = self.run(**run_inputs, **run_params)
 
+        # Collect debug information
+        current_debug = output.get("_debug", {})
+        if self.debug:
+            current_debug["input"] = {**run_inputs, **run_params}
+            if self.debug:
+                current_debug["input"]["debug"] = self.debug
+            if self.debug_logs:
+                current_debug["input"]["debug_logs"] = self.debug_logs
+            filtered_output = {key: value for key, value in output.items() if key != "_debug"} # Exclude _debug to avoid recursion
+            current_debug["output"] = filtered_output
+
         # append _debug information from nodes
         all_debug = arguments.get("_debug", {})
-        current_debug = output.get("_debug")
         if current_debug:
             all_debug[self.name] = current_debug
         if all_debug:

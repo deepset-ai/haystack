@@ -282,7 +282,8 @@ class BaseDocumentStore(BaseComponent):
                                     index: Optional[str] = None,
                                     duplicate_documents: Optional[str] = None):
         """
-        Handle duplicates documents
+        Checks whether any of the passed documents is already existing in the chosen index and returns a list of
+        documents that are not in the index yet.
 
         :param documents: A list of Haystack Document objects.
         :param duplicate_documents: Handle duplicates document based on parameter options.
