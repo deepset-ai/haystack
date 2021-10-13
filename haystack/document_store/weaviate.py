@@ -220,7 +220,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         document = Document(
             id=id,
             content=content,
-            content_type=content_type, #type: ignore
+            content_type=content_type,
             meta=meta_data,
             score=score,
             embedding=embedding,
