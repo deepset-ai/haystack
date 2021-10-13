@@ -16,4 +16,4 @@ def test_load_pipeline(document_store_with_docs):
     assert ray.serve.get_deployment(name="ESRetriever").num_replicas == 2
     assert ray.serve.get_deployment(name="Reader").num_replicas == 1
     assert prediction["query"] == "Who lives in Berlin?"
-    assert prediction["answers"][0]["answer"] == "Carla"
+    assert prediction["answers"][0].answer == "Carla"

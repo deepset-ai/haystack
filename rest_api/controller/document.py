@@ -7,7 +7,7 @@ from haystack import Document
 
 from rest_api.controller.search import DOCUMENT_STORE
 from rest_api.config import LOG_LEVEL
-from rest_api.schema import FilterRequest, DocumentResponse
+from rest_api.schema import FilterRequest
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
@@ -17,7 +17,7 @@ logger = logging.getLogger("haystack")
 router = APIRouter()
 
 
-@router.post("/documents/get_by_filters", response_model=List[DocumentResponse])
+@router.post("/documents/get_by_filters", response_model=List[Document])
 def get_documents_by_filter(filters: FilterRequest):
     """
     Can be used to get documents from a document store.
@@ -29,8 +29,8 @@ def get_documents_by_filter(filters: FilterRequest):
     """
     docs = [doc.to_dict() for doc in DOCUMENT_STORE.get_all_documents(filters=filters.filters)]
     for doc in docs:
-        del doc["embedding"]
-    return [DocumentResponse(**doc) for doc in docs]
+        doc["embedding"] = None
+    return docs
 
 
 @router.post("/documents/delete_by_filters", response_model=bool)

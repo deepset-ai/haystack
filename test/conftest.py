@@ -296,11 +296,11 @@ def de_to_en_translator():
 def test_docs_xs():
     return [
         # current "dict" format for a document
-        {"text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
+        {"content": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
         # metafield at the top level for backward compatibility
-        {"text": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
+        {"content": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
         # Document object for a doc
-        Document(text="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"})
+        Document(content="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"})
     ]
 
 
@@ -396,7 +396,8 @@ def retriever(request, document_store):
     return get_retriever(request.param, document_store)
 
 
-@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
+# @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
+@pytest.fixture(params=["tfidf"])
 def retriever_with_docs(request, document_store_with_docs):
     return get_retriever(request.param, document_store_with_docs)
 
@@ -433,6 +434,7 @@ def get_retriever(retriever_type, document_store):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
+# @pytest.fixture(params=["memory"])
 def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)

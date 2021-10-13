@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Any, Dict, List, Mapping, Optional, Union
 
-from haystack import Document, BaseComponent
+from haystack import Document, BaseComponent, Answer
 
 
 class BaseTranslator(BaseComponent):
@@ -15,9 +15,9 @@ class BaseTranslator(BaseComponent):
     def translate(
         self,
         query: Optional[str] = None,
-        documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
-    ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
+    ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
         """
         Translate the passed query or a list of documents from language A to B.
         """
@@ -26,7 +26,7 @@ class BaseTranslator(BaseComponent):
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
-        documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
     ):

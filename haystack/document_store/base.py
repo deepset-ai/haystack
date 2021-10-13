@@ -89,6 +89,8 @@ class BaseDocumentStore(BaseComponent):
                                   index: Optional[str] = None,
                                   filters: Optional[Dict[str, List[str]]] = None,
                                   open_domain: bool=True,
+                                  drop_negative_labels: bool=False,
+                                  drop_no_answers: bool=False,
                                   aggregate_by_meta: Optional[Union[str, list]]=None) -> List[MultiLabel]:
         """
         Return all labels in the DocumentStore, aggregated into MultiLabel objects. 
@@ -111,6 +113,7 @@ class BaseDocumentStore(BaseComponent):
                             When False, labels are aggregated in a closed domain fashion based on the question text
                             and also the id of the document that the label is tied to. In this setting, this function
                             might return multiple MultiLabel objects with the same question string.
+        :param TODO drop params
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
 
         """
@@ -125,70 +128,29 @@ class BaseDocumentStore(BaseComponent):
             # or if there are fields in the meta data that we should group by (set using group_by_meta)
             group_by_id_list: list = []
             if open_domain:
-                group_by_id_list = [l.question]
+                group_by_id_list = [l.query]
             else:
-                group_by_id_list = [l.document_id, l.question]
+                group_by_id_list = [l.document.id, l.query]
             if aggregate_by_meta:
                 if type(aggregate_by_meta) == str:
                     aggregate_by_meta = [aggregate_by_meta]
+                if l.meta is None:
+                    l.meta = {}
                 for meta_key in aggregate_by_meta:
                     curr_meta = l.meta.get(meta_key, None)
                     if curr_meta:
                         group_by_id_list.append(curr_meta)
             group_by_id = tuple(group_by_id_list)
 
-            # only aggregate labels with correct answers, as only those can be currently used in evaluation
-            if not l.is_correct_answer:
-                continue
-
             if group_by_id in question_ans_dict:
                 question_ans_dict[group_by_id].append(l)
             else:
                 question_ans_dict[group_by_id] = [l]
 
-        # Aggregate labels
+        # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
+        # aggregated attributes like `no_answer`
         for q, ls in question_ans_dict.items():
-            ls = list(set(ls))  # get rid of exact duplicates
-            # check if there are both text answer and "no answer" present
-            t_present = False
-            no_present = False
-            no_idx = []
-            for idx, l in enumerate(ls):
-                if len(l.answer) == 0:
-                    no_present = True
-                    no_idx.append(idx)
-                else:
-                    t_present = True
-            # if both text and no answer are present, remove no answer labels
-            if t_present and no_present:
-                logger.warning(
-                    f"Both text label and 'no answer possible' label is present for question: {ls[0].question}")
-                for remove_idx in no_idx[::-1]:
-                    ls.pop(remove_idx)
-
-            # construct Aggregated_label
-            for i, l in enumerate(ls):
-                if i == 0:
-                    # Keep only the label metadata that we are aggregating by
-                    if aggregate_by_meta:
-                        meta_new = {k: v for k, v in l.meta.items() if k in aggregate_by_meta}
-                    else:
-                        meta_new = {}
-
-                    agg_label = MultiLabel(question=l.question,
-                                           multiple_answers=[l.answer],
-                                           is_correct_answer=l.is_correct_answer,
-                                           is_correct_document=l.is_correct_document,
-                                           origin=l.origin,
-                                           multiple_document_ids=[l.document_id],
-                                           multiple_offset_start_in_docs=[l.offset_start_in_doc],
-                                           no_answer=l.no_answer,
-                                           model_id=l.model_id,
-                                           meta=meta_new)
-                else:
-                    agg_label.multiple_answers.append(l.answer)
-                    agg_label.multiple_document_ids.append(l.document_id)
-                    agg_label.multiple_offset_start_in_docs.append(l.offset_start_in_doc)
+            agg_label = MultiLabel(labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers)
             aggregated_labels.append(agg_label)
         return aggregated_labels
 
@@ -315,9 +277,13 @@ class BaseDocumentStore(BaseComponent):
 
         return _documents
 
-    def _handle_duplicate_documents(self, documents: List[Document], duplicate_documents: Optional[str] = None):
+    def _handle_duplicate_documents(self,
+                                    documents: List[Document],
+                                    index: Optional[str] = None,
+                                    duplicate_documents: Optional[str] = None):
         """
-        Handle duplicates documents
+        Checks whether any of the passed documents is already existing in the chosen index and returns a list of
+        documents that are not in the index yet.
 
         :param documents: A list of Haystack Document objects.
         :param duplicate_documents: Handle duplicates document based on parameter options.
@@ -328,14 +294,16 @@ class BaseDocumentStore(BaseComponent):
                                     exists.
         :return: A list of Haystack Document objects.
        """
+
+        index = index or self.index
         if duplicate_documents in ('skip', 'fail'):
             documents = self._drop_duplicate_documents(documents)
-            documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=self.index)
-            ids_exist_in_db = [doc.id for doc in documents_found]
+            documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=index)
+            ids_exist_in_db: List[str] = [doc.id for doc in documents_found]
 
             if len(ids_exist_in_db) > 0 and duplicate_documents == 'fail':
                 raise DuplicateDocumentError(f"Document with ids '{', '.join(ids_exist_in_db)} already exists"
-                                             f" in index = '{self.index}'.")
+                                             f" in index = '{index}'.")
 
             documents = list(filter(lambda doc: doc.id not in ids_exist_in_db, documents))
 

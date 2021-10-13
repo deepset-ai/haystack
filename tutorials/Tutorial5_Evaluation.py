@@ -73,7 +73,7 @@ def tutorial5_evaluation():
     )
 
     # Let's prepare the labels that we need for the retriever and the reader
-    labels = document_store.get_all_labels_aggregated(index=label_index)
+    labels = document_store.get_all_labels_aggregated(index=label_index, drop_negative_labels=True, drop_no_answers=False)
 
     # Initialize Retriever
     retriever = ElasticsearchRetriever(document_store=document_store)
@@ -138,7 +138,7 @@ def tutorial5_evaluation():
 
         for l in labels:
             res = p.run(
-                query=l.question,
+                query=l.query,
                 labels=l,
                 params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
             )

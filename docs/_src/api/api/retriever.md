@@ -39,7 +39,7 @@ Wrapper method used to time functions.
 #### eval
 
 ```python
- | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+ | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
 ```
 
 Performs evaluation on the Retriever.
@@ -105,7 +105,7 @@ class ElasticsearchRetriever(BaseRetriever)
                         |                "should": [{"multi_match": {
                         |                    "query": ${query},                 // mandatory query placeholder
                         |                    "type": "most_fields",
-                        |                    "fields": ["text", "title"]}}],
+                        |                    "fields": ["content", "title"]}}],
                         |                "filter": [                                 // optional custom filters
                         |                    {"terms": {"year": ${years}}},
                         |                    {"terms": {"quarter": ${quarters}}},
@@ -430,7 +430,7 @@ class EmbeddingRetriever(BaseRetriever)
 **Arguments**:
 
 - `document_store`: An instance of DocumentStore from which to retrieve documents.
-- `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+- `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `use_gpu`: Whether to use gpu or not
 - `model_format`: Name of framework that was used for saving the model. Options:
