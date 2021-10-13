@@ -58,7 +58,7 @@ def convert_features_to_dataset(features):
                                f"A non-integer value for feature '{t_name}' with a value of: "
                                f"'{base}' will be converted to a torch tensor of dtype long.")
         except:
-            logger.warning(f"Could not determine type for feature '{t_name}'. "
+            logger.debug(f"Could not determine type for feature '{t_name}'. "
                            "Converting now to a tensor of default type long.")
 
         # Convert all remaining python objects to torch long tensors
