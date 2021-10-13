@@ -84,7 +84,7 @@ class Document:
         self.meta = meta or {}
 
         if embedding is not None:
-            embedding = np.asarray(d["embedding"])
+            embedding = np.asarray(embedding)
         self.embedding = embedding
 
         # Create a unique ID (either new one, or one from user input)
