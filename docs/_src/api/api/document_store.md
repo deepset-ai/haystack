@@ -63,7 +63,7 @@ Get documents from the document store.
 #### get\_all\_labels\_aggregated
 
 ```python
- | get_all_labels_aggregated(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, open_domain: bool = True, aggregate_by_meta: Optional[Union[str, list]] = None) -> List[MultiLabel]
+ | get_all_labels_aggregated(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, open_domain: bool = True, drop_negative_labels: bool = False, drop_no_answers: bool = False, aggregate_by_meta: Optional[Union[str, list]] = None) -> List[MultiLabel]
 ```
 
 Return all labels in the DocumentStore, aggregated into MultiLabel objects.
@@ -88,6 +88,7 @@ object, provided that they have the same product_id (to be found in Label.meta["
                     When False, labels are aggregated in a closed domain fashion based on the question text
                     and also the id of the document that the label is tied to. In this setting, this function
                     might return multiple MultiLabel objects with the same question string.
+:param TODO drop params
 - `aggregate_by_meta`: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
 
 <a name="base.BaseDocumentStore.add_eval_data"></a>
@@ -131,7 +132,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "text", text_field: str = "text", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, faq_question_field: Optional[str] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat")
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat")
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -152,7 +153,7 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 - `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
 - `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
 - `search_fields`: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
-- `text_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                    If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
 - `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
@@ -239,12 +240,12 @@ they will automatically get UUIDs assigned. See the `Document` class for details
 **Arguments**:
 
 - `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-                  For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                  Optionally: Include meta data via {"text": "<the-actual-text>",
+                  For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+                  Optionally: Include meta data via {"content": "<the-actual-text>",
                   "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                   It can be used for filtering and is accessible in the responses of the Finder.
                   Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
-                  should be changed to what you have set for self.text_field and self.name_field.
+                  should be changed to what you have set for self.content_field and self.name_field.
 - `index`: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
 - `batch_size`: Number of documents that are passed to Elasticsearch's bulk function at a time.
 - `duplicate_documents`: Handle duplicates document based on parameter options.
@@ -845,7 +846,7 @@ Return all labels in the document store
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None
 ```
 
 Indexes documents for later queries.
@@ -1037,7 +1038,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None
 ```
 
 Add new documents to the DocumentStore.
@@ -1561,7 +1562,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, text_field: str = "text", name_field: str = "name", faq_question_field="question", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1574,10 +1575,9 @@ The current implementation is not supporting the storage of labels, so you canno
 - `password`: password (standard authentication via http_auth)
 - `index`: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
 - `embedding_dim`: The embedding vector size. Default: 768.
-- `text_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                    If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
-- `faq_question_field`: Name of field containing the question in case of FAQ-Style QA
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                    Currently, HSNW is only supported.

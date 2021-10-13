@@ -157,7 +157,7 @@ class Crawler(BaseComponent):
             data['meta'] = {'url': link}
             if base_url:
                 data['meta']['base_url'] = base_url
-            data['text'] = text
+            data['content'] = text
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f)
             paths.append(file_path)

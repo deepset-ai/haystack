@@ -107,11 +107,11 @@ def tutorial8_preprocessing():
     docs_nrsb = preprocessor_nrsb.process(doc_txt)
 
     print("RESPECTING SENTENCE BOUNDARY")
-    end_text = docs_default[0]["text"][-50:]
+    end_text = docs_default[0]["content"][-50:]
     print("End of document: \"..." + end_text + "\"")
     print()
     print("NOT RESPECTING SENTENCE BOUNDARY")
-    end_text_nrsb = docs_nrsb[0]["text"][-50:]
+    end_text_nrsb = docs_nrsb[0]["content"][-50:]
     print("End of document: \"..." + end_text_nrsb + "\"")
 
     """
@@ -135,9 +135,9 @@ def tutorial8_preprocessing():
     )
     docs_sliding_window = preprocessor_sliding_window.process(doc_txt)
 
-    doc1 = docs_sliding_window[0]["text"][:200]
-    doc2 = docs_sliding_window[1]["text"][:100]
-    doc3 = docs_sliding_window[2]["text"][:100]
+    doc1 = docs_sliding_window[0]["content"][:200]
+    doc2 = docs_sliding_window[1]["content"][:100]
+    doc3 = docs_sliding_window[2]["content"][:100]
 
     print("Document 1: \"" + doc1 + "...\"")
     print("Document 2: \"" + doc2 + "...\"")

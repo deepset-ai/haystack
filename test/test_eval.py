@@ -26,22 +26,25 @@ def test_add_eval_data(document_store, batch_size):
     labels = document_store.get_all_labels(index="haystack_test_feedback")
     label = None
     for l in labels:
-        if l.question == "In what country is Normandy located?":
+        if l.query == "In what country is Normandy located?":
             label = l
             break
-    assert label.answer == "France"
+    assert label.answer.answer == "France"
     assert label.no_answer == False
     assert label.is_correct_answer == True
     assert label.is_correct_document == True
-    assert label.question == "In what country is Normandy located?"
-    assert label.origin == "gold_label"
-    assert label.offset_start_in_doc == 159
+    assert label.query == "In what country is Normandy located?"
+    assert label.origin == "gold-label"
+    assert label.answer.offsets_in_document[0].start == 159
+    assert label.answer.context[label.answer.offsets_in_context[0].start:label.answer.offsets_in_context[0].end] == "France"
+    assert label.answer.document_id == label.document.id
 
     # check combination
-    doc = document_store.get_document_by_id(label.document_id, index="haystack_test_eval_document")
-    start = label.offset_start_in_doc
-    end = start + len(label.answer)
-    assert doc.text[start:end] == "France"
+    doc = document_store.get_document_by_id(label.document.id, index="haystack_test_eval_document")
+    start = label.answer.offsets_in_document[0].start
+    end = label.answer.offsets_in_document[0].end
+    assert end == start + len(label.answer.answer)
+    assert doc.content[start:end] == "France"
 
 
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
@@ -102,7 +105,9 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
         label_index="haystack_test_feedback",
     )
 
-    labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
+    labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback",
+                                                      drop_negative_labels=True,
+                                                      drop_no_answers=False)
 
     eval_retriever = EvalDocuments()
     eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-MiniLM-L3-v2",debug=True)
@@ -119,7 +124,7 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     p.add_node(component=eval_reader_vanila, name="EvalAnswers_vanilla", inputs=["QAReader"])
     for l in labels:
         res = p.run(
-            query=l.question,
+            query=l.query,
             labels=l,
             params={"index": "haystack_test_eval_document"}
         )
@@ -152,7 +157,7 @@ def test_eval_data_split_word(document_store):
     labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
     docs = document_store.get_all_documents(index="haystack_test_eval_document")
     assert len(docs) == 5
-    assert len(set(labels[0].multiple_document_ids)) == 2
+    assert len(set(labels[0].document_ids)) == 2
 
 
 def test_eval_data_split_passage(document_store):
@@ -175,4 +180,4 @@ def test_eval_data_split_passage(document_store):
     )
     docs = document_store.get_all_documents(index="haystack_test_eval_document")
     assert len(docs) == 2
-    assert len(docs[1].text) == 56
+    assert len(docs[1].content) == 56

@@ -32,10 +32,10 @@ class EntityExtractor(BaseComponent):
             for doc in documents:
                 # In a querying pipeline, doc is a haystack.schema.Document object
                 try:
-                    doc.meta["entities"] = self.extract(doc.text)  # type: ignore
+                    doc.meta["entities"] = self.extract(doc.content)  # type: ignore
                 # In an indexing pipeline, doc is a dictionary
                 except AttributeError:
-                    doc["meta"]["entities"] = self.extract(doc["text"])  # type: ignore
+                    doc["meta"]["entities"] = self.extract(doc["content"])  # type: ignore
         output = {"documents": documents}
         return output, "output_1"
 
@@ -64,12 +64,12 @@ def simplify_ner_for_qa(output):
     for answer in output["answers"]:
 
         entities = []
-        for entity in answer["meta"]["entities"]:
-            if entity["start"] >= answer["offset_start_in_doc"] and entity["end"] <= answer["offset_end_in_doc"]:
+        for entity in answer.meta["entities"]:
+            if entity["start"] >= answer.offsets_in_document[0].start and entity["end"] <= answer.offsets_in_document[0].end:
                 entities.append(entity["word"])  
 
         compact_output.append({
-            "answer": answer["answer"],
+            "answer": answer.answer,
             "entities": entities
         })
     return compact_output
