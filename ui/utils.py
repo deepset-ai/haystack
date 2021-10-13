@@ -3,7 +3,6 @@ import os
 import logging
 import requests
 import streamlit as st
-from haystack import Answer
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
 STATUS = "initialized"
@@ -32,18 +31,19 @@ def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
 
     # Format response
     result = []
-    answers: List[Answer] = response_raw["answers"]
+    answers = response_raw["answers"]
     for i in range(len(answers)):
-        answer = answers[i]["answer"]
-        if answer:
+        answer = answers[i]
+        answer_text = answer["answer"]
+        if answer_text:
             result.append(
                 {
-                    "context": "..." + answer.context + "...",
-                    "answer": answer,
-                    "source": answer.meta["name"],
-                    "relevance": round(answer.score * 100, 2),
-                    "document_id": answer.document_id,
-                    "offset_start_in_doc": answer.offsets_in_document[0].start,
+                    "context": "..." + answer["context"] + "...",
+                    "answer": answer_text,
+                    "source": answer["meta"]["name"],
+                    "relevance": round(answer["score"] * 100, 2),
+                    "document_id": answer["document_id"],
+                    "offset_start_in_doc": answer["offsets_in_document"][0]["start"],
                 }
             )
     return result, response_raw
