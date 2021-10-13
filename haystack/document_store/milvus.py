@@ -199,7 +199,9 @@ class MilvusDocumentStore(SQLDocumentStore):
             return
 
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
+        document_objects = self._handle_duplicate_documents(documents=document_objects,
+                                                            index=index,
+                                                            duplicate_documents=duplicate_documents)
         add_vectors = False if document_objects[0].embedding is None else True
 
         batched_documents = get_batches_from_generator(document_objects, batch_size)
