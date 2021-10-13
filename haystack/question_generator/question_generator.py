@@ -59,9 +59,9 @@ class QuestionGenerator(BaseComponent):
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
         for d in documents:
-            questions = self.generate(d.text)
+            questions = self.generate(d.content)
             curr_dict = {"document_id": d.id,
-                         "document_sample": d.text[:200],
+                         "document_sample": d.content[:200],
                          "questions": questions}
             generated_questions.append(curr_dict)
         output = {"generated_questions": generated_questions, "documents": documents}
@@ -71,13 +71,13 @@ class QuestionGenerator(BaseComponent):
         # Performing splitting because T5 has a max input length
         # Also currently, it seems that it only generates about 3 questions for the beginning section of text
         split_texts_dict = self.preprocessor.split(
-            document={"text": text},
+            document={"content": text},
             split_by="word",
             split_respect_sentence_boundary=False,
             split_overlap=self.split_overlap,
             split_length=self.split_length
         )
-        split_texts = [x["text"] for x in split_texts_dict]
+        split_texts = [x["content"] for x in split_texts_dict]
         ret = []
         for split_text in split_texts:
             if self.prompt not in split_text:

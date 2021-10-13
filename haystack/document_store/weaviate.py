@@ -43,9 +43,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
             password: str = None,
             index: str = "Document",
             embedding_dim: int = 768,
-            text_field: str = "text",
+            content_field: str = "content",
             name_field: str = "name",
-            faq_question_field = "question",
             similarity: str = "dot_product",
             index_type: str = "hnsw",
             custom_schema: Optional[dict] = None,
@@ -64,10 +63,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param password: password (standard authentication via http_auth)
         :param index: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
         :param embedding_dim: The embedding vector size. Default: 768.
-        :param text_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+        :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
-        :param faq_question_field: Name of field containing the question in case of FAQ-Style QA
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
@@ -90,8 +88,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             host=host, port=port, timeout_config=timeout_config, username=username, password=password,
-            index=index, embedding_dim=embedding_dim, text_field=text_field, name_field=name_field,
-            faq_question_field=faq_question_field, similarity=similarity, index_type=index_type,
+            index=index, embedding_dim=embedding_dim, content_field=content_field, name_field=name_field,
+            similarity=similarity, index_type=index_type,
             custom_schema=custom_schema,return_embedding=return_embedding, embedding_field=embedding_field,
             progress_bar=progress_bar, duplicate_documents=duplicate_documents
         )
@@ -122,9 +120,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
             )
         self.index = index
         self.embedding_dim = embedding_dim
-        self.text_field = text_field
+        self.content_field = content_field
         self.name_field = name_field
-        self.faq_question_field = faq_question_field
         self.similarity = similarity
         self.index_type = index_type
         self.custom_schema = custom_schema
@@ -164,18 +161,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                 },
                                 {
                                     "dataType": [
-                                        "string"
-                                    ],
-                                    "description": "Question Field",
-                                    "name": self.faq_question_field
-                                },
-                                {
-                                    "dataType": [
                                         "text"
                                     ],
-                                    "description": "Document Text",
-                                    "name": self.text_field
-                                },
+                                    "description": "Document Content (e.g. the text)",
+                                    "name": self.content_field
+                                }
                             ],
                         }
                     ]
@@ -194,8 +184,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Weaviate get methods return the data items in properties key, whereas the query doesn't.
         """
         score = None
-        text = ""
-        question = None
+        content = ""
 
         id = result.get("id")
         embedding = result.get("vector")
@@ -206,11 +195,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if not props:
             props = result
 
-        if props.get(self.text_field) is not None:
-            text = str(props.get(self.text_field))
+        if props.get(self.content_field) is not None:
+            content = str(props.get(self.content_field))
 
-        if props.get(self.faq_question_field) is not None:
-            question = props.get(self.faq_question_field)
+        if props.get("contenttype") is not None:
+            content_type = str(props.pop("contenttype"))
 
         # Weaviate creates "_additional" key for semantic search
         if "_additional" in props:
@@ -223,26 +212,25 @@ class WeaviateDocumentStore(BaseDocumentStore):
             props.pop("_additional", None)
 
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in props.items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
+        meta_data = {k:v for k,v in props.items() if k not in (self.content_field, self.embedding_field)}
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
 
         document = Document(
             id=id,
-            text=text,
+            content=content,
+            content_type=content_type, #type: ignore
             meta=meta_data,
             score=score,
-            question=question,
             embedding=embedding,
         )
         return document
 
     def _create_document_field_map(self) -> Dict:
         return {
-            self.text_field: "text",
-            self.embedding_field: "embedding",
-            self.faq_question_field if self.faq_question_field else "question": "question"
+            self.content_field: "content",
+            self.embedding_field: "embedding"
         }
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
@@ -253,7 +241,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
          'id': '1bad51b7-bd77-485d-8871-21c50fab248f',
          'properties': {'meta': "{'key1':'value1'}",
           'name': 'name_5',
-          'text': 'text_5'},
+          'content': 'text_5'},
          'vector': []}'''
         index = index or self.index
         document = None
@@ -358,8 +346,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         current_properties = self._get_current_properties(index)
 
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
-
+        document_objects = self._handle_duplicate_documents(documents=document_objects,
+                                                            index=index,
+                                                            duplicate_documents=duplicate_documents)
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
@@ -379,8 +368,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
                     doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
-                    if _doc.get(self.faq_question_field) is None:
-                        _doc.pop(self.faq_question_field)
+
+                    # rename as weaviate doesn't like "_" in field names
+                    _doc["contenttype"] = _doc.pop("content_type")
 
                     # Check if additional properties are in the document, if so,
                     # append the schema with all the additional properties
@@ -556,7 +546,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 .do()
         else:
             raise NotImplementedError("Weaviate does not support inverted index text query. However, "
-                                      "it allows to search by filters example : {'text': 'some text'} or "
+                                      "it allows to search by filters example : {'content': 'some text'} or "
                                       "use a custom GraphQL query in text format!")
 
         results = []

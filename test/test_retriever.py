@@ -13,26 +13,26 @@ from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderToken
 
 DOCS = [
     Document(
-        text="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
+        content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
         meta={"name": "0"},
         id="1",
     ),
     Document(
-        text="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
+        content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
         id="2",
     ),
     Document(
-        text="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
+        content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
         meta={"name": "1"},
         id="3",
     ),
     Document(
-        text="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
+        content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
         meta={"name": "2"},
         id="4",
     ),
     Document(
-        text="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
+        content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
         meta={},
         id="5",
     ),
@@ -62,7 +62,7 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
 
     # test without filters
     res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
-    assert res[0].text == "My name is Carla and I live in Berlin"
+    assert res[0].content == "My name is Carla and I live in Berlin"
     assert len(res) == 3
     assert res[0].meta["name"] == "filename1"
 
@@ -74,7 +74,7 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
         result = retriever_with_docs.retrieve(query="godzilla", filters={"name": ["filename3"]}, top_k=5)
         assert len(result) == 1
         assert type(result[0]) == Document
-        assert result[0].text == "My name is Christelle and I live in Paris"
+        assert result[0].content == "My name is Christelle and I live in Paris"
         assert result[0].meta["name"] == "filename3"
 
         # multiple filters
@@ -96,14 +96,14 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
     client = Elasticsearch()
     client.indices.delete(index="haystack_test_custom", ignore=[404])
     document_store = ElasticsearchDocumentStore(
-        index="haystack_test_custom", text_field="custom_text_field", embedding_field="custom_embedding_field"
+        index="haystack_test_custom", content_field="custom_text_field", embedding_field="custom_embedding_field"
     )
     documents = [
-        {"text": "test_1", "meta": {"year": "2019"}},
-        {"text": "test_2", "meta": {"year": "2020"}},
-        {"text": "test_3", "meta": {"year": "2021"}},
-        {"text": "test_4", "meta": {"year": "2021"}},
-        {"text": "test_5", "meta": {"year": "2021"}},
+        {"content": "test_1", "meta": {"year": "2019"}},
+        {"content": "test_2", "meta": {"year": "2020"}},
+        {"content": "test_3", "meta": {"year": "2021"}},
+        {"content": "test_4", "meta": {"year": "2021"}},
+        {"content": "test_5", "meta": {"year": "2021"}},
     ]
     document_store.write_documents(documents)
 
@@ -116,7 +116,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                 "query": {
                     "bool": {
                         "should": [{
-                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
+                            "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
                             "filter": [{"terms": {"year": ${years}}}]}}}""",
     )
     results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
@@ -131,7 +131,7 @@ def test_elasticsearch_custom_query(elasticsearch_fixture):
                     "query": {
                         "bool": {
                             "should": [{
-                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["text"]}}],
+                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
                                 "filter": [{"term": {"year": ${years}}}]}}}""",
     )
     results = retriever.retrieve(query="test", filters={"years": "2021"})

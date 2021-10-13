@@ -75,7 +75,7 @@ i.e. the model can easily adjust to domain documents even after training has fin
 |            'meta': { 'doc_ids': [...],
 |                      'doc_scores': [80.42758 ...],
 |                      'doc_probabilities': [40.71379089355469, ...
-|                      'texts': ['Albert Einstein was a ...]
+|                      'content': ['Albert Einstein was a ...]
 |                      'titles': ['"Albert Einstein"', ...]
 |      }}]}
 ```
@@ -134,7 +134,7 @@ Generated answers plus additional infos in a dict like this:
 |            'meta': { 'doc_ids': [...],
 |                      'doc_scores': [80.42758 ...],
 |                      'doc_probabilities': [40.71379089355469, ...
-|                      'texts': ['Albert Einstein was a ...]
+|                      'content': ['Albert Einstein was a ...]
 |                      'titles': ['"Albert Einstein"', ...]
 |      }}]}
 ```
