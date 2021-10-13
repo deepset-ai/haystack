@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from haystack import Document
+from haystack import Document, Answer
 from haystack.translator.base import BaseTranslator
 
 logger = logging.getLogger(__name__)
@@ -73,14 +73,14 @@ class TransformersTranslator(BaseTranslator):
     def translate(
         self,
         query: Optional[str] = None,
-        documents: Optional[Union[List[Document], List[str], List[Dict[str, Any]]]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
-    ) -> Union[str, List[Document], List[str], List[Dict[str, Any]]]:
+    ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
         """
         Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
         :param query: The query string to translate
         :param documents: The documents to translate
-        :param dict_key:
+        :param dict_key: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
         """
         if not query and not documents:
             raise AttributeError("Translator need query or documents to perform translation")
@@ -92,11 +92,13 @@ class TransformersTranslator(BaseTranslator):
             logger.warning("Empty documents list is passed")
             return documents
 
-        dict_key = dict_key or "text"
+        dict_key = dict_key or "content"
 
         if isinstance(documents, list):
             if isinstance(documents[0], Document):
-                text_for_translator = [doc.text for doc in documents]   # type: ignore
+                text_for_translator = [doc.content for doc in documents]   # type: ignore
+            elif isinstance(documents[0], Answer):
+                text_for_translator = [answer.answer for answer in documents] # type: ignore
             elif isinstance(documents[0], str):
                 text_for_translator = documents   # type: ignore
             else:
@@ -126,7 +128,9 @@ class TransformersTranslator(BaseTranslator):
 
             for translated_text, doc in zip(translated_texts, documents):
                 if isinstance(doc, Document):
-                    doc.text = translated_text
+                    doc.content = translated_text
+                elif isinstance(doc, Answer):
+                    doc.answer = translated_text
                 else:
                     doc[dict_key] = translated_text  # type: ignore
 

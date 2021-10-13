@@ -140,7 +140,7 @@ class ImageToTextConverter(BaseConverter):
                 )
 
         text = "\f".join(cleaned_pages)
-        document = {"text": text, "meta": meta}
+        document = {"content": text, "meta": meta}
         return document
 
     def _image_to_text(self, image: PpmImageFile) -> List[str]:

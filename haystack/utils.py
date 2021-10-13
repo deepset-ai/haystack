@@ -104,24 +104,28 @@ def launch_milvus(sleep=15):
 
 
 def print_answers(results: dict, details: str = "all"):
+    """
+    Utilitiy function to print results of Haystack pipelines
+    :param results: Results from a pipeline
+    :param details: One of ["minimum", "medium", "all]. Defining the level of details to print.
+    :return: None
+    """
     # TODO: unify the output format of Generator and Reader so that this function doesn't have the try/except
     #  Or implement a class method like PredReader.print() and PredGenerator.print() that handles all this functionality.
     # This default case is when the answers come from a Reader
     try:
         answers = results["answers"]
         pp = pprint.PrettyPrinter(indent=4)
-        if details != "all":
+        if details in ("minimal", "medium"):
             if details == "minimal":
                 keys_to_keep = set(["answer", "context"])
             elif details == "medium":
                 keys_to_keep = set(["answer", "context", "score"])
-            else:
-                keys_to_keep = answers.keys()
 
             # filter the results
             filtered_answers = []
             for ans in answers:
-                filtered_answers.append({k: ans[k] for k in keys_to_keep})
+                filtered_answers.append({k: getattr(ans, k) for k in keys_to_keep})
             pp.pprint(filtered_answers)
         else:
             pp.pprint(results)
@@ -140,15 +144,15 @@ def print_documents(results: dict, max_text_len: Optional[int] = None, print_met
     pp = pprint.PrettyPrinter(indent=4)
     for d in results["documents"]:
         print()
-        new_text = d["text"][:max_text_len]
-        if len(new_text) != len(d["text"]):
+        new_text = d.content[:max_text_len]
+        if len(new_text) != len(d.content):
             new_text += "..."
         results = {
-            "name": d["meta"]["name"],
-            "text": new_text
+            "name": d.meta.get("name", None),
+            "content": new_text
         }
         if print_meta:
-            results["meta"] = d["meta"]
+            results["meta"] = d.meta
         pp.pprint(results)
 
 
@@ -205,7 +209,7 @@ def convert_labels_to_squad(labels_file: str):
             doc = DocumentORM.query.get(label["document_id"])
 
             assert (
-                doc.text[label["start_offset"] : label["end_offset"]]
+                    doc.content[label["start_offset"]: label["end_offset"]]
                 == label["selected_text"]
             )
 
@@ -227,7 +231,7 @@ def convert_labels_to_squad(labels_file: str):
 
         squad_format_label = {
             "paragraphs": [
-                {"qas": qas, "context": doc.text, "document_id": document_id}
+                {"qas": qas, "context": doc.content, "document_id": document_id}
             ]
         }
 

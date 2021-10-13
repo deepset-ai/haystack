@@ -26,7 +26,7 @@ import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
-from haystack import BaseComponent, MultiLabel, Document
+from haystack import BaseComponent, MultiLabel, Document, Answer, Span
 from haystack.generator.base import BaseGenerator
 from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
@@ -34,6 +34,7 @@ from haystack.retriever.base import BaseRetriever
 from haystack.summarizer.base import BaseSummarizer
 from haystack.translator.base import BaseTranslator
 from haystack.document_store.base import BaseDocumentStore
+from haystack.question_generator import QuestionGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -733,7 +734,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
             for doc in docs:
                 cur_answer = {
                     "query": query,
-                    "answer": doc.text,
+                    "answer": doc.content,
                     "document_id": doc.id,
                     "context": doc.meta.pop("context"),
                     "score": None,
@@ -757,6 +758,7 @@ class FAQPipeline(BaseStandardPipeline):
         """
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        self.pipeline.add_node(component=Docs2Answers(), name="Docs2Answers", inputs=["Retriever"])
 
     def run(self,
             query: str,
@@ -775,24 +777,7 @@ class FAQPipeline(BaseStandardPipeline):
                            regardless of their severity and of the existing logger's settings.
         """
         output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
-        documents = output["documents"]
-
-        results: Dict = {"query": query, "answers": []}
-        for doc in documents:
-            # TODO proper calibration of pseudo probabilities
-            cur_answer = {
-                "query": doc.text,
-                "answer": doc.meta["answer"],
-                "document_id": doc.id,
-                "context": doc.meta["answer"],
-                "score": doc.score,
-                "offset_start": 0,
-                "offset_end": len(doc.meta["answer"]),
-                "meta": doc.meta,
-            }
-
-            results["answers"].append(cur_answer)
-        return results
+        return output
 
 
 class TranslationWrapperPipeline(BaseStandardPipeline):
@@ -846,7 +831,7 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
     A simple pipeline that takes documents as input and generates
     questions that it thinks can be answered by the documents.
     """
-    def __init__(self, question_generator):
+    def __init__(self, question_generator: QuestionGenerator):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
 
@@ -865,7 +850,7 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
     A simple pipeline that takes a query as input, performs retrieval, and then generates
     questions that it thinks can be answered by the retrieved documents.
     """
-    def __init__(self, retriever, question_generator):
+    def __init__(self, retriever: BaseRetriever, question_generator: QuestionGenerator):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
@@ -884,10 +869,10 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
     This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
     this document, and then performs question answering of this questions using that single document.
     """
-    def __init__(self, question_generator, reader):
-        question_generator.run = self.formatting_wrapper(question_generator.run)
+    def __init__(self, question_generator: QuestionGenerator, reader: BaseReader):
+        setattr(question_generator, "run", self.formatting_wrapper(question_generator.run))
         # Overwrite reader.run function so it can handle a batch of questions being passed on by the QuestionGenerator
-        reader.run = reader.run_batch
+        setattr(reader, "run", reader.run_batch)
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["QuestionGenerator"])
@@ -1434,37 +1419,34 @@ class Docs2Answers(BaseComponent):
 
     def run(self, query, documents):  # type: ignore
         # conversion from Document -> Answer
-        answers = []
+        answers: List[Answer] = []
         for doc in documents:
             # For FAQ style QA use cases
             if "answer" in doc.meta:
-                cur_answer = {
-                    "query": doc.text,
-                    "answer": doc.meta["answer"],
-                    "document_id": doc.id,
-                    "context": doc.meta["answer"],
-                    "score": doc.score,
-                    "offset_start": 0,
-                    "offset_end": len(doc.meta["answer"]),
-                    "meta": doc.meta,
-                }
+                doc.meta["query"] = doc.content # question from the existing FAQ
+                cur_answer = Answer(answer=doc.meta["answer"],
+                                    type="other",
+                                    score=doc.score,
+                                    context=doc.meta["answer"],
+                                    offsets_in_context=[Span(start=0, end=len(doc.meta["answer"]))],
+                                    document_id=doc.id,
+                                    meta=doc.meta,
+                                    )
             else:
                 # Regular docs
-                cur_answer = {
-                    "query": None,
-                    "answer": None,
-                    "document_id": doc.id,
-                    "context": doc.text,
-                    "score": doc.score,
-                    "offset_start": None,
-                    "offset_end": None,
-                    "meta": doc.meta,
-                }
+                cur_answer = Answer(answer=None,
+                                    type="other",
+                                    score=doc.score,
+                                    context=doc.content,
+                                    document_id=doc.id,
+                                    meta=doc.meta,
+                                    )
             answers.append(cur_answer)
 
         output = {"query": query, "answers": answers}
 
         return output, "output_1"
+
 
 class MostSimilarDocumentsPipeline(BaseStandardPipeline):
     def __init__(self, document_store: BaseDocumentStore):

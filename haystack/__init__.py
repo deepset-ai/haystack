@@ -19,7 +19,7 @@ logging.getLogger('haystack.modeling.model.optimization').setLevel(logging.INFO)
 logging.getLogger('faiss.loader').setLevel(logging.WARNING)
 
 import pandas as pd
-from haystack.schema import Document, Label, MultiLabel, BaseComponent
+from haystack.schema import Document, Answer, Label, MultiLabel, BaseComponent, Span
 from haystack.pipeline import Pipeline
 from haystack._version import __version__
 

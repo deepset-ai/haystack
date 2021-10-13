@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from transformers import pipeline
 
-from haystack import Document
+from haystack import Document, Answer, Span
 from haystack.reader.base import BaseReader
 
 
@@ -110,7 +110,7 @@ class TransformersReader(BaseReader):
         no_ans_gaps = []
         best_overall_score = 0
         for doc in documents:
-            transformers_query = {"context": doc.text, "question": query}
+            transformers_query = {"context": doc.content, "question": query}
             predictions = self.model(transformers_query,
                                      topk=self.top_k_per_candidate,
                                      handle_impossible_answer=self.return_no_answers,
@@ -119,8 +119,8 @@ class TransformersReader(BaseReader):
             # for single preds (e.g. via top_k=1) transformers returns a dict instead of a list
             if type(predictions) == dict:
                 predictions = [predictions]
-            # assemble and format all answers
 
+            # assemble and format all answers
             best_doc_score = 0
             # because we cannot ensure a "no answer" prediction coming back from transformers we initialize it here with 0
             no_ans_doc_score = 0
@@ -130,16 +130,16 @@ class TransformersReader(BaseReader):
                     if pred["score"] > best_doc_score:
                         best_doc_score = pred["score"]
                     context_start = max(0, pred["start"] - self.context_window_size)
-                    context_end = min(len(doc.text), pred["end"] + self.context_window_size)
-                    answers.append({
-                        "answer": pred["answer"],
-                        "context": doc.text[context_start:context_end],
-                        "offset_start": pred["start"],
-                        "offset_end": pred["end"],
-                        "score": pred["score"],
-                        "document_id": doc.id,
-                        "meta": doc.meta
-                    })
+                    context_end = min(len(doc.content), pred["end"] + self.context_window_size)
+                    answers.append(Answer(answer=pred["answer"],
+                                          type="extractive",
+                                          score=pred["score"],
+                                          context=doc.content[context_start:context_end],
+                                          offsets_in_document=[Span(start=pred["start"],end=pred["end"])],
+                                          offsets_in_context=[Span(start=pred["start"]-context_start, end=pred["end"]-context_start)],
+                                          document_id=doc.id,
+                                          meta=doc.meta
+                                          ))
                 else:
                     no_ans_doc_score = pred["score"]
 
@@ -154,9 +154,7 @@ class TransformersReader(BaseReader):
         if self.return_no_answers:
             answers.append(no_ans_prediction)
         # sort answers by their `score` and select top-k
-        answers = sorted(
-            answers, key=lambda k: k["score"], reverse=True
-        )
+        answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
         results = {"query": query,
