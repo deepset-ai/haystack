@@ -105,7 +105,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :return: List of Document enriched with meta information
 
         """
-        texts = [doc.text for doc in documents]
+        texts = [doc.content for doc in documents]
         if self.task == 'zero-shot-classification':
             predictions = self.model(texts, candidate_labels=self.labels, truncation=True)
         elif self.task == 'text-classification':

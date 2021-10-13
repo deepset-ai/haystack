@@ -10,12 +10,12 @@ def test_document_classifier(document_classifier):
 
     docs = [
         Document(
-            text="""That's good. I like it."""*700,  # extra long text to check truncation
+            content="""That's good. I like it."""*700,  # extra long text to check truncation
             meta={"name": "0"},
             id="1",
         ),
         Document(
-            text="""That's bad. I don't like it.""",
+            content="""That's bad. I don't like it.""",
             meta={"name": "1"},
             id="2",
         ),
@@ -32,12 +32,12 @@ def test_zero_shot_document_classifier(zero_shot_document_classifier):
 
     docs = [
         Document(
-            text="""That's good. I like it."""*700,  # extra long text to check truncation
+            content="""That's good. I like it."""*700,  # extra long text to check truncation
             meta={"name": "0"},
             id="1",
         ),
         Document(
-            text="""That's bad. I don't like it.""",
+            content="""That's bad. I don't like it.""",
             meta={"name": "1"},
             id="2",
         ),

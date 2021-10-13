@@ -293,7 +293,7 @@ class DensePassageRetriever(BaseRetriever):
 
         passages = [{'passages': [{
             "title": d.meta["name"] if d.meta and "name" in d.meta else "",
-            "text": d.text,
+            "text": d.content,
             "label": d.meta["label"] if d.meta and "label" in d.meta else "positive",
             "external_id": d.id}]
         } for d in docs]
@@ -482,7 +482,7 @@ class EmbeddingRetriever(BaseRetriever):
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use gpu or not
         :param model_format: Name of framework that was used for saving the model. Options:
@@ -638,7 +638,7 @@ class _DefaultEmbeddingEncoder(_EmbeddingEncoder):
         return self.embed(texts)
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.text for d in docs] # type: ignore
+        passages = [d.content for d in docs] # type: ignore
         return self.embed(passages)
 
 
@@ -677,7 +677,7 @@ class _SentenceTransformersEmbeddingEncoder(_EmbeddingEncoder):
         return self.embed(texts)
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.text] for d in docs]  # type: ignore
+        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
 
 
@@ -716,7 +716,7 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
 
-        doc_text = [{"text": d.text} for d in docs]
+        doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
 
         embeddings: List[np.ndarray] = []

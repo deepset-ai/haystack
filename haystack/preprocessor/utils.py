@@ -13,7 +13,7 @@ from haystack.file_converter.base import BaseConverter
 from haystack.file_converter.docx import DocxToTextConverter
 from haystack.file_converter.pdf import PDFToTextConverter
 from haystack.file_converter.tika import TikaConverter
-from haystack import Document, Label
+from haystack import Document, Label, Answer, Span
 from haystack.file_converter.txt import TextConverter
 from haystack.preprocessor.preprocessor import PreProcessor
 
@@ -124,9 +124,9 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
         cur_meta.update(meta_doc)
 
         ## Create Document
-        cur_doc = Document(text=paragraph["context"], meta=cur_meta)
+        cur_full_doc = Document(content=paragraph["context"], meta=cur_meta)
         if preprocessor is not None:
-            splits_dicts = preprocessor.process(cur_doc.to_dict())
+            splits_dicts = preprocessor.process(cur_full_doc.to_dict())
             # we need to pull in _split_id into the document id for unique reference in labels
             # todo: PreProcessor should work on Documents instead of dicts
             splits: List[Document] = []
@@ -134,7 +134,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             for d in splits_dicts:
                 id = f"{d['id']}-{d['meta']['_split_id']}"
                 d["meta"]["_split_offset"] = offset
-                offset += len(d["text"])
+                offset += len(d["content"])
                 # offset correction based on splitting method
                 if preprocessor.split_by == "word":
                     offset += 1
@@ -142,12 +142,12 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                     offset += 2
                 else:
                     raise NotImplementedError
-                mydoc = Document(text=d["text"],
+                mydoc = Document(content=d["content"],
                                  id=id,
                                  meta=d["meta"])
                 splits.append(mydoc)
         else:
-            splits = [cur_doc]
+            splits = [cur_full_doc]
         docs.extend(splits)
 
         ## Assign Labels to corresponding documents
@@ -155,66 +155,87 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
             if not qa.get("is_impossible", False):
                 for answer in qa["answers"]:
                     ans = answer["text"]
-                    cur_ans_start = None
                     # TODO The following block of code means that answer_start is never calculated
                     #  and cur_id is always None for open_domain
                     #  This can be rewritten so that this function could try to calculate offsets
                     #  and populate id in open_domain mode
                     if open_domain:
+                        #TODO check with Branden why we want to treat open_domain here differently.
+                        # Shouldn't this be something configured at eval time only?
                         cur_ans_start = answer.get("answer_start", 0)
-                        cur_id = '0'
+                        # cur_id = '0'
+                        label = Label(
+                            query=qa["question"],
+                            answer=Answer(answer=ans, type="extractive",score=0.0),
+                            document=None, #type: ignore
+                            is_correct_answer=True,
+                            is_correct_document=True,
+                            no_answer=qa.get("is_impossible", False),
+                            origin="gold-label",
+                        )
+                        labels.append(label)
                     else:
-                        ans_position = cur_doc.text[answer["answer_start"]:answer["answer_start"]+len(ans)]
+                        ans_position = cur_full_doc.content[answer["answer_start"]:answer["answer_start"] + len(ans)]
                         if ans != ans_position:
                             # do not use answer
                             problematic_ids.append(qa.get("id","missing"))
                             break
                         # find corresponding document or split
                         if len(splits) == 1:
-                            cur_id = splits[0].id
+                            # cur_id = splits[0].id
                             cur_ans_start = answer["answer_start"]
+                            cur_doc = splits[0]
                         else:
                             for s in splits:
                                 # If answer start offset is contained in passage we assign the label to that passage
-                                if (answer["answer_start"] >= s.meta["_split_offset"]) and (answer["answer_start"] < (s.meta["_split_offset"] + len(s.text))):
-                                    cur_id = s.id
+                                if (answer["answer_start"] >= s.meta["_split_offset"]) and (answer["answer_start"] < (s.meta["_split_offset"] + len(s.content))):
+                                    cur_doc = s
                                     cur_ans_start = answer["answer_start"] - s.meta["_split_offset"]
                                     # If a document is splitting an answer we add the whole answer text to the document
-                                    if s.text[cur_ans_start:cur_ans_start+len(ans)] != ans:
-                                        s.text = s.text[:cur_ans_start] + ans
+                                    if s.content[cur_ans_start:cur_ans_start + len(ans)] != ans:
+                                        s.content = s.content[:cur_ans_start] + ans
                                     break
-                    label = Label(
-                        question=qa["question"],
-                        answer=ans,
-                        is_correct_answer=True,
-                        is_correct_document=True,
-                        document_id=cur_id,
-                        offset_start_in_doc=cur_ans_start,
-                        no_answer=qa.get("is_impossible", False),
-                        origin="gold_label",
-                    )
-                    labels.append(label)
+                        cur_answer = Answer(answer=ans,
+                                        type="extractive",
+                                        score=0.0,
+                                        context=cur_doc.content,
+                                        offsets_in_document=[Span(start=cur_ans_start, end=cur_ans_start + len(ans))],
+                                        offsets_in_context=[Span(start=cur_ans_start, end=cur_ans_start + len(ans))],
+                                        document_id=cur_doc.id)
+                        label = Label(
+                            query=qa["question"],
+                            answer=cur_answer,
+                            document=cur_doc,
+                            is_correct_answer=True,
+                            is_correct_document=True,
+                            no_answer=qa.get("is_impossible", False),
+                            origin="gold-label",
+                        )
+                        labels.append(label)
             else:
                 # for no_answer we need to assign each split as not fitting to the question
                 for s in splits:
                     label = Label(
-                        question=qa["question"],
-                        answer="",
+                        query=qa["question"],
+                        answer=Answer(answer="",
+                                      type="extractive",
+                                      score=0.0,
+                                      offsets_in_document=[Span(start=0, end=0)],
+                                      offsets_in_context=[Span(start=0, end=0)]),
+                        document=s,
                         is_correct_answer=True,
                         is_correct_document=True,
-                        document_id=s.id,
-                        offset_start_in_doc=0,
                         no_answer=qa.get("is_impossible", False),
-                        origin="gold_label",
-                    )
+                        origin="gold-label")
+
                     labels.append(label)
 
     return docs, labels, problematic_ids
 
 
 def convert_files_to_dicts(
-        dir_path: str, 
-        clean_func: Optional[Callable] = None, 
+        dir_path: str,
+        clean_func: Optional[Callable] = None,
         split_paragraphs: bool = False,
         encoding: Optional[str] = None
 ) -> List[dict]:
@@ -261,11 +282,11 @@ def convert_files_to_dicts(
                 encoding = "Latin1"
             logger.info('Converting {}'.format(path))
             document = suffix2converter[suffix].convert(
-                    file_path=path, 
+                    file_path=path,
                     meta=None,
                     encoding=encoding,
             )
-            text = document["text"]
+            text = document["content"]
 
             if clean_func:
                 text = clean_func(text)
@@ -274,9 +295,9 @@ def convert_files_to_dicts(
                 for para in text.split("\n\n"):
                     if not para.strip():  # skip empty paragraphs
                         continue
-                    documents.append({"text": para, "meta": {"name": path.name}})
+                    documents.append({"content": para, "meta": {"name": path.name}})
             else:
-                documents.append({"text": text, "meta": {"name": path.name}})
+                documents.append({"content": text, "meta": {"name": path.name}})
 
     return documents
 
@@ -319,7 +340,7 @@ def tika_convert_files_to_dicts(
         document = converter.convert(path)
         meta = document["meta"] or {}
         meta["name"] = path.name
-        text = document["text"]
+        text = document["content"]
         pages = text.split("\f")
 
         if split_paragraphs:
@@ -351,15 +372,15 @@ def tika_convert_files_to_dicts(
                             last_para += ' ' + para
                         else:
                             if last_para:
-                                documents.append({"text": last_para, "meta": meta})
+                                documents.append({"content": last_para, "meta": meta})
                             last_para = para
                     # don't forget the last one
                     if last_para:
-                        documents.append({"text": last_para, "meta": meta})
+                        documents.append({"content": last_para, "meta": meta})
         else:
             if clean_func:
                 text = clean_func(text)
-            documents.append({"text": text, "meta": meta})
+            documents.append({"content": text, "meta": meta})
 
     return documents
 

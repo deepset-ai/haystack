@@ -72,19 +72,20 @@ class SquadData:
         record_dicts = df_docs.to_dict("records")
         documents = [
             Document(
-                text=rd["context"],
+                content=rd["context"],
                 id=rd["title"]
             ) for rd in record_dicts
         ]
         return documents
 
+    # TODO refactor to new Label objects
     def to_label_objs(self):
         """Export all labels stored in this object to haystack.Label objects"""
         df_labels = self.df[["id", "question", "answer_text", "answer_start"]]
         record_dicts = df_labels.to_dict("records")
         labels = [
             Label(
-                question=rd["question"],
+                query=rd["question"],
                 answer=rd["answer_text"],
                 is_correct_answer=True,
                 is_correct_document=True,
