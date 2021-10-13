@@ -151,7 +151,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None:
         """
         Add new documents to the DocumentStore.
 

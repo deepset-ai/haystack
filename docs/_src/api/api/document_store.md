@@ -846,7 +846,7 @@ Return all labels in the document store
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None
 ```
 
 Indexes documents for later queries.
@@ -1038,7 +1038,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None
 ```
 
 Add new documents to the DocumentStore.
