@@ -206,7 +206,8 @@ reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=Tr
 pipeline = ExtractiveQAPipeline(reader, retriever)
 
 # Voilá! Ask a question!
-prediction = pipeline.run(query="Who is the father of Arya Stark?", top_k_retriever=10,top_k_reader=3)
+prediction = pipe.run(query="Who is the father of Arya Stark?", 
+                      params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}})
 print_answers(prediction, details="minimal")
 
 [   {   'answer': 'Eddard',
