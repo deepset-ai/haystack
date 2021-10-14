@@ -6,6 +6,7 @@ from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, Ba
 import torch
 import numpy as np
 import pandas as pd
+from quantulum3 import parser
 
 from haystack import Document, Answer, Span
 from haystack.reader.base import BaseReader
@@ -277,7 +278,10 @@ class TableReader(BaseReader):
             # Calculate answer score
             current_score = self._calculate_answer_score(outputs.logits.cpu().detach(), inputs, current_answer_coordinates)
 
-            answer_str = ", ".join(current_answer_cells)
+            if current_aggregation_operator == "NONE":
+                answer_str = ", ".join(current_answer_cells)
+            else:
+                answer_str = self._aggregate_answers(current_aggregation_operator, current_answer_cells)
 
             answer_offsets = self._calculate_answer_offsets(current_answer_coordinates, table)
 
@@ -327,6 +331,38 @@ class TableReader(BaseReader):
         
         return np.mean(answer_cell_probabilities)
 
+    @staticmethod
+    def _aggregate_answers(agg_operator, answer_cells):
+        if agg_operator == "COUNT":
+            return len(answer_cells)
+
+        # No aggregation needed as only one cell selected as answer_cells
+        if len(answer_cells) == 1:
+            return answer_cells[0]
+
+        # Parse answer cells in order to aggregate numerical values
+        parsed_answer_cells = [parser.parse(cell) for cell in answer_cells]
+        # Check if all cells contain at least one numerical value and that all values share the same unit
+        if all(parsed_answer_cells) and all(cell[0].unit.name == parsed_answer_cells[0][0].unit.name
+                                            for cell in parsed_answer_cells):
+            numerical_values = [cell[0].value for cell in parsed_answer_cells]
+            unit = parsed_answer_cells[0][0].unit.symbols[0] if parsed_answer_cells[0][0].unit.symbols else ""
+
+            if agg_operator == "SUM":
+                answer_value = sum(numerical_values)
+            elif agg_operator == "AVERAGE":
+                answer_value = mean(numerical_values)
+            else:
+                return f"{agg_operator} > {', '.join(answer_cells)}"
+
+            if unit:
+                return f"{str(answer_value)} {unit}"
+            else:
+                return str(answer_value)
+
+        # Not all selected answer cells contain a numerical value or answer cells don't share the same unit
+        else:
+            return f"{agg_operator} > {', '.join(answer_cells)}"
 
     @staticmethod
     def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame):

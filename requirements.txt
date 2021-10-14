@@ -62,3 +62,4 @@ mmh3
 weaviate-client==2.5.0
 ray==1.5.0
 dataclasses-json
+quantulum3
