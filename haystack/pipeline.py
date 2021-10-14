@@ -654,8 +654,6 @@ class DocumentSearchPipeline(BaseStandardPipeline):
                            regardless of their severity and of the existing logger's settings.
         """
         output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
-        document_dicts = [doc.to_dict() for doc in output["documents"]]
-        output["documents"] = document_dicts
         return output
 
 
