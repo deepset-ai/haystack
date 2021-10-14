@@ -167,7 +167,7 @@ def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PrePro
                         label = Label(
                             query=qa["question"],
                             answer=Answer(answer=ans, type="extractive",score=0.0),
-                            document=Document(content="", id='0'), # or make this None, but then Label.document must be Optional
+                            document=None, #type: ignore
                             is_correct_answer=True,
                             is_correct_document=True,
                             no_answer=qa.get("is_impossible", False),

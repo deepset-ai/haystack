@@ -82,6 +82,9 @@ class Document:
         self.content_type = content_type
         self.score = score
         self.meta = meta or {}
+
+        if embedding is not None:
+            embedding = np.asarray(embedding)
         self.embedding = embedding
 
         # Create a unique ID (either new one, or one from user input)
@@ -94,7 +97,19 @@ class Document:
         final_hash_key = ":".join(id_hash_keys) if id_hash_keys else str(self.content)
         return '{:02x}'.format(mmh3.hash128(final_hash_key, signed=False))
 
-    def to_dict(self, field_map={}):
+    def to_dict(self, field_map={}) -> Dict:
+        """
+        Convert Document to dict. An optional field_map can be supplied to change the names of the keys in the
+        resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
+        they are serialized / stored in other places (e.g. elasticsearch)
+        Example:
+        | doc = Document(content="some text", content_type="text")
+        | doc.to_dict(field_map={"custom_content_field": "content"})
+        | >>> {"custom_content_field": "some text", content_type": "text"}
+
+        :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
+        :return: dict with content of the Document
+        """
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
@@ -104,6 +119,18 @@ class Document:
 
     @classmethod
     def from_dict(cls, dict, field_map={}):
+        """
+        Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
+        input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
+        they are serialized / stored in other places (e.g. elasticsearch)
+        Example:
+        | my_dict = {"custom_content_field": "some text", content_type": "text"}
+        | Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+
+        :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
+        :return: dict with content of the Document
+        """
+
         _doc = dict.copy()
         init_args = ["content", "content_type", "id", "score", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
@@ -131,9 +158,6 @@ class Document:
     @classmethod
     def from_json(cls, data: str, field_map={}):
         d = json.loads(data)
-        if "embedding" in d.keys():
-            if d["embedding"] is not None:
-                d["embedding"] = np.asarray(d["embedding"])
         return cls.from_dict(d, field_map=field_map)
 
     def __eq__(self, other):
@@ -150,7 +174,7 @@ class Document:
         return str(self.to_dict())
 
     def __str__(self):
-        return str(self.to_dict())
+        return f"content: {self.content[:100]} {'[...]' if len(self.content) > 100 else ''}"
 
     def __lt__(self, other):
         """ Enable sorting of Documents by score """
@@ -222,6 +246,9 @@ class Answer:
     def __lt__(self, other):
         """ Enable sorting of Answers by score """
         return self.score < other.score
+
+    def __str__(self):
+        return f"answer: {self.answer} \nscore: {self.score} \ncontext: {self.context}"
 
     #TODO: switch to manual serialization instead of dataclass_json as it seems to break autocomplete of IDE in some cases
     # def to_json(self):
@@ -395,15 +422,16 @@ class MultiLabel:
         """
 
         # drop duplicate labels and remove negative labels if needed.
+        labels = list(set(labels))
         if drop_negative_labels:
-            labels = [l for l in set(labels)
-                           if ((l.is_correct_answer and l.is_correct_document)
-                               or (l.answer is None and l.is_correct_document))]
+            is_positive_label = lambda l: (l.is_correct_answer and l.is_correct_document) or \
+                                          (l.answer is None and l.is_correct_document)
+            labels = [l for l in labels if is_positive_label(l)]
 
         if drop_no_answers:
             labels = [l for l in labels if l.no_answer == False]
 
-        self.labels = list(set(labels))
+        self.labels = labels
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
         # answer strings as this is mostly relevant in usage
@@ -597,8 +625,7 @@ class BaseComponent:
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
-        params: Optional[dict] = None,
+        meta: Optional[dict] = None
     ) -> Tuple[Dict, str]:
         """
         Method that will be executed when the node in the graph is called.
