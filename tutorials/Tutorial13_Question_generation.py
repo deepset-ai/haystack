@@ -60,7 +60,7 @@ a Reader model
 reader = FARMReader("deepset/roberta-base-squad2")
 qag_pipeline = QuestionAnswerGenerationPipeline(question_generator, reader)
 for document in tqdm(document_store):
-    result = qag_pipeline.run(document=document)
+    result = qag_pipeline.run(documents=[document])
     pprint(result)
 
 # This Haystack script was made with love by deepset in Berlin, Germany
