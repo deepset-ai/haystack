@@ -17,7 +17,7 @@ Crawl texts from a website so that we can use them later in Haystack as a corpus
 |    crawler = Crawler(output_dir="crawled_files")
 |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
 |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
-|                         filter_urls= ["haystack\.deepset\.ai\/docs\/"])
+|                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
 ```
 
 <a name="crawler.Crawler.__init__"></a>
