@@ -72,7 +72,11 @@ def tutorial4_faq_style_qa():
     pipe = FAQPipeline(retriever=retriever)
 
     prediction = pipe.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})
-    print_answers(prediction, details="all")
+    for a in prediction["answers"]:
+        print(f"Answer: {a.answer}")
+        print(f"Question: {a.meta['query']}")
+        print(f"Score: {a.score}")
+        print("---------------------")
 
 
 if __name__ == "__main__":
