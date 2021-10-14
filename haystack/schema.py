@@ -20,11 +20,14 @@ from functools import wraps
 import time
 import json
 import pandas as pd
+from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 logger = logging.getLogger(__name__)
 
+from pydantic import BaseConfig
+BaseConfig.arbitrary_types_allowed = True
 
-@dataclass
+@pydantic_dataclass
 class Document:
     content: Union[str, pd.DataFrame]
     content_type: Literal["text", "table", "image"]
@@ -181,7 +184,7 @@ class Document:
         return self.score < other.score
 
 
-@dataclass
+@pydantic_dataclass
 class Span:
     start: int
     end: int
@@ -194,8 +197,7 @@ class Span:
     :param end:  Position where the spand ends
     """
 
-@dataclass_json
-@dataclass
+@pydantic_dataclass
 class Answer:
     answer: str
     type: Literal["generative", "extractive", "other"] = "extractive"
@@ -263,7 +265,7 @@ class Answer:
 
 
 @dataclass_json
-@dataclass
+@pydantic_dataclass
 class Label:
     id: str
     query: str

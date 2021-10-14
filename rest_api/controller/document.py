@@ -3,11 +3,11 @@ from typing import List
 import logging
 
 from fastapi import APIRouter
-from haystack import Document
+# from haystack import Document
 
 from rest_api.controller.search import DOCUMENT_STORE
 from rest_api.config import LOG_LEVEL
-from rest_api.schema import FilterRequest
+from rest_api.schema import FilterRequest, DocumentSerialized
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
@@ -17,7 +17,7 @@ logger = logging.getLogger("haystack")
 router = APIRouter()
 
 
-@router.post("/documents/get_by_filters", response_model=List[Document])
+@router.post("/documents/get_by_filters", response_model=List[DocumentSerialized])
 def get_documents_by_filter(filters: FilterRequest):
     """
     Can be used to get documents from a document store.
