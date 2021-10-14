@@ -63,4 +63,7 @@ weaviate-client==2.5.0
 ray==1.5.0
 dataclasses-json
 quantulum3
-torch-scatter
+torch-scatter -f https://data.pyg.org/whl/torch-1.9.0+cpu.html
+# For using TaPas with GPUs, install torch-scatter with one of the following commands, depending on your CUDA version:
+# pip install torch-scatter -f https://data.pyg.org/whl/torch-1.9.0+cu102.html
+# pip install torch-scatter -f https://data.pyg.org/whl/torch-1.9.0+cu111.html
