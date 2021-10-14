@@ -22,7 +22,6 @@ def parse_requirements(filename):
                            for line in parsed_requirements
                            if not ((line.strip()[0] == "#") or line.strip().startswith('--find-links') or ("git+https" in line))]
 
-    parsed_requirements = [requirement.split(" -f")[0] for requirement in parsed_requirements]
     return parsed_requirements
 
 
