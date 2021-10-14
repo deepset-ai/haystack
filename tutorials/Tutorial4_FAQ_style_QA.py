@@ -1,7 +1,7 @@
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 from haystack.retriever.dense import EmbeddingRetriever
-from haystack.utils import print_answers, launch_es
+from haystack.utils import launch_es
 import pandas as pd
 import requests
 import logging
