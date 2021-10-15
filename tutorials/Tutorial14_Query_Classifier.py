@@ -1,6 +1,6 @@
 import os
 from subprocess import Popen, PIPE, STDOUT
-from haystack.utils import print_answers, print_documents
+from haystack.utils import print_answers
 from haystack.preprocessor.utils import fetch_archive_from_http, convert_files_to_dicts
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack import Pipeline

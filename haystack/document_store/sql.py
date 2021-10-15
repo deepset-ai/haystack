@@ -118,7 +118,10 @@ class SQLDocumentStore(BaseDocumentStore):
                 url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents, check_same_thread=check_same_thread
         )
 
-        engine = create_engine(url,connect_args={'check_same_thread': check_same_thread})
+        if "sqlite" in url:
+            engine = create_engine(url, connect_args={'check_same_thread': check_same_thread})
+        else:
+            engine = create_engine(url)
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
