@@ -126,7 +126,8 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
         res = p.run(
             query=l.query,
             labels=l,
-            params={"index": "haystack_test_eval_document"}
+            # FIXME this parameter should go to which node?
+            #params={"index": "haystack_test_eval_document"}
         )
     assert eval_retriever.recall == 1.0
     assert round(eval_reader.top_k_f1, 4) == 0.8333
