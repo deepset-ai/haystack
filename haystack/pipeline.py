@@ -284,6 +284,11 @@ class Pipeline(BasePipeline):
             :param debug_logs: Whether all the logs of the node should be printed in the console,
                                regardless of their severity and of the existing logger's settings.
         """
+        # validate the node names
+        if not all(node in self.graph.nodes for node in params.keys()):
+            non_existing_node = set(params.keys()) - set(self.graph.nodes)
+            raise ValueError(f"No node(s) named {', '.join(non_existing_node)} found in pipeline. Defined nodes: {self.graph.nodes}")
+
         node_output = None
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}
