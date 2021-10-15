@@ -275,6 +275,7 @@ Write annotation labels into document store.
 **Arguments**:
 
 - `labels`: A list of Python dictionaries or a list of Haystack Label objects.
+- `index`: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
 - `batch_size`: Number of labels that are passed to Elasticsearch's bulk function at a time.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.update_document_meta"></a>
@@ -463,8 +464,29 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 **Arguments**:
 
-- `index`: Index name to delete the document from.
+- `index`: Index name to delete the documents from. If None, the
+              DocumentStore's default index (self.index) will be used
 - `filters`: Optional filters to narrow down the documents to be deleted.
+    Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
+
+<a name="elasticsearch.ElasticsearchDocumentStore.delete_labels"></a>
+#### delete\_labels
+
+```python
+ | delete_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete labels in an index. All labels are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the labels from. If None, the
+              DocumentStore's default label index (self.label_index) will be used
+- `filters`: Optional filters to narrow down the labels to be deleted.
     Example filters: {"name": ["some", "more"], "category": ["only_one"]}
 
 **Returns**:
@@ -744,9 +766,29 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 **Arguments**:
 
-- `index`: Index name to delete the document from. If None, the
+- `index`: Index name to delete the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
+
+<a name="memory.InMemoryDocumentStore.delete_labels"></a>
+#### delete\_labels
+
+```python
+ | delete_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete labels in an index. All labels are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the labels from. If None, the
+              DocumentStore's default label index (self.label_index) will be used.
+- `filters`: Optional filters to narrow down the labels to be deleted.
                 Example filters: {"name": ["some", "more"], "category": ["only_one"]}
 
 **Returns**:
@@ -970,6 +1012,26 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 None
 
+<a name="sql.SQLDocumentStore.delete_labels"></a>
+#### delete\_labels
+
+```python
+ | delete_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete labels from the document store. All labels are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the labels from. If None, the
+              DocumentStore's default label index (self.label_index) will be used.
+- `filters`: Optional filters to narrow down the labels to be deleted.
+                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
+
 <a name="faiss"></a>
 # Module faiss
 
@@ -1160,7 +1222,7 @@ Delete documents from the document store. All documents are deleted if no filter
 
 **Arguments**:
 
-- `index`: Index name to delete the document from. If None, the
+- `index`: Index name to delete the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to be deleted.
                 Example filters: {"name": ["some", "more"], "category": ["only_one"]}
