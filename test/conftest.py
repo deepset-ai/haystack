@@ -31,7 +31,7 @@ from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader
+from haystack.reader.transformers import TransformersReader, TableReader
 from haystack.summarizer.transformers import TransformersSummarizer
 from haystack.translator import TransformersTranslator
 from haystack.question_generator import QuestionGenerator
@@ -330,6 +330,12 @@ def reader(request):
             tokenizer="distilbert-base-uncased",
             use_gpu=-1
         )
+
+
+@pytest.fixture(scope="module")
+def table_reader():
+    return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+
 
 @pytest.fixture(scope="module")
 def ranker():

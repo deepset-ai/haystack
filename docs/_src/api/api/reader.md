@@ -430,3 +430,86 @@ Example:
 
 Dict containing query and answers
 
+<a name="transformers.TableReader"></a>
+## TableReader Objects
+
+```python
+class TableReader(BaseReader)
+```
+
+Transformer-based model for extractive Question Answering on Tables with TaPas
+using the HuggingFace's transformers framework (https://github.com/huggingface/transformers).
+With this reader, you can directly get predictions via predict()
+
+**Example**:
+
+```python
+from haystack import Document
+from haystack.reader import TableReader
+import pandas as pd
+
+table_reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+data = {
+    "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+    "age": ["57", "46", "60"],
+    "number of movies": ["87", "53", "69"],
+    "date of birth": ["7 february 1967", "10 june 1996", "28 november 1967"],
+}
+table = pd.DataFrame(data)
+document = Document(content=table, content_type="table")
+query = "When was DiCaprio born?"
+prediction = table_reader.predict(query=query, documents=[document])
+answer = prediction["answers"][0].answer  # "10 june 1996"
+```
+
+<a name="transformers.TableReader.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
+```
+
+Load a TableQA model from Transformers.
+Available models include:
+
+- ``'google/tapas-base-finetuned-wtq`'``
+- ``'google/tapas-base-finetuned-wikisql-supervised``'
+
+See https://huggingface.co/models?pipeline_tag=table-question-answering
+for full list of available TableQA models.
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
+See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `use_gpu`: Whether to make use of a GPU (if available).
+- `top_k`: The maximum number of answers to return
+- `max_seq_len`: Max sequence length of one input text for the model.
+
+<a name="transformers.TableReader.predict"></a>
+#### predict
+
+```python
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+```
+
+Use loaded TableQA model to find answers for a query in the supplied list of Documents
+of content_type ``'table'``.
+
+Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+WARNING: The answer scores are not reliable, as they are always extremely high, even if
+         a question cannot be answered by a given table.
+
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer. Documents should be
+                  of content_type ``'table'``.
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
+
