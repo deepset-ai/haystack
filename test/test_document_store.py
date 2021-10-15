@@ -401,6 +401,22 @@ def test_labels(document_store):
     assert label in labels
     assert label2 in labels
 
+    # delete filtered label2
+    document_store.delete_labels(index="haystack_test_label", filters={"id": [labels[1].id]})
+    labels = document_store.get_all_labels(index="haystack_test_label")
+    assert label == labels[0]
+    assert len(labels) == 1
+
+    # re-add label2
+    document_store.write_labels([label2], index="haystack_test_label")
+    labels = document_store.get_all_labels(index="haystack_test_label")
+    assert len(labels) == 2
+
+    # delete all labels
+    document_store.delete_labels(index="haystack_test_label")
+    labels = document_store.get_all_labels(index="haystack_test_label")
+    assert len(labels) == 0
+
 
 def test_multilabel(document_store):
     labels =[
