@@ -189,7 +189,7 @@ def test_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     pipe = DocumentSearchPipeline(retriever=retriever)
 
-    prediction = pipe.run(query="How to test this?", params={"Retriever": {"top_k": 1})
+    prediction = pipe.run(query="How to test this?", params={"Retriever": {"top_k": 1}})
 
     assert len(prediction.get('documents', [])) == 1
 
