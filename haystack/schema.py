@@ -94,7 +94,7 @@ class Document:
             self.id: str = self._get_id(id_hash_keys)
 
     def _get_id(self, id_hash_keys):
-        final_hash_key = ":".join(id_hash_keys) if id_hash_keys else self.content
+        final_hash_key = ":".join(id_hash_keys) if id_hash_keys else str(self.content)
         return '{:02x}'.format(mmh3.hash128(final_hash_key, signed=False))
 
     def to_dict(self, field_map={}) -> Dict:
