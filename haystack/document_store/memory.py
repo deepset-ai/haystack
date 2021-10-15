@@ -395,7 +395,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from. If None, the
+        :param index: Index name to delete the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to be deleted.
                         Example filters: {"name": ["some", "more"], "category": ["only_one"]}
@@ -405,5 +405,23 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if not filters:
             self.indexes[index] = {}
             return            
-        for doc in self.get_all_documents(filters=filters):
+        for doc in self.get_all_documents(index=index, filters=filters):
             del self.indexes[index][doc.id]
+
+    def delete_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete labels in an index. All labels are deleted if no filters are passed.
+
+        :param index: Index name to delete the labels from. If None, the
+                      DocumentStore's default label index (self.label_index) will be used.
+        :param filters: Optional filters to narrow down the labels to be deleted.
+                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+        :return: None
+        """
+        index = index or self.label_index
+        if not filters:
+            self.indexes[index] = {}
+            return
+        for label in self.get_all_labels(index=index, filters=filters):
+            del self.indexes[index][label.id]
+

@@ -455,6 +455,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """Write annotation labels into document store.
 
         :param labels: A list of Python dictionaries or a list of Haystack Label objects.
+        :param index: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
         :param batch_size: Number of labels that are passed to Elasticsearch's bulk function at a time.
         """
         index = index or self.label_index
@@ -997,7 +998,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from.
+        :param index: Index name to delete the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used
         :param filters: Optional filters to narrow down the documents to be deleted.
             Example filters: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
@@ -1019,6 +1021,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
             time.sleep(2)
+
+    def delete_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete labels in an index. All labels are deleted if no filters are passed.
+
+        :param index: Index name to delete the labels from. If None, the
+                      DocumentStore's default label index (self.label_index) will be used
+        :param filters: Optional filters to narrow down the labels to be deleted.
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+        :return: None
+        """
+        index = index or self.label_index
+        self.delete_documents(index=index, filters=filters)
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):

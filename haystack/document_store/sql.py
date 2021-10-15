@@ -544,6 +544,34 @@ class SQLDocumentStore(BaseDocumentStore):
 
         self.session.commit()
 
+    def delete_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete labels from the document store. All labels are deleted if no filters are passed.
+
+        :param index: Index name to delete the labels from. If None, the
+                      DocumentStore's default label index (self.label_index) will be used.
+        :param filters: Optional filters to narrow down the labels to be deleted.
+                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+        :return: None
+        """
+        index = index or self.label_index
+
+        if filters:
+            label_ids_to_delete = self.session.query(LabelORM.id).filter_by(index=index)
+            for key, values in filters.items():
+                label_ids_to_delete = label_ids_to_delete.filter(
+                    MetaLabelORM.name == key,
+                    MetaLabelORM.value.in_(values),
+                    LabelORM.id == MetaLabelORM.document_id
+                )
+            self.session.query(LabelORM).filter(LabelORM.id.in_(label_ids_to_delete)).delete(
+                synchronize_session=False)
+        else:
+            self.session.query(LabelORM).filter_by(index=index).delete(synchronize_session=False)
+
+        self.session.commit()
+
+
     def _get_or_create(self, session, model, **kwargs):
         instance = session.query(model).filter_by(**kwargs).first()
         if instance:
