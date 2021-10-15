@@ -285,9 +285,10 @@ class Pipeline(BasePipeline):
                                regardless of their severity and of the existing logger's settings.
         """
         # validate the node names
-        if not all(node in self.graph.nodes for node in params.keys()):
-            non_existing_node = set(params.keys()) - set(self.graph.nodes)
-            raise ValueError(f"No node(s) named {', '.join(non_existing_node)} found in pipeline. Defined nodes: {self.graph.nodes}")
+        if params:
+            if not all(node in self.graph.nodes for node in params.keys()):
+                non_existing_node = set(params.keys()) - set(self.graph.nodes)
+                raise ValueError(f"No node(s) named {', '.join(non_existing_node)} found in pipeline. Defined nodes: {self.graph.nodes}")
 
         node_output = None
         queue = {

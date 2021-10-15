@@ -103,12 +103,23 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
     with pytest.raises(ValueError) as exc_info:
         pipeline.run(
             query="Who lives in Berlin?",
-            params={"Reader": {"top_k": 3}, "non-existing-node": {"top_k": 10}},
+            params={
+                "Reader": {"top_k": 3}, 
+                "non-existing-node": {"top_k": 10}, 
+                "non-existing-node-2": {"random_param": "rnd"}
+            },
             debug=True,
             debug_logs=True
         )
-    exception_raised = exc_info.value
-    assert "non-existing-node" in str(exception_raised)
+    # The error message looks like "Node X not found. Defined nodes: A, B".
+    # This asserts make sure that X comes before "Defined nodes", 
+    # while A comes after it.
+    exception_raised = str(exc_info.value)
+    delimiter = exception_raised.index("Defined nodes")
+    assert exception_raised.index("non-existing-node") < delimiter
+    assert exception_raised.index("non-existing-node-2") < delimiter
+    assert exception_raised.index("Reader") > delimiter
+
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
