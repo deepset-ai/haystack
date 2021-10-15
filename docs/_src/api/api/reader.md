@@ -441,6 +441,27 @@ Transformer-based model for extractive Question Answering on Tables with TaPas
 using the HuggingFace's transformers framework (https://github.com/huggingface/transformers).
 With this reader, you can directly get predictions via predict()
 
+**Example**:
+
+```python
+from haystack import Document
+from haystack.reader import TableReader
+import pandas as pd
+
+table_reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+data = {
+    "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+    "age": ["57", "46", "60"],
+    "number of movies": ["87", "53", "69"],
+    "date of birth": ["7 february 1967", "10 june 1996", "28 november 1967"],
+}
+table = pd.DataFrame(data)
+document = Document(content=table, content_type="table")
+query = "When was DiCaprio born?"
+prediction = table_reader.predict(query=query, documents=[document])
+answer = prediction["answers"][0].answer  # "10 june 1996"
+```
+
 <a name="transformers.TableReader.__init__"></a>
 #### \_\_init\_\_
 
@@ -471,7 +492,7 @@ See https://huggingface.co/models?pipeline_tag=table-question-answering for full
 #### predict
 
 ```python
- | predict(query: str, documents: List[Document], top_k: Optional[int] = None)
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
 ```
 
 Use loaded TableQA model to find answers for a query in the supplied list of Documents
