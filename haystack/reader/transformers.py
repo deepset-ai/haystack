@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 import logging
 from statistics import mean
 
@@ -182,6 +182,26 @@ class TableReader(BaseReader):
     Transformer-based model for extractive Question Answering on Tables with TaPas
     using the HuggingFace's transformers framework (https://github.com/huggingface/transformers).
     With this reader, you can directly get predictions via predict()
+
+    Example:
+    ```python
+    from haystack import Document
+    from haystack.reader import TableReader
+    import pandas as pd
+
+    table_reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+    data = {
+        "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+        "age": ["57", "46", "60"],
+        "number of movies": ["87", "53", "69"],
+        "date of birth": ["7 february 1967", "10 june 1996", "28 november 1967"],
+    }
+    table = pd.DataFrame(data)
+    document = Document(content=table, content_type="table")
+    query = "When was DiCaprio born?"
+    prediction = table_reader.predict(query=query, documents=[document])
+    answer = prediction["answers"][0].answer  # "10 june 1996"
+    ```
     """
 
     def __init__(
@@ -224,7 +244,7 @@ class TableReader(BaseReader):
         self.max_seq_len = max_seq_len
         self.return_no_answers = False
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
         Use loaded TableQA model to find answers for a query in the supplied list of Documents
         of content_type ``'table'``.
@@ -309,7 +329,7 @@ class TableReader(BaseReader):
         return results
     
     def _calculate_answer_score(self, logits: torch.Tensor, inputs: BatchEncoding,
-                                answer_coordinates: List[Tuple[int, int]]):
+                                answer_coordinates: List[Tuple[int, int]]) -> float:
         """
         Calculates the answer score by computing each cell's probability of being part of the answer
         and taking the mean probability of the answer cells.
@@ -332,9 +352,9 @@ class TableReader(BaseReader):
         return np.mean(answer_cell_probabilities)
 
     @staticmethod
-    def _aggregate_answers(agg_operator, answer_cells):
+    def _aggregate_answers(agg_operator: str, answer_cells: List[str]) -> str:
         if agg_operator == "COUNT":
-            return len(answer_cells)
+            return str(len(answer_cells))
 
         # No aggregation needed as only one cell selected as answer_cells
         if len(answer_cells) == 1:
@@ -365,7 +385,7 @@ class TableReader(BaseReader):
             return f"{agg_operator} > {', '.join(answer_cells)}"
 
     @staticmethod
-    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame):
+    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
         """
         Calculates the answer cell offsets of the linearized table based on the
         answer cell coordinates.
