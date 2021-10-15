@@ -36,7 +36,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
         Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0].answer == "Adobe Systems"
@@ -329,7 +329,7 @@ def test_faq_pipeline(retriever, document_store):
 
     pipeline = FAQPipeline(retriever=retriever)
 
-    output = pipeline.run(query="How to test this?", params={"top_k": 3})
+    output = pipeline.run(query="How to test this?", params={"Retriever": {"top_k": 3}})
     assert len(output["answers"]) == 3
     assert output["query"].startswith("How to")
     assert output["answers"][0].answer.startswith("Using tests")
