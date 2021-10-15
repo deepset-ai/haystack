@@ -1,6 +1,6 @@
 import logging
 from abc import abstractmethod
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 import torch
 from torch.nn import DataParallel
 import numpy as np
