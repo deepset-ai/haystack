@@ -29,8 +29,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
         Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
+        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
     )
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
@@ -336,7 +335,7 @@ def test_faq_pipeline(retriever, document_store):
     assert output["answers"][0].answer.startswith("Using tests")
 
     if isinstance(document_store, ElasticsearchDocumentStore):
-        output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
+        output = pipeline.run(query="How to test this?", params={"Retriever": {"filters": {"source": ["wiki2"]}, "top_k": 5}})
         assert len(output["answers"]) == 1
 
 
