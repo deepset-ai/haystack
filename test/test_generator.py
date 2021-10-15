@@ -416,6 +416,7 @@ def test_rag_token_generator(rag_generator):
 
 @pytest.mark.slow
 @pytest.mark.generator
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_generator_pipeline(document_store, retriever, rag_generator):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
@@ -429,6 +430,7 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
 
 @pytest.mark.slow
 @pytest.mark.generator
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
 def test_lfqa_pipeline(document_store, retriever, eli5_generator):
