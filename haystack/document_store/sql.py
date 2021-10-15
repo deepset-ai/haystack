@@ -562,7 +562,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 label_ids_to_delete = label_ids_to_delete.filter(
                     MetaLabelORM.name == key,
                     MetaLabelORM.value.in_(values),
-                    LabelORM.id == MetaLabelORM.document_id
+                    LabelORM.id == MetaLabelORM.label_id
                 )
             self.session.query(LabelORM).filter(LabelORM.id.in_(label_ids_to_delete)).delete(
                 synchronize_session=False)

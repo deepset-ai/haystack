@@ -354,7 +354,7 @@ def test_delete_documents_with_filters(document_store_with_docs):
 
 def test_labels(document_store):
     label = Label(
-        query="question",
+        query="question1",
         answer=Answer(answer="answer",
                       type="extractive",
                       score=0.0,
@@ -379,7 +379,7 @@ def test_labels(document_store):
 
     # write second label + duplicate
     label2 = Label(
-        query="question",
+        query="question2",
         answer=Answer(answer="another answer",
                       type="extractive",
                       score=0.0,
@@ -402,7 +402,10 @@ def test_labels(document_store):
     assert label2 in labels
 
     # delete filtered label2
-    document_store.delete_labels(index="haystack_test_label", filters={"id": [labels[1].id]})
+    if isinstance(document_store, ElasticsearchDocumentStore):
+        document_store.delete_labels(index="haystack_test_label", filters={"query": [labels[1].query]})
+    else:
+        document_store.delete_labels(index="haystack_test_label", filters={"id": [labels[1].id]})
     labels = document_store.get_all_labels(index="haystack_test_label")
     assert label == labels[0]
     assert len(labels) == 1
