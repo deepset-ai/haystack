@@ -89,6 +89,29 @@ def test_load_and_save_yaml(document_store, tmp_path):
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_node_names_validation(document_store_with_docs, tmp_path):
+    pipeline = Pipeline()
+    pipeline.add_node(
+        component=ElasticsearchRetriever(document_store=document_store_with_docs), 
+        name="Retriever", 
+        inputs=["Query"])
+    pipeline.add_node(
+        component=FARMReader(model_name_or_path="deepset/roberta-base-squad2"), 
+        name="Reader", 
+        inputs=["Retriever"])
+
+    with pytest.raises(ValueError) as exc_info:
+        pipeline.run(
+            query="Who lives in Berlin?",
+            params={"Reader": {"top_k": 3}, "non-existing-node": {"top_k": 10}},
+            debug=True,
+            debug_logs=True
+        )
+    exception_raised = exc_info.value
+    assert "non-existing-node" in str(exception_raised)
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_debug_attributes_global(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
