@@ -536,7 +536,6 @@ class SQLDocumentStore(BaseDocumentStore):
         if filters:
             for key, values in filters.items():
                 document_ids_to_delete = document_ids_to_delete.filter(
-                    DocumentORM.id.in_(ids),
                     MetaDocumentORM.name == key,
                     MetaDocumentORM.value.in_(values),
                     DocumentORM.id == MetaDocumentORM.document_id
