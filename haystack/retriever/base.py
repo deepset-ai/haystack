@@ -5,7 +5,7 @@ from time import perf_counter
 from functools import wraps
 from tqdm import tqdm
 from copy import deepcopy
-from haystack import Document, BaseComponent
+from haystack import Document, BaseComponent, MultiLabel
 from haystack.document_store.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class BaseRetriever(BaseComponent):
         self,
         label_index: str = "label",
         doc_index: str = "eval_document",
-        label_origin: str = "gold_label",
+        label_origin: str = "gold-label",
         top_k: int = 10,
         open_domain: bool = False,
         return_preds: bool = False,
@@ -87,7 +87,10 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters, open_domain=open_domain)
+        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters,
+                                                                                 open_domain=open_domain,
+                                                                                 drop_negative_labels=True,
+                                                                                 drop_no_answers=False)
 
         correct_retrievals = 0
         summed_avg_precision = 0.0
@@ -96,11 +99,11 @@ class BaseRetriever(BaseComponent):
         # Collect questions and corresponding answers/document_ids in a dict
         question_label_dict = {}
         for label in labels:
-            id_question_tuple = (label.multiple_document_ids[0], label.question)
+            id_question_tuple = (label.document_ids[0], label.query)
             if open_domain:
-                question_label_dict[id_question_tuple] = label.multiple_answers
+                question_label_dict[id_question_tuple] = [a for a in label.answers if a is not None]
             else:
-                deduplicated_doc_ids = list(set([str(x) for x in label.multiple_document_ids]))
+                deduplicated_doc_ids = list(set([str(x) for x in label.document_ids]))
                 question_label_dict[id_question_tuple] = deduplicated_doc_ids
 
         predictions = []
@@ -118,7 +121,7 @@ class BaseRetriever(BaseComponent):
                 current_avg_precision = 0.0
                 for doc_idx, doc in enumerate(retrieved_docs):
                     for gold_answer in gold_answers:
-                        if gold_answer in doc.text:
+                        if gold_answer in doc.content:
                             relevant_docs_found += 1
                             if not found_relevant_doc:
                                 correct_retrievals += 1

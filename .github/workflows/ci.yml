@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.7
+          python-version: 3.8
       - name: Test with mypy
         run: |
           pip install mypy types-Markdown types-requests types-PyYAML
@@ -40,6 +40,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade --upgrade-strategy eager -r requirements-dev.txt -e .
           pip install --upgrade --upgrade-strategy eager -r requirements.txt -e .
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.9.0+cpu.html
 
   prepare-build:
     needs: build-cache

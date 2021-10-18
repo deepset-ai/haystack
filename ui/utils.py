@@ -33,21 +33,17 @@ def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
     result = []
     answers = response_raw["answers"]
     for i in range(len(answers)):
-        answer = answers[i]["answer"]
-        if answer:
-            context = "..." + answers[i]["context"] + "..."
-            meta_name = answers[i]["meta"]["name"]
-            relevance = round(answers[i]["score"] * 100, 2)
-            document_id = answers[i]["document_id"]
-            offset_start_in_doc = answers[i]["offset_start_in_doc"]
+        answer = answers[i]
+        answer_text = answer["answer"]
+        if answer_text:
             result.append(
                 {
-                    "context": context,
-                    "answer": answer,
-                    "source": meta_name,
-                    "relevance": relevance,
-                    "document_id": document_id,
-                    "offset_start_in_doc": offset_start_in_doc,
+                    "context": "..." + answer["context"] + "...",
+                    "answer": answer_text,
+                    "source": answer["meta"]["name"],
+                    "relevance": round(answer["score"] * 100, 2),
+                    "document_id": answer["document_id"],
+                    "offset_start_in_doc": answer["offsets_in_document"][0]["start"],
                 }
             )
     return result, response_raw
@@ -56,6 +52,7 @@ def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
 def feedback_doc(question, is_correct_answer, document_id, model_id, is_correct_document, answer, offset_start_in_doc):
     # Feedback Haystack API
     url = f"{API_ENDPOINT}/{DOC_FEEDBACK}"
+    #TODO adjust after Label refactoring
     req = {
         "question": question,
         "is_correct_answer": is_correct_answer,

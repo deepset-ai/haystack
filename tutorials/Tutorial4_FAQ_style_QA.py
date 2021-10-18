@@ -1,7 +1,7 @@
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 
 from haystack.retriever.dense import EmbeddingRetriever
-from haystack.utils import print_answers, launch_es
+from haystack.utils import launch_es
 import pandas as pd
 import requests
 import logging
@@ -60,7 +60,7 @@ def tutorial4_faq_style_qa():
     # Get embeddings for our questions from the FAQs
     questions = list(df["question"].values)
     df["question_emb"] = retriever.embed_queries(texts=questions)
-    df = df.rename(columns={"question": "text"})
+    df = df.rename(columns={"question": "content"})
 
     # Convert Dataframe to list of dicts and index them in our DocumentStore
     docs_to_index = df.to_dict(orient="records")
@@ -72,7 +72,11 @@ def tutorial4_faq_style_qa():
     pipe = FAQPipeline(retriever=retriever)
 
     prediction = pipe.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})
-    print_answers(prediction, details="all")
+    for a in prediction["answers"]:
+        print(f"Answer: {a.answer}")
+        print(f"Question: {a.meta['query']}")
+        print(f"Score: {a.score}")
+        print("---------------------")
 
 
 if __name__ == "__main__":
