@@ -2,12 +2,12 @@ import numpy as np
 from scipy.special import expit
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import List, Optional, Sequence, Dict
+from typing import List, Optional, Sequence, Dict, Tuple
 from functools import wraps
 from time import perf_counter
 
 
-from haystack import Document, BaseComponent
+from haystack import Document, BaseComponent, Answer, Span
 
 
 class BaseReader(BaseComponent):
@@ -25,7 +25,9 @@ class BaseReader(BaseComponent):
         pass
 
     @staticmethod
-    def _calc_no_answer(no_ans_gaps: Sequence[float], best_score_answer: float, use_confidence_scores: bool = True):
+    def _calc_no_answer(no_ans_gaps: Sequence[float],
+                        best_score_answer: float,
+                        use_confidence_scores: bool = True) -> Tuple[Answer, float]:
         # "no answer" scores and positive answers scores are difficult to compare, because
         # + a positive answer score is related to one specific document
         # - a "no answer" score is related to all input documents
@@ -41,13 +43,15 @@ class BaseReader(BaseComponent):
         else:  # case: at least one passage predicts an answer (positive no_ans_gap)
             no_ans_score = best_score_answer - max_no_ans_gap
 
-        no_ans_prediction = {"answer": None,
-               "score": float(expit(np.asarray(no_ans_score) / 8)) if use_confidence_scores else no_ans_score,  # just a pseudo prob for now or old score
-               "context": None,
-               "offset_start": 0,
-               "offset_end": 0,
-               "document_id": None,
-               "meta": None,}
+        no_ans_prediction = Answer(answer="",
+                                   type="extractive",
+                                   score=float(expit(np.asarray(no_ans_score) / 8)) if use_confidence_scores else no_ans_score,  # just a pseudo prob for now or old score,
+                                   context=None,
+                                   offsets_in_context=[Span(start=0, end=0)],
+                                   offsets_in_document=[Span(start=0, end=0)],
+                                   document_id=None,
+                                   meta=None)
+
         return no_ans_prediction, max_no_ans_gap
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
@@ -60,10 +64,16 @@ class BaseReader(BaseComponent):
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         for ans in results["answers"]:
-            ans["meta"] = {}
+            if ans.meta is None:
+                ans.meta = {}
+            # get meta from doc
+            meta_from_doc = {}
             for doc in documents:
-                if doc.id == ans["document_id"]:
-                    ans["meta"] = deepcopy(doc.meta)
+                if doc.id == ans.document_id:
+                    meta_from_doc = deepcopy(doc.meta)
+                    break
+            # append to "own" meta
+            ans.meta.update(meta_from_doc)
 
         return results, "output_1"
 

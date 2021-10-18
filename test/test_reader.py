@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from haystack import Document
+from haystack import Document, Answer
 from haystack.reader.base import BaseReader
 from haystack.reader.farm import FARMReader
 
@@ -15,12 +15,12 @@ def test_reader_basic(reader):
 def test_output(prediction):
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
-    assert prediction["answers"][0]["answer"] == "Carla"
-    assert prediction["answers"][0]["offset_start"] == 11
-    assert prediction["answers"][0]["offset_end"] == 16
-    assert prediction["answers"][0]["score"] <= 1
-    assert prediction["answers"][0]["score"] >= 0
-    assert prediction["answers"][0]["context"] == "My name is Carla and I live in Berlin"
+    assert prediction["answers"][0].answer == "Carla"
+    assert prediction["answers"][0].offsets_in_context[0].start == 11
+    assert prediction["answers"][0].offsets_in_context[0].end== 16
+    assert prediction["answers"][0].score <= 1
+    assert prediction["answers"][0].score >= 0
+    assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     assert len(prediction["answers"]) == 5
 
 
@@ -29,15 +29,15 @@ def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None
     assert no_answer_prediction["query"] == "What is the meaning of life?"
     assert math.isclose(no_answer_prediction["no_ans_gap"], -13.048564434051514, rel_tol=0.0001)
-    assert no_answer_prediction["answers"][0]["answer"] is None
-    assert no_answer_prediction["answers"][0]["offset_start"] == 0
-    assert no_answer_prediction["answers"][0]["offset_end"] == 0
-    assert no_answer_prediction["answers"][0]["score"] <= 1
-    assert no_answer_prediction["answers"][0]["score"] >= 0
-    assert no_answer_prediction["answers"][0]["context"] == None
-    assert no_answer_prediction["answers"][0]["document_id"] == None
-    answers = [x["answer"] for x in no_answer_prediction["answers"]]
-    assert answers.count(None) == 1
+    assert no_answer_prediction["answers"][0].answer == ""
+    assert no_answer_prediction["answers"][0].offsets_in_context[0].start == 0
+    assert no_answer_prediction["answers"][0].offsets_in_context[0].end == 0
+    assert no_answer_prediction["answers"][0].score <= 1
+    assert no_answer_prediction["answers"][0].score >= 0
+    assert no_answer_prediction["answers"][0].context == None
+    assert no_answer_prediction["answers"][0].document_id == None
+    answers = [x.answer for x in no_answer_prediction["answers"]]
+    assert answers.count("") == 1
     assert len(no_answer_prediction["answers"]) == 5
 
 
@@ -55,11 +55,11 @@ def test_prediction_attributes(prediction):
 
 def test_answer_attributes(prediction):
     # TODO Transformers answer also has meta key
-    # TODO FARM answer has offset_start_in_doc, offset_end_in_doc
     answer = prediction["answers"][0]
-    attributes_gold = ['answer', 'score', 'context', 'offset_start', 'offset_end', 'document_id']
+    assert type(answer) == Answer
+    attributes_gold = ['answer', 'score', 'context', 'offsets_in_context', 'offsets_in_document','type']
     for ag in attributes_gold:
-        assert ag in answer
+        assert getattr(answer,ag,None) is not None
 
 
 @pytest.mark.slow
@@ -79,10 +79,10 @@ def test_context_window_size(reader, test_docs_xs, window_size):
         # If the extracted answer is odd in length, the resulting context window is one less than context_window_size
         # due to rounding (See FARM's QACandidate)
         # TODO Currently the behaviour of context_window_size in FARMReader and TransformerReader is different
-        if len(answer["answer"]) <= window_size:
-            assert len(answer["context"]) in [window_size, window_size - 1]
+        if len(answer.answer) <= window_size:
+            assert len(answer.context) in [window_size, window_size - 1]
         else:
-            assert len(answer["answer"]) == len(answer["context"])
+            assert len(answer.answer) == len(answer.context)
 
     reader.inferencer.model.prediction_heads[0].context_window_size = old_window_size
 
@@ -130,7 +130,7 @@ def test_farm_reader_update_params(test_docs_xs):
     # original reader
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
-    assert prediction["answers"][0]["answer"] == "Carla"
+    assert prediction["answers"][0].answer == "Carla"
 
     # update no_ans_boost
     reader.update_parameters(
@@ -138,7 +138,7 @@ def test_farm_reader_update_params(test_docs_xs):
     )
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
-    assert prediction["answers"][0]["answer"] is None
+    assert prediction["answers"][0].answer == ""
 
     # update no_ans_boost
     reader.update_parameters(
@@ -146,13 +146,13 @@ def test_farm_reader_update_params(test_docs_xs):
     )
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
-    assert None not in [ans["answer"] for ans in prediction["answers"]]
+    assert None not in [ans.answer for ans in prediction["answers"]]
 
     # update context_window_size
     reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=384, doc_stride=128)
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
-    assert len(prediction["answers"][0]["context"]) == 6
+    assert len(prediction["answers"][0].context) == 6
 
     # update doc_stride with invalid value
     with pytest.raises(Exception):

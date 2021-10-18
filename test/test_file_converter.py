@@ -10,12 +10,13 @@ from haystack.file_converter.tika import TikaConverter
 
 @pytest.mark.tika
 @pytest.mark.parametrize(
-    "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
+    # "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
+    "Converter", [PDFToTextOCRConverter]
 )
 def test_convert(Converter, xpdf_fixture):
     converter = Converter()
     document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
-    pages = document["text"].split("\f")
+    pages = document["content"].split("\f")
     assert len(pages) == 4  # the sample PDF file has four pages.
     assert pages[0] != ""  # the page 1 of PDF contains text.
     assert pages[2] == ""  # the page 3 of PDF file is empty.
@@ -33,7 +34,7 @@ def test_convert(Converter, xpdf_fixture):
 def test_table_removal(Converter, xpdf_fixture):
     converter = Converter(remove_numeric_tables=True)
     document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
-    pages = document["text"].split("\f")
+    pages = document["content"].split("\f")
     # assert numeric rows are removed from the table.
     assert "324" not in pages[0]
     assert "54x growth" not in pages[0]
@@ -60,10 +61,10 @@ def test_language_validation(Converter, xpdf_fixture, caplog):
 def test_docx_converter():
     converter = DocxToTextConverter()
     document = converter.convert(file_path=Path("samples/docx/sample_docx.docx"))
-    assert document["text"].startswith("Sample Docx File")
+    assert document["content"].startswith("Sample Docx File")
 
 
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=Path("samples/markdown/sample.md"))
-    assert document["text"].startswith("What to build with Haystack")
+    assert document["content"].startswith("What to build with Haystack")

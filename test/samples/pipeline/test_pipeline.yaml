@@ -55,3 +55,15 @@ pipelines:
         inputs: [Preprocessor]
       - name: DocumentStore
         inputs: [ESRetriever]
+
+  - name: indexing_text_pipeline
+    type: Pipeline
+    nodes:
+      - name: TextConverter
+        inputs: [File]
+      - name: Preprocessor
+        inputs: [TextConverter]
+      - name: ESRetriever
+        inputs: [Preprocessor]
+      - name: DocumentStore
+        inputs: [ESRetriever]

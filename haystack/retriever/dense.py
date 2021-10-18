@@ -1,11 +1,12 @@
 import logging
 from abc import abstractmethod
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 import torch
 from torch.nn import DataParallel
 import numpy as np
 from pathlib import Path
 
+from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.utils import initialize_device_settings
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModel
@@ -19,7 +20,7 @@ from haystack.modeling.model.tokenization import Tokenizer
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.modeling.data_handler.processor import TextSimilarityProcessor, InferenceProcessor
+from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
@@ -292,7 +293,7 @@ class DensePassageRetriever(BaseRetriever):
 
         passages = [{'passages': [{
             "title": d.meta["name"] if d.meta and "name" in d.meta else "",
-            "text": d.text,
+            "text": d.content,
             "label": d.meta["label"] if d.meta and "label" in d.meta else "positive",
             "external_id": d.id}]
         } for d in docs]
@@ -481,7 +482,7 @@ class EmbeddingRetriever(BaseRetriever):
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use gpu or not
         :param model_format: Name of framework that was used for saving the model. Options:
@@ -637,7 +638,7 @@ class _DefaultEmbeddingEncoder(_EmbeddingEncoder):
         return self.embed(texts)
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.text for d in docs] # type: ignore
+        passages = [d.content for d in docs] # type: ignore
         return self.embed(passages)
 
 
@@ -676,7 +677,7 @@ class _SentenceTransformersEmbeddingEncoder(_EmbeddingEncoder):
         return self.embed(texts)
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.text] for d in docs]  # type: ignore
+        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
 
 
@@ -693,11 +694,8 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
         else:
             self.device = torch.device("cpu")
 
-        embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model,
-                                                            use_fast_tokenizers=True)
+        self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
         self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)
-        self.processor = InferenceProcessor(tokenizer=embedding_tokenizer,
-                                            max_seq_len=embedding_tokenizer.max_len_single_sentence)
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
@@ -718,7 +716,7 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
 
-        doc_text = [{"text": d.text} for d in docs]
+        doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
 
         embeddings: List[np.ndarray] = []
@@ -735,8 +733,23 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
 
     def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
 
-        dataset, tensor_names, _ = self.processor.dataset_from_dicts(text_to_encode,
-                                                                     indices=[i for i in range(len(text_to_encode))])
+        dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
         dataloader = NamedDataLoader(dataset=dataset, sampler=SequentialSampler(dataset),
                                      batch_size=32, tensor_names=tensor_names)
         return dataloader
+
+    def dataset_from_dicts(self, dicts: List[dict]):
+        texts = [x["text"] for x in dicts]
+        tokenized_batch = self.embedding_tokenizer(
+            texts,
+            return_token_type_ids=True,
+            return_attention_mask=True,
+            truncation=True,
+            padding=True
+        )
+
+        features_flat = flatten_rename(tokenized_batch,
+                                       ["input_ids", "token_type_ids", "attention_mask"],
+                                       ["input_ids", "segment_ids", "padding_mask"])
+        dataset, tensornames = convert_features_to_dataset(features=features_flat)
+        return dataset, tensornames
