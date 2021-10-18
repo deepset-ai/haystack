@@ -96,10 +96,15 @@ class FARMReader(BaseReader):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_filtering: Answers are filtered based on their position. Both start and end position of the answers are considered.
                                     The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
-        :param use_confidence_scores:
-        :param proxies:
-        :param local_files_only:
-        :param force_download:
+        :param use_confidence_scores: Sets the type of score that is returned with every predicted answer.
+                                      `True` => a scaled confidence / relevance score between [0, 1].
+                                      This score can also be further calibrated on your dataset via self.eval()
+                                      (see https://haystack.deepset.ai/components/reader#confidence-scores) .
+                                      `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
+                                      from the model for the predicted span.
+        :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
+        :param local_files_only: Whether to force checking for local files only (and forbid downloads)
+        :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -359,7 +364,6 @@ class FARMReader(BaseReader):
         return result
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
-        #TODO update example in docstring
         """
         Use loaded QA model to find answers for a query in the supplied list of Document.
 
@@ -368,14 +372,14 @@ class FARMReader(BaseReader):
          ```python
             |{
             |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[
-            |                 {'answer': 'Eddard,',
-            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-            |                 'offset_answer_start': 147,
-            |                 'offset_answer_end': 154,
+            |    'answers':[Answer(
+            |                 'answer': 'Eddard,',
+            |                 'context': "She travels with her father, Eddard, to King's Landing when he is",
             |                 'score': 0.9787139466668613,
-            |                 'document_id': '1337'
-            |                 },...
+            |                 'offsets_in_context': [Span(start=29, end=35],
+            |                 'offsets_in_context': [Span(start=347, end=353],
+            |                 'document_id': '88d1ed769d003939d3a0d28034464ab2'
+            |                 ),...
             |              ]
             |}
          ```
