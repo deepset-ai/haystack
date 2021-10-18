@@ -52,6 +52,11 @@ def test_prediction_attributes(prediction):
     for ag in attributes_gold:
         assert ag in prediction
 
+@pytest.mark.slow
+def test_model_download_options():
+    # download disabled and model is not cached locally
+    with pytest.raises(OSError):
+        impossible_reader = FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True)
 
 def test_answer_attributes(prediction):
     # TODO Transformers answer also has meta key
