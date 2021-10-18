@@ -1,12 +1,15 @@
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 import pytest
-from transformers import PreTrainedTokenizer, BatchEncoding
 
 from haystack import Document
 from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.pipeline import TranslationWrapperPipeline, GenerativeQAPipeline
+
+# Avoid Warning .huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 DOCS_WITH_EMBEDDINGS = [
     Document(
