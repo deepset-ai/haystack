@@ -463,7 +463,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
     @classmethod
     def convert_from_transformers(cls, model_name_or_path: Union[str, Path], device: str, revision: Optional[str] = None,
-                                  task_type: Optional[str] = None, processor: Optional[Processor] = None):
+                                  task_type: Optional[str] = None, processor: Optional[Processor] = None, **kwargs):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
          - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
@@ -489,7 +489,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                                         revision=revision,
                                                         device=device,
                                                         task_type=task_type,
-                                                        processor=processor)
+                                                        processor=processor,
+                                                        **kwargs)
 
 
     @classmethod
