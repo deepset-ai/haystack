@@ -64,7 +64,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
           type: ElasticsearchDocumentStore
         - name: Reader
           params:
-            model_name_or_path: deepset/minilm-uncased-squad2
+            model_name_or_path: deepset/roberta-base-squad2
             no_ans_boost: -10
           type: FARMReader
         pipelines:
