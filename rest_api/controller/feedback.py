@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException
 from rest_api.schema import FilterRequest, LabelSerialized
 from rest_api.controller.search import DOCUMENT_STORE
 
-# from haystack import Label
 
 router = APIRouter()
 
@@ -15,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 @router.post("/feedback")
 def user_feedback(feedback: LabelSerialized):
-# def user_feedback(feedback: Dict):
     if feedback.origin is None:
         feedback.origin = "user-feedback"
     DOCUMENT_STORE.write_labels([feedback])

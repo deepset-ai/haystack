@@ -267,7 +267,7 @@ class Answer:
 
     @classmethod
     def from_dict(cls, dict:dict):
-        return pydantic_dataclass_from_dict(json_dict=dict, pydantic_dataclass_type=cls)
+        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
         return json.dumps(self, default=pydantic_encoder)
@@ -277,19 +277,6 @@ class Answer:
         if type(data) == str:
             data = json.loads(data)
         return cls.from_dict(data)
-
-
-def pydantic_dataclass_from_dict(json_dict: dict, pydantic_dataclass_type) -> Any:
-    base_model = pydantic_dataclass_type.__pydantic_model__.parse_obj(json_dict)
-    base_mode_fields = base_model.__fields__
-
-    values = {}
-    for base_model_field_name, base_model_field in base_mode_fields.items():
-        value = getattr(base_model, base_model_field_name)
-        values[base_model_field_name] = value
-
-    dataclass_object = pydantic_dataclass_type(**values)
-    return dataclass_object
 
 
 @dataclass
@@ -398,7 +385,7 @@ class Label:
 
     @classmethod
     def from_dict(cls, dict:dict):
-        return pydantic_dataclass_from_dict(json_dict=dict, pydantic_dataclass_type=cls)
+        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
         return json.dumps(self, default=pydantic_encoder)
@@ -491,7 +478,7 @@ class MultiLabel:
 
     @classmethod
     def from_dict(cls, dict:dict):
-        return pydantic_dataclass_from_dict(json_dict=dict, pydantic_dataclass_type=cls)
+        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     def to_json(self):
         return json.dumps(self, default=pydantic_encoder)
@@ -507,6 +494,25 @@ class MultiLabel:
 
     def __str__(self):
         return str(self.to_dict())
+
+
+def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
+    """
+    Constructs a pydantic dataclass from a dict incl. other nested dataclasses.
+    This allows simple de-serialization of pydentic dataclasses from json.
+    :param dict: Dict containing all attributes and values for the dataclass.
+    :param pydantic_dataclass_type: The class of the dataclass that should be constructed (e.g. Document)
+    """
+    base_model = pydantic_dataclass_type.__pydantic_model__.parse_obj(dict)
+    base_mode_fields = base_model.__fields__
+
+    values = {}
+    for base_model_field_name, base_model_field in base_mode_fields.items():
+        value = getattr(base_model, base_model_field_name)
+        values[base_model_field_name] = value
+
+    dataclass_object = pydantic_dataclass_type(**values)
+    return dataclass_object
 
 
 class InMemoryLogger(io.TextIOBase):

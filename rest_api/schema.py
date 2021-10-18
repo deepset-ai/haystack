@@ -42,9 +42,3 @@ class QueryResponse(BaseModel):
     answers: List[AnswerSerialized]
     documents: Optional[List[DocumentSerialized]]
 
-if __name__=="__main__":
-    print(AnswerSerialized.__pydantic_model__.schema_json(indent=2))
-    # print(Answer.__pydantic_model__.schema_json())
-    # print(DocumentSerialized.__pydantic_model__.schema_json())
-    print(QueryResponse.schema_json(indent=2))
-    print(LabelSerialized.__pydantic_model__.schema_json(indent=2))
