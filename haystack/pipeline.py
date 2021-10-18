@@ -1098,16 +1098,18 @@ class RayPipeline(Pipeline):
         :param kwargs: Optional parameters for initializing Ray.
         """
         super().__init__()
-        ray.init(address=address, **kwargs)
-        serve.start(detached=detached)
-        self._ray_handle = None
+        if not ray.is_initialized():
+            ray.init(address=address, **kwargs)
+            serve.start(detached=detached, http_options={"host": "0.0.0.0"})
 
     @classmethod
     def load_from_yaml(
             cls,
-            path: Path, pipeline_name: Optional[str] = None,
+            path: Path,
+            pipeline_name: Optional[str] = None,
             overwrite_with_env_variables: bool = True,
             address: Optional[str] = None,
+            ray_deployment_name: Optional[str] = None,
             **kwargs,
     ):
         """
@@ -1157,14 +1159,17 @@ class RayPipeline(Pipeline):
             path=path, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
         )
         pipeline = cls(address=address, **kwargs)
-
-        _RayPipelineWrapperNode.deploy(data, pipeline_config, definitions)  # type: ignore
-        pipeline._ray_handle = _RayPipelineWrapperNode.get_handle()  # type: ignore
-
+        ray_deployment_name = ray_deployment_name or pipeline_name
+        pipeline.ray_deployment_name = ray_deployment_name
+        _RayPipelineWrapperNode.options(name=ray_deployment_name).deploy(
+            data, pipeline_config, definitions, ray_deployment_name
+        )  # type: ignore
         return pipeline
 
-    def run(self, **kwargs):
-        output = ray.get(self._ray_handle.remote(**kwargs))
+    def run(self, ray_deployment_name: Optional[str] = None, **kwargs):
+        ray_deployment_name = ray_deployment_name or self.ray_deployment_name
+        handle = _RayPipelineWrapperNode.options(name=ray_deployment_name).get_handle()
+        output = ray.get(handle.remote(**kwargs))
         return output
 
     def add_node(self, component, name: str, inputs: List[str]):
@@ -1175,14 +1180,16 @@ class RayPipeline(Pipeline):
 
 @serve.deployment
 class _RayPipelineWrapperNode(Pipeline):
-    def __init__(self, data, pipeline_config, definitions):
+    def __init__(self, data, pipeline_config, definitions, ray_deployment_name):
         super().__init__()
         for node_config in pipeline_config["nodes"]:
             if self.root_node is None:
                 root_node = node_config["inputs"][0]
                 if root_node in ["Query", "File"]:
                     self.root_node = root_node
-                    handle = self._create_ray_deployment(component_name=root_node, pipeline_config=data)
+                    handle = self._create_ray_deployment(
+                        component_name=root_node, pipeline_config=data, ray_deployment_name=ray_deployment_name
+                    )
                     self._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1, inputs=[])
                 else:
                     raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
@@ -1191,7 +1198,9 @@ class _RayPipelineWrapperNode(Pipeline):
             component_type = definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
             replicas = next(node for node in pipeline_config["nodes"] if node["name"] == name).get("replicas", 1)
-            handle = self._create_ray_deployment(component_name=name, pipeline_config=data, replicas=replicas)
+            handle = self._create_ray_deployment(
+                component_name=name, pipeline_config=data, ray_deployment_name=ray_deployment_name, replicas=replicas
+            )
             self._add_ray_deployment_in_graph(
                 handle=handle,
                 name=name,
@@ -1200,7 +1209,9 @@ class _RayPipelineWrapperNode(Pipeline):
             )
 
     @classmethod
-    def _create_ray_deployment(cls, component_name: str, pipeline_config: dict, replicas: int = 1):
+    def _create_ray_deployment(
+            cls, component_name: str, pipeline_config: dict, ray_deployment_name: str, replicas: int = 1
+    ):
         """
         Create a Ray Deployment for the Component.
 
@@ -1209,7 +1220,9 @@ class _RayPipelineWrapperNode(Pipeline):
         :param replicas: By default, a single replica of the component is created. It can be
                          configured by setting `replicas` parameter in the Pipeline YAML.
         """
-        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)  # type: ignore
+        RayDeployment = serve.deployment(
+            _RayDeploymentWrapper, name=f"{ray_deployment_name}-{component_name}", num_replicas=replicas
+        )  # type: ignore
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
         return handle
@@ -1263,11 +1276,29 @@ class _RayPipelineWrapperNode(Pipeline):
 
         return output_dict
 
-    def __call__(self, **kwargs):
+    async def __call__(self, request):
         """
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
-        return self.run(**kwargs)
+
+        body = await request.json()
+        result = self.run(**body)
+        self._convert_to_json(result)
+        return result
+
+    def _convert_to_json(self, payload):
+        if isinstance(payload, (Document,)):
+            return payload.to_dict()
+
+        if isinstance(payload, dict):
+            for k, v in payload.items():
+                payload.update({k: self._convert_to_json(v)})
+
+        if isinstance(payload, list):
+            for i, v in enumerate(payload):
+                payload[i] = self._convert_to_json(v)
+
+        return payload
 
     def _add_ray_deployment_in_graph(self, handle, name: str, outgoing_edges: int, inputs: List[str]):
         """
