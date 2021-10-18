@@ -993,13 +993,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         :return: None
         """
         index = index or self.index
@@ -1013,6 +1016,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         }
                 )
                 query["query"]["bool"] = {"filter": filter_clause}
+            
+            if ids:
+                query["query"]["bool"]["must"] = {"ids": {"values": ids}}
+
+        elif ids:
+            if ids:
+                query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
         self.client.delete_by_query(index=index, body=query, ignore=[404])

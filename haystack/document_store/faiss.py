@@ -399,7 +399,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         )
         self.delete_documents(index, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
