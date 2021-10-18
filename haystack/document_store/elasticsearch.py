@@ -998,6 +998,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from.
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
             Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
             If filters are provided along with a list of IDs, this method deletes the

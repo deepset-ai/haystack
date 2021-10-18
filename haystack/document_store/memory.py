@@ -397,13 +397,21 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         :param index: Index name to delete the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
-                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
+
         :return: None
         """
         index = index or self.index
-        if not filters:
+        if not filters and not ids:
             self.indexes[index] = {}
-            return            
-        for doc in self.get_all_documents(filters=filters):
+            return
+        docs_to_delete = self.get_all_documents(filters=filters)
+        if ids:
+            docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
+        for doc in docs_to_delete:
             del self.indexes[index][doc.id]
