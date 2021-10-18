@@ -16,8 +16,8 @@ jobs:
           python-version: 3.8
       - name: Test with mypy
         run: |
-          pip install mypy types-Markdown types-requests types-PyYAML
-          mypy haystack --ignore-missing-imports
+          pip install mypy types-Markdown types-requests types-PyYAML pydantic
+          mypy haystack
 
   build-cache:
     needs: type-check

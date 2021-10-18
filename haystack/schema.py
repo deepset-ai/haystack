@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+import typing
 from typing import Any, Optional, Dict, List, Union, Callable, Tuple, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import fields, is_dataclass, asdict
+
+import pydantic
 from dataclasses_json import dataclass_json
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal #type: ignore
+
+if typing.TYPE_CHECKING:
+    from dataclasses import dataclass
+else:
+    from pydantic.dataclasses import dataclass
+from pydantic.json import pydantic_encoder
 
 from uuid import uuid4
 from copy import deepcopy
@@ -22,6 +31,10 @@ import json
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+
+from pydantic import BaseConfig
+BaseConfig.arbitrary_types_allowed = True
 
 
 @dataclass
@@ -194,7 +207,6 @@ class Span:
     :param end:  Position where the spand ends
     """
 
-@dataclass_json
 @dataclass
 class Answer:
     answer: str
@@ -250,19 +262,23 @@ class Answer:
     def __str__(self):
         return f"answer: {self.answer} \nscore: {self.score} \ncontext: {self.context}"
 
-    #TODO: switch to manual serialization instead of dataclass_json as it seems to break autocomplete of IDE in some cases
-    # def to_json(self):
-    #     # usage of dataclass_json seems to break autocomplete in the IDE, so we implement the methods ourselves here
-    #     j = json.dumps(asdict(self))
-    #     return j
-    #
-    # @classmethod
-    # def from_json(cls, data):
-    #     d = json.loads(data)
-    #     return cls(**d)
+    def to_dict(self):
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, dict:dict):
+        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+
+    def to_json(self):
+        return json.dumps(self, default=pydantic_encoder)
+
+    @classmethod
+    def from_json(cls, data):
+        if type(data) == str:
+            data = json.loads(data)
+        return cls.from_dict(data)
 
 
-@dataclass_json
 @dataclass
 class Label:
     id: str
@@ -364,12 +380,21 @@ class Label:
         else:
             self.meta = meta
 
-    @classmethod
-    def from_dict(cls, dict):
-        return cls(**dict)
-
     def to_dict(self):
-        return self.__dict__
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, dict:dict):
+        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+
+    def to_json(self):
+        return json.dumps(self, default=pydantic_encoder)
+
+    @classmethod
+    def from_json(cls, data):
+        if type(data) == str:
+            data = json.loads(data)
+        return cls.from_dict(data)
 
     # define __eq__ and __hash__ functions to deduplicate Label Objects
     def __eq__(self, other):
@@ -448,18 +473,46 @@ class MultiLabel:
         else:
             return list(unique_values)
 
-    @classmethod
-    def from_dict(cls, dict):
-        return cls(**dict)
-
     def to_dict(self):
-        return self.__dict__
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, dict:dict):
+        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+
+    def to_json(self):
+        return json.dumps(self, default=pydantic_encoder)
+
+    @classmethod
+    def from_json(cls, data):
+        if type(data) == str:
+            data = json.loads(data)
+        return cls.from_dict(data)
 
     def __repr__(self):
         return str(self.to_dict())
 
     def __str__(self):
         return str(self.to_dict())
+
+
+def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
+    """
+    Constructs a pydantic dataclass from a dict incl. other nested dataclasses.
+    This allows simple de-serialization of pydentic dataclasses from json.
+    :param dict: Dict containing all attributes and values for the dataclass.
+    :param pydantic_dataclass_type: The class of the dataclass that should be constructed (e.g. Document)
+    """
+    base_model = pydantic_dataclass_type.__pydantic_model__.parse_obj(dict)
+    base_mode_fields = base_model.__fields__
+
+    values = {}
+    for base_model_field_name, base_model_field in base_mode_fields.items():
+        value = getattr(base_model, base_model_field_name)
+        values[base_model_field_name] = value
+
+    dataclass_object = pydantic_dataclass_type(**values)
+    return dataclass_object
 
 
 class InMemoryLogger(io.TextIOBase):
