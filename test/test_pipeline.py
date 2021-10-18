@@ -64,7 +64,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
           type: ElasticsearchDocumentStore
         - name: Reader
           params:
-            model_name_or_path: deepset/roberta-base-squad2
+            model_name_or_path: deepset/minilm-uncased-squad2
             no_ans_boost: -10
           type: FARMReader
         pipelines:
@@ -93,7 +93,7 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
         name="Retriever", 
         inputs=["Query"])
     pipeline.add_node(
-        component=FARMReader(model_name_or_path="deepset/roberta-base-squad2"), 
+        component=FARMReader(model_name_or_path="deepset/minilm-uncased-squad2"), 
         name="Reader", 
         inputs=["Retriever"])
 
@@ -123,7 +123,7 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
 def test_debug_attributes_global(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -155,7 +155,7 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
 def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -185,7 +185,7 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 def test_global_debug_attributes_override_node_ones(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
