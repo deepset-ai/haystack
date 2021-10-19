@@ -53,16 +53,16 @@ def _process_request(pipeline, request) -> QueryResponse:
     start_time = time.time()
     
     params = request.params or {}
-    params["filters"] = params.get("filters") or {}
+    params["Retriever"] = params.get("Retriever", {})
     filters = {}
-    if "filters" in params:  # put filter values into a list and remove filters with null value
-        for key, values in params["filters"].items():
+    if "filters" in params["Retriever"]:  # put filter values into a list and remove filters with null value
+        for key, values in params["Retriever"]["filters"].items():
             if values is None:
                 continue
             if not isinstance(values, list):
                 values = [values]
             filters[key] = values
-    params["filters"] = filters
+    params["Retriever"]["filters"] = filters
     result = pipeline.run(query=request.query, params=params)
     
     end_time = time.time()
