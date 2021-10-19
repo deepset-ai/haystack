@@ -1816,8 +1816,12 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 - `index`: Index name to delete the document from. If None, the
               DocumentStore's default index (self.index) will be used.
+- `ids`: Optional list of IDs to narrow down the documents to be deleted.
 - `filters`: Optional filters to narrow down the documents to be deleted.
-                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+    Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+    If filters are provided along with a list of IDs, this method deletes the
+    intersection of the two query results (documents that match the filters and
+    have their ID in the list).
 
 **Returns**:
 
