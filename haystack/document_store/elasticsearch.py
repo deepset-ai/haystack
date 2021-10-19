@@ -1045,7 +1045,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                  scheme="https",
                  username="admin",
                  password="admin",
-                 port=9201,
+                 port=9200,
                  **kwargs):
 
         # Overwrite default kwarg values of parent class so that in default cases we can initialize
@@ -1211,6 +1211,36 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name):
                 raise e
 
+    def _create_label_index(self, index_name: str):
+        if self.client.indices.exists(index=index_name):
+            return
+        mapping = {
+            "mappings": {
+                "properties": {
+                    "query": {"type": "text"},
+                    "answer": {"type": "nested"}, # In elasticsearch we use type:flattened, but this is not supported in opensearch
+                    "document": {"type": "nested"},
+                    "is_correct_answer": {"type": "boolean"},
+                    "is_correct_document": {"type": "boolean"},
+                    "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
+                    "document_id": {"type": "keyword"},
+                    "no_answer": {"type": "boolean"},
+                    "pipeline_id": {"type": "keyword"},
+                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
+                    "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
+                    #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
+                }
+            }
+        }
+        try:
+            self.client.indices.create(index=index_name, body=mapping)
+        except RequestError as e:
+            # With multiple workers we need to avoid race conditions, where:
+            # - there's no index in the beginning
+            # - both want to create one
+            # - one fails as the other one already created it
+            if not self.client.indices.exists(index=index_name):
+                raise e
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
