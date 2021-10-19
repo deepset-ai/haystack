@@ -71,7 +71,7 @@ def test_extractive_qa_offsets(reader, retriever_with_docs):
 def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     query = "testing finder"
-    prediction = pipeline.run(query=query, params={"top_k": 1})
+    prediction = pipeline.run(query=query, params={"Retriever": {"top_k": 1}, "Reader": {"top_k": 1}})
     assert prediction is not None
     assert len(prediction["answers"]) == 1
 
