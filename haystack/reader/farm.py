@@ -154,7 +154,10 @@ class FARMReader(BaseReader):
 
         - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
         - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
-
+         
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
+        If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
+         
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
@@ -251,7 +254,7 @@ class FARMReader(BaseReader):
             device=device,
             use_amp=use_amp,
             disable_tqdm=not self.progress_bar,
-            checkpoint_root_dir=checkpoint_root_dir,
+            checkpoint_root_dir=Path(checkpoint_root_dir),
             checkpoint_every=checkpoint_every,
             checkpoints_to_keep=checkpoints_to_keep,
         )
