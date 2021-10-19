@@ -514,33 +514,39 @@ class SQLDocumentStore(BaseDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, filters)
+        self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
-                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         :return: None
         """
         index = index or self.index
-
-        if filters:
-            # documents_query = documents_query.join(MetaORM)
-            document_ids_to_delete = self.session.query(DocumentORM.id).filter_by(index=index)
-            for key, values in filters.items():
-                document_ids_to_delete = document_ids_to_delete.filter(
-                    MetaDocumentORM.name == key,
+        if not filters and not ids:
+            self.session.query(DocumentORM).filter_by(index=index).delete(synchronize_session=False)
+        else:
+            document_ids_to_delete = self.session.query(DocumentORM.id).filter(DocumentORM.index==index)
+            if filters:
+                for key, values in filters.items():
+                    document_ids_to_delete = document_ids_to_delete.filter(
+                        MetaDocumentORM.name == key,
                         MetaDocumentORM.value.in_(values),
-                    DocumentORM.id == MetaDocumentORM.document_id
-                )
+                        DocumentORM.id == MetaDocumentORM.document_id
+                    )
+            if ids:
+                document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
+
             self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(
                     synchronize_session=False)
-        else:
-            self.session.query(DocumentORM).filter_by(index=index).delete(synchronize_session=False)
 
         self.session.commit()
 

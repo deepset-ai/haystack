@@ -245,7 +245,7 @@ class BaseDocumentStore(BaseComponent):
         pass
 
     @abstractmethod
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
 
     def run(self, documents: List[dict], index: Optional[str] = None):  # type: ignore
