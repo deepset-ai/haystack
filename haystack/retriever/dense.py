@@ -628,7 +628,7 @@ class MultimodalRetriever(BaseRetriever):
                                       lm1_output_types=["per_sequence"],
                                       lm2_output_types=["per_sequence"],
                                       lm3_output_types=["per_sequence"],
-                                      device=self.devices[0])
+                                      device=str(self.devices[0]))
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
@@ -648,7 +648,7 @@ class MultimodalRetriever(BaseRetriever):
                                                            index=index)
         return documents
 
-    def _get_predictions(self, dicts: Dict):
+    def _get_predictions(self, dicts: List[Dict]):
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
@@ -673,7 +673,7 @@ class MultimodalRetriever(BaseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings = {"query": [], "passages": []}
+        all_embeddings: Dict = {"query": [], "passages": []}
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -735,8 +735,8 @@ class MultimodalRetriever(BaseRetriever):
                     "page_title": doc.meta["page_title"] if doc.meta and "page_title" in doc.meta else "",
                     "section_title": doc.meta["section_title"] if doc.meta and "section_title" in doc.meta else "",
                     "caption": doc.meta["caption"] if doc.meta and "caption" in doc.meta else "",
-                    "columns": doc.content.columns.tolist(),
-                    "rows": doc.content.values.tolist(),
+                    "columns": doc.content.columns.tolist(),  # type: ignore
+                    "rows": doc.content.values.tolist(),  # type: ignore
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
                     "type": "table",
                     "external_id": doc.id
@@ -770,7 +770,7 @@ class MultimodalRetriever(BaseRetriever):
               train_filename: str,
               dev_filename: str = None,
               test_filename: str = None,
-              max_sample: int = None,
+              max_samples: int = None,
               max_processes: int = 128,
               dev_split: float = 0,
               batch_size: int = 2,
@@ -799,7 +799,7 @@ class MultimodalRetriever(BaseRetriever):
         :param train_filename: Training filename.
         :param dev_filename: Development set filename, file to be used by model in eval step of training.
         :param test_filename: Test set filename, file to be used by model in test step after training.
-        :param max_sample: Maximum number of input samples to convert. Can be used for debugging a smaller dataset.
+        :param max_samples: Maximum number of input samples to convert. Can be used for debugging a smaller dataset.
         :param max_processes: The maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
@@ -837,7 +837,7 @@ class MultimodalRetriever(BaseRetriever):
         self.processor.train_filename = train_filename
         self.processor.dev_filename = dev_filename
         self.processor.test_filename = test_filename
-        self.processor.max_sample = max_sample
+        self.processor.max_samples = max_samples
         self.processor.dev_split = dev_split
         self.processor.num_hard_negatives = num_hard_negatives
         self.processor.num_positives = num_positives

@@ -1172,9 +1172,9 @@ class MultimodalSimilarityProcessor(Processor):
     """
     def __init__(
         self,
-        query_tokenizer: Tokenizer,
-        passage_tokenizer: Tokenizer,
-        table_tokenizer: Tokenizer,
+        query_tokenizer,  # type: ignore
+        passage_tokenizer,  # type: ignore
+        table_tokenizer,  # type: ignore
         max_seq_len_query: int,
         max_seq_len_passage: int,
         max_seq_len_table: int,
@@ -1324,7 +1324,7 @@ class MultimodalSimilarityProcessor(Processor):
         with open(output_config_file, "w") as file:
             json.dump(config, file)
 
-    def file_to_dicts(self, file: str) -> [dict]:
+    def file_to_dicts(self, file: str) -> List[Dict]:
         """
         Converts a Multimodal Retrieval data file in json format to a list of dictionaries.
 
