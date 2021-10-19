@@ -1024,8 +1024,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 query["query"]["bool"]["must"] = {"ids": {"values": ids}}
 
         elif ids:
-            if ids:
-                query["query"]["ids"] = {"values": ids}
+            query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
         self.client.delete_by_query(index=index, body=query, ignore=[404])
@@ -1033,18 +1032,19 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
-    def delete_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
         :param index: Index name to delete the labels from. If None, the
                       DocumentStore's default label index (self.label_index) will be used
+        :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
-            Example filters: {"_id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+            Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
         :return: None
         """
         index = index or self.label_index
-        self.delete_documents(index=index, filters=filters)
+        self.delete_documents(index=index, ids=ids, filters=filters)
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):

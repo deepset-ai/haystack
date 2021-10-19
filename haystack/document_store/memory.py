@@ -416,20 +416,24 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for doc in docs_to_delete:
             del self.indexes[index][doc.id]
 
-    def delete_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
         :param index: Index name to delete the labels from. If None, the
                       DocumentStore's default label index (self.label_index) will be used.
+        :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
                         Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
         :return: None
         """
         index = index or self.label_index
-        if not filters:
+        if not filters and not ids:
             self.indexes[index] = {}
             return
-        for label in self.get_all_labels(index=index, filters=filters):
+        labels_to_delete = self.get_all_labels(index=index, filters=filters)
+        if ids:
+            labels_to_delete = [label for label in labels_to_delete if label.id in ids]
+        for label in labels_to_delete:
             del self.indexes[index][label.id]
 
