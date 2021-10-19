@@ -1029,7 +1029,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param index: Index name to delete the labels from. If None, the
                       DocumentStore's default label index (self.label_index) will be used
         :param filters: Optional filters to narrow down the labels to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+            Example filters: {"_id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
         :return: None
         """
         index = index or self.label_index
