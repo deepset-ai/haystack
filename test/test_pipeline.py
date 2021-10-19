@@ -103,19 +103,17 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
             params={
                 "Reader": {"top_k": 3}, 
                 "non-existing-node": {"top_k": 10}, 
-                "non-existing-node-2": {"random_param": "rnd"}
+                "top_k": 5,
+                "non-existing-global_param": "wrong",
             },
             debug=True,
             debug_logs=True
         )
-    # The error message looks like "Node X not found. Defined nodes: A, B".
-    # This asserts make sure that X comes before "Defined nodes", 
-    # while A comes after it.
     exception_raised = str(exc_info.value)
-    delimiter = exception_raised.index("Defined nodes")
-    assert exception_raised.index("non-existing-node") < delimiter
-    assert exception_raised.index("non-existing-node-2") < delimiter
-    assert exception_raised.index("Reader") > delimiter
+    assert "non-existing-node" in exception_raised
+    assert "non-existing-global_param" in exception_raised
+    assert "Reader" not in exception_raised
+    assert "top_k" not in exception_raised
 
 
 @pytest.mark.elasticsearch

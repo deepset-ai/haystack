@@ -286,9 +286,17 @@ class Pipeline(BasePipeline):
         """
         # validate the node names
         if params:
-            if not all(node in self.graph.nodes for node in params.keys()):
-                non_existing_node = set(params.keys()) - set(self.graph.nodes)
-                raise ValueError(f"No node(s) named {', '.join(non_existing_node)} found in pipeline. Defined nodes: {self.graph.nodes}")
+            if not all(node_id in self.graph.nodes for node_id in params.keys()):
+
+                # Might be a non-targeted param. Verify that too
+                not_a_node = set(params.keys()) - set(self.graph.nodes)
+                valid_global_params = set()
+                for node_id in self.graph.nodes:
+                    run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
+                    valid_global_params |= set(run_signature_args)
+                invalid_keys = [key for key in not_a_node if key not in valid_global_params]
+
+                raise ValueError(f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline.")
 
         node_output = None
         queue = {
