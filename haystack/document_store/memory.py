@@ -410,7 +410,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if not filters and not ids:
             self.indexes[index] = {}
             return
-        docs_to_delete = self.get_all_documents(filters=filters)
+        docs_to_delete = self.get_all_documents(index=index, filters=filters)
         if ids:
             docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
         for doc in docs_to_delete:
