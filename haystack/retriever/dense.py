@@ -322,7 +322,7 @@ class DensePassageRetriever(BaseRetriever):
               num_warmup_steps: int = 100,
               grad_acc_steps: int = 1,
               use_amp: str = None,
-              optimizer_name: str = "TransformersAdamW",
+              optimizer_name: str = "AdamW",
               optimizer_correct_bias: bool = True,
               save_dir: str = "../saved_models/dpr",
               query_encoder_save_dir: str = "query_encoder",
@@ -355,7 +355,7 @@ class DensePassageRetriever(BaseRetriever):
                     "O2" (Almost FP16)
                     "O3" (Pure FP16).
                     For more information, refer to: https://nvidia.github.io/apex/amp.html
-        :param optimizer_name: what optimizer to use (default: TransformersAdamW)
+        :param optimizer_name: what optimizer to use (default: AdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
         :param save_dir: directory where models are saved
