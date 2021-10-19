@@ -345,6 +345,32 @@ def test_delete_documents(document_store_with_docs):
     assert len(documents) == 0
 
     
+def test_delete_documents_by_id(document_store_with_docs):
+    doc_ids = [doc.id for doc in document_store_with_docs.get_all_documents()]
+    assert len(doc_ids) == 3
+    docs_to_delete = doc_ids[0:2]
+
+    document_store_with_docs.delete_documents(ids=docs_to_delete)
+
+    documents = document_store_with_docs.get_all_documents()
+    assert len(documents) == 1
+    assert documents[0].id == doc_ids[2]
+
+
+def test_delete_documents_by_id_with_filters(document_store_with_docs):
+    docs_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test2"]})
+    docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test3"]})
+
+    document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete], filters={"meta_field": ["test1"]})
+
+    all_docs_left = document_store_with_docs.get_all_documents()
+    assert len(all_docs_left) == 2
+    assert all(doc.meta["meta_field"] != "test1" for doc in all_docs_left)
+
+    all_ids_left = [doc.id for doc in all_docs_left]
+    assert all(doc.id in all_ids_left for doc in docs_not_to_delete)
+
+    
 def test_delete_documents_with_filters(document_store_with_docs):
     document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2"]})
     documents = document_store_with_docs.get_all_documents()

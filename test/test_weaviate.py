@@ -314,7 +314,7 @@ def test_query(document_store_with_docs):
 
 @pytest.mark.weaviate
 @pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
-def test_delete_all_documents(document_store_with_docs):
+def test_delete_documents(document_store_with_docs):
     assert len(document_store_with_docs.get_all_documents()) == 3
 
     document_store_with_docs.delete_documents()
@@ -324,8 +324,36 @@ def test_delete_all_documents(document_store_with_docs):
 @pytest.mark.weaviate
 @pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
 def test_delete_documents_with_filters(document_store_with_docs):
-    document_store_with_docs.delete_all_documents(filters={"metafield": ["test1", "test2"]})
+    assert len(document_store_with_docs.get_all_documents()) == 3
+
+    document_store_with_docs.delete_documents(filters={"metafield": ["test1", "test2"]})
     documents = document_store_with_docs.get_all_documents()
     assert len(documents) == 1
     assert documents[0].meta["metafield"] == "test3"
 
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_delete_documents_by_id(document_store_with_docs):
+    assert len(document_store_with_docs.get_all_documents()) == 3
+    ids_to_delete = [doc.id for doc in document_store_with_docs.get_all_documents()[0:2]]
+
+    document_store_with_docs.delete_documents(ids=ids_to_delete)
+    documents = document_store_with_docs.get_all_documents()
+    assert len(documents) == 1
+    assert documents[0].id not in ids_to_delete
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_delete_documents_by_id_with_filters(document_store_with_docs):
+    docs_to_delete = document_store_with_docs.get_all_documents(filters={"metafield": ["test1", "test2"]})
+    docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"metafield": ["test3"]})
+
+    document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete], filters={"metafield": ["test1"]})
+
+    all_docs_left = document_store_with_docs.get_all_documents()
+    assert len(all_docs_left) == 2
+    assert all(doc.meta["metafield"] != "test1" for doc in all_docs_left)
+    all_ids_left = [doc.id for doc in all_docs_left]
+    assert all(doc.id in all_ids_left for doc in docs_not_to_delete)
