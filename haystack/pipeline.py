@@ -296,7 +296,8 @@ class Pipeline(BasePipeline):
                     valid_global_params |= set(run_signature_args)
                 invalid_keys = [key for key in not_a_node if key not in valid_global_params]
 
-                raise ValueError(f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline.")
+                if invalid_keys:
+                    raise ValueError(f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline.")
 
         node_output = None
         queue = {

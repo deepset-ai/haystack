@@ -51,21 +51,19 @@ def query(request: QueryRequest):
 
 def _process_request(pipeline, request) -> QueryResponse:
     start_time = time.time()
-
-    reader_params = request.reader_params or {}
-    retriever_params = request.retriever_params or {}
-    retriever_params["filters"] = retriever_params.get("filters") or {}
+    
+    params = request.params or {}
+    params["filters"] = params.get("filters") or {}
     filters = {}
-    if "filters" in retriever_params:  # put filter values into a list and remove filters with null value
-        for key, values in retriever_params["filters"].items():
+    if "filters" in params:  # put filter values into a list and remove filters with null value
+        for key, values in params["filters"].items():
             if values is None:
                 continue
             if not isinstance(values, list):
                 values = [values]
             filters[key] = values
-    retriever_params["filters"] = filters
-
-    result = pipeline.run(query=request.query, params={"Retriever": retriever_params, "Reader": reader_params})
+    params["filters"] = filters
+    result = pipeline.run(query=request.query, params=params)
     
     end_time = time.time()
     logger.info({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"})

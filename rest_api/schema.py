@@ -8,8 +8,7 @@ BaseConfig.arbitrary_types_allowed = True
 
 class QueryRequest(BaseModel):
     query: str
-    retriever_params: Optional[dict] = None
-    reader_params: Optional[dict] = None
+    params: Optional[dict] = None
 
 
 class FilterRequest(BaseModel):
