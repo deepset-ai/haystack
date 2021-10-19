@@ -210,6 +210,51 @@ def test_delete_docs_with_filters(document_store, retriever):
     assert {doc.meta["name"] for doc in documents} == {"name_5", "name_6"}
 
 
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_delete_docs_by_id(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+    doc_ids = [doc.id for doc in document_store.get_all_documents()]
+    ids_to_delete = doc_ids[0:3]
+
+    document_store.delete_documents(ids=ids_to_delete)
+
+    documents = document_store.get_all_documents()
+    assert len(documents) == len(doc_ids) - len(ids_to_delete)
+    assert document_store.get_embedding_count() == len(doc_ids) - len(ids_to_delete)
+
+    remaining_ids = [doc.id for doc in documents]
+    assert all(doc_id not in remaining_ids for doc_id in ids_to_delete)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_delete_docs_by_id_with_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    ids_to_delete = [doc.id for doc in document_store.get_all_documents(filters={"name": ["name_1", "name_2"]})]
+    ids_not_to_delete = [doc.id for doc in document_store.get_all_documents(filters={"name": ["name_3", "name_4", "name_5", "name_6"]})]
+
+    document_store.delete_documents(ids=ids_to_delete, filters={"name": ["name_1", "name_2", "name_3", "name_4"]})
+
+    documents = document_store.get_all_documents()
+    assert len(documents) == len(DOCUMENTS) - len(ids_to_delete)
+    assert document_store.get_embedding_count() == len(DOCUMENTS) - len(ids_to_delete)
+
+    assert all(doc.meta["name"] != "name_1" for doc in documents)
+    assert all(doc.meta["name"] != "name_2" for doc in documents)
+
+    all_ids_left = [doc.id for doc in documents]
+    assert all(doc_id in all_ids_left for doc_id in ids_not_to_delete)
+
+ 
+
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
 def test_pipeline(document_store, retriever):

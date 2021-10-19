@@ -397,27 +397,34 @@ class FAISSDocumentStore(SQLDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, filters)
+        self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to be deleted. 
-                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
+        :param filters: Optional filters to narrow down the documents to be deleted.
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         :return: None
         """
         index = index or self.index
         if index in self.faiss_indexes.keys():
-            if filters:
+            if not filters and not ids:
+                self.faiss_indexes[index].reset()
+            else:
                 affected_docs = self.get_all_documents(filters=filters)
+                if ids:
+                    affected_docs = [doc for doc in affected_docs if doc.id in ids]
                 doc_ids = [doc.meta.get("vector_id") for doc in affected_docs if doc.meta and doc.meta.get("vector_id") is not None]
                 self.faiss_indexes[index].remove_ids(np.array(doc_ids, dtype="int64"))
-            else:
-                self.faiss_indexes[index].reset()
-        super().delete_documents(index=index, filters=filters)
+
+        super().delete_documents(index=index, ids=ids, filters=filters)
 
     def query_by_embedding(
         self,

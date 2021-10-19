@@ -389,16 +389,20 @@ class MilvusDocumentStore(SQLDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, filters)
+        self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
+        :param filters: Optional filters to narrow down the documents to be deleted.
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         :return: None
         """
         index = index or self.index
@@ -406,19 +410,21 @@ class MilvusDocumentStore(SQLDocumentStore):
         if status.code != Status.SUCCESS:
             raise RuntimeError(f'Milvus has collection check failed: {status}')
         if ok:
-            if filters:
-                existing_docs = super().get_all_documents(filters=filters, index=index)
-                self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
-            else:
+            if not filters and not ids:
                 status = self.milvus_server.drop_collection(collection_name=index)
                 if status.code != Status.SUCCESS:
                     raise RuntimeError(f'Milvus drop collection failed: {status}')
+            else:
+                affected_docs = super().get_all_documents(filters=filters, index=index)
+                if ids:
+                    affected_docs = [doc for doc in affected_docs if doc.id in ids]
+                self._delete_vector_ids_from_milvus(documents=affected_docs, index=index)
 
             self.milvus_server.flush([index])
             self.milvus_server.compact(collection_name=index)
 
         # Delete from SQL at the end to allow the above .get_all_documents() to work properly
-        super().delete_documents(index=index, filters=filters)
+        super().delete_documents(index=index, ids=ids, filters=filters)
 
     def get_all_documents_generator(
         self,
