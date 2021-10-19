@@ -403,7 +403,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from. If None, the
+        :param index: Index name to delete the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.

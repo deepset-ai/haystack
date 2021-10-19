@@ -275,6 +275,7 @@ Write annotation labels into document store.
 **Arguments**:
 
 - `labels`: A list of Python dictionaries or a list of Haystack Label objects.
+- `index`: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
 - `batch_size`: Number of labels that are passed to Elasticsearch's bulk function at a time.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.update_document_meta"></a>
@@ -463,13 +464,35 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 **Arguments**:
 
-- `index`: Index name to delete the document from.
+- `index`: Index name to delete the documents from. If None, the
+              DocumentStore's default index (self.index) will be used
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
 - `filters`: Optional filters to narrow down the documents to be deleted.
     Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
+
+**Returns**:
+
+None
+
+<a name="elasticsearch.ElasticsearchDocumentStore.delete_labels"></a>
+#### delete\_labels
+
+```python
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete labels in an index. All labels are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the labels from. If None, the
+              DocumentStore's default label index (self.label_index) will be used
+- `ids`: Optional list of IDs to narrow down the labels to be deleted.
+- `filters`: Optional filters to narrow down the labels to be deleted.
+    Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 
 **Returns**:
 
@@ -748,7 +771,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 **Arguments**:
 
-- `index`: Index name to delete the document from. If None, the
+- `index`: Index name to delete the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
 - `filters`: Optional filters to narrow down the documents to be deleted.
@@ -756,6 +779,27 @@ Delete documents in an index. All documents are deleted if no filters are passed
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
+
+**Returns**:
+
+None
+
+<a name="memory.InMemoryDocumentStore.delete_labels"></a>
+#### delete\_labels
+
+```python
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete labels in an index. All labels are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the labels from. If None, the
+              DocumentStore's default label index (self.label_index) will be used.
+- `ids`: Optional list of IDs to narrow down the labels to be deleted.
+- `filters`: Optional filters to narrow down the labels to be deleted.
+                Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 
 **Returns**:
 
@@ -982,6 +1026,27 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 None
 
+<a name="sql.SQLDocumentStore.delete_labels"></a>
+#### delete\_labels
+
+```python
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None)
+```
+
+Delete labels from the document store. All labels are deleted if no filters are passed.
+
+**Arguments**:
+
+- `index`: Index name to delete the labels from. If None, the
+              DocumentStore's default label index (self.label_index) will be used.
+- `ids`: Optional list of IDs to narrow down the labels to be deleted.
+- `filters`: Optional filters to narrow down the labels to be deleted.
+                Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+
+**Returns**:
+
+None
+
 <a name="faiss"></a>
 # Module faiss
 
@@ -1172,7 +1237,7 @@ Delete documents from the document store. All documents are deleted if no filter
 
 **Arguments**:
 
-- `index`: Index name to delete the document from. If None, the
+- `index`: Index name to delete the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
 - `filters`: Optional filters to narrow down the documents to be deleted.

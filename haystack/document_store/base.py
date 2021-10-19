@@ -248,6 +248,10 @@ class BaseDocumentStore(BaseComponent):
     def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
 
+    @abstractmethod
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+        pass
+
     def run(self, documents: List[dict], index: Optional[str] = None):  # type: ignore
         self.write_documents(documents=documents, index=index)
         return {}, "output_1"
