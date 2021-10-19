@@ -531,20 +531,22 @@ class SQLDocumentStore(BaseDocumentStore):
         :return: None
         """
         index = index or self.index
-        # documents_query = documents_query.join(MetaORM)
-        document_ids_to_delete = self.session.query(DocumentORM.id).filter(DocumentORM.index==index)
-        if filters:
-            for key, values in filters.items():
-                document_ids_to_delete = document_ids_to_delete.filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
-                    DocumentORM.id == MetaDocumentORM.document_id
-                )
-        if ids:
-            document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
+        if not filters and not ids:
+            self.session.query(DocumentORM).delete(synchronize_session=False)
+        else:
+            document_ids_to_delete = self.session.query(DocumentORM.id).filter(DocumentORM.index==index)
+            if filters:
+                for key, values in filters.items():
+                    document_ids_to_delete = document_ids_to_delete.filter(
+                        MetaDocumentORM.name == key,
+                        MetaDocumentORM.value.in_(values),
+                        DocumentORM.id == MetaDocumentORM.document_id
+                    )
+            if ids:
+                document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
 
-        self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(
-                synchronize_session=False)
+            self.session.query(DocumentORM).filter(DocumentORM.id.in_(document_ids_to_delete)).delete(
+                    synchronize_session=False)
 
         self.session.commit()
 
