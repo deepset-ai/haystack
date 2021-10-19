@@ -481,7 +481,7 @@ None
 #### delete\_labels
 
 ```python
- | delete_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete labels in an index. All labels are deleted if no filters are passed.
@@ -490,8 +490,9 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 
 - `index`: Index name to delete the labels from. If None, the
               DocumentStore's default label index (self.label_index) will be used
+- `ids`: Optional list of IDs to narrow down the labels to be deleted.
 - `filters`: Optional filters to narrow down the labels to be deleted.
-    Example filters: {"_id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+    Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 
 **Returns**:
 
@@ -787,7 +788,7 @@ None
 #### delete\_labels
 
 ```python
- | delete_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete labels in an index. All labels are deleted if no filters are passed.
@@ -796,6 +797,7 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 
 - `index`: Index name to delete the labels from. If None, the
               DocumentStore's default label index (self.label_index) will be used.
+- `ids`: Optional list of IDs to narrow down the labels to be deleted.
 - `filters`: Optional filters to narrow down the labels to be deleted.
                 Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 
@@ -1028,7 +1030,7 @@ None
 #### delete\_labels
 
 ```python
- | delete_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Delete labels from the document store. All labels are deleted if no filters are passed.
@@ -1037,6 +1039,7 @@ Delete labels from the document store. All labels are deleted if no filters are 
 
 - `index`: Index name to delete the labels from. If None, the
               DocumentStore's default label index (self.label_index) will be used.
+- `ids`: Optional list of IDs to narrow down the labels to be deleted.
 - `filters`: Optional filters to narrow down the labels to be deleted.
                 Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 
