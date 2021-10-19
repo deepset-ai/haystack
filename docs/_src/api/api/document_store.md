@@ -487,7 +487,7 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 - `index`: Index name to delete the labels from. If None, the
               DocumentStore's default label index (self.label_index) will be used
 - `filters`: Optional filters to narrow down the labels to be deleted.
-    Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+    Example filters: {"_id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 
 **Returns**:
 
@@ -789,7 +789,7 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 - `index`: Index name to delete the labels from. If None, the
               DocumentStore's default label index (self.label_index) will be used.
 - `filters`: Optional filters to narrow down the labels to be deleted.
-                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+                Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 
 **Returns**:
 
@@ -1026,7 +1026,7 @@ Delete labels from the document store. All labels are deleted if no filters are 
 - `index`: Index name to delete the labels from. If None, the
               DocumentStore's default label index (self.label_index) will be used.
 - `filters`: Optional filters to narrow down the labels to be deleted.
-                Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+                Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 
 **Returns**:
 
