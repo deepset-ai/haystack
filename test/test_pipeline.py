@@ -29,15 +29,14 @@ def test_load_and_save_yaml(document_store, tmp_path):
         Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
+        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
     )
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
         Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
     assert prediction["query"] == "Who made the PDF specification?"
     assert prediction["answers"][0].answer == "Adobe Systems"
@@ -87,10 +86,42 @@ def test_load_and_save_yaml(document_store, tmp_path):
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_node_names_validation(document_store_with_docs, tmp_path):
+    pipeline = Pipeline()
+    pipeline.add_node(
+        component=ElasticsearchRetriever(document_store=document_store_with_docs), 
+        name="Retriever", 
+        inputs=["Query"])
+    pipeline.add_node(
+        component=FARMReader(model_name_or_path="deepset/minilm-uncased-squad2"), 
+        name="Reader", 
+        inputs=["Retriever"])
+
+    with pytest.raises(ValueError) as exc_info:
+        pipeline.run(
+            query="Who lives in Berlin?",
+            params={
+                "Reader": {"top_k": 3}, 
+                "non-existing-node": {"top_k": 10}, 
+                "top_k": 5,
+                "non-existing-global_param": "wrong",
+            },
+            debug=True,
+            debug_logs=True
+        )
+    exception_raised = str(exc_info.value)
+    assert "non-existing-node" in exception_raised
+    assert "non-existing-global_param" in exception_raised
+    assert "Reader" not in exception_raised
+    assert "top_k" not in exception_raised
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_debug_attributes_global(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -122,7 +153,7 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
 def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -152,7 +183,7 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 def test_global_debug_attributes_override_node_ones(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -296,13 +327,13 @@ def test_faq_pipeline(retriever, document_store):
 
     pipeline = FAQPipeline(retriever=retriever)
 
-    output = pipeline.run(query="How to test this?", params={"top_k": 3})
+    output = pipeline.run(query="How to test this?", params={"Retriever": {"top_k": 3}})
     assert len(output["answers"]) == 3
     assert output["query"].startswith("How to")
     assert output["answers"][0].answer.startswith("Using tests")
 
     if isinstance(document_store, ElasticsearchDocumentStore):
-        output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
+        output = pipeline.run(query="How to test this?", params={"Retriever": {"filters": {"source": ["wiki2"]}, "top_k": 5}})
         assert len(output["answers"]) == 1
 
 

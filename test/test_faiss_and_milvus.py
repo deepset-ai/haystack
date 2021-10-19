@@ -189,7 +189,7 @@ def test_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     pipe = DocumentSearchPipeline(retriever=retriever)
 
-    prediction = pipe.run(query="How to test this?", params={"top_k": 1})
+    prediction = pipe.run(query="How to test this?", params={"Retriever": {"top_k": 1}})
 
     assert len(prediction.get('documents', [])) == 1
 
@@ -267,7 +267,7 @@ def test_pipeline(document_store, retriever):
     document_store.write_documents(documents)
     pipeline = Pipeline()
     pipeline.add_node(component=retriever, name="FAISS", inputs=["Query"])
-    output = pipeline.run(query="How to test this?", params={"top_k": 3})
+    output = pipeline.run(query="How to test this?", params={"FAISS": {"top_k": 3}})
     assert len(output["documents"]) == 3
 
 
