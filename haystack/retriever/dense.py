@@ -1,6 +1,6 @@
 import logging
 from abc import abstractmethod
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 import torch
 from torch.nn import DataParallel
 import numpy as np
@@ -480,9 +480,9 @@ class MultimodalRetriever(BaseRetriever):
 
     def __init__(self,
                  document_store: BaseDocumentStore,
-                 query_embedding_model: Union[Path, str],
-                 passage_embedding_model: Union[Path, str],
-                 table_embedding_model: Union[Path, str],
+                 query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder",
+                 passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder",
+                 table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder",
                  model_version: Optional[str] = None,
                  max_seq_len_query: int = 64,
                  max_seq_len_passage: int = 256,
@@ -728,16 +728,42 @@ class MultimodalRetriever(BaseRetriever):
                            f"not require any hard negatives. Setting num_hard_negatives to 0.")
             self.processor.num_hard_negatives = 0
 
-        passages = [{'passages': [{
-            "title": d.meta["name"] if d.meta and "name" in d.meta else "",
-            "text": d.content,
-            "label": d.meta["label"] if d.meta and "label" in d.meta else "positive",
-            "type": d.content_type,
-            "external_id": d.id}]
-            } for d in docs]
-        embeddings = self._get_predictions(passages)["passages"]
+        model_input = []
+        for doc in docs:
+            if doc.content_type == "table":
+                model_input.append({"passages": [{
+                    "page_title": doc.meta["page_title"] if doc.meta and "page_title" in doc.meta else "",
+                    "section_title": doc.meta["section_title"] if doc.meta and "section_title" in doc.meta else "",
+                    "caption": doc.meta["caption"] if doc.meta and "caption" in doc.meta else "",
+                    "columns": doc.content.columns.tolist(),
+                    "rows": doc.content.values.tolist(),
+                    "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
+                    "type": "table",
+                    "external_id": doc.id
+                }]})
+            else:
+                model_input.append({"passages": [{
+                    "title": doc.meta["name"] if doc.meta and "name" in doc.meta else "",
+                    "text": doc.content,
+                    "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
+                    "type": "text",
+                    "external_id": doc.id
+                }]})
+
+        embeddings = self._get_predictions(model_input)["passages"]
 
         return embeddings
+
+    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+        """
+        Create embeddings for a list of passages using the passage encoder.
+        This method just calls embed_documents. It is neeeded as the document stores call embed_passages when updating
+        embeddings.
+
+        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
+        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
+        """
+        return self.embed_documents(docs)
 
     def train(self,
               data_dir: str,
@@ -748,7 +774,7 @@ class MultimodalRetriever(BaseRetriever):
               max_processes: int = 128,
               dev_split: float = 0,
               batch_size: int = 2,
-              embed_title: bool = True, # TODO
+              embed_title: bool = True,
               num_hard_negatives: int = 1,
               num_positives: int = 1,
               n_epochs: int = 3,
@@ -760,7 +786,7 @@ class MultimodalRetriever(BaseRetriever):
               num_warmup_steps: int = 100,
               grad_acc_steps: int = 1,
               use_amp: str = None,
-              optimizer_name: str = "TransformersAdamW",
+              optimizer_name: str = "AdamW",
               optimizer_correct_bias: bool = True,
               save_dir: str = "../saved_models/mm_retrieval",
               query_encoder_save_dir: str = "query_encoder",
@@ -778,7 +804,7 @@ class MultimodalRetriever(BaseRetriever):
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
         :param batch_size: Total number of samples in 1 batch of data.
-        :param embed_title: Whether to concatenate passage title with each passage.
+        :param embed_title: Whether to concatenate passage title with each passage and table metadata with each table.
                             The default setting in official MMRetrieval embeds page title, section title and caption
                             with the corresponding table and title with corresponding text passage.
         :param num_hard_negatives: Number of hard negative passages (passages which are

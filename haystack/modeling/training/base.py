@@ -231,7 +231,11 @@ class Trainer:
         # connect the prediction heads with the right output from processor
         self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
         # Check that the tokenizer(s) fits the language model(s)
-        if hasattr(self.model, "language_model2"):
+        if hasattr(self.model, "language_model3"):
+            self.model.verify_vocab_size(vocab_size1=len(self.data_silo.processor.query_tokenizer),
+                                         vocab_size2=len(self.data_silo.processor.passage_tokenizer),
+                                         vocab_size3=len(self.data_silo.processor.table_tokenizer))
+        elif hasattr(self.model, "language_model2"):
             self.model.verify_vocab_size(vocab_size1=len(self.data_silo.processor.query_tokenizer),
                                          vocab_size2=len(self.data_silo.processor.passage_tokenizer))
         else:

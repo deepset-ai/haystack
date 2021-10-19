@@ -11,6 +11,7 @@ from elasticsearch.exceptions import RequestError
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
+import pandas as pd
 
 from haystack.document_store.base import BaseDocumentStore, DuplicateDocumentError
 from haystack import Document, Label
@@ -415,6 +416,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                                             duplicate_documents=duplicate_documents)
         documents_to_index = []
         for doc in document_objects:
+            # pd.DataFrames cannot be serialized, so converting them to list of rows
+            if doc.content_type == "table":
+                doc.content = [doc.content.columns.tolist()] + doc.content.values.tolist()
+
             _doc = {
                 "_op_type": "index" if duplicate_documents == 'overwrite' else "create",
                 "_index": index,
@@ -884,6 +889,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             score=score,
             embedding=embedding,
         )
+
+        # Convert list of rows to pd.DataFrame
+        if document.content_type == "table":
+            document.content = pd.DataFrame(columns=document.content[0], data=document.content[1:])
+
         return document
 
     def _scale_embedding_score(self, score):

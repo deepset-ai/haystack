@@ -1186,7 +1186,7 @@ class MultimodalSimilarityProcessor(Processor):
         dev_split: float = 0.1,
         proxies: Optional[Dict] = None,
         max_samples: Optional[int] = None,
-        embed_title: bool = True, # TODO Rename?
+        embed_title: bool = True,
         num_positives: int = 1,
         num_hard_negatives: int = 1,
         shuffle_negatives: bool = True,
@@ -1216,7 +1216,8 @@ class MultimodalSimilarityProcessor(Processor):
         :param proxies: Proxy configuration to allow downloads of remote datasets.
                         Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
         :param max_samples: maximum number of samples to use.
-        :param embed_title: Whether to embed title in passages during tensorization (bool).
+        :param embed_title: Whether to embed title in text passages and table metadata in tables
+                            during tensorization (bool).
         :param num_hard_negatives: Maximum number of hard negative context passages in a sample.
         :param num_positives: Maximum number of positive context passages in a sample.
         :param shuffle_negatives: Whether to shuffle all the hard_negative passages before selecting the
@@ -1386,15 +1387,13 @@ class MultimodalSimilarityProcessor(Processor):
                                 "rows": doc.get("rows"),
                                 "label": "positive" if key in positive_context_json_keys else "hard_negative",
                                 "type": "table",
-                                "external_id": doc["id"]
-                                })
+                            })
                         elif doc["type"] == "text":
                             docs.append({
                                 "title": doc["title"],
                                 "text": doc["text"],
                                 "label": "positive" if key in positive_context_json_keys else "hard_negative",
                                 "type": "text",
-                                "external_id": doc["id"]
                             })
 
                 sample["passages"] = docs
