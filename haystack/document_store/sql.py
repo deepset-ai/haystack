@@ -532,7 +532,7 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         index = index or self.index
         if not filters and not ids:
-            self.session.query(DocumentORM).delete(synchronize_session=False)
+            self.session.query(DocumentORM).filter_by(index=index).delete(synchronize_session=False)
         else:
             document_ids_to_delete = self.session.query(DocumentORM.id).filter(DocumentORM.index==index)
             if filters:
