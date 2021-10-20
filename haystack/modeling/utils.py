@@ -13,7 +13,7 @@ import torch.distributed as dist
 from torch import multiprocessing as mp
 from requests.exceptions import ConnectionError
 
-from haystack.modeling.visual.ascii.images import WORKER_M, WORKER_F, WORKER_X
+from haystack.modeling.visual import WORKER_M, WORKER_F, WORKER_X
 
 logger = logging.getLogger(__name__)
 

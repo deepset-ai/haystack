@@ -1,17 +1,44 @@
-from abc import abstractmethod
 from typing import List, Optional
+
 import logging
+from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
 from tqdm import tqdm
 from copy import deepcopy
-from haystack import Document, BaseComponent, MultiLabel
-from haystack.document_store.base import BaseDocumentStore
+
+from haystack.schema import Document, MultiLabel
+from haystack.nodes.base import BaseComponent
+from haystack.document_store.base import BaseDocumentStore, BaseKnowledgeGraph
+
 
 logger = logging.getLogger(__name__)
 
 
+class BaseGraphRetriever(BaseComponent):
+    """
+    Base classfor knowledge graph retrievers.
+    """
+    knowledge_graph: BaseKnowledgeGraph
+    outgoing_edges = 1
+
+    @abstractmethod
+    def retrieve(self, query: str, top_k: int):
+        pass
+
+    def eval(self):
+        raise NotImplementedError
+
+    def run(self, query: str, top_k: int):  # type: ignore
+        answers = self.retrieve(query=query, top_k=top_k)
+        results = {"answers": answers}
+        return results, "output_1"
+
+
 class BaseRetriever(BaseComponent):
+    """
+    Base class for regular retrievers.
+    """
     document_store: BaseDocumentStore
     outgoing_edges = 1
     query_count = 0

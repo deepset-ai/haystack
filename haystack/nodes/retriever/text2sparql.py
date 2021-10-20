@@ -1,17 +1,18 @@
-import logging
 from typing import Optional
 
-from haystack.graph_retriever.base import BaseGraphRetriever
-
+import logging
 from transformers import BartForConditionalGeneration, BartTokenizer
+from haystack.nodes.retriever.base import BaseGraphRetriever
+
 
 logger = logging.getLogger(__name__)
 
 
 class Text2SparqlRetriever(BaseGraphRetriever):
     """
-        Graph retriever that uses a pre-trained Bart model to translate natural language questions given in text form to queries in SPARQL format.
-        The generated SPARQL query is executed on a knowledge graph.
+    Graph retriever that uses a pre-trained Bart model to translate natural language questions 
+    given in text form to queries in SPARQL format.
+    The generated SPARQL query is executed on a knowledge graph.
     """
 
     def __init__(self, knowledge_graph, model_name_or_path, top_k: int = 1):
@@ -22,7 +23,6 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         :param model_name_or_path: Name of or path to a pre-trained BartForConditionalGeneration model.
         :param top_k: How many SPARQL queries to generate per text query.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(knowledge_graph=knowledge_graph, model_name_or_path=model_name_or_path, top_k=top_k)
 
@@ -39,7 +39,6 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         :param query: Text query that shall be translated to SPARQL and then executed on the knowledge graph
         :param top_k: How many SPARQL queries to generate per text query.
         """
-        
         if top_k is None:
             top_k = self.top_k
         inputs = self.tok([query], max_length=100, truncation=True, return_tensors='pt')
@@ -65,11 +64,11 @@ class Text2SparqlRetriever(BaseGraphRetriever):
 
     def _query_kg(self, sparql_query):
         """
-        Execute a single SPARQL query on the knowledge graph to retrieve an answer and unpack different answer styles for boolean queries, count queries, and list queries
+        Execute a single SPARQL query on the knowledge graph to retrieve an answer and unpack 
+        different answer styles for boolean queries, count queries, and list queries.
         
         :param sparql_query: SPARQL query that shall be executed on the knowledge graph
         """
-        
         try:
             response = self.knowledge_graph.query(sparql_query=sparql_query)
 
@@ -100,7 +99,6 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         
         :param result: The result of a SPARQL query as retrieved from the knowledge graph
         """
-        
         query = result[1]
         prediction = result[0]
         prediction_meta = {"model": self.__class__.__name__, "sparql_query": query}

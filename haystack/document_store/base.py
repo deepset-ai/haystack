@@ -1,17 +1,33 @@
-import logging
-import collections
-from abc import abstractmethod
-from pathlib import Path
 from typing import Optional, Dict, List, Union
 
+import logging
+import collections
 import numpy as np
+from abc import abstractmethod
+from pathlib import Path
 
 from haystack import Document, Label, MultiLabel, BaseComponent
 from haystack.errors import DuplicateDocumentError
 from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
+
 logger = logging.getLogger(__name__)
+
+
+class BaseKnowledgeGraph(BaseComponent):
+    """
+    Base class for implementing Knowledge Graphs.
+    """
+    outgoing_edges = 1
+
+    def run(self, sparql_query: str, index: Optional[str] = None, **kwargs):  # type: ignore
+        result = self.query(sparql_query=sparql_query, index=index)
+        output = {"sparql_result": result}
+        return output, "output_1"
+
+    def query(self, sparql_query: str, index: Optional[str] = None):
+        raise NotImplementedError
 
 
 class BaseDocumentStore(BaseComponent):

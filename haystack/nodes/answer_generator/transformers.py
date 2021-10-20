@@ -10,8 +10,9 @@ from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, \
     AutoModelForSeq2SeqLM, PreTrainedTokenizer, BatchEncoding
 
 from haystack import Document
-from haystack.generator.base import BaseGenerator
-from haystack.retriever.dense import DensePassageRetriever
+from haystack.nodes.answer_generator.base import BaseGenerator
+from haystack.nodes.retriever.dense import DensePassageRetriever
+
 
 logger = logging.getLogger(__name__)
 

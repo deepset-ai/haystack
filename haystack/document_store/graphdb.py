@@ -5,12 +5,12 @@ import requests
 from SPARQLWrapper import SPARQLWrapper, JSON
 from requests.auth import HTTPBasicAuth
 
-from haystack.knowledge_graph.base import BaseKnowledgeGraph
+from haystack.document_store.base import BaseKnowledgeGraph
 
 
 class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
     """
-        Knowledge graph store that runs on a GraphDB instance
+    Knowledge graph store that runs on a GraphDB instance.
     """
 
     def __init__(
@@ -49,7 +49,8 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         Create a new index (also called repository) stored in the GraphDB instance
         
-        :param config_path: path to a .ttl file with configuration settings, details: https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically
+        :param config_path: path to a .ttl file with configuration settings, details: 
+        https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically
         """
         
         url = f"{self.url}/rest/repositories"
