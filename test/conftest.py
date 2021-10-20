@@ -256,7 +256,8 @@ def xpdf_fixture(tika_fixture):
 def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
-        generator_type=RAGeneratorType.TOKEN
+        generator_type=RAGeneratorType.TOKEN,
+        max_length=20
     )
 
 
@@ -267,7 +268,7 @@ def question_generator():
 
 @pytest.fixture(scope="module")
 def eli5_generator():
-    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
+    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", max_length=20)
 
 
 @pytest.fixture(scope="module")

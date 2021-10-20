@@ -7,9 +7,6 @@ from haystack import Document
 from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.pipeline import TranslationWrapperPipeline, GenerativeQAPipeline
 
-# Avoid Warning .huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
-import os
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 DOCS_WITH_EMBEDDINGS = [
     Document(
@@ -468,8 +465,9 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever):
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
 
     # raises exception as we don't have converter for "patrickvonplaten/t5-tiny-random" in Seq2SeqGenerator
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
+    assert ("doesn\'t have input converter registered for patrickvonplaten/t5-tiny-random" in str(exception_info.value))
 
 
 @pytest.mark.slow
@@ -490,13 +488,14 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever):
         def __call__(self, some_invalid_para: str, another_invalid_param: str) -> None:
             pass
 
-    seq2seq = Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", input_converter=_InvalidConverter())
+    seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random", input_converter=_InvalidConverter())
     query = "This query will fail due to InvalidConverter used"
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
 
     # raises exception as we are using invalid method signature in _InvalidConverter
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
+    assert ("does not have a valid __call__ method signature" in str(exception_info.value))
 
 
 # Keeping few (retriever,document_store) combination to reduce test time
