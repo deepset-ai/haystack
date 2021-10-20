@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack]
-    modules: ['eval']
+    search_path: [../../../../haystack/nodes/evaluator]
+    modules: ['evaluator']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter
