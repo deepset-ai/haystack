@@ -1508,7 +1508,7 @@ class MultimodalSimilarityProcessor(Processor):
                 except Exception as e:
                     features = None
 
-            sample = Sample(id=None,
+            sample = Sample(id="",
                             clear_text=clear_text,
                             tokenized=tokenized,
                             features=features)  # type: ignore
@@ -1594,17 +1594,17 @@ class MultimodalSimilarityProcessor(Processor):
                     tokenized = [self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in input_ids]
 
                     # for DPR we only have one sample containing query and corresponding (multiple) context features
-                    sample = basket.samples[0]
-                    sample.clear_text["passages"] = positive_context + hard_negative_context
-                    sample.tokenized["passages_tokens"] = tokenized
-                    sample.features[0]["passage_input_ids"] = input_ids
-                    sample.features[0]["passage_segment_ids"] = passage_segment_ids
-                    sample.features[0]["table_segment_ids"] = passage_segment_ids
-                    sample.features[0]["passage_attention_mask"] = attention_mask
-                    sample.features[0]["label_ids"] = ctx_label
-                    sample.features[0]["is_table"] = is_table
+                    sample = basket.samples[0]  # type: ignore
+                    sample.clear_text["passages"] = positive_context + hard_negative_context  # type: ignore
+                    sample.tokenized["passages_tokens"] = tokenized  # type: ignore
+                    sample.features[0]["passage_input_ids"] = input_ids  # type: ignore
+                    sample.features[0]["passage_segment_ids"] = passage_segment_ids  # type: ignore
+                    sample.features[0]["table_segment_ids"] = passage_segment_ids  # type: ignore
+                    sample.features[0]["passage_attention_mask"] = attention_mask  # type: ignore
+                    sample.features[0]["label_ids"] = ctx_label  # type: ignore
+                    sample.features[0]["is_table"] = is_table  # type: ignore
                 except Exception as e:
-                    basket.samples[0].features = None
+                    basket.samples[0].features = None  # type: ignore
 
         return baskets
 
@@ -1619,8 +1619,8 @@ class MultimodalSimilarityProcessor(Processor):
         problematic_ids = set()
         for basket in baskets:
             if self._check_sample_features(basket):
-                for sample in basket.samples:
-                    features_flat.extend(sample.features)
+                for sample in basket.samples:  # type: ignore
+                    features_flat.extend(sample.features)  # type: ignore
             else:
                 # remove the entire basket
                 basket_to_remove.append(basket)
