@@ -9,7 +9,7 @@ from copy import deepcopy
 
 from haystack.schema import Document, MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.document_store import BaseDocumentStore, BaseKnowledgeGraph
+from haystack.document_store.base import BaseDocumentStore, BaseKnowledgeGraph
 
 
 logger = logging.getLogger(__name__)

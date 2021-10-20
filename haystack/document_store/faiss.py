@@ -13,9 +13,8 @@ except ImportError:
 import numpy as np
 
 from haystack.schema import Document
-from haystack.document_store import SQLDocumentStore
-from haystack.nodes.retriever import BaseRetriever
-from haystack.utils import get_batches_from_generator
+from haystack.document_store.sql import SQLDocumentStore
+from haystack.utils.output import get_batches_from_generator
 
 
 logger = logging.getLogger(__name__)
@@ -219,7 +218,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: BaseRetriever,
+        retriever: 'BaseRetriever',
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict[str, List[str]]] = None,

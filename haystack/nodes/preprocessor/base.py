@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional, Union
 
-from haystack import BaseComponent
+from haystack.nodes.base import BaseComponent
 
 
 class BasePreProcessor(BaseComponent):

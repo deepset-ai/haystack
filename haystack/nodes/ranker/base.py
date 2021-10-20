@@ -5,7 +5,8 @@ from abc import abstractmethod
 from functools import wraps
 from time import perf_counter
 
-from haystack import Document, BaseComponent
+from haystack.schema import Document
+from haystack.nodes.base import BaseComponent
 
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,8 @@
 from abc import abstractmethod
 from typing import List, Optional
 
-from haystack import Document, BaseComponent
+from haystack.schema import Document
+from haystack.nodes.base import BaseComponent
 
 
 class BaseQueryClassifier(BaseComponent):

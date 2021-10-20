@@ -3,7 +3,6 @@ from typing import List
 import logging
 
 from fastapi import APIRouter
-# from haystack import Document
 
 from rest_api.controller.search import DOCUMENT_STORE
 from rest_api.config import LOG_LEVEL

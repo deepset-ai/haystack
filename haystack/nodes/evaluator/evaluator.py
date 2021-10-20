@@ -5,10 +5,12 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from haystack import MultiLabel, Label, BaseComponent, Document, Answer
+from haystack.schema import MultiLabel, Label, Document, Answer
+from haystack.nodes.base import BaseComponent
 
-from haystack.modeling.evaluation.squad_evaluation import compute_f1 as calculate_f1_str
-from haystack.modeling.evaluation.squad_evaluation import compute_exact as calculate_em_str
+from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
+from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +24,6 @@ class EvalDocuments(BaseComponent):
     a look at our evaluation tutorial for more info about open vs closed domain eval (
     https://haystack.deepset.ai/tutorials/evaluation).
     """
-
     outgoing_edges = 1
 
     def __init__(self, debug: bool=False, open_domain: bool=True, top_k: int=10):

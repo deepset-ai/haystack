@@ -1,9 +1,12 @@
+from typing import List
+
 import logging
 from abc import abstractmethod
-from typing import List
 from functools import wraps
 from time import perf_counter
-from haystack import Document, BaseComponent
+
+from haystack.schema import Document
+from haystack.nodes.base import BaseComponent
 
 
 logger = logging.getLogger(__name__)

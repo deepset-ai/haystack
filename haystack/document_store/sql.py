@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
 
 from haystack.schema import Document, Label, Answer
-from haystack.document_store import BaseDocumentStore
+from haystack.document_store.base import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)

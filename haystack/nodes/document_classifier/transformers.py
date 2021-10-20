@@ -1,10 +1,11 @@
-import logging
 from typing import List, Optional
 
+import logging
 from transformers import pipeline
 
 from haystack import Document
-from haystack.document_classifier.base import BaseDocumentClassifier
+from haystack.nodes.document_classifier.base import BaseDocumentClassifier
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,6 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     |    res["documents"][0].to_dict()["meta"]["classification"]["label"]
      ```
     """
-
     def __init__(
         self,
         model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion",
@@ -75,9 +75,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
         classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
         or an entailment.
-
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
@@ -103,7 +101,6 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
 
         :param documents: List of Document to classify
         :return: List of Document enriched with meta information
-
         """
         texts = [doc.content for doc in documents]
         if self.task == 'zero-shot-classification':

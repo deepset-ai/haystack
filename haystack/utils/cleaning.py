@@ -1,8 +1,4 @@
-from typing import Dict, Any, List, Optional
-
-import io
 import re
-import time
 
 
 def clean_wiki_text(text: str) -> str:

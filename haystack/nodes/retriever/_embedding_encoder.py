@@ -13,7 +13,6 @@ from haystack.modeling.data_handler.dataset import convert_features_to_dataset, 
 from haystack.modeling.utils import initialize_device_settings
 from haystack.modeling.infer import Inferencer
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.nodes.retriever import EmbeddingRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +44,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def __init__(
             self,
-            retriever: EmbeddingRetriever
+            retriever: 'EmbeddingRetriever'
     ):
 
         self.embedding_model = Inferencer.load(
@@ -84,7 +83,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
 class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(
             self,
-            retriever: EmbeddingRetriever
+            retriever: 'EmbeddingRetriever'
     ):
         try:
             from sentence_transformers import SentenceTransformer
@@ -123,7 +122,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def __init__(
             self,
-            retriever: EmbeddingRetriever
+            retriever: 'EmbeddingRetriever'
     ):
 
         self.progress_bar = retriever.progress_bar

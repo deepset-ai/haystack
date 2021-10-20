@@ -1,17 +1,6 @@
-from typing import Dict, Any, List, Optional
-
-import io
-import re
 import time
-import json
-import pprint
 import logging
 import subprocess
-import pandas as pd
-from itertools import islice
-from collections import defaultdict
-
-from haystack.document_store.sql import DocumentORM
 
 
 logger = logging.getLogger(__name__)

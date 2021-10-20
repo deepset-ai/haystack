@@ -1,8 +1,10 @@
 from typing import List, Union, Dict, Optional, Tuple
 
-from haystack import BaseComponent, Document
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
+
+from haystack.schema import Document
+from haystack.nodes.base import BaseComponent
 
 
 class EntityExtractor(BaseComponent):

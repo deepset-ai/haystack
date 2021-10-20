@@ -11,7 +11,6 @@ from tqdm import tqdm
 from haystack.schema import Document, Label
 from haystack.errors import DuplicateDocumentError
 from haystack.document_store import BaseDocumentStore
-from haystack.nodes.retriever import BaseRetriever
 from haystack.utils import get_batches_from_generator
 
 
@@ -207,7 +206,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: BaseRetriever,
+        retriever: 'BaseRetriever',
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         update_existing_embeddings: bool = True,

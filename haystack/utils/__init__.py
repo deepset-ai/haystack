@@ -1,11 +1,7 @@
-
 from haystack.utils.preprocessing import (
-    eval_data_from_json, 
-    eval_data_from_jsonl, 
     convert_files_to_dicts, 
     tika_convert_files_to_dicts, 
     fetch_archive_from_http,
-    squad_json_to_jsonl,
 )
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.doc_store import (

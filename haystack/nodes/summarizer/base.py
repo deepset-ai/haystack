@@ -1,7 +1,10 @@
-from abc import abstractmethod
 from typing import List, Dict, Optional
 
-from haystack import Document, BaseComponent
+from abc import abstractmethod
+
+from haystack.schema import Document
+from haystack.nodes.base import BaseComponent
+
 
 
 class BaseSummarizer(BaseComponent):
