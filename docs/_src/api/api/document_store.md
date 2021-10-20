@@ -675,7 +675,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
+ | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1171,7 +1171,7 @@ None
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000)
+ | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1458,7 +1458,7 @@ None
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None)
+ | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
