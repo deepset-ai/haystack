@@ -113,7 +113,7 @@ class Document:
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         # Convert pd.DataFrame to list of rows for serialization
-        if self.content_type == "table":
+        if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
             self.content = [self.content.columns.tolist()] + self.content.values.tolist()
         for k, v in self.__dict__.items():
             k = k if k not in inv_field_map else inv_field_map[k]
