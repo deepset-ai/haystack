@@ -12,7 +12,7 @@ Crawl texts from a website so that we can use them later in Haystack as a corpus
 
 **Example:**
 ```python
-|    from haystack.connector import Crawler
+|    from haystack.nodes.connector import Crawler
 |
 |    crawler = Crawler(output_dir="crawled_files")
 |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
