@@ -1167,7 +1167,8 @@ class TextSimilarityProcessor(Processor):
 
 class MultimodalSimilarityProcessor(Processor):
     """
-    Used to handle the Multimodal Retrieval datasets that come in json format.
+    Used to handle the Multimodal Retrieval datasets consisting of text passages and tables
+    that come in json format.
 
     """
     def __init__(
