@@ -3,7 +3,7 @@ import numpy as np
 
 LABELS = [
     Label(query="some",
-                   answer=Answer(answer="an answer",type="extractive", score=0.1, document_id="123"),
+                   answer=Answer(answer="an answer",type="extractive", score=0.1, document_id="123", offsets_in_document=[Span(start=1, end=3)]),
                    document=Document(content="some text", content_type="text"),
                    is_correct_answer=True,
                    is_correct_document=True,
@@ -16,7 +16,7 @@ LABELS = [
                    origin = "user-feedback"),
 
     Label(query="some",
-                   answer=Answer(answer="an answer",type="extractive", score=0.1, document_id="123"),
+                   answer=Answer(answer="an answer",type="extractive", score=0.1, document_id="123", offsets_in_document=[Span(start=1, end=3)]),
                    document=Document(content="some text", content_type="text"),
                    is_correct_answer = True,
                    is_correct_document = True,
@@ -78,7 +78,22 @@ def test_answer_to_json():
                offsets_in_context=[Span(start=3, end=5)],
                document_id="123")
     j = a.to_json()
+    assert type(j) == str
+    assert len(j) > 30
     a_new = Answer.from_json(j)
+    assert type(a_new.offsets_in_document[0]) == Span
+    assert a_new == a
+
+
+def test_answer_to_dict():
+    a = Answer(answer="an answer",type="extractive", score=0.1, context="abc",
+               offsets_in_document=[Span(start=1, end=10)],
+               offsets_in_context=[Span(start=3, end=5)],
+               document_id="123")
+    j = a.to_dict()
+    assert type(j) == dict
+    a_new = Answer.from_dict(j)
+    assert type(a_new.offsets_in_document[0]) == Span
     assert a_new == a
 
 
@@ -87,6 +102,19 @@ def test_label_to_json():
     l_new = Label.from_json(j0)
     assert l_new == LABELS[0]
 
+
+def test_label_to_json():
+    j0 = LABELS[0].to_json()
+    l_new = Label.from_json(j0)
+    assert l_new == LABELS[0]
+    assert l_new.answer.offsets_in_document[0].start == 1
+
+
+def test_label_to_dict():
+    j0 = LABELS[0].to_dict()
+    l_new = Label.from_dict(j0)
+    assert l_new == LABELS[0]
+    assert l_new.answer.offsets_in_document[0].start == 1
 
 def test_doc_to_json():
     # With embedding

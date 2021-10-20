@@ -133,6 +133,7 @@ def test_delete_documents():
     response_json = response.json()
     assert len(response_json) == 1
 
+
 def test_file_upload(client: TestClient):
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
@@ -149,7 +150,7 @@ def test_query_with_no_filter(populated_client: TestClient):
 
 
 def test_query_with_one_filter(populated_client: TestClient):
-    query_with_filter = {"query": "Who made the PDF specification?", "params": {"filters": {"meta_key": "meta_value"}}}
+    query_with_filter = {"query": "Who made the PDF specification?", "params": {"Retriever": {"filters": {"meta_key": "meta_value"}}}}
     response = populated_client.post(url="/query", json=query_with_filter)
     assert 200 == response.status_code
     response_json = response.json()
@@ -159,7 +160,7 @@ def test_query_with_one_filter(populated_client: TestClient):
 def test_query_with_filter_list(populated_client: TestClient):
     query_with_filter_list = {
         "query": "Who made the PDF specification?",
-        "params": {"filters": {"meta_key": ["meta_value", "another_value"]}}
+        "params": {"Retriever": {"filters": {"meta_key": ["meta_value", "another_value"]}}}
     }
     response = populated_client.post(url="/query", json=query_with_filter_list)
     assert 200 == response.status_code
@@ -169,7 +170,7 @@ def test_query_with_filter_list(populated_client: TestClient):
 
 def test_query_with_invalid_filter(populated_client: TestClient):
     query_with_invalid_filter = {
-        "query": "Who made the PDF specification?", "params": {"filters": {"meta_key": "invalid_value"}}
+        "query": "Who made the PDF specification?", "params": {"Retriever": {"filters": {"meta_key": "invalid_value"}}}
     }
     response = populated_client.post(url="/query", json=query_with_invalid_filter)
     assert 200 == response.status_code

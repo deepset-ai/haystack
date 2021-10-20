@@ -52,7 +52,11 @@ class FARMReader(BaseReader):
         doc_stride: int = 128,
         progress_bar: bool = True,
         duplicate_filtering: int = 0,
-        use_confidence_scores: bool = True
+        use_confidence_scores: bool = True,
+        proxies=None,
+        local_files_only=False,
+        force_download=False,
+        **kwargs
     ):
 
         """
@@ -92,6 +96,15 @@ class FARMReader(BaseReader):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_filtering: Answers are filtered based on their position. Both start and end position of the answers are considered.
                                     The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
+        :param use_confidence_scores: Sets the type of score that is returned with every predicted answer.
+                                      `True` => a scaled confidence / relevance score between [0, 1].
+                                      This score can also be further calibrated on your dataset via self.eval()
+                                      (see https://haystack.deepset.ai/components/reader#confidence-scores) .
+                                      `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
+                                      from the model for the predicted span.
+        :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
+        :param local_files_only: Whether to force checking for local files only (and forbid downloads)
+        :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -100,7 +113,8 @@ class FARMReader(BaseReader):
             batch_size=batch_size, use_gpu=use_gpu, no_ans_boost=no_ans_boost, return_no_answer=return_no_answer,
             top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
             num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering, use_confidence_scores=use_confidence_scores
+            duplicate_filtering=duplicate_filtering, proxies=proxies, local_files_only=local_files_only,
+            force_download=force_download, use_confidence_scores=use_confidence_scores, **kwargs
         )
 
         self.return_no_answers = return_no_answer
@@ -110,7 +124,11 @@ class FARMReader(BaseReader):
                                             task_type="question_answering", max_seq_len=max_seq_len,
                                             doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
                                             disable_tqdm=not progress_bar,
-                                            strict=False)
+                                            strict=False,
+                                            proxies=proxies,
+                                            local_files_only=local_files_only,
+                                            force_download=force_download,
+                                            **kwargs)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
@@ -145,13 +163,19 @@ class FARMReader(BaseReader):
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
         use_amp: str = None,
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
 
         - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
         - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
-
+         
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
+        If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
+         
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
@@ -179,6 +203,10 @@ class FARMReader(BaseReader):
                         "O2" (Almost FP16)
                         "O3" (Pure FP16).
                         See details on: https://nvidia.github.io/apex/amp.html
+        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+               checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :return: None
         """
 
@@ -233,7 +261,7 @@ class FARMReader(BaseReader):
             use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer(
+        trainer = Trainer.create_or_load_checkpoint(
             model=model,
             optimizer=optimizer,
             data_silo=data_silo,
@@ -243,9 +271,11 @@ class FARMReader(BaseReader):
             evaluate_every=evaluate_every,
             device=device,
             use_amp=use_amp,
-            disable_tqdm=not self.progress_bar
+            disable_tqdm=not self.progress_bar,
+            checkpoint_root_dir=Path(checkpoint_root_dir),
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
         )
-
 
         # 5. Let it grow!
         self.inferencer.model = trainer.train()
@@ -346,7 +376,6 @@ class FARMReader(BaseReader):
         return result
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
-        #TODO update example in docstring
         """
         Use loaded QA model to find answers for a query in the supplied list of Document.
 
@@ -355,14 +384,14 @@ class FARMReader(BaseReader):
          ```python
             |{
             |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[
-            |                 {'answer': 'Eddard,',
-            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-            |                 'offset_answer_start': 147,
-            |                 'offset_answer_end': 154,
+            |    'answers':[Answer(
+            |                 'answer': 'Eddard,',
+            |                 'context': "She travels with her father, Eddard, to King's Landing when he is",
             |                 'score': 0.9787139466668613,
-            |                 'document_id': '1337'
-            |                 },...
+            |                 'offsets_in_context': [Span(start=29, end=35],
+            |                 'offsets_in_context': [Span(start=347, end=353],
+            |                 'document_id': '88d1ed769d003939d3a0d28034464ab2'
+            |                 ),...
             |              ]
             |}
          ```

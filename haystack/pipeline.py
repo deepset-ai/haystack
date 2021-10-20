@@ -284,6 +284,21 @@ class Pipeline(BasePipeline):
             :param debug_logs: Whether all the logs of the node should be printed in the console,
                                regardless of their severity and of the existing logger's settings.
         """
+        # validate the node names
+        if params:
+            if not all(node_id in self.graph.nodes for node_id in params.keys()):
+
+                # Might be a non-targeted param. Verify that too
+                not_a_node = set(params.keys()) - set(self.graph.nodes)
+                valid_global_params = set()
+                for node_id in self.graph.nodes:
+                    run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
+                    valid_global_params |= set(run_signature_args)
+                invalid_keys = [key for key in not_a_node if key not in valid_global_params]
+
+                if invalid_keys:
+                    raise ValueError(f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline.")
+
         node_output = None
         queue = {
             self.root_node: {"root_node": self.root_node, "params": params}

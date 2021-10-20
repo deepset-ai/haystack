@@ -31,7 +31,7 @@ from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader
+from haystack.reader.transformers import TransformersReader, TableReader
 from haystack.summarizer.transformers import TransformersSummarizer
 from haystack.translator import TransformersTranslator
 from haystack.question_generator import QuestionGenerator
@@ -256,7 +256,8 @@ def xpdf_fixture(tika_fixture):
 def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
-        generator_type=RAGeneratorType.TOKEN
+        generator_type=RAGeneratorType.TOKEN,
+        max_length=20
     )
 
 
@@ -267,7 +268,7 @@ def question_generator():
 
 @pytest.fixture(scope="module")
 def eli5_generator():
-    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
+    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", max_length=20)
 
 
 @pytest.fixture(scope="module")
@@ -330,6 +331,12 @@ def reader(request):
             tokenizer="distilbert-base-uncased",
             use_gpu=-1
         )
+
+
+@pytest.fixture(scope="module")
+def table_reader():
+    return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+
 
 @pytest.fixture(scope="module")
 def ranker():

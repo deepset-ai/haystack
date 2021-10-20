@@ -681,26 +681,33 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, filters)
+        self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
-                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         :return: None
         """
         index = index or self.index
-        if filters:
-            docs_to_delete = self.get_all_documents(index, filters=filters)
-            for doc in docs_to_delete:
-                self.weaviate_client.data_object.delete(doc.id)
-        else:
+        if not filters and not ids:
             self.weaviate_client.schema.delete_class(index)
             self._create_schema_and_index_if_not_exist(index)
+        else:
+            docs_to_delete = self.get_all_documents(index, filters=filters)
+            if ids:
+                docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
+            for doc in docs_to_delete:
+                self.weaviate_client.data_object.delete(doc.id)
+            
 
 
 

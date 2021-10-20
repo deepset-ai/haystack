@@ -456,6 +456,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """Write annotation labels into document store.
 
         :param labels: A list of Python dictionaries or a list of Haystack Label objects.
+        :param index: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
         :param batch_size: Number of labels that are passed to Elasticsearch's bulk function at a time.
         """
         index = index or self.label_index
@@ -997,15 +998,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, filters)
+        self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from.
+        :param index: Index name to delete the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         :return: None
         """
         index = index or self.index
@@ -1019,12 +1025,32 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         }
                 )
                 query["query"]["bool"] = {"filter": filter_clause}
+            
+            if ids:
+                query["query"]["bool"]["must"] = {"ids": {"values": ids}}
+
+        elif ids:
+            query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
         self.client.delete_by_query(index=index, body=query, ignore=[404])
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
             time.sleep(2)
+
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete labels in an index. All labels are deleted if no filters are passed.
+
+        :param index: Index name to delete the labels from. If None, the
+                      DocumentStore's default label index (self.label_index) will be used
+        :param ids: Optional list of IDs to narrow down the labels to be deleted.
+        :param filters: Optional filters to narrow down the labels to be deleted.
+            Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+        :return: None
+        """
+        index = index or self.label_index
+        self.delete_documents(index=index, ids=ids, filters=filters)
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
@@ -1040,7 +1066,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                  scheme="https",
                  username="admin",
                  password="admin",
-                 port=9201,
+                 port=9200,
                  **kwargs):
 
         # Overwrite default kwarg values of parent class so that in default cases we can initialize
@@ -1206,6 +1232,36 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name):
                 raise e
 
+    def _create_label_index(self, index_name: str):
+        if self.client.indices.exists(index=index_name):
+            return
+        mapping = {
+            "mappings": {
+                "properties": {
+                    "query": {"type": "text"},
+                    "answer": {"type": "nested"}, # In elasticsearch we use type:flattened, but this is not supported in opensearch
+                    "document": {"type": "nested"},
+                    "is_correct_answer": {"type": "boolean"},
+                    "is_correct_document": {"type": "boolean"},
+                    "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
+                    "document_id": {"type": "keyword"},
+                    "no_answer": {"type": "boolean"},
+                    "pipeline_id": {"type": "keyword"},
+                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
+                    "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
+                    #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
+                }
+            }
+        }
+        try:
+            self.client.indices.create(index=index_name, body=mapping)
+        except RequestError as e:
+            # With multiple workers we need to avoid race conditions, where:
+            # - there's no index in the beginning
+            # - both want to create one
+            # - one fails as the other one already created it
+            if not self.client.indices.exists(index=index_name):
+                raise e
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
