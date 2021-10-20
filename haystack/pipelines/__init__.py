@@ -1,5 +1,4 @@
-from haystack.pipelines.base import Pipeline, RootNode
-from haystack.pipelines.ray import RayPipeline
+from haystack.pipelines.base import Pipeline, RootNode, RayPipeline
 from haystack.pipelines.standard_pipelines import (
     BaseStandardPipeline,
     DocumentSearchPipeline,

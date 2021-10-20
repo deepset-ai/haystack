@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Any, Iterator, Tuple
 
 import logging
 import os
@@ -173,7 +173,7 @@ def all_gather_list(data, group=None, max_size=16384):
         )
 
 
-def grouper(iterable: Generator, n: int, worker_id: int = 0, total_workers: int = 1):
+def grouper(iterable: Iterator[Any], n: int, worker_id: int = 0, total_workers: int = 1):
     """
     Split an iterable into a list of n-sized chunks. Each element in the chunk is a tuple of (index_num, element).
 

@@ -18,7 +18,7 @@ Acknowledgements: Many of the modeling parts here come from the great transforme
 Thanks for the great work! 
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 import json
 import logging
@@ -67,11 +67,17 @@ class LanguageModel(nn.Module):
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
 
-    def forward(self, input_ids, padding_mask, **kwargs):
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask,
+        **kwargs,
+    ):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, revision: str = None, n_added_tokens=0, language_model_class: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], revision: str = None, **kwargs):
         """
         Load a pretrained language model either by
 
@@ -113,6 +119,9 @@ class LanguageModel(nn.Module):
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param language_model_class: (Optional) Name of the language model class to load (e.g. `Bert`)
         """
+        n_added_tokens = kwargs.pop("n_added_tokens", 0)
+        language_model_class = kwargs.pop("language_model_class", None)
+
         kwargs["revision"] = revision
         logger.info("")
         logger.info("LOADING MODEL")
@@ -268,7 +277,7 @@ class LanguageModel(nn.Module):
             string = self.model.config.to_json_string()
             file.write(string)
 
-    def save(self, save_dir: str, state_dict: Dict[Any, Any] = None):
+    def save(self, save_dir: Union[str, Path], state_dict: Dict[Any, Any] = None):
         """
         Save the model state_dict and its config file so that it can be loaded again.
 
@@ -418,7 +427,7 @@ class Bert(LanguageModel):
         return bert
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -495,7 +504,7 @@ class Albert(LanguageModel):
         self.name = "albert"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -576,7 +585,7 @@ class Roberta(LanguageModel):
         self.name = "roberta"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -657,7 +666,7 @@ class XLMRoberta(LanguageModel):
         self.name = "xlm_roberta"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -745,7 +754,7 @@ class DistilBert(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -790,7 +799,7 @@ class DistilBert(LanguageModel):
         input_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         **kwargs,
-    ):
+    ):  # type: ignore
         """
         Perform the forward pass of the DistilBERT model.
 
@@ -832,7 +841,7 @@ class XLNet(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -938,7 +947,7 @@ class Electra(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1029,7 +1038,7 @@ class Camembert(Roberta):
         self.name = "camembert"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -1072,7 +1081,7 @@ class DPRQuestionEncoder(LanguageModel):
         self.name = "dpr_question_encoder"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1130,7 +1139,7 @@ class DPRQuestionEncoder(LanguageModel):
 
         return dpr_question_encoder
 
-    def save(self, save_dir: str, state_dict: Optional[Dict[Any, Any]] = None):
+    def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
         Save the model state_dict and its config file so that it can be loaded again.
 
@@ -1202,7 +1211,7 @@ class DPRContextEncoder(LanguageModel):
         self.name = "dpr_context_encoder"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1266,7 +1275,7 @@ class DPRContextEncoder(LanguageModel):
 
         return dpr_context_encoder
 
-    def save(self, save_dir: str, state_dict: Optional[Dict[Any, Any]] = None):
+    def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
         Save the model state_dict and its config file so that it can be loaded again.
 
@@ -1353,7 +1362,7 @@ class BigBird(LanguageModel):
         return big_bird
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
         """
         Load a pretrained model by supplying
 

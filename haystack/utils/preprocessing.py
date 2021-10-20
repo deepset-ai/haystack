@@ -71,7 +71,7 @@ def eval_data_from_jsonl(
     max_docs: Union[int, bool] = None, 
     preprocessor: PreProcessor = None,
     open_domain: bool = False
-) -> Generator[Tuple[List[Document], List[Label]]]:
+) -> Generator[Tuple[List[Document], List[Label]], None, None]:
     """
     Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.

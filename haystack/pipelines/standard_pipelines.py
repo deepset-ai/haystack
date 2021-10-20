@@ -7,6 +7,7 @@ from functools import wraps
 
 from haystack.schema import Document
 from haystack.nodes.answer_generator import BaseGenerator
+from haystack.nodes.other import Docs2Answers
 from haystack.nodes.reader import BaseReader
 from haystack.nodes.retriever import BaseRetriever
 from haystack.nodes.summarizer import BaseSummarizer

@@ -1,23 +1,23 @@
+from typing import List, Optional, Dict, Union, Generator, Set, Any
+
+import os
 import logging
 import multiprocessing as mp
-import os
 from functools import partial
-
+from tqdm import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset
-from tqdm import tqdm
-from typing import List, Optional, Dict, Union, Generator, Set, Any
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
 from haystack.modeling.data_handler.samples import SampleBasket
-from haystack.modeling.utils import grouper
+from haystack.modeling.utils import grouper, initialize_device_settings, set_all_seeds, calc_chunksize, log_ascii_workers
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
-from haystack.modeling.utils import initialize_device_settings, MLFlowLogger
-from haystack.modeling.utils import set_all_seeds, calc_chunksize, log_ascii_workers
+from haystack.modeling.logger import MLFlowLogger
 from haystack.modeling.model.predictions import QAPred
+
 
 logger = logging.getLogger(__name__)
 

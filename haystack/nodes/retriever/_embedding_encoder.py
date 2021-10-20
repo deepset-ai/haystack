@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Dict
 
 import logging
 from abc import abstractmethod
@@ -193,7 +193,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         return dataset, tensornames
 
 
-_EMBEDDING_ENCODERS = {
+_EMBEDDING_ENCODERS: Dict[str, _BaseEmbeddingEncoder] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
     "sentence_transformers": _SentenceTransformersEmbeddingEncoder,

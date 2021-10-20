@@ -18,7 +18,8 @@ from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.utils import MLFlowLogger as MlLogger, log_ascii_workers, grouper, calc_chunksize
+from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
 
 

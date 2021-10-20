@@ -32,7 +32,7 @@ class Docs2Answers(BaseComponent):
                                     )
             else:
                 # Regular docs
-                cur_answer = Answer(answer=None,
+                cur_answer = Answer(answer="",
                                     type="other",
                                     score=doc.score,
                                     context=doc.content,

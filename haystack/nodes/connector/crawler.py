@@ -1,11 +1,15 @@
+from typing import List, Optional, Dict, Tuple, Union
+
+import re
 import sys
 import json
 import logging
-import re
 from pathlib import Path
 from urllib.parse import urlparse
-from typing import List, Any, Optional, Dict, Tuple, Union
-from haystack.schema import Document, BaseComponent
+
+from haystack.nodes.base import BaseComponent
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,7 +19,7 @@ class Crawler(BaseComponent):
 
     **Example:**
     ```python
-    |    from haystack.connector import Crawler
+    |    from haystack.nodes.connector import Crawler
     |
     |    crawler = Crawler(output_dir="crawled_files")
     |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
@@ -23,7 +27,6 @@ class Crawler(BaseComponent):
     |                         filter_urls= ["haystack\.deepset\.ai\/docs\/"])
     ```
     """
-
     outgoing_edges = 1
 
     def __init__(self, output_dir: str, urls: Optional[List[str]] = None, crawler_depth: int = 1,
@@ -192,7 +195,10 @@ class Crawler(BaseComponent):
         file_paths = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth,
                                   filter_urls=filter_urls, overwrite_existing_files=overwrite_existing_files)
         if return_documents:
-            crawled_data = [self._read_json_file(_file) for _file in file_paths]
+            crawled_data = []
+            for _file in file_paths:
+                with open(_file.absolute(), "r") as read_file:
+                    crawled_data.append(json.load(read_file))
             results = {"documents": crawled_data}
         else:
             results = {"paths": file_paths}
@@ -234,8 +240,3 @@ class Crawler(BaseComponent):
                         sub_links.add(sub_link)
 
         return sub_links
-
-    def _read_json_file(self, file_path: Path):
-        """Read the json file and return the content"""
-        with open(file_path.absolute(), "r") as read_file:
-            return json.load(read_file)

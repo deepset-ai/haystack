@@ -22,7 +22,7 @@ except ImportError:
     APEX_PARALLEL_AVAILABLE = False
 
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.logger import MLFlowLogger as MlLogger
 
 
 logger = logging.getLogger(__name__)

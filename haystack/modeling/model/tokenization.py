@@ -303,7 +303,7 @@ def _get_start_of_word_QA(word_ids):
     return start_of_word_single
 
 
-def tokenize_with_metadata(text: str, tokenizer: Tokenizer) -> Dict[str, Any]:
+def tokenize_with_metadata(text: str, tokenizer) -> Dict[str, Any]:
     """
     Performing tokenization while storing some important metadata for each token:
 
@@ -363,7 +363,6 @@ def tokenize_with_metadata(text: str, tokenizer: Tokenizer) -> Dict[str, Any]:
             cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
 
         # split "words" into "subword tokens"
-        # FIXME _words_to_tokens is orphan
         tokens, offsets, start_of_word = _words_to_tokens(
             words, word_offsets, tokenizer
         )
@@ -374,12 +373,12 @@ def tokenize_with_metadata(text: str, tokenizer: Tokenizer) -> Dict[str, Any]:
 def truncate_sequences(
         seq_a: list, 
         seq_b: Optional[list], 
-        tokenizer: Tokenizer, 
+        tokenizer,
         max_seq_len: int, 
         truncation_strategy: str = 'longest_first',
         with_special_tokens: bool = True, 
         stride: int = 0
-    ) -> Tuple[list, list, list]:
+    ) -> Tuple[List[Any], List[Any], List[Any]]:
     """
     Reduces a single sequence or a pair of sequences to a maximum sequence length.
     The sequences can contain tokens or any other elements (offsets, masks ...).
@@ -401,9 +400,9 @@ def truncate_sequences(
     :param stride: optional stride of the window during truncation
     :return: truncated seq_a, truncated seq_b, overflowing tokens
     """
-    pair = bool(seq_b is not None)
+    pair = seq_b is not None
     len_a = len(seq_a)
-    len_b = len(seq_b) if pair else 0
+    len_b = len(seq_b) if seq_b is not None else 0
     num_special_tokens = tokenizer.num_special_tokens_to_add(pair=pair) if with_special_tokens else 0
     total_len = len_a + len_b + num_special_tokens
     overflowing_tokens = []

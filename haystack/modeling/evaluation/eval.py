@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any, Literal
+from typing import Dict, List, Optional, Any
 
 import logging
 import numbers
@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.logger import MLFlowLogger as MlLogger
 from haystack.modeling.visual import BUSH_SEP
 
 
@@ -20,7 +20,7 @@ class Evaluator:
     Handles evaluation of a given model over a specified dataset.
     """
     def __init__(
-        self, data_loader: torch.utils.data.DataLoader, tasks, device: Literal["cpu, cuda"], report: bool = True
+        self, data_loader: torch.utils.data.DataLoader, tasks, device: str, report: bool = True
     ):
         """
         :param data_loader: The PyTorch DataLoader that will return batches of data from the evaluation dataset

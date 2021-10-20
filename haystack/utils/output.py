@@ -17,93 +17,6 @@ from haystack.document_store.sql import DocumentORM
 logger = logging.getLogger(__name__)
 
 
-def launch_es(sleep=15):
-    # Start an Elasticsearch server via Docker
-
-    logger.info("Starting Elasticsearch ...")
-    status = subprocess.run(
-        ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
-    )
-    if status.returncode:
-        logger.warning("Tried to start Elasticsearch through Docker but this failed. "
-                       "It is likely that there is already an existing Elasticsearch instance running. ")
-    else:
-        time.sleep(sleep)
-
-def launch_open_distro_es(sleep=15):
-    # Start an Open Distro for Elasticsearch server via Docker
-
-    logger.info("Starting Open Distro for Elasticsearch ...")
-    status = subprocess.run(
-        ['docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" amazon/opendistro-for-elasticsearch:1.13.2'], shell=True
-    )
-    if status.returncode:
-        logger.warning("Tried to start Open Distro for Elasticsearch through Docker but this failed. "
-                       "It is likely that there is already an existing Elasticsearch instance running. ")
-    else:
-        time.sleep(sleep)
-
-def launch_opensearch(sleep=15):
-    # Start an OpenSearch server via docker
-
-    logger.info("Starting OpenSearch...")
-    # This line is needed since it is not possible to start a new docker container with the name opensearch if there is a stopped image with the same now
-    # docker rm only succeeds if the container is stopped, not if it is running
-    _ = subprocess.run(['docker rm opensearch'], shell=True, stdout=subprocess.DEVNULL)
-    status = subprocess.run(
-        ['docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name opensearch opensearchproject/opensearch:1.0.0-rc1'],
-        shell=True
-    )
-    if status.returncode:
-        logger.warning("Tried to start OpenSearch through Docker but this failed. "
-                       "It is likely that there is already an existing OpenSearch instance running. ")
-    else:
-        time.sleep(sleep)
-
-
-def stop_opensearch():
-    logger.info("Stopping OpenSearch...")
-    status = subprocess.run(['docker stop opensearch'], shell=True)
-    if status.returncode:
-        logger.warning("Tried to stop OpenSearch but this failed. "
-                       "It is likely that there was no OpenSearch Docker container with the name opensearch")
-    status = subprocess.run(['docker rm opensearch'], shell=True)
-
-
-def stop_service(document_store):
-    ds_class = str(type(document_store))
-    if "OpenSearchDocumentStore" in ds_class:
-        stop_opensearch()
-    else:
-        logger.warning(f"No support yet for auto stopping the service behind a {ds_class}")
-
-
-def launch_milvus(sleep=15):
-    # Start a Milvus server via docker
-
-    logger.info("Starting Milvus ...")
-    logger.warning("Automatic Milvus config creation not yet implemented. "
-                   "If you are starting Milvus using launch_milvus(), "
-                   "make sure you have a properly populated milvus/conf folder. "
-                   "See (https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md) for more details.")
-    status = subprocess.run(
-        ['sudo docker run -d --name milvus_cpu_1.0.0 \
-          -p 19530:19530 \
-          -p 19121:19121 \
-          -v /home/$USER/milvus/db:/var/lib/milvus/db \
-          -v /home/$USER/milvus/conf:/var/lib/milvus/conf \
-          -v /home/$USER/milvus/logs:/var/lib/milvus/logs \
-          -v /home/$USER/milvus/wal:/var/lib/milvus/wal \
-          milvusdb/milvus:1.0.0-cpu-d030521-1ea92e'
-        ],
-        shell=True
-    )
-    if status.returncode:
-        logger.warning("Tried to start Milvus through Docker but this failed. "
-                       "It is likely that there is already an existing Milvus instance running. ")
-    else:
-        time.sleep(sleep)
-
 
 def print_answers(results: dict, details: str = "all"):
     """
@@ -189,7 +102,6 @@ def export_answers_to_csv(agg_results: list, output_file):
     df.to_csv(output_file, index=False)
 
 
-
 def convert_labels_to_squad(labels_file: str):
     """
     Convert the export from the labeling UI to SQuAD format for training.
@@ -253,31 +165,3 @@ def get_batches_from_generator(iterable, n):
     while x:
         yield x
         x = tuple(islice(it, n))
-
-
-def clean_wiki_text(text: str) -> str:
-    """
-    Clean wikipedia text by removing multiple new lines, removing extremely short lines,
-    adding paragraph breaks and removing empty paragraphs
-    """
-    # get rid of multiple new lines
-    while "\n\n" in text:
-        text = text.replace("\n\n", "\n")
-
-    # remove extremely short lines
-    lines = text.split("\n")
-    cleaned = []
-    for l in lines:
-        if len(l) > 30:
-            cleaned.append(l)
-        elif l[:2] == "==" and l[-2:] == "==":
-            cleaned.append(l)
-    text = "\n".join(cleaned)
-
-    # add paragraphs (identified by wiki section title which is always in format "==Some Title==")
-    text = text.replace("\n==", "\n\n\n==")
-
-    # remove empty paragrahps
-    text = re.sub(r"(==.*==\n\n\n)", "", text)
-
-    return text

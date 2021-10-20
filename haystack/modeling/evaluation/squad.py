@@ -43,7 +43,7 @@ def compute_exact(a_gold: str, a_pred: str):
 def compute_f1(a_gold: str, a_pred: str):
     gold_toks = get_tokens(a_gold)
     pred_toks = get_tokens(a_pred)
-    common = collections.Counter(gold_toks) & collections.Counter(pred_toks)
+    common: collections.Counter = collections.Counter(gold_toks) & collections.Counter(pred_toks)
     num_same = sum(common.values())
     if len(gold_toks) == 0 or len(pred_toks) == 0:
         # If either is no-answer, then F1 is 1 if they agree, 0 otherwise
