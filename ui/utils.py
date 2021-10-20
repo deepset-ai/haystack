@@ -25,7 +25,7 @@ def haystack_is_ready():
 def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
     # Query Haystack API
     url = f"{API_ENDPOINT}/{DOC_REQUEST}"
-    params = {"filters": filters, "ESRetriever": {"top_k": top_k_retriever}, "Reader": {"top_k": top_k_reader}}
+    params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}, "Reader": {"top_k": top_k_reader}}
     req = {"query": query, "params": params}
     response_raw = requests.post(url, json=req).json()
 
