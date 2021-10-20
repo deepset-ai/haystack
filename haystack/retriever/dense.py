@@ -27,6 +27,7 @@ from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.training.base import Trainer
+from haystack.modeling.utils import initialize_device_settings
 from torch.utils.data.sampler import SequentialSampler
 
 
@@ -546,10 +547,9 @@ class MultimodalRetriever(BaseRetriever):
 
         if devices is not None:
             self.devices = devices
-        elif use_gpu and torch.cuda.is_available():
-            self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
         else:
-            self.devices = [torch.device("cpu")]
+            device, _ = initialize_device_settings(use_gpu)
+            self.devices = [device]
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -648,7 +648,7 @@ class MultimodalRetriever(BaseRetriever):
                                                            index=index)
         return documents
 
-    def _get_predictions(self, dicts: List[Dict]):
+    def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
