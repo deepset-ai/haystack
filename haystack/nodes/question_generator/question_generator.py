@@ -1,21 +1,24 @@
+from typing import List
+
 from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
-from haystack import BaseComponent, Document
-from haystack.preprocessor import PreProcessor
-from haystack.modeling.utils import initialize_device_settings
 
-from typing import List
+from haystack.schema import Document
+from haystack.nodes.base import BaseComponent
+from haystack.nodes.preprocessor import PreProcessor
+from haystack.modeling.utils import initialize_device_settings
 
 
 class QuestionGenerator(BaseComponent):
-    """ The Question Generator takes only a document as input and outputs questions that it thinks can be
+    """ 
+    The Question Generator takes only a document as input and outputs questions that it thinks can be
     answered by this document. In our current implementation, input texts are split into chunks of 50 words
     with a 10 word overlap. This is because the default model `valhalla/t5-base-e2e-qg` seems to generate only
     about 3 questions per passage regardless of length. Our approach prioritizes the creation of more questions
     over processing efficiency (T5 is able to digest much more than 50 words at once). The returned questions
     generally come in an order dictated by the order of their answers i.e. early questions in the list generally
-    come from earlier in the document."""
-
+    come from earlier in the document.
+    """
     outgoing_edges = 1
 
     def __init__(self,
@@ -106,4 +109,3 @@ class QuestionGenerator(BaseComponent):
                 if q not in ret:
                     ret.append(q)
         return ret
-

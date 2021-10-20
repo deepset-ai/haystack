@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Optional, Dict, List, Union, Callable, Tuple, Optional
+from typing import Any, Optional, Dict, List, Union, Optional
 from dataclasses import asdict
 
 try:
@@ -19,8 +19,6 @@ from uuid import uuid4
 import mmh3
 import numpy as np
 import logging
-import io
-from functools import wraps
 import time
 import json
 import pandas as pd
@@ -509,72 +507,6 @@ def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
 
     dataclass_object = pydantic_dataclass_type(**values)
     return dataclass_object
-
-
-class InMemoryLogger(io.TextIOBase):
-    """
-    Implementation of a logger that keeps track
-    of the log lines in a list called `logs`,
-    from where they can be accessed freely.
-    """
-
-    def __init__(self, *args):
-        io.TextIOBase.__init__(self, *args)
-        self.logs = []
-
-    def write(self, x):
-        self.logs.append(x)
-
-
-def record_debug_logs(func: Callable, node_name: str, logs: bool) -> Callable:
-    """
-    Captures the debug logs of the wrapped function and
-    saves them in the `_debug` key of the output dictionary.
-    If `logs` is True, dumps the same logs to the console as well.
-
-    Used in `BaseComponent.__getattribute__()` to wrap `run()` functions.
-    This makes sure that every implementation of `run()` by a subclass will
-    be automagically decorated with this method when requested.
-
-    :param func: the function to decorate (must be an implementation of
-                 `BaseComponent.run()`).
-    :param logs: whether the captured logs should also be displayed
-                 in the console during the execution of the pipeline.
-    """
-    @wraps(func)
-    def inner(*args, **kwargs) -> Tuple[Dict[str, Any], str]:
-
-        with InMemoryLogger() as logs_container:
-            logger = logging.getLogger()
-
-            # Adds a handler that stores the logs in a variable
-            handler = logging.StreamHandler(logs_container)
-            handler.setLevel(logger.level or logging.DEBUG)
-            logger.addHandler(handler)
-
-            # Add a handler that prints log messages in the console
-            # to the specified level for the node
-            if logs:
-                handler_console = logging.StreamHandler()
-                handler_console.setLevel(logging.DEBUG)
-                formatter = logging.Formatter(f'[{node_name} logs] %(message)s')
-                handler_console.setFormatter(formatter)
-                logger.addHandler(handler_console)
-
-            output, stream = func(*args, **kwargs)
-
-            if not "_debug" in output.keys():
-                output["_debug"] = {}
-            output["_debug"]["logs"] = logs_container.logs
-
-            # Remove both handlers
-            logger.removeHandler(handler)
-            if logs:
-                logger.removeHandler(handler_console)
-
-            return output, stream
-
-    return inner
 
 
 class NumpyEncoder(json.JSONEncoder):

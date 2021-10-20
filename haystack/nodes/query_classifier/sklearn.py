@@ -4,13 +4,13 @@ from typing import Union, Any
 import pickle
 import urllib
 
-from haystack.nodes.base import BaseComponent
+from haystack.nodes.query_classifier import BaseQueryClassifier
 
 
 logger = logging.getLogger(__name__)
 
 
-class SklearnQueryClassifier(BaseComponent):
+class SklearnQueryClassifier(BaseQueryClassifier):
     """
     A node to classify an incoming query into one of two categories using a lightweight sklearn model. Depending on the result, the query flows to a different branch in your pipeline
     and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
@@ -52,9 +52,6 @@ class SklearnQueryClassifier(BaseComponent):
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
     """
-
-    outgoing_edges = 2
-
     def __init__(
         self,
         model_name_or_path: Union[

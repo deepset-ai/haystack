@@ -1,10 +1,11 @@
-import logging
-from pathlib import Path
 from typing import Dict, Optional, Any, List
 
+import logging
+from pathlib import Path
 import docx
 
-from haystack.file_converter.base import BaseConverter
+from haystack.nodes.file_converter import BaseConverter
+
 
 logger = logging.getLogger(__name__)
 

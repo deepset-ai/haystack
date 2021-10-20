@@ -1,18 +1,19 @@
-import logging
-from html.parser import HTMLParser
-from pathlib import Path
 from typing import List, Optional, Dict, Any
 
+import logging
 import requests
+from pathlib import Path
+from html.parser import HTMLParser
 from tika import parser as tikaparser
 
-from haystack.file_converter.base import BaseConverter
+from haystack.nodes.file_converter import BaseConverter
+
 
 logger = logging.getLogger(__name__)
 
 
-# Use the built-in HTML parser with minimum dependencies
 class TikaXHTMLParser(HTMLParser):
+    # Use the built-in HTML parser with minimum dependencies
     def __init__(self):
         self.ingest = True
         self.page = ""

@@ -3,13 +3,13 @@ from pathlib import Path
 from typing import Union
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
-from haystack.nodes.base import BaseComponent
+from haystack.nodes.query_classifier import BaseQueryClassifier
 
 
 logger = logging.getLogger(__name__)
 
 
-class TransformersQueryClassifier(BaseComponent):
+class TransformersQueryClassifier(BaseQueryClassifier):
     """
     A node to classify an incoming query into one of two categories using a (small) BERT transformer model. 
     Depending on the result, the query flows to a different branch in your pipeline and the further processing 
@@ -52,9 +52,6 @@ class TransformersQueryClassifier(BaseComponent):
     
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
     """
-    outgoing_edges = 2
-
-
     def __init__(
         self,
         model_name_or_path: Union[
@@ -74,9 +71,7 @@ class TransformersQueryClassifier(BaseComponent):
             model=model, tokenizer=tokenizer
         )
 
-
     def run(self, query):
-
         is_question: bool = (
             self.query_classification_pipeline(query)[0]["label"] == "LABEL_1"
         )

@@ -1,52 +1,52 @@
-import logging
 from typing import List, Optional, Set
 
+import logging
 from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
 
-from haystack import Document
-from haystack.summarizer.base import BaseSummarizer
+from haystack.schema import Document
+from haystack.nodes.summarizer import BaseSummarizer
+
 
 logger = logging.getLogger(__name__)
 
 
 class TransformersSummarizer(BaseSummarizer):
     """
-        Transformer based model to summarize the documents using the HuggingFace's transformers framework
+    Transformer based model to summarize the documents using the HuggingFace's transformers framework
 
-        You can use any model that has been fine-tuned on a summarization task. For example:
-        '`bart-large-cnn`', '`t5-small`', '`t5-base`', '`t5-large`', '`t5-3b`', '`t5-11b`'.
-        See the up-to-date list of available models on
-        `huggingface.co/models <https://huggingface.co/models?filter=summarization>`__
+    You can use any model that has been fine-tuned on a summarization task. For example:
+    '`bart-large-cnn`', '`t5-small`', '`t5-base`', '`t5-large`', '`t5-3b`', '`t5-11b`'.
+    See the up-to-date list of available models on
+    `huggingface.co/models <https://huggingface.co/models?filter=summarization>`__
 
-        **Example**
+    **Example**
 
-        ```python
-        |     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
-        |            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
-        |            "the shutoffs which were expected to last through at least midday tomorrow.")]
-        |
-        |     # Summarize
-        |     summary = summarizer.predict(
-        |        documents=docs,
-        |        generate_single_summary=True
-        |     )
-        |
-        |     # Show results (List of Documents, containing summary and original text)
-        |     print(summary)
-        |
-        |    [
-        |      {
-        |        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
-        |        ...
-        |        "meta": {
-        |          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ..."
-        |              },
-        |        ...
-        |      },
-        ```
+    ```python
+    |     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
+    |            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
+    |            "the shutoffs which were expected to last through at least midday tomorrow.")]
+    |
+    |     # Summarize
+    |     summary = summarizer.predict(
+    |        documents=docs,
+    |        generate_single_summary=True
+    |     )
+    |
+    |     # Show results (List of Documents, containing summary and original text)
+    |     print(summary)
+    |
+    |    [
+    |      {
+    |        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
+    |        ...
+    |        "meta": {
+    |          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ..."
+    |              },
+    |        ...
+    |      },
+    ```
     """
-
     def __init__(
             self,
             model_name_or_path: str = "google/pegasus-xsum",
@@ -80,7 +80,6 @@ class TransformersSummarizer(BaseSummarizer):
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
@@ -116,7 +115,6 @@ class TransformersSummarizer(BaseSummarizer):
         :return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
                  the original, not summarized text
         """
-
         if self.min_length > self.max_length:
             raise AttributeError("min_length cannot be greater than max_length")
 

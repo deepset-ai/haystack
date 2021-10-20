@@ -9,7 +9,8 @@ import nltk
 from more_itertools import windowed
 from tqdm import tqdm
 
-from haystack.preprocessor.base import BasePreProcessor
+from haystack.nodes.preprocessor import BasePreProcessor
+
 
 logger = logging.getLogger(__name__)
 

@@ -1,15 +1,17 @@
-import io
-import json
-from collections import defaultdict
-from itertools import islice
-import logging
-import pprint
-import pandas as pd
 from typing import Dict, Any, List, Optional
-from haystack.document_store.sql import DocumentORM
-import subprocess
+
+import io
+import re
 import time
-import torch
+import json
+import pprint
+import logging
+import subprocess
+import pandas as pd
+from itertools import islice
+from collections import defaultdict
+
+from haystack.document_store.sql import DocumentORM
 
 
 logger = logging.getLogger(__name__)
@@ -251,3 +253,31 @@ def get_batches_from_generator(iterable, n):
     while x:
         yield x
         x = tuple(islice(it, n))
+
+
+def clean_wiki_text(text: str) -> str:
+    """
+    Clean wikipedia text by removing multiple new lines, removing extremely short lines,
+    adding paragraph breaks and removing empty paragraphs
+    """
+    # get rid of multiple new lines
+    while "\n\n" in text:
+        text = text.replace("\n\n", "\n")
+
+    # remove extremely short lines
+    lines = text.split("\n")
+    cleaned = []
+    for l in lines:
+        if len(l) > 30:
+            cleaned.append(l)
+        elif l[:2] == "==" and l[-2:] == "==":
+            cleaned.append(l)
+    text = "\n".join(cleaned)
+
+    # add paragraphs (identified by wiki section title which is always in format "==Some Title==")
+    text = text.replace("\n==", "\n\n\n==")
+
+    # remove empty paragrahps
+    text = re.sub(r"(==.*==\n\n\n)", "", text)
+
+    return text

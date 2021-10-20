@@ -1,12 +1,13 @@
-import logging
-from pathlib import Path
 from typing import List, Optional, Union
 
+import logging
 import torch
+from pathlib import Path
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from haystack import Document
-from haystack.ranker.base import BaseRanker
+from haystack.schema import Document
+from haystack.nodes.ranker import BaseRanker
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +31,12 @@ class SentenceTransformersRanker(BaseRanker):
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
     """
-
     def __init__(
             self,
             model_name_or_path: Union[str, Path],
             model_version: Optional[str] = None,
             top_k: int = 10
     ):
-
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
         'cross-encoder/ms-marco-MiniLM-L-12-v2'.

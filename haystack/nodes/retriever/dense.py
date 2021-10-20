@@ -1,21 +1,17 @@
+from typing import List, Union, Optional
+
 import logging
-from abc import abstractmethod
-from typing import List, Union, Optional, Dict
-import torch
-from torch.nn import DataParallel
 import numpy as np
 from pathlib import Path
-
-from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
-from haystack.modeling.utils import initialize_device_settings
 from tqdm.auto import tqdm
-from transformers import AutoTokenizer, AutoModel
+import torch
+from torch.nn import DataParallel
+from torch.utils.data.sampler import SequentialSampler
 
-from haystack.document_store.base import BaseDocumentStore
-from haystack import Document
-from haystack.retriever.base import BaseRetriever
-
-from haystack.modeling.infer import Inferencer
+from haystack.schema import Document
+from haystack.document_store import BaseDocumentStore
+from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
 from haystack.modeling.model.tokenization import Tokenizer
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
@@ -25,7 +21,6 @@ from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.training.base import Trainer
-from torch.utils.data.sampler import SequentialSampler
 
 
 logger = logging.getLogger(__name__)
@@ -33,12 +28,11 @@ logger = logging.getLogger(__name__)
 
 class DensePassageRetriever(BaseRetriever):
     """
-        Retriever that uses a bi-encoder (one transformer for query, one transformer for passage).
-        See the original paper for more details:
-        Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Question Answering."
-        (https://arxiv.org/abs/2004.04906).
+    Retriever that uses a bi-encoder (one transformer for query, one transformer for passage).
+    See the original paper for more details:
+    Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Question Answering."
+    (https://arxiv.org/abs/2004.04906).
     """
-
     def __init__(self,
                  document_store: BaseDocumentStore,
                  query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
@@ -105,7 +99,6 @@ class DensePassageRetriever(BaseRetriever):
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                         As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
             document_store=document_store, query_embedding_model=query_embedding_model,
@@ -230,7 +223,6 @@ class DensePassageRetriever(BaseRetriever):
                     "external_id": '19930582'}, ...]
         :return: dictionary of embeddings for "passages" and "query"
         """
-
         dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
         )
@@ -285,7 +277,6 @@ class DensePassageRetriever(BaseRetriever):
         :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
         :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
         """
-
         if self.processor.num_hard_negatives != 0:
             logger.warning(f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
                            f"not require any hard negatives. Setting num_hard_negatives to 0.")
@@ -362,7 +353,6 @@ class DensePassageRetriever(BaseRetriever):
         :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
         :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
         """
-
         self.processor.embed_title = embed_title
         self.processor.data_dir = Path(data_dir)
         self.processor.train_filename = train_filename
@@ -447,7 +437,6 @@ class DensePassageRetriever(BaseRetriever):
         """
         Load DensePassageRetriever from the specified directory.
         """
-
         load_dir = Path(load_dir)
         dpr = cls(
             document_store=document_store,
@@ -502,7 +491,6 @@ class EmbeddingRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
             document_store=document_store, embedding_model=embedding_model, model_version=model_version,
@@ -521,7 +509,10 @@ class EmbeddingRetriever(BaseRetriever):
         self.progress_bar = progress_bar
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
-        self.embedding_encoder = _EmbeddingEncoderFactory.get_embedding_retriever_impl(self, model_format)
+
+        if not model_format in _EMBEDDING_ENCODERS.keys():
+            raise ValueError(f"Unknown retriever embedding model format {model_format}")
+        self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
 
     def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
@@ -563,193 +554,3 @@ class EmbeddingRetriever(BaseRetriever):
         :return: Embeddings, one per input passage
         """
         return self.embedding_encoder.embed_passages(docs)
-
-
-class _EmbeddingEncoder:
-
-    @abstractmethod
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        """
-        Create embeddings for a list of queries.
-
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
-        """
-        pass
-
-    @abstractmethod
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        """
-        Create embeddings for a list of passages.
-
-        :param docs: List of documents to embed
-        :return: Embeddings, one per input passage
-        """
-        pass
-
-
-class _EmbeddingEncoderFactory:
-
-    @staticmethod
-    def get_embedding_retriever_impl(retriever: EmbeddingRetriever, model_format: str) -> _EmbeddingEncoder:
-        if model_format == "farm" or model_format == "transformers":
-            return _DefaultEmbeddingEncoder(retriever)
-        elif model_format == "sentence_transformers":
-            return _SentenceTransformersEmbeddingEncoder(retriever)
-        elif model_format == "retribert":
-            return _RetribertEmbeddingEncoder(retriever)
-        else:
-            raise ValueError(f"Unknown retriever embedding model format {model_format}")
-
-
-class _DefaultEmbeddingEncoder(_EmbeddingEncoder):
-
-    def __init__(
-            self,
-            retriever: EmbeddingRetriever
-    ):
-
-        self.embedding_model = Inferencer.load(
-            retriever.embedding_model, revision=retriever.model_version, task_type="embeddings",
-            extraction_strategy=retriever.pooling_strategy,
-            extraction_layer=retriever.emb_extraction_layer, gpu=retriever.use_gpu,
-            batch_size=4, max_seq_len=512, num_processes=0
-        )
-        # Check that document_store has the right similarity function
-        similarity = retriever.document_store.similarity
-        # If we are using a sentence transformer model
-        if "sentence" in retriever.embedding_model.lower() and similarity != "cosine":
-            logger.warning(f"You seem to be using a Sentence Transformer with the {similarity} function. "
-                           f"We recommend using cosine instead. "
-                           f"This can be set when initializing the DocumentStore")
-        elif "dpr" in retriever.embedding_model.lower() and similarity != "dot_product":
-            logger.warning(f"You seem to be using a DPR model with the {similarity} function. "
-                           f"We recommend using dot_product instead. "
-                           f"This can be set when initializing the DocumentStore")
-
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
-        # TODO: FARM's `sample_to_features_text` need to fix following warning -
-        # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
-        emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
-        emb = [(r["vec"]) for r in emb]
-        return emb
-
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
-
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.content for d in docs] # type: ignore
-        return self.embed(passages)
-
-
-class _SentenceTransformersEmbeddingEncoder(_EmbeddingEncoder):
-
-    def __init__(
-            self,
-            retriever: EmbeddingRetriever
-    ):
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError:
-            raise ImportError("Can't find package `sentence-transformers` \n"
-                              "You can install it via `pip install sentence-transformers` \n"
-                              "For details see https://github.com/UKPLab/sentence-transformers ")
-        # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
-        # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
-        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=device)
-        self.show_progress_bar = retriever.progress_bar
-        document_store = retriever.document_store
-        if document_store.similarity != "cosine":
-            logger.warning(
-                f"You are using a Sentence Transformer with the {document_store.similarity} function. "
-                f"We recommend using cosine instead. "
-                f"This can be set when initializing the DocumentStore")
-
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
-        # texts can be a list of strings or a list of [title, text]
-        # get back list of numpy embedding vectors
-        emb = self.embedding_model.encode(texts, batch_size=200, show_progress_bar=self.show_progress_bar)
-        emb = [r for r in emb]
-        return emb
-
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
-
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
-        return self.embed(passages)
-
-
-class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
-
-    def __init__(
-            self,
-            retriever: EmbeddingRetriever
-    ):
-
-        self.progress_bar = retriever.progress_bar
-        if retriever.use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
-
-        self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
-        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)
-
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-
-        queries = [{"text": q} for q in texts]
-        dataloader = self._create_dataloader(queries)
-
-        embeddings: List[np.ndarray] = []
-        disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
-
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
-            with torch.no_grad():
-                q_reps = self.embedding_model.embed_questions(input_ids=batch["input_ids"],
-                                                              attention_mask=batch["padding_mask"]).cpu().numpy()
-            embeddings.append(q_reps)
-
-        return np.concatenate(embeddings)
-
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-
-        doc_text = [{"text": d.content} for d in docs]
-        dataloader = self._create_dataloader(doc_text)
-
-        embeddings: List[np.ndarray] = []
-        disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
-
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
-            with torch.no_grad():
-                q_reps = self.embedding_model.embed_answers(input_ids=batch["input_ids"],
-                                                            attention_mask=batch["padding_mask"]).cpu().numpy()
-            embeddings.append(q_reps)
-
-        return np.concatenate(embeddings)
-
-    def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
-
-        dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
-        dataloader = NamedDataLoader(dataset=dataset, sampler=SequentialSampler(dataset),
-                                     batch_size=32, tensor_names=tensor_names)
-        return dataloader
-
-    def dataset_from_dicts(self, dicts: List[dict]):
-        texts = [x["text"] for x in dicts]
-        tokenized_batch = self.embedding_tokenizer(
-            texts,
-            return_token_type_ids=True,
-            return_attention_mask=True,
-            truncation=True,
-            padding=True
-        )
-
-        features_flat = flatten_rename(tokenized_batch,
-                                       ["input_ids", "token_type_ids", "attention_mask"],
-                                       ["input_ids", "segment_ids", "padding_mask"])
-        dataset, tensornames = convert_features_to_dataset(features=features_flat)
-        return dataset, tensornames

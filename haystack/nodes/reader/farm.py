@@ -1,7 +1,8 @@
+from typing import List, Optional, Dict, Any
+
 import logging
 import multiprocessing
 from pathlib import Path
-from typing import List, Optional, Union, Dict, Any
 from collections import defaultdict
 from time import perf_counter
 
@@ -13,13 +14,14 @@ from haystack.modeling.infer import QAInferencer
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.model.predictions import QAPred, QACandidate
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.training.base import Trainer
-from haystack.modeling.evaluation.eval import Evaluator
+from haystack.modeling.training import Trainer
+from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 from haystack import Document, Answer, Span
-from haystack.document_store.base import BaseDocumentStore
-from haystack.reader.base import BaseReader
+from haystack.document_store import BaseDocumentStore
+from haystack.nodes.reader import BaseReader
+
 
 logger = logging.getLogger(__name__)
 
@@ -752,4 +754,3 @@ class FARMReader(BaseReader):
             quantize=quantize,
             opset_version=opset_version
         )
-

@@ -1,15 +1,14 @@
-import logging
-import subprocess
-from pathlib import Path
-import tempfile
-import os
 from typing import List, Optional, Dict, Any
 
+import os
+import logging
+import tempfile
+import subprocess
+from pathlib import Path
+from pdf2image import convert_from_path
 
-from pdf2image import convert_from_path, convert_from_bytes
+from haystack.nodes.file_converter import BaseConverter, ImageToTextConverter
 
-from haystack.file_converter.base import BaseConverter
-from haystack.file_converter.image import ImageToTextConverter
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,7 @@
 from typing import List, Union, Dict, Optional, Tuple
 
-import json
-from haystack import BaseComponent, Document, MultiLabel
-from transformers import AutoTokenizer, AutoModelForTokenClassification, TokenClassificationPipeline
+from haystack import BaseComponent, Document
+from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
 
 

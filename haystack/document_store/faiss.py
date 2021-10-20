@@ -4,20 +4,19 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
+from scipy.special import expit
 
-from haystack.document_store import sql
 try:
     import faiss
 except ImportError:
     faiss = None
 import numpy as np
 
-from haystack import Document
-from haystack.document_store.sql import SQLDocumentStore
-from haystack.retriever.base import BaseRetriever
+from haystack.schema import Document
+from haystack.document_store import SQLDocumentStore
+from haystack.nodes.retriever import BaseRetriever
 from haystack.utils import get_batches_from_generator
-from scipy.special import expit
-from haystack.document_store.base import DuplicateDocumentError
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +30,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     The document text and meta-data (for filtering) are stored using the SQLDocumentStore, while
     the vector embeddings are indexed in a FAISS Index.
-
     """
-
     def __init__(
         self,
         sql_url: str = "sqlite:///faiss_document_store.db",
@@ -166,9 +163,8 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
-        :return:
+        :return: None
         """
-
         index = index or self.index
         duplicate_documents = duplicate_documents or self.duplicate_documents
         assert duplicate_documents in self.duplicate_documents_options, \
@@ -244,7 +240,6 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
-
         index = index or self.index
 
         if update_existing_embeddings is True:
@@ -375,7 +370,6 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Name of the index to train. If None, the DocumentStore's default index (self.index) will be used.
         :return: None
         """
-
         index = index or self.index
         if embeddings and documents:
             raise ValueError("Either pass `documents` or `embeddings`. You passed both.")

@@ -1,1 +1,1 @@
-from haystack.connector.crawler import Crawler
+from haystack.nodes.connector.crawler import Crawler

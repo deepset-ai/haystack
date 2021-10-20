@@ -1,20 +1,21 @@
+from typing import List, Optional, Union, Dict, Any, Generator
+
 import json
 import logging
 import time
 from copy import deepcopy
 from string import Template
-from typing import List, Optional, Union, Dict, Any, Generator
-
-from elasticsearch import Elasticsearch, RequestsHttpConnection
-from elasticsearch.helpers import bulk, scan
-from elasticsearch.exceptions import RequestError
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
+from elasticsearch import Elasticsearch, RequestsHttpConnection
+from elasticsearch.helpers import bulk, scan
+from elasticsearch.exceptions import RequestError
 
-from haystack.document_store.base import BaseDocumentStore, DuplicateDocumentError
+from haystack.document_store import BaseDocumentStore
 from haystack import Document, Label
 from haystack.utils import get_batches_from_generator
+
 
 logger = logging.getLogger(__name__)
 

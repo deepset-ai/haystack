@@ -8,7 +8,6 @@ class BaseSummarizer(BaseComponent):
     """
     Abstract class for Summarizer
     """
-
     outgoing_edges = 1
 
     @abstractmethod

@@ -1,1 +1,2 @@
-from haystack.document_classifier.transformers import TransformersDocumentClassifier
+from haystack.nodes.document_classifier.base import BaseDocumentClassifier
+from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier

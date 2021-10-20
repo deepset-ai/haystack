@@ -1,21 +1,19 @@
-import itertools
-import logging
-import collections
 from typing import Any, Dict, Union, List, Optional, Generator
-from uuid import uuid4
 
+import logging
+import itertools
 import numpy as np
-from sqlalchemy import and_, func, create_engine, Column, Integer, Float, String, DateTime, ForeignKey, Boolean, Text, text, JSON
+from uuid import uuid4
+from sqlalchemy import and_, func, create_engine, Column, String, DateTime, ForeignKey, Boolean, Text, text, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
 
-from haystack import Document, Label, Answer
-from haystack.document_store.base import BaseDocumentStore
+from haystack.schema import Document, Label, Answer
+from haystack.document_store import BaseDocumentStore
+
 
 logger = logging.getLogger(__name__)
-
-
 Base = declarative_base()  # type: Any
 
 
@@ -40,6 +38,7 @@ class DocumentORM(ORMBase):
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
 
+
 class MetaDocumentORM(ORMBase):
     __tablename__ = "meta_document"
 
@@ -53,6 +52,7 @@ class MetaDocumentORM(ORMBase):
     )
 
     documents = relationship("DocumentORM", back_populates="meta")
+
 
 class MetaLabelORM(ORMBase):
     __tablename__ = "meta_label"

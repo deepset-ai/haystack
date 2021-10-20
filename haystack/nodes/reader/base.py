@@ -1,13 +1,14 @@
+from typing import List, Optional, Sequence, Dict, Tuple
+
 import numpy as np
 from scipy.special import expit
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from copy import deepcopy
-from typing import List, Optional, Sequence, Dict, Tuple
 from functools import wraps
 from time import perf_counter
 
-
-from haystack import Document, BaseComponent, Answer, Span
+from haystack.schema import Document, Answer, Span
+from haystack.nodes.base import BaseComponent
 
 
 class BaseReader(BaseComponent):

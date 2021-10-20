@@ -1,2 +1,4 @@
-from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader, TableReader
+from haystack.nodes.reader.base import BaseReader
+from haystack.nodes.reader.farm import FARMReader
+from haystack.nodes.reader.transformers import TransformersReader
+from haystack.nodes.reader.table import TableReader

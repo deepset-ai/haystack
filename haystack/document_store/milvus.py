@@ -1,18 +1,17 @@
-import logging
 from typing import Any, Dict, Generator, List, Optional, Union
 
-import numpy
+import logging
 import numpy as np
+from tqdm import tqdm
+from scipy.special import expit
 
 from milvus import IndexType, MetricType, Milvus, Status
-from scipy.special import expit
-from tqdm import tqdm
 
-from haystack import Document
-from haystack.document_store.sql import SQLDocumentStore
-from haystack.retriever.base import BaseRetriever
+from haystack.schema import Document
+from haystack.document_store import SQLDocumentStore
+from haystack.nodes.retriever import BaseRetriever
 from haystack.utils import get_batches_from_generator
-from haystack.document_store.base import DuplicateDocumentError
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,6 @@ class MilvusDocumentStore(SQLDocumentStore):
     1. Start a Milvus server (see https://milvus.io/docs/v1.0.0/install_milvus.md)
     2. Init a MilvusDocumentStore in Haystack
     """
-
     def __init__(
             self,
             sql_url: str = "sqlite:///",
@@ -97,7 +95,6 @@ class MilvusDocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
             sql_url=sql_url, milvus_url=milvus_url, connection_pool=connection_pool, index=index, vector_dim=vector_dim,
@@ -184,7 +181,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
-        :return:
+        :return: None
         """
         index = index or self.index
         index_param = index_param or self.index_param
@@ -331,7 +328,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
         :param return_embedding: To return document embedding
-        :return:
+        :return: list of Documents that are the most similar to `query_emb`
         """
         if filters:
             logger.warning("Query filters are not implemented for the MilvusDocumentStore.")
@@ -474,7 +471,6 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
-
         index = index or self.index
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
@@ -531,7 +527,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             raise RuntimeError(f'Getting vector embedding by id failed: {status}')
 
         for embedding, doc in zip(vector_embeddings, docs_with_vector_ids):
-            doc.embedding = numpy.array(embedding, dtype="float32")
+            doc.embedding = np.array(embedding, dtype="float32")
 
     def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
         index = index or self.index

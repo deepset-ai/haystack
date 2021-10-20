@@ -1,15 +1,14 @@
-import logging
-from collections import OrderedDict
 from typing import List, Optional
 
+import logging
 import pandas as pd
+from collections import OrderedDict, namedtuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from haystack.document_store.base import BaseDocumentStore
-from haystack import Document
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.retriever.base import BaseRetriever
-from collections import namedtuple
+from haystack.schema import Document
+from haystack.document_store import BaseDocumentStore, ElasticsearchDocumentStore
+from haystack.nodes.retriever import BaseRetriever
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,6 @@ class ElasticsearchRetriever(BaseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
 
@@ -84,7 +82,6 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
     """
-
     def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -116,13 +113,11 @@ class TfidfRetriever(BaseRetriever):
 
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
-
     def __init__(self, document_store: BaseDocumentStore, top_k: int = 10):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param top_k: How many documents to return per query.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(document_store=document_store, top_k=top_k)
 

@@ -8,8 +8,8 @@ from pathlib import Path
 
 from haystack import Document, Label, MultiLabel, BaseComponent
 from haystack.errors import DuplicateDocumentError
-from haystack.preprocessor.preprocessor import PreProcessor
-from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
+from haystack.nodes.preprocessor import PreProcessor
+from haystack.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
 
 logger = logging.getLogger(__name__)

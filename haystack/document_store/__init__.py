@@ -1,3 +1,4 @@
+from haystack.document_store.base import BaseDocumentStore, BaseKnowledgeGraph
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore, OpenDistroElasticsearchDocumentStore, OpenSearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore

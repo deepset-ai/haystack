@@ -14,7 +14,6 @@ class Text2SparqlRetriever(BaseGraphRetriever):
     given in text form to queries in SPARQL format.
     The generated SPARQL query is executed on a knowledge graph.
     """
-
     def __init__(self, knowledge_graph, model_name_or_path, top_k: int = 1):
         """
         Init the Retriever by providing a knowledge graph and a pre-trained BART model

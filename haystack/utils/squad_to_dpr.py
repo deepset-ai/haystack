@@ -55,8 +55,10 @@ DPR format
 """
 
 import argparse
+import json
 import logging
 import subprocess
+from tqdm import tqdm
 from itertools import islice
 from pathlib import Path
 from time import sleep
@@ -66,14 +68,13 @@ from elasticsearch import Elasticsearch
 from haystack.document_store.base import BaseDocumentStore
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore  # keep it here !
 from haystack.document_store.faiss import FAISSDocumentStore  # keep it here !
-from haystack.retriever.sparse import ElasticsearchRetriever  # keep it here !
-from haystack.retriever.dense import DensePassageRetriever  # keep it here !
-from haystack.preprocessor.preprocessor import PreProcessor
-from haystack.retriever.base import BaseRetriever
-from tqdm import tqdm
-import json
+from haystack.nodes.retriever import ElasticsearchRetriever, DensePassageRetriever  # keep it here !
+from haystack.nodes.preprocessor import PreProcessor
+from haystack.nodes.retriever.base import BaseRetriever
+
 
 logger = logging.getLogger(__name__)
+
 
 class HaystackDocumentStore:
     def __init__(self,

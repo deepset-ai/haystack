@@ -12,11 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tokenization classes."""
+"""
+Tokenization classes.
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
+from typing import Dict, Any, Tuple, Optional
 
+import re
 import logging
-
 import numpy as np
 from transformers import (
     AlbertTokenizer, AlbertTokenizerFast,
@@ -35,7 +38,9 @@ from transformers import AutoConfig
 
 from haystack.modeling.data_handler.samples import SampleBasket
 
+
 logger = logging.getLogger(__name__)
+
 
 # Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
@@ -45,7 +50,6 @@ class Tokenizer:
     """
     Simple Wrapper for Tokenizers from the transformers package. Enables loading of different Tokenizer classes with a uniform interface.
     """
-
     @classmethod
     def load(cls, pretrained_model_name_or_path, revision=None, tokenizer_class=None, use_fast=True, **kwargs):
         """
@@ -189,7 +193,6 @@ class Tokenizer:
     def _infer_tokenizer_class_from_string(pretrained_model_name_or_path):
         # If inferring tokenizer class from config doesn't succeed,
         # fall back to inferring tokenizer class from model name.
-
         if "albert" in pretrained_model_name_or_path.lower():
             tokenizer_class = "AlbertTokenizer"
         elif "bigbird" in pretrained_model_name_or_path.lower():
@@ -293,13 +296,14 @@ def tokenize_batch_question_answering(pre_baskets, tokenizer, indices):
             baskets.append(SampleBasket(raw=raw, id_internal=internal_id, id_external=external_id, samples=None))
     return baskets
 
+
 def _get_start_of_word_QA(word_ids):
     words = np.array(word_ids)
     start_of_word_single = [1] + list(np.ediff1d(words))
     return start_of_word_single
 
 
-def tokenize_with_metadata(text, tokenizer):
+def tokenize_with_metadata(text: str, tokenizer: Tokenizer) -> Dict[str, Any]:
     """
     Performing tokenization while storing some important metadata for each token:
 
@@ -315,11 +319,8 @@ def tokenize_with_metadata(text, tokenizer):
                type is lost which might be helpful for certain NLP tasks ( e.g tab for tables).
 
     :param text: Text to tokenize
-    :type text: str
     :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
     :return: Dictionary with "tokens", "offsets" and "start_of_word"
-    :rtype: dict
-
     """
     # normalize all other whitespace characters to " "
     # Note: using text.split() directly would destroy the offset,
@@ -362,17 +363,23 @@ def tokenize_with_metadata(text, tokenizer):
             cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
 
         # split "words" into "subword tokens"
+        # FIXME _words_to_tokens is orphan
         tokens, offsets, start_of_word = _words_to_tokens(
             words, word_offsets, tokenizer
         )
-
         tokenized_dict = {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
-
     return tokenized_dict
 
 
-def truncate_sequences(seq_a, seq_b, tokenizer, max_seq_len, truncation_strategy='longest_first',
-                       with_special_tokens=True, stride=0):
+def truncate_sequences(
+        seq_a: list, 
+        seq_b: Optional[list], 
+        tokenizer: Tokenizer, 
+        max_seq_len: int, 
+        truncation_strategy: str = 'longest_first',
+        with_special_tokens: bool = True, 
+        stride: int = 0
+    ) -> Tuple[list, list, list]:
     """
     Reduces a single sequence or a pair of sequences to a maximum sequence length.
     The sequences can contain tokens or any other elements (offsets, masks ...).
@@ -386,20 +393,13 @@ def truncate_sequences(seq_a, seq_b, tokenizer, max_seq_len, truncation_strategy
     - do_not_truncate: Does not truncate (raise an error if the input sequence is longer than max_length)
 
     :param seq_a: First sequence of tokens/offsets/...
-    :type seq_a: list
     :param seq_b: Optional second sequence of tokens/offsets/...
-    :type seq_b: None or list
     :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
     :param max_seq_len:
-    :type max_seq_len: int
     :param truncation_strategy: how the sequence(s) should be truncated down. Default: "longest_first" (see above for other options).
-    :type truncation_strategy: str
     :param with_special_tokens: If true, it'll remove some additional tokens to have exactly enough space for later adding special tokens (CLS, SEP etc.)
-    :type with_special_tokens: bool
     :param stride: optional stride of the window during truncation
-    :type stride: int
     :return: truncated seq_a, truncated seq_b, overflowing tokens
-
     """
     pair = bool(seq_b is not None)
     len_a = len(seq_a)

@@ -1,16 +1,19 @@
+from typing import Dict, Generator, List, Optional, Union
+
 import logging
-from typing import Any, Dict, Generator, List, Optional, Union
 import numpy as np
 from tqdm import tqdm
 
-from haystack import Document
-from haystack.document_store.base import BaseDocumentStore
+from haystack.schema import Document
+from haystack.document_store import BaseDocumentStore
 from haystack.utils import get_batches_from_generator
 
-from weaviate import client, auth, AuthClientPassword
+from weaviate import client, AuthClientPassword
 from weaviate import ObjectsBatchRequest
 
+
 logger = logging.getLogger(__name__)
+
 
 class WeaviateDocumentStore(BaseDocumentStore):
     """
@@ -33,7 +36,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
     Limitations:
     The current implementation is not supporting the storage of labels, so you cannot run any evaluation workflows.
     """
-
     def __init__(
             self,
             host: Union[str, List[str]] = "http://localhost",
@@ -84,7 +86,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already exists.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
             host=host, port=port, timeout_config=timeout_config, username=username, password=password,
@@ -136,7 +137,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
     ):
-        """Create a new index (schema/class in Weaviate) for storing documents in case if an index (schema) with the name doesn't exist already."""
+        """
+        Create a new index (schema/class in Weaviate) for storing documents in case if an 
+        index (schema) with the name doesn't exist already.
+        """
         index = index or self.index
 
         if self.custom_schema:
@@ -252,7 +256,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
                             batch_size: int = 10_000) -> List[Document]:
-        """Fetch documents by specifying a list of text id strings"""
+        """
+        Fetch documents by specifying a list of text id strings.
+        """
         index = index or self.index
         documents = []
         #TODO: better implementation with multiple where filters instead of chatty call below?
@@ -264,7 +270,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         return documents
 
     def _get_current_properties(self, index: Optional[str] = None) -> List[str]:
-        """Get all the existing properties in the schema"""
+        """
+        Get all the existing properties in the schema.
+        """
         index = index or self.index
         cur_properties = []
         for class_item in self.weaviate_client.schema.get()['classes']:
@@ -274,7 +282,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         return cur_properties
 
     def _build_filter_clause(self, filters:Dict[str, List[str]]) -> dict:
-        """Transform Haystack filter conditions to Weaviate where filter clauses"""
+        """
+        Transform Haystack filter conditions to Weaviate where filter clauses.
+        """
         weaviate_filters = []
         weaviate_filter = {}
         for key, values in filters.items():
@@ -295,7 +305,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             return weaviate_filter
 
     def _update_schema(self, new_prop:str, index: Optional[str] = None):
-        """Updates the schema with a new property"""
+        """
+        Updates the schema with a new property.
+        """
         index = index or self.index
         property_dict = {
             "dataType": [
@@ -307,7 +319,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.weaviate_client.schema.property.create(index, property_dict)
 
     def _check_document(self, cur_props: List[str], doc: dict) -> List[str]:
-        """Find the properties in the document that don't exist in the existing schema"""
+        """
+        Find the properties in the document that don't exist in the existing schema.
+        """
         return [item for item in doc.keys() if item not in cur_props]
 
     def write_documents(
@@ -396,7 +410,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def update_document_meta(self, id: str, meta: Dict[str, str]):
         """
-        Update the metadata dictionary of a document by specifying its string id
+        Update the metadata dictionary of a document by specifying its string id.
         """
         self.weaviate_client.data_object.update(meta, class_name=self.index, uuid=id)
 

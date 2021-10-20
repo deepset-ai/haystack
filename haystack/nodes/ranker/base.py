@@ -1,13 +1,12 @@
+from typing import List, Optional
+
 import logging
 from abc import abstractmethod
-from copy import deepcopy
-from typing import List, Optional
 from functools import wraps
 from time import perf_counter
 
-from tqdm import tqdm
-
 from haystack import Document, BaseComponent
+
 
 logger = logging.getLogger(__name__)
 

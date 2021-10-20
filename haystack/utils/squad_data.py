@@ -1,13 +1,14 @@
+from typing import List
+
+import logging
 import json
+import random
 import pandas as pd
 from tqdm import tqdm
-import logging
-from typing import Dict, List, Union
-import random
 
 from haystack.schema import Document, Label
+from haystack.modeling.data_handler.processor import _read_squad_file
 
-from haystack.modeling.data_handler.utils import read_squad_file
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -15,10 +16,14 @@ logger.setLevel(logging.DEBUG)
 
 tqdm.pandas()
 
+
 COLUMN_NAMES = ["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"]
 
+
 class SquadData:
-    """This class is designed to manipulate data that is in SQuAD format"""
+    """
+    This class is designed to manipulate data that is in SQuAD format
+    """
     def __init__(self, squad_data):
         """
         :param squad_data: SQuAD format data, either as a dict with a `data` key, or just a list of SQuAD documents
@@ -54,7 +59,9 @@ class SquadData:
         return cls(data)
 
     def save(self, filename: str):
-        """Write the data stored in this object to a json file"""
+        """
+        Write the data stored in this object to a json file.
+        """
         with open(filename, "w") as f:
             squad_data = {"version": self.version, "data": self.data}
             json.dump(squad_data, f, indent=2)
@@ -66,7 +73,9 @@ class SquadData:
         )
 
     def to_document_objs(self):
-        """Export all paragraphs stored in this object to haystack.Document objects"""
+        """
+        Export all paragraphs stored in this object to haystack.Document objects.
+        """
         df_docs = self.df[["title", "context"]]
         df_docs = df_docs.drop_duplicates()
         record_dicts = df_docs.to_dict("records")
@@ -80,7 +89,9 @@ class SquadData:
 
     # TODO refactor to new Label objects
     def to_label_objs(self):
-        """Export all labels stored in this object to haystack.Label objects"""
+        """
+        Export all labels stored in this object to haystack.Label objects.
+        """
         df_labels = self.df[["id", "question", "answer_text", "answer_start"]]
         record_dicts = df_labels.to_dict("records")
         labels = [
@@ -156,8 +167,9 @@ class SquadData:
         return c
 
     def df_to_data(self, df):
-        """Convert a dataframe into SQuAD format data (list of SQuAD document dictionaries)"""
-
+        """
+        Convert a dataframe into SQuAD format data (list of SQuAD document dictionaries).
+        """
         logger.info("Converting data frame to squad format data")
 
         # Aggregate the answers of each question
@@ -204,16 +216,13 @@ class SquadData:
     def _aggregate_answers(x):
         x = x[["answer_text", "answer_start"]]
         x = x.rename(columns={"answer_text": "text"})
-
         # Span anwser
         try:
             x["answer_start"] = x["answer_start"].astype(int)
             ret = x.to_dict("records")
-
         # No answer
         except ValueError:
             ret = []
-
         return ret
 
     def set_data(self, data):
@@ -232,12 +241,16 @@ class SquadData:
         return self.df_to_data(df_sampled)
 
     def get_all_paragraphs(self):
-        """Return all paragraph strings"""
+        """
+        Return all paragraph strings.
+        """
         return self.df["context"].unique().tolist()
 
     def get_all_questions(self):
-        """Return all question strings. Note that if the same question appears for different paragraphs, it will be
-        returned multiple times by this fn"""
+        """
+        Return all question strings. Note that if the same question appears for different paragraphs, it will be
+        returned multiple times by this fn
+        """
         df_questions = self.df[["title", "context", "question"]]
         df_questions = df_questions.drop_duplicates()
         questions = df_questions["question"].tolist()
@@ -247,9 +260,10 @@ class SquadData:
         """Return all document title strings"""
         return self.df["title"].unique().tolist()
 
+
 if __name__ == "__main__":
     # Download the SQuAD dataset if it isn't at target directory
-    read_squad_file( "../data/squad20/train-v2.0.json")
+    _read_squad_file( "../data/squad20/train-v2.0.json")
 
     filename1 = "../data/squad20/train-v2.0.json"
     filename2 = "../data/squad20/dev-v2.0.json"

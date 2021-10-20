@@ -18,11 +18,12 @@ logging.getLogger('haystack.modeling.evaluation.eval').setLevel(logging.INFO)
 logging.getLogger('haystack.modeling.model.optimization').setLevel(logging.INFO)
 logging.getLogger('faiss.loader').setLevel(logging.WARNING)
 
-import pandas as pd
-from haystack.schema import Document, Answer, Label, MultiLabel, BaseComponent, Span
-from haystack.pipeline import Pipeline
+from haystack.schema import Document, Answer, Label, MultiLabel, Span
+from haystack.nodes import BaseComponent
+from haystack.pipelines import Pipeline
 from haystack._version import __version__
 
+import pandas as pd
 pd.options.display.max_colwidth = 80
 
 logger = logging.getLogger(__name__)

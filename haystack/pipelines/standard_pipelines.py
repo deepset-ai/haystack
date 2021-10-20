@@ -6,14 +6,14 @@ from typing import List, Optional, Dict
 from functools import wraps
 
 from haystack.schema import Document
-from haystack.nodes.answer_generator.base import BaseGenerator
-from haystack.nodes.reader.base import BaseReader
-from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.summarizer.base import BaseSummarizer
-from haystack.nodes.translator.base import BaseTranslator
+from haystack.nodes.answer_generator import BaseGenerator
+from haystack.nodes.reader import BaseReader
+from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.summarizer import BaseSummarizer
+from haystack.nodes.translator import BaseTranslator
 from haystack.nodes.question_generator import QuestionGenerator
-from haystack.document_store.base import BaseDocumentStore
-from haystack.pipelines.base import Pipeline
+from haystack.document_store import BaseDocumentStore
+from haystack.pipelines import Pipeline
 
 
 logger = logging.getLogger(__name__)

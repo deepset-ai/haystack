@@ -1,27 +1,27 @@
-import logging
-from collections import defaultdict
-from copy import deepcopy
 from typing import Dict, List, Optional, Union, Generator
-from uuid import uuid4
-import time
 
+import time
+import logging
 import numpy as np
+from copy import deepcopy
+from collections import defaultdict
 from scipy.spatial.distance import cosine
 from tqdm import tqdm
 
-from haystack import Document, Label
-from haystack.document_store.base import BaseDocumentStore, DuplicateDocumentError
-from haystack.retriever.base import BaseRetriever
+from haystack.schema import Document, Label
+from haystack.errors import DuplicateDocumentError
+from haystack.document_store import BaseDocumentStore
+from haystack.nodes.retriever import BaseRetriever
 from haystack.utils import get_batches_from_generator
+
 
 logger = logging.getLogger(__name__)
 
 
 class InMemoryDocumentStore(BaseDocumentStore):
     """
-        In-memory document store
+    In-memory document store
     """
-
     def __init__(
         self,
         index: str = "document",
@@ -51,7 +51,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
                 index=index, label_index=label_index, embedding_field=embedding_field, embedding_dim=embedding_dim,
@@ -118,7 +117,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         }
 
     def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None):
-        """Write annotation labels into document store."""
+        """
+        Write annotation labels into document store.
+        """
         index = index or self.label_index
         label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
 
@@ -138,7 +139,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][label.id] = label
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
-        """Fetch a document by specifying its text id string"""
+        """
+        Fetch a document by specifying its text id string.
+        """
         index = index or self.index
         documents = self.get_documents_by_id([id], index=index)
         if documents:
@@ -147,7 +150,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
             return None
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:  # type: ignore
-        """Fetch documents by specifying a list of text id strings"""
+        """
+        Fetch documents by specifying a list of text id strings.
+        """
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
@@ -158,7 +163,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None) -> List[Document]:
-
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -170,10 +174,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param return_embedding: To return document embedding
         :return:
         """
-
-        from numpy import dot
-        from numpy.linalg import norm
-
         index = index or self.index
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -194,8 +194,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
             new_document.embedding = doc.embedding if return_embedding is True else None
 
             if self.similarity == "dot_product":
-                score = dot(query_emb, doc.embedding) / (
-                    norm(query_emb) * norm(doc.embedding)
+                score = np.dot(query_emb, doc.embedding) / (
+                    np.linalg.norm(query_emb) * np.linalg.norm(doc.embedding)
                 )
             elif self.similarity == "cosine":
                 # cosine similarity score = 1 - cosine distance
@@ -274,7 +274,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_label_count(self, index: Optional[str] = None) -> int:
         """
-        Return the number of labels in the document store
+        Return the number of labels in the document store.
         """
         index = index or self.label_index
         return len(self.indexes[index].items())
@@ -324,6 +324,15 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
     ) -> List[Document]:
+        """
+        Get all documents from the document store as a list.
+
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param return_embedding: Whether to return the document embeddings.
+        """
         result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding)
         documents = list(result)
         return documents
@@ -355,7 +364,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
         """
-        Return all labels in the document store
+        Return all labels in the document store.
         """
         index = index or self.label_index
 

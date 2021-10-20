@@ -3,9 +3,8 @@ from abc import abstractmethod
 from typing import List
 from functools import wraps
 from time import perf_counter
-
-
 from haystack import Document, BaseComponent
+
 
 logger = logging.getLogger(__name__)
 

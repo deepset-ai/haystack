@@ -1,8 +1,7 @@
-from haystack.file_converter.base import FileTypeClassifier
-from haystack.file_converter.docx import DocxToTextConverter
-from haystack.file_converter.markdown import MarkdownConverter
-from haystack.file_converter.pdf import PDFToTextConverter
-from haystack.file_converter.tika import TikaConverter
-from haystack.file_converter.txt import TextConverter
-from haystack.file_converter.image import ImageToTextConverter
-from haystack.file_converter.pdf import PDFToTextOCRConverter
+from haystack.nodes.file_converter.base import BaseConverter
+from haystack.nodes.file_converter.docx import DocxToTextConverter
+from haystack.nodes.file_converter.image import ImageToTextConverter
+from haystack.nodes.file_converter.markdown import MarkdownConverter
+from haystack.nodes.file_converter.pdf import PDFToTextConverter, PDFToTextOCRConverter
+from haystack.nodes.file_converter.tika import TikaConverter, TikaXHTMLParser
+from haystack.nodes.file_converter.txt import TextConverter

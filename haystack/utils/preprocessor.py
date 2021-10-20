@@ -1,27 +1,34 @@
+from typing import Callable, Dict, List, Optional, Tuple, Union, Generator
+
 import io
 import re
+import json
 import logging
 import tarfile
 import zipfile
-from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union, Generator
-import json
-
 import requests
+from pathlib import Path
 
-from haystack.file_converter.base import BaseConverter
-from haystack.file_converter.docx import DocxToTextConverter
-from haystack.file_converter.pdf import PDFToTextConverter
-from haystack.file_converter.tika import TikaConverter
-from haystack import Document, Label, Answer, Span
-from haystack.file_converter.txt import TextConverter
-from haystack.preprocessor.preprocessor import PreProcessor
+from haystack.schema import Document, Label, Answer, Span
+from haystack.nodes.preprocessor import PreProcessor
+from haystack.nodes.file_converter import (
+    BaseConverter, 
+    DocxToTextConverter,
+    PDFToTextConverter,
+    TikaConverter,
+    TextConverter
+)
+
 
 logger = logging.getLogger(__name__)
 
 
-
-def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool =False) -> Tuple[List[Document], List[Label]]:
+def eval_data_from_json(
+    filename: str, 
+    max_docs: Union[int, bool] = None, 
+    preprocessor: PreProcessor = None, 
+    open_domain: bool =False
+) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
@@ -29,9 +36,7 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
     :param filename: Path to file in SQuAD format
     :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
     :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
-    :return: (List of Documents, List of Labels)
     """
-
     docs: List[Document] = []
     labels = []
     problematic_ids = []
@@ -60,9 +65,13 @@ def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, prepro
     return docs, labels
 
 
-def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
-                         max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None,
-                         open_domain: bool = False) -> Generator[Tuple[List[Document], List[Label]], None, None]:
+def eval_data_from_jsonl(
+    filename: str, 
+    batch_size: Optional[int] = None,
+    max_docs: Union[int, bool] = None, 
+    preprocessor: PreProcessor = None,
+    open_domain: bool = False
+) -> Generator[Tuple[List[Document], List[Label]]]:
     """
     Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
@@ -74,9 +83,7 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
     :param filename: Path to file in SQuAD format
     :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
     :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
-    :return: (List of Documents, List of Labels)
     """
-
     docs: List[Document] = []
     labels = []
     problematic_ids = []
@@ -107,7 +114,9 @@ def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None,
 
 
 def _extract_docs_and_labels_from_dict(document_dict: Dict, preprocessor: PreProcessor = None, open_domain: bool=False):
-    """Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)"""
+    """
+    Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)
+    """
     docs = []
     labels = []
     problematic_ids = []
@@ -247,10 +256,7 @@ def convert_files_to_dicts(
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
     :param encoding: character encoding to use when converting pdf documents.
-
-    :return: None
     """
-
     file_paths = [p for p in Path(dir_path).glob("**/*")]
     allowed_suffixes = [".pdf", ".txt", ".docx"]
     suffix2converter: Dict[str, BaseConverter] = {}
@@ -318,8 +324,6 @@ def tika_convert_files_to_dicts(
     :param dir_path: path for the documents to be written to the DocumentStore
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
-
-    :return: None
     """
     converter = TikaConverter()
     paths = [p for p in Path(dir_path).glob("**/*")]
@@ -385,17 +389,14 @@ def tika_convert_files_to_dicts(
     return documents
 
 
-def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None):
+def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None) -> bool:
     """
     Fetch an archive (zip or tar.gz) from a url via http and extract content to an output directory.
 
     :param url: http address
-    :type url: str
     :param output_dir: local path
-    :type output_dir: str
     :param proxies: proxies details as required by requests library
-    :type proxies: dict
-    :return: bool if anything got fetched
+    :return: if anything got fetched
     """
     # verify & prepare local directory
     path = Path(output_dir)
@@ -432,9 +433,7 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
     Converts a SQuAD-json-file into jsonl format with one document per line.
 
     :param squad_file: SQuAD-file in json format.
-    :type squad_file: str
     :param output_file: Name of output file (SQuAD in jsonl format)
-    :type output_file: str
     """
     with open(squad_file, encoding='utf-8') as json_file, open(output_file, "w", encoding='utf-8') as jsonl_file:
         squad_json = json.load(json_file)
