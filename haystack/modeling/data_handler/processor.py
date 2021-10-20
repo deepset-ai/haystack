@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from inspect import signature
 from pathlib import Path
 from io import StringIO
-from typing import Optional, Dict, List, Union, Any
+from typing import Optional, Dict, List, Union, Any, Iterable
 
 import pandas as pd
 import numpy as np
@@ -1360,7 +1360,24 @@ class MultimodalSimilarityProcessor(Processor):
         return dicts
 
     @staticmethod
-    def _read_multimodal_dpr_json(file, max_samples=None):
+    def _read_multimodal_dpr_json(file: str, max_samples: Optional[int] = None) -> List[Dict]:
+        """
+        Reads a Multimodal Retrieval data file in json format and returns a list of dictionaries.
+
+        :param file: filename of MMR data in json format
+
+        Returns:
+            list of dictionaries: List[dict]
+            each dictionary: {
+                        "query": str -> query_text
+                        "passages": List[dictionaries] -> [
+                                    {"text": str, "title": str, "label": "positive" / "hard_negative, "external_id": id},
+                                    or
+                                    {"page_title": str, "section_title": str, "caption": str, "columns": list of str,
+                                     "rows": list of lists of str, "label": "positive" / "hard_negative", "type": "table", "external_id": id}
+                                    ...]
+                        }
+            """
         dicts = json.load(open(file))
         if max_samples:
             dicts = random.sample(dicts, min(max_samples, len(dicts)))
@@ -1400,7 +1417,7 @@ class MultimodalSimilarityProcessor(Processor):
             standard_dicts.append(sample)
         return standard_dicts
 
-    def dataset_from_dicts(self, dicts, indices=None, return_baskets = False):
+    def dataset_from_dicts(self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity.
         For conversion we have an internal representation called "baskets".
@@ -1408,7 +1425,7 @@ class MultimodalSimilarityProcessor(Processor):
         passages that do not fit the query)
         Each stage adds or transforms specific information to our baskets.
 
-        :param dicts: dict, input dictionary with DPR-style content
+        :param dicts: List of dicts, input dictionary with DPR-style content
                         {"query": str,
                          "passages": List[
                                         {'title': str,
@@ -1442,22 +1459,22 @@ class MultimodalSimilarityProcessor(Processor):
         else:
             return dataset, tensor_names, problematic_ids
 
-    def _fill_baskets(self, dicts, indices):
+    def _fill_baskets(self, dicts: List[Dict], indices: Iterable[int]):
         baskets = []
         if not indices:
             indices = range(len(dicts))
-        for d, id_internal in zip(dicts,indices):
+        for d, id_internal in zip(dicts, indices):
             basket = SampleBasket(id_external=None,
                                   id_internal=id_internal,
                                   raw=d)
             baskets.append(basket)
         return baskets
 
-    def _convert_queries(self, baskets):
+    def _convert_queries(self, baskets: List[SampleBasket]):
         for basket in baskets:
             clear_text = {}
             tokenized = {}
-            features = [{}]
+            features: List[Dict] = [{}]
             # extract query, positive context passages and titles, hard-negative passages and titles
             if "query" in basket.raw:
                 try:
@@ -1493,11 +1510,11 @@ class MultimodalSimilarityProcessor(Processor):
             sample = Sample(id=None,
                             clear_text=clear_text,
                             tokenized=tokenized,
-                            features=features)
+                            features=features)  # type: ignore
             basket.samples = [sample]
         return baskets
 
-    def _convert_contexts(self, baskets):
+    def _convert_contexts(self, baskets: List[SampleBasket]):
         # Converts both text passages and tables.
 
         for basket in baskets:
@@ -1590,13 +1607,13 @@ class MultimodalSimilarityProcessor(Processor):
 
         return baskets
 
-    def _create_dataset(self, baskets):
+    def _create_dataset(self, baskets: List[SampleBasket]):
         """
         Convert python features into pytorch dataset.
         Also removes potential errors during preprocessing.
         Flattens nested basket structure to create a flat list of features
         """
-        features_flat = []
+        features_flat: List = []
         basket_to_remove = []
         problematic_ids = set()
         for basket in baskets:
@@ -1623,7 +1640,7 @@ class MultimodalSimilarityProcessor(Processor):
         return question
 
     @staticmethod
-    def _combine_title_context(titles, texts):
+    def _combine_title_context(titles: List[str], texts: List[str]):
         res = []
         for title, ctx in zip(titles, texts):
             if title is None:

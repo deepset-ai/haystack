@@ -471,8 +471,8 @@ class DensePassageRetriever(BaseRetriever):
 
 class MultimodalRetriever(BaseRetriever):
     """
-    Retriever that uses a tri-encoder (one transformer for query, one transformer for text passages,
-    one transformer for tables).
+    Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text passages and tables
+    (one transformer for query, one transformer for text passages, one transformer for tables).
     See the original paper for more details:
     Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using Tri-encoder Models"
     (https://arxiv.org/abs/2108.04049),

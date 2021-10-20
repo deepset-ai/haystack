@@ -27,7 +27,13 @@ class TriAdaptiveModel(nn.Module):
     """ PyTorch implementation containing all the modelling needed for
     your NLP task. Combines 3 language models for representation of 3
     sequences and a prediction head. Allows for gradient flow back to
-    the 3 language model components."""
+    the 3 language model components.
+
+    The TriAdaptiveModel is currently highly tailored to the use case of joint
+    retrieval of text passages and tables using one encoder as question encoder
+    (language_model1), one encoder as text passage encoder (language_model2), and
+    one encoder as table encoder (language_model3).
+    """
 
     def __init__(
             self,
@@ -224,9 +230,6 @@ class TriAdaptiveModel(nn.Module):
         :return: Labels in the right format.
         """
         all_labels = []
-        # for head, label_map_one_head in zip(self.prediction_heads):
-        #     labels = head.prepare_labels(label_map=label_map_one_head, **kwargs)
-        #     all_labels.append(labels)
         for head in self.prediction_heads:
             labels = head.prepare_labels(**kwargs)
             all_labels.append(labels)
