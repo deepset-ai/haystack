@@ -416,10 +416,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                                             duplicate_documents=duplicate_documents)
         documents_to_index = []
         for doc in document_objects:
-            # pd.DataFrames cannot be serialized, so converting them to list of rows
-            if doc.content_type == "table":
-                doc.content = [doc.content.columns.tolist()] + doc.content.values.tolist()
-
             _doc = {
                 "_op_type": "index" if duplicate_documents == 'overwrite' else "create",
                 "_index": index,
