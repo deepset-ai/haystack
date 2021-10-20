@@ -100,4 +100,4 @@ class SentenceTransformersRanker(BaseRanker):
                                              key=lambda similarity_document_tuple: similarity_document_tuple[0],
                                              reverse=True)
         sorted_documents = [doc for _, doc in sorted_scores_and_documents]
-        return sorted_documents[:top_k]
+        return sorted_scores_and_documents[:top_k]
