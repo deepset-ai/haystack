@@ -1460,7 +1460,7 @@ class MultimodalSimilarityProcessor(Processor):
         else:
             return dataset, tensor_names, problematic_ids
 
-    def _fill_baskets(self, dicts: List[Dict], indices: Iterable[int]):
+    def _fill_baskets(self, dicts: List[Dict], indices: Optional[Iterable[int]]):
         baskets = []
         if not indices:
             indices = range(len(dicts))
@@ -1506,7 +1506,7 @@ class MultimodalSimilarityProcessor(Processor):
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
                 except Exception as e:
-                    features = None
+                    features = None  # type: ignore
 
             sample = Sample(id="",
                             clear_text=clear_text,
