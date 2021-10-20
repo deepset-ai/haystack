@@ -152,8 +152,8 @@ class Document:
                 _new_doc[k] = v
 
         # Convert list of rows to pd.DataFrame
-        if _new_doc.content_type == "table" and type(_new_doc.content) == list:
-            _new_doc.content = pd.DataFrame(columns=_new_doc.content[0], data=_new_doc.content[1:])
+        if _new_doc["content_type"] == "table" and isinstance(_new_doc["content"], list):
+            _new_doc["content"] = pd.DataFrame(columns=_new_doc.content[0], data=_new_doc.content[1:])
 
         return cls(**_new_doc)
 
