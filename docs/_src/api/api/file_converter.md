@@ -68,63 +68,6 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
 
 Validate if the language of the text is one of valid languages.
 
-<a name="base.FileTypeClassifier"></a>
-## FileTypeClassifier Objects
-
-```python
-class FileTypeClassifier(BaseComponent)
-```
-
-Route files in an Indexing Pipeline to corresponding file converters.
-
-<a name="base.FileTypeClassifier.run"></a>
-#### run
-
-```python
- | run(file_paths: Union[Path, List[Path]])
-```
-
-Return the output based on file extension
-
-<a name="txt"></a>
-# Module txt
-
-<a name="txt.TextConverter"></a>
-## TextConverter Objects
-
-```python
-class TextConverter(BaseConverter)
-```
-
-<a name="txt.TextConverter.convert"></a>
-#### convert
-
-```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
-```
-
-Reads text from a txt file and executes optional preprocessing steps.
-
-**Arguments**:
-
-- `file_path`: path of the file to convert
-- `meta`: dictionary of meta data key-value pairs to append in the returned document.
-- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-                              The tabular structures in documents might be noise for the reader model if it
-                              does not have table parsing capability for finding answers. However, tables
-                              may also have long strings that could possible candidate for searching answers.
-                              The rows containing strings are thus retained in this option.
-- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
-                        This option can be used to add test for encoding errors. If the extracted text is
-                        not one of the valid languages, then it might likely be encoding error resulting
-                        in garbled text.
-- `encoding`: Select the file encoding (default is `utf-8`)
-
-**Returns**:
-
-Dict of format {"text": "The text from file", "meta": meta}}
-
 <a name="docx"></a>
 # Module docx
 
@@ -162,63 +105,107 @@ For compliance with other converters we nevertheless opted for keeping the metho
                         in garbled text.
 - `encoding`: Not applicable
 
-<a name="tika"></a>
-# Module tika
+<a name="image"></a>
+# Module image
 
-<a name="tika.TikaConverter"></a>
-## TikaConverter Objects
+<a name="image.ImageToTextConverter"></a>
+## ImageToTextConverter Objects
 
 ```python
-class TikaConverter(BaseConverter)
+class ImageToTextConverter(BaseConverter)
 ```
 
-<a name="tika.TikaConverter.__init__"></a>
+<a name="image.ImageToTextConverter.__init__"></a>
 #### \_\_init\_\_
 
 ```python
- | __init__(tika_url: str = "http://localhost:9998/tika", remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = None)
+ | __init__(remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = ["eng"])
 ```
 
 **Arguments**:
 
-- `tika_url`: URL of the Tika server
 - `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
                               The tabular structures in documents might be noise for the reader model if it
                               does not have table parsing capability for finding answers. However, tables
                               may also have long strings that could possible candidate for searching answers.
                               The rows containing strings are thus retained in this option.
-- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
+- `valid_languages`: validate languages from a list of languages specified here
+                        (https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html)
+                        This option can be used to add test for encoding errors. If the extracted text is
+                        not one of the valid languages, then it might likely be encoding error resulting
+                        in garbled text. Run the following line of code to check available language packs:
+                        # List of available languages
+                        print(pytesseract.get_languages(config=''))
+
+<a name="image.ImageToTextConverter.convert"></a>
+#### convert
+
+```python
+ | convert(file_path: Union[Path,str], meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
+```
+
+Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
+
+**Arguments**:
+
+- `file_path`: path to image file
+- `meta`: Optional dictionary with metadata that shall be attached to all resulting documents.
+             Can be any custom keys and values.
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+                              The tabular structures in documents might be noise for the reader model if it
+                              does not have table parsing capability for finding answers. However, tables
+                              may also have long strings that could possible candidate for searching answers.
+                              The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages supported by tessarect
+                        (https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html).
                         This option can be used to add test for encoding errors. If the extracted text is
                         not one of the valid languages, then it might likely be encoding error resulting
                         in garbled text.
 
-<a name="tika.TikaConverter.convert"></a>
+<a name="markdown"></a>
+# Module markdown
+
+<a name="markdown.MarkdownConverter"></a>
+## MarkdownConverter Objects
+
+```python
+class MarkdownConverter(BaseConverter)
+```
+
+<a name="markdown.MarkdownConverter.convert"></a>
 #### convert
 
 ```python
- | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = None) -> Dict[str, Any]
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
 ```
+
+Reads text from a txt file and executes optional preprocessing steps.
 
 **Arguments**:
 
 - `file_path`: path of the file to convert
 - `meta`: dictionary of meta data key-value pairs to append in the returned document.
-- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
-                              The tabular structures in documents might be noise for the reader model if it
-                              does not have table parsing capability for finding answers. However, tables
-                              may also have long strings that could possible candidate for searching answers.
-                              The rows containing strings are thus retained in this option.
-- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
-                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
-                        This option can be used to add test for encoding errors. If the extracted text is
-                        not one of the valid languages, then it might likely be encoding error resulting
-                        in garbled text.
-- `encoding`: Not applicable
+- `encoding`: Select the file encoding (default is `utf-8`)
+- `remove_numeric_tables`: Not applicable
+- `valid_languages`: Not applicable
 
 **Returns**:
 
-a list of pages and the extracted meta data of the file.
+Dict of format {"text": "The text from file", "meta": meta}}
+
+<a name="markdown.MarkdownConverter.markdown_to_text"></a>
+#### markdown\_to\_text
+
+```python
+ | @staticmethod
+ | markdown_to_text(markdown_string: str) -> str
+```
+
+Converts a markdown string to plaintext
+
+**Arguments**:
+
+- `markdown_string`: String in markdown format
 
 <a name="pdf"></a>
 # Module pdf
@@ -337,4 +324,101 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
                         not one of the valid languages, then it might likely be encoding error resulting
                         in garbled text.
 - `encoding`: Select the file encoding (default is `utf-8`)
+
+<a name="tika"></a>
+# Module tika
+
+<a name="tika.TikaConverter"></a>
+## TikaConverter Objects
+
+```python
+class TikaConverter(BaseConverter)
+```
+
+<a name="tika.TikaConverter.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(tika_url: str = "http://localhost:9998/tika", remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = None)
+```
+
+**Arguments**:
+
+- `tika_url`: URL of the Tika server
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+                              The tabular structures in documents might be noise for the reader model if it
+                              does not have table parsing capability for finding answers. However, tables
+                              may also have long strings that could possible candidate for searching answers.
+                              The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
+                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
+                        This option can be used to add test for encoding errors. If the extracted text is
+                        not one of the valid languages, then it might likely be encoding error resulting
+                        in garbled text.
+
+<a name="tika.TikaConverter.convert"></a>
+#### convert
+
+```python
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = None) -> Dict[str, Any]
+```
+
+**Arguments**:
+
+- `file_path`: path of the file to convert
+- `meta`: dictionary of meta data key-value pairs to append in the returned document.
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+                              The tabular structures in documents might be noise for the reader model if it
+                              does not have table parsing capability for finding answers. However, tables
+                              may also have long strings that could possible candidate for searching answers.
+                              The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
+                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
+                        This option can be used to add test for encoding errors. If the extracted text is
+                        not one of the valid languages, then it might likely be encoding error resulting
+                        in garbled text.
+- `encoding`: Not applicable
+
+**Returns**:
+
+a list of pages and the extracted meta data of the file.
+
+<a name="txt"></a>
+# Module txt
+
+<a name="txt.TextConverter"></a>
+## TextConverter Objects
+
+```python
+class TextConverter(BaseConverter)
+```
+
+<a name="txt.TextConverter.convert"></a>
+#### convert
+
+```python
+ | convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> Dict[str, Any]
+```
+
+Reads text from a txt file and executes optional preprocessing steps.
+
+**Arguments**:
+
+- `file_path`: path of the file to convert
+- `meta`: dictionary of meta data key-value pairs to append in the returned document.
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+                              The tabular structures in documents might be noise for the reader model if it
+                              does not have table parsing capability for finding answers. However, tables
+                              may also have long strings that could possible candidate for searching answers.
+                              The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
+                        (https://en.wikipedia.org/wiki/ISO_639-1) format.
+                        This option can be used to add test for encoding errors. If the extracted text is
+                        not one of the valid languages, then it might likely be encoding error resulting
+                        in garbled text.
+- `encoding`: Select the file encoding (default is `utf-8`)
+
+**Returns**:
+
+Dict of format {"text": "The text from file", "meta": meta}}
 
