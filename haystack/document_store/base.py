@@ -16,6 +16,7 @@ try:
 except:
     def njit(f): return f
 
+
 logger = logging.getLogger(__name__)
 
 @njit(fastmath=True)
