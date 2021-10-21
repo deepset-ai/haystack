@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        os: [ ubuntu-latest, windows-latest ]
 
     steps:
       - uses: actions/checkout@v2
@@ -36,11 +36,6 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           sudo apt install tesseract-ocr libtesseract-dev poppler-utils
-      - name: Set up Mac
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: |
-          brew install jq tesseract docker-machine docker
-          brew services start docker-machine
       - name: Set up Windows
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
@@ -60,7 +55,7 @@ jobs:
       - name: Install Pytorch on windows
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+          pip install torch==1.8.2+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
@@ -75,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        os: [ ubuntu-latest, windows-latest ]
     steps:
       - uses: actions/checkout@v2
       - name: List test files on Linux
@@ -97,7 +92,7 @@ jobs:
     strategy:
       matrix:
 #        test-path: ${{ needs.prepare-build.outputs.matrix }}
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        os: [ ubuntu-latest, windows-latest ]
       fail-fast: false
     steps:
     - uses: actions/checkout@v2
