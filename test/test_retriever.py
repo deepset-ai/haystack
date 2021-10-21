@@ -12,9 +12,6 @@ from haystack.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-# Avoid Warning .huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
-import os
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 DOCS = [
     Document(
