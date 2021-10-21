@@ -1,5 +1,4 @@
 from haystack.nodes.base import BaseComponent
-
 from haystack.nodes.answer_generator import BaseGenerator, RAGenerator
 from haystack.nodes.connector import Crawler
 from haystack.nodes.document_classifier import BaseDocumentClassifier, TransformersDocumentClassifier
