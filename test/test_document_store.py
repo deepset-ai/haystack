@@ -330,10 +330,10 @@ def test_update_embeddings(document_store, retriever):
     assert document_store.get_embedding_count(index="haystack_test_1") == 14
 
 
-@pytest.mark.parametrize("retriever", ["mm_retriever"], indirect=True)
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.vector_dim(512)
-def test_update_embeddings_mmr(document_store, retriever):
+def test_update_embeddings_table_text_retriever(document_store, retriever):
     documents = []
     for i in range(3):
         documents.append({"content": f"text_{i}",

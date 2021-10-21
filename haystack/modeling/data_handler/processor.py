@@ -1165,7 +1165,7 @@ class TextSimilarityProcessor(Processor):
         return res
 
 
-class MultimodalSimilarityProcessor(Processor):
+class TableTextSimilarityProcessor(Processor):
     """
     Used to handle the Multimodal Retrieval datasets consisting of text passages and tables
     that come in json format.
@@ -1244,7 +1244,7 @@ class MultimodalSimilarityProcessor(Processor):
         self.max_seq_len_passage = max_seq_len_passage
         self.max_seq_len_table = max_seq_len_table
 
-        super(MultimodalSimilarityProcessor, self).__init__(
+        super(TableTextSimilarityProcessor, self).__init__(
             tokenizer=self.query_tokenizer,
             max_seq_len=0,
             train_filename=train_filename,
@@ -1268,11 +1268,11 @@ class MultimodalSimilarityProcessor(Processor):
     @classmethod
     def load_from_dir(cls, load_dir: str):
         """
-         Overwriting method from parent class to **always** load the MultimodalSimilarityProcessor
+         Overwriting method from parent class to **always** load the TableTextSimilarityProcessor
          instead of the specific class stored in the config.
 
         :param load_dir: Directory that contains a 'processor_config.json'
-        :return: An instance of an MultimodalSimilarityProcessor.
+        :return: An instance of an TableTextSimilarityProcessor.
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
@@ -1288,7 +1288,7 @@ class MultimodalSimilarityProcessor(Processor):
         del config["table_tokenizer"]
 
         processor = cls.load(query_tokenizer=query_tokenizer, passage_tokenizer=passage_tokenizer,
-                             table_tokenizer=table_tokenizer, processor_name="MultimodalSimilarityProcessor", **config)
+                             table_tokenizer=table_tokenizer, processor_name="TableTextSimilarityProcessor", **config)
         for task_name, task in config["tasks"].items():
             processor.add_task(name=task_name, metric=task["metric"], label_list=task["label_list"])
 

@@ -8,7 +8,7 @@ from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.document_store.milvus import MilvusDocumentStore
-from haystack.retriever.dense import DensePassageRetriever, MultimodalRetriever
+from haystack.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
@@ -54,7 +54,7 @@ DOCS = [
         ("elasticsearch", "elasticsearch"),
         ("es_filter_only", "elasticsearch"),
         ("tfidf", "memory"),
-        ("mm_retriever", "elasticsearch")
+        ("table_text_retriever", "elasticsearch")
     ],
     indirect=True,
 )
@@ -181,10 +181,10 @@ def test_retribert_embedding(document_store, retriever):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("retriever", ["mm_retriever"], indirect=True)
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.vector_dim(512)
-def test_mmr_embedding(document_store, retriever):
+def test_table_text_retriever_embedding(document_store, retriever):
 
     document_store.return_embedding = True
     document_store.write_documents(DOCS)
@@ -262,10 +262,10 @@ def test_dpr_saving_and_loading(retriever, document_store):
     assert loaded_retriever.query_tokenizer.model_max_length == 512
 
 
-@pytest.mark.parametrize("retriever", ["mm_retriever"], indirect=True)
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.vector_dim(512)
-def test_mmr_saving_and_loading(retriever, document_store):
+def test_table_text_retriever_saving_and_loading(retriever, document_store):
     retriever.save("test_mmr_save")
 
     def sum_params(model):
@@ -280,7 +280,7 @@ def test_mmr_saving_and_loading(retriever, document_store):
     original_sum_table = sum_params(retriever.table_encoder)
     del retriever
 
-    loaded_retriever = MultimodalRetriever.load("test_mmr_save", document_store)
+    loaded_retriever = TableTextRetriever.load("test_table_text_retriever_save", document_store)
 
     loaded_sum_query = sum_params(loaded_retriever.query_encoder)
     loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)
@@ -314,8 +314,8 @@ def test_mmr_saving_and_loading(retriever, document_store):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.vector_dim(128)
-def test_mmr_training(document_store):
-    retriever = MultimodalRetriever(
+def test_table_text_retriever_training(document_store):
+    retriever = TableTextRetriever(
         document_store=document_store,
         query_embedding_model="prajjwal1/bert-tiny",
         passage_embedding_model="prajjwal1/bert-tiny",
@@ -330,4 +330,4 @@ def test_mmr_training(document_store):
     )
 
     # Load trained model
-    retriever = MultimodalRetriever.load(load_dir="test_mmr_train", document_store=document_store)
+    retriever = TableTextRetriever.load(load_dir="test_mmr_train", document_store=document_store)

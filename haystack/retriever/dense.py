@@ -13,7 +13,7 @@ from transformers import AutoTokenizer, AutoModel
 
 from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
-from haystack.modeling.data_handler.processor import MultimodalSimilarityProcessor
+from haystack.modeling.data_handler.processor import TableTextSimilarityProcessor
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
 from haystack.retriever.base import BaseRetriever
 
@@ -470,7 +470,7 @@ class DensePassageRetriever(BaseRetriever):
         return dpr
 
 
-class MultimodalRetriever(BaseRetriever):
+class TableTextRetriever(BaseRetriever):
     """
     Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text passages and tables
     (one transformer for query, one transformer for text passages, one transformer for tables).
@@ -612,17 +612,17 @@ class MultimodalRetriever(BaseRetriever):
                                                 revision=model_version,
                                                 language_model_class="DPRContextEncoder")
 
-        self.processor = MultimodalSimilarityProcessor(query_tokenizer=self.query_tokenizer,
-                                                       passage_tokenizer=self.passage_tokenizer,
-                                                       table_tokenizer=self.table_tokenizer,
-                                                       max_seq_len_query=max_seq_len_query,
-                                                       max_seq_len_passage=max_seq_len_passage,
-                                                       max_seq_len_table=max_seq_len_table,
-                                                       label_list=["hard_negative", "positive"],
-                                                       metric="text_similarity_metric",
-                                                       embed_surrounding_context=embed_surrounding_context,
-                                                       num_hard_negatives=0,
-                                                       num_positives=1)
+        self.processor = TableTextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
+                                                      passage_tokenizer=self.passage_tokenizer,
+                                                      table_tokenizer=self.table_tokenizer,
+                                                      max_seq_len_query=max_seq_len_query,
+                                                      max_seq_len_passage=max_seq_len_passage,
+                                                      max_seq_len_table=max_seq_len_table,
+                                                      label_list=["hard_negative", "positive"],
+                                                      metric="text_similarity_metric",
+                                                      embed_surrounding_context=embed_surrounding_context,
+                                                      num_hard_negatives=0,
+                                                      num_positives=1)
 
         prediction_head = TextSimilarityHead(similarity_function=similarity_function,
                                              global_loss_buffer_size=global_loss_buffer_size)
@@ -799,7 +799,7 @@ class MultimodalRetriever(BaseRetriever):
               table_encoder_save_dir: str = "table_encoder"
               ):
         """
-        Train a MultimodalRetrieval model.
+        Train a TableTextRetrieval model.
         :param data_dir: Directory where training file, dev file and test file are present.
         :param train_filename: Training filename.
         :param dev_filename: Development set filename, file to be used by model in eval step of training.
@@ -894,7 +894,7 @@ class MultimodalRetriever(BaseRetriever):
     def save(self, save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder",
              passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder"):
         """
-        Save MultiModalRetriever to the specified directory.
+        Save TableTextRetriever to the specified directory.
 
         :param save_dir: Directory to save to.
         :param query_encoder_dir: Directory in save_dir that contains query encoder model.
@@ -927,7 +927,7 @@ class MultimodalRetriever(BaseRetriever):
              infer_tokenizer_classes: bool = False
              ):
         """
-        Load MultimodalRetriever from the specified directory.
+        Load TableTextRetriever from the specified directory.
         """
 
         load_dir = Path(load_dir)
@@ -946,7 +946,7 @@ class MultimodalRetriever(BaseRetriever):
             similarity_function=similarity_function,
             infer_tokenizer_classes=infer_tokenizer_classes
         )
-        logger.info(f"MultimodalRetriever model loaded from {load_dir}")
+        logger.info(f"TableTextRetriever model loaded from {load_dir}")
 
         return mm_retriever
 
