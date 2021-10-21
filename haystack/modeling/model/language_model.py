@@ -1164,7 +1164,7 @@ class DPRQuestionEncoder(LanguageModel):
 
         super(DPRQuestionEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward( 
+    def forward(  # type: ignore
         self,
         query_input_ids: torch.Tensor,
         query_segment_ids: torch.Tensor,
@@ -1301,7 +1301,7 @@ class DPRContextEncoder(LanguageModel):
 
         super(DPRContextEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(
+    def forward(  # type: ignore
         self,
         passage_input_ids: torch.Tensor,
         passage_segment_ids: torch.Tensor,

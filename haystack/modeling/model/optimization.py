@@ -193,7 +193,7 @@ def _get_optim(model, opts: Dict):
     # default weight decay is not the same for all optimizers, so we can't use default value
     # only explicitly add weight decay if it's given
     if weight_decay is not None:
-        optimizable_parameters[0]['weight_decay'] = weight_decay
+        optimizable_parameters[0]['weight_decay'] = weight_decay  # type: ignore
 
     # Import optimizer by checking in order: torch, transformers, apex and local imports
     try:

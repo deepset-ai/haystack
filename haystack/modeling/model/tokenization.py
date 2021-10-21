@@ -413,3 +413,62 @@ def truncate_sequences(
                                                                         truncation_strategy=truncation_strategy,
                                                                         stride=stride)
     return (seq_a, seq_b, overflowing_tokens)
+
+
+def _words_to_tokens(words, word_offsets, tokenizer):
+    """
+    Tokenize "words" into subword tokens while keeping track of offsets and if a token is the start of a word.
+    :param words: list of words.
+    :type words: list
+    :param word_offsets: Character indices where each word begins in the original text
+    :type word_offsets: list
+    :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
+    :return: tokens, offsets, start_of_word
+    """
+    tokens = []
+    token_offsets = []
+    start_of_word = []
+    idx = 0
+    for w, w_off in zip(words, word_offsets):
+        idx += 1
+        if idx % 500000 == 0:
+            logger.info(idx)
+        # Get (subword) tokens of single word.
+
+        # empty / pure whitespace
+        if len(w) == 0:
+          continue
+        # For the first word of a text: we just call the regular tokenize function.
+        # For later words: we need to call it with add_prefix_space=True to get the same results with roberta / gpt2 tokenizer
+        # see discussion here. https://github.com/huggingface/transformers/issues/1196
+        elif len(tokens) == 0:
+            tokens_word = tokenizer.tokenize(w)
+        else:
+            if type(tokenizer) == RobertaTokenizer:
+                tokens_word = tokenizer.tokenize(w, add_prefix_space=True)
+            else:
+                tokens_word = tokenizer.tokenize(w)
+        # Sometimes the tokenizer returns no tokens
+        if len(tokens_word) == 0:
+            continue
+        tokens += tokens_word
+
+        # get global offset for each token in word + save marker for first tokens of a word
+        first_tok = True
+        for tok in tokens_word:
+            token_offsets.append(w_off)
+            # Depending on the tokenizer type special chars are added to distinguish tokens with preceeding
+            # whitespace (=> "start of a word"). We need to get rid of these to calculate the original length of the token
+            orig_tok = re.sub(SPECIAL_TOKENIZER_CHARS, "", tok)
+            # Don't use length of unk token for offset calculation
+            if orig_tok == tokenizer.special_tokens_map["unk_token"]:
+                w_off += 1
+            else:
+                w_off += len(orig_tok)
+            if first_tok:
+                start_of_word.append(True)
+                first_tok = False
+            else:
+                start_of_word.append(False)
+
+    return tokens, token_offsets, start_of_word
