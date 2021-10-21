@@ -11,8 +11,25 @@ from haystack.errors import DuplicateDocumentError
 from haystack.preprocessor.preprocessor import PreProcessor
 from haystack.preprocessor.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
+try:
+    from numba import njit
+except:
+    def njit(f): return f
+
 logger = logging.getLogger(__name__)
 
+@njit(fastmath=True)
+def normalize_vector_l2(emb: np.ndarray)->None:
+    """
+        Performs L2 normalization of embeddings vector inplace.
+    """
+    norm = np.sqrt(emb.dot(emb))
+    if norm != 0.0:
+        emb /= norm
+
+@njit(fastmath=True)
+def expit(x: float) -> float:
+    return 1 / (1 + np.exp(-x))    
 
 class BaseDocumentStore(BaseComponent):
     """
@@ -200,12 +217,17 @@ class BaseDocumentStore(BaseComponent):
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         pass
     
-    @abstractmethod
-    def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
+    def normalize_embedding(self, emb: np.ndarray)->None:
         """
-            Performs L2 normalization of embeddings vector inplace.
+            Performs normalization of embeddings vector inplace.
         """
-        pass        
+        normalize_vector_l2(emb)
+
+    def finalize_raw_score(self, raw_score:float, similarity:str)->float:
+        if similarity == "cosine":
+            return (raw_score + 1) / 2
+        else:
+            return float(expit(raw_score / 100))        
         
     @abstractmethod
     def query_by_embedding(self,

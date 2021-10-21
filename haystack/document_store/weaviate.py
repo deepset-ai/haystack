@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from haystack import Document
 from haystack.document_store.base import BaseDocumentStore
-from haystack.utils import get_batches_from_generator, normalize_vector_l2, finalize_raw_score
+from haystack.utils import get_batches_from_generator
 
 from weaviate import client, auth, AuthClientPassword
 from weaviate import ObjectsBatchRequest
@@ -382,7 +382,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
                     doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
-                    if self.similarity == 'cosine': self.normalize_embedding(vector)
+                    self.normalize_embedding(vector)
                     
                     if _doc.get(self.faq_question_field) is None:
                         _doc.pop(self.faq_question_field)
@@ -575,13 +575,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             documents.append(doc)
 
         return documents
-    
-    def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
-        """
-            Performs L2 normalization of embeddings vector inplace.
-        """
-        normalize_vector_l2(emb)
-        
         
     def query_by_embedding(self,
                            query_emb: np.ndarray,
@@ -608,7 +601,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         properties = self._get_current_properties(index)
         properties.append("_additional {id, certainty, vector}")
 
-        if self.similarity == 'cosine': self.normalize_embedding(query_emb)
+        if self.similarity=="cosine": self.normalize_embedding(query_emb)
         
         query_emb = query_emb.reshape(1, -1).astype(np.float32)                
         
@@ -691,7 +684,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
             for doc, emb in zip(document_batch, embeddings):
                 # Using update method to only update the embeddings, other properties will be in tact
-                if self.similarity == 'cosine': self.normalize_embedding(emb)
+                if self.similarity=="cosine": self.normalize_embedding(emb)
                 self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):

@@ -12,8 +12,6 @@ from haystack.document_store.sql import DocumentORM
 import torch
 import numpy as np
 import pandas as pd
-from numba import njit
-#from scipy.special import expit, logit
 
 logger = logging.getLogger(__name__)
 
@@ -250,23 +248,3 @@ def get_batches_from_generator(iterable, n):
     while x:
         yield x
         x = tuple(islice(it, n))
-
-@njit(fastmath=True)
-def normalize_vector_l2(emb: np.ndarray)->None:
-    """
-        Performs L2 normalization of embeddings vector inplace.
-    """
-    norm = np.sqrt(emb.dot(emb))
-    if norm != 0.0:
-        emb /= norm
-
-@njit(fastmath=True)
-def expit(x: float) -> float:
-    return 1 / (1 + np.exp(-x))
-    
-@njit(fastmath=True)
-def finalize_raw_score(raw_score:float,similarity:str)->float:
-    if similarity == 'cosine':
-        return (raw_score + 1) / 2
-    else:
-        return float(expit(raw_score / 100))

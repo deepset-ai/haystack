@@ -11,7 +11,7 @@ from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.document_store.base import DuplicateDocumentError
-from haystack.utils import get_batches_from_generator, normalize_vector_l2, finalize_raw_score
+from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
 
@@ -109,15 +109,15 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.vector_dim = vector_dim
         self.index_file_size = index_file_size
 
-        if similarity == "dot_product" or similarity == "cosine":
+        if similarity in ("dot_product", "cosine", "isc"):
             self.metric_type = MetricType.IP
             self.similarity = similarity
         elif similarity == "l2":
             self.metric_type = MetricType.L2
             self.similarity = similarity
         else:
-            raise ValueError("The Milvus document store can currently only support dot_product, cosine and L2 similarity. "
-                             "Please set similarity=\"dot_product\", \"cosine\", or \"l2\"")
+            raise ValueError("The Milvus document store can currently only support dot_product, cosine, isc and L2 similarity. "
+                             "Please set similarity=\"dot_product\", \"cosine\", \"isc\", or \"l2\"")
 
         self.index_type = index_type
         self.index_param = index_param or {"nlist": 16384}
@@ -211,10 +211,10 @@ class MilvusDocumentStore(SQLDocumentStore):
                     for doc in document_batch:
                         doc_ids.append(doc.id)
                         if isinstance(doc.embedding, np.ndarray):
-                            if self.similarity == 'cosine': self.normalize_embedding(doc.embedding)
+                            if self.similarity=="cosine": self.normalize_embedding(doc.embedding)
                             embeddings.append(doc.embedding.tolist())
                         elif isinstance(doc.embedding, list):
-                            if self.similarity == 'cosine':
+                            if self.similarity=="cosine":
                                 # temp conversion to ndarray
                                 np_embedding = np.array(doc.embedding, dtype="float32")
                                 self.normalize_embedding(np_embedding)
@@ -302,7 +302,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
                 embeddings = retriever.embed_passages(document_batch)  # type: ignore
-                if self.similarity == 'cosine':
+                if self.similarity=="cosine":
                     for embedding in embeddings:
                         self.normalize_embedding(embedding)
                 
@@ -323,9 +323,6 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         self.milvus_server.flush([index])
         self.milvus_server.compact(collection_name=index)
-    
-    def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
-        normalize_vector_l2(emb)
         
     def query_by_embedding(self,
                            query_emb: np.ndarray,
@@ -358,7 +355,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
         index = index or self.index
 
-        if self.similarity == 'cosine': self.normalize_embedding(query_emb)
+        if self.similarity=="cosine": self.normalize_embedding(query_emb)
         
         query_emb = query_emb.reshape(1, -1).astype(np.float32)               
         
@@ -385,7 +382,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = finalize_raw_score(raw_score,self.similarity)
+            doc.score = self.finalize_raw_score(raw_score, self.similarity)
 
         return documents
 

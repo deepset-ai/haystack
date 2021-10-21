@@ -151,12 +151,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
-    
-    def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
-        """
-            Performs L2 normalization of embeddings vector inplace.
-        """
-        pass
         
     def query_by_embedding(self,
                            query_emb: np.ndarray,

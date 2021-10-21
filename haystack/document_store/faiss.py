@@ -16,7 +16,7 @@ from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.document_store.base import DuplicateDocumentError
-from haystack.utils import get_batches_from_generator, normalize_vector_l2, finalize_raw_score
+from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
 
@@ -99,14 +99,14 @@ class FAISSDocumentStore(SQLDocumentStore):
             progress_bar=progress_bar
         )
 
-        if similarity == "dot_product" or similarity == 'cosine':
+        if similarity in ("dot_product", "cosine", "isc"):
             self.similarity = similarity
             self.metric_type = faiss.METRIC_INNER_PRODUCT
         elif similarity == "l2":
             self.similarity = similarity
             self.metric_type = faiss.METRIC_L2
         else:
-            raise ValueError("The FAISS document store can currently only support dot_product, cosine and l2 similarity. "
+            raise ValueError("The FAISS document store can currently only support dot_product, cosine, isc and l2 similarity. "
                              "Please set similarity to one of the above.")
 
         self.vector_dim = vector_dim
@@ -196,7 +196,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                 embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                if self.similarity == 'cosine': self.normalize_embedding(embeddings_to_index)
+                if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
 
                 self.faiss_indexes[index].add(embeddings_to_index)
 
@@ -276,7 +276,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                if self.similarity == 'cosine': self.normalize_embedding(embeddings_to_index)
+                if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
 
                 self.faiss_indexes[index].add(embeddings_to_index)
 
@@ -413,11 +413,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                 self.faiss_indexes[index].reset()
         super().delete_documents(index=index, filters=filters)
     
-    def normalize_embedding(self, emb: np.ndarray, kind:str="L2")->None:
+    def normalize_embedding(self, emb: np.ndarray)->None:
         """
             Performs L2 normalization of embeddings vector inplace.
         """
-        faiss.normalize_L2(emb)
+        faiss.normalize_L2(emb)        
         
     def query_by_embedding(
         self,
@@ -450,7 +450,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
-        if self.similarity == 'cosine': self.normalize_embedding(query_emb)
+        if self.similarity=="cosine": self.normalize_embedding(query_emb)
 
         score_matrix, vector_id_matrix = self.faiss_indexes[index].search(query_emb, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
@@ -461,7 +461,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = finalize_raw_score(raw_score,self.similarity)
+            doc.score = self.finalize_raw_score(raw_score,self.similarity)
 
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
