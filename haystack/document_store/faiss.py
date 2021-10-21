@@ -421,7 +421,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 doc_ids = [doc.meta.get("vector_id") for doc in affected_docs if doc.meta and doc.meta.get("vector_id") is not None]
                 self.faiss_indexes[index].remove_ids(np.array(doc_ids, dtype="int64"))
         
-        super().delete_documents(index=index, ids=ids, filters=filters))
+        super().delete_documents(index=index, ids=ids, filters=filters)
     
     def normalize_embedding(self, emb: np.ndarray)->None:
         """
