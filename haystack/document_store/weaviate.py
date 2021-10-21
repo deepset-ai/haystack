@@ -228,9 +228,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
         
-        #score = finalize_raw_score(score,self.similarity)
-        #if self.similarity == "cosine": score = ((logit(score) * 100) + 1) / 2
-        
         document = Document(
             id=id,
             text=text,

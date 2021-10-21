@@ -109,15 +109,15 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.vector_dim = vector_dim
         self.index_file_size = index_file_size
 
-        if similarity in ("dot_product", "cosine", "isc"):
+        if similarity in ("dot_product", "cosine"):
             self.metric_type = MetricType.IP
             self.similarity = similarity
         elif similarity == "l2":
             self.metric_type = MetricType.L2
             self.similarity = similarity
         else:
-            raise ValueError("The Milvus document store can currently only support dot_product, cosine, isc and L2 similarity. "
-                             "Please set similarity=\"dot_product\", \"cosine\", \"isc\", or \"l2\"")
+            raise ValueError("The Milvus document store can currently only support dot_product, cosine and L2 similarity. "
+                             "Please set similarity=\"dot_product\", \"cosine\" or \"l2\"")
 
         self.index_type = index_type
         self.index_param = index_param or {"nlist": 16384}

@@ -99,14 +99,14 @@ class FAISSDocumentStore(SQLDocumentStore):
             progress_bar=progress_bar
         )
 
-        if similarity in ("dot_product", "cosine", "isc"):
+        if similarity in ("dot_product", "cosine"):
             self.similarity = similarity
             self.metric_type = faiss.METRIC_INNER_PRODUCT
         elif similarity == "l2":
             self.similarity = similarity
             self.metric_type = faiss.METRIC_L2
         else:
-            raise ValueError("The FAISS document store can currently only support dot_product, cosine, isc and l2 similarity. "
+            raise ValueError("The FAISS document store can currently only support dot_product, cosine and l2 similarity. "
                              "Please set similarity to one of the above.")
 
         self.vector_dim = vector_dim
