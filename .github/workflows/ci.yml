@@ -108,11 +108,11 @@ jobs:
     - name: Set up Windows
       if: ${{ matrix.os == 'windows-latest' }}
       run: |
-        $Env:ProgramFiles\Docker\Docker\DockerCli.exe -SwitchDaemon
         choco install xpdf-utils
         choco install openjdk11
         choco install elasticsearch --version=7.9.2
         choco install tesseract --pre
+        DockerCli.exe -SwitchDaemon
 
     - name: Run Elasticsearch in Linux
       #if: ${{ matrix.os != 'windows-latest' }}
