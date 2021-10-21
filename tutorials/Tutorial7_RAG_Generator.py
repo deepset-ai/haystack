@@ -2,7 +2,7 @@ from typing import List
 import requests
 import pandas as pd
 from haystack import Document
-from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.generator.transformers import RAGenerator
 from haystack.retriever.dense import DensePassageRetriever
 

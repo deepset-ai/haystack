@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
 from haystack.schema import Document
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.document_store.milvus import MilvusDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
+from haystack.document_stores.milvus import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast

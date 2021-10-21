@@ -1,4 +1,4 @@
-from haystack.document_store import FAISSDocumentStore, MilvusDocumentStore
+from haystack.document_stores import FAISSDocumentStore, MilvusDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader

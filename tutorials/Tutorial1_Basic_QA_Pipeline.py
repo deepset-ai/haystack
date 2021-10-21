@@ -13,7 +13,7 @@ import logging
 import subprocess
 import time
 
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader

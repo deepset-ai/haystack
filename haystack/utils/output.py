@@ -11,7 +11,7 @@ import pandas as pd
 from itertools import islice
 from collections import defaultdict
 
-from haystack.document_store.sql import DocumentORM
+from haystack.document_stores.sql import DocumentORM
 
 
 logger = logging.getLogger(__name__)

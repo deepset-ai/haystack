@@ -17,7 +17,7 @@ except ImportError:
 import numpy as np
 
 from haystack.schema import Document
-from haystack.document_store.sql import SQLDocumentStore
+from haystack.document_stores.sql import SQLDocumentStore
 from haystack.utils.output import get_batches_from_generator
 
 

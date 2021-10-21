@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from haystack.schema import Document, Label
 from haystack.errors import DuplicateDocumentError
-from haystack.document_store import BaseDocumentStore
+from haystack.document_stores import BaseDocumentStore
 from haystack.utils import get_batches_from_generator
 
 

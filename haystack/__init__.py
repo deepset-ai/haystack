@@ -48,13 +48,15 @@ from haystack.nodes import (
     translator
 )
 from haystack.nodes.retriever import text2sparql as graph_retriever
-from haystack.document_store import (
+from haystack import document_stores
+from haystack.document_stores import (
     graphdb as knowledge_graph
 )
 from haystack.modeling.evaluation import eval
 import haystack.utils.preprocessing as preprocessing
 import haystack.utils.cleaning as cleaning 
 
+sys.modules["haystack.document_store"] = document_stores
 sys.modules["haystack.connector"] = connector
 sys.modules["haystack.document_classifier"] = document_classifier
 sys.modules["haystack.extractor"] = extractor

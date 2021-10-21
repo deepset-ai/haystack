@@ -1,5 +1,5 @@
 import pytest
-from haystack.document_store.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.pipelines.base import Pipeline

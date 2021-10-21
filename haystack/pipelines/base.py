@@ -20,7 +20,7 @@ except:
 
 from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent
-from haystack.document_store.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)
@@ -380,7 +380,7 @@ class Pipeline(BasePipeline):
         Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
         This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
         Example:
-        | from haystack.document_store.base import BaseDocumentStore
+        | from haystack.document_stores.base import BaseDocumentStore
         | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
         | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
 

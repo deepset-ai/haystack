@@ -65,9 +65,9 @@ from time import sleep
 from typing import Dict, Iterator, Tuple, List, Union
 
 from elasticsearch import Elasticsearch
-from haystack.document_store.base import BaseDocumentStore
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore  # keep it here !
-from haystack.document_store.faiss import FAISSDocumentStore  # keep it here !
+from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
+from haystack.document_stores.faiss import FAISSDocumentStore  # keep it here !
 from haystack.nodes.retriever import ElasticsearchRetriever, DensePassageRetriever  # keep it here !
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever

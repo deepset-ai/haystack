@@ -9,13 +9,13 @@ import requests
 from elasticsearch import Elasticsearch
 
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-from haystack.document_store.graphdb import GraphDBKnowledgeGraph
+from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
 
 import weaviate
-from haystack.document_store.weaviate import WeaviateDocumentStore
+from haystack.document_stores.weaviate import WeaviateDocumentStore
 
-from haystack.document_store.milvus import MilvusDocumentStore
+from haystack.document_stores.milvus import MilvusDocumentStore
 from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.ranker import SentenceTransformersRanker
@@ -26,10 +26,10 @@ from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, El
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 
 from haystack.schema import Document
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.document_store.sql import SQLDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.document_stores.sql import SQLDocumentStore
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader

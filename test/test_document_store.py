@@ -4,8 +4,8 @@ from elasticsearch import Elasticsearch
 
 from conftest import get_document_store
 from haystack.schema import Document, Label, Answer, Span
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
 
 
 @pytest.mark.elasticsearch

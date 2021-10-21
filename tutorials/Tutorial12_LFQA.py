@@ -16,7 +16,7 @@ def tutorial12_lfqa():
     For more info on which suits your use case: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
     """
 
-    from haystack.document_store.faiss import FAISSDocumentStore
+    from haystack.document_stores.faiss import FAISSDocumentStore
 
     document_store = FAISSDocumentStore(vector_dim=128, faiss_index_factory_str="Flat")
 

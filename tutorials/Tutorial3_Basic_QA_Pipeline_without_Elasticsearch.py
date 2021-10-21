@@ -6,8 +6,8 @@
 #
 # If you are interested in more feature-rich Elasticsearch, then please refer to the Tutorial 1.
 
-from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.document_store.sql import SQLDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.document_stores.sql import SQLDocumentStore
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
 from haystack.reader.farm import FARMReader

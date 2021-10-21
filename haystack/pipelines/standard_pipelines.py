@@ -13,7 +13,7 @@ from haystack.nodes.retriever import BaseRetriever
 from haystack.nodes.summarizer import BaseSummarizer
 from haystack.nodes.translator import BaseTranslator
 from haystack.nodes.question_generator import QuestionGenerator
-from haystack.document_store import BaseDocumentStore
+from haystack.document_stores import BaseDocumentStore
 from haystack.pipelines import Pipeline
 
 

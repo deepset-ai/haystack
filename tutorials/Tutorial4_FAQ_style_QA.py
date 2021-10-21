@@ -1,4 +1,4 @@
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 
 from haystack.retriever.dense import EmbeddingRetriever
 from haystack.utils import launch_es

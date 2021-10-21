@@ -6,7 +6,7 @@ from collections import OrderedDict, namedtuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
-from haystack.document_store import BaseDocumentStore, ElasticsearchDocumentStore
+from haystack.document_stores import BaseDocumentStore, ElasticsearchDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 
 

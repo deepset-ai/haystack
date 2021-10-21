@@ -4,7 +4,7 @@ from haystack.preprocessor.utils import fetch_archive_from_http, convert_files_t
 from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack import Pipeline
 from haystack.utils import launch_es
-from haystack.document_store import ElasticsearchDocumentStore
+from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever
 from haystack.retriever.dense import DensePassageRetriever
 from haystack.reader import FARMReader

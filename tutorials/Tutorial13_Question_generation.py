@@ -1,6 +1,6 @@
 from haystack.question_generator import QuestionGenerator
 from haystack.utils import launch_es
-from haystack.document_store import ElasticsearchDocumentStore
+from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.retriever import ElasticsearchRetriever
 from pprint import pprint
 from haystack.reader import FARMReader

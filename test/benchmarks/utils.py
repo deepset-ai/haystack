@@ -1,9 +1,9 @@
 import os
-from haystack.document_store.sql import SQLDocumentStore
-from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
-from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.document_store.milvus import MilvusDocumentStore, IndexType
+from haystack.document_stores.sql import SQLDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.document_stores.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
+from haystack.document_stores.milvus import MilvusDocumentStore, IndexType
 from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader

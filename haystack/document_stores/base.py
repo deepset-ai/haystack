@@ -10,7 +10,7 @@ from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
 from haystack.errors import DuplicateDocumentError
 from haystack.nodes.preprocessor import PreProcessor
-from haystack.document_store.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
+from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
 
 logger = logging.getLogger(__name__)

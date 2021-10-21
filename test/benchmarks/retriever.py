@@ -3,7 +3,7 @@ from pathlib import Path
 from time import perf_counter
 from utils import get_document_store, get_retriever, index_to_doc_store, load_config, download_from_url
 from haystack.preprocessor.utils import eval_data_from_json
-from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
 
 from haystack.schema import Document
 import pickle

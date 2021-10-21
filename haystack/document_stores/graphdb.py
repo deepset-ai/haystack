@@ -5,7 +5,7 @@ from pathlib import Path
 from SPARQLWrapper import SPARQLWrapper, JSON
 from requests.auth import HTTPBasicAuth
 
-from haystack.document_store import BaseKnowledgeGraph
+from haystack.document_stores import BaseKnowledgeGraph
 
 
 class GraphDBKnowledgeGraph(BaseKnowledgeGraph):

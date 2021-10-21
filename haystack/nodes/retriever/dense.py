@@ -9,7 +9,7 @@ from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 
 from haystack.schema import Document
-from haystack.document_store import BaseDocumentStore
+from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
 from haystack.modeling.model.tokenization import Tokenizer
