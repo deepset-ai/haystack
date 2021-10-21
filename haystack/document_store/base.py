@@ -19,7 +19,7 @@ except:
 
 logger = logging.getLogger(__name__)
 
-@njit(fastmath=True)
+@njit#(fastmath=True)
 def normalize_vector_l2(emb: np.ndarray)->None:
     """
         Performs L2 normalization of embeddings vector inplace.
@@ -28,7 +28,7 @@ def normalize_vector_l2(emb: np.ndarray)->None:
     if norm != 0.0:
         emb /= norm
 
-@njit(fastmath=True)
+@njit#(fastmath=True)
 def expit(x: float) -> float:
     return 1 / (1 + np.exp(-x))    
 
