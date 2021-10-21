@@ -186,7 +186,7 @@ class BaseDocumentStore(BaseComponent):
         """
         normalize_vector_l2(emb)
 
-    def finalize_raw_score(self, raw_score:float, similarity:str)->float:
+    def finalize_raw_score(self, raw_score:float, similarity:Optional[str])->float:
         if similarity == "cosine":
             return (raw_score + 1) / 2
         else:
