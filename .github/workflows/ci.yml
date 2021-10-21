@@ -108,9 +108,10 @@ jobs:
     - name: Set up Windows
       if: ${{ matrix.os == 'windows-latest' }}
       run: |
-        chocolatey install jq xpdf-utils
+        choco install xpdf-utils
+        choco install jdk11 -params "source=false"
         choco install elasticsearch --version=7.9.2
-        chocolatey install tesseract --pre
+        choco install tesseract --pre
 
     - name: Run Elasticsearch in Linux
       if: ${{ matrix.os != 'windows-latest' }}
