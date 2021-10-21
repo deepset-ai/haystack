@@ -327,8 +327,9 @@ def test_table_text_retriever_training(document_store):
         data_dir="samples/mmr",
         train_filename="sample.json",
         n_epochs=1,
-        save_dir="test_mmr_train"
+        n_gpu=0,
+        save_dir="test_table_text_retriever_train"
     )
 
     # Load trained model
-    retriever = TableTextRetriever.load(load_dir="test_mmr_train", document_store=document_store)
+    retriever = TableTextRetriever.load(load_dir="test_table_text_retriever_train", document_store=document_store)
