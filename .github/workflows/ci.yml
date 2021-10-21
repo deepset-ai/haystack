@@ -105,14 +105,18 @@ jobs:
       run: |
         sudo apt install tesseract-ocr libtesseract-dev poppler-utils
 
+    # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows
       if: ${{ matrix.os == 'windows-latest' }}
       run: |
         choco install xpdf-utils
         choco install openjdk11
         refreshenv
-        choco install elasticsearch --version=7.9.2
         choco install tesseract --pre
+        choco install elasticsearch --version=7.9.2
+        refreshenv
+        Get-Service Elasticsearch | Stop-Service
+        Get-Service Elasticsearch | Start-Service
 
     - name: Run Elasticsearch in Linux
       if: ${{ matrix.os != 'windows-latest' }}
