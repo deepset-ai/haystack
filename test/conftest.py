@@ -458,10 +458,17 @@ def document_store(request, test_docs_xs):
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_cosine(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
     document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
     yield document_store
     document_store.delete_documents()
+
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
+def document_store_cosine_small(request, test_docs_xs):
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
+    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+    yield document_store
+    document_store.delete_documents()    
 
 def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding", similarity:str="dot_product"):
     if document_store_type == "sql":

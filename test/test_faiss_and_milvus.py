@@ -339,7 +339,7 @@ def test_cosine_similarity(document_store_cosine):
 
 
 
-def test_cosine_sanity_check(document_store_cosine):
+def test_cosine_sanity_check(document_store_cosine_small):
 
     VEC_1 = np.array([.1, .2, .3], dtype="float32")
     VEC_2 = np.array([.4, .5, .6], dtype="float32")
