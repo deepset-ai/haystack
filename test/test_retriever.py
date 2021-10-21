@@ -3,7 +3,7 @@ import time
 import numpy as np
 import pytest
 from elasticsearch import Elasticsearch
-from haystack import Document
+from haystack.schema import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.document_store.milvus import MilvusDocumentStore

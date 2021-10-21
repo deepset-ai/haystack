@@ -1,6 +1,6 @@
 import pytest
 
-from haystack import Document
+from haystack.schema import Document
 from haystack.pipeline import TranslationWrapperPipeline, SearchSummarizationPipeline
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 

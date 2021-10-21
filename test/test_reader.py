@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from haystack import Document, Answer
+from haystack.schema import Document, Answer
 from haystack.reader.base import BaseReader
 from haystack.reader.farm import FARMReader
 

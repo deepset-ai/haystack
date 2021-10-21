@@ -1,6 +1,6 @@
 import pytest
 
-from haystack import Document
+from haystack.schema import Document
 from haystack.document_classifier.base import BaseDocumentClassifier
 
 

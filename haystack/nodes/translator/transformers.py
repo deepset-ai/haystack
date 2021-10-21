@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from haystack import Document, Answer
+from haystack.schema import Document, Answer
 from haystack.nodes.translator import BaseTranslator
 
 

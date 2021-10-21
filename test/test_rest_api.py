@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from haystack import Label
+from haystack.schema import Label
 
 
 from rest_api.application import app

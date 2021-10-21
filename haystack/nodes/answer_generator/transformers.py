@@ -9,7 +9,7 @@ from haystack.modeling.utils import initialize_device_settings
 from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, \
     AutoModelForSeq2SeqLM, PreTrainedTokenizer, BatchEncoding
 
-from haystack import Document
+from haystack.schema import Document
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.retriever.dense import DensePassageRetriever
 

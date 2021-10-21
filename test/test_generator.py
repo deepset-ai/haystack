@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 import pytest
 
-from haystack import Document
+from haystack.schema import Document
 from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.pipeline import TranslationWrapperPipeline, GenerativeQAPipeline
 

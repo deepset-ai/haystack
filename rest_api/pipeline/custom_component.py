@@ -8,7 +8,7 @@ The classes for the Custom Components must be defined in this file.
 """
 
 
-from haystack import BaseComponent
+from haystack.nodes.base import BaseComponent
 
 
 class SampleComponent(BaseComponent):

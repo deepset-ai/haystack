@@ -13,7 +13,7 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 
 from haystack.document_store import BaseDocumentStore
-from haystack import Document, Label
+from haystack.schema import Document, Label
 from haystack.utils import get_batches_from_generator
 
 

@@ -18,7 +18,7 @@ from haystack.modeling.training import Trainer
 from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
-from haystack import Document, Answer, Span
+from haystack.schema import Document, Answer, Span
 from haystack.document_store import BaseDocumentStore
 from haystack.nodes.reader import BaseReader
 

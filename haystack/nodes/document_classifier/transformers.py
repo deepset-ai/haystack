@@ -3,7 +3,7 @@ from typing import List, Optional
 import logging
 from transformers import pipeline
 
-from haystack import Document
+from haystack.schema import Document
 from haystack.nodes.document_classifier.base import BaseDocumentClassifier
 
 
