@@ -378,7 +378,7 @@ def truncate_sequences(
         truncation_strategy: str = 'longest_first',
         with_special_tokens: bool = True, 
         stride: int = 0
-    ) -> Tuple[List[Any], List[Any], List[Any]]:
+    ) -> Tuple[List[Any], Optional[List[Any]], List[Any]]:
     """
     Reduces a single sequence or a pair of sequences to a maximum sequence length.
     The sequences can contain tokens or any other elements (offsets, masks ...).

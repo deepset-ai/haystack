@@ -1,4 +1,7 @@
-from typing import List, Union, Dict
+from typing import TYPE_CHECKING,  Callable, List, Union, Dict
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import EmbeddingRetriever
 
 import logging
 from abc import abstractmethod
@@ -192,7 +195,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         return dataset, tensornames
 
 
-_EMBEDDING_ENCODERS: Dict[str, _BaseEmbeddingEncoder] = {
+_EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
     "sentence_transformers": _SentenceTransformersEmbeddingEncoder,

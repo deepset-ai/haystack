@@ -71,13 +71,13 @@ class LanguageModel(nn.Module):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], revision: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained language model either by
 
@@ -121,8 +121,7 @@ class LanguageModel(nn.Module):
         """
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
-
-        kwargs["revision"] = revision
+        kwargs["revision"] = kwargs.get("revision", None)
         logger.info("")
         logger.info("LOADING MODEL")
         logger.info("=============")
@@ -427,7 +426,7 @@ class Bert(LanguageModel):
         return bert
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -460,7 +459,7 @@ class Bert(LanguageModel):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
@@ -504,7 +503,7 @@ class Albert(LanguageModel):
         self.name = "albert"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -540,7 +539,7 @@ class Albert(LanguageModel):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
@@ -585,7 +584,7 @@ class Roberta(LanguageModel):
         self.name = "roberta"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -621,7 +620,7 @@ class Roberta(LanguageModel):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
@@ -666,7 +665,7 @@ class XLMRoberta(LanguageModel):
         self.name = "xlm_roberta"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -702,7 +701,7 @@ class XLMRoberta(LanguageModel):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
@@ -754,7 +753,7 @@ class DistilBert(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -794,12 +793,12 @@ class DistilBert(LanguageModel):
         distilbert.pooler.apply(distilbert.model._init_weights)
         return distilbert
 
-    def forward(
+    def forward(  # type: ignore
         self,
         input_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         **kwargs,
-    ):  # type: ignore
+    ):  
         """
         Perform the forward pass of the DistilBERT model.
 
@@ -841,7 +840,7 @@ class XLNet(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -885,7 +884,7 @@ class XLNet(LanguageModel):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
@@ -947,7 +946,7 @@ class Electra(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -993,7 +992,7 @@ class Electra(LanguageModel):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
@@ -1038,7 +1037,7 @@ class Camembert(Roberta):
         self.name = "camembert"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -1081,7 +1080,7 @@ class DPRQuestionEncoder(LanguageModel):
         self.name = "dpr_question_encoder"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1144,26 +1143,28 @@ class DPRQuestionEncoder(LanguageModel):
         Save the model state_dict and its config file so that it can be loaded again.
 
         :param save_dir: The directory in which the model should be saved.
-        :param state_dict: A dictionary containing a whole state of the module including names of layers. By default, the unchanged state dict of the module is used
+        :param state_dict: A dictionary containing a whole state of the module including names of layers. 
+                           By default, the unchanged state dict of the module is used
         """
         model_to_save = (
             self.model.module if hasattr(self.model, "module") else self.model
-        )  # Only save the model it-self
+        )  # Only save the model itself
 
         if self.model.config.model_type != "dpr" and model_to_save.base_model_prefix.startswith("question_"):
             state_dict = model_to_save.state_dict()
-            keys = state_dict.keys()
-            for key in list(keys):
-                new_key = key
-                if key.startswith("question_encoder.bert_model.model."):
-                    new_key = key.split("_encoder.bert_model.model.", 1)[1]
-                elif key.startswith("question_encoder.bert_model."):
-                    new_key = key.split("_encoder.bert_model.", 1)[1]
-                state_dict[new_key] = state_dict.pop(key)
+            if state_dict:
+                keys = state_dict.keys()
+                for key in list(keys):
+                    new_key = key
+                    if key.startswith("question_encoder.bert_model.model."):
+                        new_key = key.split("_encoder.bert_model.model.", 1)[1]
+                    elif key.startswith("question_encoder.bert_model."):
+                        new_key = key.split("_encoder.bert_model.", 1)[1]
+                    state_dict[new_key] = state_dict.pop(key)
 
         super(DPRQuestionEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(
+    def forward( 
         self,
         query_input_ids: torch.Tensor,
         query_segment_ids: torch.Tensor,
@@ -1211,7 +1212,7 @@ class DPRContextEncoder(LanguageModel):
         self.name = "dpr_context_encoder"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1288,14 +1289,15 @@ class DPRContextEncoder(LanguageModel):
 
         if self.model.config.model_type != "dpr" and model_to_save.base_model_prefix.startswith("ctx_"):
             state_dict = model_to_save.state_dict()
-            keys = state_dict.keys()
-            for key in list(keys):
-                new_key = key
-                if key.startswith("ctx_encoder.bert_model.model."):
-                    new_key = key.split("_encoder.bert_model.model.", 1)[1]
-                elif key.startswith("ctx_encoder.bert_model."):
-                    new_key = key.split("_encoder.bert_model.", 1)[1]
-                state_dict[new_key] = state_dict.pop(key)
+            if state_dict:
+                keys = state_dict.keys()
+                for key in list(keys):
+                    new_key = key
+                    if key.startswith("ctx_encoder.bert_model.model."):
+                        new_key = key.split("_encoder.bert_model.model.", 1)[1]
+                    elif key.startswith("ctx_encoder.bert_model."):
+                        new_key = key.split("_encoder.bert_model.", 1)[1]
+                    state_dict[new_key] = state_dict.pop(key)
 
         super(DPRContextEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
@@ -1303,7 +1305,7 @@ class DPRContextEncoder(LanguageModel):
         self,
         passage_input_ids: torch.Tensor,
         passage_segment_ids: torch.Tensor,
-        passage_attention_mask,
+        passage_attention_mask: torch.Tensor,
         **kwargs,
     ):
         """
@@ -1362,7 +1364,7 @@ class BigBird(LanguageModel):
         return big_bird
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1395,7 +1397,7 @@ class BigBird(LanguageModel):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """

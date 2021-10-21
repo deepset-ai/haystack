@@ -1,4 +1,8 @@
-import os
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
+
 import json
 import logging
 from pathlib import Path

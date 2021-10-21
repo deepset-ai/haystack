@@ -1,4 +1,7 @@
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
 
 import logging
 import numpy as np
