@@ -58,7 +58,7 @@ class RAGenerator(BaseGenerator):
         |            'meta': { 'doc_ids': [...],
         |                      'doc_scores': [80.42758 ...],
         |                      'doc_probabilities': [40.71379089355469, ...
-        |                      'texts': ['Albert Einstein was a ...]
+        |                      'content': ['Albert Einstein was a ...]
         |                      'titles': ['"Albert Einstein"', ...]
         |      }}]}
         ```
@@ -209,7 +209,7 @@ class RAGenerator(BaseGenerator):
         |            'meta': { 'doc_ids': [...],
         |                      'doc_scores': [80.42758 ...],
         |                      'doc_probabilities': [40.71379089355469, ...
-        |                      'texts': ['Albert Einstein was a ...]
+        |                      'content': ['Albert Einstein was a ...]
         |                      'titles': ['"Albert Einstein"', ...]
         |      }}]}
         ```
@@ -250,7 +250,7 @@ class RAGenerator(BaseGenerator):
         # Prepare contextualized input_ids of documents
         # (will be transformed into contextualized inputs inside generator)
         context_input_ids, context_attention_mask = self._get_contextualized_inputs(
-            texts=flat_docs_dict["text"],
+            texts=flat_docs_dict["content"],
             titles=titles,
             query=query
         )
@@ -268,7 +268,7 @@ class RAGenerator(BaseGenerator):
             num_beams=self.num_beams,
             max_length=self.max_length,
             min_length=self.min_length,
-            n_docs=len(flat_docs_dict["text"])
+            n_docs=len(flat_docs_dict["content"])
         )
 
         generated_answers = self.tokenizer.batch_decode(generator_ids, skip_special_tokens=True)
@@ -281,7 +281,7 @@ class RAGenerator(BaseGenerator):
                 "meta": {
                     "doc_ids": flat_docs_dict["id"],
                     "doc_scores": flat_docs_dict["score"],
-                    "texts": flat_docs_dict["text"],
+                    "content": flat_docs_dict["content"],
                     "titles": titles,
                 }
             }
@@ -467,7 +467,7 @@ class _BartEli5Converter:
 
     def __call__(self, tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
                  top_k: Optional[int] = None) -> BatchEncoding:
-        conditioned_doc = "<P> " + " <P> ".join([d.text for d in documents])
+        conditioned_doc = "<P> " + " <P> ".join([d.content for d in documents])
 
         # concatenate question and support document into BART input
         query_and_docs = "question: {} context: {}".format(query, conditioned_doc)

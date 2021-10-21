@@ -17,7 +17,7 @@ from haystack.modeling.training.base import Trainer
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
-from haystack import Document
+from haystack import Document, Answer, Span
 from haystack.document_store.base import BaseDocumentStore
 from haystack.reader.base import BaseReader
 
@@ -52,7 +52,11 @@ class FARMReader(BaseReader):
         doc_stride: int = 128,
         progress_bar: bool = True,
         duplicate_filtering: int = 0,
-        use_confidence_scores: bool = True
+        use_confidence_scores: bool = True,
+        proxies=None,
+        local_files_only=False,
+        force_download=False,
+        **kwargs
     ):
 
         """
@@ -92,6 +96,15 @@ class FARMReader(BaseReader):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_filtering: Answers are filtered based on their position. Both start and end position of the answers are considered.
                                     The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
+        :param use_confidence_scores: Sets the type of score that is returned with every predicted answer.
+                                      `True` => a scaled confidence / relevance score between [0, 1].
+                                      This score can also be further calibrated on your dataset via self.eval()
+                                      (see https://haystack.deepset.ai/components/reader#confidence-scores) .
+                                      `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
+                                      from the model for the predicted span.
+        :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
+        :param local_files_only: Whether to force checking for local files only (and forbid downloads)
+        :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -100,7 +113,8 @@ class FARMReader(BaseReader):
             batch_size=batch_size, use_gpu=use_gpu, no_ans_boost=no_ans_boost, return_no_answer=return_no_answer,
             top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
             num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering, use_confidence_scores=use_confidence_scores
+            duplicate_filtering=duplicate_filtering, proxies=proxies, local_files_only=local_files_only,
+            force_download=force_download, use_confidence_scores=use_confidence_scores, **kwargs
         )
 
         self.return_no_answers = return_no_answer
@@ -110,7 +124,11 @@ class FARMReader(BaseReader):
                                             task_type="question_answering", max_seq_len=max_seq_len,
                                             doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
                                             disable_tqdm=not progress_bar,
-                                            strict=False)
+                                            strict=False,
+                                            proxies=proxies,
+                                            local_files_only=local_files_only,
+                                            force_download=force_download,
+                                            **kwargs)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
@@ -145,13 +163,19 @@ class FARMReader(BaseReader):
         save_dir: Optional[str] = None,
         num_processes: Optional[int] = None,
         use_amp: str = None,
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
 
         - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
         - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
-
+         
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
+        If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
+         
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
@@ -179,6 +203,10 @@ class FARMReader(BaseReader):
                         "O2" (Almost FP16)
                         "O3" (Pure FP16).
                         See details on: https://nvidia.github.io/apex/amp.html
+        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+               checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :return: None
         """
 
@@ -233,7 +261,7 @@ class FARMReader(BaseReader):
             use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer(
+        trainer = Trainer.create_or_load_checkpoint(
             model=model,
             optimizer=optimizer,
             data_silo=data_silo,
@@ -243,9 +271,11 @@ class FARMReader(BaseReader):
             evaluate_every=evaluate_every,
             device=device,
             use_amp=use_amp,
-            disable_tqdm=not self.progress_bar
+            disable_tqdm=not self.progress_bar,
+            checkpoint_root_dir=Path(checkpoint_root_dir),
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
         )
-
 
         # 5. Let it grow!
         self.inferencer.model = trainer.train()
@@ -311,8 +341,8 @@ class FARMReader(BaseReader):
             number_of_docs.append(len(documents))
 
             for doc in documents:
-                cur = QAInput(doc_text=doc.text,
-                              questions=Question(text=query.question,
+                cur = QAInput(doc_text=doc.content,
+                              questions=Question(text=query.query,
                                                  uid=doc.id))
                 inputs.append(cur)
 
@@ -334,7 +364,7 @@ class FARMReader(BaseReader):
         result = []
         for idx, group in enumerate(grouped_predictions):
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k)
-            query = group[0].question
+            query = group[0].query
             cur_label = labels[idx]
             result.append({
                 "query": query,
@@ -354,14 +384,14 @@ class FARMReader(BaseReader):
          ```python
             |{
             |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[
-            |                 {'answer': 'Eddard,',
-            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-            |                 'offset_answer_start': 147,
-            |                 'offset_answer_end': 154,
+            |    'answers':[Answer(
+            |                 'answer': 'Eddard,',
+            |                 'context': "She travels with her father, Eddard, to King's Landing when he is",
             |                 'score': 0.9787139466668613,
-            |                 'document_id': '1337'
-            |                 },...
+            |                 'offsets_in_context': [Span(start=29, end=35],
+            |                 'offsets_in_context': [Span(start=347, end=353],
+            |                 'document_id': '88d1ed769d003939d3a0d28034464ab2'
+            |                 ),...
             |              ]
             |}
          ```
@@ -376,7 +406,7 @@ class FARMReader(BaseReader):
         # convert input to FARM format
         inputs = []
         for doc in documents:
-            cur = QAInput(doc_text=doc.text,
+            cur = QAInput(doc_text=doc.content,
                           questions=Question(text=query,
                                              uid=doc.id))
             inputs.append(cur)
@@ -388,6 +418,7 @@ class FARMReader(BaseReader):
         )
         # assemble answers from all the different documents & format them.
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
+        # TODO: potentially simplify return here to List[Answer] and handle no_ans_gap differently
         result = {"query": query,
                   "no_ans_gap": max_no_ans_gap,
                   "answers": answers}
@@ -442,7 +473,7 @@ class FARMReader(BaseReader):
             device: Optional[str] = None,
             label_index: str = "label",
             doc_index: str = "eval_document",
-            label_origin: str = "gold_label",
+            label_origin: str = "gold-label",
             calibrate_conf_scores: bool = False
     ):
         """
@@ -474,10 +505,10 @@ class FARMReader(BaseReader):
         # Aggregate all answer labels per question
         aggregated_per_doc = defaultdict(list)
         for label in labels:
-            if not label.document_id:
-                logger.error(f"Label does not contain a document_id")
+            if not label.document.id:
+                logger.error(f"Label does not contain a document id")
                 continue
-            aggregated_per_doc[label.document_id].append(label)
+            aggregated_per_doc[label.document.id].append(label)
 
         # Create squad style dicts
         d: Dict[str, Any] = {}
@@ -488,45 +519,54 @@ class FARMReader(BaseReader):
                 logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
                 continue
             d[str(doc_id)] = {
-                "context": doc.text
+                "context": doc.content
             }
             # get all questions / answers
+            #TODO check if we can simplify this by using MultiLabel
             aggregated_per_question: Dict[tuple, Any] = defaultdict(list)
-            id_question_tuple = (label.id, label.question)
+            id_question_tuple = (label.id, label.query)
             if doc_id in aggregated_per_doc:
                 for label in aggregated_per_doc[doc_id]:
-                    # add to existing answers
-                    if id_question_tuple in aggregated_per_question.keys():
-                        if label.offset_start_in_doc == 0 and label.answer == "":
-                            continue
-                        else:
-                            # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
-                            if len(aggregated_per_question[id_question_tuple]["answers"]) >= 6:
-                                logger.warning(f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.question}, label_id: {label.id})")
-                                continue
-                            aggregated_per_question[id_question_tuple]["answers"].append({
-                                        "text": label.answer,
-                                        "answer_start": label.offset_start_in_doc})
-                            aggregated_per_question[id_question_tuple]["is_impossible"] = False
-                    # create new one
+                    if label.answer is None:
+                        logger.error(f"Label.answer was None, but Answer object was expected: {label} ")
+                        continue
+                    if label.answer.offsets_in_document is None:
+                        logger.error(f"Label.answer.offsets_in_document was None, but Span object was expected: {label} ")
+                        continue
                     else:
-                        # We don't need to create an answer dict if is_impossible / no_answer
-                        if label.offset_start_in_doc == 0 and label.answer == "":
-                            aggregated_per_question[id_question_tuple] = {
-                                "id": str(hash(str(doc_id) + label.question)),
-                                "question": label.question,
-                                "answers": [],
-                                "is_impossible": True
-                            }
+                        # add to existing answers
+                        #TODO offsets (whole block)
+                        if id_question_tuple in aggregated_per_question.keys():
+                            if label.no_answer:
+                                continue
+                            else:
+                                # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
+                                if len(aggregated_per_question[id_question_tuple]["answers"]) >= 6:
+                                    logger.warning(f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})")
+                                    continue
+                                aggregated_per_question[id_question_tuple]["answers"].append({
+                                            "text": label.answer.answer,
+                                            "answer_start": label.answer.offsets_in_document[0].start})
+                                aggregated_per_question[id_question_tuple]["is_impossible"] = False
+                        # create new one
                         else:
-                            aggregated_per_question[id_question_tuple] = {
-                                "id": str(hash(str(doc_id)+label.question)),
-                                "question": label.question,
-                                "answers": [{
-                                        "text": label.answer,
-                                        "answer_start": label.offset_start_in_doc}],
-                                "is_impossible": False
-                            }
+                            # We don't need to create an answer dict if is_impossible / no_answer
+                            if label.no_answer == True:
+                                aggregated_per_question[id_question_tuple] = {
+                                    "id": str(hash(str(doc_id) + label.query)),
+                                    "question": label.query,
+                                    "answers": [],
+                                    "is_impossible": True
+                                }
+                            else:
+                                aggregated_per_question[id_question_tuple] = {
+                                    "id": str(hash(str(doc_id) + label.query)),
+                                    "question": label.query,
+                                    "answers": [{
+                                            "text": label.answer.answer,
+                                            "answer_start": label.answer.offsets_in_document[0].start}],
+                                    "is_impossible": False
+                                }
 
             # Get rid of the question key again (after we aggregated we don't need it anymore)
             d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
@@ -560,7 +600,7 @@ class FARMReader(BaseReader):
         # Assemble answers from all the different documents and format them.
         # For the 'no answer' option, we collect all no_ans_gaps and decide how likely
         # a no answer is based on all no_ans_gaps values across all documents
-        answers = []
+        answers: List[Answer] = []
         no_ans_gaps = []
         best_score_answer = 0
 
@@ -572,16 +612,16 @@ class FARMReader(BaseReader):
                 if self._check_no_answer(ans):
                     pass
                 else:
-                    cur = {
-                        "answer": ans.answer,
-                        "score": ans.confidence if self.use_confidence_scores else ans.score,
-                        "context": ans.context_window,
-                        "offset_start": ans.offset_answer_start - ans.offset_context_window_start,
-                        "offset_end": ans.offset_answer_end - ans.offset_context_window_start,
-                        "offset_start_in_doc": ans.offset_answer_start,
-                        "offset_end_in_doc": ans.offset_answer_end,
-                        "document_id": pred.id
-                    }
+                    cur = Answer(answer=ans.answer,
+                                 type="extractive",
+                                 score=ans.confidence if self.use_confidence_scores else ans.score,
+                                 context=ans.context_window,
+                                 document_id=pred.id,
+                                 offsets_in_context=[Span(start=ans.offset_answer_start - ans.offset_context_window_start,
+                                                         end=ans.offset_answer_end - ans.offset_context_window_start)],
+                                 offsets_in_document=[Span(start=ans.offset_answer_start, end=ans.offset_answer_end)]
+                                 )
+
                     answers_per_document.append(cur)
 
                     if ans.score > best_score_answer:
@@ -595,8 +635,8 @@ class FARMReader(BaseReader):
         if self.return_no_answers:
             answers.append(no_ans_prediction)
 
-        # sort answers by score and select top-k
-        answers = sorted(answers, key=lambda k: k["score"], reverse=True)
+        # sort answers by score (descending) and select top-k
+        answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
         return answers, max_no_ans_gap
@@ -667,7 +707,7 @@ class FARMReader(BaseReader):
         for text in texts:
             documents.append(
                 Document(
-                    text=text
+                    content=text
                 )
             )
         predictions = self.predict(question, documents, top_k)

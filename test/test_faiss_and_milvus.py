@@ -10,12 +10,12 @@ from haystack.pipeline import Pipeline
 from haystack.retriever.dense import EmbeddingRetriever
 
 DOCUMENTS = [
-    {"name": "name_1", "text": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
-    {"name": "name_2", "text": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
-    {"name": "name_3", "text": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
-    {"name": "name_4", "text": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
-    {"name": "name_5", "text": "text_5", "embedding": np.random.rand(768).astype(np.float32)},
-    {"name": "name_6", "text": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
+    {"name": "name_1", "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
+    {"name": "name_2", "content": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
+    {"name": "name_3", "content": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
+    {"name": "name_4", "content": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
+    {"name": "name_5", "content": "text_5", "embedding": np.random.rand(768).astype(np.float32)},
+    {"name": "name_6", "content": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
 ]
 
 
@@ -91,7 +91,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
     # test if correct vectors are associated with docs
     for i, doc in enumerate(documents_indexed):
         # we currently don't get the embeddings back when we call document_store.get_all_documents()
-        original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
+        original_doc = [d for d in DOCUMENTS if d["content"] == doc.content][0]
         stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
@@ -111,7 +111,7 @@ def test_update_docs(document_store, retriever, batch_size):
 
     # test if correct vectors are associated with docs
     for doc in documents_indexed:
-        original_doc = [d for d in DOCUMENTS if d["text"] == doc.text][0]
+        original_doc = [d for d in DOCUMENTS if d["content"] == doc.content][0]
         updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
         stored_doc = document_store.get_all_documents(filters={"name": [doc.meta["name"]]})[0]
         # compare original input vec with stored one (ignore extra dim added by hnsw)
@@ -123,7 +123,7 @@ def test_update_docs(document_store, retriever, batch_size):
 @pytest.mark.parametrize("document_store", ["milvus", "faiss"], indirect=True)
 def test_update_existing_docs(document_store, retriever):
     document_store.duplicate_documents = "overwrite"
-    old_document = Document(text="text_1")
+    old_document = Document(content="text_1")
     # initial write
     document_store.write_documents([old_document])
     document_store.update_embeddings(retriever=retriever)
@@ -131,7 +131,7 @@ def test_update_existing_docs(document_store, retriever):
     assert len(old_documents_indexed) == 1
 
     # Update document data
-    new_document = Document(text="text_2")
+    new_document = Document(content="text_2")
     new_document.id = old_document.id
     document_store.write_documents([new_document])
     document_store.update_embeddings(retriever=retriever)
@@ -139,8 +139,8 @@ def test_update_existing_docs(document_store, retriever):
     assert len(new_documents_indexed) == 1
 
     assert old_documents_indexed[0].id == new_documents_indexed[0].id
-    assert old_documents_indexed[0].text == "text_1"
-    assert new_documents_indexed[0].text == "text_2"
+    assert old_documents_indexed[0].content == "text_1"
+    assert new_documents_indexed[0].content == "text_2"
     assert not np.allclose(old_documents_indexed[0].embedding, new_documents_indexed[0].embedding, rtol=0.01)
 
 
@@ -189,7 +189,7 @@ def test_finding(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     pipe = DocumentSearchPipeline(retriever=retriever)
 
-    prediction = pipe.run(query="How to test this?", params={"top_k": 1})
+    prediction = pipe.run(query="How to test this?", params={"Retriever": {"top_k": 1}})
 
     assert len(prediction.get('documents', [])) == 1
 
@@ -210,19 +210,64 @@ def test_delete_docs_with_filters(document_store, retriever):
     assert {doc.meta["name"] for doc in documents} == {"name_5", "name_6"}
 
 
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_delete_docs_by_id(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+    doc_ids = [doc.id for doc in document_store.get_all_documents()]
+    ids_to_delete = doc_ids[0:3]
+
+    document_store.delete_documents(ids=ids_to_delete)
+
+    documents = document_store.get_all_documents()
+    assert len(documents) == len(doc_ids) - len(ids_to_delete)
+    assert document_store.get_embedding_count() == len(doc_ids) - len(ids_to_delete)
+
+    remaining_ids = [doc.id for doc in documents]
+    assert all(doc_id not in remaining_ids for doc_id in ids_to_delete)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_delete_docs_by_id_with_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    ids_to_delete = [doc.id for doc in document_store.get_all_documents(filters={"name": ["name_1", "name_2"]})]
+    ids_not_to_delete = [doc.id for doc in document_store.get_all_documents(filters={"name": ["name_3", "name_4", "name_5", "name_6"]})]
+
+    document_store.delete_documents(ids=ids_to_delete, filters={"name": ["name_1", "name_2", "name_3", "name_4"]})
+
+    documents = document_store.get_all_documents()
+    assert len(documents) == len(DOCUMENTS) - len(ids_to_delete)
+    assert document_store.get_embedding_count() == len(DOCUMENTS) - len(ids_to_delete)
+
+    assert all(doc.meta["name"] != "name_1" for doc in documents)
+    assert all(doc.meta["name"] != "name_2" for doc in documents)
+
+    all_ids_left = [doc.id for doc in documents]
+    assert all(doc_id in all_ids_left for doc_id in ids_not_to_delete)
+
+ 
+
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
 def test_pipeline(document_store, retriever):
     documents = [
-        {"name": "name_1", "text": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
-        {"name": "name_2", "text": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
-        {"name": "name_3", "text": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
-        {"name": "name_4", "text": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
+        {"name": "name_1", "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
+        {"name": "name_2", "content": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
+        {"name": "name_3", "content": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
+        {"name": "name_4", "content": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
     ]
     document_store.write_documents(documents)
     pipeline = Pipeline()
     pipeline.add_node(component=retriever, name="FAISS", inputs=["Query"])
-    output = pipeline.run(query="How to test this?", params={"top_k": 3})
+    output = pipeline.run(query="How to test this?", params={"FAISS": {"top_k": 3}})
     assert len(output["documents"]) == 3
 
 
@@ -264,11 +309,11 @@ def test_cosine_similarity(document_store_cosine):
     assert len(query_results) == len(DOCUMENTS)
     indexed_docs = {}
     for doc in DOCUMENTS:
-        indexed_docs[doc["text"]] = doc["embedding"]
+        indexed_docs[doc["content"]] = doc["embedding"]
 
     for doc in query_results:
         result_emb = doc.embedding
-        original_emb = np.array([indexed_docs[doc.text]], dtype="float32")
+        original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
         faiss.normalize_L2(original_emb)
 
         # check if the stored embedding was normalized
@@ -287,7 +332,7 @@ def test_cosine_similarity(document_store_cosine):
     query_results = document_store_cosine.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
 
     for doc in query_results:
-        original_emb = np.array([indexed_docs[doc.text]], dtype="float32")
+        original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
         faiss.normalize_L2(original_emb)
         # check if the original embedding has changed after updating the embeddings
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
@@ -303,8 +348,13 @@ def test_cosine_sanity_check(document_store_cosine):
     # The score is normalized to yield a value between 0 and 1.
     KNOWN_COSINE = (0.9746317 + 1) / 2
 
+<<<<<<< HEAD
     docs = [{"name": "vec_1", "text": "vec_1", "embedding": VEC_1}]
     document_store_cosine.write_documents(documents=docs)
+=======
+    docs = [{"name": "vec_1", "content": "vec_1", "embedding": VEC_1}]
+    document_store.write_documents(documents=docs)
+>>>>>>> upstream/master
 
     query_results = document_store_cosine.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
 

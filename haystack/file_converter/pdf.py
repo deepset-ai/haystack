@@ -86,7 +86,7 @@ class PDFToTextConverter(BaseConverter):
                          others if your doc contains special characters (e.g. German Umlauts, Cyrillic characters ...).
                          Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
                          "xef\xac\x81c" (see test cases). That's why we keep "Latin 1" as default here.
-                         (See list of available encodings by running `pdftotext -listencodings` in the terminal)
+                         (See list of available encodings by running `pdftotext -listenc` in the terminal)
         """
 
         pages = self._read_pdf(file_path, layout=False, encoding=encoding)
@@ -136,7 +136,7 @@ class PDFToTextConverter(BaseConverter):
                 )
 
         text = "\f".join(cleaned_pages)
-        document = {"text": text, "meta": meta}
+        document = {"content": text, "content_type": "text", "meta": meta}
         return document
 
     def _read_pdf(
@@ -227,11 +227,11 @@ class PDFToTextOCRConverter(BaseConverter):
                     dir=os.path.dirname(os.path.realpath(__file__)), suffix=".jpeg"
                 )
                 image.save(temp_img.name)
-                pages.append(self.image_2_text.convert(temp_img.name)["text"])
+                pages.append(self.image_2_text.convert(temp_img.name)["content"])
         except Exception as exception:
             logger.error(f"File {file_path} has an error \n {exception}")
 
         raw_text = "\f".join(pages)
-        document = {"text": raw_text, "meta": meta}
+        document = {"content": raw_text, "meta": meta}
 
         return document

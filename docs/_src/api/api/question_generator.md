@@ -20,7 +20,7 @@ come from earlier in the document.
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path="valhalla/t5-base-e2e-qg", model_version=None, num_beams=4, max_length=256, no_repeat_ngram_size=3, length_penalty=1.5, early_stopping=True, split_length=50, split_overlap=10, prompt="generate questions:")
+ | __init__(model_name_or_path="valhalla/t5-base-e2e-qg", model_version=None, num_beams=4, max_length=256, no_repeat_ngram_size=3, length_penalty=1.5, early_stopping=True, split_length=50, split_overlap=10, use_gpu=True, prompt="generate questions:")
 ```
 
 Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is

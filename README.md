@@ -16,7 +16,7 @@
     <a href="https://pepy.tech/project/farm-haystack">
         <img alt="Downloads" src="https://pepy.tech/badge/farm-haystack/month">
     </a>
-    <a href="https://apply.workable.com/deepset/">
+    <a href="https://www.deepset.ai/jobs">
         <img alt="Jobs" src="https://img.shields.io/badge/Jobs-We're%20hiring-blue">
     </a>
         <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
@@ -206,7 +206,8 @@ reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=Tr
 pipeline = ExtractiveQAPipeline(reader, retriever)
 
 # Voilá! Ask a question!
-prediction = pipeline.run(query="Who is the father of Arya Stark?", top_k_retriever=10,top_k_reader=3)
+prediction = pipe.run(query="Who is the father of Arya Stark?", 
+                      params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}})
 print_answers(prediction, details="minimal")
 
 [   {   'answer': 'Eddard',

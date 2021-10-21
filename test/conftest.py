@@ -31,7 +31,7 @@ from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader
+from haystack.reader.transformers import TransformersReader, TableReader
 from haystack.summarizer.transformers import TransformersSummarizer
 from haystack.translator import TransformersTranslator
 from haystack.question_generator import QuestionGenerator
@@ -256,7 +256,8 @@ def xpdf_fixture(tika_fixture):
 def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
-        generator_type=RAGeneratorType.TOKEN
+        generator_type=RAGeneratorType.TOKEN,
+        max_length=20
     )
 
 
@@ -267,7 +268,7 @@ def question_generator():
 
 @pytest.fixture(scope="module")
 def eli5_generator():
-    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
+    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", max_length=20)
 
 
 @pytest.fixture(scope="module")
@@ -296,11 +297,11 @@ def de_to_en_translator():
 def test_docs_xs():
     return [
         # current "dict" format for a document
-        {"text": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
+        {"content": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
         # metafield at the top level for backward compatibility
-        {"text": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
+        {"content": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
         # Document object for a doc
-        Document(text="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"})
+        Document(content="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"})
     ]
 
 
@@ -330,6 +331,12 @@ def reader(request):
             tokenizer="distilbert-base-uncased",
             use_gpu=-1
         )
+
+
+@pytest.fixture(scope="module")
+def table_reader():
+    return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+
 
 @pytest.fixture(scope="module")
 def ranker():
@@ -396,7 +403,8 @@ def retriever(request, document_store):
     return get_retriever(request.param, document_store)
 
 
-@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
+# @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
+@pytest.fixture(params=["tfidf"])
 def retriever_with_docs(request, document_store_with_docs):
     return get_retriever(request.param, document_store_with_docs)
 
@@ -433,6 +441,7 @@ def get_retriever(retriever_type, document_store):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
+# @pytest.fixture(params=["memory"])
 def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)

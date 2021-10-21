@@ -150,7 +150,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None:
         """
         Add new documents to the DocumentStore.
 
@@ -182,34 +182,37 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
-        add_vectors = False if document_objects[0].embedding is None else True
-
-        if self.duplicate_documents == "overwrite" and add_vectors:
-            logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
-                           "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
-                           "Please call `update_embeddings` method to repopulate `faiss_index`")
-
-        vector_id = self.faiss_indexes[index].ntotal
-        for i in range(0, len(document_objects), batch_size):
-            if add_vectors:
-                embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
-                embeddings_to_index = np.array(embeddings, dtype="float32")
-
-                if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
-
-                self.faiss_indexes[index].add(embeddings_to_index)
-
-            docs_to_write_in_sql = []
-            for doc in document_objects[i: i + batch_size]:
-                meta = doc.meta
-                if add_vectors:
-                    meta["vector_id"] = vector_id
-                    vector_id += 1
-                docs_to_write_in_sql.append(doc)
-
-            super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
+        document_objects = self._handle_duplicate_documents(documents=document_objects,
+                                                            index=index,
                                                             duplicate_documents=duplicate_documents)
+        if len(document_objects) > 0:
+            add_vectors = False if document_objects[0].embedding is None else True
+
+            if self.duplicate_documents == "overwrite" and add_vectors:
+                logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
+                               "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
+                               "Please call `update_embeddings` method to repopulate `faiss_index`")
+
+            vector_id = self.faiss_indexes[index].ntotal
+            for i in range(0, len(document_objects), batch_size):
+                if add_vectors:
+                    embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
+                    embeddings_to_index = np.array(embeddings, dtype="float32")
+
+                    if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
+
+                    self.faiss_indexes[index].add(embeddings_to_index)
+
+                docs_to_write_in_sql = []
+                for doc in document_objects[i: i + batch_size]:
+                    meta = doc.meta
+                    if add_vectors:
+                        meta["vector_id"] = vector_id
+                        vector_id += 1
+                    docs_to_write_in_sql.append(doc)
+
+                super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
+                                                                duplicate_documents=duplicate_documents)
 
     def _create_document_field_map(self) -> Dict:
         return {
@@ -391,34 +394,41 @@ class FAISSDocumentStore(SQLDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, filters)
+        self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from. If None, the
+        :param index: Index name to delete the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to be deleted. 
-                        Example filters: {"name": ["some", "more"], "category": ["only_one"]}
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
+        :param filters: Optional filters to narrow down the documents to be deleted.
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         :return: None
         """
         index = index or self.index
         if index in self.faiss_indexes.keys():
-            if filters:
+            if not filters and not ids:
+                self.faiss_indexes[index].reset()
+            else:
                 affected_docs = self.get_all_documents(filters=filters)
+                if ids:
+                    affected_docs = [doc for doc in affected_docs if doc.id in ids]
                 doc_ids = [doc.meta.get("vector_id") for doc in affected_docs if doc.meta and doc.meta.get("vector_id") is not None]
                 self.faiss_indexes[index].remove_ids(np.array(doc_ids, dtype="int64"))
-            else:
-                self.faiss_indexes[index].reset()
-        super().delete_documents(index=index, filters=filters)
+        
+        super().delete_documents(index=index, ids=ids, filters=filters))
     
     def normalize_embedding(self, emb: np.ndarray)->None:
         """
             Performs L2 normalization of embeddings vector inplace.
         """
         faiss.normalize_L2(emb)        
-        
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
