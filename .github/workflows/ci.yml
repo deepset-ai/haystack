@@ -108,29 +108,30 @@ jobs:
     - name: Set up Windows
       if: ${{ matrix.os == 'windows-latest' }}
       run: |
+        $Env:ProgramFiles\Docker\Docker\DockerCli.exe -SwitchDaemon
         choco install xpdf-utils
-        choco install jdk11 -params "source=false"
+        choco install openjdk11
         choco install elasticsearch --version=7.9.2
         choco install tesseract --pre
 
     - name: Run Elasticsearch in Linux
-      if: ${{ matrix.os != 'windows-latest' }}
+      #if: ${{ matrix.os != 'windows-latest' }}
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
     - name: Run Milvus
-      if: ${{ matrix.os != 'windows-latest' }}
+     # if: ${{ matrix.os != 'windows-latest' }}
       run: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
 
     - name: Run Weaviate
-      if: ${{ matrix.os != 'windows-latest' }}
+      #if: ${{ matrix.os != 'windows-latest' }}
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.0
 
     - name: Run GraphDB
-      if: ${{ matrix.os != 'windows-latest' }}
+      #if: ${{ matrix.os != 'windows-latest' }}
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
     - name: Run Apache Tika
-      if: ${{ matrix.os != 'windows-latest' }}
+     # if: ${{ matrix.os != 'windows-latest' }}
       run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
 
  #     run: cd test && pytest -s ${{ matrix.test-path }}
