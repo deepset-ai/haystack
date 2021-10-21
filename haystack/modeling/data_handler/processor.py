@@ -1187,7 +1187,7 @@ class TableTextSimilarityProcessor(Processor):
         dev_split: float = 0.1,
         proxies: Optional[Dict] = None,
         max_samples: Optional[int] = None,
-        embed_surrounding_context: bool = True,
+        embed_meta_fields: List[str] = ["page_title", "section_title", "caption"],
         num_positives: int = 1,
         num_hard_negatives: int = 1,
         shuffle_negatives: bool = True,
@@ -1217,8 +1217,7 @@ class TableTextSimilarityProcessor(Processor):
         :param proxies: Proxy configuration to allow downloads of remote datasets.
                         Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
         :param max_samples: maximum number of samples to use.
-        :param embed_surrounding_context: Whether to embed title in text passages and table metadata in tables
-                                          during tensorization (bool).
+        :param embed_meta_fields: List of meta fields to embed in text passages and tables during tensorization.
         :param num_hard_negatives: Maximum number of hard negative context passages in a sample.
         :param num_positives: Maximum number of positive context passages in a sample.
         :param shuffle_negatives: Whether to shuffle all the hard_negative passages before selecting the
@@ -1235,7 +1234,7 @@ class TableTextSimilarityProcessor(Processor):
         self.query_tokenizer = query_tokenizer
         self.passage_tokenizer = passage_tokenizer
         self.table_tokenizer = table_tokenizer
-        self.embed_surrounding_context = embed_surrounding_context
+        self.embed_meta_fields = embed_meta_fields
         self.num_hard_negatives = num_hard_negatives
         self.num_positives = num_positives
         self.shuffle_negatives = shuffle_negatives
@@ -1360,8 +1359,7 @@ class TableTextSimilarityProcessor(Processor):
         dicts = self._read_multimodal_dpr_json(file, max_samples=self.max_samples)
         return dicts
 
-    @staticmethod
-    def _read_multimodal_dpr_json(file: str, max_samples: Optional[int] = None) -> List[Dict]:
+    def _read_multimodal_dpr_json(self, file: str, max_samples: Optional[int] = None) -> List[Dict]:
         """
         Reads a Multimodal Retrieval data file in json format and returns a list of dictionaries.
 
@@ -1398,7 +1396,7 @@ class TableTextSimilarityProcessor(Processor):
                     for doc in val:
                         if doc["type"] == "table":
                             docs.append({
-                                "surrounding_context": [doc.get('page_title', ''), doc.get('section', ''), doc.get('caption')],
+                                "meta": [doc[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc],
                                 "columns": doc.get("columns"),
                                 "rows": doc.get("rows"),
                                 "label": "positive" if key in positive_context_json_keys else "hard_negative",
@@ -1406,7 +1404,7 @@ class TableTextSimilarityProcessor(Processor):
                             })
                         elif doc["type"] == "text":
                             docs.append({
-                                "title": doc["title"],
+                                "meta": [doc[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc],
                                 "text": doc["text"],
                                 "label": "positive" if key in positive_context_json_keys else "hard_negative",
                                 "type": "text",
@@ -1529,19 +1527,19 @@ class TableTextSimilarityProcessor(Processor):
                         random.shuffle(hard_negative_context)
                     hard_negative_context = hard_negative_context[:self.num_hard_negatives]
 
-                    positive_ctx_titles = []
+                    positive_ctx_meta = []
                     positive_ctx_texts = []
-                    hard_negative_ctx_titles = []
+                    hard_negative_ctx_meta = []
                     hard_negative_ctx_texts = []
                     is_table = []
 
                     for pos_ctx in positive_context:
                         if pos_ctx["type"] == "text":
-                            positive_ctx_titles.append(pos_ctx.get("title", None))
+                            positive_ctx_meta.append(" ".join(pos_ctx.get("meta")))
                             positive_ctx_texts.append(pos_ctx["text"])
                             is_table.append(0)
                         elif pos_ctx["type"] == "table":
-                            positive_ctx_titles.append(" ".join(pos_ctx.get("surrounding_context")))
+                            positive_ctx_meta.append(" ".join(pos_ctx.get("meta")))
                             linearized_rows = [cell for row in pos_ctx["rows"] for cell in row]
                             linearized_table = " ".join(pos_ctx["columns"]) + " " + " ".join(linearized_rows)
                             positive_ctx_texts.append(linearized_table)
@@ -1549,11 +1547,11 @@ class TableTextSimilarityProcessor(Processor):
 
                     for hn_ctx in hard_negative_context:
                         if hn_ctx["type"] == "text":
-                            hard_negative_ctx_titles.append(hn_ctx.get("title", None))
+                            hard_negative_ctx_meta.append(" ".join(hn_ctx.get("meta")))
                             hard_negative_ctx_texts.append(hn_ctx["text"])
                             is_table.append(0)
                         elif hn_ctx["type"] == "table":
-                            hard_negative_ctx_titles.append(" ".join(hn_ctx.get("surrounding_context")))
+                            hard_negative_ctx_meta.append(" ".join(hn_ctx.get("meta")))
                             linearized_rows = [cell for row in hn_ctx["rows"] for cell in row]
                             linearized_table = " ".join(hn_ctx["columns"]) + " " + " ".join(linearized_rows)
                             hard_negative_ctx_texts.append(linearized_table)
@@ -1562,10 +1560,10 @@ class TableTextSimilarityProcessor(Processor):
                     # all context passages and labels: 1 for positive context and 0 for hard-negative context
                     ctx_label = [1] * self.num_positives + [0] * self.num_hard_negatives
                     # featurize context passages
-                    if self.embed_surrounding_context:
+                    if self.embed_meta_fields:
                         # concatenate title with positive context passages + negative context passages
-                        all_ctx = self._combine_title_context(positive_ctx_titles, positive_ctx_texts) + \
-                                  self._combine_title_context(hard_negative_ctx_titles, hard_negative_ctx_texts)
+                        all_ctx = self._combine_meta_context(positive_ctx_meta, positive_ctx_texts) + \
+                                  self._combine_meta_context(hard_negative_ctx_meta, hard_negative_ctx_texts)
                     else:
                         all_ctx = positive_ctx_texts + hard_negative_ctx_texts
 
@@ -1637,14 +1635,12 @@ class TableTextSimilarityProcessor(Processor):
         return question
 
     @staticmethod
-    def _combine_title_context(titles: List[str], texts: List[str]):
+    def _combine_meta_context(meta_fields: List[str], texts: List[str]):
         res = []
-        for title, ctx in zip(titles, texts):
-            if title is None:
-                title = ""
-                logger.warning(
-                    f"Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '{ctx}' ")
-            res.append(tuple((title, ctx)))
+        for meta, ctx in zip(meta_fields, texts):
+            if meta is None:
+                meta = ""
+            res.append(tuple((meta, ctx)))
         return res
 
 
