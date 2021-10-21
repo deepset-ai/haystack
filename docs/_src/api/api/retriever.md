@@ -430,7 +430,7 @@ Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_surrounding_context: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -451,19 +451,11 @@ The checkpoint format matches huggingface transformers' model format
 - `top_k`: How many documents to return per query.
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
 - `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
-- `embed_surrounding_context`: Whether to concatenate title and text passage to a text pair and table
-                                   metadata (e.g. caption) and table that is then used to create the embedding.
-                                   This is the approach used in the original paper and is likely to improve
-                                   performance if your titles contain meaningful information for retrieval
-                                   (topic, entities etc.) .
-                                   For Documents of content_type `"text"`, the title is expected to be present
-                                   in doc.meta["name"] and can be supplied in the documents
-                                   before writing them to the DocumentStore like this:
-                                   {"text": "my text", "meta": {"name": "my title"}}.
-                                   For Documents of content_type `"table"`, the metadata is expected to be present
-                                   in doc.meta["surrounding_context"] and can be supplied in the documents
-                                   before writing them to the DocumentStore like this:
-                                   {"text": "my text", "meta": {"surrounding_context": ["my title", "my caption"]}}.
+- `embed_meta_fields`: Concatenate the provided meta fields and text passage / table to a text pair that is
+                          then  used to create the embedding.
+                          This is the approach used in the original paper and is likely to improve
+                          performance if your titles contain meaningful information for retrieval
+                          (topic, entities etc.).
 - `use_fast_tokenizers`: Whether to use fast Rust tokenizers
 - `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
                                 If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
@@ -535,7 +527,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_surrounding_context: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder")
+ | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder")
 ```
 
 Train a TableTextRetrieval model.
@@ -551,10 +543,10 @@ Train a TableTextRetrieval model.
                       It can be set to 1 to disable the use of multiprocessing or make debugging easier.
 - `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
 - `batch_size`: Total number of samples in 1 batch of data.
-- `embed_surrounding_context`: Whether to concatenate passage title with each passage and table metadata with
-                                  each table. The default setting in official MMRetrieval embeds page title,
-                                  section title and caption with the corresponding table and title with
-                                  corresponding text passage.
+- `embed_meta_fields`: Concatenate meta fields with each passage and table.
+                          The default setting in official MMRetrieval embeds page title,
+                          section title and caption with the corresponding table and title with
+                          corresponding text passage.
 - `num_hard_negatives`: Number of hard negative passages (passages which are
                            very similar (high score by BM25) to query but do not contain the answer)-
 - `num_positives`: Number of positive passages.
@@ -604,7 +596,7 @@ None
 
 ```python
  | @classmethod
- | load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_surrounding_context: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder", infer_tokenizer_classes: bool = False)
+ | load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder", infer_tokenizer_classes: bool = False)
 ```
 
 Load TableTextRetriever from the specified directory.
