@@ -8,6 +8,7 @@ from haystack.pipeline import DocumentSearchPipeline
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.pipeline import Pipeline
 from haystack.retriever.dense import EmbeddingRetriever
+from conftest import document_store_cosine, document_store_cosine_small
 
 DOCUMENTS = [
     {"name": "name_1", "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
