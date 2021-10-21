@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 
 from haystack.schema import Document
-from haystack.generator.transformers import Seq2SeqGenerator
-from haystack.pipeline import TranslationWrapperPipeline, GenerativeQAPipeline
+from haystack.nodes.answer_generator import Seq2SeqGenerator
+from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 
 # Avoid Warning .huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
 import os

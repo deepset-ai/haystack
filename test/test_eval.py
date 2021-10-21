@@ -1,7 +1,7 @@
 import pytest
 from haystack.document_store.base import BaseDocumentStore
-from haystack.preprocessor.preprocessor import PreProcessor
-from haystack.eval import EvalAnswers, EvalDocuments
+from haystack.nodes.preprocessor import PreProcessor
+from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.pipelines.base import Pipeline
 
 @pytest.mark.parametrize("batch_size", [None, 20])

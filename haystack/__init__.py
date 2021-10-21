@@ -30,7 +30,7 @@ pd.options.display.max_colwidth = 80
 logger = logging.getLogger(__name__)
 
 
-# Old style imports
+# Enable old style imports
 import sys
 
 from haystack.nodes import (
@@ -52,14 +52,12 @@ from haystack.document_store import (
     graphdb as knowledge_graph
 )
 from haystack.modeling.evaluation import eval
-from haystack.utils import preprocessing 
-from haystack.utils import cleaning 
-# query_classifier ?
+import haystack.utils.preprocessing as preprocessing
+import haystack.utils.cleaning as cleaning 
 
 sys.modules["haystack.connector"] = connector
 sys.modules["haystack.document_classifier"] = document_classifier
 sys.modules["haystack.extractor"] = extractor
-sys.modules["haystack.file_converter"] = file_converter
 sys.modules["haystack.preprocessor"] = preprocessor
 sys.modules["haystack.question_generator"] = question_generator
 sys.modules["haystack.ranker"] = ranker
@@ -71,6 +69,17 @@ sys.modules["haystack.graph_retriever"] = graph_retriever
 sys.modules["haystack.knowledge_graph"] = knowledge_graph
 sys.modules["haystack.knowledge_graph.graphdb"] = knowledge_graph
 sys.modules["haystack.eval"] = eval
-sys.modules["haystack.pipeline"] = pipelines
-sys.modules["haystack.preprocessor.utils"] = preprocessing
+sys.modules["haystack.preprocessor.utils"] =  preprocessing
 sys.modules["haystack.preprocessor.cleaning"] = cleaning
+
+from haystack.nodes.other import JoinDocuments, Docs2Answers
+from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
+setattr(pipelines, "JoinDocuments", JoinDocuments)
+setattr(pipelines, "Docs2Answers", Docs2Answers)
+setattr(pipelines, "SklearnQueryClassifier", SklearnQueryClassifier)
+setattr(pipelines, "TransformersQueryClassifier", TransformersQueryClassifier)
+sys.modules["haystack.pipeline"] = pipelines
+
+from haystack.nodes.file_classifier import FileTypeClassifier
+setattr(file_converter, "FileTypeClassifier", FileTypeClassifier)
+sys.modules["haystack.file_converter"] = file_converter

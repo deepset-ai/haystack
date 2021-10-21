@@ -1,7 +1,7 @@
 import pytest
 
 from haystack.schema import Document
-from haystack.document_classifier.base import BaseDocumentClassifier
+from haystack.nodes.document_classifier.base import BaseDocumentClassifier
 
 
 @pytest.mark.slow
