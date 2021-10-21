@@ -115,6 +115,7 @@ jobs:
         choco install tesseract --pre
         choco install elasticsearch --version=7.9.2
         refreshenv
+        Get-Service
         Get-Service Elasticsearch | Stop-Service
         Get-Service Elasticsearch | Start-Service
 
