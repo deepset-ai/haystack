@@ -32,16 +32,6 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-      - name: Set up Ubuntu
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: |
-          sudo apt install tesseract-ocr libtesseract-dev poppler-utils
-      - name: Set up Windows
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          chocolatey install jq xpdf-utils
-          choco install elasticsearch --version=7.9.2
-          chocolatey install tesseract --pre
       - if: ${{ matrix.os != 'windows-latest' }}
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - if: ${{ matrix.os == 'windows-latest' }}
@@ -109,6 +99,18 @@ jobs:
       with:
         path: ${{ env.pythonLocation }}
         key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+
+    - name: Set up Ubuntu
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        sudo apt install tesseract-ocr libtesseract-dev poppler-utils
+
+    - name: Set up Windows
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: |
+        chocolatey install jq xpdf-utils
+        choco install elasticsearch --version=7.9.2
+        chocolatey install tesseract --pre
 
     - name: Run Elasticsearch in Linux
       if: ${{ matrix.os != 'windows-latest' }}
