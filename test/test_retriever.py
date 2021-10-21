@@ -267,7 +267,7 @@ def test_dpr_saving_and_loading(retriever, document_store):
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.vector_dim(512)
 def test_table_text_retriever_saving_and_loading(retriever, document_store):
-    retriever.save("test_mmr_save")
+    retriever.save("test_table_text_retriever_save")
 
     def sum_params(model):
         s = []
