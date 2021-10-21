@@ -55,7 +55,7 @@ jobs:
       - name: Install Pytorch on windows
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          pip install torch==1.8.2+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+          pip install torch==1.9.0+cpu -f https://download.pytorch.org/whl/lts/1.9/torch_lts.html
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
