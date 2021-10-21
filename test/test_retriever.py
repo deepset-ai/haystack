@@ -323,7 +323,8 @@ def test_table_text_retriever_training(document_store):
         document_store=document_store,
         query_embedding_model="prajjwal1/bert-tiny",
         passage_embedding_model="prajjwal1/bert-tiny",
-        table_embedding_model="prajjwal1/bert-tiny"
+        table_embedding_model="prajjwal1/bert-tiny",
+        use_gpu=False
     )
 
     retriever.train(
