@@ -13,7 +13,7 @@ from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilte
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 import os
-os.environ["HIP_LAUNCH_BLOCKING"] = 1
+os.environ["HIP_LAUNCH_BLOCKING"] = "1"
 
 
 DOCS = [
