@@ -348,13 +348,8 @@ def test_cosine_sanity_check(document_store_cosine):
     # The score is normalized to yield a value between 0 and 1.
     KNOWN_COSINE = (0.9746317 + 1) / 2
 
-<<<<<<< HEAD
     docs = [{"name": "vec_1", "text": "vec_1", "embedding": VEC_1}]
     document_store_cosine.write_documents(documents=docs)
-=======
-    docs = [{"name": "vec_1", "content": "vec_1", "embedding": VEC_1}]
-    document_store.write_documents(documents=docs)
->>>>>>> upstream/master
 
     query_results = document_store_cosine.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
 
