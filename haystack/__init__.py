@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # Enable old style imports
 import sys
 
+import haystack
 from haystack.nodes import (
     connector, 
     document_classifier, 
@@ -47,17 +48,19 @@ from haystack.nodes import (
     summarizer,
     translator
 )
-from haystack.nodes.retriever import text2sparql as graph_retriever
 from haystack import document_stores
-from haystack.document_stores import (
-    graphdb as knowledge_graph
-)
+from haystack.nodes.retriever import text2sparql as graph_retriever
+from haystack.document_stores import graphdb as knowledge_graph
 from haystack.modeling.evaluation import eval
+from haystack.nodes.other import JoinDocuments, Docs2Answers
+from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
+from haystack.nodes.file_classifier import FileTypeClassifier
 import haystack.utils.preprocessing as preprocessing
-import haystack.utils.cleaning as cleaning 
+import haystack.utils.cleaning as cleaning
 
 sys.modules["haystack.document_store"] = document_stores
 sys.modules["haystack.connector"] = connector
+sys.modules["haystack.generator"] = generator
 sys.modules["haystack.document_classifier"] = document_classifier
 sys.modules["haystack.extractor"] = extractor
 sys.modules["haystack.preprocessor"] = preprocessor
@@ -73,15 +76,28 @@ sys.modules["haystack.knowledge_graph.graphdb"] = knowledge_graph
 sys.modules["haystack.eval"] = eval
 sys.modules["haystack.preprocessor.utils"] =  preprocessing
 sys.modules["haystack.preprocessor.cleaning"] = cleaning
+sys.modules["haystack.pipeline"] = pipelines
+sys.modules["haystack.file_converter"] = file_converter
 
-from haystack.nodes.other import JoinDocuments, Docs2Answers
-from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 setattr(pipelines, "JoinDocuments", JoinDocuments)
 setattr(pipelines, "Docs2Answers", Docs2Answers)
 setattr(pipelines, "SklearnQueryClassifier", SklearnQueryClassifier)
 setattr(pipelines, "TransformersQueryClassifier", TransformersQueryClassifier)
-sys.modules["haystack.pipeline"] = pipelines
-
-from haystack.nodes.file_classifier import FileTypeClassifier
 setattr(file_converter, "FileTypeClassifier", FileTypeClassifier)
-sys.modules["haystack.file_converter"] = file_converter
+setattr(haystack, "document_store", document_stores)
+setattr(haystack, "connector", connector)
+setattr(haystack, "document_classifier", document_classifier)
+setattr(haystack, "extractor", extractor)
+setattr(haystack, "preprocessor", preprocessor)
+setattr(haystack, "question_generator", question_generator)
+setattr(haystack, "ranker", ranker)
+setattr(haystack, "reader", reader)
+setattr(haystack, "retriever", retriever)
+setattr(haystack, "summarizer", summarizer)
+setattr(haystack, "translator", translator)
+setattr(haystack, "graph_retriever", graph_retriever)
+setattr(haystack, "knowledge_graph", knowledge_graph)
+setattr(knowledge_graph, "graphdb", knowledge_graph)
+setattr(haystack, "eval", eval)
+setattr(preprocessor, "utils", preprocessing)
+setattr(preprocessor, "cleaning", cleaning)
