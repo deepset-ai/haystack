@@ -16,7 +16,7 @@
     <a href="https://pepy.tech/project/farm-haystack">
         <img alt="Downloads" src="https://pepy.tech/badge/farm-haystack/month">
     </a>
-    <a href="https://apply.workable.com/deepset/">
+    <a href="https://www.deepset.ai/jobs">
         <img alt="Jobs" src="https://img.shields.io/badge/Jobs-We're%20hiring-blue">
     </a>
         <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
