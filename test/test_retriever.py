@@ -291,7 +291,7 @@ def test_mmr_saving_and_loading(retriever, document_store):
     assert abs(original_sum_table - loaded_sum_table) < 0.01
 
     # attributes
-    assert loaded_retriever.processor.embed_title == True
+    assert loaded_retriever.processor.embed_surrounding_context == True
     assert loaded_retriever.batch_size == 16
     assert loaded_retriever.processor.max_seq_len_passage == 256
     assert loaded_retriever.processor.max_seq_len_table == 256

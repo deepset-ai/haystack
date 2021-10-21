@@ -95,6 +95,17 @@ class Document:
         self.content_type = content_type
         self.score = score
         self.meta = meta or {}
+        # Add page_title, section_title and caption meta fields to surrounding_context
+        if self.meta and self.content_type == "table":
+            if "surrounding_context" not in self.meta:
+                self.meta["surrounding_context"] = []
+            if isinstance(self.meta["surrounding_context"], list):
+                if "page_title" in self.meta and self.meta["page_title"] not in self.meta["surrounding_context"]:
+                    self.meta["surrounding_context"].append(self.meta["page_title"])
+                if "section_title" in self.meta and self.meta["section_title"] not in self.meta["surrounding_context"]:
+                    self.meta["surrounding_context"].append(self.meta["section_title"])
+                if "caption" in self.meta and self.meta["caption"] not in self.meta["surrounding_context"]:
+                    self.meta["surrounding_context"].append(self.meta["caption"])
 
         if embedding is not None:
             embedding = np.asarray(embedding)

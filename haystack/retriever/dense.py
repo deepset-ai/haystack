@@ -491,7 +491,7 @@ class MultimodalRetriever(BaseRetriever):
                  top_k: int = 10,
                  use_gpu: bool = True,
                  batch_size: int = 16,
-                 embed_title: bool = True,
+                 embed_surrounding_context: bool = True,
                  use_fast_tokenizers: bool = True,
                  infer_tokenizer_classes: bool = False,
                  similarity_function: str = "dot_product",
@@ -516,12 +516,19 @@ class MultimodalRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
-        :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
-                            This is the approach used in the original paper and is likely to improve performance if your
-                            titles contain meaningful information for retrieval (topic, entities etc.) .
-                            The title is expected to be present in doc.meta["name"] and can be supplied in the documents
-                            before writing them to the DocumentStore like this:
-                            {"text": "my text", "meta": {"name": "my title"}}.
+        :param embed_surrounding_context: Whether to concatenate title and text passage to a text pair and table
+                                           metadata (e.g. caption) and table that is then used to create the embedding.
+                                           This is the approach used in the original paper and is likely to improve
+                                           performance if your titles contain meaningful information for retrieval
+                                           (topic, entities etc.) .
+                                           For Documents of content_type `"text"`, the title is expected to be present
+                                           in doc.meta["name"] and can be supplied in the documents
+                                           before writing them to the DocumentStore like this:
+                                           {"text": "my text", "meta": {"name": "my title"}}.
+                                           For Documents of content_type `"table"`, the metadata is expected to be present
+                                           in doc.meta["surrounding_context"] and can be supplied in the documents
+                                           before writing them to the DocumentStore like this:
+                                           {"text": "my text", "meta": {"surrounding_context": ["my title", "my caption"]}}.
         :param use_fast_tokenizers: Whether to use fast Rust tokenizers
         :param infer_tokenizer_classes: Whether to infer tokenizer class from the model config / name.
                                         If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
@@ -540,7 +547,7 @@ class MultimodalRetriever(BaseRetriever):
             passage_embedding_model=passage_embedding_model, table_embedding_model=table_embedding_model,
             model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
             max_seq_len_table=max_seq_len_table, top_k=top_k, use_gpu=use_gpu, batch_size=batch_size,
-            embed_title=embed_title, use_fast_tokenizers=use_fast_tokenizers,
+            embed_surrounding_context=embed_surrounding_context, use_fast_tokenizers=use_fast_tokenizers,
             infer_tokenizer_classes=infer_tokenizer_classes, similarity_function=similarity_function,
             progress_bar=progress_bar, devices=devices
         )
@@ -613,7 +620,7 @@ class MultimodalRetriever(BaseRetriever):
                                                        max_seq_len_table=max_seq_len_table,
                                                        label_list=["hard_negative", "positive"],
                                                        metric="text_similarity_metric",
-                                                       embed_title=embed_title,
+                                                       embed_surrounding_context=embed_surrounding_context,
                                                        num_hard_negatives=0,
                                                        num_positives=1)
 
@@ -732,9 +739,7 @@ class MultimodalRetriever(BaseRetriever):
         for doc in docs:
             if doc.content_type == "table":
                 model_input.append({"passages": [{
-                    "page_title": doc.meta["page_title"] if doc.meta and "page_title" in doc.meta else "",
-                    "section_title": doc.meta["section_title"] if doc.meta and "section_title" in doc.meta else "",
-                    "caption": doc.meta["caption"] if doc.meta and "caption" in doc.meta else "",
+                    "surrounding_context": doc.meta["surrounding_context"] if doc.meta and "surrounding_context" in doc.meta else [],
                     "columns": doc.content.columns.tolist(),  # type: ignore
                     "rows": doc.content.values.tolist(),  # type: ignore
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
@@ -774,7 +779,7 @@ class MultimodalRetriever(BaseRetriever):
               max_processes: int = 128,
               dev_split: float = 0,
               batch_size: int = 2,
-              embed_title: bool = True,
+              embed_surrounding_context: bool = True,
               num_hard_negatives: int = 1,
               num_positives: int = 1,
               n_epochs: int = 3,
@@ -804,9 +809,10 @@ class MultimodalRetriever(BaseRetriever):
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
         :param batch_size: Total number of samples in 1 batch of data.
-        :param embed_title: Whether to concatenate passage title with each passage and table metadata with each table.
-                            The default setting in official MMRetrieval embeds page title, section title and caption
-                            with the corresponding table and title with corresponding text passage.
+        :param embed_surrounding_context: Whether to concatenate passage title with each passage and table metadata with
+                                          each table. The default setting in official MMRetrieval embeds page title,
+                                          section title and caption with the corresponding table and title with
+                                          corresponding text passage.
         :param num_hard_negatives: Number of hard negative passages (passages which are
                                    very similar (high score by BM25) to query but do not contain the answer)-
         :param num_positives: Number of positive passages.
@@ -832,7 +838,7 @@ class MultimodalRetriever(BaseRetriever):
         :param table_encoder_save_dir: Directory inside save_dir where table_encoder model files are saved.
         """
 
-        self.processor.embed_title = embed_title
+        self.processor.embed_surrounding_context = embed_surrounding_context
         self.processor.data_dir = Path(data_dir)
         self.processor.train_filename = train_filename
         self.processor.dev_filename = dev_filename
@@ -912,7 +918,7 @@ class MultimodalRetriever(BaseRetriever):
              max_seq_len_table: int = 256,
              use_gpu: bool = True,
              batch_size: int = 16,
-             embed_title: bool = True,
+             embed_surrounding_context: bool = True,
              use_fast_tokenizers: bool = True,
              similarity_function: str = "dot_product",
              query_encoder_dir: str = "query_encoder",
@@ -935,7 +941,7 @@ class MultimodalRetriever(BaseRetriever):
             max_seq_len_table=max_seq_len_table,
             use_gpu=use_gpu,
             batch_size=batch_size,
-            embed_title=embed_title,
+            embed_surrounding_context=embed_surrounding_context,
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
             infer_tokenizer_classes=infer_tokenizer_classes

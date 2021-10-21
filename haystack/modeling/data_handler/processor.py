@@ -1187,7 +1187,7 @@ class MultimodalSimilarityProcessor(Processor):
         dev_split: float = 0.1,
         proxies: Optional[Dict] = None,
         max_samples: Optional[int] = None,
-        embed_title: bool = True,
+        embed_surrounding_context: bool = True,
         num_positives: int = 1,
         num_hard_negatives: int = 1,
         shuffle_negatives: bool = True,
@@ -1217,8 +1217,8 @@ class MultimodalSimilarityProcessor(Processor):
         :param proxies: Proxy configuration to allow downloads of remote datasets.
                         Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
         :param max_samples: maximum number of samples to use.
-        :param embed_title: Whether to embed title in text passages and table metadata in tables
-                            during tensorization (bool).
+        :param embed_surrounding_context: Whether to embed title in text passages and table metadata in tables
+                                          during tensorization (bool).
         :param num_hard_negatives: Maximum number of hard negative context passages in a sample.
         :param num_positives: Maximum number of positive context passages in a sample.
         :param shuffle_negatives: Whether to shuffle all the hard_negative passages before selecting the
@@ -1235,7 +1235,7 @@ class MultimodalSimilarityProcessor(Processor):
         self.query_tokenizer = query_tokenizer
         self.passage_tokenizer = passage_tokenizer
         self.table_tokenizer = table_tokenizer
-        self.embed_title = embed_title
+        self.embed_surrounding_context = embed_surrounding_context
         self.num_hard_negatives = num_hard_negatives
         self.num_positives = num_positives
         self.shuffle_negatives = shuffle_negatives
@@ -1398,9 +1398,7 @@ class MultimodalSimilarityProcessor(Processor):
                     for doc in val:
                         if doc["type"] == "table":
                             docs.append({
-                                "page_title": doc.get("page_title", ""),
-                                "section_title": doc.get("section_title", ""),
-                                "caption": doc.get("caption", ""),
+                                "surrounding_context": [doc.get('page_title', ''), doc.get('section', ''), doc.get('caption')],
                                 "columns": doc.get("columns"),
                                 "rows": doc.get("rows"),
                                 "label": "positive" if key in positive_context_json_keys else "hard_negative",
@@ -1543,8 +1541,7 @@ class MultimodalSimilarityProcessor(Processor):
                             positive_ctx_texts.append(pos_ctx["text"])
                             is_table.append(0)
                         elif pos_ctx["type"] == "table":
-                            positive_ctx_titles.append(
-                                f"{pos_ctx.get('page_title', '')} {pos_ctx.get('section_title', '')} {pos_ctx.get('caption', '')}".strip())
+                            positive_ctx_titles.append(" ".join(pos_ctx.get("surrounding_context")))
                             linearized_rows = [cell for row in pos_ctx["rows"] for cell in row]
                             linearized_table = " ".join(pos_ctx["columns"]) + " " + " ".join(linearized_rows)
                             positive_ctx_texts.append(linearized_table)
@@ -1556,8 +1553,7 @@ class MultimodalSimilarityProcessor(Processor):
                             hard_negative_ctx_texts.append(hn_ctx["text"])
                             is_table.append(0)
                         elif hn_ctx["type"] == "table":
-                            hard_negative_ctx_titles.append(
-                                f"{hn_ctx.get('page_title', '')} {hn_ctx.get('section_title', '')} {hn_ctx.get('caption', '')}".strip())
+                            hard_negative_ctx_titles.append(" ".join(hn_ctx.get("surrounding_context")))
                             linearized_rows = [cell for row in hn_ctx["rows"] for cell in row]
                             linearized_table = " ".join(hn_ctx["columns"]) + " " + " ".join(linearized_rows)
                             hard_negative_ctx_texts.append(linearized_table)
@@ -1566,7 +1562,7 @@ class MultimodalSimilarityProcessor(Processor):
                     # all context passages and labels: 1 for positive context and 0 for hard-negative context
                     ctx_label = [1] * self.num_positives + [0] * self.num_hard_negatives
                     # featurize context passages
-                    if self.embed_title:
+                    if self.embed_surrounding_context:
                         # concatenate title with positive context passages + negative context passages
                         all_ctx = self._combine_title_context(positive_ctx_titles, positive_ctx_texts) + \
                                   self._combine_title_context(hard_negative_ctx_titles, hard_negative_ctx_texts)
