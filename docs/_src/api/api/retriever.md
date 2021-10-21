@@ -413,11 +413,11 @@ None
 
 Load DensePassageRetriever from the specified directory.
 
-<a name="dense.MultimodalRetriever"></a>
-## MultimodalRetriever Objects
+<a name="dense.TableTextRetriever"></a>
+## TableTextRetriever Objects
 
 ```python
-class MultimodalRetriever(BaseRetriever)
+class TableTextRetriever(BaseRetriever)
 ```
 
 Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text passages and tables
@@ -426,7 +426,7 @@ See the original paper for more details:
 Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using Tri-encoder Models"
 (https://arxiv.org/abs/2108.04049),
 
-<a name="dense.MultimodalRetriever.__init__"></a>
+<a name="dense.TableTextRetriever.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -476,7 +476,7 @@ The checkpoint format matches huggingface transformers' model format
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 
-<a name="dense.MultimodalRetriever.embed_queries"></a>
+<a name="dense.TableTextRetriever.embed_queries"></a>
 #### embed\_queries
 
 ```python
@@ -493,7 +493,7 @@ Create embeddings for a list of queries using the query encoder
 
 Embeddings, one per input queries
 
-<a name="dense.MultimodalRetriever.embed_documents"></a>
+<a name="dense.TableTextRetriever.embed_documents"></a>
 #### embed\_documents
 
 ```python
@@ -512,7 +512,7 @@ the table encoder.
 
 Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
 
-<a name="dense.MultimodalRetriever.embed_passages"></a>
+<a name="dense.TableTextRetriever.embed_passages"></a>
 #### embed\_passages
 
 ```python
@@ -531,14 +531,14 @@ embeddings.
 
 Embeddings of documents / passages shape (batch_size, embedding_dim)
 
-<a name="dense.MultimodalRetriever.train"></a>
+<a name="dense.TableTextRetriever.train"></a>
 #### train
 
 ```python
  | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_surrounding_context: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder")
 ```
 
-Train a MultimodalRetrieval model.
+Train a TableTextRetrieval model.
 
 **Arguments**:
 
@@ -579,14 +579,14 @@ Train a MultimodalRetrieval model.
 - `passage_encoder_save_dir`: Directory inside save_dir where passage_encoder model files are saved.
 - `table_encoder_save_dir`: Directory inside save_dir where table_encoder model files are saved.
 
-<a name="dense.MultimodalRetriever.save"></a>
+<a name="dense.TableTextRetriever.save"></a>
 #### save
 
 ```python
  | save(save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder")
 ```
 
-Save MultiModalRetriever to the specified directory.
+Save TableTextRetriever to the specified directory.
 
 **Arguments**:
 
@@ -599,7 +599,7 @@ Save MultiModalRetriever to the specified directory.
 
 None
 
-<a name="dense.MultimodalRetriever.load"></a>
+<a name="dense.TableTextRetriever.load"></a>
 #### load
 
 ```python
@@ -607,7 +607,7 @@ None
  | load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_surrounding_context: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder", infer_tokenizer_classes: bool = False)
 ```
 
-Load MultimodalRetriever from the specified directory.
+Load TableTextRetriever from the specified directory.
 
 <a name="dense.EmbeddingRetriever"></a>
 ## EmbeddingRetriever Objects
