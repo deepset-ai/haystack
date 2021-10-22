@@ -35,6 +35,8 @@ from haystack.summarizer.base import BaseSummarizer
 from haystack.translator.base import BaseTranslator
 from haystack.document_store.base import BaseDocumentStore
 from haystack.question_generator import QuestionGenerator
+from haystack.extractor import EntityExtractor
+
 
 logger = logging.getLogger(__name__)
 
