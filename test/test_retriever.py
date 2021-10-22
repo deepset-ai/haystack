@@ -57,8 +57,7 @@ DOCS = [
         ("embedding", "milvus"),
         ("elasticsearch", "elasticsearch"),
         ("es_filter_only", "elasticsearch"),
-        ("tfidf", "memory"),
-        ("table_text_retriever", "elasticsearch")
+        ("tfidf", "memory")
     ],
     indirect=True,
 )

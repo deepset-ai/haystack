@@ -882,7 +882,8 @@ class TableTextRetriever(BaseRetriever):
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
         self.table_tokenizer.save_pretrained(f"{save_dir}/{table_encoder_save_dir}")
 
-        self.model = DataParallel(self.model, device_ids=self.devices)
+        if len(self.devices) > 1:
+            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def save(self, save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder",
              passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder"):
