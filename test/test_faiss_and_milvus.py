@@ -314,7 +314,10 @@ def test_cosine_similarity(document_store_cosine):
     for doc in query_results:
         result_emb = doc.embedding
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        document_store_cosine.normalize_embedding(original_emb[0])
+        if type(document_store_cosine)==FAISSDocumentStore :
+            document_store_cosine.normalize_embedding(original_emb)
+        else:
+            document_store_cosine.normalize_embedding(original_emb[0])
 
         # check if the stored embedding was normalized
         assert np.allclose(original_emb[0], result_emb, rtol=0.01)
@@ -333,7 +336,10 @@ def test_cosine_similarity(document_store_cosine):
 
     for doc in query_results:
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        document_store_cosine.normalize_embedding(original_emb[0])
+        if type(document_store_cosine)==FAISSDocumentStore :
+            document_store_cosine.normalize_embedding(original_emb)
+        else:
+            document_store_cosine.normalize_embedding(original_emb[0])
         # check if the original embedding has changed after updating the embeddings
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
@@ -348,7 +354,7 @@ def test_cosine_sanity_check(document_store_cosine_small):
     # The score is normalized to yield a value between 0 and 1.
     KNOWN_COSINE = (0.9746317 + 1) / 2
 
-    docs = [{"name": "vec_1", "text": "vec_1", "embedding": VEC_1}]
+    docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
     document_store_cosine_small.write_documents(documents=docs)
 
     query_results = document_store_cosine_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
