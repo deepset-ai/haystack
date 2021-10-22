@@ -314,7 +314,7 @@ def test_cosine_similarity(document_store_cosine):
     for doc in query_results:
         result_emb = doc.embedding
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        document_store_cosine.normalize_embedding(original_emb)
+        document_store_cosine.normalize_embedding(original_emb[0])
 
         # check if the stored embedding was normalized
         assert np.allclose(original_emb[0], result_emb, rtol=0.01)
@@ -333,7 +333,7 @@ def test_cosine_similarity(document_store_cosine):
 
     for doc in query_results:
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        document_store_cosine.normalize_embedding(original_emb)
+        document_store_cosine.normalize_embedding(original_emb[0])
         # check if the original embedding has changed after updating the embeddings
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
