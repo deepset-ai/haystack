@@ -31,7 +31,7 @@ class PreProcessor(BasePreProcessor)
 #### \_\_init\_\_
 
 ```python
- | __init__(clean_whitespace: bool = True, clean_header_footer: bool = False, clean_empty_lines: bool = True, split_by: str = "word", split_length: int = 1000, split_overlap: int = 0, split_respect_sentence_boundary: bool = True, language: str = "en")
+ | __init__(clean_whitespace: bool = True, clean_header_footer: bool = False, clean_empty_lines: bool = True, split_by: str = "word", split_length: int = 200, split_overlap: int = 0, split_respect_sentence_boundary: bool = True, language: str = "en")
 ```
 
 **Arguments**:

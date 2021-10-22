@@ -21,6 +21,13 @@ COPY setup.py requirements.txt README.md /home/user/
 RUN pip install -r requirements.txt
 RUN pip install -e .
 
+# download punkt tokenizer to be included in image
+RUN python3 -c "import nltk;nltk.download('punkt', download_dir='/usr/nltk_data')"
+
+# create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH
+RUN mkdir -p /home/user/file-upload
+RUN chmod 666 /home/user/file-upload
+
 # copy saved models
 COPY README.md models* /home/user/models/
 
