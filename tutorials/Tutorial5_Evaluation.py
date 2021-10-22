@@ -1,7 +1,7 @@
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.preprocessor.utils import fetch_archive_from_http
 from haystack.retriever.sparse import ElasticsearchRetriever
-from haystack.retriever.dense import DensePassageRetriever
+from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.eval import EvalAnswers, EvalDocuments
 from haystack.reader.farm import FARMReader
 from haystack.preprocessor import PreProcessor
@@ -57,7 +57,7 @@ def tutorial5_evaluation():
     # and also split our documents into shorter passages using the PreProcessor
     preprocessor = PreProcessor(
         split_by="word",
-        split_length=500,
+        split_length=200,
         split_overlap=0,
         split_respect_sentence_boundary=False,
         clean_empty_lines=False,
@@ -78,16 +78,22 @@ def tutorial5_evaluation():
     # Initialize Retriever
     retriever = ElasticsearchRetriever(document_store=document_store)
 
-    # Alternative: Evaluate DensePassageRetriever
-    # Note, that DPR works best when you index short passages < 512 tokens as only those tokens will be used for the embedding.
-    # Here, for nq_dev_subset_v2.json we have avg. num of tokens = 5220(!).
-    # DPR still outperforms Elastic's BM25 by a small margin here.
+    # Alternative: Evaluate dense Retrievers (DPR and SentenceTransformers)
+    # Dense Passage Retrieval uses a separate transformer based encoder for query and document each
+    # SentenceTransformers have a single encoder for both
+    # Please make sure the "embedding_dim" parameter in the DocumentStore above matches the output dimension of you model
+    # Please also take care that the PreProcessor splits your files into chunks that can be completely converted with
+    #        the max_seq_len limitations of Transformers
+    # The SentenceTransformer model "all-mpnet-base-v2" generelly works well on any kind of english text.
+    # For more information check out the documentation at: https://www.sbert.net/docs/pretrained_models.html
     # retriever = DensePassageRetriever(document_store=document_store,
     #                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
     #                                   passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
     #                                   use_gpu=True,
-    #                                   embed_title=True,
-    #                                   remove_sep_tok_from_untitled_passages=True)
+    #                                   max_seq_len_passage=256,
+    #                                   embed_title=True)
+    # retriever = EmbeddingRetriever(document_store=document_store, model_format="sentence_transformers",
+    #                                embedding_model="all-mpnet-base-v2")
     # document_store.update_embeddings(retriever, index=doc_index)
 
     # Initialize Reader
@@ -130,8 +136,8 @@ def tutorial5_evaluation():
 
         # Here is the pipeline definition
         p = Pipeline()
-        p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-        p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
+        p.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["Retriever"])
         p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
         p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
         results = []
@@ -140,7 +146,7 @@ def tutorial5_evaluation():
             res = p.run(
                 query=l.query,
                 labels=l,
-                params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
+                params={"index": doc_index, "Retriever": {"top_k": 10}, "QAReader": {"top_k": 5}},
             )
             results.append(res)
 
