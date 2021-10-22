@@ -171,7 +171,7 @@ Runs the pipeline, one node at a time.
 Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
 This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
 Example:
-| from haystack.document_store.base import BaseDocumentStore
+| from haystack.document_stores.base import BaseDocumentStore
 | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
 | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
 
@@ -270,10 +270,7 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 - `path`: path of the output YAML file.
 - `return_defaults`: whether to output parameters that have the default values.
 
-<a name="ray"></a>
-# Module ray
-
-<a name="ray.RayPipeline"></a>
+<a name="base.RayPipeline"></a>
 ## RayPipeline Objects
 
 ```python
@@ -310,7 +307,7 @@ A RayPipeline can only be created with a YAML Pipeline config.
 By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
 set the `address` parameter when creating the RayPipeline instance.
 
-<a name="ray.RayPipeline.__init__"></a>
+<a name="base.RayPipeline.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -322,7 +319,7 @@ set the `address` parameter when creating the RayPipeline instance.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
 
-<a name="ray.RayPipeline.load_from_yaml"></a>
+<a name="base.RayPipeline.load_from_yaml"></a>
 #### load\_from\_yaml
 
 ```python
@@ -374,7 +371,7 @@ Here's a sample configuration:
                                      `_` sign must be used to specify nested hierarchical properties.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 
-<a name="ray._RayDeploymentWrapper"></a>
+<a name="base._RayDeploymentWrapper"></a>
 ## \_RayDeploymentWrapper Objects
 
 ```python
@@ -389,7 +386,7 @@ like Document Stores.
 This wrapper class encapsulates the initialization of Components. Given a Component Class
 name, it creates an instance using the YAML Pipeline config.
 
-<a name="ray._RayDeploymentWrapper.__init__"></a>
+<a name="base._RayDeploymentWrapper.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -403,7 +400,7 @@ Create an instance of Component.
 - `pipeline_config`: Pipeline YAML parsed as a dict.
 - `component_name`: Component Class name.
 
-<a name="ray._RayDeploymentWrapper.__call__"></a>
+<a name="base._RayDeploymentWrapper.__call__"></a>
 #### \_\_call\_\_
 
 ```python
