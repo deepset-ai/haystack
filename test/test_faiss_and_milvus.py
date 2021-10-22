@@ -8,7 +8,6 @@ from haystack.pipeline import DocumentSearchPipeline
 from haystack.document_store.faiss import FAISSDocumentStore
 from haystack.pipeline import Pipeline
 from haystack.retriever.dense import EmbeddingRetriever
-from conftest import document_store_cosine, document_store_cosine_small
 
 DOCUMENTS = [
     {"name": "name_1", "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -350,9 +349,9 @@ def test_cosine_sanity_check(document_store_cosine_small):
     KNOWN_COSINE = (0.9746317 + 1) / 2
 
     docs = [{"name": "vec_1", "text": "vec_1", "embedding": VEC_1}]
-    document_store_cosine.write_documents(documents=docs)
+    document_store_cosine_small.write_documents(documents=docs)
 
-    query_results = document_store_cosine.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
+    query_results = document_store_cosine_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
     assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.000001)
