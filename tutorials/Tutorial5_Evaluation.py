@@ -138,15 +138,15 @@ def tutorial5_evaluation():
         p = Pipeline()
         p.add_node(component=retriever, name="Retriever", inputs=["Query"])
         p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["Retriever"])
-        p.add_node(component=reader, name="QAReader", inputs=["EvalDocuments"])
-        p.add_node(component=eval_reader, name="EvalAnswers", inputs=["QAReader"])
+        p.add_node(component=reader, name="Reader", inputs=["EvalDocuments"])
+        p.add_node(component=eval_reader, name="EvalAnswers", inputs=["Reader"])
         results = []
 
         for l in labels:
             res = p.run(
                 query=l.query,
                 labels=l,
-                params={"index": doc_index, "Retriever": {"top_k": 10}, "QAReader": {"top_k": 5}},
+                params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
             )
             results.append(res)
 
