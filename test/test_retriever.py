@@ -12,9 +12,6 @@ from haystack.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-import os
-os.environ["HIP_LAUNCH_BLOCKING"] = "1"
-
 
 DOCS = [
     Document(
