@@ -10,7 +10,7 @@ from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
 from haystack.reader.transformers import TransformersReader
 from haystack.utils import launch_milvus, launch_es, launch_opensearch
-from farm.file_utils import http_get
+from haystack.modeling.data_handler.processor import http_get
 
 import logging
 import subprocess
@@ -90,7 +90,7 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
             index_type = "flat"
         elif document_store_type == "opensearch_hnsw":
             index_type = "hnsw"
-        document_store = OpenSearchDocumentStore(index_type=index_type, timeout=3000)
+        document_store = OpenSearchDocumentStore(index_type=index_type, port=9201, timeout=3000)
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
     return document_store

@@ -31,14 +31,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         aws4auth = None,
         index: str = "document",
         label_index: str = "label",
-        search_fields: Union[str, list] = "text",
-        text_field: str = "text",
+        search_fields: Union[str, list] = "content",
+        content_field: str = "content",
         name_field: str = "name",
         embedding_field: str = "embedding",
         embedding_dim: int = 768,
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
-        faq_question_field: Optional[str] = None,
         analyzer: str = "standard",
         scheme: str = "http",
         ca_certs: Optional[str] = None,
@@ -68,7 +67,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
         :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
         :param search_fields: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
-        :param text_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+        :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
         :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
@@ -104,7 +103,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             host=host, port=port, username=username, password=password, api_key_id=api_key_id, api_key=api_key,
-            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields, text_field=text_field,
+            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields, content_field=content_field,
             name_field=name_field, embedding_field=embedding_field, embedding_dim=embedding_dim,
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
@@ -123,12 +122,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         #TODO we should implement a more flexible interal mapping here that simplifies the usage of additional,
         # custom fields (e.g. meta data you want to return)
         self.search_fields = search_fields
-        self.text_field = text_field
+        self.content_field = content_field
         self.name_field = name_field
         self.embedding_field = embedding_field
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
-        self.faq_question_field = faq_question_field
         self.analyzer = analyzer
         self.return_embedding = return_embedding
 
@@ -244,7 +242,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "mappings": {
                     "properties": {
                         self.name_field: {"type": "keyword"},
-                        self.text_field: {"type": "text"},
+                        self.content_field: {"type": "text"},
                     },
                     "dynamic_templates": [
                         {
@@ -283,16 +281,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         mapping = {
             "mappings": {
                 "properties": {
-                    "question": {"type": "text"},
-                    "answer": {"type": "text"},
+                    "query": {"type": "text"},
+                    "answer": {"type": "flattened"}, #light-weight but less search options than full object
+                    "document": {"type": "flattened"},
                     "is_correct_answer": {"type": "boolean"},
                     "is_correct_document": {"type": "boolean"},
                     "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
                     "document_id": {"type": "keyword"},
-                    "offset_start_in_doc": {"type": "long"},
                     "no_answer": {"type": "boolean"},
-                    "model_id": {"type": "keyword"},
-                    "type": {"type": "keyword"},
+                    "pipeline_id": {"type": "keyword"},
                     "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
                     "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
                     #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
@@ -312,9 +309,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     # TODO: Add flexibility to define other non-meta and meta fields expected by the Document class
     def _create_document_field_map(self) -> Dict:
         return {
-            self.text_field: "text",
-            self.embedding_field: "embedding",
-            self.faq_question_field if self.faq_question_field else "question": "question"
+            self.content_field: "content",
+            self.embedding_field: "embedding"
         }
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
@@ -385,12 +381,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         they will automatically get UUIDs assigned. See the `Document` class for details)
 
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                          Optionally: Include meta data via {"text": "<the-actual-text>",
+                          For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+                          Optionally: Include meta data via {"content": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           It can be used for filtering and is accessible in the responses of the Finder.
                           Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
-                          should be changed to what you have set for self.text_field and self.name_field.
+                          should be changed to what you have set for self.content_field and self.name_field.
         :param index: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
         :param batch_size: Number of documents that are passed to Elasticsearch's bulk function at a time.
         :param duplicate_documents: Handle duplicates document based on parameter options.
@@ -414,7 +410,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self._handle_duplicate_documents(document_objects, duplicate_documents)
+        document_objects = self._handle_duplicate_documents(documents=document_objects,
+                                                            index=index,
+                                                            duplicate_documents=duplicate_documents)
         documents_to_index = []
         for doc in document_objects:
             _doc = {
@@ -457,6 +455,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """Write annotation labels into document store.
 
         :param labels: A list of Python dictionaries or a list of Haystack Label objects.
+        :param index: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
         :param batch_size: Number of labels that are passed to Elasticsearch's bulk function at a time.
         """
         index = index or self.label_index
@@ -856,7 +855,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.text_field, self.faq_question_field, self.embedding_field)}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.content_field, "content_type", self.embedding_field)}
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
@@ -880,10 +879,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         document = Document(
             id=hit["_id"],
-            text=hit["_source"].get(self.text_field),
+            content=hit["_source"].get(self.content_field),
+            content_type=hit["_source"].get("content_type", None),
             meta=meta_data,
             score=score,
-            question=hit["_source"].get(self.faq_question_field),
             embedding=embedding,
         )
         return document
@@ -899,7 +898,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             index = self.index
         docs = self.get_all_documents(index)
 
-        l = [len(d.text) for d in docs]
+        l = [len(d.content) for d in docs]
         stats = {"count": len(docs),
                  "chars_mean": np.mean(l),
                  "chars_max": max(l),
@@ -993,14 +992,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, filters)
+        self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from.
+        :param index: Index name to delete the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         :return: None
         """
         index = index or self.index
@@ -1014,12 +1019,32 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         }
                 )
                 query["query"]["bool"] = {"filter": filter_clause}
+            
+            if ids:
+                query["query"]["bool"]["must"] = {"ids": {"values": ids}}
+
+        elif ids:
+            query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
         self.client.delete_by_query(index=index, body=query, ignore=[404])
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
             time.sleep(2)
+
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete labels in an index. All labels are deleted if no filters are passed.
+
+        :param index: Index name to delete the labels from. If None, the
+                      DocumentStore's default label index (self.label_index) will be used
+        :param ids: Optional list of IDs to narrow down the labels to be deleted.
+        :param filters: Optional filters to narrow down the labels to be deleted.
+            Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+        :return: None
+        """
+        index = index or self.label_index
+        self.delete_documents(index=index, ids=ids, filters=filters)
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
@@ -1035,7 +1060,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                  scheme="https",
                  username="admin",
                  password="admin",
-                 port=9201,
+                 port=9200,
                  **kwargs):
 
         # Overwrite default kwarg values of parent class so that in default cases we can initialize
@@ -1136,7 +1161,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 "mappings": {
                     "properties": {
                         self.name_field: {"type": "keyword"},
-                        self.text_field: {"type": "text"},
+                        self.content_field: {"type": "text"},
                     },
                     "dynamic_templates": [
                         {
@@ -1201,6 +1226,36 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name):
                 raise e
 
+    def _create_label_index(self, index_name: str):
+        if self.client.indices.exists(index=index_name):
+            return
+        mapping = {
+            "mappings": {
+                "properties": {
+                    "query": {"type": "text"},
+                    "answer": {"type": "nested"}, # In elasticsearch we use type:flattened, but this is not supported in opensearch
+                    "document": {"type": "nested"},
+                    "is_correct_answer": {"type": "boolean"},
+                    "is_correct_document": {"type": "boolean"},
+                    "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
+                    "document_id": {"type": "keyword"},
+                    "no_answer": {"type": "boolean"},
+                    "pipeline_id": {"type": "keyword"},
+                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
+                    "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
+                    #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
+                }
+            }
+        }
+        try:
+            self.client.indices.create(index=index_name, body=mapping)
+        except RequestError as e:
+            # With multiple workers we need to avoid race conditions, where:
+            # - there's no index in the beginning
+            # - both want to create one
+            # - one fails as the other one already created it
+            if not self.client.indices.exists(index=index_name):
+                raise e
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """

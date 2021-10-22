@@ -197,7 +197,7 @@ class PreProcessor(BasePreProcessor):
         Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
         and empty lines. Its exact functionality is defined by the parameters passed into PreProcessor.__init__().
         """
-        text = document["text"]
+        text = document["content"]
         if clean_header_footer:
             text = self._find_and_remove_header_footer(
                 text, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
@@ -215,7 +215,7 @@ class PreProcessor(BasePreProcessor):
         if clean_empty_lines:
             text = re.sub(r"\n\n+", "\n\n", text)
 
-        document["text"] = text
+        document["content"] = text
         return document
 
     def split(
@@ -239,7 +239,7 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary and split_by != "word":
             raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
 
-        text = document["text"]
+        text = document["content"]
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
@@ -308,7 +308,7 @@ class PreProcessor(BasePreProcessor):
         documents = []
         for i, txt in enumerate(text_splits):
             doc = deepcopy(document)
-            doc["text"] = txt
+            doc["content"] = txt
             if "meta" not in doc.keys() or doc["meta"] is None:
                 doc["meta"] = {}
             doc["meta"]["_split_id"] = i

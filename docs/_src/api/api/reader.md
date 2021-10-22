@@ -48,7 +48,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True)
+ | __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, proxies=None, local_files_only=False, force_download=False, **kwargs)
 ```
 
 **Arguments**:
@@ -89,18 +89,30 @@ and that FARM includes no_answer in the sorted list of predictions.
                      Can be helpful to disable in production deployments to keep the logs clean.
 - `duplicate_filtering`: Answers are filtered based on their position. Both start and end position of the answers are considered.
                             The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
+- `use_confidence_scores`: Sets the type of score that is returned with every predicted answer.
+                              `True` => a scaled confidence / relevance score between [0, 1].
+                              This score can also be further calibrated on your dataset via self.eval()
+                              (see https://haystack.deepset.ai/components/reader#confidence-scores) .
+                              `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
+                              from the model for the predicted span.
+- `proxies`: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
+- `local_files_only`: Whether to force checking for local files only (and forbid downloads)
+- `force_download`: Whether fo force a (re-)download even if the model exists locally in the cache.
 
 <a name="farm.FARMReader.train"></a>
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None)
+ | train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3)
 ```
 
 Fine-tune a model on a QA dataset. Options:
 
 - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
 - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
+
+Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
+If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
 **Arguments**:
 
@@ -131,6 +143,10 @@ Fine-tune a model on a QA dataset. Options:
                 "O2" (Almost FP16)
                 "O3" (Pure FP16).
                 See details on: https://nvidia.github.io/apex/amp.html
+- `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
+       checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+- `checkpoint_every`: save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: maximum number of train checkpoints to save.
 
 **Returns**:
 
@@ -193,14 +209,14 @@ Example:
  ```python
     |{
     |    'query': 'Who is the father of Arya Stark?',
-    |    'answers':[
-    |                 {'answer': 'Eddard,',
-    |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-    |                 'offset_answer_start': 147,
-    |                 'offset_answer_end': 154,
+    |    'answers':[Answer(
+    |                 'answer': 'Eddard,',
+    |                 'context': "She travels with her father, Eddard, to King's Landing when he is",
     |                 'score': 0.9787139466668613,
-    |                 'document_id': '1337'
-    |                 },...
+    |                 'offsets_in_context': [Span(start=29, end=35],
+    |                 'offsets_in_context': [Span(start=347, end=353],
+    |                 'document_id': '88d1ed769d003939d3a0d28034464ab2'
+    |                 ),...
     |              ]
     |}
 ```
@@ -241,7 +257,7 @@ Returns a dict containing the following metrics:
 #### eval
 
 ```python
- | eval(document_store: BaseDocumentStore, device: Optional[str] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", calibrate_conf_scores: bool = False)
+ | eval(document_store: BaseDocumentStore, device: Optional[str] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -424,6 +440,89 @@ Example:
 
 - `query`: Query string
 - `documents`: List of Document in which to search for the answer
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
+
+<a name="transformers.TableReader"></a>
+## TableReader Objects
+
+```python
+class TableReader(BaseReader)
+```
+
+Transformer-based model for extractive Question Answering on Tables with TaPas
+using the HuggingFace's transformers framework (https://github.com/huggingface/transformers).
+With this reader, you can directly get predictions via predict()
+
+**Example**:
+
+```python
+from haystack import Document
+from haystack.reader import TableReader
+import pandas as pd
+
+table_reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+data = {
+    "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+    "age": ["57", "46", "60"],
+    "number of movies": ["87", "53", "69"],
+    "date of birth": ["7 february 1967", "10 june 1996", "28 november 1967"],
+}
+table = pd.DataFrame(data)
+document = Document(content=table, content_type="table")
+query = "When was DiCaprio born?"
+prediction = table_reader.predict(query=query, documents=[document])
+answer = prediction["answers"][0].answer  # "10 june 1996"
+```
+
+<a name="transformers.TableReader.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
+```
+
+Load a TableQA model from Transformers.
+Available models include:
+
+- ``'google/tapas-base-finetuned-wtq`'``
+- ``'google/tapas-base-finetuned-wikisql-supervised``'
+
+See https://huggingface.co/models?pipeline_tag=table-question-answering
+for full list of available TableQA models.
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
+See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `use_gpu`: Whether to make use of a GPU (if available).
+- `top_k`: The maximum number of answers to return
+- `max_seq_len`: Max sequence length of one input text for the model.
+
+<a name="transformers.TableReader.predict"></a>
+#### predict
+
+```python
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+```
+
+Use loaded TableQA model to find answers for a query in the supplied list of Documents
+of content_type ``'table'``.
+
+Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+WARNING: The answer scores are not reliable, as they are always extremely high, even if
+         a question cannot be answered by a given table.
+
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer. Documents should be
+                  of content_type ``'table'``.
 - `top_k`: The maximum number of answers to return
 
 **Returns**:

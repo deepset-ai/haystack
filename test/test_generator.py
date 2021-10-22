@@ -1,16 +1,16 @@
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 import pytest
-from transformers import PreTrainedTokenizer, BatchEncoding
 
 from haystack import Document
 from haystack.generator.transformers import Seq2SeqGenerator
 from haystack.pipeline import TranslationWrapperPipeline, GenerativeQAPipeline
 
+
 DOCS_WITH_EMBEDDINGS = [
     Document(
-        text="""The capital of Germany is the city state of Berlin.""",
+        content="""The capital of Germany is the city state of Berlin.""",
         embedding=np.array([2.22920075e-01, 1.07770450e-02, 3.35382462e-01, -7.27265477e-02,
                            -1.98119566e-01, -5.64537346e-02, 6.09261453e-01, 2.87229061e-01,
                            -7.73971230e-02, -2.23876238e-01, -5.47461927e-01, -1.08676875e+00,
@@ -206,7 +206,7 @@ DOCS_WITH_EMBEDDINGS = [
                            dtype=np.float32)
     ),
     Document(
-        text="""Berlin is the capital and largest city of Germany by both area and population.""",
+        content="""Berlin is the capital and largest city of Germany by both area and population.""",
         embedding=np.array([-3.50273997e-02, -2.48432189e-01, 6.22839212e-01, -2.02022746e-01,
                            -3.85405064e-01, 2.25520879e-01, 3.62649381e-01, 5.04554689e-01,
                            -4.23478037e-01, -3.49022627e-01, -3.92042458e-01, -1.29845297e+00,
@@ -416,12 +416,8 @@ def test_rag_token_generator(rag_generator):
 
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("elasticsearch", "elasticsearch")],
-    indirect=True,
-)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_generator_pipeline(document_store, retriever, rag_generator):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     query = "What is capital of the Germany?"
@@ -434,14 +430,14 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
 
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
 def test_lfqa_pipeline(document_store, retriever, eli5_generator):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
     for idx, d in enumerate(DOCS_WITH_EMBEDDINGS):
-        docs.append(Document(d.text, str(idx)))
+        docs.append(Document(d.content, str(idx)))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
     query = "Tell me about Berlin?"
@@ -461,7 +457,7 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
     for idx, d in enumerate(DOCS_WITH_EMBEDDINGS):
-        docs.append(Document(d.text, str(idx)))
+        docs.append(Document(d.content, str(idx)))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
     seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random")
@@ -469,8 +465,9 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever):
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
 
     # raises exception as we don't have converter for "patrickvonplaten/t5-tiny-random" in Seq2SeqGenerator
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
+    assert ("doesn\'t have input converter registered for patrickvonplaten/t5-tiny-random" in str(exception_info.value))
 
 
 @pytest.mark.slow
@@ -482,7 +479,7 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
     for idx, d in enumerate(DOCS_WITH_EMBEDDINGS):
-        docs.append(Document(d.text, str(idx)))
+        docs.append(Document(d.content, str(idx)))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
 
@@ -491,22 +488,22 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever):
         def __call__(self, some_invalid_para: str, another_invalid_param: str) -> None:
             pass
 
-    seq2seq = Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", input_converter=_InvalidConverter())
+    seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random", input_converter=_InvalidConverter())
     query = "This query will fail due to InvalidConverter used"
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
 
     # raises exception as we are using invalid method signature in _InvalidConverter
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
+    assert ("does not have a valid __call__ method signature" in str(exception_info.value))
 
 
 # Keeping few (retriever,document_store) combination to reduce test time
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.elasticsearch
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("elasticsearch", "elasticsearch")],
+    [("embedding", "memory")],
     indirect=True,
 )
 def test_generator_pipeline_with_translator(

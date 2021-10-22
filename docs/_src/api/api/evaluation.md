@@ -89,7 +89,7 @@ open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
 #### run
 
 ```python
- | run(labels: List[Label], answers: List[dict], correct_retrieval: bool)
+ | run(labels: List[Label], answers: List[Answer], correct_retrieval: bool)
 ```
 
 Run this node on one sample and its labels

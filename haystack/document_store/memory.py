@@ -100,7 +100,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         documents = deepcopy(documents)
         documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in
                              documents]
-
+        documents_objects = self._drop_duplicate_documents(documents=documents_objects)
         for document in documents_objects:
             if document.id in self.indexes[index]:
                 if duplicate_documents == "fail":
@@ -187,7 +187,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             curr_meta = deepcopy(doc.meta)
             new_document = Document(
                 id=doc.id,
-                text=doc.text,
+                content=doc.content,
                 meta=curr_meta,
                 embedding=doc.embedding
             )
@@ -289,6 +289,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     ):
         index = index or self.index
         documents = deepcopy(list(self.indexes[index].values()))
+        documents = [d for d in documents if isinstance(d, Document)]
 
         filtered_documents = []
 
@@ -388,17 +389,51 @@ class InMemoryDocumentStore(BaseDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, filters)
+        self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from.
+        :param index: Index name to delete the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
+            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
+
         :return: None
         """
-        if filters:
-            raise NotImplementedError("Delete by filters is not implemented for InMemoryDocumentStore.")
         index = index or self.index
-        self.indexes[index] = {}
+        if not filters and not ids:
+            self.indexes[index] = {}
+            return
+        docs_to_delete = self.get_all_documents(index=index, filters=filters)
+        if ids:
+            docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
+        for doc in docs_to_delete:
+            del self.indexes[index][doc.id]
+
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+        """
+        Delete labels in an index. All labels are deleted if no filters are passed.
+
+        :param index: Index name to delete the labels from. If None, the
+                      DocumentStore's default label index (self.label_index) will be used.
+        :param ids: Optional list of IDs to narrow down the labels to be deleted.
+        :param filters: Optional filters to narrow down the labels to be deleted.
+                        Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+        :return: None
+        """
+        index = index or self.label_index
+        if not filters and not ids:
+            self.indexes[index] = {}
+            return
+        labels_to_delete = self.get_all_labels(index=index, filters=filters)
+        if ids:
+            labels_to_delete = [label for label in labels_to_delete if label.id in ids]
+        for label in labels_to_delete:
+            del self.indexes[index][label.id]
+

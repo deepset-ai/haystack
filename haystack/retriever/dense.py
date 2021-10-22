@@ -1,12 +1,13 @@
 import logging
 from abc import abstractmethod
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 import torch
 from torch.nn import DataParallel
 import numpy as np
 from pathlib import Path
 
-from farm.utils import initialize_device_settings
+from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
+from haystack.modeling.utils import initialize_device_settings
 from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModel
 
@@ -14,16 +15,16 @@ from haystack.document_store.base import BaseDocumentStore
 from haystack import Document
 from haystack.retriever.base import BaseRetriever
 
-from farm.infer import Inferencer
-from farm.modeling.tokenization import Tokenizer
-from farm.modeling.language_model import LanguageModel
-from farm.modeling.biadaptive_model import BiAdaptiveModel
-from farm.modeling.prediction_head import TextSimilarityHead
-from farm.data_handler.processor import TextSimilarityProcessor, InferenceProcessor
-from farm.data_handler.data_silo import DataSilo
-from farm.data_handler.dataloader import NamedDataLoader
-from farm.modeling.optimization import initialize_optimizer
-from farm.train import Trainer
+from haystack.modeling.infer import Inferencer
+from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
+from haystack.modeling.model.prediction_head import TextSimilarityHead
+from haystack.modeling.data_handler.processor import TextSimilarityProcessor
+from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.data_handler.dataloader import NamedDataLoader
+from haystack.modeling.model.optimization import initialize_optimizer
+from haystack.modeling.training.base import Trainer
 from torch.utils.data.sampler import SequentialSampler
 
 
@@ -183,7 +184,7 @@ class DensePassageRetriever(BaseRetriever):
             embeds_dropout_prob=0.1,
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
-            device=self.devices[0],
+            device=str(self.devices[0]),
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
@@ -292,7 +293,7 @@ class DensePassageRetriever(BaseRetriever):
 
         passages = [{'passages': [{
             "title": d.meta["name"] if d.meta and "name" in d.meta else "",
-            "text": d.text,
+            "text": d.content,
             "label": d.meta["label"] if d.meta and "label" in d.meta else "positive",
             "external_id": d.id}]
         } for d in docs]
@@ -305,7 +306,7 @@ class DensePassageRetriever(BaseRetriever):
               train_filename: str,
               dev_filename: str = None,
               test_filename: str = None,
-              max_sample: int = None,
+              max_samples: int = None,
               max_processes: int = 128,
               dev_split: float = 0,
               batch_size: int = 2,
@@ -321,7 +322,7 @@ class DensePassageRetriever(BaseRetriever):
               num_warmup_steps: int = 100,
               grad_acc_steps: int = 1,
               use_amp: str = None,
-              optimizer_name: str = "TransformersAdamW",
+              optimizer_name: str = "AdamW",
               optimizer_correct_bias: bool = True,
               save_dir: str = "../saved_models/dpr",
               query_encoder_save_dir: str = "query_encoder",
@@ -333,7 +334,7 @@ class DensePassageRetriever(BaseRetriever):
         :param train_filename: training filename
         :param dev_filename: development set filename, file to be used by model in eval step of training
         :param test_filename: test set filename, file to be used by model in test step after training
-        :param max_sample: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
+        :param max_samples: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
         :param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
@@ -354,7 +355,7 @@ class DensePassageRetriever(BaseRetriever):
                     "O2" (Almost FP16)
                     "O3" (Pure FP16).
                     For more information, refer to: https://nvidia.github.io/apex/amp.html
-        :param optimizer_name: what optimizer to use (default: TransformersAdamW)
+        :param optimizer_name: what optimizer to use (default: AdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
         :param save_dir: directory where models are saved
@@ -367,7 +368,7 @@ class DensePassageRetriever(BaseRetriever):
         self.processor.train_filename = train_filename
         self.processor.dev_filename = dev_filename
         self.processor.test_filename = test_filename
-        self.processor.max_sample = max_sample
+        self.processor.max_samples = max_samples
         self.processor.dev_split = dev_split
         self.processor.num_hard_negatives = num_hard_negatives
         self.processor.num_positives = num_positives
@@ -481,7 +482,7 @@ class EmbeddingRetriever(BaseRetriever):
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'deepset/sentence_bert'``
+        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use gpu or not
         :param model_format: Name of framework that was used for saving the model. Options:
@@ -637,7 +638,7 @@ class _DefaultEmbeddingEncoder(_EmbeddingEncoder):
         return self.embed(texts)
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.text for d in docs] # type: ignore
+        passages = [d.content for d in docs] # type: ignore
         return self.embed(passages)
 
 
@@ -676,7 +677,7 @@ class _SentenceTransformersEmbeddingEncoder(_EmbeddingEncoder):
         return self.embed(texts)
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.text] for d in docs]  # type: ignore
+        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
 
 
@@ -693,11 +694,8 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
         else:
             self.device = torch.device("cpu")
 
-        embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model,
-                                                            use_fast_tokenizers=True)
+        self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
         self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)
-        self.processor = InferenceProcessor(tokenizer=embedding_tokenizer,
-                                            max_seq_len=embedding_tokenizer.max_len_single_sentence)
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
@@ -718,7 +716,7 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
 
     def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
 
-        doc_text = [{"text": d.text} for d in docs]
+        doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
 
         embeddings: List[np.ndarray] = []
@@ -735,8 +733,23 @@ class _RetribertEmbeddingEncoder(_EmbeddingEncoder):
 
     def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
 
-        dataset, tensor_names, _ = self.processor.dataset_from_dicts(text_to_encode,
-                                                                     indices=[i for i in range(len(text_to_encode))])
+        dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
         dataloader = NamedDataLoader(dataset=dataset, sampler=SequentialSampler(dataset),
                                      batch_size=32, tensor_names=tensor_names)
         return dataloader
+
+    def dataset_from_dicts(self, dicts: List[dict]):
+        texts = [x["text"] for x in dicts]
+        tokenized_batch = self.embedding_tokenizer(
+            texts,
+            return_token_type_ids=True,
+            return_attention_mask=True,
+            truncation=True,
+            padding=True
+        )
+
+        features_flat = flatten_rename(tokenized_batch,
+                                       ["input_ids", "token_type_ids", "attention_mask"],
+                                       ["input_ids", "segment_ids", "padding_mask"])
+        dataset, tensornames = convert_features_to_dataset(features=features_flat)
+        return dataset, tensornames
