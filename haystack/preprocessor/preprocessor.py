@@ -43,7 +43,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
         split_by: str = "word",
-        split_length: int = 1000,
+        split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
         language: str = "en",
