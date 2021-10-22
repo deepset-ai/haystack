@@ -17,8 +17,28 @@ logger = logging.getLogger(__name__)
 
 class Milvus2DocumentStore(SQLDocumentStore):
     """
+
+    ** Note: This implementation supports the upcoming Milvus 2.0 release and is in experimental stage.
+    If you want to use a stable version, we recommend using `MilvusDocumentStore` with a Milvus 1.x version **
+
+    Limitations:
+    Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
+    Therefore, delete_documents() and update_embeddings() won't work yet.
+
+    Differences to 1.x:
+    Besides big architectural changes that impact performance and reliability 2.0 supports the filtering by scalar data types.
+    For Haystack users this means you can now run a query using vector similarity and filter for some meta data at the same time!
+    (See https://milvus.io/docs/v2.0.0/comparison.md for more details)
+
+    Usage:
+    1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
+    2. Run pip install pymilvus===2.0.0rc6
+    3. Init a Milvus2DocumentStore in Haystack
+
+    Overview:
     Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
     Therefore, it is particularly suited for Haystack users that work with dense retrieval methods (like DPR).
+
     In contrast to FAISS, Milvus ...
      - runs as a separate service (e.g. a Docker container) and can scale easily in a distributed environment
      - allows dynamic data management (i.e. you can insert/delete vectors without recreating the whole index)
@@ -27,10 +47,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
     This class uses Milvus for all vector related storage, processing and querying.
     The meta-data (e.g. for filtering) and the document text are however stored in a separate SQL Database as Milvus
     does not allow these data types (yet).
-
-    Usage:
-    1. Start a Milvus server (see https://milvus.io/docs/v1.0.0/install_milvus.md)
-    2. Init a MilvusDocumentStore in Haystack
     """
 
     def __init__(
@@ -108,6 +124,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             custom_fields=custom_fields,
         )
 
+        logger.warning("Milvus2DocumentStore is in experimental state until Milvus 2.0 is released")
         try:
             from pymilvus import connections
         except:
@@ -498,21 +515,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         return documents
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
-        """
-        Delete all documents (from SQL AND Milvus).
-        :param index: (SQL) index name for storing the docs and metadata
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :return: None
-        """
-        logger.warning(
-                """DEPRECATION WARNINGS: 
-                1. delete_all_documents() method is deprecated, please use delete_documents method
-                For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
-                """
-        )
-        self.delete_documents(index, filters)
 
     def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
@@ -660,16 +662,23 @@ class Milvus2DocumentStore(SQLDocumentStore):
             doc.embedding = numpy.array(result["embedding"], dtype="float32")
 
     def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
+
         index = index or self.index
         existing_vector_ids = []
         for doc in documents:
             if "vector_id" in doc.meta:
                 existing_vector_ids.append(str(doc.meta["vector_id"]))
 
-        if len(existing_vector_ids) > 0:
-            expression = f'{self.id_field} in [ {",".join(existing_vector_ids)} ]'
-            res = self.collection.delete(expression)
-            assert len(res) == len(existing_vector_ids)
+        # TODO: adjust when Milvus 2.0 is released and supports deletion of vectors again
+        #  (https://github.com/milvus-io/milvus/issues/7130)
+
+        raise NotImplementedError("Milvus 2.0rc is not yet supporting the deletion of vectors."
+                                  "Will be available soon (https://github.com/milvus-io/milvus/issues/7130")
+
+        # if len(existing_vector_ids) > 0:
+        #     expression = f'{self.id_field} in [ {",".join(existing_vector_ids)} ]'
+        #     res = self.collection.delete(expression)
+        #     assert len(res) == len(existing_vector_ids)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
         """
