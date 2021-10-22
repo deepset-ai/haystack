@@ -509,7 +509,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
             weaviate_url="http://localhost:8080",
-            index=index,
+            index=index.replace('_',''),
             similarity=similarity
         )
         document_store.weaviate_client.schema.delete_all()

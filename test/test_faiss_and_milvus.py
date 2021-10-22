@@ -360,4 +360,4 @@ def test_cosine_sanity_check(document_store_cosine_small):
     query_results = document_store_cosine_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
-    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.000001)
+    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.00001)
