@@ -56,21 +56,12 @@ jobs:
 
   prepare-build:
     needs: build-cache
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, windows-latest ]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: List test files on Linux
-        if: ${{ matrix.os != 'windows-latest' }}
+      - name: List test files
         run: |
           echo 'testfiles=$(cd test && ls -d test_*.py | jq -R . | jq -cs .)' >> $GITHUB_ENV
-      - name: List test files on Windows
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          echo 'testfiles=$(cd test && ls -Name test_*.py | jq -R . | jq -cs .)' >>  $env:GITHUB_ENV
       - id: set-matrix
         run: |
           echo '::set-output name=matrix::${{ env.testfiles }}'
