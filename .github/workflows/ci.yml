@@ -56,24 +56,20 @@ jobs:
 
   prepare-build:
     needs: build-cache
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: List test files
-        run: |
-          echo 'testfiles=$(cd test && ls -d test_*.py | jq -R . | jq -cs .)' >> $GITHUB_ENV
       - id: set-matrix
         run: |
-          echo '::set-output name=matrix::${{ env.testfiles }}'
+          echo "::set-output name=matrix::$(cd test && ls -d test_*.py | jq -R . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-
   build:
     needs: prepare-build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        test-path: ${{ fromJson(needs.prepare-build.outputs.matrix) }}
+        test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
         os: [ ubuntu-latest, windows-latest ]
       fail-fast: false
     steps:
