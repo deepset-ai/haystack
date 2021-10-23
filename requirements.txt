@@ -28,7 +28,7 @@ fastapi
 uvicorn
 gunicorn
 pandas
-psycopg2-binary; sys_platform == 'linux' or sys_platform == 'darwin'
+psycopg2-binary; sys_platform != 'win32' and sys_platform != 'cygwin'
 elasticsearch>=7.7,<=7.10
 elastic-apm
 tox
