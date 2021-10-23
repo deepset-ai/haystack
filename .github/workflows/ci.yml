@@ -105,6 +105,7 @@ jobs:
         docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
+    # Update PATH so windows able to detect chrome driver correctly (Refer https://github.com/SergeyPirogov/webdriver_manager/issues/205#issuecomment-926514305)
     - name: Set up Windows test env
       if: ${{ matrix.os == 'windows-latest' }}
       run: |
@@ -115,6 +116,13 @@ jobs:
         choco install elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
+        $old = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path).path
+        $new  =  "$old;C:\Windows\System32\"
+        Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value $new
+        Invoke-WebRequest -Uri https://dlcdn.apache.org/tika/2.1.0/tika-server-standard-2.1.0.jar -OutFile tika-server.jar
+        $curpath = (Get-Location).path
+        $job = Start-Job -ScriptBlock { param($curpath) java -jar $curpath\tika-server.jar } -ArgumentList $curpath
+        Receive-Job -Job $job
 
     - name: Run tests
       run: cd test && pytest -s ${{ matrix.test-path }}
