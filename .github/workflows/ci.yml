@@ -82,7 +82,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        test-path: ${{ needs.prepare-build.outputs.matrix }}
+        test-path: ${{ fromJson(needs.prepare-build.outputs.matrix) }}
         os: [ ubuntu-latest, windows-latest ]
       fail-fast: false
     steps:
