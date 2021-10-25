@@ -9,21 +9,16 @@ import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 
-from haystack.document_stores import BaseDocumentStore
-from haystack import Document
-from haystack.modeling.data_handler.processor import TableTextSimilarityProcessor
-from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
-from haystack.nodes.retriever.base import BaseRetriever
-
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
-from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
 from haystack.modeling.model.tokenization import Tokenizer
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
+from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
 from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.modeling.data_handler.processor import TextSimilarityProcessor
+from haystack.modeling.data_handler.processor import TextSimilarityProcessor, TableTextSimilarityProcessor
 from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer

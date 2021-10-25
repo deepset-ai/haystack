@@ -527,7 +527,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path/"model.onnx",
             opset=opset_version,
-            use_external_format=True if language_model_class is "XLMRoberta" else False
+            use_external_format=True if language_model_class=="XLMRoberta" else False
         )
 
         # save processor & model config files that are needed when loading the model with the Haystack.basics Inferencer

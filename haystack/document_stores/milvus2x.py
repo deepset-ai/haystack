@@ -7,7 +7,7 @@ import numpy as np
 from scipy.special import expit
 from tqdm import tqdm
 
-from haystack import Document
+from haystack.schema import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
 from haystack.utils import get_batches_from_generator
