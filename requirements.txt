@@ -24,7 +24,6 @@ dill
 # onnxruntime_tools
 psutil
 # haystack
---find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn
 gunicorn
