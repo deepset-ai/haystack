@@ -671,7 +671,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if len(existing_vector_ids) > 0:
             # TODO: adjust when Milvus 2.0 is released and supports deletion of vectors again
             #  (https://github.com/milvus-io/milvus/issues/7130)
-            raise NotImplementedError("Milvus 2.0rc is not yet supporting the deletion of vectors."
+            raise NotImplementedError("Milvus 2.0rc is not yet supporting the deletion of vectors.")
             # expression = f'{self.id_field} in [ {",".join(existing_vector_ids)} ]'
             # res = self.collection.delete(expression)
             # assert len(res) == len(existing_vector_ids)
