@@ -15,7 +15,7 @@ import pandas as pd
 
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Document, Label
-from haystack.utils import get_batches_from_generator
+from haystack.document_stores.base import get_batches_from_generator
 
 
 logger = logging.getLogger(__name__)
