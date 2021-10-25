@@ -298,7 +298,7 @@ def test_faiss_passing_index_from_outside(tmp_path):
 
 def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
     # Weaviate currently only supports UUIDs
-    if type(document_store_cosine)==WeaviateDocumentStore:
+    if type(document_store)==WeaviateDocumentStore:
         for d in docs:
             d["id"] = str(uuid.uuid4())
         
