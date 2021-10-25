@@ -33,7 +33,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     Usage:
     1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
     2. Run pip install pymilvus===2.0.0rc6
-    3. Init a Milvus2DocumentStore in Haystack
+    3. Init a Milvus2DocumentStore() in Haystack
 
     Overview:
     Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
@@ -68,7 +68,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
             custom_fields: Optional[List[Any]] = None,
             progress_bar: bool = True,
             duplicate_documents: str = 'overwrite',
-            **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -128,7 +127,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         try:
             from pymilvus import connections
         except:
-            raise ImportError("Install pymilvus===2.0.0rc6 version")
+            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
@@ -178,7 +177,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             from pymilvus import FieldSchema, CollectionSchema, Collection, connections
             from pymilvus.client.types import DataType
         except:
-            raise ImportError("Install pymilvus===2.0.0rc6 version")
+            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         has_collection = connection.has_collection(collection_name=index)
@@ -261,7 +260,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 try:
                     from pymilvus import connections
                 except:
-                    raise ImportError("Install pymilvus===2.0.0rc6 version")
+                    raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
                 connection = connections.get_connection()
                 field_to_idx, field_to_type = self._get_field_to_idx(connection, index)
@@ -325,7 +324,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             from pymilvus import CollectionSchema, connections
             from pymilvus.client.types import DataType
         except:
-            raise ImportError("Install pymilvus===2.0.0rc6 version")
+            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         resp = connection.describe_collection(index)
         collection_schema = CollectionSchema.construct_from_dict(resp)
@@ -375,7 +374,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         try:
             from pymilvus import connections
         except:
-            raise ImportError("Install pymilvus===2.0.0rc6 version")
+            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         field_to_idx, field_to_type = self._get_field_to_idx(connection, index)
@@ -451,7 +450,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             from pymilvus import connections
             from pymilvus.client.abstract import QueryResult
         except:
-            raise ImportError("Install pymilvus===2.0.0rc6 version")
+            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         has_collection = connection.has_collection(collection_name=index)
@@ -529,7 +528,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         try:
             from pymilvus import connections
         except:
-            raise ImportError("Install pymilvus===2.0.0rc6 version")
+            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         has_collection = connection.has_collection(collection_name=index)
@@ -645,7 +644,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             from pymilvus import connections
             from pymilvus.client.abstract import QueryResult
         except:
-            raise ImportError("Install pymilvus===2.0.0rc6 version")
+            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         connection.load_collection(index)
@@ -669,16 +668,13 @@ class Milvus2DocumentStore(SQLDocumentStore):
             if "vector_id" in doc.meta:
                 existing_vector_ids.append(str(doc.meta["vector_id"]))
 
-        # TODO: adjust when Milvus 2.0 is released and supports deletion of vectors again
-        #  (https://github.com/milvus-io/milvus/issues/7130)
-
-        raise NotImplementedError("Milvus 2.0rc is not yet supporting the deletion of vectors."
-                                  "Will be available soon (https://github.com/milvus-io/milvus/issues/7130")
-
-        # if len(existing_vector_ids) > 0:
-        #     expression = f'{self.id_field} in [ {",".join(existing_vector_ids)} ]'
-        #     res = self.collection.delete(expression)
-        #     assert len(res) == len(existing_vector_ids)
+        if len(existing_vector_ids) > 0:
+            # TODO: adjust when Milvus 2.0 is released and supports deletion of vectors again
+            #  (https://github.com/milvus-io/milvus/issues/7130)
+            raise NotImplementedError("Milvus 2.0rc is not yet supporting the deletion of vectors."
+            # expression = f'{self.id_field} in [ {",".join(existing_vector_ids)} ]'
+            # res = self.collection.delete(expression)
+            # assert len(res) == len(existing_vector_ids)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
         """
@@ -690,7 +686,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         try:
             from pymilvus import connections
         except:
-            raise ImportError("Install pymilvus===2.0.0rc6 version")
+            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         stats = connection.get_collection_stats(index)
