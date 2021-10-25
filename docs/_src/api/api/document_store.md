@@ -127,6 +127,15 @@ from disk and also indexed batchwise to the DocumentStore in order to prevent ou
 - `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the
                     same question might be found in different contexts.
 
+<a name="base.get_batches_from_generator"></a>
+#### get\_batches\_from\_generator
+
+```python
+get_batches_from_generator(iterable, n)
+```
+
+Batch elements of an iterable into fixed-length chunks or blocks.
+
 <a name="elasticsearch"></a>
 # Module elasticsearch
 
