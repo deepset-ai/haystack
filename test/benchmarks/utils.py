@@ -1,9 +1,10 @@
 import os
+
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.document_store.memory import InMemoryDocumentStore
 from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.document_store.milvus import MilvusDocumentStore, IndexType
+from haystack.document_store import MilvusDocumentStore
 from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.reader.farm import FARMReader
@@ -45,11 +46,11 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
     elif document_store_type in ("milvus_flat", "milvus_hnsw"):
         launch_milvus()
         if document_store_type == "milvus_flat":
-            index_type = IndexType.FLAT
+            index_type = "FLAT"
             index_param = None
             search_param = None
         elif document_store_type == "milvus_hnsw":
-            index_type = IndexType.HNSW
+            index_type = "HNSW"
             index_param = {"M": 64, "efConstruction": 80}
             search_param = {"ef": 20}
         document_store = MilvusDocumentStore(
