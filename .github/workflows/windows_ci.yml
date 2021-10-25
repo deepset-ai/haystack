@@ -8,7 +8,7 @@ on:
 
 jobs:
   type-check:
-    runs-on: ubuntu-20.04
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -21,29 +21,21 @@ jobs:
 
   build-cache:
     needs: type-check
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, windows-latest ]
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-      - if: ${{ matrix.os != 'windows-latest' }}
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-      - if: ${{ matrix.os == 'windows-latest' }}
-        run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+          key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
       - name: Install Pytorch on windows
-        if: ${{ matrix.os == 'windows-latest' }}
         run: |
           pip install torch==1.8.2+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
       - name: Install dependencies
@@ -56,6 +48,7 @@ jobs:
 
   prepare-build:
     needs: build-cache
+    # With Windows it gives error, also this step only listing test files only
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -64,13 +57,13 @@ jobs:
           echo "::set-output name=matrix::$(cd test && ls -d test_*.py | jq -R . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+
   build:
     needs: prepare-build
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
-        os: [ ubuntu-latest, windows-latest ]
       fail-fast: false
     steps:
     - uses: actions/checkout@v2
@@ -78,36 +71,16 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - if: ${{ matrix.os != 'windows-latest' }}
-      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-    - if: ${{ matrix.os == 'windows-latest' }}
-      run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
+    - run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
     - name: Cache
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: ${{ matrix.os }}-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
-
-    - name: Set up Ubuntu text env
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: |
-        echo "Installing pdfutils and tesseract"
-        sudo apt install tesseract-ocr libtesseract-dev poppler-utils
-        echo "Starting elastic search"
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
-        echo "Milvus"
-        docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
-        echo "Starting Weaviate"
-        docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.0
-        echo "Starting Graphdb"
-        docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
-        echo "Tika"
-        docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+        key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     # Update PATH so windows able to detect chrome driver correctly (Refer https://github.com/SergeyPirogov/webdriver_manager/issues/205#issuecomment-926514305)
     - name: Set up Windows test env
-      if: ${{ matrix.os == 'windows-latest' }}
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -125,4 +98,4 @@ jobs:
         Receive-Job -Job $job
 
     - name: Run tests
-      run: cd test && pytest -s ${{ matrix.test-path }}
+      run: cd test && pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -s ${{ matrix.test-path }}
