@@ -1,15 +1,17 @@
 import time
 
 import numpy as np
+import pandas as pd
 import pytest
 from elasticsearch import Elasticsearch
 from haystack import Document
 from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.document_store import MilvusDocumentStore
-from haystack.retriever.dense import DensePassageRetriever
+from haystack.document_store.milvus import MilvusDocumentStore
+from haystack.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+
 
 DOCS = [
     Document(
@@ -178,6 +180,40 @@ def test_retribert_embedding(document_store, retriever):
     assert abs(document_store.get_document_by_id("5").embedding[0]) < 0.32
 
 
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.vector_dim(512)
+def test_table_text_retriever_embedding(document_store, retriever):
+
+    document_store.return_embedding = True
+    document_store.write_documents(DOCS)
+    table_data = {
+        "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
+        "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
+    }
+    table = pd.DataFrame(table_data)
+    table_doc = Document(content=table, content_type="table", id="6")
+    document_store.write_documents([table_doc])
+    document_store.update_embeddings(retriever=retriever)
+    time.sleep(1)
+
+    doc_1 = document_store.get_document_by_id("1")
+    assert len(doc_1.embedding) == 512
+    assert abs(doc_1.embedding[0] - (0.0593)) < 0.001
+    doc_2 = document_store.get_document_by_id("2")
+    assert abs(doc_2.embedding[0] - (0.9031)) < 0.001
+    doc_3 = document_store.get_document_by_id("3")
+    assert abs(doc_3.embedding[0] - (0.1366)) < 0.001
+    doc_4 = document_store.get_document_by_id("4")
+    assert abs(doc_4.embedding[0] - (0.0575)) < 0.001
+    doc_5 = document_store.get_document_by_id("5")
+    assert abs(doc_5.embedding[0] - (0.1486)) < 0.001
+    doc_6 = document_store.get_document_by_id("6")
+    assert len(doc_6.embedding) == 512
+    assert abs(doc_6.embedding[0] - (0.2745)) < 0.001
+
+
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_dpr_saving_and_loading(retriever, document_store):
@@ -224,3 +260,76 @@ def test_dpr_saving_and_loading(retriever, document_store):
     assert loaded_retriever.query_tokenizer.vocab_size == 30522
     assert loaded_retriever.passage_tokenizer.model_max_length == 512
     assert loaded_retriever.query_tokenizer.model_max_length == 512
+
+
+@pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.vector_dim(512)
+def test_table_text_retriever_saving_and_loading(retriever, document_store):
+    retriever.save("test_table_text_retriever_save")
+
+    def sum_params(model):
+        s = []
+        for p in model.parameters():
+            n = p.cpu().data.numpy()
+            s.append(np.sum(n))
+        return sum(s)
+
+    original_sum_query = sum_params(retriever.query_encoder)
+    original_sum_passage = sum_params(retriever.passage_encoder)
+    original_sum_table = sum_params(retriever.table_encoder)
+    del retriever
+
+    loaded_retriever = TableTextRetriever.load("test_table_text_retriever_save", document_store)
+
+    loaded_sum_query = sum_params(loaded_retriever.query_encoder)
+    loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)
+    loaded_sum_table = sum_params(loaded_retriever.table_encoder)
+
+    assert abs(original_sum_query - loaded_sum_query) < 0.1
+    assert abs(original_sum_passage - loaded_sum_passage) < 0.1
+    assert abs(original_sum_table - loaded_sum_table) < 0.01
+
+    # attributes
+    assert loaded_retriever.processor.embed_meta_fields == ["name", "section_title", "caption"]
+    assert loaded_retriever.batch_size == 16
+    assert loaded_retriever.processor.max_seq_len_passage == 256
+    assert loaded_retriever.processor.max_seq_len_table == 256
+    assert loaded_retriever.processor.max_seq_len_query == 64
+
+    # Tokenizer
+    assert isinstance(loaded_retriever.passage_tokenizer, DPRContextEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.table_tokenizer, DPRContextEncoderTokenizerFast)
+    assert isinstance(loaded_retriever.query_tokenizer, DPRQuestionEncoderTokenizerFast)
+    assert loaded_retriever.passage_tokenizer.do_lower_case == True
+    assert loaded_retriever.table_tokenizer.do_lower_case == True
+    assert loaded_retriever.query_tokenizer.do_lower_case == True
+    assert loaded_retriever.passage_tokenizer.vocab_size == 30522
+    assert loaded_retriever.table_tokenizer.vocab_size == 30522
+    assert loaded_retriever.query_tokenizer.vocab_size == 30522
+    assert loaded_retriever.passage_tokenizer.model_max_length == 512
+    assert loaded_retriever.table_tokenizer.model_max_length == 512
+    assert loaded_retriever.query_tokenizer.model_max_length == 512
+
+
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.vector_dim(128)
+def test_table_text_retriever_training(document_store):
+    retriever = TableTextRetriever(
+        document_store=document_store,
+        query_embedding_model="prajjwal1/bert-tiny",
+        passage_embedding_model="prajjwal1/bert-tiny",
+        table_embedding_model="prajjwal1/bert-tiny",
+        use_gpu=False
+    )
+
+    retriever.train(
+        data_dir="samples/mmr",
+        train_filename="sample.json",
+        n_epochs=1,
+        n_gpu=0,
+        save_dir="test_table_text_retriever_train"
+    )
+
+    # Load trained model
+    retriever = TableTextRetriever.load(load_dir="test_table_text_retriever_train", document_store=document_store)
