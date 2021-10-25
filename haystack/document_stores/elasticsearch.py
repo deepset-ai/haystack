@@ -659,7 +659,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if only_documents_without_embedding:
             body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
 
-        result = scan(self.client, query=body, index=index, size=batch_size, scroll="1d")
+        result = scan(self.client, query=body, index=index, size=batch_size)
         yield from result
 
     def query(
