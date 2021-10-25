@@ -1,9 +1,10 @@
 #TODO analyse if this optimization is needed or weather we can use HF transformers code
+from typing import Dict, Any
+
 import inspect
 import logging
 import sys
 from importlib import import_module
-
 import torch
 from torch.nn import DataParallel
 from torch.nn.parallel import DistributedDataParallel
@@ -20,18 +21,21 @@ except ImportError:
     AMP_AVAILABLE = False
     APEX_PARALLEL_AVAILABLE = False
 
-from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.logger import MLFlowLogger as MlLogger
+
 
 logger = logging.getLogger(__name__)
 
 
 class WrappedDataParallel(DataParallel):
     """
-    A way of adapting attributes of underlying class to parallel mode. See: https://pytorch.org/tutorials/beginner/former_torchies/parallelism_tutorial.html#dataparallel
+    A way of adapting attributes of underlying class to parallel mode. See: 
+    https://pytorch.org/tutorials/beginner/former_torchies/parallelism_tutorial.html#dataparallel
 
-    Gets into recursion errors. Workaround see: https://discuss.pytorch.org/t/access-att-of-model-wrapped-within-torch-nn-dataparallel-maximum-recursion-depth-exceeded/46975
+    Gets into recursion errors. Workaround see: 
+    https://discuss.pytorch.org/t/access-att-of-model-wrapped-within-torch-nn-dataparallel-maximum-recursion-depth-exceeded/46975
     """
-
     def __getattr__(self, name):
         try:
             return super().__getattr__(name)
@@ -45,7 +49,6 @@ class WrappedDDP(DistributedDataParallel):
     Even when using distributed on a single machine with multiple GPUs, apex can speed up training significantly.
     Distributed code must be launched with "python -m torch.distributed.launch --nproc_per_node=1 run_script.py"
     """
-
     def __getattr__(self, name):
         try:
             return super().__getattr__(name)
@@ -53,30 +56,27 @@ class WrappedDDP(DistributedDataParallel):
             return getattr(self.module, name)
 
 
-def initialize_optimizer(model,
-                         n_batches,
-                         n_epochs,
+def initialize_optimizer(model: AdaptiveModel,
+                         n_batches: int,
+                         n_epochs: int,
                          device,
-                         learning_rate,
-                         optimizer_opts=None,
-                         schedule_opts=None,
-                         distributed=False,
-                         grad_acc_steps=1,
-                         local_rank=-1,
-                         use_amp=None):
+                         learning_rate: float,
+                         optimizer_opts: Dict[Any, Any] = None,
+                         schedule_opts: Dict[Any, Any] = None,
+                         distributed: bool = False,
+                         grad_acc_steps: int = 1,
+                         local_rank: int = -1,
+                         use_amp: str = None):
     """
     Initializes an optimizer, a learning rate scheduler and converts the model if needed (e.g for mixed precision).
     Per default, we use transformers' AdamW and a linear warmup schedule with warmup ratio 0.1.
     You can easily switch optimizer and schedule via `optimizer_opts` and `schedule_opts`.
 
     :param model: model to optimize (e.g. trimming weights to fp16 / mixed precision)
-    :type model: AdaptiveModel
     :param n_batches: number of batches for training
-    :type n_batches: int
     :param n_epochs: number of epochs for training
     :param device:
     :param learning_rate: Learning rate
-    :type learning_rate: float
     :param optimizer_opts: Dict to customize the optimizer. Choose any optimizer available from torch.optim, apex.optimizers or
                            transformers.optimization by supplying the class name and the parameters for the constructor.
                            Examples:
@@ -114,7 +114,6 @@ def initialize_optimizer(model,
                     See details on: https://nvidia.github.io/apex/amp.html
     :return: model, optimizer, scheduler
     """
-
     if use_amp and not AMP_AVAILABLE:
         raise ImportError(f'Got use_amp = {use_amp}, but cannot find apex. '
                           'Please install Apex if you want to make use of automatic mixed precision. '
@@ -160,8 +159,9 @@ def initialize_optimizer(model,
     return model, optimizer, scheduler
 
 
-def _get_optim(model, opts):
-    """ Get the optimizer based on dictionary with options. Options are passed to the optimizer constructor.
+def _get_optim(model, opts: Dict):
+    """
+    Get the optimizer based on dictionary with options. Options are passed to the optimizer constructor.
 
     :param model: model to optimize
     :param opts: config dictionary that will be passed to optimizer together with the params
@@ -169,7 +169,6 @@ def _get_optim(model, opts):
     will have weight_decay set to 0.
     :return: created optimizer
     """
-
     optimizer_name = opts.pop('name', None)
 
     # Logging
@@ -194,7 +193,7 @@ def _get_optim(model, opts):
     # default weight decay is not the same for all optimizers, so we can't use default value
     # only explicitly add weight decay if it's given
     if weight_decay is not None:
-        optimizable_parameters[0]['weight_decay'] = weight_decay
+        optimizable_parameters[0]['weight_decay'] = weight_decay  # type: ignore
 
     # Import optimizer by checking in order: torch, transformers, apex and local imports
     try:
@@ -218,7 +217,8 @@ def _get_optim(model, opts):
 
 
 def get_scheduler(optimizer, opts):
-    """ Get the scheduler based on dictionary with options. Options are passed to the scheduler constructor.
+    """ 
+    Get the scheduler based on dictionary with options. Options are passed to the scheduler constructor.
 
     :param optimizer: optimizer whose learning rate to control
     :param opts: dictionary of args to be passed to constructor of schedule
@@ -269,23 +269,23 @@ def get_scheduler(optimizer, opts):
 
 def optimize_model(model, device, local_rank, optimizer=None, distributed=False, use_amp=None):
     """
-        Wraps MultiGPU or distributed usage around a model
-        No support for ONNX models
+    Wraps MultiGPU or distributed usage around a model
+    No support for ONNX models
 
-        :param model: model to optimize (e.g. trimming weights to fp16 / mixed precision)
-        :type model: AdaptiveModel
-        :param device: either gpu or cpu, get the device from initialize_device_settings()
-        :param distributed: Whether training on distributed machines
-        :param local_rank: rank of the machine in a distributed setting
-        :param use_amp: Optimization level of nvidia's automatic mixed precision (AMP). The higher the level, the faster the model.
-                        Options:
-                        "O0" (Normal FP32 training)
-                        "O1" (Mixed Precision => Recommended)
-                        "O2" (Almost FP16)
-                        "O3" (Pure FP16).
-                        See details on: https://nvidia.github.io/apex/amp.html
-        :return: model, optimizer
-        """
+    :param model: model to optimize (e.g. trimming weights to fp16 / mixed precision)
+    :type model: AdaptiveModel
+    :param device: either gpu or cpu, get the device from initialize_device_settings()
+    :param distributed: Whether training on distributed machines
+    :param local_rank: rank of the machine in a distributed setting
+    :param use_amp: Optimization level of nvidia's automatic mixed precision (AMP). The higher the level, the faster the model.
+                    Options:
+                    "O0" (Normal FP32 training)
+                    "O1" (Mixed Precision => Recommended)
+                    "O2" (Almost FP16)
+                    "O3" (Pure FP16).
+                    See details on: https://nvidia.github.io/apex/amp.html
+    :return: model, optimizer
+    """
     model, optimizer = _init_amp(model, device, optimizer, use_amp)
 
     if distributed:

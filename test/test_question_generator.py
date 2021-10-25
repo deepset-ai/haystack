@@ -1,5 +1,5 @@
 from haystack.pipeline import QuestionAnswerGenerationPipeline, QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline
-from haystack import Document
+from haystack.schema import Document
 import pytest
 
 

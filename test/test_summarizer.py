@@ -1,8 +1,8 @@
 import pytest
 
-from haystack import Document
-from haystack.pipeline import TranslationWrapperPipeline, SearchSummarizationPipeline
-from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
+from haystack.schema import Document
+from haystack.pipelines import TranslationWrapperPipeline, SearchSummarizationPipeline
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 
 DOCS = [
     Document(

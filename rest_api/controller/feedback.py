@@ -1,8 +1,7 @@
 import json
 import logging
-from typing import Dict, Union, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from rest_api.schema import FilterRequest, LabelSerialized
 from rest_api.controller.search import DOCUMENT_STORE
 

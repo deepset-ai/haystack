@@ -7,7 +7,7 @@
 # 
 # This tutorial shows you how to fine-tune a pretrained model on your own dataset.
 
-from haystack.reader.farm import FARMReader
+from haystack.nodes import FARMReader
 
 
 def tutorial2_finetune_a_model_on_your_data():

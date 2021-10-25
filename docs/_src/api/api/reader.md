@@ -446,7 +446,10 @@ Example:
 
 Dict containing query and answers
 
-<a name="transformers.TableReader"></a>
+<a name="table"></a>
+# Module table
+
+<a name="table.TableReader"></a>
 ## TableReader Objects
 
 ```python
@@ -478,7 +481,7 @@ prediction = table_reader.predict(query=query, documents=[document])
 answer = prediction["answers"][0].answer  # "10 june 1996"
 ```
 
-<a name="transformers.TableReader.__init__"></a>
+<a name="table.TableReader.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -504,7 +507,7 @@ See https://huggingface.co/models?pipeline_tag=table-question-answering for full
 - `top_k`: The maximum number of answers to return
 - `max_seq_len`: Max sequence length of one input text for the model.
 
-<a name="transformers.TableReader.predict"></a>
+<a name="table.TableReader.predict"></a>
 #### predict
 
 ```python

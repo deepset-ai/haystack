@@ -1,6 +1,6 @@
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores import ElasticsearchDocumentStore
 
-from haystack.retriever.dense import EmbeddingRetriever
+from haystack.nodes import EmbeddingRetriever
 from haystack.utils import launch_es
 import pandas as pd
 import requests
@@ -68,7 +68,7 @@ def tutorial4_faq_style_qa():
 
     #    Initialize a Pipeline (this time without a reader) and ask questions
 
-    from haystack.pipeline import FAQPipeline
+    from haystack.pipelines import FAQPipeline
     pipe = FAQPipeline(retriever=retriever)
 
     prediction = pipe.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})

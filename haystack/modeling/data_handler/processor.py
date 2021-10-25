@@ -31,7 +31,7 @@ from haystack.modeling.data_handler.samples import (
     offset_to_token_idx_vecorized,
 )
 from haystack.modeling.data_handler.input_features import sample_to_features_text
-from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.logger import MLFlowLogger as MlLogger
 
 
 DOWNSTREAM_TASK_MAP = {

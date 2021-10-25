@@ -1,6 +1,5 @@
-from haystack.preprocessor.cleaning import clean_wiki_text
-from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
-from haystack.generator.transformers import Seq2SeqGenerator
+from haystack.utils import convert_files_to_dicts, fetch_archive_from_http, clean_wiki_text
+from haystack.nodes import Seq2SeqGenerator
 
 
 def tutorial12_lfqa():
@@ -16,7 +15,7 @@ def tutorial12_lfqa():
     For more info on which suits your use case: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
     """
 
-    from haystack.document_store.faiss import FAISSDocumentStore
+    from haystack.document_stores.faiss import FAISSDocumentStore
 
     document_store = FAISSDocumentStore(vector_dim=128, faiss_index_factory_str="Flat")
 
@@ -41,7 +40,7 @@ def tutorial12_lfqa():
     We use a `RetribertRetriever` and we invoke `update_embeddings` to index the embeddings of documents in the `FAISSDocumentStore`
     """
 
-    from haystack.retriever.dense import EmbeddingRetriever
+    from haystack.nodes import EmbeddingRetriever
 
     retriever = EmbeddingRetriever(document_store=document_store,
                                    embedding_model="yjernite/retribert-base-uncased",
@@ -52,7 +51,7 @@ def tutorial12_lfqa():
     """Before we blindly use the `RetribertRetriever` let's empirically test it to make sure a simple search indeed finds the relevant documents."""
 
     from haystack.utils import print_documents
-    from haystack.pipeline import DocumentSearchPipeline
+    from haystack.pipelines import DocumentSearchPipeline
 
     p_retrieval = DocumentSearchPipeline(retriever)
     res = p_retrieval.run(
@@ -76,7 +75,7 @@ def tutorial12_lfqa():
     You can learn more about `Pipelines` in the [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd).
     """
 
-    from haystack.pipeline import GenerativeQAPipeline
+    from haystack.pipelines import GenerativeQAPipeline
     pipe = GenerativeQAPipeline(generator, retriever)
 
     """Voilà! Ask a question!"""

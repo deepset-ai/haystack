@@ -1,11 +1,8 @@
 """
 Contains functions that turn readable clear text input into dictionaries of features
 """
-
-
 import logging
-
-import numpy as np
+from numpy import pad
 
 logger = logging.getLogger(__name__)
 

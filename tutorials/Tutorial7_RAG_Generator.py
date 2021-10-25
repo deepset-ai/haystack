@@ -2,9 +2,8 @@ from typing import List
 import requests
 import pandas as pd
 from haystack import Document
-from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.generator.transformers import RAGenerator
-from haystack.retriever.dense import DensePassageRetriever
+from haystack.document_stores import FAISSDocumentStore
+from haystack.nodes import RAGenerator, DensePassageRetriever
 
 
 def tutorial7_rag_generator():
@@ -112,7 +111,7 @@ def tutorial7_rag_generator():
         print(f'Generated answer is \'{answers[0]["answer"]}\' for the question = \'{question}\'')
 
     # Or alternatively use the Pipeline class
-    from haystack.pipeline import GenerativeQAPipeline
+    from haystack.pipelines import GenerativeQAPipeline
     pipe = GenerativeQAPipeline(generator=generator, retriever=retriever)
     for question in QUESTIONS:
         res = pipe.run(query=question, params={"Generator": {"top_k": 1}, "Retriever": {"top_k": 5}})

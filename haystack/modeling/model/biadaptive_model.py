@@ -1,15 +1,16 @@
-import logging
-import os
-from pathlib import Path
 from typing import List, Optional, Callable, Union, Dict
 
+import os
+import logging
 import torch
 from torch import nn
+from pathlib import Path
 
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead, TextSimilarityHead
-from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.logger import MLFlowLogger as MlLogger
+
 
 logger = logging.getLogger(__name__)
 

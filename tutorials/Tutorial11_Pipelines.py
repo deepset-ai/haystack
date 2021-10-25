@@ -1,15 +1,9 @@
-from haystack.utils import print_answers, print_documents
+from haystack.utils import clean_wiki_text, print_answers, print_documents, fetch_archive_from_http, convert_files_to_dicts, launch_es
 from pprint import pprint
-from haystack.preprocessor.utils import fetch_archive_from_http, convert_files_to_dicts
-from haystack.preprocessor.cleaning import clean_wiki_text
 from haystack import Pipeline
-from haystack.utils import launch_es
-from haystack.document_store import ElasticsearchDocumentStore
-from haystack.retriever.sparse import ElasticsearchRetriever
-from haystack.retriever.dense import DensePassageRetriever
-from haystack.reader import FARMReader
-from haystack.pipeline import ExtractiveQAPipeline, DocumentSearchPipeline, GenerativeQAPipeline, JoinDocuments
-from haystack.generator import RAGenerator
+from haystack.document_stores import ElasticsearchDocumentStore
+from haystack.nodes import ElasticsearchRetriever, DensePassageRetriever, FARMReader, RAGenerator, JoinDocuments
+from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, GenerativeQAPipeline, 
 
 
 def tutorial11_pipelines():

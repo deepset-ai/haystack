@@ -1,11 +1,9 @@
-from haystack.question_generator import QuestionGenerator
-from haystack.utils import launch_es
-from haystack.document_store import ElasticsearchDocumentStore
-from haystack.retriever import ElasticsearchRetriever
-from pprint import pprint
-from haystack.reader import FARMReader
 from tqdm import tqdm
-from haystack.pipeline import QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline, QuestionAnswerGenerationPipeline
+from pprint import pprint
+from haystack.nodes import QuestionGenerator, ElasticsearchRetriever, FARMReader
+from haystack.document_stores import ElasticsearchDocumentStore
+from haystack.pipelines import QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline, QuestionAnswerGenerationPipeline
+from haystack.utils import launch_es
 
 """ 
 This is a bare bones tutorial showing what is possible with the QuestionGenerator Node which automatically generates 
