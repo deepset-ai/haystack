@@ -49,7 +49,7 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
             attribute_exists = getattr(mod, attr) is not None
 
             if (is_a_deprecated_attr or is_a_deprecated_module) and not warning_already_emitted and attribute_exists:
-                logger.warn(f"Object '{attr}' is imported in a deprecated way. Please check out the docs for the new import path.")
+                logger.warn(f"Object '{attr}' is imported through a deprecated path. Please check out the docs for the new import path.")
                 self.warned.append(attr)
             return getattr(mod, attr)
 
@@ -75,10 +75,12 @@ from haystack import document_stores
 from haystack.nodes.retriever import text2sparql as graph_retriever
 from haystack.document_stores import graphdb as knowledge_graph
 from haystack.modeling.evaluation import eval
+from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogger
 from haystack.nodes.other import JoinDocuments, Docs2Answers
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.file_classifier import FileTypeClassifier
 import haystack.utils.preprocessing as preprocessing
+import haystack.modeling.utils as modeling_utils
 import haystack.utils.cleaning as cleaning
 
 # For the alias to work as an importable module (like `from haystack import reader`), 
@@ -133,6 +135,9 @@ sys.modules["haystack.translator"] = DeprecatedModule(translator)
 # Adding them to sys.modules would enable `import haystack.pipelines.JoinDocuments`, 
 # which I believe it's a very rare import style.
 setattr(file_converter, "FileTypeClassifier", FileTypeClassifier)
+setattr(modeling_utils, "MLFlowLogger", MLFlowLogger)
+setattr(modeling_utils, "StdoutLogger", StdoutLogger)
+setattr(modeling_utils, "TensorBoardLogger", TensorBoardLogger)
 setattr(pipelines, "JoinDocuments", JoinDocuments)
 setattr(pipelines, "Docs2Answers", Docs2Answers)
 setattr(pipelines, "SklearnQueryClassifier", SklearnQueryClassifier)
