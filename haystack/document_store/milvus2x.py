@@ -515,7 +515,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         return documents
 
 
-    def delete_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
         Delete all documents (from SQL AND Milvus).
         :param index: (SQL) index name for storing the docs and metadata
