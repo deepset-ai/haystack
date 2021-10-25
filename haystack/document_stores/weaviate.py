@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
-from haystack.utils import get_batches_from_generator
+from haystack.document_stores.base import get_batches_from_generator
 
 from weaviate import client, AuthClientPassword
 from weaviate import ObjectsBatchRequest
