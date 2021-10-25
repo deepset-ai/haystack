@@ -12,11 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tokenization classes."""
+"""
+Tokenization classes.
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
+from typing import Dict, Any, Tuple, Optional, List
 
+import re
 import logging
-
 import numpy as np
 from transformers import (
     AlbertTokenizer, AlbertTokenizerFast,
@@ -35,7 +38,9 @@ from transformers import AutoConfig
 
 from haystack.modeling.data_handler.samples import SampleBasket
 
+
 logger = logging.getLogger(__name__)
+
 
 # Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
@@ -45,7 +50,6 @@ class Tokenizer:
     """
     Simple Wrapper for Tokenizers from the transformers package. Enables loading of different Tokenizer classes with a uniform interface.
     """
-
     @classmethod
     def load(cls, pretrained_model_name_or_path, revision=None, tokenizer_class=None, use_fast=True, **kwargs):
         """
@@ -189,7 +193,6 @@ class Tokenizer:
     def _infer_tokenizer_class_from_string(pretrained_model_name_or_path):
         # If inferring tokenizer class from config doesn't succeed,
         # fall back to inferring tokenizer class from model name.
-
         if "albert" in pretrained_model_name_or_path.lower():
             tokenizer_class = "AlbertTokenizer"
         elif "bigbird" in pretrained_model_name_or_path.lower():
@@ -293,13 +296,14 @@ def tokenize_batch_question_answering(pre_baskets, tokenizer, indices):
             baskets.append(SampleBasket(raw=raw, id_internal=internal_id, id_external=external_id, samples=None))
     return baskets
 
+
 def _get_start_of_word_QA(word_ids):
     words = np.array(word_ids)
     start_of_word_single = [1] + list(np.ediff1d(words))
     return start_of_word_single
 
 
-def tokenize_with_metadata(text, tokenizer):
+def tokenize_with_metadata(text: str, tokenizer) -> Dict[str, Any]:
     """
     Performing tokenization while storing some important metadata for each token:
 
@@ -315,11 +319,8 @@ def tokenize_with_metadata(text, tokenizer):
                type is lost which might be helpful for certain NLP tasks ( e.g tab for tables).
 
     :param text: Text to tokenize
-    :type text: str
     :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
     :return: Dictionary with "tokens", "offsets" and "start_of_word"
-    :rtype: dict
-
     """
     # normalize all other whitespace characters to " "
     # Note: using text.split() directly would destroy the offset,
@@ -365,14 +366,19 @@ def tokenize_with_metadata(text, tokenizer):
         tokens, offsets, start_of_word = _words_to_tokens(
             words, word_offsets, tokenizer
         )
-
         tokenized_dict = {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
-
     return tokenized_dict
 
 
-def truncate_sequences(seq_a, seq_b, tokenizer, max_seq_len, truncation_strategy='longest_first',
-                       with_special_tokens=True, stride=0):
+def truncate_sequences(
+        seq_a: list, 
+        seq_b: Optional[list], 
+        tokenizer,
+        max_seq_len: int, 
+        truncation_strategy: str = 'longest_first',
+        with_special_tokens: bool = True, 
+        stride: int = 0
+    ) -> Tuple[List[Any], Optional[List[Any]], List[Any]]:
     """
     Reduces a single sequence or a pair of sequences to a maximum sequence length.
     The sequences can contain tokens or any other elements (offsets, masks ...).
@@ -386,24 +392,17 @@ def truncate_sequences(seq_a, seq_b, tokenizer, max_seq_len, truncation_strategy
     - do_not_truncate: Does not truncate (raise an error if the input sequence is longer than max_length)
 
     :param seq_a: First sequence of tokens/offsets/...
-    :type seq_a: list
     :param seq_b: Optional second sequence of tokens/offsets/...
-    :type seq_b: None or list
     :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
     :param max_seq_len:
-    :type max_seq_len: int
     :param truncation_strategy: how the sequence(s) should be truncated down. Default: "longest_first" (see above for other options).
-    :type truncation_strategy: str
     :param with_special_tokens: If true, it'll remove some additional tokens to have exactly enough space for later adding special tokens (CLS, SEP etc.)
-    :type with_special_tokens: bool
     :param stride: optional stride of the window during truncation
-    :type stride: int
     :return: truncated seq_a, truncated seq_b, overflowing tokens
-
     """
-    pair = bool(seq_b is not None)
+    pair = seq_b is not None
     len_a = len(seq_a)
-    len_b = len(seq_b) if pair else 0
+    len_b = len(seq_b) if seq_b is not None else 0
     num_special_tokens = tokenizer.num_special_tokens_to_add(pair=pair) if with_special_tokens else 0
     total_len = len_a + len_b + num_special_tokens
     overflowing_tokens = []
@@ -414,3 +413,62 @@ def truncate_sequences(seq_a, seq_b, tokenizer, max_seq_len, truncation_strategy
                                                                         truncation_strategy=truncation_strategy,
                                                                         stride=stride)
     return (seq_a, seq_b, overflowing_tokens)
+
+
+def _words_to_tokens(words, word_offsets, tokenizer):
+    """
+    Tokenize "words" into subword tokens while keeping track of offsets and if a token is the start of a word.
+    :param words: list of words.
+    :type words: list
+    :param word_offsets: Character indices where each word begins in the original text
+    :type word_offsets: list
+    :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
+    :return: tokens, offsets, start_of_word
+    """
+    tokens = []
+    token_offsets = []
+    start_of_word = []
+    idx = 0
+    for w, w_off in zip(words, word_offsets):
+        idx += 1
+        if idx % 500000 == 0:
+            logger.info(idx)
+        # Get (subword) tokens of single word.
+
+        # empty / pure whitespace
+        if len(w) == 0:
+          continue
+        # For the first word of a text: we just call the regular tokenize function.
+        # For later words: we need to call it with add_prefix_space=True to get the same results with roberta / gpt2 tokenizer
+        # see discussion here. https://github.com/huggingface/transformers/issues/1196
+        elif len(tokens) == 0:
+            tokens_word = tokenizer.tokenize(w)
+        else:
+            if type(tokenizer) == RobertaTokenizer:
+                tokens_word = tokenizer.tokenize(w, add_prefix_space=True)
+            else:
+                tokens_word = tokenizer.tokenize(w)
+        # Sometimes the tokenizer returns no tokens
+        if len(tokens_word) == 0:
+            continue
+        tokens += tokens_word
+
+        # get global offset for each token in word + save marker for first tokens of a word
+        first_tok = True
+        for tok in tokens_word:
+            token_offsets.append(w_off)
+            # Depending on the tokenizer type special chars are added to distinguish tokens with preceeding
+            # whitespace (=> "start of a word"). We need to get rid of these to calculate the original length of the token
+            orig_tok = re.sub(SPECIAL_TOKENIZER_CHARS, "", tok)
+            # Don't use length of unk token for offset calculation
+            if orig_tok == tokenizer.special_tokens_map["unk_token"]:
+                w_off += 1
+            else:
+                w_off += len(orig_tok)
+            if first_tok:
+                start_of_word.append(True)
+                first_tok = False
+            else:
+                start_of_word.append(False)
+
+    return tokens, token_offsets, start_of_word

@@ -3,9 +3,9 @@ import faiss
 import math
 import numpy as np
 import pytest
-from haystack import Document
+from haystack.schema import Document
 from haystack.pipeline import DocumentSearchPipeline
-from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.pipeline import Pipeline
 from haystack.retriever.dense import EmbeddingRetriever
 

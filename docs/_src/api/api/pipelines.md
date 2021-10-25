@@ -1,14 +1,26 @@
-<a name="pipeline"></a>
-# Module pipeline
+<a name="base"></a>
+# Module base
 
-<a name="pipeline.BasePipeline"></a>
+<a name="base.RootNode"></a>
+## RootNode Objects
+
+```python
+class RootNode(BaseComponent)
+```
+
+RootNode feeds inputs together with corresponding params to a Pipeline.
+
+<a name="base.BasePipeline"></a>
 ## BasePipeline Objects
 
 ```python
 class BasePipeline()
 ```
 
-<a name="pipeline.BasePipeline.load_from_yaml"></a>
+Base class for pipelines, providing the most basic methods to load and save them in different ways. 
+See also the `Pipeline` class for the actual pipeline logic.
+
+<a name="base.BasePipeline.load_from_yaml"></a>
 #### load\_from\_yaml
 
 ```python
@@ -59,7 +71,7 @@ Here's a sample configuration:
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
 
-<a name="pipeline.Pipeline"></a>
+<a name="base.Pipeline"></a>
 ## Pipeline Objects
 
 ```python
@@ -72,7 +84,7 @@ Under-the-hood, a pipeline is represented as a directed acyclic graph of compone
 flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
 Reader from multiple Retrievers, or re-ranking of candidate documents.
 
-<a name="pipeline.Pipeline.add_node"></a>
+<a name="base.Pipeline.add_node"></a>
 #### add\_node
 
 ```python
@@ -94,7 +106,7 @@ Add a new node to the pipeline.
                In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                must be specified explicitly as "QueryClassifier.output_2".
 
-<a name="pipeline.Pipeline.get_node"></a>
+<a name="base.Pipeline.get_node"></a>
 #### get\_node
 
 ```python
@@ -107,7 +119,7 @@ Get a node from the Pipeline.
 
 - `name`: The name of the node.
 
-<a name="pipeline.Pipeline.set_node"></a>
+<a name="base.Pipeline.set_node"></a>
 #### set\_node
 
 ```python
@@ -121,7 +133,7 @@ Set the component for a node in the Pipeline.
 - `name`: The name of the node.
 - `component`: The component object to be set at the node.
 
-<a name="pipeline.Pipeline.run"></a>
+<a name="base.Pipeline.run"></a>
 #### run
 
 ```python
@@ -149,7 +161,7 @@ Runs the pipeline, one node at a time.
 - `debug_logs`: Whether all the logs of the node should be printed in the console,
                    regardless of their severity and of the existing logger's settings.
 
-<a name="pipeline.Pipeline.get_nodes_by_class"></a>
+<a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
 
 ```python
@@ -159,7 +171,7 @@ Runs the pipeline, one node at a time.
 Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
 This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
 Example:
-| from haystack.document_store.base import BaseDocumentStore
+| from haystack.document_stores.base import BaseDocumentStore
 | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
 | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
 
@@ -167,7 +179,7 @@ Example:
 
 List of components that are an instance the requested class
 
-<a name="pipeline.Pipeline.get_document_store"></a>
+<a name="base.Pipeline.get_document_store"></a>
 #### get\_document\_store
 
 ```python
@@ -180,7 +192,7 @@ Return the document store object used in the current pipeline.
 
 Instance of DocumentStore or None
 
-<a name="pipeline.Pipeline.draw"></a>
+<a name="base.Pipeline.draw"></a>
 #### draw
 
 ```python
@@ -193,7 +205,7 @@ Create a Graphviz visualization of the pipeline.
 
 - `path`: the path to save the image.
 
-<a name="pipeline.Pipeline.load_from_yaml"></a>
+<a name="base.Pipeline.load_from_yaml"></a>
 #### load\_from\_yaml
 
 ```python
@@ -244,7 +256,7 @@ Here's a sample configuration:
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
 
-<a name="pipeline.Pipeline.save_to_yaml"></a>
+<a name="base.Pipeline.save_to_yaml"></a>
 #### save\_to\_yaml
 
 ```python
@@ -258,497 +270,7 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 - `path`: path of the output YAML file.
 - `return_defaults`: whether to output parameters that have the default values.
 
-<a name="pipeline.BaseStandardPipeline"></a>
-## BaseStandardPipeline Objects
-
-```python
-class BaseStandardPipeline(ABC)
-```
-
-<a name="pipeline.BaseStandardPipeline.add_node"></a>
-#### add\_node
-
-```python
- | add_node(component, name: str, inputs: List[str])
-```
-
-Add a new node to the pipeline.
-
-**Arguments**:
-
-- `component`: The object to be called when the data is passed to the node. It can be a Haystack component
-                  (like Retriever, Reader, or Generator) or a user-defined object that implements a run()
-                  method to process incoming data from predecessor node.
-- `name`: The name for the node. It must not contain any dots.
-- `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-               of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-               edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
-
-               In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
-               must be specified explicitly as "QueryClassifier.output_2".
-
-<a name="pipeline.BaseStandardPipeline.get_node"></a>
-#### get\_node
-
-```python
- | get_node(name: str)
-```
-
-Get a node from the Pipeline.
-
-**Arguments**:
-
-- `name`: The name of the node.
-
-<a name="pipeline.BaseStandardPipeline.set_node"></a>
-#### set\_node
-
-```python
- | set_node(name: str, component)
-```
-
-Set the component for a node in the Pipeline.
-
-**Arguments**:
-
-- `name`: The name of the node.
-- `component`: The component object to be set at the node.
-
-<a name="pipeline.BaseStandardPipeline.draw"></a>
-#### draw
-
-```python
- | draw(path: Path = Path("pipeline.png"))
-```
-
-Create a Graphviz visualization of the pipeline.
-
-**Arguments**:
-
-- `path`: the path to save the image.
-
-<a name="pipeline.ExtractiveQAPipeline"></a>
-## ExtractiveQAPipeline Objects
-
-```python
-class ExtractiveQAPipeline(BaseStandardPipeline)
-```
-
-<a name="pipeline.ExtractiveQAPipeline.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(reader: BaseReader, retriever: BaseRetriever)
-```
-
-Initialize a Pipeline for Extractive Question Answering.
-
-**Arguments**:
-
-- `reader`: Reader instance
-- `retriever`: Retriever instance
-
-<a name="pipeline.ExtractiveQAPipeline.run"></a>
-#### run
-
-```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
-```
-
-**Arguments**:
-
-- `query`: The search query string.
-- `params`: Params for the `retriever` and `reader`. For instance,
-               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
-              about their execution. By default these include the input parameters
-              they received, the output they generated, and eventual logs (of any severity)
-              emitted. All debug information can then be found in the dict returned
-              by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
-
-<a name="pipeline.DocumentSearchPipeline"></a>
-## DocumentSearchPipeline Objects
-
-```python
-class DocumentSearchPipeline(BaseStandardPipeline)
-```
-
-<a name="pipeline.DocumentSearchPipeline.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(retriever: BaseRetriever)
-```
-
-Initialize a Pipeline for semantic document search.
-
-**Arguments**:
-
-- `retriever`: Retriever instance
-
-<a name="pipeline.DocumentSearchPipeline.run"></a>
-#### run
-
-```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
-```
-
-**Arguments**:
-
-- `query`: the query string.
-- `params`: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
-      about their execution. By default these include the input parameters
-      they received, the output they generated, and eventual logs (of any severity)
-      emitted. All debug information can then be found in the dict returned
-      by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
-
-<a name="pipeline.GenerativeQAPipeline"></a>
-## GenerativeQAPipeline Objects
-
-```python
-class GenerativeQAPipeline(BaseStandardPipeline)
-```
-
-<a name="pipeline.GenerativeQAPipeline.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(generator: BaseGenerator, retriever: BaseRetriever)
-```
-
-Initialize a Pipeline for Generative Question Answering.
-
-**Arguments**:
-
-- `generator`: Generator instance
-- `retriever`: Retriever instance
-
-<a name="pipeline.GenerativeQAPipeline.run"></a>
-#### run
-
-```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
-```
-
-**Arguments**:
-
-- `query`: the query string.
-- `params`: params for the `retriever` and `generator`. For instance,
-               params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
-      about their execution. By default these include the input parameters
-      they received, the output they generated, and eventual logs (of any severity)
-      emitted. All debug information can then be found in the dict returned
-      by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
-
-<a name="pipeline.SearchSummarizationPipeline"></a>
-## SearchSummarizationPipeline Objects
-
-```python
-class SearchSummarizationPipeline(BaseStandardPipeline)
-```
-
-<a name="pipeline.SearchSummarizationPipeline.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False)
-```
-
-Initialize a Pipeline that retrieves documents for a query and then summarizes those documents.
-
-**Arguments**:
-
-- `summarizer`: Summarizer instance
-- `retriever`: Retriever instance
-- `return_in_answer_format`: Whether the results should be returned as documents (False) or in the answer
-                                format used in other QA pipelines (True). With the latter, you can use this
-                                pipeline as a "drop-in replacement" for other QA pipelines.
-
-<a name="pipeline.SearchSummarizationPipeline.run"></a>
-#### run
-
-```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
-```
-
-**Arguments**:
-
-- `query`: the query string.
-- `params`: params for the `retriever` and `summarizer`. For instance,
-               params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
-      about their execution. By default these include the input parameters
-      they received, the output they generated, and eventual logs (of any severity)
-      emitted. All debug information can then be found in the dict returned
-      by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
-
-<a name="pipeline.FAQPipeline"></a>
-## FAQPipeline Objects
-
-```python
-class FAQPipeline(BaseStandardPipeline)
-```
-
-<a name="pipeline.FAQPipeline.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(retriever: BaseRetriever)
-```
-
-Initialize a Pipeline for finding similar FAQs using semantic document search.
-
-**Arguments**:
-
-- `retriever`: Retriever instance
-
-<a name="pipeline.FAQPipeline.run"></a>
-#### run
-
-```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
-```
-
-**Arguments**:
-
-- `query`: the query string.
-- `params`: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
-      about their execution. By default these include the input parameters
-      they received, the output they generated, and eventual logs (of any severity)
-      emitted. All debug information can then be found in the dict returned
-      by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
-
-<a name="pipeline.TranslationWrapperPipeline"></a>
-## TranslationWrapperPipeline Objects
-
-```python
-class TranslationWrapperPipeline(BaseStandardPipeline)
-```
-
-Takes an existing search pipeline and adds one "input translation node" after the Query and one
-"output translation" node just before returning the results
-
-<a name="pipeline.TranslationWrapperPipeline.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(input_translator: BaseTranslator, output_translator: BaseTranslator, pipeline: BaseStandardPipeline)
-```
-
-Wrap a given `pipeline` with the `input_translator` and `output_translator`.
-
-**Arguments**:
-
-- `input_translator`: A Translator node that shall translate the input query from language A to B
-- `output_translator`: A Translator node that shall translate the pipeline results from language B to A
-- `pipeline`: The pipeline object (e.g. ExtractiveQAPipeline) you want to "wrap".
-                 Note that pipelines with split or merge nodes are currently not supported.
-
-<a name="pipeline.QuestionGenerationPipeline"></a>
-## QuestionGenerationPipeline Objects
-
-```python
-class QuestionGenerationPipeline(BaseStandardPipeline)
-```
-
-A simple pipeline that takes documents as input and generates
-questions that it thinks can be answered by the documents.
-
-<a name="pipeline.RetrieverQuestionGenerationPipeline"></a>
-## RetrieverQuestionGenerationPipeline Objects
-
-```python
-class RetrieverQuestionGenerationPipeline(BaseStandardPipeline)
-```
-
-A simple pipeline that takes a query as input, performs retrieval, and then generates
-questions that it thinks can be answered by the retrieved documents.
-
-<a name="pipeline.QuestionAnswerGenerationPipeline"></a>
-## QuestionAnswerGenerationPipeline Objects
-
-```python
-class QuestionAnswerGenerationPipeline(BaseStandardPipeline)
-```
-
-This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
-this document, and then performs question answering of this questions using that single document.
-
-<a name="pipeline.RootNode"></a>
-## RootNode Objects
-
-```python
-class RootNode(BaseComponent)
-```
-
-RootNode feeds inputs together with corresponding params to a Pipeline.
-
-<a name="pipeline.SklearnQueryClassifier"></a>
-## SklearnQueryClassifier Objects
-
-```python
-class SklearnQueryClassifier(BaseComponent)
-```
-
-A node to classify an incoming query into one of two categories using a lightweight sklearn model. Depending on the result, the query flows to a different branch in your pipeline
-and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
-
-**Example**:
-
-  ```python
-  |{
-  |pipe = Pipeline()
-  |pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-  |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
-  |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
-  
-  |# Keyword queries will use the ElasticRetriever
-  |pipe.run("kubernetes aws")
-  
-  |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
-  |pipe.run("How to manage kubernetes on aws")
-  
-  ```
-  
-  Models:
-  
-  Pass your own `Sklearn` binary classification model or use one of the following pretrained ones:
-  1) Keywords vs. Questions/Statements (Default)
-  query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle)
-  query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle)
-  output_1 => question/statement
-  output_2 => keyword query
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
-  
-  
-  2) Questions vs. Statements
-  query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle)
-  query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle)
-  output_1 => question
-  output_2 => statement
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
-  
-  See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
-
-<a name="pipeline.SklearnQueryClassifier.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(model_name_or_path: Union[
- |             str, Any
- |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
- |             str, Any
- |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle")
-```
-
-**Arguments**:
-
-- `model_name_or_path`: Gradient boosting based binary classifier to classify between keyword vs statement/question
-queries or statement vs question queries.
-- `vectorizer_name_or_path`: A ngram based Tfidf vectorizer for extracting features from query.
-
-<a name="pipeline.TransformersQueryClassifier"></a>
-## TransformersQueryClassifier Objects
-
-```python
-class TransformersQueryClassifier(BaseComponent)
-```
-
-A node to classify an incoming query into one of two categories using a (small) BERT transformer model. Depending on the result, the query flows to a different branch in your pipeline
-and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
-
-**Example**:
-
-  ```python
-  |{
-  |pipe = Pipeline()
-  |pipe.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-  |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
-  |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
-  
-  |# Keyword queries will use the ElasticRetriever
-  |pipe.run("kubernetes aws")
-  
-  |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
-  |pipe.run("How to manage kubernetes on aws")
-  
-  ```
-  
-  Models:
-  
-  Pass your own `Transformer` binary classification model from file/huggingface or use one of the following pretrained ones hosted on Huggingface:
-  1) Keywords vs. Questions/Statements (Default)
-  model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
-  output_1 => question/statement
-  output_2 => keyword query
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
-  
-  
-  2) Questions vs. Statements
-  `model_name_or_path`="shahrukhx01/question-vs-statement-classifier"
-  output_1 => question
-  output_2 => statement
-  [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
-  
-  See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
-
-<a name="pipeline.TransformersQueryClassifier.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(model_name_or_path: Union[
- |             Path, str
- |         ] = "shahrukhx01/bert-mini-finetune-question-detection")
-```
-
-**Arguments**:
-
-- `model_name_or_path`: Transformer based fine tuned mini bert model for query classification
-
-<a name="pipeline.JoinDocuments"></a>
-## JoinDocuments Objects
-
-```python
-class JoinDocuments(BaseComponent)
-```
-
-A node to join documents outputted by multiple retriever nodes.
-
-The node allows multiple join modes:
-* concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
-* merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
-         `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
-
-<a name="pipeline.JoinDocuments.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None)
-```
-
-**Arguments**:
-
-- `join_mode`: `concatenate` to combine documents from multiple retrievers or `merge` to aggregate scores of
-                  individual documents.
-- `weights`: A node-wise list(length of list must be equal to the number of input nodes) of weights for
-                adjusting document scores when using the `merge` join_mode. By default, equal weight is given
-                to each retriever score. This param is not compatible with the `concatenate` join_mode.
-- `top_k_join`: Limit documents to top_k based on the resulting scores of the join.
-
-<a name="pipeline.RayPipeline"></a>
+<a name="base.RayPipeline"></a>
 ## RayPipeline Objects
 
 ```python
@@ -785,7 +307,7 @@ A RayPipeline can only be created with a YAML Pipeline config.
 By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
 set the `address` parameter when creating the RayPipeline instance.
 
-<a name="pipeline.RayPipeline.__init__"></a>
+<a name="base.RayPipeline.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -797,7 +319,7 @@ set the `address` parameter when creating the RayPipeline instance.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
 
-<a name="pipeline.RayPipeline.load_from_yaml"></a>
+<a name="base.RayPipeline.load_from_yaml"></a>
 #### load\_from\_yaml
 
 ```python
@@ -849,7 +371,7 @@ Here's a sample configuration:
                                      `_` sign must be used to specify nested hierarchical properties.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 
-<a name="pipeline._RayDeploymentWrapper"></a>
+<a name="base._RayDeploymentWrapper"></a>
 ## \_RayDeploymentWrapper Objects
 
 ```python
@@ -864,7 +386,7 @@ like Document Stores.
 This wrapper class encapsulates the initialization of Components. Given a Component Class
 name, it creates an instance using the YAML Pipeline config.
 
-<a name="pipeline._RayDeploymentWrapper.__init__"></a>
+<a name="base._RayDeploymentWrapper.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -878,7 +400,7 @@ Create an instance of Component.
 - `pipeline_config`: Pipeline YAML parsed as a dict.
 - `component_name`: Component Class name.
 
-<a name="pipeline._RayDeploymentWrapper.__call__"></a>
+<a name="base._RayDeploymentWrapper.__call__"></a>
 #### \_\_call\_\_
 
 ```python
@@ -887,25 +409,349 @@ Create an instance of Component.
 
 Ray calls this method which is then re-directed to the corresponding component's run().
 
-<a name="pipeline.Docs2Answers"></a>
-## Docs2Answers Objects
+<a name="standard_pipelines"></a>
+# Module standard\_pipelines
+
+<a name="standard_pipelines.BaseStandardPipeline"></a>
+## BaseStandardPipeline Objects
 
 ```python
-class Docs2Answers(BaseComponent)
+class BaseStandardPipeline(ABC)
 ```
 
-This Node is used to convert retrieved documents into predicted answers format.
-It is useful for situations where you are calling a Retriever only pipeline via REST API.
-This ensures that your output is in a compatible format.
+Base class for pre-made standard Haystack pipelines.
+This class does not inherit from Pipeline.
 
-<a name="pipeline.MostSimilarDocumentsPipeline"></a>
+<a name="standard_pipelines.BaseStandardPipeline.add_node"></a>
+#### add\_node
+
+```python
+ | add_node(component, name: str, inputs: List[str])
+```
+
+Add a new node to the pipeline.
+
+**Arguments**:
+
+- `component`: The object to be called when the data is passed to the node. It can be a Haystack component
+                  (like Retriever, Reader, or Generator) or a user-defined object that implements a run()
+                  method to process incoming data from predecessor node.
+- `name`: The name for the node. It must not contain any dots.
+- `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+               of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
+               edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+
+               In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
+               must be specified explicitly as "QueryClassifier.output_2".
+
+<a name="standard_pipelines.BaseStandardPipeline.get_node"></a>
+#### get\_node
+
+```python
+ | get_node(name: str)
+```
+
+Get a node from the Pipeline.
+
+**Arguments**:
+
+- `name`: The name of the node.
+
+<a name="standard_pipelines.BaseStandardPipeline.set_node"></a>
+#### set\_node
+
+```python
+ | set_node(name: str, component)
+```
+
+Set the component for a node in the Pipeline.
+
+**Arguments**:
+
+- `name`: The name of the node.
+- `component`: The component object to be set at the node.
+
+<a name="standard_pipelines.BaseStandardPipeline.draw"></a>
+#### draw
+
+```python
+ | draw(path: Path = Path("pipeline.png"))
+```
+
+Create a Graphviz visualization of the pipeline.
+
+**Arguments**:
+
+- `path`: the path to save the image.
+
+<a name="standard_pipelines.ExtractiveQAPipeline"></a>
+## ExtractiveQAPipeline Objects
+
+```python
+class ExtractiveQAPipeline(BaseStandardPipeline)
+```
+
+Pipeline for Extractive Question Answering.
+
+<a name="standard_pipelines.ExtractiveQAPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(reader: BaseReader, retriever: BaseRetriever)
+```
+
+**Arguments**:
+
+- `reader`: Reader instance
+- `retriever`: Retriever instance
+
+<a name="standard_pipelines.ExtractiveQAPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+```
+
+**Arguments**:
+
+- `query`: The search query string.
+- `params`: Params for the `retriever` and `reader`. For instance,
+               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+              about their execution. By default these include the input parameters
+              they received, the output they generated, and eventual logs (of any severity)
+              emitted. All debug information can then be found in the dict returned
+              by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
+
+<a name="standard_pipelines.DocumentSearchPipeline"></a>
+## DocumentSearchPipeline Objects
+
+```python
+class DocumentSearchPipeline(BaseStandardPipeline)
+```
+
+Pipeline for semantic document search.
+
+<a name="standard_pipelines.DocumentSearchPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(retriever: BaseRetriever)
+```
+
+**Arguments**:
+
+- `retriever`: Retriever instance
+
+<a name="standard_pipelines.DocumentSearchPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+```
+
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+      about their execution. By default these include the input parameters
+      they received, the output they generated, and eventual logs (of any severity)
+      emitted. All debug information can then be found in the dict returned
+      by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
+
+<a name="standard_pipelines.GenerativeQAPipeline"></a>
+## GenerativeQAPipeline Objects
+
+```python
+class GenerativeQAPipeline(BaseStandardPipeline)
+```
+
+Pipeline for Generative Question Answering.
+
+<a name="standard_pipelines.GenerativeQAPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(generator: BaseGenerator, retriever: BaseRetriever)
+```
+
+**Arguments**:
+
+- `generator`: Generator instance
+- `retriever`: Retriever instance
+
+<a name="standard_pipelines.GenerativeQAPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+```
+
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `generator`. For instance,
+               params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+      about their execution. By default these include the input parameters
+      they received, the output they generated, and eventual logs (of any severity)
+      emitted. All debug information can then be found in the dict returned
+      by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
+
+<a name="standard_pipelines.SearchSummarizationPipeline"></a>
+## SearchSummarizationPipeline Objects
+
+```python
+class SearchSummarizationPipeline(BaseStandardPipeline)
+```
+
+Pipeline that retrieves documents for a query and then summarizes those documents.
+
+<a name="standard_pipelines.SearchSummarizationPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False)
+```
+
+**Arguments**:
+
+- `summarizer`: Summarizer instance
+- `retriever`: Retriever instance
+- `return_in_answer_format`: Whether the results should be returned as documents (False) or in the answer
+                                format used in other QA pipelines (True). With the latter, you can use this
+                                pipeline as a "drop-in replacement" for other QA pipelines.
+
+<a name="standard_pipelines.SearchSummarizationPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+```
+
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `summarizer`. For instance,
+               params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+      about their execution. By default these include the input parameters
+      they received, the output they generated, and eventual logs (of any severity)
+      emitted. All debug information can then be found in the dict returned
+      by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
+
+<a name="standard_pipelines.FAQPipeline"></a>
+## FAQPipeline Objects
+
+```python
+class FAQPipeline(BaseStandardPipeline)
+```
+
+Pipeline for finding similar FAQs using semantic document search.
+
+<a name="standard_pipelines.FAQPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(retriever: BaseRetriever)
+```
+
+**Arguments**:
+
+- `retriever`: Retriever instance
+
+<a name="standard_pipelines.FAQPipeline.run"></a>
+#### run
+
+```python
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+```
+
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+      about their execution. By default these include the input parameters
+      they received, the output they generated, and eventual logs (of any severity)
+      emitted. All debug information can then be found in the dict returned
+      by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
+
+<a name="standard_pipelines.TranslationWrapperPipeline"></a>
+## TranslationWrapperPipeline Objects
+
+```python
+class TranslationWrapperPipeline(BaseStandardPipeline)
+```
+
+Takes an existing search pipeline and adds one "input translation node" after the Query and one
+"output translation" node just before returning the results
+
+<a name="standard_pipelines.TranslationWrapperPipeline.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(input_translator: BaseTranslator, output_translator: BaseTranslator, pipeline: BaseStandardPipeline)
+```
+
+Wrap a given `pipeline` with the `input_translator` and `output_translator`.
+
+**Arguments**:
+
+- `input_translator`: A Translator node that shall translate the input query from language A to B
+- `output_translator`: A Translator node that shall translate the pipeline results from language B to A
+- `pipeline`: The pipeline object (e.g. ExtractiveQAPipeline) you want to "wrap".
+                 Note that pipelines with split or merge nodes are currently not supported.
+
+<a name="standard_pipelines.QuestionGenerationPipeline"></a>
+## QuestionGenerationPipeline Objects
+
+```python
+class QuestionGenerationPipeline(BaseStandardPipeline)
+```
+
+A simple pipeline that takes documents as input and generates
+questions that it thinks can be answered by the documents.
+
+<a name="standard_pipelines.RetrieverQuestionGenerationPipeline"></a>
+## RetrieverQuestionGenerationPipeline Objects
+
+```python
+class RetrieverQuestionGenerationPipeline(BaseStandardPipeline)
+```
+
+A simple pipeline that takes a query as input, performs retrieval, and then generates
+questions that it thinks can be answered by the retrieved documents.
+
+<a name="standard_pipelines.QuestionAnswerGenerationPipeline"></a>
+## QuestionAnswerGenerationPipeline Objects
+
+```python
+class QuestionAnswerGenerationPipeline(BaseStandardPipeline)
+```
+
+This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
+this document, and then performs question answering of this questions using that single document.
+
+<a name="standard_pipelines.MostSimilarDocumentsPipeline"></a>
 ## MostSimilarDocumentsPipeline Objects
 
 ```python
 class MostSimilarDocumentsPipeline(BaseStandardPipeline)
 ```
 
-<a name="pipeline.MostSimilarDocumentsPipeline.__init__"></a>
+<a name="standard_pipelines.MostSimilarDocumentsPipeline.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -919,7 +765,7 @@ This pipeline can be helpful if you already show a relevant document to your end
 
 - `document_store`: Document Store instance with already stored embeddings.
 
-<a name="pipeline.MostSimilarDocumentsPipeline.run"></a>
+<a name="standard_pipelines.MostSimilarDocumentsPipeline.run"></a>
 #### run
 
 ```python

@@ -4,7 +4,7 @@ import json
 import math
 import pytest
 
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.pipeline import (
     JoinDocuments,
     Pipeline,

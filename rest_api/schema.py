@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Union, Any
 from pydantic import BaseModel, Field
-from haystack import Answer, Document, Label, Span
+from haystack.schema import Answer, Document, Label, Span
 from pydantic import BaseConfig
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 

@@ -6,7 +6,9 @@ from haystack.modeling.model import adaptive_model as am
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import QuestionAnsweringHead
 
+
 logger = logging.getLogger(__name__)
+
 
 class Converter:
 

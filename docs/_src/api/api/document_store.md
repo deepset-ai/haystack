@@ -1,6 +1,15 @@
 <a name="base"></a>
 # Module base
 
+<a name="base.BaseKnowledgeGraph"></a>
+## BaseKnowledgeGraph Objects
+
+```python
+class BaseKnowledgeGraph(BaseComponent)
+```
+
+Base class for implementing Knowledge Graphs.
+
 <a name="base.BaseDocumentStore"></a>
 ## BaseDocumentStore Objects
 
@@ -117,6 +126,15 @@ from disk and also indexed batchwise to the DocumentStore in order to prevent ou
                  When set to None (default) all available eval documents are used.
 - `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the
                     same question might be found in different contexts.
+
+<a name="base.get_batches_from_generator"></a>
+#### get\_batches\_from\_generator
+
+```python
+get_batches_from_generator(iterable, n)
+```
+
+Batch elements of an iterable into fixed-length chunks or blocks.
 
 <a name="elasticsearch"></a>
 # Module elasticsearch
@@ -629,7 +647,7 @@ Write annotation labels into document store.
  | get_document_by_id(id: str, index: Optional[str] = None) -> Optional[Document]
 ```
 
-Fetch a document by specifying its text id string
+Fetch a document by specifying its text id string.
 
 <a name="memory.InMemoryDocumentStore.get_documents_by_id"></a>
 #### get\_documents\_by\_id
@@ -638,7 +656,7 @@ Fetch a document by specifying its text id string
  | get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings
+Fetch documents by specifying a list of text id strings.
 
 <a name="memory.InMemoryDocumentStore.query_by_embedding"></a>
 #### query\_by\_embedding
@@ -666,7 +684,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
+ | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -713,7 +731,24 @@ Return the count of embeddings in the document store.
  | get_label_count(index: Optional[str] = None) -> int
 ```
 
-Return the number of labels in the document store
+Return the number of labels in the document store.
+
+<a name="memory.InMemoryDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> List[Document]
+```
+
+Get all documents from the document store as a list.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+              DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
 
 <a name="memory.InMemoryDocumentStore.get_all_documents_generator"></a>
 #### get\_all\_documents\_generator
@@ -740,7 +775,7 @@ documents.
  | get_all_labels(index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]
 ```
 
-Return all labels in the document store
+Return all labels in the document store.
 
 <a name="memory.InMemoryDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
@@ -1139,13 +1174,13 @@ Add new documents to the DocumentStore.
 
 **Returns**:
 
-
+None
 
 <a name="faiss.FAISSDocumentStore.update_embeddings"></a>
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000)
+ | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1426,13 +1461,13 @@ Add new documents to the DocumentStore.
 
 **Returns**:
 
-
+None
 
 <a name="milvus.MilvusDocumentStore.update_embeddings"></a>
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: BaseRetriever, index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None)
+ | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1474,7 +1509,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 
 **Returns**:
 
-
+list of Documents that are the most similar to `query_emb`
 
 <a name="milvus.MilvusDocumentStore.delete_all_documents"></a>
 #### delete\_all\_documents
@@ -1697,7 +1732,7 @@ Fetch a document by specifying its text id string
  | get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings
+Fetch documents by specifying a list of text id strings.
 
 <a name="weaviate.WeaviateDocumentStore.write_documents"></a>
 #### write\_documents
@@ -1736,7 +1771,7 @@ None
  | update_document_meta(id: str, meta: Dict[str, str])
 ```
 
-Update the metadata dictionary of a document by specifying its string id
+Update the metadata dictionary of a document by specifying its string id.
 
 <a name="weaviate.WeaviateDocumentStore.get_document_count"></a>
 #### get\_document\_count
@@ -1891,4 +1926,157 @@ Delete documents in an index. All documents are deleted if no filters are passed
 **Returns**:
 
 None
+
+<a name="graphdb"></a>
+# Module graphdb
+
+<a name="graphdb.GraphDBKnowledgeGraph"></a>
+## GraphDBKnowledgeGraph Objects
+
+```python
+class GraphDBKnowledgeGraph(BaseKnowledgeGraph)
+```
+
+Knowledge graph store that runs on a GraphDB instance.
+
+<a name="graphdb.GraphDBKnowledgeGraph.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(host: str = "localhost", port: int = 7200, username: str = "", password: str = "", index: Optional[str] = None, prefixes: str = "")
+```
+
+Init the knowledge graph by defining the settings to connect with a GraphDB instance
+
+**Arguments**:
+
+- `host`: address of server where the GraphDB instance is running
+- `port`: port where the GraphDB instance is running
+- `username`: username to login to the GraphDB instance (if any)
+- `password`: password to login to the GraphDB instance (if any)
+- `index`: name of the index (also called repository) stored in the GraphDB instance
+- `prefixes`: definitions of namespaces with a new line after each namespace, e.g., PREFIX hp: <https://deepset.ai/harry_potter/>
+
+<a name="graphdb.GraphDBKnowledgeGraph.create_index"></a>
+#### create\_index
+
+```python
+ | create_index(config_path: Path)
+```
+
+Create a new index (also called repository) stored in the GraphDB instance
+
+**Arguments**:
+
+- `config_path`: path to a .ttl file with configuration settings, details:
+https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically
+
+<a name="graphdb.GraphDBKnowledgeGraph.delete_index"></a>
+#### delete\_index
+
+```python
+ | delete_index()
+```
+
+Delete the index that GraphDBKnowledgeGraph is connected to. This method deletes all data stored in the index.
+
+<a name="graphdb.GraphDBKnowledgeGraph.import_from_ttl_file"></a>
+#### import\_from\_ttl\_file
+
+```python
+ | import_from_ttl_file(index: str, path: Path)
+```
+
+Load an existing knowledge graph represented in the form of triples of subject, predicate, and object from a .ttl file into an index of GraphDB
+
+**Arguments**:
+
+- `index`: name of the index (also called repository) in the GraphDB instance where the imported triples shall be stored
+- `path`: path to a .ttl containing a knowledge graph
+
+<a name="graphdb.GraphDBKnowledgeGraph.get_all_triples"></a>
+#### get\_all\_triples
+
+```python
+ | get_all_triples(index: Optional[str] = None)
+```
+
+Query the given index in the GraphDB instance for all its stored triples. Duplicates are not filtered.
+
+**Arguments**:
+
+- `index`: name of the index (also called repository) in the GraphDB instance
+
+**Returns**:
+
+all triples stored in the index
+
+<a name="graphdb.GraphDBKnowledgeGraph.get_all_subjects"></a>
+#### get\_all\_subjects
+
+```python
+ | get_all_subjects(index: Optional[str] = None)
+```
+
+Query the given index in the GraphDB instance for all its stored subjects. Duplicates are not filtered.
+
+**Arguments**:
+
+- `index`: name of the index (also called repository) in the GraphDB instance
+
+**Returns**:
+
+all subjects stored in the index
+
+<a name="graphdb.GraphDBKnowledgeGraph.get_all_predicates"></a>
+#### get\_all\_predicates
+
+```python
+ | get_all_predicates(index: Optional[str] = None)
+```
+
+Query the given index in the GraphDB instance for all its stored predicates. Duplicates are not filtered.
+
+**Arguments**:
+
+- `index`: name of the index (also called repository) in the GraphDB instance
+
+**Returns**:
+
+all predicates stored in the index
+
+<a name="graphdb.GraphDBKnowledgeGraph.get_all_objects"></a>
+#### get\_all\_objects
+
+```python
+ | get_all_objects(index: Optional[str] = None)
+```
+
+Query the given index in the GraphDB instance for all its stored objects. Duplicates are not filtered.
+
+**Arguments**:
+
+- `index`: name of the index (also called repository) in the GraphDB instance
+
+**Returns**:
+
+all objects stored in the index
+
+<a name="graphdb.GraphDBKnowledgeGraph.query"></a>
+#### query
+
+```python
+ | query(sparql_query: str, index: Optional[str] = None)
+```
+
+Execute a SPARQL query on the given index in the GraphDB instance
+
+**Arguments**:
+
+- `sparql_query`: SPARQL query that shall be executed
+- `index`: name of the index (also called repository) in the GraphDB instance
+
+**Returns**:
+
+query result
 

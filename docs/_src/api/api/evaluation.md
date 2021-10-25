@@ -1,7 +1,7 @@
-<a name="eval"></a>
-# Module eval
+<a name="evaluator"></a>
+# Module evaluator
 
-<a name="eval.EvalDocuments"></a>
+<a name="evaluator.EvalDocuments"></a>
 ## EvalDocuments Objects
 
 ```python
@@ -15,7 +15,7 @@ from this Node may differ from that when calling Retriever.eval() since that is 
 a look at our evaluation tutorial for more info about open vs closed domain eval (
 https://haystack.deepset.ai/tutorials/evaluation).
 
-<a name="eval.EvalDocuments.__init__"></a>
+<a name="evaluator.EvalDocuments.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -29,7 +29,7 @@ https://haystack.deepset.ai/tutorials/evaluation).
 - `debug`: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
 - `top_k`: calculate eval metrics for top k results, e.g., recall@k
 
-<a name="eval.EvalDocuments.run"></a>
+<a name="evaluator.EvalDocuments.run"></a>
 #### run
 
 ```python
@@ -38,7 +38,7 @@ https://haystack.deepset.ai/tutorials/evaluation).
 
 Run this node on one sample and its labels
 
-<a name="eval.EvalDocuments.print"></a>
+<a name="evaluator.EvalDocuments.print"></a>
 #### print
 
 ```python
@@ -47,7 +47,7 @@ Run this node on one sample and its labels
 
 Print the evaluation results
 
-<a name="eval.EvalAnswers"></a>
+<a name="evaluator.EvalAnswers"></a>
 ## EvalAnswers Objects
 
 ```python
@@ -61,7 +61,7 @@ Note that results from this Node may differ from that when calling Reader.eval()
 since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
 open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
 
-<a name="eval.EvalAnswers.__init__"></a>
+<a name="evaluator.EvalAnswers.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -85,7 +85,7 @@ open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
                   - Large model for German only: "deepset/gbert-large-sts"
 - `debug`: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
 
-<a name="eval.EvalAnswers.run"></a>
+<a name="evaluator.EvalAnswers.run"></a>
 #### run
 
 ```python
@@ -94,7 +94,7 @@ open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
 
 Run this node on one sample and its labels
 
-<a name="eval.EvalAnswers.print"></a>
+<a name="evaluator.EvalAnswers.print"></a>
 #### print
 
 ```python
@@ -103,7 +103,7 @@ Run this node on one sample and its labels
 
 Print the evaluation results
 
-<a name="eval.semantic_answer_similarity"></a>
+<a name="evaluator.semantic_answer_similarity"></a>
 #### semantic\_answer\_similarity
 
 ```python

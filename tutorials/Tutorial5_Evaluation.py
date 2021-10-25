@@ -1,13 +1,15 @@
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.preprocessor.utils import fetch_archive_from_http
-from haystack.retriever.sparse import ElasticsearchRetriever
-from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
-from haystack.eval import EvalAnswers, EvalDocuments
-from haystack.reader.farm import FARMReader
-from haystack.preprocessor import PreProcessor
-from haystack.utils import launch_es
 from haystack import Pipeline
-
+from haystack.document_stores import ElasticsearchDocumentStore
+from haystack.nodes import (
+    ElasticsearchRetriever,
+    DensePassageRetriever,
+    EmbeddingRetriever,
+    EvalAnswers, 
+    EvalDocuments,
+    FARMReader,
+    PreProcessor
+)
+from haystack.utils import fetch_archive_from_http, launch_es
 from haystack.modeling.utils import initialize_device_settings
 
 import logging
@@ -106,7 +108,6 @@ def tutorial5_evaluation():
     # Here we initialize the nodes that perform evaluation
     eval_retriever = EvalDocuments()
     eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
-
 
     ## Evaluate Retriever on its own in closed domain fashion
     if style == "retriever_closed":

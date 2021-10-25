@@ -1,1 +1,0 @@
-from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph

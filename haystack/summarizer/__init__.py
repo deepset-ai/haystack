@@ -1,1 +1,0 @@
-from haystack.summarizer.transformers import TransformersSummarizer

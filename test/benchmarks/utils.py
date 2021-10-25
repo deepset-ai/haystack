@@ -1,14 +1,13 @@
 import os
-
-from haystack.document_store.sql import SQLDocumentStore
-from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
-from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.document_store import MilvusDocumentStore
-from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
-from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
-from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader
+from haystack.document_stores.sql import SQLDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.document_stores.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
+from haystack.document_stores.milvus import MilvusDocumentStore
+from haystack.nodes.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes.reader.farm import FARMReader
+from haystack.nodes.reader.transformers import TransformersReader
 from haystack.utils import launch_milvus, launch_es, launch_opensearch
 from haystack.modeling.data_handler.processor import http_get
 

@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from haystack.graph_retriever import Text2SparqlRetriever
-from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
-from haystack.preprocessor.utils import fetch_archive_from_http
+from haystack.nodes import Text2SparqlRetriever
+from haystack.document_stores import GraphDBKnowledgeGraph
+from haystack.utils import fetch_archive_from_http
 
 @pytest.mark.graphdb
 def test_graph_retrieval(graphdb_fixture):

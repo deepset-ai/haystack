@@ -1,6 +1,8 @@
+from typing import List, Any, Optional, Tuple, Union, Dict
+
 import logging
 from abc import ABC
-from typing import List, Any, Optional, Tuple, Union, Dict
+
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +11,6 @@ class Pred(ABC):
     """
     Abstract base class for predictions of every task
     """
-
     def __init__(self,
                  id: str,
                  prediction: List[Any],
@@ -26,7 +27,6 @@ class QACandidate:
     """
     A single QA candidate answer.
     """
-
     def __init__(self,
                  answer_type: str,
                  score: float,
@@ -51,7 +51,6 @@ class QACandidate:
         :param passage_id: The id of the passage which contains this candidate answer
         :param confidence: The (calibrated) confidence score representing the model's predicted accuracy of the index of the start of the answer span
         """
-
         # self.answer_type can be "no_answer", "yes", "no" or "span"
         self.answer_type = answer_type
         self.score = score
@@ -98,8 +97,10 @@ class QACandidate:
         self._add_answer(pred_str)
 
     def _add_answer(self, string: str):
-        """ Set the answer string. This method will check that the answer given is valid given the start
-        and end indices that are stored in the object. """
+        """
+        Set the answer string. This method will check that the answer given is valid given the start
+        and end indices that are stored in the object.
+        """
         if string == "":
             self.answer = "no_answer"
             if self.offset_answer_start != 0 or self.offset_answer_end != 0:
@@ -158,7 +159,6 @@ class QACandidate:
         :param clear_text: The text from which the answer span is to be extracted
         :return: The string answer span, followed by the start and end character indices
         """
-
         if self.offset_unit != "token":
             logger.error(f"QACandidate needs to have self.offset_unit=token before calling _span_to_string() (id = {self.passage_id})")
 
@@ -202,7 +202,9 @@ class QACandidate:
         return final_text, start_ch, end_ch
 
     def to_doc_level(self, start: int, end: int):
-        """ Populate the start and end indices with document level indices. Changes aggregation level to 'document'"""
+        """
+        Populate the start and end indices with document level indices. Changes aggregation level to 'document'
+        """
         self.offset_answer_start = start
         self.offset_answer_end = end
         self.aggregation_level = "document"
@@ -212,11 +214,11 @@ class QACandidate:
 
 
 class QAPred(Pred):
-    """ A set of QA predictions for a passage or a document. The candidates are stored in QAPred.prediction which is a
+    """
+    A set of QA predictions for a passage or a document. The candidates are stored in QAPred.prediction which is a
     list of QACandidate objects. Also contains all attributes needed to convert the object into json format and also
     to create a context window for a UI
     """
-
     def __init__(self,
                  id: str,
                  prediction: List[QACandidate],
@@ -259,7 +261,6 @@ class QAPred(Pred):
 
         :param squad: If True, no_answers are represented by the empty string instead of "no_answer"
         """
-
         answers = self._answers_to_json(self.id, squad)
         ret = {
             "task": "qa",
@@ -285,7 +286,6 @@ class QAPred(Pred):
         :param id: ID of the question document pair
         :param squad: If True, no_answers are represented by the empty string instead of "no_answer"
         """
-
         ret = []
 
         # iterate over the top_n predictions of the one document
