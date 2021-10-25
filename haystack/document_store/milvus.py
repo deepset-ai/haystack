@@ -10,7 +10,6 @@ from tqdm import tqdm
 from haystack import Document
 from haystack.document_store.sql import SQLDocumentStore
 from haystack.retriever.base import BaseRetriever
-from haystack.document_store.base import DuplicateDocumentError
 from haystack.utils import get_batches_from_generator
 
 logger = logging.getLogger(__name__)
