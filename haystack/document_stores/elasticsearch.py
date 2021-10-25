@@ -11,6 +11,7 @@ from tqdm.auto import tqdm
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
+import pandas as pd
 
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Document, Label
@@ -878,14 +879,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if embedding_list:
                 embedding = np.asarray(embedding_list, dtype=np.float32)
 
-        document = Document(
-            id=hit["_id"],
-            content=hit["_source"].get(self.content_field),
-            content_type=hit["_source"].get("content_type", None),
-            meta=meta_data,
-            score=score,
-            embedding=embedding,
-        )
+        doc_dict = {
+            "id": hit["_id"],
+            "content": hit["_source"].get(self.content_field),
+            "content_type": hit["_source"].get("content_type", None),
+            "meta": meta_data,
+            "score": score,
+            "embedding": embedding
+        }
+        document = Document.from_dict(doc_dict)
+
         return document
 
     def _scale_embedding_score(self, score):

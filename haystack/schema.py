@@ -120,6 +120,10 @@ class Document:
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
+            if k == "content":
+                # Convert pd.DataFrame to list of rows for serialization
+                if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
+                    v = [self.content.columns.tolist()] + self.content.values.tolist()
             k = k if k not in inv_field_map else inv_field_map[k]
             _doc[k] = v
         return _doc
@@ -154,6 +158,10 @@ class Document:
             elif k in field_map:
                 k = field_map[k]
                 _new_doc[k] = v
+
+        # Convert list of rows to pd.DataFrame
+        if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):
+            _new_doc["content"] = pd.DataFrame(columns=_new_doc["content"][0], data=_new_doc["content"][1:])
 
         return cls(**_new_doc)
 

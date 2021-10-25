@@ -23,7 +23,7 @@ from haystack.nodes.document_classifier.transformers import TransformersDocument
 
 from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
-from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -399,7 +399,7 @@ def no_answer_prediction(no_answer_reader, test_docs_xs):
     return prediction
 
 
-@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
+@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf", "table_text_retriever"])
 def retriever(request, document_store):
     return get_retriever(request.param, document_store)
 
@@ -435,6 +435,12 @@ def get_retriever(retriever_type, document_store):
         retriever = ElasticsearchRetriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
         retriever = ElasticsearchFilterOnlyRetriever(document_store=document_store)
+    elif retriever_type == "table_text_retriever":
+        retriever = TableTextRetriever(document_store=document_store,
+                                       query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
+                                       passage_embedding_model="deepset/bert-small-mm_retrieval-passage_encoder",
+                                       table_embedding_model="deepset/bert-small-mm_retrieval-table_encoder",
+                                       use_gpu=False)
     else:
         raise Exception(f"No retriever fixture for '{retriever_type}'")
 

@@ -50,7 +50,7 @@ def tutorial12_lfqa():
 
     """Before we blindly use the `RetribertRetriever` let's empirically test it to make sure a simple search indeed finds the relevant documents."""
 
-    from haystack.utils import print_answers, print_documents
+    from haystack.utils import print_documents
     from haystack.pipelines import DocumentSearchPipeline
 
     p_retrieval = DocumentSearchPipeline(retriever)
