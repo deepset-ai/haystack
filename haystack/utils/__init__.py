@@ -17,6 +17,5 @@ from haystack.utils.export_utils import (
     print_documents,
     export_answers_to_csv,
     convert_labels_to_squad,
-    get_batches_from_generator,
 )
 from haystack.utils.squad_data import SquadData
