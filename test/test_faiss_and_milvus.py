@@ -1,12 +1,14 @@
 import time
+import uuid
 import faiss
 import math
 import numpy as np
 import pytest
 from haystack import Document
+from haystack.pipeline import Pipeline
 from haystack.pipeline import DocumentSearchPipeline
 from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.pipeline import Pipeline
+from haystack.document_store.weaviate import WeaviateDocumentStore
 from haystack.retriever.dense import EmbeddingRetriever
 
 DOCUMENTS = [
@@ -294,10 +296,17 @@ def test_faiss_passing_index_from_outside(tmp_path):
     for doc in documents_indexed:
         assert 0 <= int(doc.meta["vector_id"]) <= 7
 
-
+def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
+    # Weaviate currently only supports UUIDs
+    if type(document_store_cosine)==WeaviateDocumentStore:
+        for d in docs:
+            d["id"] = str(uuid.uuid4())
+        
 def test_cosine_similarity(document_store_cosine):
     # below we will write documents to the store and then query it to see if vectors were normalized
-
+    
+    ensure_ids_are_correct_uuids(docs=DOCUMENTS,document_store=document_store_cosine)
+    
     document_store_cosine.write_documents(documents=DOCUMENTS)
 
     # note that the same query will be used later when querying after updating the embeddings
@@ -314,7 +323,7 @@ def test_cosine_similarity(document_store_cosine):
     for doc in query_results:
         result_emb = doc.embedding
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        if type(document_store_cosine)==FAISSDocumentStore :
+        if type(document_store_cosine)==FAISSDocumentStore:
             document_store_cosine.normalize_embedding(original_emb)
         else:
             document_store_cosine.normalize_embedding(original_emb[0])
@@ -355,6 +364,7 @@ def test_cosine_sanity_check(document_store_cosine_small):
     KNOWN_COSINE = (0.9746317 + 1) / 2
 
     docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
+    ensure_ids_are_correct_uuids(docs=docs,document_store=document_store_cosine_small)
     document_store_cosine_small.write_documents(documents=docs)
 
     query_results = document_store_cosine_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
