@@ -16,7 +16,8 @@ import haystack.modeling.conversion.transformers as conv
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead
-from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.logger import MLFlowLogger as MlLogger
+
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +26,12 @@ class BaseAdaptiveModel:
     """
     Base Class for implementing AdaptiveModel with frameworks like PyTorch and ONNX.
     """
-
     language_model: LanguageModel
     subclasses = {}  # type: Dict
 
     def __init_subclass__(cls, **kwargs):
-        """ This automatically keeps track of all available subclasses.
+        """ 
+        This automatically keeps track of all available subclasses.
         Enables generic load() for all specific AdaptiveModel implementation.
         """
         super().__init_subclass__(**kwargs)
@@ -163,9 +164,10 @@ def loss_per_head_sum(loss_per_head: Iterable, global_step: Optional[int] = None
 
 
 class AdaptiveModel(nn.Module, BaseAdaptiveModel):
-    """ PyTorch implementation containing all the modelling needed for your NLP task. Combines a language
-    model and a prediction head. Allows for gradient flow back to the language model component."""
-
+    """ 
+    PyTorch implementation containing all the modelling needed for your NLP task. Combines a language
+    model and a prediction head. Allows for gradient flow back to the language model component.
+    """
     def __init__(
         self,
         language_model: LanguageModel,
@@ -197,7 +199,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                     Note: The loss at this stage is per sample, i.e one tensor of
                                     shape (batchsize) per prediction head.
         """
-
         super(AdaptiveModel, self).__init__()  # type: ignore
         self.device = device
         self.language_model = language_model.to(device)
@@ -230,14 +231,21 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         Used for benchmarking where we want to isolate the LanguageModel run time
         from the PredictionHead run time.
         """
+        # TODO convert inner functions into lambdas
+
         def fake_forward(x):
-            """Slices lm vector outputs of shape (batch_size, max_seq_len, dims) --> (batch_size, max_seq_len, 2)"""
+            """
+            Slices lm vector outputs of shape (batch_size, max_seq_len, dims) --> (batch_size, max_seq_len, 2)
+            """
             return x.narrow(2, 0, 2)
+
         def fake_logits_to_preds(logits, **kwargs):
             batch_size = logits.shape[0]
             return [None, None] * batch_size
+
         def fake_formatted_preds(**kwargs):
             return None
+
         for ph in self.prediction_heads:
             ph.forward = fake_forward
             ph.logits_to_preds = fake_logits_to_preds
@@ -276,7 +284,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                        the PredictionHead (see torch.nn.module.load_state_dict()).
         :param processor: Processor to populate prediction head with information coming from tasks.
         """
-
         # Language Model
         if lm_name:
             language_model = LanguageModel.load(load_dir, haystack_lm_name=lm_name)
@@ -358,7 +365,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                        and prediction head(s).
         :return: All logits as torch.tensor or multiple tensors.
         """
-
         # Run forward pass of language model
         sequence_output, pooled_output = self.forward_lm(**kwargs)
 
@@ -395,7 +401,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: Tuple containing list of embeddings for each token and
                  embedding for whole sequence.
         """
-
         # Check if we have to extract from a special layer of the LM (default = last layer)
         try:
             extraction_layer = self.language_model.extraction_layer
@@ -436,7 +441,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         Verifies that the model fits to the tokenizer vocabulary.
         They could diverge in case of custom vocabulary added via tokenizer.add_tokens()
         """
-
         model_vocab_len = self.language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
 
         msg = f"Vocab size of tokenizer {vocab_size} doesn't match with model {model_vocab_len}. " \
@@ -523,7 +527,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path/"model.onnx",
             opset=opset_version,
-            use_external_format=True if language_model_class is "XLMRoberta" else False
+            use_external_format=True if language_model_class=="XLMRoberta" else False
         )
 
         # save processor & model config files that are needed when loading the model with the Haystack.basics Inferencer
@@ -574,7 +578,6 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
     For inference, this class is compatible with the Haystack.basics Inferencer.
     """
     # TODO validate usefulness
-
     def __init__(
         self,
         onnx_session, # TODO

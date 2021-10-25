@@ -13,22 +13,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Acknowledgements: Many of the modeling parts here come from the great transformers repository: https://github.com/huggingface/transformers.
-Thanks for the great work! """
-
+""" 
+Acknowledgements: Many of the modeling parts here come from the great transformers repository: https://github.com/huggingface/transformers.
+Thanks for the great work! 
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
+from typing import Optional, Dict, Any, Union
 
 import json
 import logging
 import os
 from pathlib import Path
-
 import numpy as np
 import torch
 from torch import nn
-
-logger = logging.getLogger(__name__)
-
+import transformers
 from transformers import (
     BertModel, BertConfig,
     RobertaModel, RobertaConfig,
@@ -40,10 +39,11 @@ from transformers import (
     CamembertModel, CamembertConfig,
     BigBirdModel, BigBirdConfig
 )
-
 from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
-import transformers
+
+
+logger = logging.getLogger(__name__)
 
 
 # These are the names of the attributes in various model configs which refer to the number of dimensions
@@ -57,21 +57,27 @@ class LanguageModel(nn.Module):
     speaking, these models read in tokenized sentences and return vectors that capture the meaning of sentences
     or of tokens.
     """
-
     subclasses: dict = {}
 
     def __init_subclass__(cls, **kwargs):
-        """ This automatically keeps track of all available subclasses.
+        """ 
+        This automatically keeps track of all available subclasses.
         Enables generic load() or all specific LanguageModel implementation.
         """
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
 
-    def forward(self, input_ids, padding_mask, **kwargs):
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
+        **kwargs,
+    ):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, revision=None, n_added_tokens=0, language_model_class=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained language model either by
 
@@ -110,14 +116,12 @@ class LanguageModel(nn.Module):
         or can be manually supplied via `language_model_class`.
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-        :type pretrained_model_name_or_path: str
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :type revision: str
         :param language_model_class: (Optional) Name of the language model class to load (e.g. `Bert`)
-        :type language_model_class: str
-
         """
-        kwargs["revision"] = revision
+        n_added_tokens = kwargs.pop("n_added_tokens", 0)
+        language_model_class = kwargs.pop("language_model_class", None)
+        kwargs["revision"] = kwargs.get("revision", None)
         logger.info("")
         logger.info("LOADING MODEL")
         logger.info("=============")
@@ -272,14 +276,12 @@ class LanguageModel(nn.Module):
             string = self.model.config.to_json_string()
             file.write(string)
 
-    def save(self, save_dir, state_dict=None):
+    def save(self, save_dir: Union[str, Path], state_dict: Dict[Any, Any] = None):
         """
         Save the model state_dict and its config file so that it can be loaded again.
 
         :param save_dir: The directory in which the model should be saved.
-        :type save_dir: str
         :param state_dict: A dictionary containing a whole state of the module including names of layers. By default, the unchanged state dict of the module is used
-        :type state_dict: dict
         """
         # Save Weights
         save_name = Path(save_dir) / "language_model.bin"
@@ -353,7 +355,6 @@ class LanguageModel(nn.Module):
         :param kwargs: kwargs
         :return: list of dicts containing preds, e.g. [{"context": "some text", "vec": [-0.01, 0.5 ...]}]
         """
-
         if not hasattr(self, "extraction_layer") or not hasattr(self, "extraction_strategy"):
             raise ValueError("`extraction_layer` or `extraction_strategy` not specified for LM. "
                              "Make sure to set both, e.g. via Inferencer(extraction_strategy='cls_token', extraction_layer=-1)`")
@@ -409,9 +410,7 @@ class Bert(LanguageModel):
     A BERT model that wraps HuggingFace's implementation
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1810.04805
-
     """
-
     def __init__(self):
         super(Bert, self).__init__()
         self.model = None
@@ -427,7 +426,7 @@ class Bert(LanguageModel):
         return bert
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -436,10 +435,7 @@ class Bert(LanguageModel):
         * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-        :type pretrained_model_name_or_path: str
-
         """
-
         bert = cls()
         if "haystack_lm_name" in kwargs:
             bert.name = kwargs["haystack_lm_name"]
@@ -461,24 +457,21 @@ class Bert(LanguageModel):
 
     def forward(
         self,
-        input_ids,
-        segment_ids,
-        padding_mask,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the BERT model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type input_ids: torch.Tensor
         :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, max_seq_len]
-        :type segment_ids: torch.Tensor
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
-
         """
         output_tuple = self.model(
             input_ids,
@@ -503,16 +496,14 @@ class Albert(LanguageModel):
     """
     An ALBERT model that wraps the HuggingFace's implementation
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
-
     """
-
     def __init__(self):
         super(Albert, self).__init__()
         self.model = None
         self.name = "albert"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -524,7 +515,6 @@ class Albert(LanguageModel):
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
                          If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
-
         """
         albert = cls()
         if "haystack_lm_name" in kwargs:
@@ -547,24 +537,21 @@ class Albert(LanguageModel):
 
     def forward(
         self,
-        input_ids,
-        segment_ids,
-        padding_mask,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the Albert model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type input_ids: torch.Tensor
         :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, max_seq_len]
-        :type segment_ids: torch.Tensor
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
-
         """
         output_tuple = self.model(
             input_ids,
@@ -590,16 +577,14 @@ class Roberta(LanguageModel):
     A roberta model that wraps the HuggingFace's implementation
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1907.11692
-
     """
-
     def __init__(self):
         super(Roberta, self).__init__()
         self.model = None
         self.name = "roberta"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -611,7 +596,6 @@ class Roberta(LanguageModel):
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
                          If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
-
         """
         roberta = cls()
         if "haystack_lm_name" in kwargs:
@@ -634,24 +618,21 @@ class Roberta(LanguageModel):
 
     def forward(
         self,
-        input_ids,
-        segment_ids,
-        padding_mask,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the Roberta model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type input_ids: torch.Tensor
         :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, max_seq_len]
-        :type segment_ids: torch.Tensor
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
-
         """
         output_tuple = self.model(
             input_ids,
@@ -677,16 +658,14 @@ class XLMRoberta(LanguageModel):
     A roberta model that wraps the HuggingFace's implementation
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1907.11692
-
     """
-
     def __init__(self):
         super(XLMRoberta, self).__init__()
         self.model = None
         self.name = "xlm_roberta"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -698,7 +677,6 @@ class XLMRoberta(LanguageModel):
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
                          If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
-
         """
         xlm_roberta = cls()
         if "haystack_lm_name" in kwargs:
@@ -721,24 +699,21 @@ class XLMRoberta(LanguageModel):
 
     def forward(
         self,
-        input_ids,
-        segment_ids,
-        padding_mask,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the XLMRoberta model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type input_ids: torch.Tensor
         :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, max_seq_len]
-        :type segment_ids: torch.Tensor
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
-
         """
         output_tuple = self.model(
             input_ids,
@@ -770,9 +745,7 @@ class DistilBert(LanguageModel):
     token tokenizer.sep_token (or [SEP])
     - Unlike the other BERT variants, DistilBert does not output the
     pooled_output. An additional pooler is initialized.
-
     """
-
     def __init__(self):
         super(DistilBert, self).__init__()
         self.model = None
@@ -780,7 +753,7 @@ class DistilBert(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -789,10 +762,7 @@ class DistilBert(LanguageModel):
         * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-        :type pretrained_model_name_or_path: str
-
         """
-
         distilbert = cls()
         if "haystack_lm_name" in kwargs:
             distilbert.name = kwargs["haystack_lm_name"]
@@ -823,21 +793,19 @@ class DistilBert(LanguageModel):
         distilbert.pooler.apply(distilbert.model._init_weights)
         return distilbert
 
-    def forward(
+    def forward(  # type: ignore
         self,
-        input_ids,
-        padding_mask,
+        input_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
         **kwargs,
-    ):
+    ):  
         """
         Perform the forward pass of the DistilBERT model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type input_ids: torch.Tensor
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
-
         """
         output_tuple = self.model(
             input_ids,
@@ -865,7 +833,6 @@ class XLNet(LanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1906.08237
     """
-
     def __init__(self):
         super(XLNet, self).__init__()
         self.model = None
@@ -873,7 +840,7 @@ class XLNet(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -885,7 +852,6 @@ class XLNet(LanguageModel):
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
                          If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
-
         """
         xlnet = cls()
         if "haystack_lm_name" in kwargs:
@@ -916,28 +882,24 @@ class XLNet(LanguageModel):
 
     def forward(
         self,
-        input_ids,
-        segment_ids,
-        padding_mask,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the XLNet model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type input_ids: torch.Tensor
         :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, max_seq_len]
-        :type segment_ids: torch.Tensor
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
-
         # Note: XLNet has a couple of special input tensors for pretraining / text generation  (perm_mask, target_mapping ...)
         # We will need to implement them, if we wanna support LM adaptation
-
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
@@ -975,7 +937,6 @@ class Electra(LanguageModel):
 
     NOTE:
     - Electra does not output the pooled_output. An additional pooler is initialized.
-
     """
 
     def __init__(self):
@@ -985,7 +946,7 @@ class Electra(LanguageModel):
         self.pooler = None
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -994,10 +955,7 @@ class Electra(LanguageModel):
         * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-        :type pretrained_model_name_or_path: str
-
         """
-
         electra = cls()
         if "haystack_lm_name" in kwargs:
             electra.name = kwargs["haystack_lm_name"]
@@ -1032,20 +990,18 @@ class Electra(LanguageModel):
 
     def forward(
         self,
-        input_ids,
-        segment_ids,
-        padding_mask,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the ELECTRA model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type input_ids: torch.Tensor
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
-
         """
         output_tuple = self.model(
             input_ids,
@@ -1081,7 +1037,7 @@ class Camembert(Roberta):
         self.name = "camembert"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
 
@@ -1093,7 +1049,6 @@ class Camembert(Roberta):
         :param language: (Optional) Name of language the model was trained for (e.g. "german").
                          If not supplied, Haystack will try to infer it from the model name.
         :return: Language Model
-
         """
         camembert = cls()
         if "haystack_lm_name" in kwargs:
@@ -1119,14 +1074,13 @@ class DPRQuestionEncoder(LanguageModel):
     """
     A DPRQuestionEncoder model that wraps HuggingFace's implementation
     """
-
     def __init__(self):
         super(DPRQuestionEncoder, self).__init__()
         self.model = None
         self.name = "dpr_question_encoder"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1135,9 +1089,7 @@ class DPRQuestionEncoder(LanguageModel):
         * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRQuestionEncoder
-        :type pretrained_model_name_or_path: str
         """
-
         dpr_question_encoder = cls()
         if "haystack_lm_name" in kwargs:
             dpr_question_encoder.name = kwargs["haystack_lm_name"]
@@ -1186,53 +1138,49 @@ class DPRQuestionEncoder(LanguageModel):
 
         return dpr_question_encoder
 
-    def save(self, save_dir, state_dict=None):
+    def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
         Save the model state_dict and its config file so that it can be loaded again.
 
         :param save_dir: The directory in which the model should be saved.
-        :type save_dir: str
-        :param state_dict: A dictionary containing a whole state of the module including names of layers. By default, the unchanged state dict of the module is used
-        :type state_dict: Optional[dict]
+        :param state_dict: A dictionary containing a whole state of the module including names of layers. 
+                           By default, the unchanged state dict of the module is used
         """
         model_to_save = (
             self.model.module if hasattr(self.model, "module") else self.model
-        )  # Only save the model it-self
+        )  # Only save the model itself
 
         if self.model.config.model_type != "dpr" and model_to_save.base_model_prefix.startswith("question_"):
             state_dict = model_to_save.state_dict()
-            keys = state_dict.keys()
-            for key in list(keys):
-                new_key = key
-                if key.startswith("question_encoder.bert_model.model."):
-                    new_key = key.split("_encoder.bert_model.model.", 1)[1]
-                elif key.startswith("question_encoder.bert_model."):
-                    new_key = key.split("_encoder.bert_model.", 1)[1]
-                state_dict[new_key] = state_dict.pop(key)
+            if state_dict:
+                keys = state_dict.keys()
+                for key in list(keys):
+                    new_key = key
+                    if key.startswith("question_encoder.bert_model.model."):
+                        new_key = key.split("_encoder.bert_model.model.", 1)[1]
+                    elif key.startswith("question_encoder.bert_model."):
+                        new_key = key.split("_encoder.bert_model.", 1)[1]
+                    state_dict[new_key] = state_dict.pop(key)
 
         super(DPRQuestionEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(
+    def forward(  # type: ignore
         self,
-        query_input_ids,
-        query_segment_ids,
-        query_attention_mask,
+        query_input_ids: torch.Tensor,
+        query_segment_ids: torch.Tensor,
+        query_attention_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the DPRQuestionEncoder model.
 
         :param query_input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type query_input_ids: torch.Tensor
         :param query_segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, max_seq_len]
-        :type query_segment_ids: torch.Tensor
         :param query_attention_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
-        :type query_attention_mask: torch.Tensor
         :return: Embeddings for each token in the input sequence.
-
         """
         output_tuple = self.model(
             input_ids=query_input_ids,
@@ -1258,14 +1206,13 @@ class DPRContextEncoder(LanguageModel):
     """
     A DPRContextEncoder model that wraps HuggingFace's implementation
     """
-
     def __init__(self):
         super(DPRContextEncoder, self).__init__()
         self.model = None
         self.name = "dpr_context_encoder"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1274,9 +1221,7 @@ class DPRContextEncoder(LanguageModel):
         * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRContextEncoder
-        :type pretrained_model_name_or_path: str
         """
-
         dpr_context_encoder = cls()
         if "haystack_lm_name" in kwargs:
             dpr_context_encoder.name = kwargs["haystack_lm_name"]
@@ -1331,14 +1276,12 @@ class DPRContextEncoder(LanguageModel):
 
         return dpr_context_encoder
 
-    def save(self, save_dir, state_dict=None):
+    def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
         Save the model state_dict and its config file so that it can be loaded again.
 
         :param save_dir: The directory in which the model should be saved.
-        :type save_dir: str
         :param state_dict: A dictionary containing a whole state of the module including names of layers. By default, the unchanged state dict of the module is used
-        :type state_dict: Optional[dict]
         """
         model_to_save = (
             self.model.module if hasattr(self.model, "module") else self.model
@@ -1346,37 +1289,35 @@ class DPRContextEncoder(LanguageModel):
 
         if self.model.config.model_type != "dpr" and model_to_save.base_model_prefix.startswith("ctx_"):
             state_dict = model_to_save.state_dict()
-            keys = state_dict.keys()
-            for key in list(keys):
-                new_key = key
-                if key.startswith("ctx_encoder.bert_model.model."):
-                    new_key = key.split("_encoder.bert_model.model.", 1)[1]
-                elif key.startswith("ctx_encoder.bert_model."):
-                    new_key = key.split("_encoder.bert_model.", 1)[1]
-                state_dict[new_key] = state_dict.pop(key)
+            if state_dict:
+                keys = state_dict.keys()
+                for key in list(keys):
+                    new_key = key
+                    if key.startswith("ctx_encoder.bert_model.model."):
+                        new_key = key.split("_encoder.bert_model.model.", 1)[1]
+                    elif key.startswith("ctx_encoder.bert_model."):
+                        new_key = key.split("_encoder.bert_model.", 1)[1]
+                    state_dict[new_key] = state_dict.pop(key)
 
         super(DPRContextEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(
+    def forward(  # type: ignore
         self,
-        passage_input_ids,
-        passage_segment_ids,
-        passage_attention_mask,
+        passage_input_ids: torch.Tensor,
+        passage_segment_ids: torch.Tensor,
+        passage_attention_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the DPRContextEncoder model.
 
         :param passage_input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, number_of_hard_negative_passages, max_seq_len]
-        :type passage_input_ids: torch.Tensor
         :param passage_segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, number_of_hard_negative_passages, max_seq_len]
-        :type passage_segment_ids: torch.Tensor
         :param passage_attention_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size,  number_of_hard_negative_passages, max_seq_len]
         :return: Embeddings for each token in the input sequence.
-
         """
         max_seq_len = passage_input_ids.shape[-1]
         passage_input_ids = passage_input_ids.view(-1, max_seq_len)
@@ -1407,9 +1348,7 @@ class BigBird(LanguageModel):
     A BERT model that wraps HuggingFace's implementation
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1810.04805
-
     """
-
     def __init__(self):
         super(BigBird, self).__init__()
         self.model = None
@@ -1425,7 +1364,7 @@ class BigBird(LanguageModel):
         return big_bird
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path, language=None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1434,10 +1373,7 @@ class BigBird(LanguageModel):
         * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-        :type pretrained_model_name_or_path: str
-
         """
-
         big_bird = cls()
         if "haystack_lm_name" in kwargs:
             big_bird.name = kwargs["haystack_lm_name"]
@@ -1459,24 +1395,21 @@ class BigBird(LanguageModel):
 
     def forward(
         self,
-        input_ids,
-        segment_ids,
-        padding_mask,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
         **kwargs,
     ):
         """
         Perform the forward pass of the BERT model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :type input_ids: torch.Tensor
         :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, max_seq_len]
-        :type segment_ids: torch.Tensor
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
-
         """
         output_tuple = self.model(
             input_ids,
@@ -1495,4 +1428,3 @@ class BigBird(LanguageModel):
 
     def disable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = False
-

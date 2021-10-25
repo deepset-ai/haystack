@@ -1,4 +1,4 @@
-from haystack import Document
+from haystack.schema import Document
 
 import pytest
 

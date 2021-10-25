@@ -1,7 +1,6 @@
 from math import ceil
-
 import torch
-from torch.utils.data import DataLoader, Dataset, Sampler
+from torch.utils.data import DataLoader
 
 
 class NamedDataLoader(DataLoader):
@@ -25,13 +24,11 @@ class NamedDataLoader(DataLoader):
         :param pin_memory: argument for Data Loader to use page-locked memory for faster transfer of data to GPU
         :type pin_memory: bool
         """
-
         def collate_fn(batch):
             """
             A custom collate function that formats the batch as a dictionary where the key is
             the name of the tensor and the value is the tensor itself
             """
-
             if type(dataset).__name__ == "_StreamingDataSet":
                 _tensor_names = dataset.tensor_names
             else:

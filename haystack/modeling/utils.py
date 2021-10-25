@@ -1,3 +1,5 @@
+from typing import Any, Iterator, Tuple
+
 import logging
 import os
 import pickle
@@ -5,17 +7,16 @@ import random
 import signal
 from copy import deepcopy
 from itertools import islice
-
-import mlflow
 import numpy as np
 import torch
 import torch.distributed as dist
 from torch import multiprocessing as mp
-from requests.exceptions import ConnectionError
 
-from haystack.modeling.visual.ascii.images import WORKER_M, WORKER_F, WORKER_X
+from haystack.modeling.visual import WORKER_M, WORKER_F, WORKER_X
+
 
 logger = logging.getLogger(__name__)
+
 
 class GracefulKiller:
     kill_now = False
@@ -25,140 +26,6 @@ class GracefulKiller:
 
     def exit_gracefully(self, signum, frame):
         self.kill_now = True
-
-
-class BaseMLLogger:
-    """
-    Base class for tracking experiments.
-
-    This class can be extended to implement custom logging backends like MLFlow, Tensorboard, or Sacred.
-    """
-
-    disable_logging = False
-
-    def __init__(self, tracking_uri, **kwargs):
-        self.tracking_uri = tracking_uri
-
-    def init_experiment(self, tracking_uri):
-        raise NotImplementedError()
-
-    @classmethod
-    def log_metrics(cls, metrics, step):
-        raise NotImplementedError()
-
-    @classmethod
-    def log_artifacts(cls, self):
-        raise NotImplementedError()
-
-    @classmethod
-    def log_params(cls, params):
-        raise NotImplementedError()
-
-
-class StdoutLogger(BaseMLLogger):
-    """ Minimal logger printing metrics and params to stdout.
-    Useful for services like AWS SageMaker, where you parse metrics from the actual logs"""
-
-    def init_experiment(self, experiment_name, run_name=None, nested=True):
-        logger.info(f"\n **** Starting experiment '{experiment_name}' (Run: {run_name})  ****")
-
-    @classmethod
-    def log_metrics(cls, metrics, step):
-        logger.info(f"Logged metrics at step {step}: \n {metrics}")
-
-    @classmethod
-    def log_params(cls, params):
-        logger.info(f"Logged parameters: \n {params}")
-
-    @classmethod
-    def log_artifacts(cls, dir_path, artifact_path=None):
-        raise NotImplementedError
-
-    @classmethod
-    def end_run(cls):
-        logger.info(f"**** End of Experiment **** ")
-
-
-class MLFlowLogger(BaseMLLogger):
-    """
-    Logger for MLFlow experiment tracking.
-    """
-
-    def init_experiment(self, experiment_name, run_name=None, nested=True):
-        if not self.disable_logging:
-            try:
-                mlflow.set_tracking_uri(self.tracking_uri)
-                mlflow.set_experiment(experiment_name)
-                mlflow.start_run(run_name=run_name, nested=nested)
-            except ConnectionError:
-                raise Exception(
-                    f"MLFlow cannot connect to the remote server at {self.tracking_uri}.\n"
-                    f"MLFlow also supports logging runs locally to files. Set the MLFlowLogger "
-                    f"tracking_uri to an empty string to use that."
-                )
-
-    @classmethod
-    def log_metrics(cls, metrics, step):
-        if not cls.disable_logging:
-            try:
-                mlflow.log_metrics(metrics, step=step)
-            except ConnectionError:
-                logger.warning(f"ConnectionError in logging metrics to MLFlow.")
-            except Exception as e:
-                logger.warning(f"Failed to log metrics: {e}")
-
-    @classmethod
-    def log_params(cls, params):
-        if not cls.disable_logging:
-            try:
-                mlflow.log_params(params)
-            except ConnectionError:
-                logger.warning("ConnectionError in logging params to MLFlow")
-            except Exception as e:
-                logger.warning(f"Failed to log params: {e}")
-
-    @classmethod
-    def log_artifacts(cls, dir_path, artifact_path=None):
-        if not cls.disable_logging:
-            try:
-                mlflow.log_artifacts(dir_path, artifact_path)
-            except ConnectionError:
-                logger.warning(f"ConnectionError in logging artifacts to MLFlow")
-            except Exception as e:
-                logger.warning(f"Failed to log artifacts: {e}")
-
-    @classmethod
-    def end_run(cls):
-        if not cls.disable_logging:
-            mlflow.end_run()
-
-    @classmethod
-    def disable(cls):
-        logger.warning("ML Logging is turned off. No parameters, metrics or artifacts will be logged to MLFlow.")
-        cls.disable_logging = True
-
-
-class TensorBoardLogger(BaseMLLogger):
-    """
-    PyTorch TensorBoard Logger
-    """
-
-    def __init__(self, **kwargs):
-        from tensorboardX import SummaryWriter
-        TensorBoardLogger.summary_writer = SummaryWriter()
-        super().__init__(**kwargs)
-
-    @classmethod
-    def log_metrics(cls, metrics, step):
-        for key, value in metrics.items():
-            TensorBoardLogger.summary_writer.add_scalar(
-                tag=key, scalar_value=value, global_step=step
-            )
-
-    @classmethod
-    def log_params(cls, params):
-        for key, value in params.items():
-            TensorBoardLogger.summary_writer.add_text(tag=key, text_string=str(value))
 
 
 def set_all_seeds(seed: int, deterministic_cudnn: bool=False) -> None:
@@ -179,6 +46,7 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool=False) -> None:
     if deterministic_cudnn:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+
 
 def initialize_device_settings(use_cuda, local_rank=-1, use_amp=None):
     if not use_cuda:
@@ -221,6 +89,7 @@ def flatten_list(nested_list):
         else:
             yield sublist
 
+
 def try_get(keys, dictionary):
     try:
         for key in keys:
@@ -233,11 +102,13 @@ def try_get(keys, dictionary):
         logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
     return None
 
+
 # DDP utils
 def all_reduce(tensor, group=None):
     if group is None:
         group = dist.group.WORLD
     return dist.all_reduce(tensor, group=group)
+
 
 def all_gather_list(data, group=None, max_size=16384):
     """Gathers arbitrary data from all nodes into a list.
@@ -302,7 +173,7 @@ def all_gather_list(data, group=None, max_size=16384):
         )
 
 
-def grouper(iterable, n, worker_id=0, total_workers=1):
+def grouper(iterable, n: int, worker_id: int = 0, total_workers: int = 1):
     """
     Split an iterable into a list of n-sized chunks. Each element in the chunk is a tuple of (index_num, element).
 
@@ -310,7 +181,6 @@ def grouper(iterable, n, worker_id=0, total_workers=1):
 
     >>> list(grouper('ABCDEFG', 3))
     [[(0, 'A'), (1, 'B'), (2, 'C')], [(3, 'D'), (4, 'E'), (5, 'F')], [(6, 'G')]]
-
 
 
     Use with the StreamingDataSilo
@@ -330,13 +200,9 @@ def grouper(iterable, n, worker_id=0, total_workers=1):
     This method also adds an index number to every dict yielded.
 
     :param iterable: a generator object that yields dicts
-    :type iterable: generator
     :param n: the dicts are grouped in n-sized chunks that gets converted to datasets
-    :type n: int
     :param worker_id: the worker_id for the PyTorch DataLoader
-    :type worker_id: int
     :param total_workers: total number of workers for the PyTorch DataLoader
-    :type total_workers: int
     """
     # TODO make me comprehensible :)
     def get_iter_start_pos(gen):

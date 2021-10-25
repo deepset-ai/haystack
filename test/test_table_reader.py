@@ -1,6 +1,7 @@
 import pandas as pd
 
-from haystack import Document, Pipeline
+from haystack.schema import Document
+from haystack.pipelines.base import Pipeline
 
 
 def test_table_reader(table_reader):

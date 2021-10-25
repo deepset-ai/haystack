@@ -15,7 +15,9 @@ from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.model.predictions import QACandidate, QAPred
 from haystack.modeling.utils import try_get, all_gather_list
 
+
 logger = logging.getLogger(__name__)
+
 
 try:
     from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
@@ -25,9 +27,10 @@ except (ImportError, AttributeError) as e:
 
 
 class PredictionHead(nn.Module):
-    """ Takes word embeddings from a language model and generates logits for a given task. Can also convert logits
-    to loss and and logits to predictions. """
-
+    """ 
+    Takes word embeddings from a language model and generates logits for a given task. Can also convert logits
+    to loss and and logits to predictions.
+    """
     subclasses = {}  # type: Dict
 
     def __init_subclass__(cls, **kwargs):
@@ -150,8 +153,10 @@ class PredictionHead(nn.Module):
         raise NotImplementedError()
 
     def resize_input(self, input_dim):
-        """ This function compares the output dimensionality of the language model against the input dimensionality
-        of the prediction head. If there is a mismatch, the prediction head will be resized to fit."""
+        """ 
+        This function compares the output dimensionality of the language model against the input dimensionality
+        of the prediction head. If there is a mismatch, the prediction head will be resized to fit.
+        """
         if "feed_forward" not in dir(self):
             return
         else:
@@ -179,8 +184,9 @@ class PredictionHead(nn.Module):
 
 
 class FeedForwardBlock(nn.Module):
-    """ A feed forward neural network of variable depth and width. """
-
+    """ 
+    A feed forward neural network of variable depth and width. 
+    """
     def __init__(self, layer_dims: List[int], **kwargs):
         # Todo: Consider having just one input argument
         super(FeedForwardBlock, self).__init__()
@@ -217,7 +223,6 @@ class QuestionAnsweringHead(PredictionHead):
     so that the confidence scores are closer to the model's achieved accuracy. It can be used for ranking by setting
     use_confidence_scores_for_ranking to True and temperature_for_confidence!=1.0. See examples/question_answering_confidence.py for more details.
     """
-
     def __init__(self, layer_dims: List[int] = [768, 2],
                  task_name: str = "question_answering",
                  no_ans_boost: float = 0.0,
@@ -288,7 +293,6 @@ class QuestionAnsweringHead(PredictionHead):
                                               See https://huggingface.co/models for full list
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         """
-
         if os.path.exists(pretrained_model_name_or_path) \
                 and "config.json" in str(pretrained_model_name_or_path) \
                 and "prediction_head" in str(pretrained_model_name_or_path):
@@ -308,8 +312,7 @@ class QuestionAnsweringHead(PredictionHead):
 
     def forward(self, X: torch.Tensor):
         """
-        One forward pass through the prediction head model, starting with language model output on token level
-
+        One forward pass through the prediction head model, starting with language model output on token level.
         """
         logits = self.feed_forward(X)
         return self.temperature_scale(logits)
@@ -463,10 +466,11 @@ class QuestionAnsweringHead(PredictionHead):
         return all_top_n
 
     def get_top_candidates(self, sorted_candidates, start_end_matrix, sample_idx: int, start_matrix, end_matrix):
-        """ Returns top candidate answers as a list of Span objects. Operates on a matrix of summed start and end logits.
+        """ 
+        Returns top candidate answers as a list of Span objects. Operates on a matrix of summed start and end logits.
         This matrix corresponds to a single sample (includes special tokens, question tokens, passage tokens).
-        This method always returns a list of len n_best + 1 (it is comprised of the n_best positive answers along with the one no_answer)"""
-
+        This method always returns a list of len n_best + 1 (it is comprised of the n_best positive answers along with the one no_answer)
+        """
         # Initialize some variables
         top_candidates: List[QACandidate] = []
         n_candidates = sorted_candidates.shape[0]
@@ -519,13 +523,13 @@ class QuestionAnsweringHead(PredictionHead):
         return top_candidates
 
     def formatted_preds(self,  preds: List[QACandidate], baskets: List[SampleBasket], logits: Optional[torch.Tensor] = None, **kwargs):
-        """ Takes a list of passage level predictions, each corresponding to one sample, and converts them into document level
+        """ 
+        Takes a list of passage level predictions, each corresponding to one sample, and converts them into document level
         predictions. Leverages information in the SampleBaskets. Assumes that we are being passed predictions from
         ALL samples in the one SampleBasket i.e. all passages of a document. Logits should be None, because we have
         already converted the logits to predictions before calling formatted_preds.
         (see Inferencer._get_predictions_and_aggregate()).
         """
-
         # Unpack some useful variables
         # passage_start_t is the token index of the passage relative to the document (usually a multiple of doc_stride)
         # seq_2_start_t is the token index of the first token in passage relative to the input sequence (i.e. number of
@@ -553,7 +557,9 @@ class QuestionAnsweringHead(PredictionHead):
         return doc_preds
 
     def to_qa_preds(self, top_preds, no_ans_gaps, baskets):
-        """ Groups Span objects together in a QAPred object  """
+        """ 
+        Groups Span objects together in a QAPred object
+        """
         ret = []
 
         # Iterate over each set of document level prediction
@@ -608,11 +614,12 @@ class QuestionAnsweringHead(PredictionHead):
         return try_get(question_names, raw_dict)
 
     def aggregate_preds(self, preds, passage_start_t, ids, seq_2_start_t=None, labels=None):
-        """ Aggregate passage level predictions to create document level predictions.
+        """ 
+        Aggregate passage level predictions to create document level predictions.
         This method assumes that all passages of each document are contained in preds
         i.e. that there are no incomplete documents. The output of this step
-        are prediction spans. No answer is represented by a (-1, -1) span on the document level """
-
+        are prediction spans. No answer is represented by a (-1, -1) span on the document level
+        """
         # Initialize some variables
         n_samples = len(preds)
         all_basket_preds = {}
@@ -667,7 +674,9 @@ class QuestionAnsweringHead(PredictionHead):
 
     @staticmethod
     def reduce_labels(labels):
-        """ Removes repeat answers. Represents a no answer label as (-1,-1)"""
+        """
+        Removes repeat answers. Represents a no answer label as (-1,-1)
+        """
         positive_answers = [(start, end) for x in labels for start, end in x if not (start == -1 and end == -1)]
         if not positive_answers:
             return [(-1, -1)]
@@ -675,9 +684,10 @@ class QuestionAnsweringHead(PredictionHead):
             return list(set(positive_answers))
 
     def reduce_preds(self, preds):
-        """ This function contains the logic for choosing the best answers from each passage. In the end, it
-        returns the n_best predictions on the document level. """
-
+        """
+        This function contains the logic for choosing the best answers from each passage. In the end, it
+        returns the n_best predictions on the document level.
+        """
         # Initialize variables
         passage_no_answer = []
         passage_best_score = []
@@ -776,9 +786,11 @@ class QuestionAnsweringHead(PredictionHead):
 
     @staticmethod
     def pred_to_doc_idxs(pred, passage_start_t):
-        """ Converts the passage level predictions to document level predictions. Note that on the doc level we
+        """
+        Converts the passage level predictions to document level predictions. Note that on the doc level we
         don't have special tokens or question tokens. This means that a no answer
-        cannot be prepresented by a (0,0) qa_answer but will instead be represented by (-1, -1)"""
+        cannot be prepresented by a (0,0) qa_answer but will instead be represented by (-1, -1)
+        """
         new_pred = []
         for qa_answer in pred:
             start = qa_answer.offset_answer_start
@@ -801,9 +813,11 @@ class QuestionAnsweringHead(PredictionHead):
 
     @staticmethod
     def label_to_doc_idxs(label, passage_start_t):
-        """ Converts the passage level labels to document level labels. Note that on the doc level we
+        """
+        Converts the passage level labels to document level labels. Note that on the doc level we
         don't have special tokens or question tokens. This means that a no answer
-        cannot be prepresented by a (0,0) span but will instead be represented by (-1, -1)"""
+        cannot be prepresented by a (0,0) span but will instead be represented by (-1, -1)
+        """
         new_label = []
         for start, end in label:
             # If there is a valid label
@@ -832,10 +846,8 @@ class TextSimilarityHead(PredictionHead):
                                     Choose either "dot_product" (Default) or "cosine".
         :param global_loss_buffer_size: Buffer size for all_gather() in DDP.
                                         Increase if errors like "encoded data exceeds max_size ..." come up
-
         :param kwargs:
         """
-
         super(TextSimilarityHead, self).__init__()
 
         self.similarity_function = similarity_function
@@ -911,7 +923,6 @@ class TextSimilarityHead(PredictionHead):
         :param passage_vectors: Tensor of context/passage embeddings from BiAdaptive model
                           of dimension n2 x D,
                           where n2 is the number of queries/batch size and D is embedding size
-
         """
         return query_vectors, passage_vectors
 
@@ -923,7 +934,6 @@ class TextSimilarityHead(PredictionHead):
         :param passage_vectors: Tensor of passages encoded by the passage encoder model
         :return: Tensor of log softmax similarity scores of each query with each passage (dimension: n1xn2)
         """
-
         sim_func = self.get_similarity_function()
         scores = sim_func(query_vectors, passage_vectors)
 
@@ -943,7 +953,6 @@ class TextSimilarityHead(PredictionHead):
 
         :return: negative log likelihood loss from similarity scores
         """
-
         # Check if DDP is initialized
         try:
             if torch.distributed.is_available():

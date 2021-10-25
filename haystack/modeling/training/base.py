@@ -1,26 +1,27 @@
-import logging
-import shutil
-import sys
-from pathlib import Path
 from typing import Optional, Tuple, List
 
+import sys
+import shutil
+import logging
 import dill
 import numpy
 import torch
 from tqdm import tqdm
+from pathlib import Path
 
 from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
-from haystack.modeling.utils import MLFlowLogger as MlLogger
+from haystack.modeling.logger import MLFlowLogger as MlLogger
 
 try:
     from apex import amp
     AMP_AVAILABLE = True
 except ImportError:
     AMP_AVAILABLE = False
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,6 @@ class EarlyStopping:
     Can be used to control early stopping with a Trainer class. Any object can be used instead which
     implements the method check_stopping and and provides the attribute save_dir
     """
-
     def __init__(
             self,
             head: int = 0,
@@ -81,7 +81,6 @@ class EarlyStopping:
         :return: a tuple (stopprocessing, savemodel, evalvalue) indicating if processing should be stopped
                  and if the current model should get saved and the evaluation value used.
         """
-
         if isinstance(self.metric, str):
             eval_value = float(eval_result[self.head][self.metric])
         else:
@@ -107,9 +106,10 @@ class EarlyStopping:
 
 
 class Trainer:
-    """Handles the main model training procedure. This includes performing evaluation on the dev set at regular
-    intervals during training as well as evaluation on the test set at the end of training."""
-
+    """
+    Handles the main model training procedure. This includes performing evaluation on the dev set at regular
+    intervals during training as well as evaluation on the test set at the end of training.
+    """
     def __init__(
         self,
         model,
@@ -171,7 +171,6 @@ class Trainer:
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
         """
-
         self.model = model
         self.data_silo = data_silo
         self.epochs = int(epochs)
@@ -227,7 +226,6 @@ class Trainer:
         :return: Returns the model after training. When you do ``early_stopping``
             with a ``save_dir`` the best model is loaded and returned.
         """
-
         # connect the prediction heads with the right output from processor
         self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
         # Check that the tokenizer(s) fits the language model(s)
@@ -246,7 +244,6 @@ class Trainer:
         evalnr = 0
         loss = 0
         resume_from_step = self.from_step
-
 
         for epoch in range(self.from_epoch, self.epochs):
             early_break = False
@@ -584,7 +581,6 @@ class Trainer:
         :param step: int, current step (only used for logging)
         :return: bool, whether all ranks have training data left
         """
-
         if has_data:
             ranks_with_data = torch.ones(1).to(self.device)
         else:

@@ -6,14 +6,9 @@
 #
 # If you are interested in more feature-rich Elasticsearch, then please refer to the Tutorial 1.
 
-from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.document_store.sql import SQLDocumentStore
-from haystack.preprocessor.cleaning import clean_wiki_text
-from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
-from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader
-from haystack.retriever.sparse import TfidfRetriever
-from haystack.utils import print_answers
+from haystack.document_stores import InMemoryDocumentStore, SQLDocumentStore
+from haystack.nodes import FARMReader, TransformersReader, TfidfRetriever
+from haystack.utils import clean_wiki_text, convert_files_to_dicts, fetch_archive_from_http, print_answers
 
 
 def tutorial3_basic_qa_pipeline_without_elasticsearch():
@@ -95,7 +90,7 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     # Under the hood, `Pipelines` are Directed Acyclic Graphs (DAGs) that you can easily customize for your own use cases.
     # To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `ExtractiveQAPipeline` that combines a retriever and a reader to answer our questions.
     # You can learn more about `Pipelines` in the [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd).
-    from haystack.pipeline import ExtractiveQAPipeline
+    from haystack.pipelines import ExtractiveQAPipeline
     pipe = ExtractiveQAPipeline(reader, retriever)
 
     ## Voilà! Ask a question!

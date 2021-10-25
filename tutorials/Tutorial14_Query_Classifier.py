@@ -1,15 +1,9 @@
 import os
 from subprocess import Popen, PIPE, STDOUT
-from haystack.utils import print_answers
-from haystack.preprocessor.utils import fetch_archive_from_http, convert_files_to_dicts
-from haystack.preprocessor.cleaning import clean_wiki_text
-from haystack import Pipeline
-from haystack.pipeline import TransformersQueryClassifier, SklearnQueryClassifier, RootNode
-from haystack.utils import launch_es
-from haystack.document_store import ElasticsearchDocumentStore
-from haystack.retriever.sparse import ElasticsearchRetriever
-from haystack.retriever.dense import DensePassageRetriever
-from haystack.reader import FARMReader
+from haystack.utils import fetch_archive_from_http, convert_files_to_dicts, clean_wiki_text, launch_es, print_answers
+from haystack.pipelines import Pipeline, RootNode
+from haystack.document_stores import ElasticsearchDocumentStore
+from haystack.nodes import ElasticsearchRetriever, DensePassageRetriever, FARMReader, TransformersQueryClassifier, SklearnQueryClassifier
 
 
 def tutorial14_query_classifier():

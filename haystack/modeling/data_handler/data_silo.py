@@ -1,3 +1,5 @@
+from typing import Optional, List, Tuple, Dict, Union
+
 import hashlib
 import json
 import logging
@@ -6,20 +8,20 @@ from contextlib import ExitStack
 from functools import partial
 from itertools import groupby
 from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Union
-
 import numpy as np
+from tqdm import tqdm
 import torch
 import torch.multiprocessing as mp
 from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
-from tqdm import tqdm
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.utils import MLFlowLogger as MlLogger, log_ascii_workers, grouper, calc_chunksize
-from haystack.modeling.visual.ascii.images import TRACTOR_SMALL
+from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
+from haystack.modeling.visual import TRACTOR_SMALL
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,6 @@ class DataSilo:
     Relies upon functionality in the processor to do the conversion of the data. Will also
     calculate and display some statistics.
     """
-
     def __init__(
         self,
         processor: Processor,

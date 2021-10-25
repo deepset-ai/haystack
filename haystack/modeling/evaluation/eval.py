@@ -1,37 +1,33 @@
-import logging
-import numbers
 from typing import Dict, List, Optional, Any
 
-import numpy as np
+import logging
+import numbers
 import torch
-from torch.utils.data import DataLoader
+import numpy as np
 from tqdm import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.utils import MLFlowLogger as MlLogger
-from haystack.modeling.visual.ascii.images import BUSH_SEP
+from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.modeling.visual import BUSH_SEP
+
 
 logger = logging.getLogger(__name__)
 
 
 class Evaluator:
-    """Handles evaluation of a given model over a specified dataset."""
-
+    """
+    Handles evaluation of a given model over a specified dataset.
+    """
     def __init__(
-        self, data_loader, tasks, device, report=True
+        self, data_loader: torch.utils.data.DataLoader, tasks, device: str, report: bool = True
     ):
         """
         :param data_loader: The PyTorch DataLoader that will return batches of data from the evaluation dataset
-        :type data_loader: DataLoader
-        :param label_maps:
+        :param tesks: 
         :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
-        :param metrics: The list of metrics which need to be computed, one for each prediction head.
-        :param metrics: list
         :param report: Whether an eval report should be generated (e.g. classification report per class).
-        :type report: bool
         """
-
         self.data_loader = data_loader
         self.tasks = tasks
         self.device = device
@@ -102,15 +98,12 @@ class Evaluator:
                                                                                 labels=label_all[head_num],
                                                                                 passage_start_t=passage_start_t_all[head_num],
                                                                                 ids=head_ids)
-
-
             result = {"loss": loss_all[head_num] / len(self.data_loader.dataset),
                       "task_name": head.task_name}
             result.update(
                 compute_metrics(metric=head.metric, preds=preds_all[head_num], labels=label_all[head_num]
                 )
             )
-
             # Select type of report depending on prediction head output type
             if self.report:
                 try:

@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/preprocessor]
-    modules: ['base', 'preprocessor', 'utils', 'cleaning'] 
+    search_path: [../../../../haystack/nodes/preprocessor]
+    modules: ['base', 'preprocessor']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter

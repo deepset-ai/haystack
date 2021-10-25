@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from haystack import Document
+from haystack.schema import Document
 from conftest import get_document_store
 import uuid
 
