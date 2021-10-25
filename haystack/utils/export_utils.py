@@ -8,7 +8,6 @@ import pprint
 import logging
 import subprocess
 import pandas as pd
-from itertools import islice
 from collections import defaultdict
 
 from haystack.document_stores.sql import DocumentORM
@@ -153,15 +152,3 @@ def convert_labels_to_squad(labels_file: str):
 
     with open("labels_in_squad_format.json", "w+", encoding='utf-8') as outfile:
         json.dump(labels_in_squad_format, outfile)
-
-
-def get_batches_from_generator(iterable, n):
-    """
-    Batch elements of an iterable into fixed-length chunks or blocks.
-    """
-    # TODO consider moving to base.DocumentStore
-    it = iter(iterable)
-    x = tuple(islice(it, n))
-    while x:
-        yield x
-        x = tuple(islice(it, n))

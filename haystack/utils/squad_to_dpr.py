@@ -300,7 +300,7 @@ def main(squad_input_filename: Path,
                  split_dataset=split_dataset)
 
 
-if __name__ == '__main__':
+def squad_to_dpr_cli():
     parser = argparse.ArgumentParser(
         description="Convert a SQuAD JSON format dataset to DPR format.")
     parser.add_argument("--squad_input_filename", dest="squad_input_filename",

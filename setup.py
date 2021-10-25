@@ -85,4 +85,9 @@ setup(
         "Programming Language :: Python :: 3",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
+    entry_points={
+        'console_scripts': [
+            'squad_to_dpr.py=haystack.utils.squad_to_dpr:squad_to_dpr_cli',
+        ],
+    },
 )

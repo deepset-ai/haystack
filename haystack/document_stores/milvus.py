@@ -12,7 +12,7 @@ from milvus import IndexType, MetricType, Milvus, Status
 
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
-from haystack.utils.output import get_batches_from_generator
+from haystack.document_stores.base import get_batches_from_generator
 
 
 logger = logging.getLogger(__name__)

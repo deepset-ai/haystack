@@ -1,8 +1,8 @@
 from haystack.utils.preprocessing import (
     convert_files_to_dicts, 
-    tika_convert_files_to_dicts, 
-    fetch_archive_from_http,
+    tika_convert_files_to_dicts
 )
+from haystack.utils.import_utils import fetch_archive_from_http
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.doc_store import (
     launch_es,
@@ -12,7 +12,7 @@ from haystack.utils.doc_store import (
     stop_opensearch,
     stop_service,
 )
-from haystack.utils.output import (
+from haystack.utils.export_utils import (
     print_answers,
     print_documents,
     export_answers_to_csv,
