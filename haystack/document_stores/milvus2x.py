@@ -1,5 +1,8 @@
 import logging
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever.base import BaseRetriever
 
 import numpy
 import numpy as np
@@ -8,8 +11,7 @@ from scipy.special import expit
 from tqdm import tqdm
 
 from haystack.schema import Document
-from haystack.document_stores import SQLDocumentStore
-from haystack.nodes.retriever.base import BaseRetriever
+from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 
 
@@ -341,7 +343,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: BaseRetriever,
+        retriever: 'BaseRetriever',
         index: Optional[str] = None,
         batch_size: int = 10_000,
         update_existing_embeddings: bool = True,
