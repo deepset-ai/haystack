@@ -1,5 +1,3 @@
-import os
-
 import faiss
 import math
 import numpy as np
@@ -18,16 +16,6 @@ DOCUMENTS = [
     {"name": "name_5", "content": "text_5", "embedding": np.random.rand(768).astype(np.float32)},
     {"name": "name_6", "content": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
 ]
-
-
-# On windows tmp_path does not work correctly hence using tearDown to clean sqlite DB file
-def tearDown():
-    if os.path.exists("haystack_test.db"):
-        os.remove("haystack_test.db")
-    if os.path.exists("haystack_test_faiss"):
-        os.remove("haystack_test_faiss")
-    if os.path.exists("custom_path.json"):
-        os.remove("custom_path.json")
 
 
 def test_faiss_index_save_and_load():
