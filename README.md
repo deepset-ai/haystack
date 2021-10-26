@@ -54,8 +54,9 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 |  |  |
 |-|-|
-| :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Usage, Guides, API documentation ...|
-| :beginner: [Quick Demo](https://github.com/deepset-ai/haystack/#quick-demo) | Quickly see what Haystack offers |
+| :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Overview, Components, Guides, API documentation|
+| :mortar_board: [Tutorials and Demo](https://github.com/deepset-ai/haystack/#tutorials-and-demo) | See what Haystack can do with our Notebooks & Scripts |
+| :beginner: [Haystack Service Demo](https://github.com/deepset-ai/haystack/#haystack-service-demo) | Quickly see what Haystack offers |
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
 | :vulcan_salute: [Community](https://www.deepset.ai/community)| [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
@@ -63,9 +64,21 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 | :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap) | Public roadmap of Haystack |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
 
-## Quick Demo
+## Tutorials and Demo
 
-The quickest way to see what Haystack offers is to start a [Docker Compose](https://docs.docker.com/compose/) demo application:
+Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system) 
+to setup a question answering system and start performing queries! 
+
+Explore the rest of our tutorials to learn how to tweak pipelines, train models and perform evaluation.
+They also cover a range of the Nodes that we offer such as the Summarizer, Question Generator and Query Classifier.
+
+Each tutorial is available as a Python script, a Jupyter Notebook or a Google Colab notebook.
+
+## Haystack Service Demo
+
+By following these steps, you will start up our demo which creates a Haystack service via [Docker Compose](https://docs.docker.com/compose/).
+With this, you can learn about the service's functionality via the Swagger documentation, call it directly via the REST API 
+or even interact with it using the included Streamlit UI.
 
 **1. Update/install Docker and Docker Compose, then launch Docker**
 
