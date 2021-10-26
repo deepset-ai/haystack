@@ -56,7 +56,7 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 |-|-|
 | :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Overview, Components, Guides, API documentation|
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
-| :mortar_board: [Tutorials and Demo](https://github.com/deepset-ai/haystack/#tutorials-and-demo) | See what Haystack can do with our Notebooks & Scripts |
+| :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | See what Haystack can do with our Notebooks & Scripts |
 | :beginner: [Haystack Service Demo](https://github.com/deepset-ai/haystack/#haystack-service-demo) | Quickly see what Haystack offers |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
 | :vulcan_salute: [Community](https://www.deepset.ai/community)| [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
@@ -98,7 +98,7 @@ On Windows, you might need:
     pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
-## Tutorials and Demo
+## Tutorials
 
 Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system) 
 to setup a question answering system using Python and start performing queries! 
