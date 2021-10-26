@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/change_readme_logo/docs/_src/img/haystack_logo_colored.png" alt="Haystack"></a>
+  <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/haystack_logo_colored.png" alt="Haystack"></a>
 </p>
 
 <p>
