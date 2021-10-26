@@ -1,4 +1,3 @@
-import os
 import subprocess
 import time
 from subprocess import run
@@ -122,24 +121,6 @@ def pytest_collection_modifyitems(config,items):
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
                 item.add_marker(skip_docstore)
-
-
-# On windows tmp_path does not work correctly hence using tearDown to clean sqlite DB file
-@pytest.fixture(autouse=True)
-def remove_temp_files():
-    if os.path.exists("haystack_test.db"):
-        os.remove("haystack_test.db")
-    if os.path.exists("haystack_test_faiss"):
-        os.remove("haystack_test_faiss")
-    if os.path.exists("custom_path.json"):
-        os.remove("custom_path.json")
-    yield
-    if os.path.exists("haystack_test.db"):
-        os.remove("haystack_test.db")
-    if os.path.exists("haystack_test_faiss"):
-        os.remove("haystack_test_faiss")
-    if os.path.exists("custom_path.json"):
-        os.remove("custom_path.json")
 
 
 @pytest.fixture(scope="session")
