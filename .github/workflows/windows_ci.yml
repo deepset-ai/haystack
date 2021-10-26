@@ -3,10 +3,8 @@ name: Windows CI
 on:
   push:
     branches: [ master ]
-  schedule:
-    - cron: '0 1 * * *'
-  pull_request:
-    branches: [ master ]
+#  pull_request:
+#    branches: [ master ]
 
 jobs:
   type-check:
