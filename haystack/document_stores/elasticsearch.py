@@ -114,7 +114,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
             duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
-            timeout=timeout, return_embedding=return_embedding, index_type=index_type
+            timeout=timeout, return_embedding=return_embedding, index_type=index_type, scroll=scroll,
         )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
