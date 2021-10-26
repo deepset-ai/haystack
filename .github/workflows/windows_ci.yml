@@ -3,6 +3,8 @@ name: Windows CI
 on:
   push:
     branches: [ master ]
+  schedule:
+    - cron: '0 1 * * *'
   pull_request:
     branches: [ master ]
 
@@ -79,7 +81,6 @@ jobs:
         key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
-    # Update PATH so windows able to detect chrome driver correctly (Refer https://github.com/SergeyPirogov/webdriver_manager/issues/205#issuecomment-926514305)
     - name: Set up Windows test env
       run: |
         choco install xpdf-utils
@@ -89,17 +90,10 @@ jobs:
         choco install elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
-        $old = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path).path
-        $new  =  "$old;C:\Windows\System32\"
-        Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value $new
-        Invoke-WebRequest -Uri https://dlcdn.apache.org/tika/2.1.0/tika-server-standard-2.1.0.jar -OutFile tika-server.jar
-        $curpath = (Get-Location).path
-        $job = Start-Job -ScriptBlock { param($curpath) java -jar $curpath\tika-server.jar } -ArgumentList $curpath
-        Receive-Job -Job $job
 
     # We have to remove files if not test going to run from it
     # As on windows we are going to disable quite a few tests these, hence these files will throw error refer https://github.com/pytest-dev/pytest/issues/812
-    # Removing test_ray, test_utils, test_preprocessor, test_knowledge_graph
+    # Removing test_ray, test_utils, test_preprocessor, test_knowledge_graph and test_connector
     - name: Run tests
-      if: ${{ !contains(fromJSON('["test_ray.py", "test_utils.py", "test_preprocessor.py", "test_knowledge_graph.py"]'), matrix.test-path) }}
+      if: ${{ !contains(fromJSON('["test_ray.py", "test_utils.py", "test_preprocessor.py", "test_knowledge_graph.py", "test_connector.py"]'), matrix.test-path) }}
       run: cd test && pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -s ${{ matrix.test-path }}
