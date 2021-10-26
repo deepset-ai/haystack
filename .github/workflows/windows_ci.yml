@@ -97,5 +97,9 @@ jobs:
         $job = Start-Job -ScriptBlock { param($curpath) java -jar $curpath\tika-server.jar } -ArgumentList $curpath
         Receive-Job -Job $job
 
+    # We have to remove files if not test going to run from it
+    # As on windows we are going to disable quite a few tests these, hence these files will throw error refer https://github.com/pytest-dev/pytest/issues/812
+    # Removing test_ray, test_utils, test_preprocessor, test_knowledge_graph
     - name: Run tests
+      if: ${{ !contains(fromJSON('["test_ray.py", "test_utils.py", "test_preprocessor.py", "test_knowledge_graph.py"]'), matrix.test-path) }}
       run: cd test && pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -s ${{ matrix.test-path }}
