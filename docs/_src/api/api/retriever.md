@@ -515,25 +515,6 @@ the table encoder.
 
 Embeddings of documents. Shape: (batch_size, embedding_dim)
 
-<a name="dense.TableTextRetriever.embed_documents"></a>
-#### embed\_documents
-
-```python
- | embed_documents(docs: List[Document]) -> List[np.ndarray]
-```
-
-Create embeddings for a list of documents using the document encoder.
-This method just calls embed_documents. It is neeeded as the document stores call embed_documents when updating
-embeddings.
-
-**Arguments**:
-
-- `docs`: List of Document objects used to represent documents in a standardized way within Haystack.
-
-**Returns**:
-
-Embeddings of documents shape (batch_size, embedding_dim)
-
 <a name="dense.TableTextRetriever.train"></a>
 #### train
 
