@@ -505,7 +505,9 @@ See https://huggingface.co/models?pipeline_tag=table-question-answering for full
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `use_gpu`: Whether to make use of a GPU (if available).
 - `top_k`: The maximum number of answers to return
-- `max_seq_len`: Max sequence length of one input text for the model.
+- `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
+                    query + table exceed max_seq_len, the table will be truncated by removing rows until the
+                    input size fits the model.
 
 <a name="table.TableReader.predict"></a>
 #### predict
