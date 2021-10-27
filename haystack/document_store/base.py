@@ -19,18 +19,11 @@ except:
 
 logger = logging.getLogger(__name__)
 
-@njit#(fastmath=True)
-def normalize_vector_l2(emb: np.ndarray)->None:
-    """
-        Performs L2 normalization of embeddings vector inplace.
-    """
-    norm = np.sqrt(emb.dot(emb))
-    if norm != 0.0:
-        emb /= norm
 
 @njit#(fastmath=True)
 def expit(x: float) -> float:
     return 1 / (1 + np.exp(-x))    
+
 
 class BaseDocumentStore(BaseComponent):
     """
@@ -179,14 +172,19 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         pass
-    
-    def normalize_embedding(self, emb: np.ndarray)->None:
-        """
-            Performs normalization of embeddings vector inplace.
-        """
-        normalize_vector_l2(emb)
 
-    def finalize_raw_score(self, raw_score:float, similarity:Optional[str])->float:
+    @njit#(fastmath=True)
+    def normalize_embedding(self, emb: np.ndarray) -> None:
+        """
+        Performs L2 normalization of embeddings vector inplace.
+        """
+
+        # Might be extended to other normalizations in future
+        norm = np.sqrt(emb.dot(emb))
+        if norm != 0.0:
+            emb /= norm
+
+    def finalize_raw_score(self, raw_score: float, similarity: Optional[str]) -> float:
         if similarity == "cosine":
             return (raw_score + 1) / 2
         else:
