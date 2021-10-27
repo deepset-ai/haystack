@@ -50,7 +50,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         timeout=30,
         return_embedding: bool = False,
         duplicate_documents: str = 'overwrite',
-        index_type: str = "flat"
+        index_type: str = "flat",
+        scroll: str = "1d"
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -100,6 +101,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     exists.
         :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
                            ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
+        :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+                       Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+                       For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
 
         """
         # save init parameters to enable export of component config as YAML
@@ -110,7 +114,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
             duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
-            timeout=timeout, return_embedding=return_embedding, index_type=index_type
+            timeout=timeout, return_embedding=return_embedding, index_type=index_type, scroll=scroll
         )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
@@ -135,6 +139,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.custom_mapping = custom_mapping
         self.index: str = index
         self.label_index: str = label_index
+        self.scroll = scroll
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity = similarity
         else:
@@ -659,7 +664,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if only_documents_without_embedding:
             body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
 
-        result = scan(self.client, query=body, index=index, size=batch_size, scroll="1d")
+        result = scan(self.client, query=body, index=index, size=batch_size, scroll=self.scroll)
         yield from result
 
     def query(
