@@ -188,7 +188,7 @@ class BaseRetriever(BaseComponent):
         mean_avg_precision = summed_avg_precision / number_of_questions
 
         logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
-                     f" the top-{top_k} candidate passages selected by the retriever."))
+                     f" the top-{top_k} candidate documents selected by the retriever."))
 
         metrics =  {
             "recall": recall,
@@ -243,7 +243,7 @@ class BaseRetriever(BaseComponent):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             documents = deepcopy(documents)
             document_objects = [Document.from_dict(doc) for doc in documents]
-            embeddings = self.embed_passages(document_objects)  # type: ignore
+            embeddings = self.embed_documents(document_objects)  # type: ignore
             for doc, emb in zip(documents, embeddings):
                 doc["embedding"] = emb
         output = {"documents": documents}

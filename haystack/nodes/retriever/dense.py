@@ -84,7 +84,7 @@ class DensePassageRetriever(BaseRetriever):
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param top_k: How many documents to return per query.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+        :param batch_size: Number of questions or documents to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
                             This is the approach used in the original paper and is likely to improve performance if your
                             titles contain meaningful information for retrieval (topic, entities etc.) .
@@ -216,7 +216,7 @@ class DensePassageRetriever(BaseRetriever):
 
         :param dicts: list of dictionaries
         examples:[{'query': "where is florida?"}, {'query': "who wrote lord of the rings?"}, ...]
-                [{'passages': [{
+                [{'documents': [{
                     "title": 'Big Little Lies (TV series)',
                     "text": 'series garnered several accolades. It received..',
                     "label": 'positive',
@@ -225,7 +225,7 @@ class DensePassageRetriever(BaseRetriever):
                     "text": 'Castle on the Hill "Castle on the Hill" is a song by English..',
                     "label": 'positive',
                     "external_id": '19930582'}, ...]
-        :return: dictionary of embeddings for "passages" and "query"
+        :return: dictionary of embeddings for "documents" and "query"
         """
         dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
             dicts, indices=[i for i in range(len(dicts))], return_baskets=True
@@ -234,7 +234,7 @@ class DensePassageRetriever(BaseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings = {"query": [], "passages": []}
+        all_embeddings = {"documents": [], "documents": []}
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -254,11 +254,11 @@ class DensePassageRetriever(BaseRetriever):
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
-                        all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
+                        all_embeddings["documents"].append(passage_embeddings.cpu().numpy())
                 progress_bar.update(self.batch_size)
 
-        if all_embeddings["passages"]:
-            all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])
+        if all_embeddings["documents"]:
+            all_embeddings["documents"] = np.concatenate(all_embeddings["documents"])
         if all_embeddings["query"]:
             all_embeddings["query"] = np.concatenate(all_embeddings["query"])
         return all_embeddings
@@ -274,25 +274,25 @@ class DensePassageRetriever(BaseRetriever):
         result = self._get_predictions(queries)["query"]
         return result
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages using the passage encoder
+        Create embeddings for a list of documents using the passage encoder
 
-        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
+        :param docs: List of Document objects.
+        :return: Embeddings of documents shape (batch_size, embedding_dim)
         """
         if self.processor.num_hard_negatives != 0:
             logger.warning(f"'num_hard_negatives' is set to {self.processor.num_hard_negatives}, but inference does "
                            f"not require any hard negatives. Setting num_hard_negatives to 0.")
             self.processor.num_hard_negatives = 0
 
-        passages = [{'passages': [{
+        documents = [{'documents': [{
             "title": d.meta["name"] if d.meta and "name" in d.meta else "",
             "text": d.content,
             "label": d.meta["label"] if d.meta and "label" in d.meta else "positive",
             "external_id": d.id}]
         } for d in docs]
-        embeddings = self._get_predictions(passages)["passages"]
+        embeddings = self._get_predictions(documents)["documents"]
 
         return embeddings
 
@@ -335,8 +335,8 @@ class DensePassageRetriever(BaseRetriever):
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
         :param batch_size: total number of samples in 1 batch of data
         :param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
-        :param num_hard_negatives: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
-        :param num_positives: number of positive passages
+        :param num_hard_negatives: number of hard negative documents(documents which are very similar(high score by BM25) to query but do not contain the answer
+        :param num_positives: number of positive documents
         :param n_epochs: number of epochs to train the model on
         :param evaluate_every: number of training steps after evaluation is run
         :param n_gpu: number of gpus to train on
@@ -462,8 +462,8 @@ class DensePassageRetriever(BaseRetriever):
 
 class TableTextRetriever(BaseRetriever):
     """
-    Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text passages and tables
-    (one transformer for query, one transformer for text passages, one transformer for tables).
+    Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text documents and tables
+    (one transformer for query, one transformer for text documents, one transformer for tables).
     See the original paper for more details:
     Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using Tri-encoder Models"
     (https://arxiv.org/abs/2108.04049),
@@ -505,7 +505,7 @@ class TableTextRetriever(BaseRetriever):
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param top_k: How many documents to return per query.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+        :param batch_size: Number of questions or documents to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields and text passage / table to a text pair that is
                                   then  used to create the embedding.
                                   This is the approach used in the original paper and is likely to improve
@@ -644,7 +644,7 @@ class TableTextRetriever(BaseRetriever):
 
         :param dicts: list of dictionaries
         examples:[{'query': "where is florida?"}, {'query': "who wrote lord of the rings?"}, ...]
-                [{'passages': [{
+                [{'documents': [{
                     "title": 'Big Little Lies (TV series)',
                     "text": 'series garnered several accolades. It received..',
                     "label": 'positive',
@@ -653,7 +653,7 @@ class TableTextRetriever(BaseRetriever):
                     "text": 'Castle on the Hill "Castle on the Hill" is a song by English..',
                     "label": 'positive',
                     "external_id": '19930582'}, ...]
-        :return: dictionary of embeddings for "passages" and "query"
+        :return: dictionary of embeddings for "documents" and "query"
         """
 
         dataset, tensor_names, _, baskets = self.processor.dataset_from_dicts(
@@ -663,7 +663,7 @@ class TableTextRetriever(BaseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings: Dict = {"query": [], "passages": []}
+        all_embeddings: Dict = {"query": [], "documents": []}
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -683,11 +683,11 @@ class TableTextRetriever(BaseRetriever):
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
-                        all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
+                        all_embeddings["documents"].append(passage_embeddings.cpu().numpy())
                 progress_bar.update(self.batch_size)
 
-        if all_embeddings["passages"]:
-            all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])
+        if all_embeddings["documents"]:
+            all_embeddings["documents"] = np.concatenate(all_embeddings["documents"])
         if all_embeddings["query"]:
             all_embeddings["query"] = np.concatenate(all_embeddings["query"])
         return all_embeddings
@@ -705,12 +705,12 @@ class TableTextRetriever(BaseRetriever):
 
     def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of text passages and / or tables using the text passage encoder and
+        Create embeddings for a list of text documents and / or tables using the text passage encoder and
         the table encoder.
 
-        :param docs: List of Document objects used to represent documents / passages in
+        :param docs: List of Document objects used to represent documents in
                      a standardized way within Haystack.
-        :return: Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
+        :return: Embeddings of documents. Shape: (batch_size, embedding_dim)
         """
 
         if self.processor.num_hard_negatives != 0:
@@ -721,7 +721,7 @@ class TableTextRetriever(BaseRetriever):
         model_input = []
         for doc in docs:
             if doc.content_type == "table":
-                model_input.append({"passages": [{
+                model_input.append({"documents": [{
                     "meta": [doc.meta[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc.meta],
                     "columns": doc.content.columns.tolist(),  # type: ignore
                     "rows": doc.content.values.tolist(),  # type: ignore
@@ -730,7 +730,7 @@ class TableTextRetriever(BaseRetriever):
                     "external_id": doc.id
                 }]})
             else:
-                model_input.append({"passages": [{
+                model_input.append({"documents": [{
                     "meta": [doc.meta[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc.meta],
                     "text": doc.content,
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
@@ -738,18 +738,18 @@ class TableTextRetriever(BaseRetriever):
                     "external_id": doc.id
                 }]})
 
-        embeddings = self._get_predictions(model_input)["passages"]
+        embeddings = self._get_predictions(model_input)["documents"]
 
         return embeddings
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages using the passage encoder.
-        This method just calls embed_documents. It is neeeded as the document stores call embed_passages when updating
+        Create embeddings for a list of documents using the document encoder.
+        This method just calls embed_documents. It is neeeded as the document stores call embed_documents when updating
         embeddings.
 
-        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
+        :param docs: List of Document objects used to represent documents in a standardized way within Haystack.
+        :return: Embeddings of documents shape (batch_size, embedding_dim)
         """
         return self.embed_documents(docs)
 
@@ -796,9 +796,9 @@ class TableTextRetriever(BaseRetriever):
                                   The default setting in official MMRetrieval embeds page title,
                                   section title and caption with the corresponding table and title with
                                   corresponding text passage.
-        :param num_hard_negatives: Number of hard negative passages (passages which are
+        :param num_hard_negatives: Number of hard negative documents (documents which are
                                    very similar (high score by BM25) to query but do not contain the answer)-
-        :param num_positives: Number of positive passages.
+        :param num_positives: Number of positive documents.
         :param n_epochs: Number of epochs to train the model on.
         :param evaluate_every: Number of training steps after evaluation is run.
         :param n_gpu: Number of gpus to train on.
@@ -1025,11 +1025,11 @@ class EmbeddingRetriever(BaseRetriever):
         assert isinstance(texts, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
         return self.embedding_encoder.embed_queries(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages.
+        Create embeddings for a list of documents.
 
         :param docs: List of documents to embed
         :return: Embeddings, one per input passage
         """
-        return self.embedding_encoder.embed_passages(docs)
+        return self.embedding_encoder.embed_documents(docs)

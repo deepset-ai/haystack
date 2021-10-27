@@ -112,7 +112,7 @@ def test_update_docs(document_store, retriever, batch_size):
     # test if correct vectors are associated with docs
     for doc in documents_indexed:
         original_doc = [d for d in DOCUMENTS if d["content"] == doc.content][0]
-        updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
+        updated_embedding = retriever.embed_documents([Document.from_dict(original_doc)])
         stored_doc = document_store.get_all_documents(filters={"name": [doc.meta["name"]]})[0]
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(updated_embedding, stored_doc.embedding, rtol=0.01)
@@ -328,7 +328,7 @@ def test_faiss_cosine_similarity(tmp_path):
 
     # now check if vectors are normalized when updating embeddings
     class MockRetriever():
-        def embed_passages(self, docs):
+        def embed_documents(self, docs):
             return [np.random.rand(768).astype(np.float32) for doc in docs]
 
     retriever = MockRetriever()

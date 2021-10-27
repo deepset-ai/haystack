@@ -87,7 +87,7 @@ class RAGenerator(BaseGenerator):
                                    'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
                                    See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param retriever: `DensePassageRetriever` used to embedded passages for the docs passed to `predict()`. This is optional and is only needed if the docs you pass don't already contain embeddings in `Document.embedding`.   
+        :param retriever: `DensePassageRetriever` used to embedded documents for the docs passed to `predict()`. This is optional and is only needed if the docs you pass don't already contain embeddings in `Document.embedding`.   
         :param generator_type: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
         :param top_k: Number of independently generated text to return
         :param max_length: Maximum length of generated text
@@ -183,7 +183,7 @@ class RAGenerator(BaseGenerator):
             if self.retriever is None:
                 raise AttributeError("_prepare_passage_embeddings need a DPR instance as self.retriever to embed document")
 
-            embeddings = self.retriever.embed_passages(docs)
+            embeddings = self.retriever.embed_documents(docs)
 
         embeddings_in_tensor = torch.cat(
             [torch.from_numpy(embedding).float().unsqueeze(0) for embedding in embeddings],
