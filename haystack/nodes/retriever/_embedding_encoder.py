@@ -38,7 +38,7 @@ class _BaseEmbeddingEncoder:
         Create embeddings for a list of documents.
 
         :param docs: List of documents to embed
-        :return: Embeddings, one per input passage
+        :return: Embeddings, one per input document
         """
         pass
 
