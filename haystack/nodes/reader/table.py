@@ -109,7 +109,8 @@ class TableReader(BaseReader):
             inputs = self.tokenizer(table=table,
                                     queries=query,
                                     max_length=self.max_seq_len,
-                                    return_tensors="pt")
+                                    return_tensors="pt",
+                                    truncation=True)
             inputs.to(self.model.device)
             # Forward query and table through model and convert logits to predictions
             outputs = self.model(**inputs)
