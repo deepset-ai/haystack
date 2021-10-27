@@ -43,21 +43,22 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 ## Core Features
 
--   **Latest models**: Utilize all latest transformer-based models (e.g., BERT, RoBERTa, MiniLM) for extractive QA, generative QA, and document retrieval.
--   **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter, or modeling framework.
--   **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g., Transformers, FARM, sentence-transformers)
--   **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS, and a fastAPI REST API
--   **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling, etc.
--   **Developer friendly**: Easy to debug, extend and modify.
--   **Customizable**: Fine-tune models to your domain or implement your custom DocumentStore.
--   **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
+- **Latest models**: Utilize all latest transformer-based models (e.g., BERT, RoBERTa, MiniLM) for extractive QA, generative QA, and document retrieval.
+- **Modular**: Multiple choices to fit your tech stack and use case. Pick your favorite database, file converter, or modeling framework.
+- **Pipelines**: The Node and Pipeline design of Haystack allows for custom routing of queries to only the relevant components.
+- **Open**: 100% compatible with HuggingFace's model hub. Tight interfaces to other frameworks (e.g., Transformers, FARM, sentence-transformers)
+- **Scalable**: Scale to millions of docs via retrievers, production-ready backends like Elasticsearch / FAISS, and a fastAPI REST API
+- **End-to-End**: All tooling in one place: file conversion, cleaning, splitting, training, eval, inference, labeling, etc.
+- **Developer friendly**: Easy to debug, extend and modify.
+- **Customizable**: Fine-tune models to your domain or implement your custom DocumentStore.
+- **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
 
 |  |  |
 |-|-|
 | :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Overview, Components, Guides, API documentation|
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | See what Haystack can do with our Notebooks & Scripts |
-| :beginner: [Application Demo](https://github.com/deepset-ai/haystack/#application-demo) | Deploy a Haystack application with Docker Compose and a REST API |
+| :beginner: [Quick Demo](https://github.com/deepset-ai/haystack/#application-demo) | Deploy a Haystack application with Docker Compose and a REST API |
 | :vulcan_salute: [Community](https://github.com/deepset-ai/haystack/#community) | [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/latest) | Speed & Accuracy of Retriever, Readers and DocumentStores |
@@ -102,13 +103,93 @@ On Windows, you might need:
 
 ## Tutorials
 
+![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/concepts_haystack_handdrawn.png)
+
 Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system) 
 to setup a question answering system using Python and start performing queries! 
 Explore the rest of our tutorials to learn how to tweak pipelines, train models and perform evaluation.
-They also cover a range of the Nodes that we offer such as the Summarizer, Question Generator and Query Classifier. 
-Each tutorial is available as a Python script, a Jupyter Notebook or a Google Colab notebook.
 
-## Application Demo
+-   Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.py)
+-   Tutorial 2 - Fine-tuning a model on own data: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.py)
+-   Tutorial 3 - Basic QA Pipeline without Elasticsearch: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py)
+-   Tutorial 4 - FAQ-style QA: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.py)
+-   Tutorial 5 - Evaluation of the whole QA-Pipeline: [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.py)
+-   Tutorial 6 - Better Retrievers via "Dense Passage Retrieval":
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.py)
+-   Tutorial 7 - Generative QA via "Retrieval-Augmented Generation":
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial7_RAG_Generator.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial7_RAG_Generator.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial7_RAG_Generator.py)
+-   Tutorial 8 - Preprocessing:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial8_Preprocessing.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial8_Preprocessing.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial8_Preprocessing.py)
+-   Tutorial 9 - DPR Training:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.py)
+-   Tutorial 10 - Knowledge Graph:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.py)
+-   Tutorial 11 - Pipelines:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial11_Pipelines.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial11_Pipelines.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial11_Pipelines.py)
+-   Tutorial 12 - Long-Form Question Answering:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.py)
+-   Tutorial 13 - Question Generation:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.py)
+-   Tutorial 14 - Query Classifier:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.py)
+
+## Quick Demo
 
 By following these steps, you will start up our demo which creates a Haystack service via [Docker Compose](https://docs.docker.com/compose/).
 With this you can begin calling it directly via the REST API or even interact with it using the included Streamlit UI.
