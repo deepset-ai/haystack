@@ -174,7 +174,11 @@ class TfidfRetriever(BaseRetriever):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         if self.df is None:
-            raise Exception("fit() needs to called before retrieve()")
+            # run fit() to update self.df and self.tfidf_matrix
+            logger.warning("Fit method needs to be run before first retrieval. Running it now.")
+            self.fit()
+            if self.df is None:
+                raise Exception("Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store.")
 
         if filters:
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
