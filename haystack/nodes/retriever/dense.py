@@ -742,17 +742,6 @@ class TableTextRetriever(BaseRetriever):
 
         return embeddings
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
-        """
-        Create embeddings for a list of documents using the document encoder.
-        This method just calls embed_documents. It is neeeded as the document stores call embed_documents when updating
-        embeddings.
-
-        :param docs: List of Document objects used to represent documents in a standardized way within Haystack.
-        :return: Embeddings of documents shape (batch_size, embedding_dim)
-        """
-        return self.embed_documents(docs)
-
     def train(self,
               data_dir: str,
               train_filename: str,
