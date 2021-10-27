@@ -1,3 +1,4 @@
+import uuid
 from typing import Dict, Generator, List, Optional, Union
 
 import logging
@@ -363,6 +364,26 @@ class WeaviateDocumentStore(BaseDocumentStore):
         document_objects = self._handle_duplicate_documents(documents=document_objects,
                                                             index=index,
                                                             duplicate_documents=duplicate_documents)
+
+        # Weaviate has strict requirements for what ids can be used. We will attach a weaviate-compliant id to the
+        # metadata of each document object
+        for do in document_objects:
+            weaviate_uuid = str(uuid.uuid4())
+            do.meta["uuid"] = weaviate_uuid
+
+        # Weaviate requires that documents contain a vector in order to be indexed. These lines add a
+        # dummy vector so that indexing can still happen
+        dummy_embed_warning_raised = False
+        for do in document_objects:
+            if not do.embedding:
+                dummy_embedding = np.random.rand(self.embedding_dim).astype(np.float32)
+                do.embedding = dummy_embedding
+                if not dummy_embed_warning_raised:
+                    logger.warning("No embedding found in Document object being written into Weaviate. A dummy "
+                                 "embedding is being supplied so that indexing can still take place. This "
+                                 "embedding should be overwritten in order to perform vector similarity searches.")
+                    dummy_embed_warning_raised = True
+
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
@@ -380,7 +401,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             _doc[k] = v
                         _doc.pop("meta")
 
-                    doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
 
                     # rename as weaviate doesn't like "_" in field names
@@ -394,7 +414,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             self._update_schema(property, index)
                             current_properties.append(property)
 
-                    docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
+                    docs_batch.add(_doc, class_name=index, uuid=doc.meta["uuid"], vector=vector)
 
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create(docs_batch)
@@ -680,7 +700,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
             for doc, emb in zip(document_batch, embeddings):
                 # Using update method to only update the embeddings, other properties will be in tact
-                self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
+                self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.meta["uuid"], vector=emb)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """
