@@ -108,7 +108,7 @@ Explore the rest of our tutorials to learn how to tweak pipelines, train models 
 They also cover a range of the Nodes that we offer such as the Summarizer, Question Generator and Query Classifier. 
 Each tutorial is available as a Python script, a Jupyter Notebook or a Google Colab notebook.
 
-## Haystack Service Demo
+## Application Demo
 
 By following these steps, you will start up our demo which creates a Haystack service via [Docker Compose](https://docs.docker.com/compose/).
 With this you can begin calling it directly via the REST API or even interact with it using the included Streamlit UI.
