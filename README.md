@@ -58,11 +58,13 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | See what Haystack can do with our Notebooks & Scripts |
 | :beginner: [Haystack Service Demo](https://github.com/deepset-ai/haystack/#haystack-service-demo) | Quickly see what Haystack offers |
+| :vulcan_salute: [Community](https://github.com/deepset-ai/haystack/#community) | [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
-| :vulcan_salute: [Community](https://www.deepset.ai/community)| [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/latest) | Speed & Accuracy of Retriever, Readers and DocumentStores |
 | :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap) | Public roadmap of Haystack |
 | :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
+| :phone: [Jobs](https://www.deepset.ai/jobs) | We're hiring! Have a look at our open positions |
+
 
 ## Installation
 
@@ -161,10 +163,23 @@ You can then try different queries against a pre-defined set of indexed articles
 
 Please note that the demo will [publish](https://docs.docker.com/config/containers/container-networking/) the container ports to the outside world. *We suggest that you review the firewall settings depending on your system setup and the security guidelines.*
 
+
+## :vulcan_salute: Community
+
+There is a very vibrant and active community around Haystack which we are regularly interacting with!
+If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues).
+We regularly check these and you can expect a quick response.
+If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, 
+you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Slack channel](https://haystack.deepset.ai/community/join).
+We also check [Twitter](https://twitter.com/deepset_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack)
+though less frequently
+
+
 ## :heart: Contributing
 
-We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. 
-To avoid any extra work on either side, please check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
+We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! 
+You don't need to be a Haystack expert to provide meaningful improvements. 
+To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
 You can also find instructions to run the tests locally there.
 
 Thanks so much to all those who have contributed to our project!
@@ -172,6 +187,3 @@ Thanks so much to all those who have contributed to our project!
 <a href="https://github.com/deepset-ai/haystack/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=deepset-ai/haystack" />
 </a>
-
-We'd also like to invite you to our Slack community channels. Please join [here](https://haystack.deepset.ai/community/join)!
-
