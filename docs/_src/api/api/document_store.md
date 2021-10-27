@@ -150,7 +150,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat")
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat", scroll: str = "1d")
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -202,6 +202,9 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
                             exists.
 - `index_type`: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
                    ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
+- `scroll`: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+               Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+               For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
