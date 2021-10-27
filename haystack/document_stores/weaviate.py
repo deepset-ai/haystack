@@ -1,3 +1,5 @@
+import hashlib
+import re
 import uuid
 from typing import Dict, Generator, List, Optional, Union
 
@@ -14,6 +16,7 @@ from weaviate import ObjectsBatchRequest
 
 
 logger = logging.getLogger(__name__)
+UUID_PATTERN = re.compile(r'^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$', re.IGNORECASE)
 
 
 class WeaviateDocumentStore(BaseDocumentStore):
@@ -361,21 +364,27 @@ class WeaviateDocumentStore(BaseDocumentStore):
         current_properties = self._get_current_properties(index)
 
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+
+        # Weaviate has strict requirements for what ids can be used.
+        # We check the id format and generate a proper uuid if not provided.
+        # Duplicate document ids will be mapped to the same generated uuid.
+        for do in document_objects:
+            if not UUID_PATTERN.match(do.id):
+                hashed_id = hashlib.sha256(do.id.encode('utf-8'))
+                generated_uuid = str(uuid.UUID(hashed_id.hexdigest()[::2]))
+                logger.warning(
+                    f"The provided document id {do.id} is not in uuid format. It will be replaced by the generated uuid {generated_uuid}.")
+                do.id = generated_uuid
+
         document_objects = self._handle_duplicate_documents(documents=document_objects,
                                                             index=index,
                                                             duplicate_documents=duplicate_documents)
-
-        # Weaviate has strict requirements for what ids can be used. We will attach a weaviate-compliant id to the
-        # metadata of each document object
-        for do in document_objects:
-            weaviate_uuid = str(uuid.uuid4())
-            do.meta["uuid"] = weaviate_uuid
 
         # Weaviate requires that documents contain a vector in order to be indexed. These lines add a
         # dummy vector so that indexing can still happen
         dummy_embed_warning_raised = False
         for do in document_objects:
-            if not do.embedding:
+            if do.embedding is None:
                 dummy_embedding = np.random.rand(self.embedding_dim).astype(np.float32)
                 do.embedding = dummy_embedding
                 if not dummy_embed_warning_raised:
@@ -401,6 +410,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             _doc[k] = v
                         _doc.pop("meta")
 
+                    doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
 
                     # rename as weaviate doesn't like "_" in field names
@@ -414,7 +424,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             self._update_schema(property, index)
                             current_properties.append(property)
 
-                    docs_batch.add(_doc, class_name=index, uuid=doc.meta["uuid"], vector=vector)
+                    docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
 
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create(docs_batch)
@@ -700,7 +710,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
             for doc, emb in zip(document_batch, embeddings):
                 # Using update method to only update the embeddings, other properties will be in tact
-                self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.meta["uuid"], vector=emb)
+                self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
         """

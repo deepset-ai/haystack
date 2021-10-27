@@ -10,7 +10,7 @@ def get_uuid():
     return str(uuid.uuid4())
 
 DOCUMENTS = [
-    {"content": "text1", "id":get_uuid(), "key": "a", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
+    {"content": "text1", "id":"not a correct uuid", "key": "a"},
     {"content": "text2", "id":get_uuid(), "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
     {"content": "text3", "id":get_uuid(), "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
     {"content": "text4", "id":get_uuid(), "key": "b", "embedding": np.random.rand(embedding_dim).astype(np.float32)},
@@ -135,8 +135,28 @@ def test_get_all_documents_generator(document_store):
 
 @pytest.mark.weaviate
 @pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
-def test_write_with_duplicate_doc_ids(document_store):
+def test_write_with_duplicate_doc_uuids(document_store):
     id = get_uuid()
+    documents = [
+        Document(
+            content="Doc1",
+            id=id,
+            embedding=np.random.rand(embedding_dim).astype(np.float32)
+        ),
+        Document(
+            content="Doc2",
+            id=id,
+            embedding=np.random.rand(embedding_dim).astype(np.float32)
+        )
+    ]
+    document_store.write_documents(documents, duplicate_documents="skip")
+    with pytest.raises(Exception):
+        document_store.write_documents(documents, duplicate_documents="fail")
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
+def test_write_with_duplicate_custom_doc_ids(document_store):
+    id = "not a correct uuid"
     documents = [
         Document(
             content="Doc1",
