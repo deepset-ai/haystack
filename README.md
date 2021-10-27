@@ -57,7 +57,7 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 | :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Overview, Components, Guides, API documentation|
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack/#installation) | How to install Haystack |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack/#tutorials) | See what Haystack can do with our Notebooks & Scripts |
-| :beginner: [Application Demo](https://github.com/deepset-ai/haystack/#application-demo) | Quickly deploy a Haystack application with Docker Compose and a REST API |
+| :beginner: [Application Demo](https://github.com/deepset-ai/haystack/#application-demo) | Deploy a Haystack application with Docker Compose and a REST API |
 | :vulcan_salute: [Community](https://github.com/deepset-ai/haystack/#community) | [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack/#heart-contributing) | We welcome all contributions! |
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/latest) | Speed & Accuracy of Retriever, Readers and DocumentStores |
