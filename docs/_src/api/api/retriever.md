@@ -282,7 +282,7 @@ The checkpoint format matches huggingface transformers' model format
 - `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
 - `top_k`: How many documents to return per query.
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-- `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+- `batch_size`: Number of questions or documents to encode at once. In case of multiple gpus, this will be the total batch size.
 - `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
                     This is the approach used in the original paper and is likely to improve performance if your
                     titles contain meaningful information for retrieval (topic, entities etc.) .
@@ -335,22 +335,22 @@ Create embeddings for a list of queries using the query encoder
 
 Embeddings, one per input queries
 
-<a name="dense.DensePassageRetriever.embed_passages"></a>
-#### embed\_passages
+<a name="dense.DensePassageRetriever.embed_documents"></a>
+#### embed\_documents
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
+ | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of passages using the passage encoder
+Create embeddings for a list of documents using the passage encoder
 
 **Arguments**:
 
-- `docs`: List of Document objects used to represent documents / passages in a standardized way within Haystack.
+- `docs`: List of Document objects.
 
 **Returns**:
 
-Embeddings of documents / passages shape (batch_size, embedding_dim)
+Embeddings of documents shape (batch_size, embedding_dim)
 
 <a name="dense.DensePassageRetriever.train"></a>
 #### train
@@ -373,8 +373,8 @@ train a DensePassageRetrieval model
 - `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None
 - `batch_size`: total number of samples in 1 batch of data
 - `embed_title`: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
-- `num_hard_negatives`: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
-- `num_positives`: number of positive passages
+- `num_hard_negatives`: number of hard negative documents(documents which are very similar(high score by BM25) to query but do not contain the answer
+- `num_positives`: number of positive documents
 - `n_epochs`: number of epochs to train the model on
 - `evaluate_every`: number of training steps after evaluation is run
 - `n_gpu`: number of gpus to train on
@@ -431,8 +431,8 @@ Load DensePassageRetriever from the specified directory.
 class TableTextRetriever(BaseRetriever)
 ```
 
-Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text passages and tables
-(one transformer for query, one transformer for text passages, one transformer for tables).
+Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text documents and tables
+(one transformer for query, one transformer for text documents, one transformer for tables).
 See the original paper for more details:
 Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using Tri-encoder Models"
 (https://arxiv.org/abs/2108.04049),
@@ -461,7 +461,7 @@ The checkpoint format matches huggingface transformers' model format
 - `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
 - `top_k`: How many documents to return per query.
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-- `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+- `batch_size`: Number of questions or documents to encode at once. In case of multiple gpus, this will be the total batch size.
 - `embed_meta_fields`: Concatenate the provided meta fields and text passage / table to a text pair that is
                           then  used to create the embedding.
                           This is the approach used in the original paper and is likely to improve
@@ -503,36 +503,36 @@ Embeddings, one per input queries
  | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of text passages and / or tables using the text passage encoder and
+Create embeddings for a list of text documents and / or tables using the text passage encoder and
 the table encoder.
 
 **Arguments**:
 
-- `docs`: List of Document objects used to represent documents / passages in
+- `docs`: List of Document objects used to represent documents in
              a standardized way within Haystack.
 
 **Returns**:
 
-Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
+Embeddings of documents. Shape: (batch_size, embedding_dim)
 
-<a name="dense.TableTextRetriever.embed_passages"></a>
-#### embed\_passages
+<a name="dense.TableTextRetriever.embed_documents"></a>
+#### embed\_documents
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
+ | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of passages using the passage encoder.
-This method just calls embed_documents. It is neeeded as the document stores call embed_passages when updating
+Create embeddings for a list of documents using the document encoder.
+This method just calls embed_documents. It is neeeded as the document stores call embed_documents when updating
 embeddings.
 
 **Arguments**:
 
-- `docs`: List of Document objects used to represent documents / passages in a standardized way within Haystack.
+- `docs`: List of Document objects used to represent documents in a standardized way within Haystack.
 
 **Returns**:
 
-Embeddings of documents / passages shape (batch_size, embedding_dim)
+Embeddings of documents shape (batch_size, embedding_dim)
 
 <a name="dense.TableTextRetriever.train"></a>
 #### train
@@ -558,9 +558,9 @@ Train a TableTextRetrieval model.
                           The default setting in official MMRetrieval embeds page title,
                           section title and caption with the corresponding table and title with
                           corresponding text passage.
-- `num_hard_negatives`: Number of hard negative passages (passages which are
+- `num_hard_negatives`: Number of hard negative documents (documents which are
                            very similar (high score by BM25) to query but do not contain the answer)-
-- `num_positives`: Number of positive passages.
+- `num_positives`: Number of positive documents.
 - `n_epochs`: Number of epochs to train the model on.
 - `evaluate_every`: Number of training steps after evaluation is run.
 - `n_gpu`: Number of gpus to train on.
@@ -683,14 +683,14 @@ Create embeddings for a list of queries.
 
 Embeddings, one per input queries
 
-<a name="dense.EmbeddingRetriever.embed_passages"></a>
-#### embed\_passages
+<a name="dense.EmbeddingRetriever.embed_documents"></a>
+#### embed\_documents
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
+ | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of passages.
+Create embeddings for a list of documents.
 
 **Arguments**:
 
