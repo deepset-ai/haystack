@@ -8,33 +8,34 @@ import pytest
 import requests
 from elasticsearch import Elasticsearch
 
-from haystack.generator.transformers import Seq2SeqGenerator
-from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
+from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
+from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
 from milvus import Milvus
 
 import weaviate
-from haystack.document_store.weaviate import WeaviateDocumentStore
+from haystack.document_stores.weaviate import WeaviateDocumentStore
 
-from haystack.document_store.milvus import MilvusDocumentStore
-from haystack.generator.transformers import RAGenerator, RAGeneratorType
+from haystack.document_stores.milvus import MilvusDocumentStore
+from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
-from haystack.ranker import SentenceTransformersRanker
-from haystack.document_classifier.transformers import TransformersDocumentClassifier
+from haystack.nodes.ranker import SentenceTransformersRanker
+from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
 
-from haystack.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
+from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 
-from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 
-from haystack import Document
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.document_store.sql import SQLDocumentStore
-from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader, TableReader
-from haystack.summarizer.transformers import TransformersSummarizer
-from haystack.translator import TransformersTranslator
-from haystack.question_generator import QuestionGenerator
+from haystack.schema import Document
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.document_stores.sql import SQLDocumentStore
+from haystack.nodes.reader.farm import FARMReader
+from haystack.nodes.reader.transformers import TransformersReader
+from haystack.nodes.reader.table import TableReader
+from haystack.nodes.summarizer.transformers import TransformersSummarizer
+from haystack.nodes.translator import TransformersTranslator
+from haystack.nodes.question_generator import QuestionGenerator
 
 
 def pytest_addoption(parser):
@@ -398,7 +399,7 @@ def no_answer_prediction(no_answer_reader, test_docs_xs):
     return prediction
 
 
-@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf"])
+@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf", "table_text_retriever"])
 def retriever(request, document_store):
     return get_retriever(request.param, document_store)
 
@@ -434,6 +435,12 @@ def get_retriever(retriever_type, document_store):
         retriever = ElasticsearchRetriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
         retriever = ElasticsearchFilterOnlyRetriever(document_store=document_store)
+    elif retriever_type == "table_text_retriever":
+        retriever = TableTextRetriever(document_store=document_store,
+                                       query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
+                                       passage_embedding_model="deepset/bert-small-mm_retrieval-passage_encoder",
+                                       table_embedding_model="deepset/bert-small-mm_retrieval-table_encoder",
+                                       use_gpu=False)
     else:
         raise Exception(f"No retriever fixture for '{retriever_type}'")
 

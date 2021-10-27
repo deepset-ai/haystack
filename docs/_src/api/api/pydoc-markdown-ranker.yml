@@ -1,6 +1,6 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/ranker]
+    search_path: [../../../../haystack/nodes/ranker]
     modules: ['base', 'sentence_transformers']
     ignore_when_discovered: ['__init__']
 processor:
@@ -16,4 +16,3 @@ renderer:
   add_method_class_prefix: false
   add_member_class_prefix: false
   filename: ranker.md
-

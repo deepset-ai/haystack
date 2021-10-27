@@ -4,11 +4,12 @@ import faiss
 import math
 import numpy as np
 import pytest
-from haystack import Document
-from haystack.pipeline import Pipeline
+from haystack.schema import Document
 from haystack.pipeline import DocumentSearchPipeline
-from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_store.weaviate import WeaviateDocumentStore
+
+from haystack.pipeline import Pipeline
 from haystack.retriever.dense import EmbeddingRetriever
 
 DOCUMENTS = [
@@ -301,12 +302,12 @@ def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
     if type(document_store)==WeaviateDocumentStore:
         for d in docs:
             d["id"] = str(uuid.uuid4())
-        
+
 def test_cosine_similarity(document_store_cosine):
     # below we will write documents to the store and then query it to see if vectors were normalized
-    
+
     ensure_ids_are_correct_uuids(docs=DOCUMENTS,document_store=document_store_cosine)
-    
+
     document_store_cosine.write_documents(documents=DOCUMENTS)
 
     # note that the same query will be used later when querying after updating the embeddings

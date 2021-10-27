@@ -1,0 +1,1 @@
+from haystack.nodes.question_generator.question_generator import QuestionGenerator

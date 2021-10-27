@@ -3,9 +3,9 @@ import subprocess
 import time
 from pathlib import Path
 
-from haystack.graph_retriever.text_to_sparql import Text2SparqlRetriever
-from haystack.knowledge_graph.graphdb import GraphDBKnowledgeGraph
-from haystack.preprocessor.utils import fetch_archive_from_http
+from haystack.nodes import Text2SparqlRetriever
+from haystack.document_stores import GraphDBKnowledgeGraph
+from haystack.utils import fetch_archive_from_http
 
 logger = logging.getLogger(__name__)
 

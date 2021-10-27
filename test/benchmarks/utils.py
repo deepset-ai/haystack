@@ -1,13 +1,13 @@
 import os
-from haystack.document_store.sql import SQLDocumentStore
-from haystack.document_store.memory import InMemoryDocumentStore
-from haystack.document_store.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
-from haystack.document_store.faiss import FAISSDocumentStore
-from haystack.document_store.milvus import MilvusDocumentStore, IndexType
-from haystack.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
-from haystack.retriever.dense import DensePassageRetriever, EmbeddingRetriever
-from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader
+from haystack.document_stores.sql import SQLDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.document_stores.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
+from haystack.document_stores.milvus import MilvusDocumentStore
+from haystack.nodes.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes.reader.farm import FARMReader
+from haystack.nodes.reader.transformers import TransformersReader
 from haystack.utils import launch_milvus, launch_es, launch_opensearch
 from haystack.modeling.data_handler.processor import http_get
 
@@ -45,11 +45,11 @@ def get_document_store(document_store_type, similarity='dot_product', index="doc
     elif document_store_type in ("milvus_flat", "milvus_hnsw"):
         launch_milvus()
         if document_store_type == "milvus_flat":
-            index_type = IndexType.FLAT
+            index_type = "FLAT"
             index_param = None
             search_param = None
         elif document_store_type == "milvus_hnsw":
-            index_type = IndexType.HNSW
+            index_type = "HNSW"
             index_param = {"M": 64, "efConstruction": 80}
             search_param = {"ef": 20}
         document_store = MilvusDocumentStore(

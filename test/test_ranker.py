@@ -1,6 +1,6 @@
-from haystack import Document
-from haystack.ranker.base import BaseRanker
-from haystack.ranker.sentence_transformers import SentenceTransformersRanker
+from haystack.schema import Document
+from haystack.nodes.ranker.base import BaseRanker
+from haystack.nodes.ranker.sentence_transformers import SentenceTransformersRanker
 
 
 def test_ranker(ranker):

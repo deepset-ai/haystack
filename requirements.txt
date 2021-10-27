@@ -24,7 +24,6 @@ dill
 # onnxruntime_tools
 psutil
 # haystack
---find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn
 gunicorn
@@ -53,6 +52,7 @@ nltk
 more_itertools
 networkx
 # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
+# For milvus 2.x version use this library `pymilvus===2.0.0rc6`
 pymilvus
 # Optional: For crawling
 #selenium
