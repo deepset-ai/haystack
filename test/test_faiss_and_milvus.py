@@ -5,12 +5,12 @@ import math
 import numpy as np
 import pytest
 from haystack.schema import Document
-from haystack.pipeline import DocumentSearchPipeline
+from haystack.pipelines import DocumentSearchPipeline
 from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_store.weaviate import WeaviateDocumentStore
+from haystack.document_stores.weaviate import WeaviateDocumentStore
 
-from haystack.pipeline import Pipeline
-from haystack.retriever.dense import EmbeddingRetriever
+from haystack.pipelines import Pipeline
+from haystack.nodes.retriever.dense import EmbeddingRetriever
 
 DOCUMENTS = [
     {"name": "name_1", "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
