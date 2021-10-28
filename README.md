@@ -109,85 +109,91 @@ Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-q
 to setup a question answering system using Python and start performing queries! 
 Explore the rest of our tutorials to learn how to tweak pipelines, train models and perform evaluation.
 
--   Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
+- Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.py)
--   Tutorial 2 - Fine-tuning a model on own data: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb)
+- Tutorial 2 - Fine-tuning a model on own data: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial2_Finetune_a_model_on_your_data.py)
--   Tutorial 3 - Basic QA Pipeline without Elasticsearch: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb)
+- Tutorial 3 - Basic QA Pipeline without Elasticsearch: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py)
--   Tutorial 4 - FAQ-style QA: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb)
+- Tutorial 4 - FAQ-style QA: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial4_FAQ_style_QA.py)
--   Tutorial 5 - Evaluation of the whole QA-Pipeline: [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb)
+- Tutorial 5 - Evaluation of the whole QA-Pipeline: [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial5_Evaluation.py)
--   Tutorial 6 - Better Retrievers via "Dense Passage Retrieval":
+- Tutorial 6 - Better Retrievers via "Dense Passage Retrieval":
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial6_Better_Retrieval_via_DPR.py)
--   Tutorial 7 - Generative QA via "Retrieval-Augmented Generation":
+- Tutorial 7 - Generative QA via "Retrieval-Augmented Generation":
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial7_RAG_Generator.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial7_RAG_Generator.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial7_RAG_Generator.py)
--   Tutorial 8 - Preprocessing:
+- Tutorial 8 - Preprocessing:
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial8_Preprocessing.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial8_Preprocessing.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial8_Preprocessing.py)
--   Tutorial 9 - DPR Training:
+- Tutorial 9 - DPR Training:
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial9_DPR_training.py)
--   Tutorial 10 - Knowledge Graph:
+- Tutorial 10 - Knowledge Graph:
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial10_Knowledge_Graph.py)
--   Tutorial 11 - Pipelines:
+- Tutorial 11 - Pipelines:
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial11_Pipelines.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial11_Pipelines.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial11_Pipelines.py)
--   Tutorial 12 - Long-Form Question Answering:
+- Tutorial 12 - Long-Form Question Answering:
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial12_LFQA.py)
--   Tutorial 13 - Question Generation:
+- Tutorial 13 - Question Generation:
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial13_Question_generation.py)
--   Tutorial 14 - Query Classifier:
+- Tutorial 14 - Query Classifier:
     [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
     |
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.py)
+- Tutorial 15 - TableQA:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial15_TableQA.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial15_TableQA.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial15_TableQA.py)
 
 ## Quick Demo
 
