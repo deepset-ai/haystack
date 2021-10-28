@@ -335,14 +335,14 @@ Create embeddings for a list of queries using the query encoder
 
 Embeddings, one per input queries
 
-<a name="dense.DensePassageRetriever.embed_passages"></a>
-#### embed\_passages
+<a name="dense.DensePassageRetriever.embed_documents"></a>
+#### embed\_documents
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
+ | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of passages using the passage encoder
+Create embeddings for a list of documents using the passage encoder
 
 **Arguments**:
 
@@ -503,7 +503,7 @@ Embeddings, one per input queries
  | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of text passages and / or tables using the text passage encoder and
+Create embeddings for a list of text documents and / or tables using the text passage encoder and
 the table encoder.
 
 **Arguments**:
@@ -514,25 +514,6 @@ the table encoder.
 **Returns**:
 
 Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
-
-<a name="dense.TableTextRetriever.embed_passages"></a>
-#### embed\_passages
-
-```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
-```
-
-Create embeddings for a list of passages using the passage encoder.
-This method just calls embed_documents. It is neeeded as the document stores call embed_passages when updating
-embeddings.
-
-**Arguments**:
-
-- `docs`: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-
-**Returns**:
-
-Embeddings of documents / passages shape (batch_size, embedding_dim)
 
 <a name="dense.TableTextRetriever.train"></a>
 #### train
@@ -683,14 +664,14 @@ Create embeddings for a list of queries.
 
 Embeddings, one per input queries
 
-<a name="dense.EmbeddingRetriever.embed_passages"></a>
-#### embed\_passages
+<a name="dense.EmbeddingRetriever.embed_documents"></a>
+#### embed\_documents
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
+ | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of passages.
+Create embeddings for a list of documents.
 
 **Arguments**:
 
@@ -698,7 +679,7 @@ Create embeddings for a list of passages.
 
 **Returns**:
 
-Embeddings, one per input passage
+Embeddings, one per input document
 
 <a name="text2sparql"></a>
 # Module text2sparql

@@ -274,9 +274,9 @@ class DensePassageRetriever(BaseRetriever):
         result = self._get_predictions(queries)["query"]
         return result
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages using the passage encoder
+        Create embeddings for a list of documents using the passage encoder
 
         :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
         :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
@@ -705,7 +705,7 @@ class TableTextRetriever(BaseRetriever):
 
     def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of text passages and / or tables using the text passage encoder and
+        Create embeddings for a list of text documents and / or tables using the text passage encoder and
         the table encoder.
 
         :param docs: List of Document objects used to represent documents / passages in
@@ -741,17 +741,6 @@ class TableTextRetriever(BaseRetriever):
         embeddings = self._get_predictions(model_input)["passages"]
 
         return embeddings
-
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        """
-        Create embeddings for a list of passages using the passage encoder.
-        This method just calls embed_documents. It is neeeded as the document stores call embed_passages when updating
-        embeddings.
-
-        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
-        """
-        return self.embed_documents(docs)
 
     def train(self,
               data_dir: str,
@@ -1025,11 +1014,11 @@ class EmbeddingRetriever(BaseRetriever):
         assert isinstance(texts, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
         return self.embedding_encoder.embed_queries(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages.
+        Create embeddings for a list of documents.
 
         :param docs: List of documents to embed
-        :return: Embeddings, one per input passage
+        :return: Embeddings, one per input document
         """
-        return self.embedding_encoder.embed_passages(docs)
+        return self.embedding_encoder.embed_documents(docs)
