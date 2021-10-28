@@ -1,4 +1,4 @@
-version: '0.7'
+version: '0.9'
 
 components:
   - name: Reader
@@ -11,18 +11,7 @@ components:
     params:
       document_store: DocumentStore
   - name: DocumentStore
-    type: ElasticsearchDocumentStore
-    params:
-      index: haystack_test
-      label_index: haystack_test_label
-  - name: TextConverter
-    type: TextConverter
-    params:
-      remove_numeric_tables: false
-  - name: Preprocessor
-    type: PreProcessor
-    params:
-      clean_whitespace: true
+    type: InMemoryDocumentStore
 
 
 pipelines:
@@ -32,16 +21,4 @@ pipelines:
       - name: Retriever
         inputs: [Query]
       - name: Reader
-        inputs: [Retriever]
-
-  - name: indexing_text_pipeline
-    type: Pipeline
-    nodes:
-      - name: TextConverter
-        inputs: [File]
-      - name: Preprocessor
-        inputs: [TextConverter]
-      - name: Retriever
-        inputs: [Preprocessor]
-      - name: DocumentStore
         inputs: [Retriever]
