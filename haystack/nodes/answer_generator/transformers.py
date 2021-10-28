@@ -183,7 +183,7 @@ class RAGenerator(BaseGenerator):
             if self.retriever is None:
                 raise AttributeError("_prepare_passage_embeddings need a DPR instance as self.retriever to embed document")
 
-            embeddings = self.retriever.embed_passages(docs)
+            embeddings = self.retriever.embed_documents(docs)
 
         embeddings_in_tensor = torch.cat(
             [torch.from_numpy(embedding).float().unsqueeze(0) for embedding in embeddings],

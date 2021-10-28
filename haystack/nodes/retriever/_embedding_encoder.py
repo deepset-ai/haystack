@@ -33,12 +33,12 @@ class _BaseEmbeddingEncoder:
         pass
 
     @abstractmethod
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages.
+        Create embeddings for a list of documents.
 
         :param docs: List of documents to embed
-        :return: Embeddings, one per input passage
+        :return: Embeddings, one per input document
         """
         pass
 
@@ -78,7 +78,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         return self.embed(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         passages = [d.content for d in docs] # type: ignore
         return self.embed(passages)
 
@@ -116,7 +116,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         return self.embed(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
 
@@ -154,7 +154,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         return np.concatenate(embeddings)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
 
         doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
