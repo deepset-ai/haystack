@@ -132,7 +132,6 @@ class TfidfRetriever(BaseRetriever):
         self.document_store = document_store
         self.paragraphs = self._get_all_paragraphs()
         self.df = None
-        self.tfidf_matrix = None
         self.top_k = top_k
         self.auto_fit = auto_fit
         self.document_count = 0
@@ -178,7 +177,7 @@ class TfidfRetriever(BaseRetriever):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         if self.auto_fit:
-            if len(self.document_store.get_document_count()) != self.document_count:
+            if self.document_store.get_document_count() != self.document_count:
                 # run fit() to update self.df, self.tfidf_matrix and self.document_count
                 logger.warning("Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now.")
                 self.fit()
