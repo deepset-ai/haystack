@@ -671,7 +671,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         for result_batch in get_batches_from_generator(result, batch_size):
             document_batch = [self._convert_weaviate_result_to_document(hit, return_embedding=False) for hit in result_batch]
-            embeddings = retriever.embed_passages(document_batch)  # type: ignore
+            embeddings = retriever.embed_documents(document_batch)  # type: ignore
             assert len(document_batch) == len(embeddings)
 
             if embeddings[0].shape[0] != self.embedding_dim:
