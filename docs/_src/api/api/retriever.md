@@ -196,13 +196,14 @@ It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, top_k: int = 10)
+ | __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
 ```
 
 **Arguments**:
 
 - `document_store`: an instance of a DocumentStore to retrieve documents from.
 - `top_k`: How many documents to return per query.
+- `auto_fit`: Whether to automatically update tf-idf matrix by calling fit() after new documents have been added
 
 <a name="sparse.TfidfRetriever.retrieve"></a>
 #### retrieve
