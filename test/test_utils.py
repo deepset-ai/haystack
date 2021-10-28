@@ -1,7 +1,7 @@
 import pytest
 
-from haystack.preprocessor.utils import convert_files_to_dicts
-from haystack.preprocessor.cleaning import clean_wiki_text
+from haystack.utils.preprocessing import convert_files_to_dicts
+from haystack.utils.cleaning import clean_wiki_text
 
 
 def test_convert_files_to_dicts(xpdf_fixture):
@@ -12,9 +12,8 @@ def test_convert_files_to_dicts(xpdf_fixture):
 @pytest.mark.tika
 def test_tika_convert_files_to_dicts(tika_fixture):
     try:
-        from haystack.preprocessor.utils import tika_convert_files_to_dicts
+        from haystack.utils.preprocessing import tika_convert_files_to_dicts
     except Exception as ex:
-        logger.error("Tika not installed. Please install tika and try again. Error: {}".format(ex))
         raise ex
     documents = tika_convert_files_to_dicts(dir_path="samples", clean_func=clean_wiki_text, split_paragraphs=True)
     assert documents and len(documents) > 0
