@@ -4,7 +4,7 @@ from haystack.utils.preprocessing import convert_files_to_dicts, tika_convert_fi
 from haystack.utils.cleaning import clean_wiki_text
 
 
-def test_convert_files_to_dicts(xpdf_fixture):
+def test_convert_files_to_dicts():
     documents = convert_files_to_dicts(dir_path="samples", clean_func=clean_wiki_text, split_paragraphs=True)
     assert documents and len(documents) > 0
 

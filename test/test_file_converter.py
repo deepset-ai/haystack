@@ -13,7 +13,7 @@ from haystack.file_converter.tika import TikaConverter
     # "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
     "Converter", [PDFToTextOCRConverter]
 )
-def test_convert(Converter, xpdf_fixture):
+def test_convert(Converter):
     converter = Converter()
     document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
     pages = document["content"].split("\f")
@@ -31,7 +31,7 @@ def test_convert(Converter, xpdf_fixture):
 
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
-def test_table_removal(Converter, xpdf_fixture):
+def test_table_removal(Converter):
     converter = Converter(remove_numeric_tables=True)
     document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
     pages = document["content"].split("\f")
@@ -42,7 +42,7 @@ def test_table_removal(Converter, xpdf_fixture):
 
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
-def test_language_validation(Converter, xpdf_fixture, caplog):
+def test_language_validation(Converter, caplog):
     converter = Converter(valid_languages=["en"])
     converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
     assert (
