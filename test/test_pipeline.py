@@ -84,6 +84,31 @@ def test_load_and_save_yaml(document_store, tmp_path):
     ).replace("\n", "")
 
 
+def test_load_tfidfretriever_yaml(tmp_path):
+    documents = [
+        {
+            "content": "A Doc specifically talking about haystack. Haystack can be used to scale QA models to large document collections."
+        }
+    ]
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
+    )
+    with pytest.raises(Exception) as exc_info:
+        pipeline.run(
+            query="What can be used to scale QA models to large document collections?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+        )
+    exception_raised = str(exc_info.value)
+    assert "Retrieval requires dataframe df and tf-idf matrix" in exception_raised
+
+    pipeline.get_node(name="Retriever").document_store.write_documents(documents=documents)
+    prediction = pipeline.run(
+        query="What can be used to scale QA models to large document collections?",
+        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+    )
+    assert prediction["query"] == "What can be used to scale QA models to large document collections?"
+    assert prediction["answers"][0].answer == "haystack"
+
+
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_node_names_validation(document_store_with_docs, tmp_path):
