@@ -120,7 +120,7 @@ class TfidfRetriever(BaseRetriever):
         :param auto_fit: Whether to automatically update tf-idf matrix by calling fit() after new documents have been added
         """
         # save init parameters to enable export of component config as YAML
-        self.set_config(document_store=document_store, top_k=top_k)
+        self.set_config(document_store=document_store, top_k=top_k,auto_fit=auto_fit)
 
         self.vectorizer = TfidfVectorizer(
             lowercase=True,

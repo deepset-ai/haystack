@@ -85,6 +85,28 @@ def test_load_and_save_yaml(document_store, tmp_path):
 
 
 @pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_load_tfidfretriever_yaml(document_store, tmp_path):
+    # test correct load of indexing pipeline from yaml
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_tfidfretriever.yaml", pipeline_name="indexing_text_pipeline"
+    )
+    pipeline.run(
+        file_paths=Path(__file__).parent/"samples"/"docs"/"doc_2.txt"
+    )
+    # test correct load of query pipeline from yaml
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
+    )
+    prediction = pipeline.run(
+        query="What can be used to scale QA models to large document collections?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+    )
+    assert prediction["query"] == "What can be used to scale QA models to large document collections?"
+    assert prediction["answers"][0].answer == "haystack"
+    assert "_debug" not in prediction.keys()
+
+
+@pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_node_names_validation(document_store_with_docs, tmp_path):
     pipeline = Pipeline()
