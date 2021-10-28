@@ -403,7 +403,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 ]
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
-                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 embeddings_list = [embedding.tolist() for embedding in embeddings]
                 assert len(document_batch) == len(embeddings_list)
 

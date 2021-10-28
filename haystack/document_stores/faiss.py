@@ -274,7 +274,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         with tqdm(total=document_count, disable=not self.progress_bar, position=0, unit=" docs",
                   desc="Updating Embedding") as progress_bar:
             for document_batch in batched_documents:
-                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
