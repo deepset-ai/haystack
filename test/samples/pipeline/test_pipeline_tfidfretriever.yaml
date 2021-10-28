@@ -1,0 +1,24 @@
+version: '0.9'
+
+components:
+  - name: Reader
+    type: FARMReader
+    params:
+      no_ans_boost: -10
+      model_name_or_path: deepset/minilm-uncased-squad2
+  - name: Retriever
+    type: TfidfRetriever
+    params:
+      document_store: DocumentStore
+  - name: DocumentStore
+    type: InMemoryDocumentStore
+
+
+pipelines:
+  - name: query_pipeline
+    type: Pipeline
+    nodes:
+      - name: Retriever
+        inputs: [Query]
+      - name: Reader
+        inputs: [Retriever]
