@@ -113,13 +113,14 @@ class TfidfRetriever(BaseRetriever):
 
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
-    def __init__(self, document_store: BaseDocumentStore, top_k: int = 10):
+    def __init__(self, document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param top_k: How many documents to return per query.
+        :param auto_fit: Whether to automatically update tf-idf matrix by calling fit() after new documents have been added
         """
         # save init parameters to enable export of component config as YAML
-        self.set_config(document_store=document_store, top_k=top_k)
+        self.set_config(document_store=document_store, top_k=top_k,auto_fit=auto_fit)
 
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
@@ -131,8 +132,10 @@ class TfidfRetriever(BaseRetriever):
         self.document_store = document_store
         self.paragraphs = self._get_all_paragraphs()
         self.df = None
-        self.fit()
         self.top_k = top_k
+        self.auto_fit = auto_fit
+        self.document_count = 0
+        self.fit()
 
     def _get_all_paragraphs(self) -> List[Paragraph]:
         """
@@ -173,8 +176,13 @@ class TfidfRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
+        if self.auto_fit:
+            if self.document_store.get_document_count() != self.document_count:
+                # run fit() to update self.df, self.tfidf_matrix and self.document_count
+                logger.warning("Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now.")
+                self.fit()
         if self.df is None:
-            raise Exception("fit() needs to called before retrieve()")
+            raise Exception("Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store.")
 
         if filters:
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
@@ -223,3 +231,4 @@ class TfidfRetriever(BaseRetriever):
         self.df = pd.DataFrame.from_dict(self.paragraphs)
         self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))
         self.tfidf_matrix = self.vectorizer.fit_transform(self.df["content"])
+        self.document_count = self.document_store.get_document_count()
