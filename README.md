@@ -71,9 +71,6 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 If you're interested in learning more about Haystack and using it as part of your application, we offer several options.
 
-<details>
-    <summary>Expand for details </summary>
-
 **1. Installing from a package**
 
 You can install Haystack by using [pip](https://github.com/pypa/pip).
@@ -103,7 +100,6 @@ On Windows, you might need:
 ```
     pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
 ```
-</details>
 
 ## :mortar_board: Tutorials
 
