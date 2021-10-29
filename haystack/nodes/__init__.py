@@ -30,6 +30,7 @@ from haystack.nodes.retriever import (
     ElasticsearchFilterOnlyRetriever,
     TfidfRetriever,
     Text2SparqlRetriever,
+    TableTextRetriever,
 )
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
