@@ -721,6 +721,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         # Default Retrieval via BM25 using the user query on `self.search_fields`
         else:
+            if not isinstance(query, str):
+                logger.warning("The query provided seems to be not a string, but an object "
+                               f"of type {type(query)}. This can cause Elasticsearch to fail.")
             body = {
                 "size": str(top_k),
                 "query": {
