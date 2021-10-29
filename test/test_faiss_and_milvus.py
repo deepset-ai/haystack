@@ -307,7 +307,6 @@ def test_cosine_similarity(document_store_cosine):
     # below we will write documents to the store and then query it to see if vectors were normalized
 
     ensure_ids_are_correct_uuids(docs=DOCUMENTS,document_store=document_store_cosine)
-
     document_store_cosine.write_documents(documents=DOCUMENTS)
 
     # note that the same query will be used later when querying after updating the embeddings
@@ -324,10 +323,7 @@ def test_cosine_similarity(document_store_cosine):
     for doc in query_results:
         result_emb = doc.embedding
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        if type(document_store_cosine)==FAISSDocumentStore:
-            document_store_cosine.normalize_embedding(original_emb)
-        else:
-            document_store_cosine.normalize_embedding(original_emb[0])
+        document_store_cosine.normalize_embedding(original_emb[0])
 
         # check if the stored embedding was normalized
         assert np.allclose(original_emb[0], result_emb, rtol=0.01)
@@ -346,17 +342,22 @@ def test_cosine_similarity(document_store_cosine):
 
     for doc in query_results:
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        if type(document_store_cosine)==FAISSDocumentStore :
-            document_store_cosine.normalize_embedding(original_emb)
-        else:
-            document_store_cosine.normalize_embedding(original_emb[0])
+        document_store_cosine.normalize_embedding(original_emb[0])
         # check if the original embedding has changed after updating the embeddings
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
 
+def test_normalize_embeddings_diff_shapes(document_store_cosine_small):
+    VEC_1 = np.array([.1, .2, .3], dtype="float32")
+    document_store_cosine_small.normalize_embedding(VEC_1)
+    assert np.linalg.norm(VEC_1) - 1 < 0.01
+
+    VEC_1 = np.array([.1, .2, .3], dtype="float32").reshape(1, -1)
+    document_store_cosine_small.normalize_embedding(VEC_1)
+    assert np.linalg.norm(VEC_1) - 1 < 0.01
+
 
 def test_cosine_sanity_check(document_store_cosine_small):
-
     VEC_1 = np.array([.1, .2, .3], dtype="float32")
     VEC_2 = np.array([.4, .5, .6], dtype="float32")
 

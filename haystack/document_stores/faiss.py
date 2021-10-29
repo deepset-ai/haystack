@@ -420,12 +420,6 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         super().delete_documents(index=index, ids=ids, filters=filters)
 
-    def normalize_embedding(self, emb: np.ndarray) -> None:
-        """
-        Performs L2 normalization of embeddings vector inplace. Overwrites the parent method to use FAISS util.
-        """
-        faiss.normalize_L2(emb)
-
     def query_by_embedding(
         self,
         query_emb: np.ndarray,

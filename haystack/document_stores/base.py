@@ -194,13 +194,19 @@ class BaseDocumentStore(BaseComponent):
     @njit#(fastmath=True)
     def normalize_embedding(self, emb: np.ndarray) -> None:
         """
-        Performs L2 normalization of embeddings vector inplace.
+        Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix (2D array).
         """
-
         # Might be extended to other normalizations in future
-        norm = np.sqrt(emb.dot(emb))
-        if norm != 0.0:
-            emb /= norm
+
+        # Single vec
+        if len(emb.shape) == 1:
+            norm = np.linalg.norm(emb)
+            if norm != 0.0:
+                emb /= norm
+        # 2D matrix
+        else:
+            norm = np.linalg.norm(emb, axis=1)
+            emb /= norm[:, None]
 
     def finalize_raw_score(self, raw_score: float, similarity: Optional[str]) -> float:
         if similarity == "cosine":
