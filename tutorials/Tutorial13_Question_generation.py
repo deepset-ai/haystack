@@ -31,13 +31,18 @@ question_generator = QuestionGenerator()
 """
 The most basic version of a question generator pipeline takes a document as input and outputs generated questions
 which the the document can answer.
-"""
+# """
 
 # QuestionGenerationPipeline
 question_generation_pipeline = QuestionGenerationPipeline(question_generator)
-for document in document_store:
-        result = question_generation_pipeline.run(documents=[document])
-        pprint(result)
+for idx, document in enumerate(document_store):
+    print(f"\n * Generating questions for document {idx}: {document.content[:50]}...")
+    result = question_generation_pipeline.run(documents=[document])
+
+    print("Generated questions:")
+    for result in result["generated_questions"]:
+        for question in result["questions"]:
+            print(f" - {question}")
 
 """
 This pipeline takes a query as input. It retrievers relevant documents and then generates questions based on these.
@@ -46,8 +51,14 @@ This pipeline takes a query as input. It retrievers relevant documents and then 
 # RetrieverQuestionGenerationPipeline
 retriever = ElasticsearchRetriever(document_store=document_store)
 rqg_pipeline = RetrieverQuestionGenerationPipeline(retriever, question_generator)
+
+print(f"\n * Generating questions for documents matching the query 'Arya Stark'")
 result = rqg_pipeline.run(query="Arya Stark")
-pprint(result)
+
+print("Generated questions:")
+for result in result["generated_questions"]:
+    for question in result["questions"]:
+        print(f" - {question}")
 
 """
 This pipeline takes a document as input, generates questions on it, and attempts to answer these questions using
@@ -57,10 +68,16 @@ a Reader model
 # QuestionAnswerGenerationPipeline
 reader = FARMReader("deepset/roberta-base-squad2")
 qag_pipeline = QuestionAnswerGenerationPipeline(question_generator, reader)
-for document in tqdm(document_store):
-    result = qag_pipeline.run(documents=[document])
-    pprint(result)
+for idx, document in enumerate(tqdm(document_store)):
 
-# This Haystack script was made with love by deepset in Berlin, Germany
-# Haystack: https://github.com/deepset-ai/haystack
-# deepset: https://deepset.ai/
+    print(f"\n * Generating questions and answers for document {idx}: {document.content[:20]}...")
+    result = qag_pipeline.run(documents=[document])
+
+    for pair in result["results"]:
+        print(f" - Q:{pair['query']}")
+        for answer in pair["answers"]:
+            print(f"      A: {answer.answer}")
+
+# # This Haystack script was made with love by deepset in Berlin, Germany
+# # Haystack: https://github.com/deepset-ai/haystack
+# # deepset: https://deepset.ai/
