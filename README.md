@@ -71,8 +71,9 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 If you're interested in learning more about Haystack and using it as part of your application, we offer several options.
 
+**1. Installing from a package**
 <details>
-    <summary>**1. Installing from a package** </summary>
+    <summary>Expand for details </summary>
 
 You can install Haystack by using [pip](https://github.com/pypa/pip).
 
@@ -84,8 +85,10 @@ Please check our page [on PyPi](https://pypi.org/project/farm-haystack/) for mor
 
 </details>
 
+**2. Installing from GitHub**
+
 <details>
-    <summary> **2. Installing from GitHub** </summary>
+    <summary>Expand for details </summary>
 
 You can also clone it from GitHub — in case you'd like to work with the master branch and check the latest features:
 
@@ -101,11 +104,15 @@ To update your installation, do a ``git pull``. The ``--editable`` flag will upd
 
 **3. Installing on Windows**
 
+<details>
+    <summary>Expand for details </summary>
+
 On Windows, you might need:
 
 ```
     pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
 ```
+</details>
 
 ## :mortar_board: Tutorials
 
