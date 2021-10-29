@@ -71,7 +71,8 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 If you're interested in learning more about Haystack and using it as part of your application, we offer several options.
 
-**1. Installing from a package**
+<details>
+    <summary>**1. Installing from a package**</summary>
 
 You can install Haystack by using [pip](https://github.com/pypa/pip).
 
@@ -81,7 +82,10 @@ You can install Haystack by using [pip](https://github.com/pypa/pip).
 
 Please check our page [on PyPi](https://pypi.org/project/farm-haystack/) for more information.
 
-**2. Installing from GitHub**
+</details>
+
+<details>
+    <summary>**2. Installing from GitHub**</summary>
 
 You can also clone it from GitHub — in case you'd like to work with the master branch and check the latest features:
 
@@ -92,6 +96,8 @@ You can also clone it from GitHub — in case you'd like to work with the master
 ```
 
 To update your installation, do a ``git pull``. The ``--editable`` flag will update changes immediately.
+
+</details>
 
 **3. Installing on Windows**
 
@@ -108,9 +114,6 @@ On Windows, you might need:
 Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system) 
 to setup a question answering system using Python and start performing queries! 
 Explore the rest of our tutorials to learn how to tweak pipelines, train models and perform evaluation.
-
-<details>
-  <summary>Click for the full list of our tutorials</summary>
 
 - Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
     |
@@ -191,8 +194,6 @@ Explore the rest of our tutorials to learn how to tweak pipelines, train models 
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial14_Query_Classifier.py)
-
-</details>
 
 ## :beginner: Quick Demo
 
