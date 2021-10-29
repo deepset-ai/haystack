@@ -8,7 +8,6 @@ from haystack.nodes.file_converter import (
     BaseConverter, 
     DocxToTextConverter,
     PDFToTextConverter,
-    TikaConverter,
     TextConverter
 )
 
@@ -99,6 +98,11 @@ def tika_convert_files_to_dicts(
     :param clean_func: a custom cleaning function that gets applied to each doc (input: str, output:str)
     :param split_paragraphs: split text in paragraphs.
     """
+    try:
+        from haystack.nodes.file_converter import TikaConverter
+    except Exception as ex:
+        logger.error("Tika not installed. Please install tika and try again. Error: {}".format(ex))
+        raise ex
     converter = TikaConverter()
     paths = [p for p in Path(dir_path).glob("**/*")]
     allowed_suffixes = [".pdf", ".txt"]
