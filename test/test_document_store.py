@@ -68,6 +68,7 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
     # writing to the default, empty index should still work
     document_store.write_documents(documents, duplicate_documents="fail")
 
+
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
@@ -812,7 +813,7 @@ def test_get_meta_values_by_key(document_store):
 
 
 @pytest.mark.elasticsearch
-def test_elasticsearch_custom_fields(elasticsearch_fixture):
+def test_elasticsearch_custom_fields():
     client = Elasticsearch()
     client.indices.delete(index='haystack_test_custom', ignore=[404])
     document_store = ElasticsearchDocumentStore(index="haystack_test_custom", content_field="custom_text_field",

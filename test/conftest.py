@@ -224,7 +224,7 @@ def tika_fixture():
 
 
 @pytest.fixture(scope="session")
-def xpdf_fixture(tika_fixture):
+def xpdf_fixture():
     verify_installation = run(["pdftotext"], shell=True)
     if verify_installation.returncode == 127:
         if platform.startswith("linux"):
