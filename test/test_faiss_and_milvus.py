@@ -1,4 +1,5 @@
-import time
+import sys
+
 import faiss
 import math
 import numpy as np
@@ -19,6 +20,7 @@ DOCUMENTS = [
 ]
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_save_and_load(tmp_path):
     document_store = FAISSDocumentStore(
         sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
@@ -47,6 +49,7 @@ def test_faiss_index_save_and_load(tmp_path):
     assert not new_document_store.progress_bar
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_save_and_load_custom_path(tmp_path):
     document_store = FAISSDocumentStore(
         sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
@@ -95,7 +98,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
-        
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
@@ -158,6 +161,7 @@ def test_update_with_empty_store(document_store, retriever):
     assert len(documents_indexed) == len(DOCUMENTS)
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
 def test_faiss_retrieving(index_factory, tmp_path):
     document_store = FAISSDocumentStore(
@@ -253,7 +257,7 @@ def test_delete_docs_by_id_with_filters(document_store, retriever):
     all_ids_left = [doc.id for doc in documents]
     assert all(doc_id in all_ids_left for doc_id in ids_not_to_delete)
 
- 
+
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
@@ -271,6 +275,7 @@ def test_pipeline(document_store, retriever):
     assert len(output["documents"]) == 3
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_passing_index_from_outside(tmp_path):
     d = 768
     nlist = 2
@@ -295,6 +300,7 @@ def test_faiss_passing_index_from_outside(tmp_path):
         assert 0 <= int(doc.meta["vector_id"]) <= 7
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_cosine_similarity(tmp_path):
     document_store = FAISSDocumentStore(
         sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", similarity='cosine'
@@ -322,7 +328,7 @@ def test_faiss_cosine_similarity(tmp_path):
 
         # check if the stored embedding was normalized
         assert np.allclose(original_emb[0], result_emb, rtol=0.01)
-        
+
         # check if the score is plausible for cosine similarity
         assert 0 <= doc.score <= 1.0
 
@@ -342,7 +348,7 @@ def test_faiss_cosine_similarity(tmp_path):
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
 
-
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_cosine_sanity_check(tmp_path):
     document_store = FAISSDocumentStore(
         sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", similarity='cosine',

@@ -18,7 +18,6 @@ in the sentence.
 """
 
 
-@pytest.mark.tika
 def test_preprocess_sentence_split():
     document = {"content": TEXT}
     preprocessor = PreProcessor(split_length=1, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False)
@@ -32,7 +31,6 @@ def test_preprocess_sentence_split():
     assert len(documents) == 2
 
 
-@pytest.mark.tika
 def test_preprocess_word_split():
     document = {"content": TEXT}
     preprocessor = PreProcessor(split_length=10, split_overlap=0, split_by="word", split_respect_sentence_boundary=False)
@@ -56,7 +54,6 @@ def test_preprocess_word_split():
     assert len(documents) == 15
 
 
-@pytest.mark.tika
 def test_preprocess_passage_split():
     document = {"content": TEXT}
     preprocessor = PreProcessor(split_length=1, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False)
@@ -68,7 +65,6 @@ def test_preprocess_passage_split():
     assert len(documents) == 2
 
 
-@pytest.mark.tika
 def test_clean_header_footer():
     converter = PDFToTextConverter()
     document = converter.convert(file_path=Path("samples/pdf/sample_pdf_2.pdf"))  # file contains header/footer

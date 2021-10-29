@@ -94,7 +94,7 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
 
 
 @pytest.mark.elasticsearch
-def test_elasticsearch_custom_query(elasticsearch_fixture):
+def test_elasticsearch_custom_query():
     client = Elasticsearch()
     client.indices.delete(index="haystack_test_custom", ignore=[404])
     document_store = ElasticsearchDocumentStore(
