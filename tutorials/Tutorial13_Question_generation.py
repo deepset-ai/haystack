@@ -36,6 +36,7 @@ which the the document can answer.
 # QuestionGenerationPipeline
 question_generation_pipeline = QuestionGenerationPipeline(question_generator)
 for idx, document in enumerate(document_store):
+        
     print(f"\n * Generating questions for document {idx}: {document.content[:50]}...")
     result = question_generation_pipeline.run(documents=[document])
 
