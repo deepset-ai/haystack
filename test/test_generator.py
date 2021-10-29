@@ -1,3 +1,4 @@
+import sys
 from typing import List
 
 import numpy as np
@@ -428,6 +429,7 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
     assert "berlin" in answers[0]["answer"]
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Gives memory allocation error on windows runner")
 @pytest.mark.slow
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)

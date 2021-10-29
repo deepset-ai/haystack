@@ -721,6 +721,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         # Default Retrieval via BM25 using the user query on `self.search_fields`
         else:
+            if not isinstance(query, str):
+                logger.warning("The query provided seems to be not a string, but an object "
+                               f"of type {type(query)}. This can cause Elasticsearch to fail.")
             body = {
                 "size": str(top_k),
                 "query": {
@@ -968,7 +971,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
-                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
 
                 if embeddings[0].shape[0] != self.embedding_dim:

@@ -67,7 +67,9 @@ class TableReader(BaseReader):
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param use_gpu: Whether to make use of a GPU (if available).
         :param top_k: The maximum number of answers to return
-        :param max_seq_len: Max sequence length of one input text for the model.
+        :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
+                            query + table exceed max_seq_len, the table will be truncated by removing rows until the
+                            input size fits the model.
         """
         self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
         if use_gpu and torch.cuda.is_available():
@@ -109,7 +111,8 @@ class TableReader(BaseReader):
             inputs = self.tokenizer(table=table,
                                     queries=query,
                                     max_length=self.max_seq_len,
-                                    return_tensors="pt")
+                                    return_tensors="pt",
+                                    truncation=True)
             inputs.to(self.model.device)
             # Forward query and table through model and convert logits to predictions
             outputs = self.model(**inputs)

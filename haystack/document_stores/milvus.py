@@ -303,7 +303,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             for document_batch in batched_documents:
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
-                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                embeddings = retriever.embed_documents(document_batch) # type: ignore
                 if self.similarity=="cosine":
                     for embedding in embeddings:
                         self.normalize_embedding(embedding)

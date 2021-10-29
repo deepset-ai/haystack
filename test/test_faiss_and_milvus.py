@@ -1,9 +1,10 @@
-import time
 import uuid
 import faiss
 import math
 import numpy as np
 import pytest
+import sys
+
 from haystack.schema import Document
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.document_stores.faiss import FAISSDocumentStore
@@ -22,6 +23,7 @@ DOCUMENTS = [
 ]
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_save_and_load(tmp_path):
     document_store = FAISSDocumentStore(
         sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
@@ -50,6 +52,7 @@ def test_faiss_index_save_and_load(tmp_path):
     assert not new_document_store.progress_bar
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_save_and_load_custom_path(tmp_path):
     document_store = FAISSDocumentStore(
         sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
@@ -115,7 +118,7 @@ def test_update_docs(document_store, retriever, batch_size):
     # test if correct vectors are associated with docs
     for doc in documents_indexed:
         original_doc = [d for d in DOCUMENTS if d["content"] == doc.content][0]
-        updated_embedding = retriever.embed_passages([Document.from_dict(original_doc)])
+        updated_embedding = retriever.embed_documents([Document.from_dict(original_doc)])
         stored_doc = document_store.get_all_documents(filters={"name": [doc.meta["name"]]})[0]
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         assert np.allclose(updated_embedding, stored_doc.embedding, rtol=0.01)
@@ -161,6 +164,7 @@ def test_update_with_empty_store(document_store, retriever):
     assert len(documents_indexed) == len(DOCUMENTS)
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
 def test_faiss_retrieving(index_factory, tmp_path):
     document_store = FAISSDocumentStore(
@@ -256,7 +260,7 @@ def test_delete_docs_by_id_with_filters(document_store, retriever):
     all_ids_left = [doc.id for doc in documents]
     assert all(doc_id in all_ids_left for doc_id in ids_not_to_delete)
 
- 
+
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
@@ -274,6 +278,7 @@ def test_pipeline(document_store, retriever):
     assert len(output["documents"]) == 3
 
 
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_passing_index_from_outside(tmp_path):
     d = 768
     nlist = 2
@@ -333,7 +338,7 @@ def test_cosine_similarity(document_store_cosine):
 
     # now check if vectors are normalized when updating embeddings
     class MockRetriever():
-        def embed_passages(self, docs):
+        def embed_documents(self, docs):
             return [np.random.rand(768).astype(np.float32) for doc in docs]
 
     retriever = MockRetriever()
