@@ -243,7 +243,7 @@ class BaseRetriever(BaseComponent):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             documents = deepcopy(documents)
             document_objects = [Document.from_dict(doc) for doc in documents]
-            embeddings = self.embed_passages(document_objects)  # type: ignore
+            embeddings = self.embed_documents(document_objects)  # type: ignore
             for doc, emb in zip(documents, embeddings):
                 doc["embedding"] = emb
         output = {"documents": documents}

@@ -840,7 +840,7 @@ def test_get_meta_values_by_key(document_store):
 
 
 @pytest.mark.elasticsearch
-def test_elasticsearch_custom_fields(elasticsearch_fixture):
+def test_elasticsearch_custom_fields():
     client = Elasticsearch()
     client.indices.delete(index='haystack_test_custom', ignore=[404])
     document_store = ElasticsearchDocumentStore(index="haystack_test_custom", content_field="custom_text_field",

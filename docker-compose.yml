@@ -10,6 +10,7 @@ services:
     #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
     ports:
       - 8000:8000
+    restart: on-failure
     environment:
       # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
@@ -23,6 +24,7 @@ services:
     image: "deepset/elasticsearch-game-of-thrones"
     ports:
       - 9200:9200
+    restart: on-failure
     environment:
       - discovery.type=single-node
   ui:
@@ -32,6 +34,7 @@ services:
     image: "deepset/haystack-streamlit-ui:latest"
     ports:
       - 8501:8501
+    restart: on-failure
     environment:
       - API_ENDPOINT=http://haystack-api:8000
       - EVAL_FILE=eval_labels_example.csv

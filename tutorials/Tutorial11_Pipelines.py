@@ -3,7 +3,7 @@ from pprint import pprint
 from haystack import Pipeline
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes import ElasticsearchRetriever, DensePassageRetriever, FARMReader, RAGenerator, JoinDocuments
-from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, GenerativeQAPipeline, 
+from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, GenerativeQAPipeline
 
 
 def tutorial11_pipelines():
