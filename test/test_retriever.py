@@ -165,6 +165,7 @@ def test_dpr_embedding(document_store, retriever):
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_retribert_embedding(document_store, retriever):
 
     document_store.return_embedding = True
