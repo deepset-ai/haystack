@@ -1773,6 +1773,15 @@ None
 
 Update the metadata dictionary of a document by specifying its string id.
 
+<a name="weaviate.WeaviateDocumentStore.get_embedding_count"></a>
+#### get\_embedding\_count
+
+```python
+ | get_embedding_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int
+```
+
+Return the number of embeddings in the document store, which is the same as the number of documents since every document has a default embedding
+
 <a name="weaviate.WeaviateDocumentStore.get_document_count"></a>
 #### get\_document\_count
 
