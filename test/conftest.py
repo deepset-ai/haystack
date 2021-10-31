@@ -57,13 +57,6 @@ def pytest_generate_tests(metafunc):
             break
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
     if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
-        # TODO: Remove the following if-condition once weaviate is fully compliant
-        # Background: Currently, weaviate is not fully compliant (e.g. "_" in "meta_field", problems with uuids ...)
-        # Therefore, we have separate tests in test_weaviate.py and we don't want to parametrize our generic
-        # tests (e.g. in test_document_store.py) with the weaviate fixture. However, we still need the weaviate option
-        # in the CLI arg as we want to skip test_weaviate.py if weaviate is not selected from CLI
-        if "weaviate" in selected_doc_stores:
-            selected_doc_stores.remove("weaviate")
         metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
 
 
@@ -447,8 +440,7 @@ def get_retriever(retriever_type, document_store):
     return retriever
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
-# @pytest.fixture(params=["memory"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_with_docs(request, test_docs_xs):
     document_store = get_document_store(request.param)
     document_store.write_documents(test_docs_xs)
@@ -503,7 +495,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
             weaviate_url="http://localhost:8080",
-            index="Haystacktest"
+            index="haystack_test"
         )
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()
