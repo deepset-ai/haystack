@@ -751,7 +751,3 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
             for doc in docs_to_delete:
                 self.weaviate_client.data_object.delete(doc.id)
-            
-
-
-

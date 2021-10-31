@@ -4,6 +4,7 @@ import pytest
 from elasticsearch import Elasticsearch
 
 from conftest import get_document_store
+from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
@@ -62,11 +63,12 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
     ]
     document_store.delete_documents(index="haystack_custom_test")
     document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="skip")
-    with pytest.raises(Exception):
+    with pytest.raises(DuplicateDocumentError):
         document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="fail")
 
     # writing to the default, empty index should still work
     document_store.write_documents(documents, duplicate_documents="fail")
+
 
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()

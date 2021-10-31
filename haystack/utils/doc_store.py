@@ -55,7 +55,7 @@ def launch_weaviate(sleep=15):
 
     logger.info("Starting Weaviate ...")
     status = subprocess.run(
-        ["docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.0"], shell=True
+        ["docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.2"], shell=True
     )
     if status.returncode:
         logger.warning("Tried to start Weaviate through Docker but this failed. "
