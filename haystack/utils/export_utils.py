@@ -47,6 +47,8 @@ def print_answers(results: dict, details: str = "all"):
     except:
         if details == "minimal":
             print(f"Query: {results['query']}")
+            if not "answers" in results.keys():
+                print("No answers!")
             for a in results["answers"]:
                 print(f"Answer: {a['answer']}")
         else:
