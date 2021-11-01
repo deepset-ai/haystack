@@ -488,7 +488,7 @@ class SQLDocumentStore(BaseDocumentStore):
             meta=row.meta
         )
         return label
-
+        
     def query_by_embedding(self,
                            query_emb: np.ndarray,
                            filters: Optional[dict] = None,

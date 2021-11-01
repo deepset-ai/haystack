@@ -463,20 +463,33 @@ def document_store(request, test_docs_xs):
     yield document_store
     document_store.delete_documents()
 
+@pytest.fixture(params=["faiss", "milvus", "weaviate"])
+def document_store_cosine(request, test_docs_xs):
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
+    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+    yield document_store
+    document_store.delete_documents()
 
-def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding"):
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
+def document_store_cosine_small(request, test_docs_xs):
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
+    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+    yield document_store
+    document_store.delete_documents()    
+
+def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="dot_product"):
     if document_store_type == "sql":
-        document_store = SQLDocumentStore(url="sqlite://", index="haystack_test")
+        document_store = SQLDocumentStore(url="sqlite://", index=index)
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(
-            return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, index="haystack_test"
+            return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, index=index, similarity=similarity
         )
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
-        client.indices.delete(index='haystack_test*', ignore=[404])
+        client.indices.delete(index=index+'*', ignore=[404])
         document_store = ElasticsearchDocumentStore(
-            index="haystack_test", return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field
+            index=index, return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, similarity=similarity
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
@@ -484,30 +497,30 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
-            index="haystack_test",
+            index=index,
+            similarity=similarity
         )
-        return document_store
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
             vector_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
-            index="haystack_test",
+            index=index,
+            similarity=similarity
         )
         _, collections = document_store.milvus_server.list_collections()
         for collection in collections:
-            if collection.startswith("haystack_test"):
+            if collection.startswith(index):
                 document_store.milvus_server.drop_collection(collection)
-        return document_store
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
             weaviate_url="http://localhost:8080",
-            index="Haystacktest"
+            index=index.replace('_','').title(),
+            similarity=similarity
         )
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()
-        return document_store
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
