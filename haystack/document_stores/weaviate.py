@@ -294,7 +294,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         index = self._sanitize_index_name(index) or self.index
         if not UUID_PATTERN.match(id):
-            hashed_id = hashlib.sha256((id+index).encode('utf-8'))
+            hashed_id = hashlib.sha256((id+index).encode('utf-8')) #type: ignore
             generated_uuid = str(uuid.UUID(hashed_id.hexdigest()[::2]))
             if not self.uuid_format_warning_raised:
                 logger.warning(
