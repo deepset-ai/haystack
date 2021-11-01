@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 from elasticsearch import Elasticsearch
+
+from haystack.document_stores import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
@@ -165,9 +167,15 @@ def test_dpr_embedding(document_store, retriever):
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_retribert_embedding(document_store, retriever):
-
+    if isinstance(document_store, WeaviateDocumentStore):
+        document_store = WeaviateDocumentStore(
+            weaviate_url="http://localhost:8080",
+            index="haystack_test",
+            embedding_dim=128
+        )
+        document_store.weaviate_client.schema.delete_all()
+        document_store._create_schema_and_index_if_not_exist()
     document_store.return_embedding = True
     document_store.write_documents(DOCS)
     document_store.update_embeddings(retriever=retriever)

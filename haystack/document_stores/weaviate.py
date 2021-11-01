@@ -137,6 +137,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.duplicate_documents = duplicate_documents
 
         self._create_schema_and_index_if_not_exist(self.index)
+        self.uuid_format_warning_raised = False
 
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
         if index is None:
@@ -263,7 +264,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index) or self.index
         document = None
 
-        id = self._generate_uuid(id)
+        id = self._sanitize_id(id=id, index=index)
 
         result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
         if result:
@@ -279,19 +280,26 @@ class WeaviateDocumentStore(BaseDocumentStore):
         documents = []
         #TODO: better implementation with multiple where filters instead of chatty call below?
         for id in ids:
-            id = self._generate_uuid(id)
+            id = self._sanitize_id(id=id, index=index)
             result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
             if result:
                 document = self._convert_weaviate_result_to_document(result, return_embedding=True)
                 documents.append(document)
         return documents
 
-    def _generate_uuid(self, id):
+    def _sanitize_id(self, id: str, index: Optional[str] = None) -> str:
+        """
+        Generate a valid uuid if the provided id is not in uuid format.
+        Two documents with the same provided id and index name will get the same uuid.
+        """
+        index = self._sanitize_index_name(index) or self.index
         if not UUID_PATTERN.match(id):
-            hashed_id = hashlib.sha256(id.encode('utf-8'))
+            hashed_id = hashlib.sha256((id+index).encode('utf-8'))
             generated_uuid = str(uuid.UUID(hashed_id.hexdigest()[::2]))
-            logger.warning(
-                f"The provided document id {id} is not in uuid format. It will be replaced by the generated uuid {generated_uuid}.")
+            if not self.uuid_format_warning_raised:
+                logger.warning(
+                    f"Document id {id} is not in uuid format. Such ids will be replaced by uuids, in this case {generated_uuid}.")
+                self.uuid_format_warning_raised = True
             id = generated_uuid
         return id
 
@@ -387,10 +395,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
 
         # Weaviate has strict requirements for what ids can be used.
-        # We check the id format and generate a proper uuid if not provided.
+        # We check the id format and sanitize it if no uuid was provided.
         # Duplicate document ids will be mapped to the same generated uuid.
         for do in document_objects:
-            do.id = self._generate_uuid(do.id)
+            do.id = self._sanitize_id(id=do.id, index=index)
 
         document_objects = self._handle_duplicate_documents(documents=document_objects,
                                                             index=index,
@@ -762,6 +770,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :return: None
         """
         index = self._sanitize_index_name(index) or self.index
+
+        # create index if it doesn't exist yet
+        self._create_schema_and_index_if_not_exist(index)
+
         if not filters and not ids:
             self.weaviate_client.schema.delete_class(index)
             self._create_schema_and_index_if_not_exist(index)

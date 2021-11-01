@@ -52,7 +52,7 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(documents, duplicate_documents="fail")
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"], indirect=True)
 def test_write_with_duplicate_doc_ids_custom_index(document_store):
     documents = [
         Document(
@@ -69,6 +69,18 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
     with pytest.raises(DuplicateDocumentError):
         document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="fail")
 
+    # weaviate document store already replaced the ids in documents with uuids. We need to undo that for this test:
+    if isinstance(document_store, WeaviateDocumentStore):
+        documents = [
+            Document(
+                content="Doc1",
+                id_hash_keys=["key1"]
+            ),
+            Document(
+                content="Doc2",
+                id_hash_keys=["key1"]
+            )
+        ]
     # writing to the default, empty index should still work
     document_store.write_documents(documents, duplicate_documents="fail")
 
@@ -497,6 +509,7 @@ def test_delete_documents_by_id(document_store_with_docs):
     assert all(doc.id in all_ids_left for doc in docs_not_to_delete)
 
 
+# exclude weaviate because it does not support storing labels
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_labels(document_store):
     label = Label(
@@ -582,6 +595,7 @@ def test_labels(document_store):
     assert len(labels) == 0
 
 
+# exclude weaviate because it does not support storing labels
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_multilabel(document_store):
     labels =[
@@ -693,6 +707,7 @@ def test_multilabel(document_store):
     assert len(docs) == 0
 
 
+# exclude weaviate because it does not support storing labels
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_multilabel_no_answer(document_store):
     labels = [
