@@ -162,7 +162,7 @@ def tutorial11_pipelines():
     # the key difference is that only one of the retrievers is run for each request.
     # By contrast both retrievers are always run in the ensembled approach.
 
-    class MyCustomQueryClassifier(BaseComponent):
+    class MyQueryClassifier(BaseComponent):
         outgoing_edges = 2
 
         def run(self, query):
@@ -173,7 +173,7 @@ def tutorial11_pipelines():
 
     # Here we build the pipeline
     p_classifier = Pipeline()
-    p_classifier.add_node(component=MyCustomQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    p_classifier.add_node(component=MyQueryClassifier(), name="QueryClassifier", inputs=["Query"])
     p_classifier.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_1"])
     p_classifier.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_2"])
     p_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "DPRRetriever"])
