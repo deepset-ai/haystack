@@ -754,7 +754,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
-
+        
     def query_by_embedding(self,
                            query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,

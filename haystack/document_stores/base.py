@@ -14,7 +14,18 @@ from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
 
+try:
+    from numba import njit
+except:
+    def njit(f): return f
+
+
 logger = logging.getLogger(__name__)
+
+
+@njit#(fastmath=True)
+def expit(x: float) -> float:
+    return 1 / (1 + np.exp(-x))
 
 
 class BaseKnowledgeGraph(BaseComponent):
@@ -179,6 +190,29 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         pass
+
+    @njit#(fastmath=True)
+    def normalize_embedding(self, emb: np.ndarray) -> None:
+        """
+        Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix (2D array).
+        """
+        # Might be extended to other normalizations in future
+
+        # Single vec
+        if len(emb.shape) == 1:
+            norm = np.sqrt(emb.dot(emb)) #faster than np.linalg.norm()
+            if norm != 0.0:
+                emb /= norm
+        # 2D matrix
+        else:
+            norm = np.linalg.norm(emb, axis=1)
+            emb /= norm[:, None]
+
+    def finalize_raw_score(self, raw_score: float, similarity: Optional[str]) -> float:
+        if similarity == "cosine":
+            return (raw_score + 1) / 2
+        else:
+            return float(expit(raw_score / 100))
 
     @abstractmethod
     def query_by_embedding(self,
