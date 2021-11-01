@@ -66,8 +66,6 @@ def initialize_device_settings(use_cuda, local_rank=-1, use_amp=None):
         torch.distributed.init_process_group(backend="nccl")
     logger.info(f"Using device: {str(device).upper()} ")
     logger.info(f"Number of GPUs: {n_gpu}")
-    logger.info(f"Distributed Training: {bool(local_rank != -1)}")
-    logger.info(f"Automatic Mixed Precision: {use_amp}")
     return device, n_gpu
 
 
