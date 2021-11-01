@@ -158,7 +158,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
-
+        
     def query_by_embedding(self,
                            query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,

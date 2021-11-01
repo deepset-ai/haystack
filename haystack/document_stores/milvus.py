@@ -71,7 +71,7 @@ class MilvusDocumentStore(SQLDocumentStore):
          (From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
                            'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
-                           However, you can normalize your embeddings and use `dot_product` to get the same results.
+                           However, Haystack can normalize your embeddings and use `dot_product` to get the same results.
                            See https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)#floating.
         :param index_type: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
                            Some popular options:
@@ -109,15 +109,15 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.vector_dim = vector_dim
         self.index_file_size = index_file_size
 
-        if similarity == "dot_product":
+        if similarity in ("dot_product", "cosine"):
             self.metric_type = MetricType.IP
             self.similarity = similarity
         elif similarity == "l2":
             self.metric_type = MetricType.L2
             self.similarity = similarity
         else:
-            raise ValueError("The Milvus document store can currently only support dot_product and L2 similarity. "
-                             "Please set similarity=\"dot_product\" or \"l2\"")
+            raise ValueError("The Milvus document store can currently only support dot_product, cosine and L2 similarity. "
+                             "Please set similarity=\"dot_product\", \"cosine\" or \"l2\"")
 
         self.index_type = index_type
         self.index_param = index_param or {"nlist": 16384}
@@ -213,9 +213,16 @@ class MilvusDocumentStore(SQLDocumentStore):
                     for doc in document_batch:
                         doc_ids.append(doc.id)
                         if isinstance(doc.embedding, np.ndarray):
+                            if self.similarity=="cosine": self.normalize_embedding(doc.embedding)
                             embeddings.append(doc.embedding.tolist())
                         elif isinstance(doc.embedding, list):
-                            embeddings.append(doc.embedding)
+                            if self.similarity=="cosine":
+                                # temp conversion to ndarray
+                                np_embedding = np.array(doc.embedding, dtype="float32")
+                                self.normalize_embedding(np_embedding)
+                                embeddings.append(np_embedding.tolist())
+                            else:
+                                embeddings.append(doc.embedding)
                         else:
                             raise AttributeError(f'Format of supplied document embedding {type(doc.embedding)} is not '
                                                  f'supported. Please use list or numpy.ndarray')
@@ -296,7 +303,11 @@ class MilvusDocumentStore(SQLDocumentStore):
             for document_batch in batched_documents:
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
+                embeddings = retriever.embed_documents(document_batch) # type: ignore
+                if self.similarity=="cosine":
+                    for embedding in embeddings:
+                        self.normalize_embedding(embedding)
+
                 embeddings_list = [embedding.tolist() for embedding in embeddings]
                 assert len(document_batch) == len(embeddings_list)
 
@@ -346,7 +357,10 @@ class MilvusDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
         index = index or self.index
 
+        if self.similarity=="cosine": self.normalize_embedding(query_emb)
+
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
+
         status, search_result = self.milvus_server.search(
             collection_name=index,
             query_records=query_emb,
@@ -370,7 +384,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = float(expit(np.asarray(raw_score / 100)))
+            doc.score = self.finalize_raw_score(raw_score, self.similarity)
 
         return documents
 

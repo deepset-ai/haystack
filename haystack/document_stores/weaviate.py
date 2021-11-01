@@ -220,7 +220,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
-
+        
         document = Document(
             id=id,
             content=content,
@@ -383,6 +383,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     doc_id = str(_doc.pop("id"))
                     vector = _doc.pop(self.embedding_field)
 
+                    if self.similarity=="cosine": self.normalize_embedding(vector)
+                    
                     # rename as weaviate doesn't like "_" in field names
                     _doc["contenttype"] = _doc.pop("content_type")
 
@@ -574,7 +576,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             documents.append(doc)
 
         return documents
-
+        
     def query_by_embedding(self,
                            query_emb: np.ndarray,
                            filters: Optional[dict] = None,
@@ -600,7 +602,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         properties = self._get_current_properties(index)
         properties.append("_additional {id, certainty, vector}")
 
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
+        if self.similarity=="cosine": self.normalize_embedding(query_emb)
+        
+        query_emb = query_emb.reshape(1, -1).astype(np.float32)                
+        
         query_string = {
             "vector" : query_emb
         }
@@ -680,6 +685,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()")
             for doc, emb in zip(document_batch, embeddings):
                 # Using update method to only update the embeddings, other properties will be in tact
+                if self.similarity=="cosine": self.normalize_embedding(emb)
                 self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
