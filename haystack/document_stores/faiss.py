@@ -8,7 +8,6 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm import tqdm
-from scipy.special import expit
 
 try:
     import faiss
@@ -100,7 +99,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             progress_bar=progress_bar
         )
 
-        if similarity == "dot_product" or similarity == 'cosine':
+        if similarity in ("dot_product", "cosine"):
             self.similarity = similarity
             self.metric_type = faiss.METRIC_INNER_PRODUCT
         elif similarity == "l2":
@@ -199,8 +198,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                     embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                     embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                    if self.similarity == 'cosine':
-                        faiss.normalize_L2(embeddings_to_index)
+                    if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
 
                     self.faiss_indexes[index].add(embeddings_to_index)
 
@@ -279,8 +277,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                if self.similarity == 'cosine':
-                    faiss.normalize_L2(embeddings_to_index)
+                if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
 
                 self.faiss_indexes[index].add(embeddings_to_index)
 
@@ -454,8 +451,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
-        if self.similarity == 'cosine':
-            faiss.normalize_L2(query_emb)
+        if self.similarity=="cosine": self.normalize_embedding(query_emb)
 
         score_matrix, vector_id_matrix = self.faiss_indexes[index].search(query_emb, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
@@ -466,10 +462,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            if self.similarity == 'cosine':
-                doc.score = (raw_score + 1) / 2
-            else:
-                doc.score = float(expit(np.asarray(raw_score / 100)))
+            doc.score = self.finalize_raw_score(raw_score,self.similarity)
+
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
 
