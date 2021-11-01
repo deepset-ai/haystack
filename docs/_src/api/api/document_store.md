@@ -100,6 +100,16 @@ object, provided that they have the same product_id (to be found in Label.meta["
 :param TODO drop params
 - `aggregate_by_meta`: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
 
+<a name="base.BaseDocumentStore.normalize_embedding"></a>
+#### normalize\_embedding
+
+```python
+ | @njit
+ | normalize_embedding(emb: np.ndarray) -> None
+```
+
+Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix (2D array).
+
 <a name="base.BaseDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
 
@@ -1410,7 +1420,7 @@ Note that an overly large index_file_size value may cause failure to load a segm
 (From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
                    'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
-                   However, you can normalize your embeddings and use `dot_product` to get the same results.
+                   However, Haystack can normalize your embeddings and use `dot_product` to get the same results.
                    See https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)`floating`.
 - `index_type`: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
                    Some popular options:
