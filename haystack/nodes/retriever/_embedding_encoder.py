@@ -50,6 +50,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             retriever: 'EmbeddingRetriever'
     ):
 
+        device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
         self.embedding_model = Inferencer.load(
             retriever.embedding_model, revision=retriever.model_version, task_type="embeddings",
             extraction_strategy=retriever.pooling_strategy,
@@ -129,10 +130,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     ):
 
         self.progress_bar = retriever.progress_bar
-        if retriever.use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
+        self.device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
 
         self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
         self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)

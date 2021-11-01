@@ -10,6 +10,7 @@ from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, Ba
 
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -71,9 +72,9 @@ class TableReader(BaseReader):
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
         """
+        device, _ = initialize_device_settings(use_cuda=use_gpu)
         self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
-        if use_gpu and torch.cuda.is_available():
-                self.model.to("cuda")
+        self.model.to(device)
         if tokenizer is None:
             self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path)
         else:

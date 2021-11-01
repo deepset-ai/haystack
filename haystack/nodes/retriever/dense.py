@@ -115,10 +115,9 @@ class DensePassageRetriever(BaseRetriever):
 
         if devices is not None:
             self.devices = devices
-        elif use_gpu and torch.cuda.is_available():
-            self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
         else:
-            self.devices = [torch.device("cpu")]
+            device, _ = initialize_device_settings(use_cuda=use_gpu)
+            self.devices = [device]
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -537,7 +536,7 @@ class TableTextRetriever(BaseRetriever):
         if devices is not None:
             self.devices = devices
         else:
-            device, _ = initialize_device_settings(use_gpu)
+            device, _ = initialize_device_settings(use_cuda=use_gpu)
             self.devices = [device]
 
         if batch_size < len(self.devices):

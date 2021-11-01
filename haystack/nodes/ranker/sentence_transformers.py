@@ -7,6 +7,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from haystack.schema import Document
 from haystack.nodes.ranker import BaseRanker
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,8 @@ class SentenceTransformersRanker(BaseRanker):
             self,
             model_name_or_path: Union[str, Path],
             model_version: Optional[str] = None,
-            top_k: int = 10
+            top_k: int = 10,
+            use_gpu: bool = True,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -43,6 +45,7 @@ class SentenceTransformersRanker(BaseRanker):
         See https://huggingface.co/cross-encoder for full list of available models
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param top_k: The maximum number of documents to return
+        :param use_gpu: Whether to use GPU (if available).
         """
 
         # save init parameters to enable export of component config as YAML
@@ -53,7 +56,9 @@ class SentenceTransformersRanker(BaseRanker):
 
         self.top_k = top_k
 
+        device, _ = initialize_device_settings(use_cuda=use_gpu)
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
+        self.transformer_model.to(device)
         self.transformer_tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
         self.transformer_model.eval()
 
