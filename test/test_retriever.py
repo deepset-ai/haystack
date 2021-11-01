@@ -15,7 +15,7 @@ from haystack.nodes.retriever.sparse import ElasticsearchRetriever, Elasticsearc
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def docs():
     documents = [
         Document(
