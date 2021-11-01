@@ -200,7 +200,7 @@ class BaseDocumentStore(BaseComponent):
 
         # Single vec
         if len(emb.shape) == 1:
-            norm = np.linalg.norm(emb)
+            norm = np.sqrt(emb.dot(emb)) #faster than np.linalg.norm()
             if norm != 0.0:
                 emb /= norm
         # 2D matrix
