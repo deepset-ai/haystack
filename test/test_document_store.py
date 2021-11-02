@@ -45,7 +45,6 @@ def test_write_with_duplicate_doc_ids(document_store):
             id_hash_keys=["key1"]
         )
     ]
-    document_store.delete_documents()
     document_store.write_documents(documents, duplicate_documents="skip")
     assert len(document_store.get_all_documents()) == 1
     with pytest.raises(Exception):
@@ -69,7 +68,10 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
     with pytest.raises(DuplicateDocumentError):
         document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="fail")
 
-    # weaviate document store already replaced the ids in documents with uuids. We need to undo that for this test:
+    # Weaviate manipulates document objects in-place when writing them to an index.
+    # It generates a uuid based on the provided id and the index name where the document is added to.
+    # We need to get rid of these generated uuids for this test and therefore reset the document objects.
+    # As a result, the documents will receive a fresh uuid based on their id_hash_keys and a different index name.
     if isinstance(document_store, WeaviateDocumentStore):
         documents = [
             Document(
@@ -257,6 +259,7 @@ def test_document_with_embeddings(document_store):
     assert len(document_store.get_all_documents(index="haystack_test_one")) == 4
 
     if not isinstance(document_store, WeaviateDocumentStore):
+        # weaviate is excluded because it would return dummy vectors instead of None
         documents_without_embedding = document_store.get_all_documents(index="haystack_test_one", return_embedding=False)
         assert documents_without_embedding[0].embedding is None
 
@@ -469,17 +472,18 @@ def test_delete_documents_with_filters(document_store_with_docs):
     assert len(documents) == 1
     assert documents[0].meta["meta_field"] == "test3"
 
-    
+
 def test_delete_documents_by_id(document_store_with_docs):
-    doc_ids = [doc.id for doc in document_store_with_docs.get_all_documents()]
-    assert len(doc_ids) == 3
-    docs_to_delete = doc_ids[0:2]
+    docs_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test2"]})
+    docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test3"]})
 
-    document_store_with_docs.delete_documents(ids=docs_to_delete)
+    document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete])
+    all_docs_left = document_store_with_docs.get_all_documents()
+    assert len(all_docs_left) == 1
+    assert all_docs_left[0].meta["meta_field"] == "test3"
 
-    documents = document_store_with_docs.get_all_documents()
-    assert len(documents) == 1
-    assert documents[0].id == doc_ids[2]
+    all_ids_left = [doc.id for doc in all_docs_left]
+    assert all(doc.id in all_ids_left for doc in docs_not_to_delete)
 
 
 def test_delete_documents_by_id_with_filters(document_store_with_docs):
@@ -491,19 +495,6 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
     all_docs_left = document_store_with_docs.get_all_documents()
     assert len(all_docs_left) == 2
     assert all(doc.meta["meta_field"] != "test1" for doc in all_docs_left)
-
-    all_ids_left = [doc.id for doc in all_docs_left]
-    assert all(doc.id in all_ids_left for doc in docs_not_to_delete)
-
-    
-def test_delete_documents_by_id(document_store_with_docs):
-    docs_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test2"]})
-    docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test3"]})
-
-    document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete])
-    all_docs_left = document_store_with_docs.get_all_documents()
-    assert len(all_docs_left) == 1
-    assert all_docs_left[0].meta["meta_field"] == "test3"
 
     all_ids_left = [doc.id for doc in all_docs_left]
     assert all(doc.id in all_ids_left for doc in docs_not_to_delete)

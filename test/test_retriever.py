@@ -172,6 +172,8 @@ def test_dpr_embedding(document_store, retriever, docs):
 @pytest.mark.vector_dim(128)
 def test_retribert_embedding(document_store, retriever, docs):
     if isinstance(document_store, WeaviateDocumentStore):
+        # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
+        # We need 128 here and therefore initialize a new WeaviateDocumentStore.
         document_store = WeaviateDocumentStore(
             weaviate_url="http://localhost:8080",
             index="haystack_test",
