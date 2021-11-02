@@ -14,9 +14,9 @@ scipy>=1.3.2
 sklearn
 # Metrics or logging related
 seqeval
-mlflow<=1.10.2
+mlflow<=1.13.1
 # huggingface repository
-transformers==4.12.2
+transformers==4.10.2
 # pickle extension for (de-)serialization
 dill
 # Inference with ONNX models. Install onnxruntime-gpu for Inference on GPUs
