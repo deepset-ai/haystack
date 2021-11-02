@@ -69,6 +69,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default.
+                           'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
                            See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html

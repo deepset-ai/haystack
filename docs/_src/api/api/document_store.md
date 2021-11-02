@@ -200,7 +200,7 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
                      If set to 'wait_for', continue only after changes are visible (slow, but safe).
                      If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
                      More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
-- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `timeout`: Number of seconds after which an ElasticSearch request times out.
 - `return_embedding`: To return document embedding
@@ -1419,9 +1419,7 @@ As a rule of thumb, we would see a 30% ~ 50% increase in the search performance 
 Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
 (From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
-                   'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
-                   However, Haystack can normalize your embeddings and use `dot_product` to get the same results.
-                   See https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)`floating`.
+                   'cosine' is recommended for Sentence Transformers.
 - `index_type`: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
                    Some popular options:
                    - FLAT (default): Exact method, slow
@@ -1712,6 +1710,7 @@ The current implementation is not supporting the storage of labels, so you canno
                    If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default.
+                   'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                    Currently, HSNW is only supported.
                    See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
