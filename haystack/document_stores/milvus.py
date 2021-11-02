@@ -70,9 +70,7 @@ class MilvusDocumentStore(SQLDocumentStore):
          Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
          (From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
-                           'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
-                           However, Haystack can normalize your embeddings and use `dot_product` to get the same results.
-                           See https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)#floating.
+                           'cosine' is recommended for Sentence Transformers.
         :param index_type: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
                            Some popular options:
                            - FLAT (default): Exact method, slow
@@ -213,7 +211,8 @@ class MilvusDocumentStore(SQLDocumentStore):
                     for doc in document_batch:
                         doc_ids.append(doc.id)
                         if isinstance(doc.embedding, np.ndarray):
-                            if self.similarity=="cosine": self.normalize_embedding(doc.embedding)
+                            if self.similarity=="cosine":
+                                self.normalize_embedding(doc.embedding)
                             embeddings.append(doc.embedding.tolist())
                         elif isinstance(doc.embedding, list):
                             if self.similarity=="cosine":
