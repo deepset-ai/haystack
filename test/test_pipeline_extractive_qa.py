@@ -5,7 +5,7 @@ from haystack.pipeline import (
     ExtractiveQAPipeline
 )
 
-from haystack.schema import Answer
+from haystack.schema import Answer, Document, Label, MultiLabel, Span
 
 
 @pytest.mark.slow
@@ -98,3 +98,14 @@ def test_extractive_qa_answers_with_translator(
     assert (
         prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     )
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+def test_extractive_qa_eval(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    prediction = pipeline.eval(query="Who lives in Berlin?", params={"Retriever": {"top_k": 5}}, 
+    labels=MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+        document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), is_correct_answer=True, is_correct_document=True, id="my_id", origin="gold-label")]))
+
+    assert prediction["Reader"].loc[0]["answer"] in prediction["Reader"].loc[0]["gold_answers"]
+    assert prediction["Retriever"].loc[0]["id"] in prediction["Retriever"].loc[0]["gold_document_ids"]
