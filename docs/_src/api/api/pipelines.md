@@ -158,6 +158,34 @@ Runs the pipeline, one node at a time.
               they received and the output they generated. All debug information can 
               then be found in the dict returned by this method under the key "_debug"
 
+<a name="base.Pipeline.eval"></a>
+#### eval
+
+```python
+ | eval(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug_logs: Optional[bool] = None)
+```
+
+Runs the pipeline, one node at a time.
+
+**Arguments**:
+
+- `query`: The search query (for query pipelines only)
+- `file_paths`: The files to index (for indexing pipelines only)
+- `labels`: 
+- `documents`: 
+- `meta`: 
+- `params`: Dictionary of parameters to be dispatched to the nodes.
+            If you want to pass a param to all nodes, you can just use: {"top_k":10}
+            If you want to pass it to targeted nodes, you can do:
+            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+            about their execution. By default these include the input parameters
+            they received, the output they generated, and eventual logs (of any severity)
+            emitted. All debug information can then be found in the dict returned
+            by this method under the key "_debug"
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                regardless of their severity and of the existing logger's settings.
+
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
 
@@ -519,6 +547,21 @@ Pipeline for Extractive Question Answering.
               they received and the output they generated. 
               All debug information can then be found in the dict returned
               by this method under the key "_debug"
+
+<a name="standard_pipelines.ExtractiveQAPipeline.eval"></a>
+#### eval
+
+```python
+ | eval(query: str, params: Optional[dict] = None, debug_logs: Optional[bool] = None)
+```
+
+**Arguments**:
+
+- `query`: The search query string.
+- `params`: Params for the `retriever` and `reader`. For instance,
+               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `debug_logs`: Whether all the logs of the node should be printed in the console,
+                   regardless of their severity and of the existing logger's settings.
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline Objects
