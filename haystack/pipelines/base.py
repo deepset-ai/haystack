@@ -1,4 +1,4 @@
-from typing import List, Optional, Any
+from typing import Dict, List, Optional, Any
 
 import copy
 import inspect
@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import networkx as nx
+from pandas.core.frame import DataFrame
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
@@ -371,7 +372,7 @@ class Pipeline(BasePipeline):
             meta: Optional[dict] = None,
             params: Optional[dict] = None,
             debug_logs: Optional[bool] = None
-        ):
+        ) -> Dict[str, DataFrame]:
             """
                 Runs the pipeline, one node at a time.
 
@@ -418,6 +419,15 @@ class Pipeline(BasePipeline):
                     eval_result[node_name] = df
 
             return eval_result
+
+    def calculate_metrics(self, eval_result: Dict[str,DataFrame]) -> Dict[str, float]:
+        reader_df = eval_result["Reader"]
+        first_answers = reader_df[reader_df["rank"] == 1]
+        first_correct_answers = first_answers[first_answers.apply(lambda x: x["answer"] in x["gold_answers"], axis=1)]
+
+        return {
+            "MatchInTop1": len(first_correct_answers) / len(first_answers) if len(first_answers) > 0 else 0.0
+        }
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)

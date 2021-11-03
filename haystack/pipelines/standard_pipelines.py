@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import List, Optional, Dict
 from functools import wraps
 
+from pandas.core.frame import DataFrame
+
 from haystack.schema import Document, MultiLabel
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.nodes.other import Docs2Answers
@@ -117,7 +119,8 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         output = self.pipeline.eval(query=query, params=params, debug_logs=debug_logs, labels=labels)
         return output
 
-
+    def calculate_metrics(self, eval_result: Dict[str, DataFrame]) -> Dict[str, float]:
+        return self.pipeline.calculate_metrics(eval_result=eval_result)
 
 class DocumentSearchPipeline(BaseStandardPipeline):
     """
