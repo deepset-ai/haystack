@@ -402,8 +402,8 @@ class Pipeline(BasePipeline):
                     df["query"] = query
                     df["rank"] = np.arange(1, len(df)+1)
                     if labels is not None:
-                        df["gold_answers"] = df.apply(lambda x: [label.answer.answer for label in labels.labels], axis=1)
-                        df["gold_offsets_in_documents"] = df.apply(lambda x: [label.answer.offsets_in_document for label in labels.labels], axis=1)
+                        df["gold_answers"] = df.apply(lambda x: [label.answer.answer for label in labels.labels if label.answer is not None], axis=1)
+                        df["gold_offsets_in_documents"] = df.apply(lambda x: [label.answer.offsets_in_document for label in labels.labels if label.answer is not None], axis=1)
                     eval_result[node_name] = df
 
                 documents = output.get("documents", None)
