@@ -165,7 +165,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug_logs: Optional[bool] = None)
+ | eval(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug_logs: Optional[bool] = None) -> Dict[str, DataFrame]
 ```
 
 Runs the pipeline, one node at a time.
