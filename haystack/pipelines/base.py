@@ -5,6 +5,8 @@ import inspect
 import logging
 import os
 import traceback
+import numpy as np
+import pandas as pd
 from pathlib import Path
 import networkx as nx
 import yaml
@@ -365,6 +367,61 @@ class Pipeline(BasePipeline):
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
+
+    def eval(  # type: ignore
+            self,
+            query: Optional[str] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[MultiLabel] = None,
+            documents: Optional[List[Document]] = None,
+            meta: Optional[dict] = None,
+            params: Optional[dict] = None,
+            debug_logs: Optional[bool] = None
+        ):
+            """
+                Runs the pipeline, one node at a time.
+
+                :param query: The search query (for query pipelines only)
+                :param file_paths: The files to index (for indexing pipelines only)
+                :param labels: 
+                :param documents:
+                :param meta:
+                :param params: Dictionary of parameters to be dispatched to the nodes. 
+                            If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                            If you want to pass it to targeted nodes, you can do:
+                            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+                :param debug: Whether the pipeline should instruct nodes to collect debug information
+                            about their execution. By default these include the input parameters
+                            they received, the output they generated, and eventual logs (of any severity)
+                            emitted. All debug information can then be found in the dict returned
+                            by this method under the key "_debug"
+                :param debug_logs: Whether all the logs of the node should be printed in the console,
+                                regardless of their severity and of the existing logger's settings.
+            """
+            predictions = self.run(query=query, file_paths=file_paths, labels=labels, 
+                documents=documents, meta=meta, params=params, debug_logs=debug_logs, debug=True)
+
+            eval_result = {}
+            for node_name in predictions["_debug"].keys():
+                output = predictions["_debug"][node_name]["output"]
+                answer_cols = ["answer", "document_id", "offsets_in_document"]
+                document_cols = ["content", "id"]
+                answers = output.get("answers", None)
+                if answers is not None:
+                    df = pd.DataFrame(answers, columns=answer_cols)
+                    df["node"] = node_name
+                    df["query"] = query
+                    df["rank"] = np.arange(1, len(df)+1)
+                    eval_result[node_name] = df
+                documents = output.get("documents", None)
+                if documents is not None:
+                    df = pd.DataFrame(documents, columns=document_cols)
+                    df["node"] = node_name
+                    df["query"] = query
+                    df["rank"] = np.arange(1, len(df)+1)
+                    eval_result[node_name] = df
+
+            return eval_result
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
