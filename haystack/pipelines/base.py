@@ -20,7 +20,7 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack.schema import MultiLabel, Document
+from haystack.schema import Label, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
 
@@ -390,11 +390,6 @@ class Pipeline(BasePipeline):
                             If you want to pass a param to all nodes, you can just use: {"top_k":10}
                             If you want to pass it to targeted nodes, you can do:
                             {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-                :param debug: Whether the pipeline should instruct nodes to collect debug information
-                            about their execution. By default these include the input parameters
-                            they received, the output they generated, and eventual logs (of any severity)
-                            emitted. All debug information can then be found in the dict returned
-                            by this method under the key "_debug"
                 :param debug_logs: Whether all the logs of the node should be printed in the console,
                                 regardless of their severity and of the existing logger's settings.
             """
@@ -412,13 +407,20 @@ class Pipeline(BasePipeline):
                     df["node"] = node_name
                     df["query"] = query
                     df["rank"] = np.arange(1, len(df)+1)
+                    if labels is not None:
+                        df["gold_answers"] = df.apply(lambda x: [label.answer.answer for label in labels.labels], axis=1)
+                        df["gold_offsets_in_documents"] = df.apply(lambda x: [label.answer.offsets_in_document for label in labels.labels], axis=1)
                     eval_result[node_name] = df
+
                 documents = output.get("documents", None)
                 if documents is not None:
                     df = pd.DataFrame(documents, columns=document_cols)
                     df["node"] = node_name
                     df["query"] = query
                     df["rank"] = np.arange(1, len(df)+1)
+                    if labels is not None:
+                        df["gold_document_ids"] = df.apply(lambda x: [label.document.id for label in labels.labels], axis=1)
+                        df["gold_document_contents"] = df.apply(lambda x: [label.document.content for label in labels.labels], axis=1)
                     eval_result[node_name] = df
 
             return eval_result

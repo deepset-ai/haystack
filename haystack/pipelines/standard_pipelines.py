@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Dict
 from functools import wraps
 
-from haystack.schema import Document
+from haystack.schema import Document, MultiLabel
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.nodes.other import Docs2Answers
 from haystack.nodes.reader import BaseReader
@@ -107,15 +107,17 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
     def eval(self,
             query: str,
             params: Optional[dict] = None,
-            debug_logs: Optional[bool] = None):
+            debug_logs: Optional[bool] = None,
+            labels: Optional[MultiLabel] = None):
         """
         :param query: The search query string.
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
         :param debug_logs: Whether all the logs of the node should be printed in the console,
                            regardless of their severity and of the existing logger's settings.
+        :param labels:
         """
-        output = self.pipeline.eval(query=query, params=params, debug_logs=debug_logs)
+        output = self.pipeline.eval(query=query, params=params, debug_logs=debug_logs, labels=labels)
         return output
 
 
