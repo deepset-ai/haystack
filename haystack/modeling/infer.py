@@ -32,14 +32,14 @@ class Inferencer:
         model: AdaptiveModel,
         processor: Processor,
         task_type: Optional[str],
-        batch_size: int =4,
-        gpu: bool =False,
-        name: Optional[str] =None,
-        return_class_probs: bool=False,
+        batch_size: int = 4,
+        gpu: bool = False,
+        name: Optional[str] = None,
+        return_class_probs: bool = False,
         extraction_strategy: Optional[str] = None,
         extraction_layer: Optional[int] = None,
-        num_processes: Optional[int] =None,
-        disable_tqdm: bool =False
+        num_processes: Optional[int] = None,
+        disable_tqdm: bool = False
     ):
         """
         Initializes Inferencer from an AdaptiveModel and a Processor instance.

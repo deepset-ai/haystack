@@ -64,8 +64,8 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(model_name_or_path=model_name_or_path)
-        device, _ = initialize_device_settings(use_cuda=use_gpu)
-        device = 0 if device.type == "cuda" else -1
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        device = 0 if self.devices[0].type == "cuda" else -1
 
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
@@ -73,7 +73,6 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         self.query_classification_pipeline = TextClassificationPipeline(
             model=model, tokenizer=tokenizer, device=device
         )
-        x = 1
 
     def run(self, query):
         is_question: bool = (

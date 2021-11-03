@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy
 import torch
+from torch.nn import DataParallel
 from haystack.modeling.utils import initialize_device_settings
 from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, \
     AutoModelForSeq2SeqLM, PreTrainedTokenizer, BatchEncoding
@@ -78,6 +79,7 @@ class RAGenerator(BaseGenerator):
             embed_title: bool = True,
             prefix: Optional[str] = None,
             use_gpu: bool = True,
+            devices: Optional[List[Union[int, str, torch.device]]] = None
     ):
         """
         Load a RAG model from Transformers along with passage_embedding_model.
@@ -95,7 +97,9 @@ class RAGenerator(BaseGenerator):
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param embed_title: Embedded the title of passage while generating embedding
         :param prefix: The prefix used by the generator's tokenizer.
-        :param use_gpu: Whether to use GPU (if available)
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -120,7 +124,10 @@ class RAGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
+        if devices is not None:
+            self.devices = devices
+        else:
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
 
@@ -130,7 +137,11 @@ class RAGenerator(BaseGenerator):
             # Also refer refer https://github.com/huggingface/transformers/issues/7829
             # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
         else:
-            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version).to(self.device)
+            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version)
+            self.model.to(str(self.devices[0]))
+
+            if len(self.devices) > 1:
+                self.model = DataParallel(self.model, device_ids=self.devices)
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
     # Refer section 2.3 of https://arxiv.org/abs/2005.11401
@@ -351,6 +362,7 @@ class Seq2SeqGenerator(BaseGenerator):
             min_length: int = 2,
             num_beams: int = 8,
             use_gpu: bool = True,
+            devices: Optional[List[Union[int, str, torch.device]]] = None
     ):
         """
         :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
@@ -363,7 +375,9 @@ class Seq2SeqGenerator(BaseGenerator):
         :param max_length: Maximum length of generated text
         :param min_length: Minimum length of generated text
         :param num_beams: Number of beams for beam search. 1 means no beam search.
-        :param use_gpu: Whether to use GPU (if available)
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
 
         self.model_name_or_path = model_name_or_path
@@ -377,13 +391,21 @@ class Seq2SeqGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
+        if devices is not None:
+            self.devices = devices
+        else:
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
 
         Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path).to(self.device)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.model.to(str(self.devices[0]))
         self.model.eval()
+
+        if len(self.devices) > 1:
+            self.model = DataParallel(self.model, device_ids=self.devices)
+
 
     @classmethod
     def _register_converters(cls, model_name_or_path: str, custom_converter: Optional[Callable]):

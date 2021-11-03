@@ -118,6 +118,7 @@ class FARMReader(BaseReader):
             duplicate_filtering=duplicate_filtering, proxies=proxies, local_files_only=local_files_only,
             force_download=force_download, use_confidence_scores=use_confidence_scores, **kwargs
         )
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         self.return_no_answers = return_no_answer
         self.top_k = top_k
@@ -145,7 +146,6 @@ class FARMReader(BaseReader):
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
-        self.device, _ = initialize_device_settings(use_cuda=self.use_gpu)
         self.use_confidence_scores = use_confidence_scores
 
     def train(

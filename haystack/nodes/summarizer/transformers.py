@@ -89,8 +89,8 @@ class TransformersSummarizer(BaseSummarizer):
             separator_for_single_summary=separator_for_single_summary, generate_single_summary=generate_single_summary,
         )
 
-        device, _ = initialize_device_settings(use_cuda=use_gpu)
-        device = 0 if device.type == "cuda" else -1
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        device = 0 if self.devices[0].type == "cuda" else -1
         # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
         if tokenizer is None:
             tokenizer = model_name_or_path

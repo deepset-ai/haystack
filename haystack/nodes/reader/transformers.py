@@ -72,8 +72,8 @@ class TransformersReader(BaseReader):
             top_k_per_candidate=top_k_per_candidate, return_no_answers=return_no_answers, max_seq_len=max_seq_len,
         )
 
-        device, _ = initialize_device_settings(use_cuda=use_gpu)
-        device = 0 if device.type == "cuda" else -1
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        device = 0 if self.devices[0].type == "cuda" else -1
         self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=device,
                               revision=model_version)
         self.context_window_size = context_window_size

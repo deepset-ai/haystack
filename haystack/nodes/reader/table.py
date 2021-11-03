@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple, Dict
 import logging
 from statistics import mean
 import torch
+from torch.nn import DataParallel
 import numpy as np
 import pandas as pd
 from quantulum3 import parser
@@ -50,7 +51,7 @@ class TableReader(BaseReader):
             use_gpu: bool = True,
             top_k: int = 10,
             max_seq_len: int = 256,
-
+            devices: Optional[List[Union[int, str, torch.device]]] = None
     ):
         """
         Load a TableQA model from Transformers.
@@ -66,15 +67,20 @@ class TableReader(BaseReader):
         See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
-        :param use_gpu: Whether to make use of a GPU (if available).
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param top_k: The maximum number of answers to return
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
-        device, _ = initialize_device_settings(use_cuda=use_gpu)
+        if devices is not None:
+            self.devices = devices
+        else:
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
         self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
-        self.model.to(device)
+        self.model.to(str(self.devices[0]))
         if tokenizer is None:
             self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path)
         else:
@@ -82,6 +88,9 @@ class TableReader(BaseReader):
         self.top_k = top_k
         self.max_seq_len = max_seq_len
         self.return_no_answers = False
+
+        if len(self.devices) > 1:
+            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """

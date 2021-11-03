@@ -8,6 +8,7 @@ from abc import abstractmethod
 import numpy as np
 from tqdm.auto import tqdm
 import torch
+from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 from transformers import AutoTokenizer, AutoModel
 
@@ -50,7 +51,6 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             retriever: 'EmbeddingRetriever'
     ):
 
-        device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
         self.embedding_model = Inferencer.load(
             retriever.embedding_model, revision=retriever.model_version, task_type="embeddings",
             extraction_strategy=retriever.pooling_strategy,
@@ -97,8 +97,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                               "For details see https://github.com/UKPLab/sentence-transformers ")
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
-        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=device)
+        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=str(retriever.devices[0]))
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
         if document_store.similarity != "cosine":
@@ -106,6 +105,9 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"You are using a Sentence Transformer with the {document_store.similarity} function. "
                 f"We recommend using cosine instead. "
                 f"This can be set when initializing the DocumentStore")
+
+        if len(retriever.devices) > 1:
+            self.embedding_model = DataParallel(self.embedding_model, device_ids=retriever.devices)
 
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
         # texts can be a list of strings or a list of [title, text]
@@ -130,10 +132,12 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     ):
 
         self.progress_bar = retriever.progress_bar
-        self.device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
 
         self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
-        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)
+        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(str(retriever.devices[0]))
+
+        if len(retriever.devices) > 1:
+            self.embedding_model = DataParallel(self.embedding_model, device_ids=retriever.devices)
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 

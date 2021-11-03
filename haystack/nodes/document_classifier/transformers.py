@@ -86,8 +86,8 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
             logger.warning(f'Provided labels {labels} will be ignored for task text-classification. Set task to '
                            f'zero-shot-classification to use labels.')
 
-        device, _ = initialize_device_settings(use_cuda=use_gpu)
-        device = 0 if device.type == "cuda" else -1
+        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        device = 0 if devices[0].type == "cuda" else -1
 
         if tokenizer is None:
             tokenizer = model_name_or_path
