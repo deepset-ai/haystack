@@ -19,7 +19,12 @@ from haystack.modeling.logger import MLFlowLogger
 from haystack.modeling.model.predictions import QAPred
 
 
+# Configure the logger with a default on DEBUG and a handler in INFO
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 
 class Inferencer:

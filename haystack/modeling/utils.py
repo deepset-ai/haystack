@@ -15,7 +15,12 @@ from torch import multiprocessing as mp
 from haystack.modeling.visual import WORKER_M, WORKER_F, WORKER_X
 
 
+# Configure the logger with a default on DEBUG and a handler in INFO
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 
 class GracefulKiller:
