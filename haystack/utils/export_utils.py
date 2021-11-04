@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 FIELDS_TO_KEEP_BY_LEVEL = {
-    "minimal": ["answer", "context"],
+    "minimum": ["answer", "context"],
     "medium": ["answer", "context", "score"]
 }
 
@@ -42,7 +42,11 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     if details in FIELDS_TO_KEEP_BY_LEVEL.keys():
         for ans in answers:
             filtered_answers.append({k: getattr(ans, k) for k in FIELDS_TO_KEEP_BY_LEVEL[details]})
-    else:  
+    elif details == "all":  
+        filtered_answers = answers
+    else:
+        logging.warn(f"print_answers received details='{details}', which was not understood. "
+                     "Valid values are 'minimum', 'medium', and 'all'. Using 'all'.")
         filtered_answers = answers
 
     # Shorten long text fields
