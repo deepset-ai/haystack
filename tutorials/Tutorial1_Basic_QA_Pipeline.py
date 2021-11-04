@@ -158,6 +158,9 @@ def tutorial1_basic_qa_pipeline():
     #     'root_node': 'Query'
     # }
 
+    # Note that the documents contained in the above object are the documents filtered by the Retriever from
+    # the document store. Although the answers were extracted from these documents, it's possible that many
+    # answers were taken from a single one of them, and that some of the documents were not source of any answer.
 
     # Or use a util to simplify the output
     # Change `minimal` to `medium` or `all` to raise the level of detail
