@@ -21,7 +21,7 @@ def print_answers(results: dict, details: str = "all"):
     """
     Utilitiy function to print results of Haystack pipelines
     :param results: Results from a pipeline
-    :param details: One of ["minimum", "medium", "all]. Defining the level of details to print.
+    :param details: One of ["minimum", "medium", "all"]. Defining the level of details to print.
     :return: None
     """
     # TODO: unify the output format of Generator and Reader so that this function doesn't have the try/except
@@ -47,6 +47,8 @@ def print_answers(results: dict, details: str = "all"):
     except:
         if details == "minimal":
             print(f"Query: {results['query']}")
+            if not "answers" in results.keys():
+                print("No answers!")
             for a in results["answers"]:
                 print(f"Answer: {a['answer']}")
         else:
@@ -68,6 +70,29 @@ def print_documents(results: dict, max_text_len: Optional[int] = None, print_met
         if print_meta:
             results["meta"] = d.meta
         pp.pprint(results)
+
+
+def print_questions(result: dict):
+    """
+    Utility to print the output of a question generating pipeline.
+    """
+    if "generated_questions" in result.keys():        
+        print("\nGenerated questions:")
+        for result in result["generated_questions"]:
+            for question in result["questions"]:
+                print(f" - {question}")
+
+    elif "results" in result.keys():
+        print("\nGenerated pairs:")
+        for pair in result["results"]:
+            print(f" - Q:{pair['query']}")
+            for answer in pair["answers"]:
+                print(f"      A: {answer.answer}")
+
+    else:
+        print("This object does not seem to be the output " +
+              "of a question generating pipeline. Try `print_answers` " +
+              "or `print_documents`.")
 
 
 def export_answers_to_csv(agg_results: list, output_file):
