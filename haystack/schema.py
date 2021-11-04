@@ -262,7 +262,7 @@ class Answer:
         return self.score < other.score
 
     def __str__(self):
-        return f"answer: {self.answer} \nscore: {self.score} \ncontext: {self.context}"
+        return f" answer: {self.answer} \nscore: {self.score} \ncontext: {self.context}"
 
     def to_dict(self):
         return asdict(self)
