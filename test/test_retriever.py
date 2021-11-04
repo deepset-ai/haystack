@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 from elasticsearch import Elasticsearch
+
+from haystack.document_stores import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
@@ -13,32 +15,35 @@ from haystack.nodes.retriever.sparse import ElasticsearchRetriever, Elasticsearc
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 
-DOCS = [
-    Document(
-        content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
-        meta={"name": "0"},
-        id="1",
-    ),
-    Document(
-        content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
-        id="2",
-    ),
-    Document(
-        content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
-        meta={"name": "1"},
-        id="3",
-    ),
-    Document(
-        content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
-        meta={"name": "2"},
-        id="4",
-    ),
-    Document(
-        content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
-        meta={},
-        id="5",
-    ),
-]
+@pytest.fixture()
+def docs():
+    documents = [
+        Document(
+            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
+            meta={"name": "0"},
+            id="1",
+        ),
+        Document(
+            content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
+            id="2",
+        ),
+        Document(
+            content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
+            meta={"name": "1"},
+            id="3",
+        ),
+        Document(
+            content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
+            meta={"name": "2"},
+            id="4",
+        ),
+        Document(
+            content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
+            meta={},
+            id="5",
+        ),
+    ]
+    return documents
 
 #TODO check if we this works with only "memory" arg
 @pytest.mark.parametrize(
@@ -142,10 +147,10 @@ def test_elasticsearch_custom_query():
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_dpr_embedding(document_store, retriever):
+def test_dpr_embedding(document_store, retriever, docs):
 
     document_store.return_embedding = True
-    document_store.write_documents(DOCS)
+    document_store.write_documents(docs)
     document_store.update_embeddings(retriever=retriever)
     time.sleep(1)
 
@@ -165,10 +170,19 @@ def test_dpr_embedding(document_store, retriever):
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.vector_dim(128)
-def test_retribert_embedding(document_store, retriever):
-
+def test_retribert_embedding(document_store, retriever, docs):
+    if isinstance(document_store, WeaviateDocumentStore):
+        # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
+        # We need 128 here and therefore initialize a new WeaviateDocumentStore.
+        document_store = WeaviateDocumentStore(
+            weaviate_url="http://localhost:8080",
+            index="haystack_test",
+            embedding_dim=128
+        )
+        document_store.weaviate_client.schema.delete_all()
+        document_store._create_schema_and_index_if_not_exist()
     document_store.return_embedding = True
-    document_store.write_documents(DOCS)
+    document_store.write_documents(docs)
     document_store.update_embeddings(retriever=retriever)
     time.sleep(1)
 
@@ -184,10 +198,10 @@ def test_retribert_embedding(document_store, retriever):
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.vector_dim(512)
-def test_table_text_retriever_embedding(document_store, retriever):
+def test_table_text_retriever_embedding(document_store, retriever, docs):
 
     document_store.return_embedding = True
-    document_store.write_documents(DOCS)
+    document_store.write_documents(docs)
     table_data = {
         "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
         "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
