@@ -134,7 +134,36 @@ def tutorial1_basic_qa_pipeline():
     # prediction = pipe.run(query="Who created the Dothraki vocabulary?", params={"Reader": {"top_k": 5}})
     # prediction = pipe.run(query="Who is the sister of Sansa?", params={"Reader": {"top_k": 5}})
 
+    # Now you can either print the object directly
+    print("\n\nRaw object:\n")
+    from pprint import pprint
+    pprint(prediction)
+
+    # Sample output:    
+    # {
+    #     'answers': [ <Answer: answer='Eddard', type='extractive', score=0.9919578731060028, ... >,
+    #                  <Answer: answer='Ned', type='extractive', score=0.9767240881919861, ... >,
+    #                  <Answer: answer='Lord Eddard Stark', type='extractive', score=0.8930400013923645, ... >,
+    #                  <Answer: answer='Joffrey', type='extractive', score=0.6753827035427094, ... >,
+    #                  <Answer: answer='Robb', type='extractive', score=0.6665983200073242, ... >],
+    #     'documents': [ <Document: content='\n===In the Riverlands===\nThe Stark army ... >,
+    #                    <Document: content='\n===On the Kingsroad===\nCity Watchmen ... >,
+    #                    <Document: content='\n===\'\'A Game of Thrones\'\'===\nSansa ... >,
+    #                    <Document: content='\n===Season 2===\nGendry travels North with ... >,
+    #                    <Document: content='\n====Season 1====\nArya accompanies her ... >],
+    #     'no_ans_gap':  11.688868522644043,
+    #     'node_id': 'Reader',
+    #     'params': {'Reader': {'top_k': 5}, 'Retriever': {'top_k': 5}},
+    #     'query': 'Who is the father of Arya Stark?',
+    #     'root_node': 'Query'
+    # }
+
+
+    # Or use a util to simplify the output
+    # Change `minimal` to `medium` or `all` to raise the level of detail
+    print("\n\nSimplified output:\n")
     print_answers(prediction, details="minimal")
+
 
 
 if __name__ == "__main__":
