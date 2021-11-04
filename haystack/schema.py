@@ -264,8 +264,11 @@ class Answer:
     def __str__(self):
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
-    def to_dict(self):
+    def __repr__(self):
         return f"<Answer {asdict(self)}>"
+
+    def to_dict(self):
+        return asdict(self)
 
     @classmethod
     def from_dict(cls, dict:dict):
