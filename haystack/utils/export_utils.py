@@ -21,7 +21,7 @@ def print_answers(results: dict, details: str = "all"):
     """
     Utilitiy function to print results of Haystack pipelines
     :param results: Results from a pipeline
-    :param details: One of ["minimum", "medium", "all"]. Defining the level of details to print.
+    :param details: One of "minimum", "medium", "all". Defining the level of details to print.
     :return: None
     """
     # TODO: unify the output format of Generator and Reader so that this function doesn't have the try/except
