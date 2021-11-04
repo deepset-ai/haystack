@@ -9,6 +9,7 @@ from haystack.utils.doc_store import (
     launch_milvus,
     launch_open_distro_es,
     launch_opensearch,
+    launch_weaviate,
     stop_opensearch,
     stop_service,
 )
