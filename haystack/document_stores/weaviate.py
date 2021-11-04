@@ -1,3 +1,6 @@
+import hashlib
+import re
+import uuid
 from typing import Dict, Generator, List, Optional, Union
 
 import logging
@@ -13,6 +16,7 @@ from weaviate import ObjectsBatchRequest
 
 
 logger = logging.getLogger(__name__)
+UUID_PATTERN = re.compile(r'^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$', re.IGNORECASE)
 
 
 class WeaviateDocumentStore(BaseDocumentStore):
@@ -24,7 +28,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
     Some of the key differences in contrast to FAISS & Milvus:
     1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
     2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
-    3. Has less variety of ANN algorithms, as of now only HNSW.  
+    3. Has less variety of ANN algorithms, as of now only HNSW.
+    4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
 
     Weaviate python client is used to connect to the server, more details are here
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -120,7 +125,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 f"Initial connection to Weaviate failed. Make sure you run Weaviate instance "
                 f"at `{weaviate_url}` and that it has finished the initial ramp up (can take > 30s)."
             )
-        self.index = index
+        self.index = self._sanitize_index_name(index)
         self.embedding_dim = embedding_dim
         self.content_field = content_field
         self.name_field = name_field
@@ -133,6 +138,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.duplicate_documents = duplicate_documents
 
         self._create_schema_and_index_if_not_exist(self.index)
+        self.uuid_format_warning_raised = False
+
+    def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
+        if index is None:
+            return None
+        elif "_" in index:
+            return ''.join(x.capitalize() for x in index.split('_'))
+        else:
+            return index[0].upper() + index[1:]
 
     def _create_schema_and_index_if_not_exist(
         self,
@@ -142,7 +156,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Create a new index (schema/class in Weaviate) for storing documents in case if an 
         index (schema) with the name doesn't exist already.
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
 
         if self.custom_schema:
             schema = self.custom_schema
@@ -239,7 +253,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         }
 
     def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
-        """Fetch a document by specifying its text id string"""
+        """Fetch a document by specifying its uuid string"""
         # Sample result dict from a get method
         '''{'class': 'Document',
          'creationTimeUnix': 1621075584724,
@@ -248,8 +262,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
           'name': 'name_5',
           'content': 'text_5'},
          'vector': []}'''
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
         document = None
+
+        id = self._sanitize_id(id=id, index=index)
+
         result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
         if result:
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
@@ -258,23 +275,40 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
                             batch_size: int = 10_000) -> List[Document]:
         """
-        Fetch documents by specifying a list of text id strings.
+        Fetch documents by specifying a list of uuid strings.
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
         documents = []
         #TODO: better implementation with multiple where filters instead of chatty call below?
         for id in ids:
+            id = self._sanitize_id(id=id, index=index)
             result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
             if result:
                 document = self._convert_weaviate_result_to_document(result, return_embedding=True)
                 documents.append(document)
         return documents
 
+    def _sanitize_id(self, id: str, index: Optional[str] = None) -> str:
+        """
+        Generate a valid uuid if the provided id is not in uuid format.
+        Two documents with the same provided id and index name will get the same uuid.
+        """
+        index = self._sanitize_index_name(index) or self.index
+        if not UUID_PATTERN.match(id):
+            hashed_id = hashlib.sha256((id+index).encode('utf-8')) #type: ignore
+            generated_uuid = str(uuid.UUID(hashed_id.hexdigest()[::2]))
+            if not self.uuid_format_warning_raised:
+                logger.warning(
+                    f"Document id {id} is not in uuid format. Such ids will be replaced by uuids, in this case {generated_uuid}.")
+                self.uuid_format_warning_raised = True
+            id = generated_uuid
+        return id
+
     def _get_current_properties(self, index: Optional[str] = None) -> List[str]:
         """
         Get all the existing properties in the schema.
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
         cur_properties = []
         for class_item in self.weaviate_client.schema.get()['classes']:
             if class_item['class'] == index:
@@ -309,7 +343,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         Updates the schema with a new property.
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
         property_dict = {
             "dataType": [
                 "string"
@@ -331,8 +365,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         Add new documents to the DocumentStore.
 
-        :param documents: List of `Dicts` or List of `Documents`. Passing an Embedding/Vector is mandatory in case weaviate is not
-                        configured with a module. If a module is configured, the embedding is automatically generated by Weaviate.
+        :param documents: List of `Dicts` or List of `Documents`. A dummy embedding vector for each document is automatically generated if it is not provided. The document id needs to be in uuid format. Otherwise a correctly formatted uuid will be automatically generated based on the provided id.
         :param index: index name for storing the docs and metadata
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param duplicate_documents: Handle duplicates document based on parameter options.
@@ -344,7 +377,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
         self._create_schema_and_index_if_not_exist(index)
         field_map = self._create_document_field_map()
 
@@ -361,9 +394,30 @@ class WeaviateDocumentStore(BaseDocumentStore):
         current_properties = self._get_current_properties(index)
 
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+
+        # Weaviate has strict requirements for what ids can be used.
+        # We check the id format and sanitize it if no uuid was provided.
+        # Duplicate document ids will be mapped to the same generated uuid.
+        for do in document_objects:
+            do.id = self._sanitize_id(id=do.id, index=index)
+
         document_objects = self._handle_duplicate_documents(documents=document_objects,
                                                             index=index,
                                                             duplicate_documents=duplicate_documents)
+
+        # Weaviate requires that documents contain a vector in order to be indexed. These lines add a
+        # dummy vector so that indexing can still happen
+        dummy_embed_warning_raised = False
+        for do in document_objects:
+            if do.embedding is None:
+                dummy_embedding = np.random.rand(self.embedding_dim).astype(np.float32)
+                do.embedding = dummy_embedding
+                if not dummy_embed_warning_raised:
+                    logger.warning("No embedding found in Document object being written into Weaviate. A dummy "
+                                 "embedding is being supplied so that indexing can still take place. This "
+                                 "embedding should be overwritten in order to perform vector similarity searches.")
+                    dummy_embed_warning_raised = True
+
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
@@ -417,11 +471,17 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         self.weaviate_client.data_object.update(meta, class_name=self.index, uuid=id)
 
+    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+        """
+        Return the number of embeddings in the document store, which is the same as the number of documents since every document has a default embedding
+        """
+        return self.get_document_count(filters=filters, index=index)
+
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         """
         Return the number of documents in the document store.
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
         doc_count = 0
         if filters:
             filter_dict = self._build_filter_clause(filters=filters)
@@ -457,7 +517,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
@@ -474,7 +534,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         Return all documents in a specific index in the document store
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
@@ -516,8 +576,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
 
-        if index is None:
-            index = self.index
+        index = self._sanitize_index_name(index) or self.index
 
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -546,7 +605,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
@@ -597,7 +656,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         if return_embedding is None:
             return_embedding = self.return_embedding
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
@@ -658,8 +717,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
-        if index is None:
-            index = self.index
+        index = self._sanitize_index_name(index) or self.index
 
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing WeaviateDocumentStore()")
@@ -718,7 +776,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
             have their ID in the list).
         :return: None
         """
-        index = index or self.index
+        index = self._sanitize_index_name(index) or self.index
+
+        # create index if it doesn't exist yet
+        self._create_schema_and_index_if_not_exist(index)
+
         if not filters and not ids:
             self.weaviate_client.schema.delete_class(index)
             self._create_schema_and_index_if_not_exist(index)
@@ -728,7 +790,3 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
             for doc in docs_to_delete:
                 self.weaviate_client.data_object.delete(doc.id)
-            
-
-
-

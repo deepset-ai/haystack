@@ -50,6 +50,20 @@ def launch_opensearch(sleep=15):
         time.sleep(sleep)
 
 
+def launch_weaviate(sleep=15):
+    # Start a Weaviate server via Docker
+
+    logger.info("Starting Weaviate ...")
+    status = subprocess.run(
+        ["docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.2"], shell=True
+    )
+    if status.returncode:
+        logger.warning("Tried to start Weaviate through Docker but this failed. "
+                       "It is likely that there is already an existing Weaviate instance running. ")
+    else:
+        time.sleep(sleep)
+
+
 def stop_opensearch():
     logger.info("Stopping OpenSearch...")
     status = subprocess.run(['docker stop opensearch'], shell=True)
