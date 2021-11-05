@@ -29,7 +29,7 @@ class BaseDocumentClassifier(BaseComponent):
     def predict(self, documents: List[Document]):
         pass
 
-    def run(self, query: str, documents: Union[List[dict], List[Document]]): # type: ignore
+    def run(self, documents: Union[List[dict], List[Document]]): # type: ignore
         self.query_count += 1
         field_map = {}
         if self.classification_field is not None:
