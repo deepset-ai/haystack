@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import logging
 from abc import abstractmethod
@@ -21,10 +21,11 @@ class BaseDocumentClassifier(BaseComponent):
     def predict(self, documents: List[Document]):
         pass
 
-    def run(self, query: str, documents: List[Document]): # type: ignore
+    def run(self, query: str, documents: Union[List[dict], List[Document]]): # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
+            documents = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
             results = predict(documents=documents)
         else:
             results = []

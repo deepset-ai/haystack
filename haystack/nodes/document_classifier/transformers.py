@@ -48,7 +48,8 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         use_gpu: int = 0,
         return_all_scores: bool = False,
         task: str = 'text-classification',
-        labels: Optional[List[str]] = None
+        labels: Optional[List[str]] = None,
+        batch_size=-1
     ):
         """
         Load a text classification model from Transformers.
@@ -79,7 +80,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
-            use_gpu=use_gpu, return_all_scores=return_all_scores, labels=labels, task=task
+            use_gpu=use_gpu, return_all_scores=return_all_scores, labels=labels, task=task, batch_size=batch_size
         )
         if labels and task == 'text-classification':
             logger.warning(f'Provided labels {labels} will be ignored for task text-classification. Set task to '
@@ -94,8 +95,9 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         self.return_all_scores = return_all_scores
         self.labels = labels
         self.task = task
+        self.batch_size = batch_size
 
-    def predict(self, documents: List[Document], batch_size=-1) -> List[Document]:
+    def predict(self, documents: List[Document]) -> List[Document]:
         """
         Returns documents containing classification result in meta field.
         Documents are updated in place.
@@ -104,7 +106,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :return: List of Document enriched with meta information
         """
         texts = [doc.content for doc in documents]
-        batches = self.get_batches(texts, batch_size=batch_size)
+        batches = self.get_batches(texts, batch_size=self.batch_size)
         if self.task == 'zero-shot-classification':
             batched_predictions = [self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches]
         elif self.task == 'text-classification':

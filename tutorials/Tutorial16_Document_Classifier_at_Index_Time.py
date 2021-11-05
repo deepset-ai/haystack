@@ -42,14 +42,14 @@ def tutorial16_document_classifier_at_index_time():
     """
 
     doc_classifier_model = 'bhadresh-savani/distilbert-base-uncased-emotion'
-    doc_classifier = TransformersDocumentClassifier(model_name_or_path=doc_classifier_model)
+    doc_classifier = TransformersDocumentClassifier(model_name_or_path=doc_classifier_model, batch_size=16)
 
     # convert to Document using a fieldmap for custom content fields the classification should run on
     field_map = {}
     docs_to_classify = [Document.from_dict(d, field_map=field_map) for d in docs_sliding_window]
 
     # classify using gpu, batch_size makes sure we do not run out of memory
-    classified_docs = doc_classifier.predict(docs_to_classify, batch_size=16)
+    classified_docs = doc_classifier.predict(docs_to_classify)
 
     # convert back to dicts if you want, note that DocumentStore.write_documents() can handle Documents too
     # classified_docs = [doc.to_dict(field_map=field_map) for doc in classified_docs]

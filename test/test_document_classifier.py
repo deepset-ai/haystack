@@ -49,8 +49,8 @@ def test_zero_shot_document_classifier(zero_shot_document_classifier):
 
 
 @pytest.mark.slow
-def test_document_classifier_batch_size(document_classifier):
-    assert isinstance(document_classifier, BaseDocumentClassifier)
+def test_document_classifier_batch_size(batched_document_classifier):
+    assert isinstance(batched_document_classifier, BaseDocumentClassifier)
 
     docs = [
         Document(
@@ -64,7 +64,7 @@ def test_document_classifier_batch_size(document_classifier):
             id="2",
         ),
     ]
-    results = document_classifier.predict(documents=docs, batch_size=16)
+    results = batched_document_classifier.predict(documents=docs)
     expected_labels = ["joy", "sadness"]
     for i, doc in enumerate(results):
         assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]

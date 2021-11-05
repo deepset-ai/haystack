@@ -355,6 +355,13 @@ def zero_shot_document_classifier():
         labels=["negative", "positive"]
     )
 
+@pytest.fixture(scope="module")
+def batched_document_classifier():
+    return TransformersDocumentClassifier(
+        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
+        use_gpu=-1,
+        batch_size=16
+    )
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
