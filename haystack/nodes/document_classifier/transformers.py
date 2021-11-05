@@ -49,7 +49,9 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         return_all_scores: bool = False,
         task: str = 'text-classification',
         labels: Optional[List[str]] = None,
-        batch_size=-1
+        batch_size: int = -1,
+        classification_field: str = None,
+        convert_to_dicts: bool = False
     ):
         """
         Load a text classification model from Transformers.
@@ -77,6 +79,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
         or an entailment.
         """
+        super().__init__(classification_field, convert_to_dicts)
         # save init parameters to enable export of component config as YAML
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,

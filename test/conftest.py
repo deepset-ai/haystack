@@ -363,6 +363,16 @@ def batched_document_classifier():
         batch_size=16
     )
 
+@pytest.fixture(scope="module")
+def indexing_document_classifier():
+    return TransformersDocumentClassifier(
+        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
+        use_gpu=-1,
+        batch_size=16,
+        convert_to_dicts=True,
+        classification_field="class_field"
+    )
+
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
 @pytest.fixture(params=["farm"], scope="module")

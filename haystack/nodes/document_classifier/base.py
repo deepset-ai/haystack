@@ -17,21 +17,36 @@ class BaseDocumentClassifier(BaseComponent):
     query_count = 0
     query_time = 0
 
+    def __init__(
+        self,
+        classification_field: str = None,
+        convert_to_dicts: bool = False
+    ):
+        self.classification_field = classification_field
+        self.convert_to_dicts = convert_to_dicts
+
     @abstractmethod
     def predict(self, documents: List[Document]):
         pass
 
     def run(self, query: str, documents: Union[List[dict], List[Document]]): # type: ignore
         self.query_count += 1
+        field_map = {}
+        if self.classification_field is not None:
+            field_map = {self.classification_field: "content"}
         if documents:
-            predict = self.timing(self.predict, "query_time")
-            documents = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+            predict = self.timing(self.predict, "query_time")            
+            documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
             results = predict(documents=documents)
         else:
             results = []
 
         document_ids = [doc.id for doc in results]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
+
+        if self.convert_to_dicts:
+            results = [d.to_dict(field_map=field_map) for d in results]
+
         output = {"documents": results}
 
         return output, "output_1"
