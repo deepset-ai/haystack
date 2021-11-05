@@ -120,6 +120,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
 
     def get_batches(self, items, batch_size):
         if batch_size == -1:
-            return [items]
+            yield items
+            return
         for index in range(0, len(items), batch_size): 
             yield items[index:index + batch_size]
