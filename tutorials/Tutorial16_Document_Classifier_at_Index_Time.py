@@ -1,26 +1,17 @@
 """
-Preprocessing
+Extending your Metadata using DocumentClassifiers at Index Time
 
-Haystack includes a suite of tools to extract text from different file types, normalize white space
-and split text into smaller pieces to optimize retrieval.
-These data preprocessing steps can have a big impact on the systems performance and effective handling of data is key to getting the most out of Haystack.
+DocumentClassifier adds the classification result (label and score) to Document's meta property. 
+Hence, we can use it to classify documents at index time. The result can be accessed at query time: for example by applying a filter for "classification.label".
 
-Ultimately, Haystack pipelines expect data to be provided as a list documents in the following dictionary format:
-
-docs = [
-    {
-        'text': DOCUMENT_TEXT_HERE,
-        'meta': {'name': DOCUMENT_NAME, ...}
-    }, ...
-]
-
-This tutorial will show you all the tools that Haystack provides to help you cast your data into the right format.
+This tutorial will show you how to integrate a classification model into your preprocessing steps and how you can filter for this additional metadata at query time.
 """
 
 # Here are the imports we need
-from haystack.nodes import PreProcessor, TransformersDocumentClassifier
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.nodes import PreProcessor, TransformersDocumentClassifier, FARMReader, ElasticsearchRetriever
 from haystack.schema import Document
-from haystack.utils import convert_files_to_dicts, fetch_archive_from_http
+from haystack.utils import convert_files_to_dicts, fetch_archive_from_http, print_answers, launch_es
 
 
 def tutorial16_document_classifier_at_index_time():
@@ -30,57 +21,15 @@ def tutorial16_document_classifier_at_index_time():
     s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
-    """
-    ## Converters
-    
-    Haystack's converter classes are designed to help you turn files on your computer into the documents
-    that can be processed by the Haystack pipeline.
-    There are file converters for txt, pdf, docx files as well as a converter that is powered by Apache Tika.
-    The parameter `valid_langugages` does not convert files to the target language, but checks if the conversion worked as expected.
-    For converting PDFs, try changing the encoding to UTF-8 if the conversion isn't great.
-    """
-    # Haystack also has a convenience function that will automatically apply the right converter to each file in a directory.
-
+    # read and preprocess documents
+    # note that you can also use the document classifier before applying the PreProcessor, e.g. before splitting your documents
     all_docs = convert_files_to_dicts(dir_path="data/preprocessing_tutorial")
-
-    """
-    
-    ## PreProcessor
-    
-    The PreProcessor class is designed to help you clean text and split text into sensible units.
-    File splitting can have a very significant impact on the system's performance.
-    Have a look at the [Preprocessing](https://haystack.deepset.ai/docs/latest/preprocessingmd)
-    and [Optimization](https://haystack.deepset.ai/docs/latest/optimizationmd) pages on our website for more details.
-    """
-
-    """
-    A commonly used strategy to split long documents, especially in the field of Question Answering,
-    is the sliding window approach. If `split_length=10` and `split_overlap=3`, your documents will look like this:
-    
-    - doc1 = words[0:10]
-    - doc2 = words[7:17]
-    - doc3 = words[14:24]
-    - ...
-    
-    You can use this strategy by following the code below.
-    """
-
-    # Sliding window approach
-
     preprocessor_sliding_window = PreProcessor(
         split_overlap=3,
         split_length=10,
         split_respect_sentence_boundary=False
     )
     docs_sliding_window = preprocessor_sliding_window.process(all_docs)
-
-    doc1 = docs_sliding_window[0]["content"][:200]
-    doc2 = docs_sliding_window[1]["content"][:100]
-    doc3 = docs_sliding_window[2]["content"][:100]
-
-    print("Document 1: \"" + doc1 + "...\"")
-    print("Document 2: \"" + doc2 + "...\"")
-    print("Document 3: \"" + doc3 + "...\"")
 
     """ 
     
@@ -98,11 +47,40 @@ def tutorial16_document_classifier_at_index_time():
     # convert to Document using a fieldmap for custom content fields the classification should run on
     field_map = {}
     docs_to_classify = [Document.from_dict(d, field_map=field_map) for d in docs_sliding_window]
-    classified_docs = doc_classifier.predict(docs_to_classify)
+
+    # classify using gpu, batch_size makes sure we do not run out of memory
+    classified_docs = doc_classifier.predict(docs_to_classify, batch_size=16)
 
     # convert back to dicts if you want, note that DocumentStore.write_documents() can handle Documents too
-    classified_docs = [doc.to_dict(field_map=field_map) for doc in classified_docs]
-    print(classified_docs[0])
+    # classified_docs = [doc.to_dict(field_map=field_map) for doc in classified_docs]
+    
+    # let's see how it looks: there should be a classification result in the meta entry containing label and score.
+    print(classified_docs[0].to_dict(field_map=field_map))
+
+    launch_es()
+
+    # Connect to Elasticsearch
+    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
+
+    # Now, let's write the docs to our DB.
+    document_store.write_documents(classified_docs)
+
+    # check if indexed docs contain classification results
+    test_doc = document_store.get_all_documents()[0]
+    print(f'document {test_doc.id} has label {test_doc.meta["classification"]["label"]}')
+
+    # Initialize QA-Pipeline
+    from haystack.pipelines import ExtractiveQAPipeline
+    retriever = ElasticsearchRetriever(document_store=document_store)
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
+    pipe = ExtractiveQAPipeline(reader, retriever)    
+    
+    ## Voilà! Ask a question while filtering for "joy"-only documents
+    prediction = pipe.run(
+        query="How is heavy metal?", params={"Retriever": {"top_k": 10, "filters": {"classification.label": ["joy"]}}, "Reader": {"top_k": 5}}
+    )
+
+    print_answers(prediction, details="high")
 
 if __name__ == "__main__":
     tutorial16_document_classifier_at_index_time()
