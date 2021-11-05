@@ -93,10 +93,11 @@ or an entailment.
 #### predict
 
 ```python
- | predict(documents: List[Document]) -> List[Document]
+ | predict(documents: List[Document], batch_size=-1) -> List[Document]
 ```
 
-Returns documents containing classification result in meta field
+Returns documents containing classification result in meta field.
+Documents are updated in place.
 
 **Arguments**:
 
