@@ -53,19 +53,34 @@ def _process_request(pipeline, request) -> QueryResponse:
     start_time = time.time()
     
     params = request.params or {}
-    params["Retriever"] = params.get("Retriever", {})
-    filters = {}
-    if "filters" in params["Retriever"]:  # put filter values into a list and remove filters with null value
-        for key, values in params["Retriever"]["filters"].items():
-            if values is None:
-                continue
-            if not isinstance(values, list):
-                values = [values]
-            filters[key] = values
-    params["Retriever"]["filters"] = filters
-    result = pipeline.run(query=request.query, params=params)
-    
+
+    # format global filters
+    if "filters" in params.keys(): _format_filters(params["filters"])
+    # format targeted node filters
+    if "Retriever" in params.keys():
+        if "filters" in params["Retriever"].keys(): _format_filters(params["Retriever"]["filters"])
+
+    result = pipeline.run(query=request.query, params=params,debug=request.debug)
     end_time = time.time()
     logger.info({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"})
 
     return result
+
+
+def _format_filters(filters):
+    """
+    Adjust filters to compliant format in-place:
+    Put filter values into a list and remove filters with null value.
+    """
+    new_filters = {}
+    for key, values in filters.items():
+        if values is None:
+            logger.warning(f"Got deprecated filter format ('{key}: null'). "
+                           f"Remove null values from filters to be compliant with future versions")
+            continue
+        if not isinstance(values, list):
+            values = [values]
+            logger.warning(f"Got request with deprecated filter format ('{key}: {values}'). "
+                           f"Change to '{key}:[{values}]' to be compliant with future versions")
+        new_filters[key] = values
+    filters = new_filters

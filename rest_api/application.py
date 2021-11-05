@@ -40,7 +40,7 @@ app = get_application()
 logger.info("Open http://127.0.0.1:8000/docs to see Swagger API Documentation.")
 logger.info(
     """
-    Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/query' -H "Content-Type: application/json"  --data '{"query": "Did Albus Dumbledore die?"}'
+    Or just try it out directly: curl --request POST --url 'http://127.0.0.1:8000/query' -H "Content-Type: application/json"  --data '{"query": "Who is the father of Arya Stark?"}'
     """
 )
 
