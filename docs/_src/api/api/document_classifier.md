@@ -59,7 +59,7 @@ With this document_classifier, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: int = 0, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None, batch_size=-1)
+ | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: int = 0, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None, convert_to_dicts: bool = False)
 ```
 
 Load a text classification model from Transformers.
