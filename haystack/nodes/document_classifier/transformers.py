@@ -95,26 +95,31 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         self.labels = labels
         self.task = task
 
-    def predict(self, documents: List[Document]) -> List[Document]:
+    def predict(self, documents: List[Document], batch_size=-1) -> List[Document]:
         """
-        Returns documents containing classification result in meta field
+        Returns documents containing classification result in meta field.
+        Documents are updated in place.
 
         :param documents: List of Document to classify
         :return: List of Document enriched with meta information
         """
         texts = [doc.content for doc in documents]
+        batches = self.get_batches(texts, batch_size=batch_size)
         if self.task == 'zero-shot-classification':
-            predictions = self.model(texts, candidate_labels=self.labels, truncation=True)
+            batched_predictions = [self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches]
         elif self.task == 'text-classification':
-            predictions = self.model(texts, return_all_scores=self.return_all_scores, truncation=True)
-
-        classified_docs: List[Document] = []
+            batched_predictions = [self.model(batch, return_all_scores=self.return_all_scores, truncation=True) for batch in batches]
+        predictions = [pred for batched_prediction in batched_predictions for pred in batched_prediction]
 
         for prediction, doc in zip(predictions, documents):
-            cur_doc = doc
-            cur_doc.meta["classification"] = prediction
             if self.task == 'zero-shot-classification':
-                cur_doc.meta["classification"]["label"] = cur_doc.meta["classification"]["labels"][0]
-            classified_docs.append(cur_doc)
+                prediction["label"] = prediction["labels"][0]
+            doc.meta["classification"] = prediction
 
-        return classified_docs
+        return documents
+
+    def get_batches(self, items, batch_size):
+        if batch_size == -1:
+            return [items]
+        for index in range(0, len(items), batch_size): 
+            yield items[index:index + batch_size]
