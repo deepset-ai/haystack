@@ -62,7 +62,7 @@ class Response(BaseModel):
     file_id: str
 
 
-@router.post("/file-upload")
+@router.post("/file-upload", operation_id="upload_file")
 def file_upload(
     files: List[UploadFile] = File(...),
     meta: Optional[str] = Form("null"),  # JSON serialized string

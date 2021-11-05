@@ -16,7 +16,7 @@ logger = logging.getLogger("haystack")
 router = APIRouter()
 
 
-@router.post("/documents/get_by_filters", response_model=List[DocumentSerialized])
+@router.post("/documents/get_by_filters", response_model=List[DocumentSerialized], operation_id="get_documents", response_model_exclude_none=True)
 def get_documents_by_filter(filters: FilterRequest):
     """
     Can be used to get documents from a document store.
@@ -32,7 +32,7 @@ def get_documents_by_filter(filters: FilterRequest):
     return docs
 
 
-@router.post("/documents/delete_by_filters", response_model=bool)
+@router.post("/documents/delete_by_filters", response_model=bool, operation_id="delete_documents")
 def delete_documents_by_filter(filters: FilterRequest):
     """
     Can be used to delete documents from a document store.
