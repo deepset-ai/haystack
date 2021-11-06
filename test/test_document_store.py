@@ -758,7 +758,7 @@ def test_get_document_count_only_documents_without_embedding_arg():
     assert document_store.get_document_count(only_documents_without_embedding=True,
                                              filters={"meta_field_for_count": ["b"]}) == 2
 
-
+@pytest.mark.elasticsearch
 def test_elasticsearch_custom_fields():
     synonyms = ["i-pod, i pod, ipod", "sea biscuit, sea biscit, seabiscuit", "foo, foo bar, baz"]
     synonym_type = "synonym_graph"
