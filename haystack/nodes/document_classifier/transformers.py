@@ -19,9 +19,12 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     The meta field of the document is a dictionary with the following format:
     ``'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'neutral', 'probability' = 0.9997646, ...} }``
 
+    Classification is run on document's content field by default. If you want it to run on another field,
+    set the `classification_field` to one of document's meta fields.
+
     With this document_classifier, you can directly get predictions via predict()
     
-     **Usage example:**
+     **Usage example at query time:**
      ```python
     |    ...
     |    retriever = ElasticsearchRetriever(document_store=document_store)
@@ -38,6 +41,24 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     |    print_documents(res, max_text_len=100, print_meta=True)
     |    # or access the predicted class label directly
     |    res["documents"][0].to_dict()["meta"]["classification"]["label"]
+     ```
+
+    **Usage example at index time:**
+     ```python
+    |    ...
+    |    converter = TextConverter()
+    |    preprocessor = Preprocessor()
+    |    document_store = ElasticsearchDocumentStore()
+    |    retriever = ElasticsearchRetriever(document_store=document_store)
+    |    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
+    |                                                         convert_to_dicts=True, batch_size=16)
+    |    p = Pipeline()
+    |    p.add_node(component=converter, name="TextConverter", inputs=["File"])
+    |    p.add_node(component=preprocessor, name="Preprocessor", inputs=["TextConverter"])
+    |    p.add_node(component=document_classifier, name="IndexTimeDocumentClassifier", inputs=["Preprocessor"])
+    |    p.add_node(component=retriever, name="Retriever", inputs=["IndexTimeDocumentClassifier"])
+    |    p.add_node(component=document_store, name="DocumentStore", inputs=["Retriever"])
+    |    p.run(file_paths=file_paths)
      ```
     """
     def __init__(
@@ -75,15 +96,19 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param return_all_scores:  Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
         :param task: 'text-classification' or 'zero-shot-classification'
         :param labels: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
+        :param batch_size: batch size to be processed at once
+        :param classification_field: Field of Document's meta field to be used for classification. If left unset, Document's content field is used by default.
+        :param convert_to_dicts: Converts the Document object to dicts, so the node returns dicts instead of Documents. This is mandatory for most indexing pipelines.
         ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
         classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
         or an entailment.
         """
-        super().__init__(classification_field, convert_to_dicts)
+        super().__init__(convert_to_dicts)
         # save init parameters to enable export of component config as YAML
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
-            use_gpu=use_gpu, return_all_scores=return_all_scores, labels=labels, task=task, batch_size=batch_size
+            use_gpu=use_gpu, return_all_scores=return_all_scores, labels=labels, task=task, batch_size=batch_size,
+            convert_to_dicts=convert_to_dicts, classification_field=classification_field
         )
         if labels and task == 'text-classification':
             logger.warning(f'Provided labels {labels} will be ignored for task text-classification. Set task to '
@@ -99,6 +124,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         self.labels = labels
         self.task = task
         self.batch_size = batch_size
+        self.classification_field = classification_field
 
     def predict(self, documents: List[Document]) -> List[Document]:
         """
@@ -108,7 +134,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param documents: List of Document to classify
         :return: List of Document enriched with meta information
         """
-        texts = [doc.content for doc in documents]
+        texts = [doc.content if self.classification_field is None else doc.meta[self.classification_field] for doc in documents]
         batches = self.get_batches(texts, batch_size=self.batch_size)
         if self.task == 'zero-shot-classification':
             batched_predictions = [self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches]
