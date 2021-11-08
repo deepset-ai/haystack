@@ -503,7 +503,7 @@ for full list of available TableQA models.
 See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
-- `use_gpu`: Whether to make use of a GPU (if available).
+- `use_gpu`: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
 - `top_k`: The maximum number of answers to return
 - `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
                     query + table exceed max_seq_len, the table will be truncated by removing rows until the
