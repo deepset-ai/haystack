@@ -195,6 +195,9 @@ class TableReader(BaseReader):
         # No aggregation needed as only one cell selected as answer_cells
         if len(answer_cells) == 1:
             return answer_cells[0]
+        # Return empty string if model did not select any cell as answer
+        if len(answer_cells) == 0:
+            return ""
 
         # Parse answer cells in order to aggregate numerical values
         parsed_answer_cells = [parser.parse(cell) for cell in answer_cells]
