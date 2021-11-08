@@ -1,9 +1,0 @@
-include LICENSE
-include requirements.txt
-include README.rst
-recursive-exclude rest_api *
-recursive-exclude annotation_tool *
-recursive-exclude test *
-recursive-exclude tutorials *
-recursive-exclude docs *
-recursive-exclude ui *
