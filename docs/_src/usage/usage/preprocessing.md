@@ -30,7 +30,7 @@ The sections below will show you all the tools you'll need to ready your data fo
 ```python
 docs = [
     {
-        'text': DOCUMENT_TEXT_HERE,
+        'content': DOCUMENT_TEXT_HERE,
         'meta': {'name': DOCUMENT_NAME, ...}
     }, ...
 ]
