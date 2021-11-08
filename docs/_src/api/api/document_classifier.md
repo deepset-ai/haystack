@@ -34,9 +34,12 @@ This node classifies documents and adds the output from the classification step 
 The meta field of the document is a dictionary with the following format:
 ``'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'neutral', 'probability' = 0.9997646, ...} }``
 
+Classification is run on document's content field by default. If you want it to run on another field,
+set the `classification_field` to one of document's meta fields.
+
 With this document_classifier, you can directly get predictions via predict()
 
- **Usage example:**
+ **Usage example at query time:**
  ```python
 |    ...
 |    retriever = ElasticsearchRetriever(document_store=document_store)
@@ -53,6 +56,24 @@ With this document_classifier, you can directly get predictions via predict()
 |    print_documents(res, max_text_len=100, print_meta=True)
 |    # or access the predicted class label directly
 |    res["documents"][0].to_dict()["meta"]["classification"]["label"]
+ ```
+
+**Usage example at index time:**
+ ```python
+|    ...
+|    converter = TextConverter()
+|    preprocessor = Preprocessor()
+|    document_store = ElasticsearchDocumentStore()
+|    retriever = ElasticsearchRetriever(document_store=document_store)
+|    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
+|                                                         convert_to_dicts=True, batch_size=16)
+|    p = Pipeline()
+|    p.add_node(component=converter, name="TextConverter", inputs=["File"])
+|    p.add_node(component=preprocessor, name="Preprocessor", inputs=["TextConverter"])
+|    p.add_node(component=document_classifier, name="IndexTimeDocumentClassifier", inputs=["Preprocessor"])
+|    p.add_node(component=retriever, name="Retriever", inputs=["IndexTimeDocumentClassifier"])
+|    p.add_node(component=document_store, name="DocumentStore", inputs=["Retriever"])
+|    p.run(file_paths=file_paths)
  ```
 
 <a name="transformers.TransformersDocumentClassifier.__init__"></a>
@@ -85,6 +106,9 @@ See https://huggingface.co/models for full list of available models.
 - `return_all_scores`: Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
 - `task`: 'text-classification' or 'zero-shot-classification'
 - `labels`: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
+- `batch_size`: batch size to be processed at once
+- `classification_field`: Field of Document's meta field to be used for classification. If left unset, Document's content field is used by default.
+- `convert_to_dicts`: Converts the Document object to dicts, so the node returns dicts instead of Documents. This is mandatory for most indexing pipelines.
 ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
 classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
 or an entailment.
