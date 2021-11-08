@@ -66,7 +66,7 @@ With this document_classifier, you can directly get predictions via predict()
 |    document_store = ElasticsearchDocumentStore()
 |    retriever = ElasticsearchRetriever(document_store=document_store)
 |    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
-|                                                         convert_to_dicts=True, batch_size=16)
+|                                                         batch_size=16)
 |    p = Pipeline()
 |    p.add_node(component=converter, name="TextConverter", inputs=["File"])
 |    p.add_node(component=preprocessor, name="Preprocessor", inputs=["TextConverter"])
@@ -80,7 +80,7 @@ With this document_classifier, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: int = 0, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None, convert_to_dicts: bool = False)
+ | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: int = 0, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
 ```
 
 Load a text classification model from Transformers.
@@ -106,12 +106,11 @@ See https://huggingface.co/models for full list of available models.
 - `return_all_scores`: Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
 - `task`: 'text-classification' or 'zero-shot-classification'
 - `labels`: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
-- `batch_size`: batch size to be processed at once
-- `classification_field`: Field of Document's meta field to be used for classification. If left unset, Document's content field is used by default.
-- `convert_to_dicts`: Converts the Document object to dicts, so the node returns dicts instead of Documents. This is mandatory for most indexing pipelines.
 ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
 classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
 or an entailment.
+- `batch_size`: batch size to be processed at once
+- `classification_field`: Field of Document's meta field to be used for classification. If left unset, Document's content field is used by default.
 
 <a name="transformers.TransformersDocumentClassifier.predict"></a>
 #### predict
