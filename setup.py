@@ -74,7 +74,7 @@ setup(
     license="Apache",
     url="https://github.com/deepset-ai/haystack",
     download_url=f"https://github.com/deepset-ai/haystack/archive/{_version}.tar.gz",
-    packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
+    packages=find_packages(),
     dependency_links=dependency_links,
     install_requires=parsed_requirements,
     python_requires=">=3.7.0",
