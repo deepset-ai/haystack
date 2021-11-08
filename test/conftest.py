@@ -369,7 +369,6 @@ def indexing_document_classifier():
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
         use_gpu=-1,
         batch_size=16,
-        convert_to_dicts=True,
         classification_field="class_field"
     )
 

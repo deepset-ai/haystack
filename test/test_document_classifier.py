@@ -86,7 +86,7 @@ def test_document_classifier_as_index_node(indexing_document_classifier):
          "class_field": "That's good."
         },
     ]
-    output, output_name = indexing_document_classifier.run(documents=docs)
+    output, output_name = indexing_document_classifier.run(documents=docs, root_node="File")
     expected_labels = ["sadness", "joy"]
     for i, doc in enumerate(output["documents"]):
         assert doc["meta"]["classification"]["label"] == expected_labels[i]
@@ -108,7 +108,7 @@ def test_document_classifier_as_query_node(document_classifier):
             id="2",
         ),
     ]
-    output, output_name = document_classifier.run(documents=docs)
+    output, output_name = document_classifier.run(documents=docs, root_node="Query")
     expected_labels = ["joy", "sadness"]
     for i, doc in enumerate(output["documents"]):
         assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]

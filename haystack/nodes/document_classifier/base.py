@@ -17,17 +17,11 @@ class BaseDocumentClassifier(BaseComponent):
     query_count = 0
     query_time = 0
 
-    def __init__(
-        self,
-        convert_to_dicts: bool = False
-    ):
-        self.convert_to_dicts = convert_to_dicts
-
     @abstractmethod
     def predict(self, documents: List[Document]):
         pass
 
-    def run(self, documents: Union[List[dict], List[Document]]): # type: ignore
+    def run(self, documents: Union[List[dict], List[Document]], root_node: str): # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")            
@@ -39,7 +33,8 @@ class BaseDocumentClassifier(BaseComponent):
         document_ids = [doc.id for doc in results]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
 
-        if self.convert_to_dicts:
+        # convert back to dicts if we are in an indexing pipeline
+        if root_node == "File":
             results = [doc.to_dict() for doc in results]
 
         output = {"documents": results}

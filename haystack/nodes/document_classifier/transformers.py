@@ -51,7 +51,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     |    document_store = ElasticsearchDocumentStore()
     |    retriever = ElasticsearchRetriever(document_store=document_store)
     |    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
-    |                                                         convert_to_dicts=True, batch_size=16)
+    |                                                         batch_size=16)
     |    p = Pipeline()
     |    p.add_node(component=converter, name="TextConverter", inputs=["File"])
     |    p.add_node(component=preprocessor, name="Preprocessor", inputs=["TextConverter"])
@@ -71,8 +71,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         task: str = 'text-classification',
         labels: Optional[List[str]] = None,
         batch_size: int = -1,
-        classification_field: str = None,
-        convert_to_dicts: bool = False
+        classification_field: str = None
     ):
         """
         Load a text classification model from Transformers.
@@ -96,19 +95,17 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param return_all_scores:  Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
         :param task: 'text-classification' or 'zero-shot-classification'
         :param labels: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
-        :param batch_size: batch size to be processed at once
-        :param classification_field: Field of Document's meta field to be used for classification. If left unset, Document's content field is used by default.
-        :param convert_to_dicts: Converts the Document object to dicts, so the node returns dicts instead of Documents. This is mandatory for most indexing pipelines.
         ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
         classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
         or an entailment.
+        :param batch_size: batch size to be processed at once
+        :param classification_field: Field of Document's meta field to be used for classification. If left unset, Document's content field is used by default.
         """
-        super().__init__(convert_to_dicts)
         # save init parameters to enable export of component config as YAML
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
             use_gpu=use_gpu, return_all_scores=return_all_scores, labels=labels, task=task, batch_size=batch_size,
-            convert_to_dicts=convert_to_dicts, classification_field=classification_field
+            classification_field=classification_field
         )
         if labels and task == 'text-classification':
             logger.warning(f'Provided labels {labels} will be ignored for task text-classification. Set task to '

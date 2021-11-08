@@ -28,7 +28,6 @@ components:
     type: TransformersDocumentClassifier
     params:
       batch_size: 16
-      convert_to_dicts: true
       use_gpu: -1
   - name: QueryTimeDocumentClassifier
     type: TransformersDocumentClassifier

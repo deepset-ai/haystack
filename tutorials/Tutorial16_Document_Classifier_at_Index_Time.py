@@ -112,13 +112,12 @@ def tutorial16_document_classifier_at_index_time():
     from haystack.pipelines import Pipeline
     from haystack.nodes import TextConverter, FileTypeClassifier, PDFToTextConverter, DocxToTextConverter
 
-    # note that we need to set convert_to_dicts for indexing pipelines as most retrievers expect dicts instead of documents
-    # we also need to set the batch_size so each batch fits into memory
+    # we need to set the batch_size so each batch fits into memory
     index_time_document_classifier = TransformersDocumentClassifier(
         model_name_or_path="cross-encoder/nli-distilroberta-base",
         task="zero-shot-classification",
         labels=["music", "natural language processing", "history"], 
-        batch_size=16, convert_to_dicts=True, use_gpu=-1
+        batch_size=16, use_gpu=-1
     )
 
     file_type_classifier = FileTypeClassifier()
