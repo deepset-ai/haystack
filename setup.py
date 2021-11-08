@@ -75,7 +75,6 @@ setup(
     url="https://github.com/deepset-ai/haystack",
     download_url=f"https://github.com/deepset-ai/haystack/archive/{_version}.tar.gz",
     packages=find_packages(exclude=["*.rest_api", "*.rest_api.*", "rest_api.*", "rest_api"]),
-    include_package_data=True,
     dependency_links=dependency_links,
     install_requires=parsed_requirements,
     python_requires=">=3.7.0",
