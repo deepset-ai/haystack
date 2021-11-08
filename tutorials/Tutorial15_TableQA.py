@@ -107,7 +107,7 @@ def tutorial15_tableqa():
     print_answers(prediction, details="minimal")
 
     ### Pipeline
-    # The retriever and the retriever can be sticked together to a pipeline in order to first retrieve relevant tables
+    # The Retriever and the Reader can be sticked together to a pipeline in order to first retrieve relevant tables
     # and then extract the answer.
     #
     # **Notice**: Given that the `TableReader` does not provide useful confidence scores and returns an answer
