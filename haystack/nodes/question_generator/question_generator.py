@@ -2,7 +2,6 @@ from typing import List
 
 from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
-from torch.nn import DataParallel
 
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
@@ -34,7 +33,7 @@ class QuestionGenerator(BaseComponent):
                  split_overlap=10,
                  use_gpu=True,
                  prompt="generate questions:",
-                 devices: Optional[List[Union[int, str, torch.device]]] = None):
+    ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
         implemented as a Seq2SeqLM in HuggingFace Transformers. Note that this style of question generation (where the only input
@@ -44,14 +43,9 @@ class QuestionGenerator(BaseComponent):
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g. "valhalla/t5-base-e2e-qg".
                                    See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
-        if devices is not None:
-            self.devices = devices
-        else:
-            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         self.model.to(str(self.devices[0]))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
@@ -70,9 +64,6 @@ class QuestionGenerator(BaseComponent):
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
         self.prompt = prompt
-
-        if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
@@ -101,8 +92,8 @@ class QuestionGenerator(BaseComponent):
             if self.prompt not in split_text:
                 split_text = self.prompt + " " + split_text
             tokenized = self.tokenizer([split_text], return_tensors="pt")
-            input_ids = tokenized["input_ids"].to(self.device)
-            attention_mask = tokenized["attention_mask"].to(self.device)   # necessary if padding is enabled so the model won't attend pad tokens
+            input_ids = tokenized["input_ids"].to(self.devices[0])
+            attention_mask = tokenized["attention_mask"].to(self.devices[0])   # necessary if padding is enabled so the model won't attend pad tokens
             tokens_output = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,

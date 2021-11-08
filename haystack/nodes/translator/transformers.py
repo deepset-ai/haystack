@@ -2,8 +2,6 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-import torch
-from torch.nn import DataParallel
 
 from haystack.schema import Document, Answer
 from haystack.nodes.translator import BaseTranslator
@@ -40,7 +38,6 @@ class TransformersTranslator(BaseTranslator):
         max_seq_len: Optional[int] = None,
         clean_up_tokenization_spaces: Optional[bool] = True,
         use_gpu: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
     ):
         """ Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
@@ -60,9 +57,7 @@ class TransformersTranslator(BaseTranslator):
                                tokenizer.
         :param max_seq_len: The maximum sentence length the model accepts. (Optional)
         :param clean_up_tokenization_spaces: Whether or not to clean up the tokenization spaces. (default True)
-        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -71,10 +66,7 @@ class TransformersTranslator(BaseTranslator):
             clean_up_tokenization_spaces=clean_up_tokenization_spaces,
         )
 
-        if devices is not None:
-            self.devices = devices
-        else:
-            self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         tokenizer_name = tokenizer_name or model_name_or_path
@@ -83,9 +75,6 @@ class TransformersTranslator(BaseTranslator):
         )
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         self.model.to(str(self.devices[0]))
-
-        if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def translate(
         self,
@@ -129,7 +118,7 @@ class TransformersTranslator(BaseTranslator):
             src_texts=text_for_translator,
             return_tensors="pt",
             max_length=self.max_seq_len
-        )
+        ).to(self.devices[0])
         generated_output = self.model.generate(**batch)
         translated_texts = self.tokenizer.batch_decode(
             generated_output,

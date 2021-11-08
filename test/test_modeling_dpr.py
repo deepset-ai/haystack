@@ -21,7 +21,7 @@ def test_dpr_modules(caplog=None):
         caplog.set_level(logging.CRITICAL)
 
     set_all_seeds(seed=42)
-    device, n_gpu = initialize_device_settings(use_cuda=True)
+    devices, n_gpu = initialize_device_settings(use_cuda=True)
 
     # 1.Create question and passage tokenizers
     query_tokenizer = Tokenizer.load(pretrained_model_name_or_path="facebook/dpr-question_encoder-single-nq-base",
@@ -60,7 +60,7 @@ def test_dpr_modules(caplog=None):
         embeds_dropout_prob=0.0,
         lm1_output_types=["per_sequence"],
         lm2_output_types=["per_sequence"],
-        device=device,
+        device=devices[0],
     )
 
     model.connect_heads_with_processor(processor.tasks)
@@ -91,7 +91,7 @@ def test_dpr_modules(caplog=None):
          }
 
     dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    features = {key: val.unsqueeze(0).to(device) for key, val in zip(tensor_names, dataset[0])}
+    features = {key: val.unsqueeze(0).to(devices[0]) for key, val in zip(tensor_names, dataset[0])}
 
     # test features
     assert torch.all(torch.eq(features["query_input_ids"][0][:10].cpu(),

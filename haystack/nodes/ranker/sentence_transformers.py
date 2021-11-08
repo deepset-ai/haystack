@@ -49,7 +49,6 @@ class SentenceTransformersRanker(BaseRanker):
         :param top_k: The maximum number of documents to return
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -70,7 +69,7 @@ class SentenceTransformersRanker(BaseRanker):
         self.transformer_model.eval()
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.model = DataParallel(self.transformer_model, device_ids=self.devices)
 
     def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
         """
@@ -100,7 +99,7 @@ class SentenceTransformersRanker(BaseRanker):
             top_k = self.top_k
 
         features = self.transformer_tokenizer([query for doc in documents], [doc.content for doc in documents],
-                                              padding=True, truncation=True, return_tensors="pt")
+                                              padding=True, truncation=True, return_tensors="pt").to(self.devices[0])
 
         # SentenceTransformerRanker uses the logit as similarity score and not the classifier's probability of label "1"
         # https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers

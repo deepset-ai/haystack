@@ -106,9 +106,6 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"We recommend using cosine instead. "
                 f"This can be set when initializing the DocumentStore")
 
-        if len(retriever.devices) > 1:
-            self.embedding_model = DataParallel(self.embedding_model, device_ids=retriever.devices)
-
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
         # texts can be a list of strings or a list of [title, text]
         # get back list of numpy embedding vectors
@@ -136,9 +133,6 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
         self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(str(retriever.devices[0]))
 
-        if len(retriever.devices) > 1:
-            self.embedding_model = DataParallel(self.embedding_model, device_ids=retriever.devices)
-
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
         queries = [{"text": q} for q in texts]
@@ -148,7 +142,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.no_grad():
                 q_reps = self.embedding_model.embed_questions(input_ids=batch["input_ids"],
                                                               attention_mask=batch["padding_mask"]).cpu().numpy()
@@ -165,7 +159,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.no_grad():
                 q_reps = self.embedding_model.embed_answers(input_ids=batch["input_ids"],
                                                             attention_mask=batch["padding_mask"]).cpu().numpy()

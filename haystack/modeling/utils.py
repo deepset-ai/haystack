@@ -61,18 +61,22 @@ def initialize_device_settings(use_cuda: bool, local_rank: int = -1, multi_gpu: 
         n_gpu = 0
     elif local_rank == -1:
         if torch.cuda.is_available():
-            devices = [torch.device(device) for device in range(torch.cuda.device_count())]
-            n_gpu = torch.cuda.device_count()
+            if multi_gpu:
+                devices = [torch.device(device) for device in range(torch.cuda.device_count())]
+                n_gpu = torch.cuda.device_count()
+            else:
+                devices = [torch.device("cuda")]
+                n_gpu = 1
         else:
             devices = [torch.device("cpu")]
             n_gpu = 0
     else:
         devices = [torch.device("cuda", local_rank)]
-        torch.cuda.set_device(device)
+        torch.cuda.set_device(devices[0])
         n_gpu = 1
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.distributed.init_process_group(backend="nccl")
-    logger.info(f"Using devices: {' ,'.join(devices).upper()}")
+    logger.info(f"Using devices: {', '.join([str(device) for device in devices]).upper()}")
     logger.info(f"Number of GPUs: {n_gpu}")
     return devices, n_gpu
 

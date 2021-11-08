@@ -3,11 +3,10 @@ from typing import List, Optional, Tuple, Dict
 import logging
 from statistics import mean
 import torch
-from torch.nn import DataParallel
 import numpy as np
 import pandas as pd
 from quantulum3 import parser
-from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
+from transformers import TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
 
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
@@ -51,7 +50,6 @@ class TableReader(BaseReader):
             use_gpu: bool = True,
             top_k: int = 10,
             max_seq_len: int = 256,
-            devices: Optional[List[Union[int, str, torch.device]]] = None
     ):
         """
         Load a TableQA model from Transformers.
@@ -67,18 +65,14 @@ class TableReader(BaseReader):
         See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
-        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
         :param top_k: The maximum number of answers to return
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
-        if devices is not None:
-            self.devices = devices
-        else:
-            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
         self.model.to(str(self.devices[0]))
         if tokenizer is None:
@@ -88,9 +82,6 @@ class TableReader(BaseReader):
         self.top_k = top_k
         self.max_seq_len = max_seq_len
         self.return_no_answers = False
-
-        if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
@@ -123,7 +114,7 @@ class TableReader(BaseReader):
                                     max_length=self.max_seq_len,
                                     return_tensors="pt",
                                     truncation=True)
-            inputs.to(self.model.device)
+            inputs.to(self.devices[0])
             # Forward query and table through model and convert logits to predictions
             outputs = self.model(**inputs)
             inputs.to("cpu")
