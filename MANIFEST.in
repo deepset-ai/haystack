@@ -1,3 +1,4 @@
 include LICENSE
 include requirements.txt
 include README.rst
+exclude rest_api
