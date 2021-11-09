@@ -61,7 +61,7 @@ We currently recommend using OPUS models (see __init__() for details)
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True)
+ | __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True, use_gpu: bool = True)
 ```
 
 Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
@@ -84,6 +84,7 @@ They also have a few multilingual models that support multiple languages at once
                        tokenizer.
 - `max_seq_len`: The maximum sentence length the model accepts. (Optional)
 - `clean_up_tokenization_spaces`: Whether or not to clean up the tokenization spaces. (default True)
+- `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
 
 <a name="transformers.TransformersTranslator.translate"></a>
 #### translate

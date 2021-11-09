@@ -59,7 +59,7 @@ With this document_classifier, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: int = 0, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None)
+ | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None)
 ```
 
 Load a text classification model from Transformers.
@@ -81,7 +81,7 @@ Filter for zero-shot classification models (NLI): https://huggingface.co/models?
 See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
-- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+- `use_gpu`: Whether to use GPU (if available).
 - `return_all_scores`: Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
 - `task`: 'text-classification' or 'zero-shot-classification'
 - `labels`: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
