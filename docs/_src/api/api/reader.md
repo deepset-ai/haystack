@@ -376,7 +376,7 @@ With this reader, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: int = 0, top_k: int = 10, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+ | __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
 ```
 
 Load a QA model from Transformers.
@@ -397,7 +397,7 @@ See https://huggingface.co/models for full list of available models.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
                             The context usually helps users to understand if the answer really makes sense.
-- `use_gpu`: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+- `use_gpu`: Whether to use GPU (if available).
 - `top_k`: The maximum number of answers to return
 - `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
 Note that this is not the number of "final answers" you will receive
@@ -503,7 +503,7 @@ for full list of available TableQA models.
 See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
-- `use_gpu`: Whether to make use of a GPU (if available).
+- `use_gpu`: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
 - `top_k`: The maximum number of answers to return
 - `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
                     query + table exceed max_seq_len, the table will be truncated by removing rows until the

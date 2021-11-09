@@ -82,7 +82,7 @@ p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10)
+ | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -92,6 +92,8 @@ p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 See https://huggingface.co/cross-encoder for full list of available models
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `top_k`: The maximum number of documents to return
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
 
 <a name="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
 #### predict\_batch

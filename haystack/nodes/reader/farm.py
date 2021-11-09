@@ -118,6 +118,7 @@ class FARMReader(BaseReader):
             duplicate_filtering=duplicate_filtering, proxies=proxies, local_files_only=local_files_only,
             force_download=force_download, use_confidence_scores=use_confidence_scores, **kwargs
         )
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         self.return_no_answers = return_no_answer
         self.top_k = top_k
@@ -145,7 +146,6 @@ class FARMReader(BaseReader):
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
-        self.device, _ = initialize_device_settings(use_cuda=self.use_gpu)
         self.use_confidence_scores = use_confidence_scores
 
     def train(
@@ -227,7 +227,7 @@ class FARMReader(BaseReader):
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
 
-        device, n_gpu = initialize_device_settings(use_cuda=use_gpu,use_amp=use_amp)
+        devices, n_gpu = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -259,7 +259,7 @@ class FARMReader(BaseReader):
             schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
-            device=device,
+            device=devices[0],
             use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -271,7 +271,7 @@ class FARMReader(BaseReader):
             n_gpu=n_gpu,
             lr_schedule=lr_schedule,
             evaluate_every=evaluate_every,
-            device=device,
+            device=devices[0],
             use_amp=use_amp,
             disable_tqdm=not self.progress_bar,
             checkpoint_root_dir=Path(checkpoint_root_dir),

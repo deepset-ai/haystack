@@ -6,10 +6,11 @@ import torch
 import numpy as np
 import pandas as pd
 from quantulum3 import parser
-from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
+from transformers import TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
 
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,6 @@ class TableReader(BaseReader):
             use_gpu: bool = True,
             top_k: int = 10,
             max_seq_len: int = 256,
-
     ):
         """
         Load a TableQA model from Transformers.
@@ -65,15 +65,16 @@ class TableReader(BaseReader):
         See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
-        :param use_gpu: Whether to make use of a GPU (if available).
+        :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
         :param top_k: The maximum number of answers to return
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
         """
+
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
-        if use_gpu and torch.cuda.is_available():
-                self.model.to("cuda")
+        self.model.to(str(self.devices[0]))
         if tokenizer is None:
             self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path)
         else:
@@ -113,7 +114,7 @@ class TableReader(BaseReader):
                                     max_length=self.max_seq_len,
                                     return_tensors="pt",
                                     truncation=True)
-            inputs.to(self.model.device)
+            inputs.to(self.devices[0])
             # Forward query and table through model and convert logits to predictions
             outputs = self.model(**inputs)
             inputs.to("cpu")

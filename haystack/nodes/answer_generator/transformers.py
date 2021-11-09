@@ -95,7 +95,7 @@ class RAGenerator(BaseGenerator):
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param embed_title: Embedded the title of passage while generating embedding
         :param prefix: The prefix used by the generator's tokenizer.
-        :param use_gpu: Whether to use GPU (if available)
+        :param use_gpu: Whether to use GPU. Falls back on CPU if no GPU is available.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -120,7 +120,7 @@ class RAGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
 
@@ -130,7 +130,8 @@ class RAGenerator(BaseGenerator):
             # Also refer refer https://github.com/huggingface/transformers/issues/7829
             # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
         else:
-            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version).to(self.device)
+            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version)
+            self.model.to(str(self.devices[0]))
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
     # Refer section 2.3 of https://arxiv.org/abs/2005.11401
@@ -171,8 +172,8 @@ class RAGenerator(BaseGenerator):
             truncation=True,
         )
 
-        return contextualized_inputs["input_ids"].to(self.device), \
-               contextualized_inputs["attention_mask"].to(self.device)
+        return contextualized_inputs["input_ids"].to(self.devices[0]), \
+               contextualized_inputs["attention_mask"].to(self.devices[0])
 
     def _prepare_passage_embeddings(self, docs: List[Document], embeddings: List[numpy.ndarray]) -> torch.Tensor:
 
@@ -190,7 +191,7 @@ class RAGenerator(BaseGenerator):
             dim=0
         )
 
-        return embeddings_in_tensor.to(self.device)
+        return embeddings_in_tensor.to(self.devices[0])
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
@@ -244,7 +245,7 @@ class RAGenerator(BaseGenerator):
             src_texts=[query],
             return_tensors="pt"
         )
-        input_ids = input_dict['input_ids'].to(self.device)
+        input_ids = input_dict['input_ids'].to(self.devices[0])
         # Query embedding
         query_embedding = self.model.question_encoder(input_ids)[0]
 
@@ -363,7 +364,7 @@ class Seq2SeqGenerator(BaseGenerator):
         :param max_length: Maximum length of generated text
         :param min_length: Minimum length of generated text
         :param num_beams: Number of beams for beam search. 1 means no beam search.
-        :param use_gpu: Whether to use GPU (if available)
+        :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
 
         self.model_name_or_path = model_name_or_path
@@ -377,12 +378,13 @@ class Seq2SeqGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path).to(self.device)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.model.to(str(self.devices[0]))
         self.model.eval()
 
     @classmethod
@@ -427,7 +429,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
         try:
             query_and_docs_encoded: BatchEncoding = converter(tokenizer=self.tokenizer, query=query,
-                                                              documents=documents, top_k=top_k).to(self.device)
+                                                              documents=documents, top_k=top_k).to(self.devices[0])
         except TypeError as e:
             raise TypeError(f"Language model input converter {converter} provided in Seq2SeqGenerator.__init__() does "
                             f"not have a valid __call__ method signature. The required Callable __call__ signature is: "

@@ -32,16 +32,22 @@ class QuestionGenerator(BaseComponent):
                  split_length=50,
                  split_overlap=10,
                  use_gpu=True,
-                 prompt="generate questions:"):
+                 prompt="generate questions:",
+    ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
         implemented as a Seq2SeqLM in HuggingFace Transformers. Note that this style of question generation (where the only input
         is a document) is sometimes referred to as end-to-end question generation. Answer-supervised question
         generation is not currently supported.
+
+        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. "valhalla/t5-base-e2e-qg".
+                                   See https://huggingface.co/models for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
-        self.device, _ = initialize_device_settings(use_cuda=use_gpu)
-        self.model.to(self.device)
+        self.model.to(str(self.devices[0]))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.set_config(
             model_name_or_path=model_name_or_path, model_version=model_version,
@@ -86,8 +92,8 @@ class QuestionGenerator(BaseComponent):
             if self.prompt not in split_text:
                 split_text = self.prompt + " " + split_text
             tokenized = self.tokenizer([split_text], return_tensors="pt")
-            input_ids = tokenized["input_ids"].to(self.device)
-            attention_mask = tokenized["attention_mask"].to(self.device)   # necessary if padding is enabled so the model won't attend pad tokens
+            input_ids = tokenized["input_ids"].to(self.devices[0])
+            attention_mask = tokenized["attention_mask"].to(self.devices[0])   # necessary if padding is enabled so the model won't attend pad tokens
             tokens_output = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
