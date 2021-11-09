@@ -1,6 +1,14 @@
 # # Extending your Metadata using DocumentClassifiers at Index Time
 # 
-# With DocumentClassifier it's possible to automatically enrich your documents with categories, sentiments, topics or whatever metadata you like. This metadata could be used for efficient filtering or further processing. Say you have some categories your users typically filter on. If the documents are tagged manually with these categories, you could automate this process by training a model or using zero shot classification. This tutorial shows how to integrate it in your indexing pipeline.
+# With DocumentClassifier it's possible to automatically enrich your documents 
+# with categories, sentiments, topics or whatever metadata you like. 
+# This metadata could be used for efficient filtering or further processing. 
+# Say you have some categories your users typically filter on. 
+# If the documents are tagged manually with these categories, you could automate 
+# this process by training a model. Or you can leverage the full power and flexibility 
+# of zero shot classification. All you need to do is pass your categories to the classifier, 
+# no labels required.
+# This tutorial shows how to integrate it in your indexing pipeline.
 
 # DocumentClassifier adds the classification result (label and score) to Document's meta property.
 # Hence, we can use it to classify documents at index time. \
@@ -39,6 +47,10 @@ def tutorial16_document_classifier_at_index_time():
 
     # We can enrich the document metadata at index time using any transformers document classifier model.
     # Here we use a zero shot model that is supposed to classify our documents in 'music', 'natural language processing' and 'history'.
+    # While traditional classification models are trained to predict one of a few "hard-coded" classes and required a dedicated training dataset, 
+    # zero-shot classification is super flexible and you can easily switch the classes the model should predict on the fly. 
+    # Just supply them via the labels param. 
+    # Feel free to change them for whatever you like to classify.
     # These classes can later on be accessed at query time.
 
     doc_classifier = TransformersDocumentClassifier(model_name_or_path="cross-encoder/nli-distilroberta-base",
@@ -50,14 +62,14 @@ def tutorial16_document_classifier_at_index_time():
     # we can also use any other transformers model besides zero shot classification
 
     # doc_classifier_model = 'bhadresh-savani/distilbert-base-uncased-emotion'
-    # doc_classifier = TransformersDocumentClassifier(model_name_or_path=doc_classifier_model, batch_size=16, use_gpu=-1)
+    # doc_classifier = TransformersDocumentClassifier(model_name_or_path=doc_classifier_model, batch_size=16)
 
     # we could also specifiy a different field we want to run the classification on
 
     # doc_classifier = TransformersDocumentClassifier(model_name_or_path="cross-encoder/nli-distilroberta-base",
     #    task="zero-shot-classification",
     #    labels=["music", "natural language processing", "history"],
-    #    batch_size=16, use_gpu=-1,
+    #    batch_size=16,
     #    classification_field="description")
 
 
