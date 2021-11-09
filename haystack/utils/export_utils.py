@@ -12,12 +12,6 @@ from haystack.document_stores.sql import DocumentORM
 logger = logging.getLogger(__name__)
 
 
-FIELDS_TO_KEEP_BY_LEVEL = {
-    "minimum": ["answer", "context"],
-    "medium": ["answer", "context", "score"]
-}
-
-
 def print_answers(results: dict, details: str = "all", max_text_len: Optional[int] = None):
     """
     Utility function to print results of Haystack pipelines
@@ -27,10 +21,17 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
         None to not cut long text.
     :return: None
     """
+    # Defines the fields to keep in the Answer for each detail level
+    fields_to_keep_by_level = {
+        "minimum": ["answer", "context"],
+        "medium": ["answer", "context", "score"]
+    }
+
     if not "answers" in results.keys():
         raise ValueError("The results object does not seem to come from a Reader: "
                          f"it does not contain the 'answers' key, but only: {results.keys()}.  "
                          "Try print_documents or print_questions.")
+
     if "query" in results.keys():
         print(f"\nQuery: {results['query']}\nAnswers:")
 
@@ -39,9 +40,9 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
 
     # Filter the results by detail level
     filtered_answers = []
-    if details in FIELDS_TO_KEEP_BY_LEVEL.keys():
+    if details in fields_to_keep_by_level.keys():
         for ans in answers:
-            filtered_answers.append({k: getattr(ans, k) for k in FIELDS_TO_KEEP_BY_LEVEL[details]})
+            filtered_answers.append({k: getattr(ans, k) for k in fields_to_keep_by_level[details]})
     elif details == "all":  
         filtered_answers = answers
     else:
