@@ -16,6 +16,7 @@ from haystack.utils.doc_store import (
 from haystack.utils.export_utils import (
     print_answers,
     print_documents,
+    print_questions,
     export_answers_to_csv,
     convert_labels_to_squad,
 )
