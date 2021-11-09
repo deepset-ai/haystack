@@ -49,15 +49,13 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     |    converter = TextConverter()
     |    preprocessor = Preprocessor()
     |    document_store = ElasticsearchDocumentStore()
-    |    retriever = ElasticsearchRetriever(document_store=document_store)
     |    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
     |                                                         batch_size=16)
     |    p = Pipeline()
     |    p.add_node(component=converter, name="TextConverter", inputs=["File"])
     |    p.add_node(component=preprocessor, name="Preprocessor", inputs=["TextConverter"])
-    |    p.add_node(component=document_classifier, name="IndexTimeDocumentClassifier", inputs=["Preprocessor"])
-    |    p.add_node(component=retriever, name="Retriever", inputs=["IndexTimeDocumentClassifier"])
-    |    p.add_node(component=document_store, name="DocumentStore", inputs=["Retriever"])
+    |    p.add_node(component=document_classifier, name="DocumentClassifier", inputs=["Preprocessor"])
+    |    p.add_node(component=document_store, name="DocumentStore", inputs=["DocumentClassifier"])
     |    p.run(file_paths=file_paths)
      ```
     """

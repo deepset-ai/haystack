@@ -44,7 +44,7 @@ def tutorial16_document_classifier_at_index_time():
     doc_classifier = TransformersDocumentClassifier(model_name_or_path="cross-encoder/nli-distilroberta-base",
         task="zero-shot-classification",
         labels=["music", "natural language processing", "history"],
-        batch_size=16, use_gpu=-1
+        batch_size=16
     )
 
     # we can also use any other transformers model besides zero shot classification
@@ -95,7 +95,7 @@ def tutorial16_document_classifier_at_index_time():
     # Initialize QA-Pipeline
     from haystack.pipelines import ExtractiveQAPipeline
     retriever = ElasticsearchRetriever(document_store=document_store)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False)
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
     pipe = ExtractiveQAPipeline(reader, retriever)    
 
     ## Voilà! Ask a question while filtering for "music"-only documents
@@ -112,14 +112,6 @@ def tutorial16_document_classifier_at_index_time():
     from haystack.pipelines import Pipeline
     from haystack.nodes import TextConverter, FileTypeClassifier, PDFToTextConverter, DocxToTextConverter
 
-    # we need to set the batch_size so each batch fits into memory
-    index_time_document_classifier = TransformersDocumentClassifier(
-        model_name_or_path="cross-encoder/nli-distilroberta-base",
-        task="zero-shot-classification",
-        labels=["music", "natural language processing", "history"], 
-        batch_size=16, use_gpu=-1
-    )
-
     file_type_classifier = FileTypeClassifier()
     text_converter = TextConverter()
     pdf_converter = PDFToTextConverter()
@@ -131,9 +123,8 @@ def tutorial16_document_classifier_at_index_time():
     indexing_pipeline_with_classification.add_node(component=pdf_converter, name="PdfConverter", inputs=["FileTypeClassifier.output_2"])
     indexing_pipeline_with_classification.add_node(component=docx_converter, name="DocxConverter", inputs=["FileTypeClassifier.output_4"])
     indexing_pipeline_with_classification.add_node(component=preprocessor_sliding_window, name="Preprocessor", inputs=["TextConverter", "PdfConverter", "DocxConverter"])
-    indexing_pipeline_with_classification.add_node(component=index_time_document_classifier, name="IndexTimeDocumentClassifier", inputs=["Preprocessor"])
-    indexing_pipeline_with_classification.add_node(component=retriever, name="Retriever", inputs=["IndexTimeDocumentClassifier"])
-    indexing_pipeline_with_classification.add_node(component=document_store, name="DocumentStore", inputs=["Retriever"])
+    indexing_pipeline_with_classification.add_node(component=doc_classifier, name="DocumentClassifier", inputs=["Preprocessor"])
+    indexing_pipeline_with_classification.add_node(component=document_store, name="DocumentStore", inputs=["DocumentClassifier"])
     indexing_pipeline_with_classification.draw("index_time_document_classifier.png")
 
     document_store.delete_documents()
