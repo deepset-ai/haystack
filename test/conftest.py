@@ -343,14 +343,14 @@ def ranker():
 def document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
-        use_gpu=-1
+        use_gpu=False
     )
 
 @pytest.fixture(scope="module")
 def zero_shot_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="cross-encoder/nli-distilroberta-base",
-        use_gpu=-1,
+        use_gpu=False,
         task="zero-shot-classification",
         labels=["negative", "positive"]
     )
@@ -359,7 +359,7 @@ def zero_shot_document_classifier():
 def batched_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
-        use_gpu=-1,
+        use_gpu=False,
         batch_size=16
     )
 
@@ -367,7 +367,7 @@ def batched_document_classifier():
 def indexing_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
-        use_gpu=-1,
+        use_gpu=False,
         batch_size=16,
         classification_field="class_field"
     )
