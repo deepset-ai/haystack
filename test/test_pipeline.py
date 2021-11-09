@@ -700,3 +700,50 @@ def test_document_search_pipeline(retriever, document_store):
             assert isinstance(document, Document)
             assert isinstance(document.id, str)
             assert isinstance(document.content, str)
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_indexing_pipeline_with_classifier(document_store):
+    # test correct load of indexing pipeline from yaml
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline_with_classifier"
+    )
+    pipeline.run(
+        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+    )
+    # test correct load of query pipeline from yaml
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+    )
+    prediction = pipeline.run(
+        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+    )
+    assert prediction["query"] == "Who made the PDF specification?"
+    assert prediction["answers"][0].answer == "Adobe Systems"
+    assert prediction["answers"][0].meta["classification"]["label"] == "joy"
+    assert "_debug" not in prediction.keys()
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_query_pipeline_with_document_classifier(document_store):
+    # test correct load of indexing pipeline from yaml
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+    )
+    pipeline.run(
+        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+    )
+    # test correct load of query pipeline from yaml
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline_with_document_classifier"
+    )
+    prediction = pipeline.run(
+        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+    )
+    assert prediction["query"] == "Who made the PDF specification?"
+    assert prediction["answers"][0].answer == "Adobe Systems"
+    assert prediction["answers"][0].meta["classification"]["label"] == "joy"
+    assert "_debug" not in prediction.keys()
+

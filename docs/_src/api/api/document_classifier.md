@@ -34,9 +34,12 @@ This node classifies documents and adds the output from the classification step 
 The meta field of the document is a dictionary with the following format:
 ``'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'neutral', 'probability' = 0.9997646, ...} }``
 
+Classification is run on document's content field by default. If you want it to run on another field,
+set the `classification_field` to one of document's meta fields.
+
 With this document_classifier, you can directly get predictions via predict()
 
- **Usage example:**
+ **Usage example at query time:**
  ```python
 |    ...
 |    retriever = ElasticsearchRetriever(document_store=document_store)
@@ -55,11 +58,27 @@ With this document_classifier, you can directly get predictions via predict()
 |    res["documents"][0].to_dict()["meta"]["classification"]["label"]
  ```
 
+**Usage example at index time:**
+ ```python
+|    ...
+|    converter = TextConverter()
+|    preprocessor = Preprocessor()
+|    document_store = ElasticsearchDocumentStore()
+|    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
+|                                                         batch_size=16)
+|    p = Pipeline()
+|    p.add_node(component=converter, name="TextConverter", inputs=["File"])
+|    p.add_node(component=preprocessor, name="Preprocessor", inputs=["TextConverter"])
+|    p.add_node(component=document_classifier, name="DocumentClassifier", inputs=["Preprocessor"])
+|    p.add_node(component=document_store, name="DocumentStore", inputs=["DocumentClassifier"])
+|    p.run(file_paths=file_paths)
+ ```
+
 <a name="transformers.TransformersDocumentClassifier.__init__"></a>
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None)
+ | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
 ```
 
 Load a text classification model from Transformers.
@@ -88,6 +107,8 @@ See https://huggingface.co/models for full list of available models.
 ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
 classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
 or an entailment.
+- `batch_size`: batch size to be processed at once
+- `classification_field`: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
 
 <a name="transformers.TransformersDocumentClassifier.predict"></a>
 #### predict
@@ -96,7 +117,8 @@ or an entailment.
  | predict(documents: List[Document]) -> List[Document]
 ```
 
-Returns documents containing classification result in meta field
+Returns documents containing classification result in meta field.
+Documents are updated in place.
 
 **Arguments**:
 
