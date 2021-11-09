@@ -110,7 +110,7 @@ See https://huggingface.co/models for full list of available models.
 classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
 or an entailment.
 - `batch_size`: batch size to be processed at once
-- `classification_field`: Field of Document's meta field to be used for classification. If left unset, Document's content field is used by default.
+- `classification_field`: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
 
 <a name="transformers.TransformersDocumentClassifier.predict"></a>
 #### predict
