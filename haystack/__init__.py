@@ -1,24 +1,8 @@
 import logging
 
-<<<<<<< HEAD
 # This configuration must be done before any import to apply to all submodules
 logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
-=======
-# Then reconfigure the StreamHandler not to display anything below WARNING as default
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.INFO)
-root_logger.addHandler(stream_handler)
-
-# Change log-levels before modules are loaded to avoid verbose log messages.
-logging.getLogger('haystack.modeling').setLevel(logging.WARNING)
-logging.getLogger('haystack.modeling.utils').setLevel(logging.INFO)
-logging.getLogger('haystack.modeling.infer').setLevel(logging.INFO)
-logging.getLogger('transformers').setLevel(logging.WARNING)
-logging.getLogger('haystack.modeling.evaluation.eval').setLevel(logging.INFO)
-logging.getLogger('haystack.modeling.model.optimization').setLevel(logging.INFO)
-logging.getLogger('faiss.loader').setLevel(logging.WARNING)
->>>>>>> master
 
 from haystack import pipelines
 from haystack.schema import Document, Answer, Label, MultiLabel, Span
