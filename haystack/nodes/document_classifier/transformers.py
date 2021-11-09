@@ -99,7 +99,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
         or an entailment.
         :param batch_size: batch size to be processed at once
-        :param classification_field: Field of Document's meta field to be used for classification. If left unset, Document's content field is used by default.
+        :param classification_field: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
