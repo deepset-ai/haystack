@@ -8,6 +8,7 @@ from abc import abstractmethod
 import numpy as np
 from tqdm.auto import tqdm
 import torch
+from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 from transformers import AutoTokenizer, AutoModel
 
@@ -96,8 +97,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                               "For details see https://github.com/UKPLab/sentence-transformers ")
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
-        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=device)
+        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=str(retriever.devices[0]))
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
         if document_store.similarity != "cosine":
@@ -129,13 +129,9 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     ):
 
         self.progress_bar = retriever.progress_bar
-        if retriever.use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
 
         self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
-        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)
+        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(str(retriever.devices[0]))
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
@@ -146,7 +142,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.no_grad():
                 q_reps = self.embedding_model.embed_questions(input_ids=batch["input_ids"],
                                                               attention_mask=batch["padding_mask"]).cpu().numpy()
@@ -163,7 +159,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.no_grad():
                 q_reps = self.embedding_model.embed_answers(input_ids=batch["input_ids"],
                                                             attention_mask=batch["padding_mask"]).cpu().numpy()

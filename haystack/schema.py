@@ -186,10 +186,13 @@ class Document:
                 getattr(other, 'id_hash_keys', None) == self.id_hash_keys)
 
     def __repr__(self):
-        return str(self.to_dict())
+        return f"<Document: {str(self.to_dict())}>"
 
     def __str__(self):
-        return f"content: {self.content[:100]} {'[...]' if len(self.content) > 100 else ''}"
+        # In some cases, self.content is None (therefore not subscriptable)
+        if not self.content:
+            return f"<Document: id={self.id}, content=None>"
+        return f"<Document: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}'>"
 
     def __lt__(self, other):
         """ Enable sorting of Documents by score """
@@ -262,7 +265,13 @@ class Answer:
         return self.score < other.score
 
     def __str__(self):
-        return f"answer: {self.answer} \nscore: {self.score} \ncontext: {self.context}"
+        # self.context might be None (therefore not subscriptable)
+        if not self.context:
+            return f"<Answer: answer='{self.answer}', score={self.score}, context=None>"
+        return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
+
+    def __repr__(self):
+        return f"<Answer {asdict(self)}>"
 
     def to_dict(self):
         return asdict(self)
