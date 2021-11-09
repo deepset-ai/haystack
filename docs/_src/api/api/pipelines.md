@@ -137,7 +137,7 @@ Set the component for a node in the Pipeline.
 #### run
 
 ```python
- | run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+ | run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 Runs the pipeline, one node at a time.
@@ -155,11 +155,8 @@ Runs the pipeline, one node at a time.
                {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received, the output they generated, and eventual logs (of any severity)
-              emitted. All debug information can then be found in the dict returned
-              by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
+              they received and the output they generated. All debug information can 
+              then be found in the dict returned by this method under the key "_debug"
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
