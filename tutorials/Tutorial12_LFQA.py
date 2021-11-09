@@ -91,7 +91,6 @@ def tutorial12_lfqa():
     print(f"Query: {query_2}")
     print(f"Answer: {result_2['answers'][0]}")
     print()
-    pipe.run(query=query_2, params={"Retriever": {"top_k": 1}})
 
 
 if __name__ == "__main__":

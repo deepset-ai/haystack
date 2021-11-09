@@ -3,7 +3,7 @@ from pprint import pprint
 from haystack.nodes import QuestionGenerator, ElasticsearchRetriever, FARMReader
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.pipelines import QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline, QuestionAnswerGenerationPipeline
-from haystack.utils import launch_es
+from haystack.utils import launch_es, print_questions
 
 """ 
 This is a bare bones tutorial showing what is possible with the QuestionGenerator Node which automatically generates 
@@ -34,20 +34,31 @@ which the the document can answer.
 """
 
 # QuestionGenerationPipeline
+print("\nQuestionGenerationPipeline")
+print("==========================")
+
 question_generation_pipeline = QuestionGenerationPipeline(question_generator)
-for document in document_store:
-        result = question_generation_pipeline.run(documents=[document])
-        pprint(result)
+for idx, document in enumerate(document_store):
+        
+    print(f"\n * Generating questions for document {idx}: {document.content[:100]}...\n")
+    result = question_generation_pipeline.run(documents=[document])
+    print_questions(result)
 
 """
 This pipeline takes a query as input. It retrievers relevant documents and then generates questions based on these.
 """
 
 # RetrieverQuestionGenerationPipeline
+print("\RetrieverQuestionGenerationPipeline")
+print("==================================")
+
 retriever = ElasticsearchRetriever(document_store=document_store)
 rqg_pipeline = RetrieverQuestionGenerationPipeline(retriever, question_generator)
+
+print(f"\n * Generating questions for documents matching the query 'Arya Stark'\n")
 result = rqg_pipeline.run(query="Arya Stark")
-pprint(result)
+print_questions(result)
+
 
 """
 This pipeline takes a document as input, generates questions on it, and attempts to answer these questions using
@@ -55,11 +66,17 @@ a Reader model
 """
 
 # QuestionAnswerGenerationPipeline
+print("\QuestionAnswerGenerationPipeline")
+print("===============================")
+
 reader = FARMReader("deepset/roberta-base-squad2")
 qag_pipeline = QuestionAnswerGenerationPipeline(question_generator, reader)
-for document in tqdm(document_store):
+for idx, document in enumerate(tqdm(document_store)):
+
+    print(f"\n * Generating questions and answers for document {idx}: {document.content[:100]}...\n")
     result = qag_pipeline.run(documents=[document])
-    pprint(result)
+    print_questions(result)
+
 
 # This Haystack script was made with love by deepset in Berlin, Germany
 # Haystack: https://github.com/deepset-ai/haystack
