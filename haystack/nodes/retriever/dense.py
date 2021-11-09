@@ -24,7 +24,6 @@ from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.training.base import Trainer
 from haystack.modeling.utils import initialize_device_settings
-from torch.utils.data.sampler import SequentialSampler
 
 
 logger = logging.getLogger(__name__)
@@ -115,10 +114,8 @@ class DensePassageRetriever(BaseRetriever):
 
         if devices is not None:
             self.devices = devices
-        elif use_gpu and torch.cuda.is_available():
-            self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
         else:
-            self.devices = [torch.device("cpu")]
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -537,8 +534,7 @@ class TableTextRetriever(BaseRetriever):
         if devices is not None:
             self.devices = devices
         else:
-            device, _ = initialize_device_settings(use_gpu)
-            self.devices = [device]
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -935,13 +931,14 @@ class EmbeddingRetriever(BaseRetriever):
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
         top_k: int = 10,
-        progress_bar: bool = True
+        progress_bar: bool = True,
+        devices: Optional[List[Union[int, str, torch.device]]] = None
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param use_gpu: Whether to use gpu or not
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param model_format: Name of framework that was used for saving the model. Options:
 
                              - ``'farm'``
@@ -958,6 +955,8 @@ class EmbeddingRetriever(BaseRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -965,6 +964,11 @@ class EmbeddingRetriever(BaseRetriever):
             use_gpu=use_gpu, model_format=model_format, pooling_strategy=pooling_strategy,
             emb_extraction_layer=emb_extraction_layer, top_k=top_k,
         )
+
+        if devices is not None:
+            self.devices = devices
+        else:
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
         self.document_store = document_store
         self.embedding_model = embedding_model

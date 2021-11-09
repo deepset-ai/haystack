@@ -104,7 +104,7 @@ See https://huggingface.co/transformers/model_doc/rag.html for more details
 - `num_beams`: Number of beams for beam search. 1 means no beam search.
 - `embed_title`: Embedded the title of passage while generating embedding
 - `prefix`: The prefix used by the generator's tokenizer.
-- `use_gpu`: Whether to use GPU (if available)
+- `use_gpu`: Whether to use GPU. Falls back on CPU if no GPU is available.
 
 <a name="transformers.RAGenerator.predict"></a>
 #### predict
@@ -208,7 +208,7 @@ For a list of all text-generation models see https://huggingface.co/models?pipel
 - `max_length`: Maximum length of generated text
 - `min_length`: Minimum length of generated text
 - `num_beams`: Number of beams for beam search. 1 means no beam search.
-- `use_gpu`: Whether to use GPU (if available)
+- `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
 
 <a name="transformers.Seq2SeqGenerator.predict"></a>
 #### predict

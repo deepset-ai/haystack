@@ -7,7 +7,7 @@ root_logger.setLevel(logging.DEBUG)
 
 # Then reconfigure the StreamHandler not to display anything below WARNING as default
 stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.WARNING)
+stream_handler.setLevel(logging.INFO)
 root_logger.addHandler(stream_handler)
 
 # Change log-levels before modules are loaded to avoid verbose log messages.

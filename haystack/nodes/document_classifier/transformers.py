@@ -1,10 +1,11 @@
 from typing import List, Optional
-
 import logging
+
 from transformers import pipeline
 
 from haystack.schema import Document
 from haystack.nodes.document_classifier.base import BaseDocumentClassifier
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
-        use_gpu: int = 0,
+        use_gpu: bool = True,
         return_all_scores: bool = False,
         task: str = 'text-classification',
         labels: Optional[List[str]] = None
@@ -68,7 +69,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
-        :param use_gpu: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+        :param use_gpu: Whether to use GPU (if available).
         :param return_all_scores:  Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
         :param task: 'text-classification' or 'zero-shot-classification'
         :param labels: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
@@ -85,12 +86,15 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
             logger.warning(f'Provided labels {labels} will be ignored for task text-classification. Set task to '
                            f'zero-shot-classification to use labels.')
 
+        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        device = 0 if devices[0].type == "cuda" else -1
+
         if tokenizer is None:
             tokenizer = model_name_or_path
         if task == 'zero-shot-classification':
-            self.model = pipeline(task=task, model=model_name_or_path, tokenizer=tokenizer, device=use_gpu, revision=model_version)
+            self.model = pipeline(task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version)
         elif task == 'text-classification':
-            self.model = pipeline(task=task, model=model_name_or_path, tokenizer=tokenizer, device=use_gpu, revision=model_version, return_all_scores=return_all_scores)
+            self.model = pipeline(task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version, return_all_scores=return_all_scores)
         self.return_all_scores = return_all_scores
         self.labels = labels
         self.task = task

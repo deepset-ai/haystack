@@ -5,6 +5,7 @@ from transformers import pipeline
 
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
+from haystack.modeling.utils import initialize_device_settings
 
 
 class EntityExtractor(BaseComponent):
@@ -19,12 +20,17 @@ class EntityExtractor(BaseComponent):
     outgoing_edges = 1
 
     def __init__(self,
-                 model_name_or_path="dslim/bert-base-NER"):
+                 model_name_or_path: str = "dslim/bert-base-NER",
+                 use_gpu: bool = True):
 
         self.set_config(model_name_or_path=model_name_or_path)
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
-        self.model = pipeline("ner", model=token_classifier, tokenizer=tokenizer, aggregation_strategy="simple")
+        token_classifier.to(str(self.devices[0]))
+        self.model = pipeline("ner", model=token_classifier, tokenizer=tokenizer, aggregation_strategy="simple",
+                              device=0 if self.devices[0].type == "cuda" else -1)
 
     def run(self, documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]:  # type: ignore
         """

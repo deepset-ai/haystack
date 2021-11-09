@@ -32,14 +32,14 @@ class Inferencer:
         model: AdaptiveModel,
         processor: Processor,
         task_type: Optional[str],
-        batch_size: int =4,
-        gpu: bool =False,
-        name: Optional[str] =None,
-        return_class_probs: bool=False,
+        batch_size: int = 4,
+        gpu: bool = False,
+        name: Optional[str] = None,
+        return_class_probs: bool = False,
         extraction_strategy: Optional[str] = None,
         extraction_layer: Optional[int] = None,
-        num_processes: Optional[int] =None,
-        disable_tqdm: bool =False
+        num_processes: Optional[int] = None,
+        disable_tqdm: bool = False
     ):
         """
         Initializes Inferencer from an AdaptiveModel and a Processor instance.
@@ -70,13 +70,12 @@ class Inferencer:
         MLFlowLogger.disable()
 
         # Init device and distributed settings
-        device, n_gpu = initialize_device_settings(use_cuda=gpu, local_rank=-1, use_amp=None)
+        self.devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
 
         self.processor = processor
         self.model = model
         self.model.eval()
         self.batch_size = batch_size
-        self.device = device
         self.language = self.model.get_language()
         self.task_type = task_type
         self.disable_tqdm = disable_tqdm
@@ -164,12 +163,12 @@ class Inferencer:
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        device, n_gpu = initialize_device_settings(use_cuda=gpu, local_rank=-1, use_amp=None)
+        devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
         name = os.path.basename(model_name_or_path)
 
         # a) either from local dir
         if os.path.exists(model_name_or_path):
-            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=device, strict=strict)
+            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)
             if task_type == "embeddings":
                 processor = InferenceProcessor.load_from_dir(model_name_or_path)
             else:
@@ -184,7 +183,7 @@ class Inferencer:
 
             model = AdaptiveModel.convert_from_transformers(model_name_or_path,
                                                             revision=revision,
-                                                            device=device,
+                                                            device=devices[0],
                                                             task_type=task_type,
                                                             **kwargs)
             processor = Processor.convert_from_transformers(model_name_or_path,
@@ -439,7 +438,7 @@ class Inferencer:
         )  # type ignore
         preds_all = []
         for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.devices[0]) for key in batch}
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
 
             # get logits
@@ -478,7 +477,7 @@ class Inferencer:
 
         for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)):
 
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
             # get logits
             with torch.no_grad():
