@@ -1,12 +1,14 @@
 from typing import List, Optional, Union
-
 import logging
-import torch
 from pathlib import Path
+
+import torch
+from torch.nn import DataParallel
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from haystack.schema import Document
 from haystack.nodes.ranker import BaseRanker
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +37,9 @@ class SentenceTransformersRanker(BaseRanker):
             self,
             model_name_or_path: Union[str, Path],
             model_version: Optional[str] = None,
-            top_k: int = 10
+            top_k: int = 10,
+            use_gpu: bool = True,
+            devices: Optional[List[Union[int, str, torch.device]]] = None
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -43,6 +47,8 @@ class SentenceTransformersRanker(BaseRanker):
         See https://huggingface.co/cross-encoder for full list of available models
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param top_k: The maximum number of documents to return
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
         """
 
         # save init parameters to enable export of component config as YAML
@@ -53,9 +59,17 @@ class SentenceTransformersRanker(BaseRanker):
 
         self.top_k = top_k
 
+        if devices is not None:
+            self.devices = devices
+        else:
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
+        self.transformer_model.to(str(self.devices[0]))
         self.transformer_tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
         self.transformer_model.eval()
+
+        if len(self.devices) > 1:
+            self.model = DataParallel(self.transformer_model, device_ids=self.devices)
 
     def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
         """
@@ -85,7 +99,7 @@ class SentenceTransformersRanker(BaseRanker):
             top_k = self.top_k
 
         features = self.transformer_tokenizer([query for doc in documents], [doc.content for doc in documents],
-                                              padding=True, truncation=True, return_tensors="pt")
+                                              padding=True, truncation=True, return_tensors="pt").to(self.devices[0])
 
         # SentenceTransformerRanker uses the logit as similarity score and not the classifier's probability of label "1"
         # https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers

@@ -28,3 +28,10 @@ implemented as a Seq2SeqLM in HuggingFace Transformers. Note that this style of 
 is a document) is sometimes referred to as end-to-end question generation. Answer-supervised question
 generation is not currently supported.
 
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. "valhalla/t5-base-e2e-qg".
+                           See https://huggingface.co/models for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+

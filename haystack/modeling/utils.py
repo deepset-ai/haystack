@@ -48,27 +48,37 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool=False) -> None:
         torch.backends.cudnn.benchmark = False
 
 
-def initialize_device_settings(use_cuda, local_rank=-1, use_amp=None):
+def initialize_device_settings(use_cuda: bool, local_rank: int = -1, multi_gpu: bool = True):
+    """
+    Returns a list of available devices.
+
+    :param use_cuda: Whether to make use of CUDA GPUs (if available).
+    :param local_rank: Ordinal of device to be used. If -1 and multi_gpu is True, all devices will be used.
+    :param multi_gpu: Whether to make use of all GPUs (if available).
+    """
     if not use_cuda:
-        device = torch.device("cpu")
+        devices = [torch.device("cpu")]
         n_gpu = 0
     elif local_rank == -1:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if not torch.cuda.is_available():
-            n_gpu = 0
+        if torch.cuda.is_available():
+            if multi_gpu:
+                devices = [torch.device(device) for device in range(torch.cuda.device_count())]
+                n_gpu = torch.cuda.device_count()
+            else:
+                devices = [torch.device("cuda")]
+                n_gpu = 1
         else:
-            n_gpu = torch.cuda.device_count()
+            devices = [torch.device("cpu")]
+            n_gpu = 0
     else:
-        device = torch.device("cuda", local_rank)
-        torch.cuda.set_device(device)
+        devices = [torch.device("cuda", local_rank)]
+        torch.cuda.set_device(devices[0])
         n_gpu = 1
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.distributed.init_process_group(backend="nccl")
-    logger.info(f"Using device: {str(device).upper()} ")
+    logger.info(f"Using devices: {', '.join([str(device) for device in devices]).upper()}")
     logger.info(f"Number of GPUs: {n_gpu}")
-    logger.info(f"Distributed Training: {bool(local_rank != -1)}")
-    logger.info(f"Automatic Mixed Precision: {use_amp}")
-    return device, n_gpu
+    return devices, n_gpu
 
 
 def flatten_list(nested_list):

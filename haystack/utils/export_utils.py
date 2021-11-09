@@ -1,12 +1,8 @@
 from typing import Dict, Any, List, Optional
 
-import io
-import re
-import time
 import json
 import pprint
 import logging
-import subprocess
 import pandas as pd
 from collections import defaultdict
 
@@ -16,58 +12,98 @@ from haystack.document_stores.sql import DocumentORM
 logger = logging.getLogger(__name__)
 
 
-
-def print_answers(results: dict, details: str = "all"):
+def print_answers(results: dict, details: str = "all", max_text_len: Optional[int] = None):
     """
-    Utilitiy function to print results of Haystack pipelines
+    Utility function to print results of Haystack pipelines
     :param results: Results from a pipeline
-    :param details: One of ["minimum", "medium", "all]. Defining the level of details to print.
+    :param details: One of "minimum", "medium", "all". Defining the level of details to print.
+    :param max_text_lenght: shorten lengthy text fields to the maximum allowed length. Set to
+        None to not cut long text.
     :return: None
     """
-    # TODO: unify the output format of Generator and Reader so that this function doesn't have the try/except
-    #  Or implement a class method like PredReader.print() and PredGenerator.print() that handles all this functionality.
-    # This default case is when the answers come from a Reader
-    try:
-        answers = results["answers"]
-        pp = pprint.PrettyPrinter(indent=4)
-        if details in ("minimal", "medium"):
-            if details == "minimal":
-                keys_to_keep = set(["answer", "context"])
-            elif details == "medium":
-                keys_to_keep = set(["answer", "context", "score"])
+    # Defines the fields to keep in the Answer for each detail level
+    fields_to_keep_by_level = {
+        "minimum": ["answer", "context"],
+        "medium": ["answer", "context", "score"]
+    }
 
-            # filter the results
-            filtered_answers = []
-            for ans in answers:
-                filtered_answers.append({k: getattr(ans, k) for k in keys_to_keep})
-            pp.pprint(filtered_answers)
-        else:
-            pp.pprint(results)
-    # This fall back case is when the answers come from a Generator
-    except:
-        if details == "minimal":
-            print(f"Query: {results['query']}")
-            for a in results["answers"]:
-                print(f"Answer: {a['answer']}")
-        else:
-            pp.pprint(results)
+    if not "answers" in results.keys():
+        raise ValueError("The results object does not seem to come from a Reader: "
+                         f"it does not contain the 'answers' key, but only: {results.keys()}.  "
+                         "Try print_documents or print_questions.")
 
+    if "query" in results.keys():
+        print(f"\nQuery: {results['query']}\nAnswers:")
 
-def print_documents(results: dict, max_text_len: Optional[int] = None, print_meta: bool = False):
-    print(f"Query: {results['query']}")
+    answers = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
-    for d in results["documents"]:
-        print()
-        new_text = d.content[:max_text_len]
-        if len(new_text) != len(d.content):
-            new_text += "..."
-        results = {
-            "name": d.meta.get("name", None),
-            "content": new_text
-        }
+
+    # Filter the results by detail level
+    filtered_answers = []
+    if details in fields_to_keep_by_level.keys():
+        for ans in answers:
+            filtered_answers.append({k: getattr(ans, k) for k in fields_to_keep_by_level[details]})
+    elif details == "all":  
+        filtered_answers = answers
+    else:
+        logging.warn(f"print_answers received details='{details}', which was not understood. "
+                     "Valid values are 'minimum', 'medium', and 'all'. Using 'all'.")
+        filtered_answers = answers
+
+    # Shorten long text fields
+    if max_text_len is not None:
+        for ans in answers:
+            if "context" in ans.keys() and len(ans["context"]) > 50:
+                ans["context"] = ans["context"][:50] + "..."
+
+    pp.pprint(filtered_answers) 
+
+
+def print_documents(results: dict, max_text_len: Optional[int] = None, print_name: bool = True, print_meta: bool = False):
+    """
+    Utility that prints a compressed representation of the documents returned by a pipeline.
+    :param max_text_lenght: shorten the document's content to a maximum number of chars. if None, does not cut.
+    :param print_name: whether to print the document's name (from the metadata) or not.
+    :param print_meta: whether to print the document's metadata or not.
+    """
+    print(f"\nQuery: {results['query']}\n")
+    pp = pprint.PrettyPrinter(indent=4)
+
+    for doc in results["documents"]:
+        content = doc.content
+        if max_text_len:
+            content = doc.content[:max_text_len] + ("..." if len(doc.content) > max_text_len else "")
+        results = {"content": content}
+        if print_name:
+            results["name"] = doc.meta.get("name", None)
         if print_meta:
-            results["meta"] = d.meta
+            results["meta"] = doc.meta
         pp.pprint(results)
+        print()
+
+
+def print_questions(results: dict):
+    """
+    Utility to print the output of a question generating pipeline in a readable format.
+    """
+    if "generated_questions" in results.keys():        
+        print("\nGenerated questions:")
+        for result in results["generated_questions"]:
+            for question in result["questions"]:
+                print(f" - {question}")
+
+    elif "results" in results.keys():
+        print("\nGenerated pairs:")
+        for pair in results["results"]:
+            print(f" - Q:{pair['query']}")
+            for answer in pair["answers"]:
+                print(f"      A: {answer.answer}")
+
+    else:
+        raise ValueError("This object does not seem to be the output " 
+              "of a question generating pipeline: does not contain neither "
+              f"'generated_questions' nor 'results', but only: {results.keys()}. "
+              " Try `print_answers` or `print_documents`.")
 
 
 def export_answers_to_csv(agg_results: list, output_file):

@@ -605,7 +605,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -613,7 +613,7 @@ class EmbeddingRetriever(BaseRetriever)
 - `document_store`: An instance of DocumentStore from which to retrieve documents.
 - `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `use_gpu`: Whether to use gpu or not
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
 - `model_format`: Name of framework that was used for saving the model. Options:
 
                      - ``'farm'``
@@ -630,6 +630,8 @@ class EmbeddingRetriever(BaseRetriever)
                              Default: -1 (very last layer).
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
