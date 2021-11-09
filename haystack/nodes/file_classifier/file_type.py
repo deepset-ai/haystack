@@ -9,6 +9,9 @@ class FileTypeClassifier(BaseComponent):
     """
     outgoing_edges = 5
 
+    def __init__(self):
+        self.set_config()
+
     def _get_files_extension(self, file_paths: list) -> set:
         """
         Return the file extensions

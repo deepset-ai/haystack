@@ -115,8 +115,16 @@ id: "tutorial14md"
 title: "Tutorial 15"
 metaTitle: "TableQA Tutorial"
 metaDescription: ""
-slug: "/docs/tutorial16"
+slug: "/docs/tutorial15"
 date: "2021-10-28"
 id: "tutorial15md"
+--->""",
+    16: """<!---
+title: "Tutorial 16"
+metaTitle: "DocumentClassifier at Index Time Tutorial"
+metaDescription: ""
+slug: "/docs/tutorial16"
+date: "2021-11-05"
+id: "tutorial16md"
 --->"""
 }
