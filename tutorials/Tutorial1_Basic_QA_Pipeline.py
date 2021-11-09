@@ -163,9 +163,9 @@ def tutorial1_basic_qa_pipeline():
     # answers were taken from a single one of them, and that some of the documents were not source of any answer.
 
     # Or use a util to simplify the output
-    # Change `minimal` to `medium` or `all` to raise the level of detail
+    # Change `minimum` to `medium` or `all` to raise the level of detail
     print("\n\nSimplified output:\n")
-    print_answers(prediction, details="minimal")
+    print_answers(prediction, details="minimum")
 
 
 

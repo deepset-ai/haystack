@@ -52,7 +52,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("DPR Results" + "\n" + "="*15)
-    print_answers(res_1, details="minimal")
+    print_answers(res_1, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
     res_2 = sklearn_keyword_classifier.run(
@@ -60,7 +60,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("ES Results" + "\n" + "="*15)
-    print_answers(res_2, details="minimal")
+    print_answers(res_2, details="minimum")
 
     # Run only the dense retriever on the full sentence query
     res_3 = sklearn_keyword_classifier.run(
@@ -68,7 +68,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("DPR Results" + "\n" + "="*15)
-    print_answers(res_3, details="minimal")
+    print_answers(res_3, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
     res_4 = sklearn_keyword_classifier.run(
@@ -76,7 +76,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("ES Results" + "\n" + "="*15)
-    print_answers(res_4, details="minimal")
+    print_answers(res_4, details="minimum")
 
     # Run only the dense retriever on the full sentence query
     res_5 = sklearn_keyword_classifier.run(
@@ -84,7 +84,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("DPR Results" + "\n" + "="*15)
-    print_answers(res_5, details="minimal")
+    print_answers(res_5, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
     res_6 = sklearn_keyword_classifier.run(
@@ -92,7 +92,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("ES Results" + "\n" + "="*15)
-    print_answers(res_6, details="minimal")
+    print_answers(res_6, details="minimum")
 
     print()
     print("Transformer keyword classifier")
@@ -111,7 +111,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("DPR Results" + "\n" + "="*15)
-    print_answers(res_1, details="minimal")
+    print_answers(res_1, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
     res_2 = transformer_keyword_classifier.run(
@@ -119,7 +119,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("ES Results" + "\n" + "="*15)
-    print_answers(res_2, details="minimal")
+    print_answers(res_2, details="minimum")
 
     # Run only the dense retriever on the full sentence query
     res_3 = transformer_keyword_classifier.run(
@@ -127,7 +127,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("DPR Results" + "\n" + "="*15)
-    print_answers(res_3, details="minimal")
+    print_answers(res_3, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
     res_4 = transformer_keyword_classifier.run(
@@ -135,7 +135,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("ES Results" + "\n" + "="*15)
-    print_answers(res_4, details="minimal")
+    print_answers(res_4, details="minimum")
 
     # Run only the dense retriever on the full sentence query
     res_5 = transformer_keyword_classifier.run(
@@ -143,7 +143,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("DPR Results" + "\n" + "="*15)
-    print_answers(res_5, details="minimal")
+    print_answers(res_5, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
     res_6 = transformer_keyword_classifier.run(
@@ -151,7 +151,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("ES Results" + "\n" + "="*15)
-    print_answers(res_6, details="minimal")
+    print_answers(res_6, details="minimum")
 
     print()
     print("Transformer question classifier")
@@ -170,7 +170,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("DPR Results" + "\n" + "="*15)
-    print_answers(res_1, details="minimal")
+    print_answers(res_1, details="minimum")
 
     # Show only DPR results
     res_2 = transformer_question_classifier.run(
@@ -178,7 +178,7 @@ def tutorial14_query_classifier():
     )
     print("\n===============================")
     print("ES Results" + "\n" + "="*15)
-    print_answers(res_2, details="minimal")
+    print_answers(res_2, details="minimum")
 
     # Here we create the keyword vs question/statement query classifier
 

@@ -52,7 +52,7 @@ def tutorial11_pipelines():
     )
     print("\nQuery: ", query)
     print("Answers:")
-    print_answers(res, details="minimal")
+    print_answers(res, details="minimum")
 
 
     print()
@@ -89,7 +89,7 @@ def tutorial11_pipelines():
 
     )
     print()
-    print_answers(res, details="minimal")
+    print_answers(res, details="minimum")
 
     # We are setting this to False so that in later pipelines,
     # we get a cleaner printout
@@ -125,7 +125,7 @@ def tutorial11_pipelines():
     )
     print("\nQuery: ", query)
     print("Answers:")
-    print_answers(res, details="minimal")
+    print_answers(res, details="minimum")
     p_extractive.draw("pipeline_extractive.png")
 
 
@@ -150,7 +150,7 @@ def tutorial11_pipelines():
     )
     print("\nQuery: ", query)
     print("Answers:")
-    print_answers(res, details="minimal")
+    print_answers(res, details="minimum")
 
 
     print()
@@ -187,7 +187,7 @@ def tutorial11_pipelines():
     print()
     print("\nQuery: ", query)
     print(" * DPR Answers:")
-    print_answers(res_1, details="minimal")
+    print_answers(res_1, details="minimum")
 
 
     # Run only the sparse retriever on a keyword based query
@@ -198,7 +198,7 @@ def tutorial11_pipelines():
     print()
     print("\nQuery: ", query)
     print(" * ES Answers:")
-    print_answers(res_2, details="minimal")
+    print_answers(res_2, details="minimum")
 
 
 if __name__ == "__main__":
