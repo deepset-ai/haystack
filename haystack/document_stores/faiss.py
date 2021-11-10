@@ -25,7 +25,14 @@ logger = logging.getLogger(__name__)
 
 
 def preload_index(init):
-
+    """
+    This decorator overrides the __init__ method to enable loading a saved index from disk.
+    In this case all required __init__ params are stored in a config file next to the index.
+    Saved index and config are specified by faiss_index_path and faiss_config_path params. 
+    If present they get converted into the corresponding __init__ params deduced from the saved index.
+    Don't worry that faiss_index_path and faiss_config_path aren't actually used in __init__.
+    They are in the method signature to signal that they can be used as usual params.
+    """
     @wraps(init)
     def new_init(self, *args, 
         faiss_index_path: Union[str, Path] = None, 
