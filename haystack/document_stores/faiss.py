@@ -149,7 +149,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             index=index
         )
 
-        self._check_index_sync()
+        self._validate_index_sync()
 
     def _validate_params_load_from_disk(self, sig: Signature, locals: dict, kwargs: dict):
         allowed_params = ["faiss_index_path", "faiss_config_path", "self", "kwargs"]
@@ -164,7 +164,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         if invalid_param_set or len(kwargs) > 0:
             raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
 
-    def _check_index_sync(self):        
+    def _validate_index_sync(self):        
         # This check ensures the correct document database was loaded.
         # If it fails, make sure you provided the path to the database
         # used when creating the original FAISS index
