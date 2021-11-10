@@ -131,6 +131,7 @@ class FARMReader(BaseReader):
                                             proxies=proxies,
                                             local_files_only=local_files_only,
                                             force_download=force_download,
+                                            devices=self.devices,
                                             **kwargs)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
