@@ -28,8 +28,8 @@ def preload_index(init):
 
     @wraps(init)
     def new_init(self, *args, 
-        faiss_index_path: str = None, 
-        faiss_config_path: str = None,
+        faiss_index_path: Union[str, Path] = None, 
+        faiss_config_path: Union[str, Path] = None,
         **kwargs
     ):
         if faiss_index_path:
@@ -66,8 +66,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = 'overwrite',
-        faiss_index_path: str = None,
-        faiss_config_path: str = None,
+        faiss_index_path: Union[str, Path] = None,
+        faiss_config_path: Union[str, Path] = None,
         **kwargs,
     ):
         """
