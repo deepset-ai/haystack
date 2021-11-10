@@ -187,7 +187,7 @@ class Inferencer:
 
             model = AdaptiveModel.convert_from_transformers(model_name_or_path,
                                                             revision=revision,
-                                                            device=devices[0],
+                                                            device=devices[0],  # type: ignore
                                                             task_type=task_type,
                                                             **kwargs)
             processor = Processor.convert_from_transformers(model_name_or_path,
