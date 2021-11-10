@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 try:
     from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
 except (ImportError, AttributeError) as e:
-    logger.info("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
+    logger.debug("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
     BertLayerNorm = torch.nn.LayerNorm
 
 
