@@ -1098,20 +1098,6 @@ None
 <a name="faiss"></a>
 # Module faiss
 
-<a name="faiss.preload_index"></a>
-#### preload\_index
-
-```python
-preload_index(init)
-```
-
-This decorator overrides the __init__ method to enable loading a saved index from disk.
-In this case all required __init__ params are stored in a config file next to the index.
-Saved index and config are specified by faiss_index_path and faiss_config_path params. 
-If present they get converted into the corresponding __init__ params deduced from the saved index.
-Don't worry that faiss_index_path and faiss_config_path aren't actually used in __init__.
-They are in the method signature to signal that they can be used as usual params.
-
 <a name="faiss.FAISSDocumentStore"></a>
 ## FAISSDocumentStore Objects
 
@@ -1131,7 +1117,6 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | @preload_index
  | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, **kwargs, ,)
 ```
 
