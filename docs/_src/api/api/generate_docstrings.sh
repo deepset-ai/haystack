@@ -2,6 +2,7 @@
 
 # Purpose : Automate the generation of docstrings
 
+pydoc-markdown pydoc-markdown-primitives.yml
 pydoc-markdown pydoc-markdown-document-store.yml
 pydoc-markdown pydoc-markdown-file-converters.yml
 pydoc-markdown pydoc-markdown-file-classifier.yml

@@ -15,4 +15,4 @@ renderer:
   descriptive_module_title: true
   add_method_class_prefix: false
   add_member_class_prefix: false
-  filename: crawler.md
+  filename: extractor.md
