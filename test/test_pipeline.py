@@ -750,12 +750,7 @@ def test_query_pipeline_with_document_classifier(document_store):
 
 
 def test_existing_faiss_document_store():
-    if Path('existing_faiss_document_store').exists():
-        os.remove('existing_faiss_document_store')
-    if Path('existing_faiss_document_store.json').exists():
-        os.remove('existing_faiss_document_store.json')
-    if Path('faiss_document_store.db').exists():
-        os.remove('faiss_document_store.db')
+    clean_faiss_document_store()
 
     pipeline = Pipeline.load_from_yaml(
         Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
@@ -783,7 +778,10 @@ def test_existing_faiss_document_store():
 
     assert prediction["query"] == "Who made the PDF specification?"
     assert len(prediction["documents"]) == 2
+    clean_faiss_document_store()
 
+
+def clean_faiss_document_store():
     if Path('existing_faiss_document_store').exists():
         os.remove('existing_faiss_document_store')
     if Path('existing_faiss_document_store.json').exists():
