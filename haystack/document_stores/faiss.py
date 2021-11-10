@@ -27,15 +27,15 @@ logger = logging.getLogger(__name__)
 def preload_index(init):
 
     @wraps(init)
-    def new_init(self, *args, **kwargs):
-        if "faiss_index_path" in kwargs:
-            allowed_kwargs = ["faiss_index_path", "faiss_config_path"]
-            invaid_kwargs = set(kwargs.keys()).difference(allowed_kwargs)
-            if len(args) > 0 or len(invaid_kwargs) > 0:
+    def new_init(self, *args, 
+        faiss_index_path: str = None, 
+        faiss_config_path: str = None,
+        **kwargs
+    ):
+        if faiss_index_path:
+            if len(args) > 0 or len(kwargs) > 0:
                 raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
-            index_path = kwargs["faiss_index_path"]
-            config_path = kwargs.get("faiss_config_path", None)
-            init_params = self._load_init_params_from_config(index_path, config_path)
+            init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
             init(self, **init_params)
         else:
             init(self, *args, **kwargs)
