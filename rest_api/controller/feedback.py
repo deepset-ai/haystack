@@ -61,8 +61,8 @@ def eval_extractive_qa_feedback(filters: FilterRequest = None):
     return res
 
 
-@router.get("/export-feedback", operation_id="export_feedback")
-def export_extractive_qa_feedback(
+@router.get("/export-feedback")
+def export_feedback(
     context_size: int = 100_000, full_document_context: bool = True, only_positive_labels: bool = False
 ):
     """
