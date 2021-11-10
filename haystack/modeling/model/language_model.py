@@ -122,7 +122,6 @@ class LanguageModel(nn.Module):
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
         kwargs["revision"] = kwargs.get("revision", None)
-        logger.info("")
         logger.info("LOADING MODEL")
         logger.info("=============")
         config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
