@@ -18,36 +18,10 @@ import numpy as np
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
-from functools import wraps
+from inspect import Signature, signature
 
 
 logger = logging.getLogger(__name__)
-
-
-def preload_index(init):
-    """
-    This decorator overrides the __init__ method to enable loading a saved index from disk.
-    In this case all required __init__ params are stored in a config file next to the index.
-    Saved index and config are specified by faiss_index_path and faiss_config_path params. 
-    If present they get converted into the corresponding __init__ params deduced from the saved index.
-    Don't worry that faiss_index_path and faiss_config_path aren't actually used in __init__.
-    They are in the method signature to signal that they can be used as usual params.
-    """
-    @wraps(init)
-    def new_init(self, *args, 
-        faiss_index_path: Union[str, Path] = None, 
-        faiss_config_path: Union[str, Path] = None,
-        **kwargs
-    ):
-        if faiss_index_path:
-            if len(args) > 0 or len(kwargs) > 0:
-                raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
-            init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
-            init(self, **init_params)
-        else:
-            init(self, *args, **kwargs)
-
-    return new_init
 
 
 class FAISSDocumentStore(SQLDocumentStore):
@@ -60,7 +34,6 @@ class FAISSDocumentStore(SQLDocumentStore):
     The document text and meta-data (for filtering) are stored using the SQLDocumentStore, while
     the vector embeddings are indexed in a FAISS Index.
     """
-    @preload_index
     def __init__(
         self,
         sql_url: str = "sqlite:///faiss_document_store.db",
@@ -119,6 +92,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param faiss_config_path: Stored FAISS initial configuration parameters. 
             Can be created via calling `save()`
         """
+        # special case if we want to load an existing index from disk
+        # load init params from disk and run init again
+        if faiss_index_path is not None:
+            sig = signature(self.__class__.__init__)
+            self._validate_params_load_from_disk(sig, locals(), kwargs)
+            init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
+            self.__class__.__init__(self, **init_params)
+            return
+
         # save init parameters to enable export of component config as YAML
         self.set_config(
             sql_url=sql_url, 
@@ -169,7 +151,20 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         self._check_index_sync()
 
-    def _check_index_sync(self):
+    def _validate_params_load_from_disk(self, sig: Signature, locals: dict, kwargs: dict):
+        allowed_params = ["faiss_index_path", "faiss_config_path", "self", "kwargs"]
+        invalid_param_set = False
+
+        for param in sig.parameters.values():
+            if param.name not in allowed_params:
+                if param.default != locals[param.name]:
+                    invalid_param_set = True
+                    break
+        
+        if invalid_param_set or len(kwargs) > 0:
+            raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
+
+    def _check_index_sync(self):        
         # This check ensures the correct document database was loaded.
         # If it fails, make sure you provided the path to the database
         # used when creating the original FAISS index
@@ -535,8 +530,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         with open(config_path, 'w') as ipp:
             json.dump(self.pipeline_config["params"], ipp)
 
-    @classmethod
-    def _load_init_params_from_config(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
+    def _load_init_params_from_config(self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         if not config_path:
             index_path = Path(index_path)
             config_path = index_path.with_suffix(".json")
@@ -569,6 +563,4 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param config_path: Stored FAISS initial configuration parameters. 
             Can be created via calling `save()`
         """
-        init_params = cls._load_init_params_from_config(index_path, config_path)
-        document_store = cls(**init_params)
-        return document_store
+        return cls(faiss_index_path=index_path, faiss_config_path=config_path)
