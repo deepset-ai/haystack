@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseGraphRetriever"></a>
-## BaseGraphRetriever Objects
+## BaseGraphRetriever
 
 ```python
 class BaseGraphRetriever(BaseComponent)
@@ -11,7 +11,7 @@ class BaseGraphRetriever(BaseComponent)
 Base classfor knowledge graph retrievers.
 
 <a name="base.BaseRetriever"></a>
-## BaseRetriever Objects
+## BaseRetriever
 
 ```python
 class BaseRetriever(BaseComponent)
@@ -84,7 +84,7 @@ position in the ranking of documents the correct document is.
 # Module sparse
 
 <a name="sparse.ElasticsearchRetriever"></a>
-## ElasticsearchRetriever Objects
+## ElasticsearchRetriever
 
 ```python
 class ElasticsearchRetriever(BaseRetriever)
@@ -152,7 +152,7 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
-## ElasticsearchFilterOnlyRetriever Objects
+## ElasticsearchFilterOnlyRetriever
 
 ```python
 class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
@@ -179,7 +179,7 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a name="sparse.TfidfRetriever"></a>
-## TfidfRetriever Objects
+## TfidfRetriever
 
 ```python
 class TfidfRetriever(BaseRetriever)
@@ -235,7 +235,7 @@ Performing training on this class according to the TF-IDF algorithm.
 # Module dense
 
 <a name="dense.DensePassageRetriever"></a>
-## DensePassageRetriever Objects
+## DensePassageRetriever
 
 ```python
 class DensePassageRetriever(BaseRetriever)
@@ -426,7 +426,7 @@ None
 Load DensePassageRetriever from the specified directory.
 
 <a name="dense.TableTextRetriever"></a>
-## TableTextRetriever Objects
+## TableTextRetriever
 
 ```python
 class TableTextRetriever(BaseRetriever)
@@ -595,7 +595,7 @@ None
 Load TableTextRetriever from the specified directory.
 
 <a name="dense.EmbeddingRetriever"></a>
-## EmbeddingRetriever Objects
+## EmbeddingRetriever
 
 ```python
 class EmbeddingRetriever(BaseRetriever)
@@ -688,7 +688,7 @@ Embeddings, one per input document
 # Module text2sparql
 
 <a name="text2sparql.Text2SparqlRetriever"></a>
-## Text2SparqlRetriever Objects
+## Text2SparqlRetriever
 
 ```python
 class Text2SparqlRetriever(BaseGraphRetriever)

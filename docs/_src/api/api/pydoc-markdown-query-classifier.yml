@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/connector]
-    modules: ['crawler']
+    search_path: [../../../../haystack/nodes/query_classifier]
+    modules: ['base', 'sklearn', 'transformers']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter
@@ -15,4 +15,4 @@ renderer:
   descriptive_module_title: true
   add_method_class_prefix: false
   add_member_class_prefix: false
-  filename: crawler.md
+  filename: query_classifier.md
