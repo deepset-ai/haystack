@@ -36,7 +36,7 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     if "query" in results.keys():
         print(f"\nQuery: {results['query']}\nAnswers:")
 
-    answers = results["answers"]
+    answers: List[Answer] = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
 
     # Filter the results by detail level
@@ -55,8 +55,8 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     # Shorten long text fields
     if max_text_len is not None:
         for ans in answers:
-            if "context" in ans.keys() and len(ans["context"]) > 50:
-                ans["context"] = ans["context"][:50] + "..."
+            if getattr(ans, "context") and len(ans.context) > 50:
+                ans.context = ans.context[:50] + "..."
 
     pp.pprint(filtered_answers) 
 
