@@ -82,6 +82,7 @@ def tutorial11_pipelines():
     rag_generator = RAGenerator()
 
     # Generative QA
+    query="Who is the father of Arya Stark?"
     p_generator = GenerativeQAPipeline(generator=rag_generator, retriever=dpr_retriever)
     res = p_generator.run(
         query=query,

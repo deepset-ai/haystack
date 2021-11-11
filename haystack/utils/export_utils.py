@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 from collections import defaultdict
 
+from haystack.schema import Answer
 from haystack.document_stores.sql import DocumentORM
 
 
@@ -37,6 +38,13 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
 
     answers = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
+
+    # Verify that the input contains Answers under the `answer` key
+    if any(not isinstance(ans, Answer) for ans in answers):
+        raise ValueError("This results object contains dictionaries instead of `Answer` objects. "
+                            "Please make sure the last node of your pipeline makes proper use of the "
+                            "new Haystack primitive objects, and if you're using Haystack nodes/pipelines only, "
+                            "please report this as a bug.")
 
     # Filter the results by detail level
     filtered_answers = []
