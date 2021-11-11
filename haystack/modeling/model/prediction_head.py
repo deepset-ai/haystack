@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 try:
     from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
 except (ImportError, AttributeError) as e:
-    logger.info("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
+    logger.debug("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
     BertLayerNorm = torch.nn.LayerNorm
 
 
@@ -255,7 +255,7 @@ class QuestionAnsweringHead(PredictionHead):
         self.layer_dims = layer_dims
         assert self.layer_dims[-1] == 2
         self.feed_forward = FeedForwardBlock(self.layer_dims)
-        logger.info(f"Prediction head initialized with size {self.layer_dims}")
+        logger.debug(f"Prediction head initialized with size {self.layer_dims}")
         self.num_labels = self.layer_dims[-1]
         self.ph_output_type = "per_token_squad"
         self.model_type = ("span_classification")  # predicts start and end token of answer

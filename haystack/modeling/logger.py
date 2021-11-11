@@ -112,7 +112,7 @@ class MLFlowLogger(BaseMLLogger):
 
     @classmethod
     def disable(cls):
-        logger.warning("ML Logging is turned off. No parameters, metrics or artifacts will be logged to MLFlow.")
+        logger.info("ML Logging is turned off. No parameters, metrics or artifacts will be logged to MLFlow.")
         cls.disable_logging = True
 
 

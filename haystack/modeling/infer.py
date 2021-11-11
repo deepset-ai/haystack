@@ -119,6 +119,7 @@ class Inferencer:
         use_fast: bool = True,
         tokenizer_args: Dict =None,
         multithreading_rust: bool = True,
+        devices: Optional[List[Union[int, str, torch.device]]] = None,
         **kwargs
     ):
         """
@@ -158,12 +159,15 @@ class Inferencer:
         :param multithreading_rust: Whether to allow multithreading in Rust, e.g. for FastTokenizers.
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
+        :param devices: List of devices to perform inference on. (Currently, only the first device in the list is used.)
         :return: An instance of the Inferencer.
         """
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+        if devices is None:
+            devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+
         name = os.path.basename(model_name_or_path)
 
         # a) either from local dir
@@ -183,7 +187,7 @@ class Inferencer:
 
             model = AdaptiveModel.convert_from_transformers(model_name_or_path,
                                                             revision=revision,
-                                                            device=devices[0],
+                                                            device=devices[0],  # type: ignore
                                                             task_type=task_type,
                                                             **kwargs)
             processor = Processor.convert_from_transformers(model_name_or_path,
