@@ -398,8 +398,7 @@ class Pipeline(BasePipeline):
             labels: Optional[MultiLabel] = None,
             documents: Optional[List[Document]] = None,
             meta: Optional[dict] = None,
-            params: Optional[dict] = None,
-            debug_logs: Optional[bool] = None
+            params: Optional[dict] = None
         ) -> EvaluationResult:
             """
                 Runs the pipeline, one node at a time.
@@ -413,11 +412,9 @@ class Pipeline(BasePipeline):
                             If you want to pass a param to all nodes, you can just use: {"top_k":10}
                             If you want to pass it to targeted nodes, you can do:
                             {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-                :param debug_logs: Whether all the logs of the node should be printed in the console,
-                                regardless of their severity and of the existing logger's settings.
             """
             predictions = self.run(query=query, file_paths=file_paths, labels=labels, 
-                documents=documents, meta=meta, params=params, debug_logs=debug_logs, debug=True)
+                documents=documents, meta=meta, params=params, debug=True)
 
             eval_result = EvaluationResult()
             for node_name in predictions["_debug"].keys():
