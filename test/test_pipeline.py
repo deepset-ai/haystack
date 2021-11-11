@@ -131,8 +131,7 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
                 "top_k": 5,
                 "non-existing-global_param": "wrong",
             },
-            debug=True,
-            debug_logs=True
+            debug=True
         )
     exception_raised = str(exc_info.value)
     assert "non-existing-node" in exception_raised
@@ -155,8 +154,7 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
     prediction = pipeline.run(
         query="Who lives in Berlin?",
         params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-        debug=True,
-        debug_logs=True
+        debug=True
     )
     assert "_debug" in prediction.keys()
     assert "ESRetriever" in prediction["_debug"].keys()
@@ -187,7 +185,7 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
     prediction = pipeline.run(
         query="Who lives in Berlin?",
         params={
-            "ESRetriever": {"top_k": 10, "debug": True, "debug_logs":True},
+            "ESRetriever": {"top_k": 10, "debug": True},
             "Reader": {"top_k": 3}
         },
     )
@@ -217,7 +215,7 @@ def test_global_debug_attributes_override_node_ones(document_store_with_docs, tm
     prediction = pipeline.run(
         query="Who lives in Berlin?",
         params={
-            "ESRetriever": {"top_k": 10, "debug": True, "debug_logs":True},
+            "ESRetriever": {"top_k": 10, "debug": True},
             "Reader": {"top_k": 3, "debug": True}
         },
         debug=False

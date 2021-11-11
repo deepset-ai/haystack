@@ -131,6 +131,7 @@ class FARMReader(BaseReader):
                                             proxies=proxies,
                                             local_files_only=local_files_only,
                                             force_download=force_download,
+                                            devices=self.devices,
                                             **kwargs)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
@@ -443,7 +444,7 @@ class FARMReader(BaseReader):
         :type device: str
         """
         if device is None:
-            device = self.device
+            device = self.devices[0]
         eval_processor = SquadProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
             max_seq_len=self.inferencer.processor.max_seq_len,
@@ -493,7 +494,7 @@ class FARMReader(BaseReader):
         :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
         """
         if device is None:
-            device = self.device
+            device = self.devices[0]
         if self.top_k_per_candidate != 4:
             logger.info(f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
                         f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
@@ -661,7 +662,7 @@ class FARMReader(BaseReader):
         :param label_origin: Field name where the gold labels are stored
         """
         if device is None:
-            device = self.device
+            device = self.devices[0]
         self.eval(document_store=document_store,
                   device=device,
                   label_index=label_index,

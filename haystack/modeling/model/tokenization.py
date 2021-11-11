@@ -75,7 +75,7 @@ class Tokenizer:
         if tokenizer_class is None:
             tokenizer_class = cls._infer_tokenizer_class(pretrained_model_name_or_path)
 
-        logger.info(f"Loading tokenizer of type '{tokenizer_class}'")
+        logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
         ret = None
         if "AlbertTokenizer" in tokenizer_class:

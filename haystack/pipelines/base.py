@@ -261,8 +261,7 @@ class Pipeline(BasePipeline):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         params: Optional[dict] = None,
-        debug: Optional[bool] = None,
-        debug_logs: Optional[bool] = None
+        debug: Optional[bool] = None
     ):
         """
             Runs the pipeline, one node at a time.
@@ -278,11 +277,8 @@ class Pipeline(BasePipeline):
                            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
             :param debug: Whether the pipeline should instruct nodes to collect debug information
                           about their execution. By default these include the input parameters
-                          they received, the output they generated, and eventual logs (of any severity)
-                          emitted. All debug information can then be found in the dict returned
-                          by this method under the key "_debug"
-            :param debug_logs: Whether all the logs of the node should be printed in the console,
-                               regardless of their severity and of the existing logger's settings.
+                          they received and the output they generated. All debug information can 
+                          then be found in the dict returned by this method under the key "_debug"
         """
         # validate the node names
         if params:
@@ -327,8 +323,6 @@ class Pipeline(BasePipeline):
                 if node_id not in node_input["params"].keys():
                     node_input["params"][node_id] = {}
                 node_input["params"][node_id]["debug"] = debug
-                if debug_logs is not None:
-                    node_input["params"][node_id]["debug_logs"] = debug_logs
 
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed

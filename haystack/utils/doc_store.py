@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 def launch_es(sleep=15):
     # Start an Elasticsearch server via Docker
 
-    logger.info("Starting Elasticsearch ...")
+    logger.debug("Starting Elasticsearch ...")
     status = subprocess.run(
         ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
     )
@@ -22,7 +22,7 @@ def launch_es(sleep=15):
 def launch_open_distro_es(sleep=15):
     # Start an Open Distro for Elasticsearch server via Docker
 
-    logger.info("Starting Open Distro for Elasticsearch ...")
+    logger.debug("Starting Open Distro for Elasticsearch ...")
     status = subprocess.run(
         ['docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" amazon/opendistro-for-elasticsearch:1.13.2'], shell=True
     )
@@ -35,7 +35,7 @@ def launch_open_distro_es(sleep=15):
 def launch_opensearch(sleep=15):
     # Start an OpenSearch server via docker
 
-    logger.info("Starting OpenSearch...")
+    logger.debug("Starting OpenSearch...")
     # This line is needed since it is not possible to start a new docker container with the name opensearch if there is a stopped image with the same now
     # docker rm only succeeds if the container is stopped, not if it is running
     _ = subprocess.run(['docker rm opensearch'], shell=True, stdout=subprocess.DEVNULL)
@@ -53,7 +53,7 @@ def launch_opensearch(sleep=15):
 def launch_weaviate(sleep=15):
     # Start a Weaviate server via Docker
 
-    logger.info("Starting Weaviate ...")
+    logger.debug("Starting Weaviate ...")
     status = subprocess.run(
         ["docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.2"], shell=True
     )
@@ -65,7 +65,7 @@ def launch_weaviate(sleep=15):
 
 
 def stop_opensearch():
-    logger.info("Stopping OpenSearch...")
+    logger.debug("Stopping OpenSearch...")
     status = subprocess.run(['docker stop opensearch'], shell=True)
     if status.returncode:
         logger.warning("Tried to stop OpenSearch but this failed. "
@@ -84,7 +84,7 @@ def stop_service(document_store):
 def launch_milvus(sleep=15):
     # Start a Milvus server via docker
 
-    logger.info("Starting Milvus ...")
+    logger.debug("Starting Milvus ...")
     logger.warning("Automatic Milvus config creation not yet implemented. "
                    "If you are starting Milvus using launch_milvus(), "
                    "make sure you have a properly populated milvus/conf folder. "

@@ -24,6 +24,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from functools import wraps
 import numpy as np
 import torch
 from torch import nn
@@ -44,6 +45,29 @@ from transformers.modeling_utils import SequenceSummary
 
 
 logger = logging.getLogger(__name__)
+
+
+def silence_transformers_logs(from_pretrained_func):
+    """
+    Wrapper that raises the log level of Transformers to
+    ERROR to hide some unnecessary warnings
+    """
+    @wraps(from_pretrained_func)
+    def quiet_from_pretrained_func(cls, *args, **kwargs):
+
+        # Raise the log level of Transformers
+        t_logger = logging.getLogger("transformers")
+        original_log_level = t_logger.level
+        t_logger.setLevel(logging.ERROR)
+
+        result = from_pretrained_func(cls, *args, **kwargs)
+
+        # Restore the log level
+        t_logger.setLevel(original_log_level)
+
+        return result
+
+    return quiet_from_pretrained_func
 
 
 # These are the names of the attributes in various model configs which refer to the number of dimensions
@@ -122,7 +146,6 @@ class LanguageModel(nn.Module):
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
         kwargs["revision"] = kwargs.get("revision", None)
-        logger.info("")
         logger.info("LOADING MODEL")
         logger.info("=============")
         config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
@@ -426,6 +449,7 @@ class Bert(LanguageModel):
         return bert
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
@@ -503,6 +527,7 @@ class Albert(LanguageModel):
         self.name = "albert"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -584,6 +609,7 @@ class Roberta(LanguageModel):
         self.name = "roberta"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -665,6 +691,7 @@ class XLMRoberta(LanguageModel):
         self.name = "xlm_roberta"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -753,6 +780,7 @@ class DistilBert(LanguageModel):
         self.pooler = None
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
@@ -840,6 +868,7 @@ class XLNet(LanguageModel):
         self.pooler = None
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -946,6 +975,7 @@ class Electra(LanguageModel):
         self.pooler = None
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
@@ -1037,6 +1067,7 @@ class Camembert(Roberta):
         self.name = "camembert"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -1080,6 +1111,7 @@ class DPRQuestionEncoder(LanguageModel):
         self.name = "dpr_question_encoder"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
@@ -1212,6 +1244,7 @@ class DPRContextEncoder(LanguageModel):
         self.name = "dpr_context_encoder"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
@@ -1364,6 +1397,7 @@ class BigBird(LanguageModel):
         return big_bird
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
