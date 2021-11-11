@@ -2,7 +2,7 @@
 # Module question\_generator
 
 <a name="question_generator.QuestionGenerator"></a>
-## QuestionGenerator Objects
+## QuestionGenerator
 
 ```python
 class QuestionGenerator(BaseComponent)
