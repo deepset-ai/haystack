@@ -31,7 +31,7 @@ concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
 
 
 @router.get("/initialized")
-def initialized():
+def check_status():
     """
     This endpoint can be used during startup to understand if the 
     server is ready to take any requests, or is still loading.
@@ -42,7 +42,7 @@ def initialized():
     return True
 
 
-@router.post("/query", response_model=QueryResponse)
+@router.post("/query", response_model=QueryResponse, response_model_exclude_none=True)
 def query(request: QueryRequest):
     with concurrency_limiter.run():
         result = _process_request(PIPELINE, request)

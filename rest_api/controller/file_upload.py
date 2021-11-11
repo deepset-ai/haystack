@@ -63,7 +63,7 @@ class Response(BaseModel):
 
 
 @router.post("/file-upload")
-def file_upload(
+def upload_file(
     files: List[UploadFile] = File(...),
     meta: Optional[str] = Form("null"),  # JSON serialized string
     fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),
