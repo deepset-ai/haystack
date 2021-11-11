@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 import copy
 import inspect
@@ -27,6 +27,34 @@ from haystack.document_stores.base import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)
+
+
+class EvaluationResult:
+    def __init__(self, node_results: Dict[str, DataFrame] = {}) -> None:
+        self.node_results : Dict[str, DataFrame] = node_results
+
+    def __getitem__(self, key: str):
+        return self.node_results.__getitem__(key)
+
+    def __delitem__(self, key: str):
+        self.node_results.__delitem__(key)
+
+    def __setitem__(self, key: str, value: DataFrame):
+        self.node_results.__setitem__(key, value)
+
+    def save(self, out_dir: Union[str, Path]):
+        out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
+        for node_name, df in self.node_results.items():
+            target_path = out_dir / f"{node_name}.csv"
+            df.to_csv(target_path, index=False, header=True)
+
+    @classmethod
+    def load(cls, load_dir: Union[str, Path]):
+        load_dir =  load_dir if isinstance(load_dir, Path) else Path(load_dir)
+        csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
+        node_results = {file.name[:-len(file.suffix)]: pd.read_csv(file, header=0) for file in csv_files}
+        result = cls(node_results)
+        return result
 
 
 class RootNode(BaseComponent):
@@ -378,7 +406,7 @@ class Pipeline(BasePipeline):
             meta: Optional[dict] = None,
             params: Optional[dict] = None,
             debug_logs: Optional[bool] = None
-        ) -> Dict[str, DataFrame]:
+        ) -> EvaluationResult:
             """
                 Runs the pipeline, one node at a time.
 
@@ -397,7 +425,7 @@ class Pipeline(BasePipeline):
             predictions = self.run(query=query, file_paths=file_paths, labels=labels, 
                 documents=documents, meta=meta, params=params, debug_logs=debug_logs, debug=True)
 
-            eval_result = {}
+            eval_result = EvaluationResult()
             for node_name in predictions["_debug"].keys():
                 output = predictions["_debug"][node_name]["output"]
                 answer_cols = ["answer", "document_id", "offsets_in_document"]
