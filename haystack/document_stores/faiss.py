@@ -156,8 +156,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         invalid_param_set = False
 
         for param in sig.parameters.values():
-            if param.name not in allowed_params:
-                if param.default != locals[param.name]:
+            if param.name not in allowed_params and param.default != locals[param.name]:
                     invalid_param_set = True
                     break
         
