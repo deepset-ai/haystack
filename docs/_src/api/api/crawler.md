@@ -2,7 +2,7 @@
 # Module crawler
 
 <a name="crawler.Crawler"></a>
-## Crawler Objects
+## Crawler
 
 ```python
 class Crawler(BaseComponent)

@@ -2,7 +2,7 @@
 # Module entity
 
 <a name="entity.EntityExtractor"></a>
-## EntityExtractor Objects
+## EntityExtractor
 
 ```python
 class EntityExtractor(BaseComponent)

@@ -2,7 +2,7 @@
 # Module docs2answers
 
 <a name="docs2answers.Docs2Answers"></a>
-## Docs2Answers Objects
+## Docs2Answers
 
 ```python
 class Docs2Answers(BaseComponent)
@@ -16,7 +16,7 @@ This ensures that your output is in a compatible format.
 # Module join\_docs
 
 <a name="join_docs.JoinDocuments"></a>
-## JoinDocuments Objects
+## JoinDocuments
 
 ```python
 class JoinDocuments(BaseComponent)

@@ -2,7 +2,7 @@
 # Module schema
 
 <a name="schema.Document"></a>
-## Document Objects
+## Document
 
 ```python
 @dataclass
@@ -99,7 +99,7 @@ dict with content of the Document
 Enable sorting of Documents by score
 
 <a name="schema.Span"></a>
-## Span Objects
+## Span
 
 ```python
 @dataclass
@@ -119,7 +119,7 @@ For TableQA: Cell where the answer starts/ends (counted from top left to bottom 
 - `end`: Position where the spand ends
 
 <a name="schema.Answer"></a>
-## Answer Objects
+## Answer
 
 ```python
 @dataclass
@@ -165,7 +165,7 @@ For example, it's used within some Nodes like the Reader, but also in the REST A
 Enable sorting of Answers by score
 
 <a name="schema.Label"></a>
-## Label Objects
+## Label
 
 ```python
 @dataclass
@@ -203,7 +203,7 @@ or, user-feedback from the Haystack REST API.
 - `meta`: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
 
 <a name="schema.MultiLabel"></a>
-## MultiLabel Objects
+## MultiLabel
 
 ```python
 @dataclass

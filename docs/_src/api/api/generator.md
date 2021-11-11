@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseGenerator"></a>
-## BaseGenerator Objects
+## BaseGenerator
 
 ```python
 class BaseGenerator(BaseComponent)
@@ -34,7 +34,7 @@ Generated answers plus additional infos in a dict
 # Module transformers
 
 <a name="transformers.RAGenerator"></a>
-## RAGenerator Objects
+## RAGenerator
 
 ```python
 class RAGenerator(BaseGenerator)
@@ -140,7 +140,7 @@ Generated answers plus additional infos in a dict like this:
 ```
 
 <a name="transformers.Seq2SeqGenerator"></a>
-## Seq2SeqGenerator Objects
+## Seq2SeqGenerator
 
 ```python
 class Seq2SeqGenerator(BaseGenerator)
