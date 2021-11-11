@@ -12,6 +12,8 @@ from haystack.document_stores.sql import DocumentORM
 logger = logging.getLogger(__name__)
 
 
+
+
 def print_answers(results: dict, details: str = "all", max_text_len: Optional[int] = None):
     """
     Utility function to print results of Haystack pipelines
@@ -35,14 +37,15 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     if "query" in results.keys():
         print(f"\nQuery: {results['query']}\nAnswers:")
 
-    answers = results["answers"]
+    answers: List[Answer] = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
 
     # Filter the results by detail level
     filtered_answers = []
     if details in fields_to_keep_by_level.keys():
         for ans in answers:
-            filtered_answers.append({k: getattr(ans, k) for k in fields_to_keep_by_level[details]})
+            filtered_ans = {field: getattr(ans, field) for field in fields_to_keep_by_level[details] if getattr(ans, field) is not None}
+            filtered_answers.append(filtered_ans)
     elif details == "all":  
         filtered_answers = answers
     else:
@@ -53,8 +56,8 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     # Shorten long text fields
     if max_text_len is not None:
         for ans in answers:
-            if "context" in ans.keys() and len(ans["context"]) > 50:
-                ans["context"] = ans["context"][:50] + "..."
+            if getattr(ans, "context") and len(ans.context) > 50:
+                ans.context = ans.context[:50] + "..."
 
     pp.pprint(filtered_answers) 
 
