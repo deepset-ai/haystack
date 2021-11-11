@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 from collections import defaultdict
 
+from haystack.schema import Answer
 from haystack.document_stores.sql import DocumentORM
 
 
