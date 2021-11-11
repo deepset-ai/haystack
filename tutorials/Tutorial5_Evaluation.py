@@ -30,7 +30,7 @@ def tutorial5_evaluation():
     # 'retriever_reader_open' - evaluates retriever and reader in open domain fashion i.e. a document is considered
     #     correctly retrieved if it contains the answer string within it. The reader is evaluated based purely on the
     #     predicted string, regardless of which document this came from and the position of the extracted span.
-    style = "reader_closed"
+    style = "retriever_reader_open"
 
     # make sure these indices do not collide with existing ones, the indices will be wiped clean before data is inserted
     doc_index = "tutorial5_docs"
@@ -109,17 +109,17 @@ def tutorial5_evaluation():
     eval_retriever = EvalDocuments()
     eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
 
-    # ## Evaluate Retriever on its own in closed domain fashion
-    # if style == "retriever_closed":
-    #     retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
-    #     ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
-    #     ## among the correct documents
-    #     print("Retriever Recall:", retriever_eval_results["recall"])
-    #     ## Retriever Mean Avg Precision rewards retrievers that give relevant documents a higher rank
-    #     print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
+    ## Evaluate Retriever on its own in closed domain fashion
+    if style == "retriever_closed":
+        retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
+        ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
+        ## among the correct documents
+        print("Retriever Recall:", retriever_eval_results["recall"])
+        ## Retriever Mean Avg Precision rewards retrievers that give relevant documents a higher rank
+        print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
 
     # # Evaluate Reader on its own in closed domain fashion (i.e. SQuAD style)
-    if style == "reader_closed":
+    elif style == "reader_closed":
         reader_eval_results = reader.eval(document_store=document_store, device=devices[0], label_index=label_index, doc_index=doc_index)
         # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
         #reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
@@ -132,36 +132,36 @@ def tutorial5_evaluation():
         print("Reader F1-Score:", reader_eval_results["f1"])
 
 
-    # # Evaluate combination of Reader and Retriever in open domain fashion
-    # elif style == "retriever_reader_open":
+    # Evaluate combination of Reader and Retriever in open domain fashion
+    elif style == "retriever_reader_open":
 
-    #     # Here is the pipeline definition
-    #     p = Pipeline()
-    #     p.add_node(component=retriever, name="Retriever", inputs=["Query"])
-    #     p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["Retriever"])
-    #     p.add_node(component=reader, name="Reader", inputs=["EvalDocuments"])
-    #     p.add_node(component=eval_reader, name="EvalAnswers", inputs=["Reader"])
-    #     results = []
+        # Here is the pipeline definition
+        p = Pipeline()
+        p.add_node(component=retriever, name="Retriever", inputs=["Query"])
+        p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["Retriever"])
+        p.add_node(component=reader, name="Reader", inputs=["EvalDocuments"])
+        p.add_node(component=eval_reader, name="EvalAnswers", inputs=["Reader"])
+        results = []
 
-    #     for l in labels:
-    #         res = p.run(
-    #             query=l.query,
-    #             labels=l,
-    #             params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
-    #         )
-    #         results.append(res)
+        for l in labels:
+            res = p.run(
+                query=l.query,
+                labels=l,
+                params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
+            )
+            results.append(res)
 
-    #     eval_retriever.print()
-    #     print()
-    #     retriever.print_time()
-    #     print()
-    #     eval_reader.print(mode="reader")
-    #     print()
-    #     reader.print_time()
-    #     print()
-    #     eval_reader.print(mode="pipeline")
-    # else:
-    #     raise ValueError(f'style={style} is not a valid option. Choose from retriever_closed, reader_closed, retriever_reader_open')
+        eval_retriever.print()
+        print()
+        retriever.print_time()
+        print()
+        eval_reader.print(mode="reader")
+        print()
+        reader.print_time()
+        print()
+        eval_reader.print(mode="pipeline")
+    else:
+        raise ValueError(f'style={style} is not a valid option. Choose from retriever_closed, reader_closed, retriever_reader_open')
 
 
 if __name__ == "__main__":
