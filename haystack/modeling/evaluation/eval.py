@@ -56,7 +56,7 @@ class Evaluator:
         for step, batch in enumerate(
             tqdm(self.data_loader, desc="Evaluating", mininterval=10)
         ):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.device[0]) for key in batch}
 
             with torch.no_grad():
 
