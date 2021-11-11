@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseDocumentClassifier"></a>
-## BaseDocumentClassifier Objects
+## BaseDocumentClassifier
 
 ```python
 class BaseDocumentClassifier(BaseComponent)
@@ -21,7 +21,7 @@ Wrapper method used to time functions.
 # Module transformers
 
 <a name="transformers.TransformersDocumentClassifier"></a>
-## TransformersDocumentClassifier Objects
+## TransformersDocumentClassifier
 
 ```python
 class TransformersDocumentClassifier(BaseDocumentClassifier)

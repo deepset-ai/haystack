@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.RootNode"></a>
-## RootNode Objects
+## RootNode
 
 ```python
 class RootNode(BaseComponent)
@@ -11,7 +11,7 @@ class RootNode(BaseComponent)
 RootNode feeds inputs together with corresponding params to a Pipeline.
 
 <a name="base.BasePipeline"></a>
-## BasePipeline Objects
+## BasePipeline
 
 ```python
 class BasePipeline()
@@ -72,7 +72,7 @@ Here's a sample configuration:
                                      `_` sign must be used to specify nested hierarchical properties.
 
 <a name="base.Pipeline"></a>
-## Pipeline Objects
+## Pipeline
 
 ```python
 class Pipeline(BasePipeline)
@@ -162,7 +162,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug_logs: Optional[bool] = None) -> EvaluationResult
+ | eval(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None) -> EvaluationResult
 ```
 
 Runs the pipeline, one node at a time.
@@ -178,8 +178,6 @@ Runs the pipeline, one node at a time.
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
             If you want to pass it to targeted nodes, you can do:
             {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                regardless of their severity and of the existing logger's settings.
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
@@ -291,7 +289,7 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 - `return_defaults`: whether to output parameters that have the default values.
 
 <a name="base.RayPipeline"></a>
-## RayPipeline Objects
+## RayPipeline
 
 ```python
 class RayPipeline(Pipeline)
@@ -392,7 +390,7 @@ Here's a sample configuration:
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 
 <a name="base._RayDeploymentWrapper"></a>
-## \_RayDeploymentWrapper Objects
+## \_RayDeploymentWrapper
 
 ```python
 class _RayDeploymentWrapper()
@@ -433,7 +431,7 @@ Ray calls this method which is then re-directed to the corresponding component's
 # Module standard\_pipelines
 
 <a name="standard_pipelines.BaseStandardPipeline"></a>
-## BaseStandardPipeline Objects
+## BaseStandardPipeline
 
 ```python
 class BaseStandardPipeline(ABC)
@@ -505,7 +503,7 @@ Create a Graphviz visualization of the pipeline.
 - `path`: the path to save the image.
 
 <a name="standard_pipelines.ExtractiveQAPipeline"></a>
-## ExtractiveQAPipeline Objects
+## ExtractiveQAPipeline
 
 ```python
 class ExtractiveQAPipeline(BaseStandardPipeline)
@@ -547,7 +545,7 @@ Pipeline for Extractive Question Answering.
 #### eval
 
 ```python
- | eval(query: str, params: Optional[dict] = None, debug_logs: Optional[bool] = None, labels: Optional[MultiLabel] = None) -> EvaluationResult
+ | eval(query: str, params: Optional[dict] = None, labels: Optional[MultiLabel] = None) -> EvaluationResult
 ```
 
 **Arguments**:
@@ -555,12 +553,10 @@ Pipeline for Extractive Question Answering.
 - `query`: The search query string.
 - `params`: Params for the `retriever` and `reader`. For instance,
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
 - `labels`: 
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
-## DocumentSearchPipeline Objects
+## DocumentSearchPipeline
 
 ```python
 class DocumentSearchPipeline(BaseStandardPipeline)
@@ -597,7 +593,7 @@ Pipeline for semantic document search.
       by this method under the key "_debug"
 
 <a name="standard_pipelines.GenerativeQAPipeline"></a>
-## GenerativeQAPipeline Objects
+## GenerativeQAPipeline
 
 ```python
 class GenerativeQAPipeline(BaseStandardPipeline)
@@ -636,7 +632,7 @@ Pipeline for Generative Question Answering.
       by this method under the key "_debug"
 
 <a name="standard_pipelines.SearchSummarizationPipeline"></a>
-## SearchSummarizationPipeline Objects
+## SearchSummarizationPipeline
 
 ```python
 class SearchSummarizationPipeline(BaseStandardPipeline)
@@ -678,7 +674,7 @@ Pipeline that retrieves documents for a query and then summarizes those document
       by this method under the key "_debug"
 
 <a name="standard_pipelines.FAQPipeline"></a>
-## FAQPipeline Objects
+## FAQPipeline
 
 ```python
 class FAQPipeline(BaseStandardPipeline)
@@ -715,7 +711,7 @@ Pipeline for finding similar FAQs using semantic document search.
       by this method under the key "_debug"
 
 <a name="standard_pipelines.TranslationWrapperPipeline"></a>
-## TranslationWrapperPipeline Objects
+## TranslationWrapperPipeline
 
 ```python
 class TranslationWrapperPipeline(BaseStandardPipeline)
@@ -741,7 +737,7 @@ Wrap a given `pipeline` with the `input_translator` and `output_translator`.
                  Note that pipelines with split or merge nodes are currently not supported.
 
 <a name="standard_pipelines.QuestionGenerationPipeline"></a>
-## QuestionGenerationPipeline Objects
+## QuestionGenerationPipeline
 
 ```python
 class QuestionGenerationPipeline(BaseStandardPipeline)
@@ -751,7 +747,7 @@ A simple pipeline that takes documents as input and generates
 questions that it thinks can be answered by the documents.
 
 <a name="standard_pipelines.RetrieverQuestionGenerationPipeline"></a>
-## RetrieverQuestionGenerationPipeline Objects
+## RetrieverQuestionGenerationPipeline
 
 ```python
 class RetrieverQuestionGenerationPipeline(BaseStandardPipeline)
@@ -761,7 +757,7 @@ A simple pipeline that takes a query as input, performs retrieval, and then gene
 questions that it thinks can be answered by the retrieved documents.
 
 <a name="standard_pipelines.QuestionAnswerGenerationPipeline"></a>
-## QuestionAnswerGenerationPipeline Objects
+## QuestionAnswerGenerationPipeline
 
 ```python
 class QuestionAnswerGenerationPipeline(BaseStandardPipeline)
@@ -771,7 +767,7 @@ This is a pipeline which takes a document as input, generates questions that the
 this document, and then performs question answering of this questions using that single document.
 
 <a name="standard_pipelines.MostSimilarDocumentsPipeline"></a>
-## MostSimilarDocumentsPipeline Objects
+## MostSimilarDocumentsPipeline
 
 ```python
 class MostSimilarDocumentsPipeline(BaseStandardPipeline)
