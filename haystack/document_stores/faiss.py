@@ -18,6 +18,7 @@ import numpy as np
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
+from inspect import Signature, signature
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = 'overwrite',
+        faiss_index_path: Union[str, Path] = None,
+        faiss_config_path: Union[str, Path] = None,
         **kwargs,
     ):
         """
@@ -84,7 +87,20 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param faiss_index_path: Stored FAISS index file. Can be created via calling `save()`.
+            If specified no other params besides faiss_config_path must be specified.
+        :param faiss_config_path: Stored FAISS initial configuration parameters. 
+            Can be created via calling `save()`
         """
+        # special case if we want to load an existing index from disk
+        # load init params from disk and run init again
+        if faiss_index_path is not None:
+            sig = signature(self.__class__.__init__)
+            self._validate_params_load_from_disk(sig, locals(), kwargs)
+            init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
+            self.__class__.__init__(self, **init_params)
+            return
+
         # save init parameters to enable export of component config as YAML
         self.set_config(
             sql_url=sql_url, 
@@ -132,6 +148,30 @@ class FAISSDocumentStore(SQLDocumentStore):
             url=sql_url,
             index=index
         )
+
+        self._validate_index_sync()
+
+    def _validate_params_load_from_disk(self, sig: Signature, locals: dict, kwargs: dict):
+        allowed_params = ["faiss_index_path", "faiss_config_path", "self", "kwargs"]
+        invalid_param_set = False
+
+        for param in sig.parameters.values():
+            if param.name not in allowed_params and param.default != locals[param.name]:
+                    invalid_param_set = True
+                    break
+        
+        if invalid_param_set or len(kwargs) > 0:
+            raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
+
+    def _validate_index_sync(self):        
+        # This check ensures the correct document database was loaded.
+        # If it fails, make sure you provided the path to the database
+        # used when creating the original FAISS index
+        if not self.get_document_count() == self.get_embedding_count():
+            raise ValueError("The number of documents present in the SQL database does not "
+                             "match the number of embeddings in FAISS. Make sure your FAISS "
+                             "configuration file correctly points to the same database that "
+                             "was used when creating the original index.")
 
     def _create_new_index(self, vector_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
         if index_factory == "HNSW":
@@ -489,23 +529,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         with open(config_path, 'w') as ipp:
             json.dump(self.pipeline_config["params"], ipp)
 
-    @classmethod
-    def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
-        """
-        Load a saved FAISS index from a file and connect to the SQL database.
-        Note: In order to have a correct mapping from FAISS to SQL,
-              make sure to use the same SQL DB that you used when calling `save()`.
-
-        :param index_path: Stored FAISS index file. Can be created via calling `save()`
-        :param config_path: Stored FAISS initial configuration parameters. 
-            Can be created via calling `save()`
-        :param sql_url: Connection string to the SQL database that contains your docs and metadata.
-            Overrides the value defined in the `faiss_init_params_path` file, if present
-        :param index: Index name to load the FAISS index as. It must match the index name used for
-                      when creating the FAISS index. Overrides the value defined in the 
-                      `faiss_init_params_path` file, if present
-        :return: the DocumentStore
-        """
+    def _load_init_params_from_config(self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         if not config_path:
             index_path = Path(index_path)
             config_path = index_path.with_suffix(".json")
@@ -523,17 +547,19 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         # Add other init params to override the ones defined in the init params file
         init_params["faiss_index"] = faiss_index
-        init_params["vector_dim"]=faiss_index.d
+        init_params["vector_dim"] = faiss_index.d
 
-        document_store = cls(**init_params)
+        return init_params
 
-        # This check ensures the correct document database was loaded.
-        # If it fails, make sure you provided the path to the database
-        # used when creating the original FAISS index
-        if not document_store.get_document_count() == document_store.get_embedding_count():
-            raise ValueError("The number of documents present in the SQL database does not "
-                             "match the number of embeddings in FAISS. Make sure your FAISS "
-                             "configuration file correctly points to the same database that "
-                             "was used when creating the original index.")
+    @classmethod
+    def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
+        """
+        Load a saved FAISS index from a file and connect to the SQL database.
+        Note: In order to have a correct mapping from FAISS to SQL,
+              make sure to use the same SQL DB that you used when calling `save()`.
 
-        return document_store
+        :param index_path: Stored FAISS index file. Can be created via calling `save()`
+        :param config_path: Stored FAISS initial configuration parameters. 
+            Can be created via calling `save()`
+        """
+        return cls(faiss_index_path=index_path, faiss_config_path=config_path)

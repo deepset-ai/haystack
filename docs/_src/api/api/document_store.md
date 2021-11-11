@@ -1117,7 +1117,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1158,6 +1158,10 @@ the vector embeddings are indexed in a FAISS Index.
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+- `faiss_index_path`: Stored FAISS index file. Can be created via calling `save()`.
+    If specified no other params besides faiss_config_path must be specified.
+- `faiss_config_path`: Stored FAISS initial configuration parameters.
+    Can be created via calling `save()`
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -1359,15 +1363,6 @@ Note: In order to have a correct mapping from FAISS to SQL,
 - `index_path`: Stored FAISS index file. Can be created via calling `save()`
 - `config_path`: Stored FAISS initial configuration parameters.
     Can be created via calling `save()`
-- `sql_url`: Connection string to the SQL database that contains your docs and metadata.
-    Overrides the value defined in the `faiss_init_params_path` file, if present
-- `index`: Index name to load the FAISS index as. It must match the index name used for
-              when creating the FAISS index. Overrides the value defined in the 
-              `faiss_init_params_path` file, if present
-
-**Returns**:
-
-the DocumentStore
 
 <a name="milvus"></a>
 # Module milvus
