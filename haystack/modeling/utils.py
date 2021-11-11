@@ -48,7 +48,7 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool=False) -> None:
         torch.backends.cudnn.benchmark = False
 
 
-def initialize_device_settings(use_cuda: bool, local_rank: int = -1, multi_gpu: bool = True) -> Tuple[List[str], int]:
+def initialize_device_settings(use_cuda: bool, local_rank: int = -1, multi_gpu: bool = True) -> Tuple[List[torch.device], int]:
     """
     Returns a list of available devices.
 
