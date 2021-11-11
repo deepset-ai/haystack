@@ -204,7 +204,7 @@ def tutorial11_pipelines():
     print("#######################")
     print("# Debugging Pipelines #")
     print("#######################")
-    # You can print out debug information from nodes in your pipelines in two different ways.
+    # You can print out debug information from nodes in your pipelines in a few different ways.
 
     # 1) You can set the `debug` attribute of a given node.
     es_retriever.debug = True
@@ -216,6 +216,14 @@ def tutorial11_pipelines():
             "ESRetriever": {
                 "debug": True
             }
+        }
+    )
+
+    # 3) You can provide the `debug` paramter to all nodes in your pipeline
+    result = p_classifier.run(
+        query="Who is the father of Arya Stark?",
+        params={
+            "debug": True
         }
     )
 
