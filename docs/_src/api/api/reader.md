@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseReader"></a>
-## BaseReader
+## BaseReader Objects
 
 ```python
 class BaseReader(BaseComponent)
@@ -30,7 +30,7 @@ Wrapper method used to time functions.
 # Module farm
 
 <a name="farm.FARMReader"></a>
-## FARMReader
+## FARMReader Objects
 
 ```python
 class FARMReader(BaseReader)
@@ -361,7 +361,7 @@ Usage:
 # Module transformers
 
 <a name="transformers.TransformersReader"></a>
-## TransformersReader
+## TransformersReader Objects
 
 ```python
 class TransformersReader(BaseReader)
@@ -450,7 +450,7 @@ Dict containing query and answers
 # Module table
 
 <a name="table.TableReader"></a>
-## TableReader
+## TableReader Objects
 
 ```python
 class TableReader(BaseReader)

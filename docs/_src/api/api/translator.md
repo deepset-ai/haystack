@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseTranslator"></a>
-## BaseTranslator
+## BaseTranslator Objects
 
 ```python
 class BaseTranslator(BaseComponent)
@@ -33,7 +33,7 @@ Method that gets executed when this class is used as a Node in a Haystack Pipeli
 # Module transformers
 
 <a name="transformers.TransformersTranslator"></a>
-## TransformersTranslator
+## TransformersTranslator Objects
 
 ```python
 class TransformersTranslator(BaseTranslator)

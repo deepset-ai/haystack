@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseKnowledgeGraph"></a>
-## BaseKnowledgeGraph
+## BaseKnowledgeGraph Objects
 
 ```python
 class BaseKnowledgeGraph(BaseComponent)
@@ -11,7 +11,7 @@ class BaseKnowledgeGraph(BaseComponent)
 Base class for implementing Knowledge Graphs.
 
 <a name="base.BaseDocumentStore"></a>
-## BaseDocumentStore
+## BaseDocumentStore Objects
 
 ```python
 class BaseDocumentStore(BaseComponent)
@@ -150,7 +150,7 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 # Module elasticsearch
 
 <a name="elasticsearch.ElasticsearchDocumentStore"></a>
-## ElasticsearchDocumentStore
+## ElasticsearchDocumentStore Objects
 
 ```python
 class ElasticsearchDocumentStore(BaseDocumentStore)
@@ -530,7 +530,7 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 None
 
 <a name="elasticsearch.OpenSearchDocumentStore"></a>
-## OpenSearchDocumentStore
+## OpenSearchDocumentStore Objects
 
 ```python
 class OpenSearchDocumentStore(ElasticsearchDocumentStore)
@@ -564,7 +564,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 
 
 <a name="elasticsearch.OpenDistroElasticsearchDocumentStore"></a>
-## OpenDistroElasticsearchDocumentStore
+## OpenDistroElasticsearchDocumentStore Objects
 
 ```python
 class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore)
@@ -576,7 +576,7 @@ A DocumentStore which has an Open Distro for Elasticsearch service behind it.
 # Module memory
 
 <a name="memory.InMemoryDocumentStore"></a>
-## InMemoryDocumentStore
+## InMemoryDocumentStore Objects
 
 ```python
 class InMemoryDocumentStore(BaseDocumentStore)
@@ -857,7 +857,7 @@ None
 # Module sql
 
 <a name="sql.SQLDocumentStore"></a>
-## SQLDocumentStore
+## SQLDocumentStore Objects
 
 ```python
 class SQLDocumentStore(BaseDocumentStore)
@@ -1099,7 +1099,7 @@ None
 # Module faiss
 
 <a name="faiss.FAISSDocumentStore"></a>
-## FAISSDocumentStore
+## FAISSDocumentStore Objects
 
 ```python
 class FAISSDocumentStore(SQLDocumentStore)
@@ -1373,7 +1373,7 @@ the DocumentStore
 # Module milvus
 
 <a name="milvus.MilvusDocumentStore"></a>
-## MilvusDocumentStore
+## MilvusDocumentStore Objects
 
 ```python
 class MilvusDocumentStore(SQLDocumentStore)
@@ -1665,7 +1665,7 @@ Return the count of embeddings in the document store.
 # Module weaviate
 
 <a name="weaviate.WeaviateDocumentStore"></a>
-## WeaviateDocumentStore
+## WeaviateDocumentStore Objects
 
 ```python
 class WeaviateDocumentStore(BaseDocumentStore)
@@ -1952,7 +1952,7 @@ None
 # Module graphdb
 
 <a name="graphdb.GraphDBKnowledgeGraph"></a>
-## GraphDBKnowledgeGraph
+## GraphDBKnowledgeGraph Objects
 
 ```python
 class GraphDBKnowledgeGraph(BaseKnowledgeGraph)

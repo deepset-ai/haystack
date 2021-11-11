@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseSummarizer"></a>
-## BaseSummarizer
+## BaseSummarizer Objects
 
 ```python
 class BaseSummarizer(BaseComponent)
@@ -37,7 +37,7 @@ List of Documents, where Document.text contains the summarization and Document.m
 # Module transformers
 
 <a name="transformers.TransformersSummarizer"></a>
-## TransformersSummarizer
+## TransformersSummarizer Objects
 
 ```python
 class TransformersSummarizer(BaseSummarizer)

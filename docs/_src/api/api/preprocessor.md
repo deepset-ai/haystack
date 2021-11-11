@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BasePreProcessor"></a>
-## BasePreProcessor
+## BasePreProcessor Objects
 
 ```python
 class BasePreProcessor(BaseComponent)
@@ -21,7 +21,7 @@ Perform document cleaning and splitting. Takes a single document as input and re
 # Module preprocessor
 
 <a name="preprocessor.PreProcessor"></a>
-## PreProcessor
+## PreProcessor Objects
 
 ```python
 class PreProcessor(BasePreProcessor)
