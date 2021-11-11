@@ -36,7 +36,7 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     if "query" in results.keys():
         print(f"\nQuery: {results['query']}\nAnswers:")
 
-    answers: List[Answer] = results["answers"]  # type:ignore
+    answers = results["answers"]
     pp = pprint.PrettyPrinter(indent=4)
 
     # Filter the results by detail level
