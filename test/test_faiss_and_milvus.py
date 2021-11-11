@@ -51,6 +51,16 @@ def test_faiss_index_save_and_load(tmp_path):
     # Check if the init parameters are kept
     assert not new_document_store.progress_bar
 
+    # test loading the index via init
+    new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss")
+
+    # check faiss index is restored
+    assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
+    # check if documents are restored
+    assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
+    # Check if the init parameters are kept
+    assert not new_document_store.progress_bar
+
 
 @pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_save_and_load_custom_path(tmp_path):
@@ -79,6 +89,31 @@ def test_faiss_index_save_and_load_custom_path(tmp_path):
     assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
     # Check if the init parameters are kept
     assert not new_document_store.progress_bar
+
+    # test loading the index via init
+    new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss", faiss_config_path=tmp_path / "custom_path.json")
+
+    # check faiss index is restored
+    assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
+    # check if documents are restored
+    assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
+    # Check if the init parameters are kept
+    assert not new_document_store.progress_bar
+
+
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
+def test_faiss_index_mutual_exclusive_args(tmp_path):
+    with pytest.raises(ValueError):
+        FAISSDocumentStore(
+            sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
+            faiss_index_path=f"{tmp_path/'haystack_test'}"
+        )
+
+    with pytest.raises(ValueError):
+        FAISSDocumentStore(
+            f"sqlite:////{tmp_path/'haystack_test.db'}",
+            faiss_index_path=f"{tmp_path/'haystack_test'}"
+        )
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
