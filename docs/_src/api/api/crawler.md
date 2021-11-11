@@ -1,53 +1,95 @@
-<a name="entity"></a>
-# Module entity
+<a name="crawler"></a>
+# Module crawler
 
-<a name="entity.EntityExtractor"></a>
-## EntityExtractor Objects
+<a name="crawler.Crawler"></a>
+## Crawler
 
 ```python
-class EntityExtractor(BaseComponent)
+class Crawler(BaseComponent)
 ```
 
-This node is used to extract entities out of documents.
-The most common use case for this would be as a named entity extractor.
-The default model used is dslim/bert-base-NER.
-This node can be placed in a querying pipeline to perform entity extraction on retrieved documents only,
-or it can be placed in an indexing pipeline so that all documents in the document store have extracted entities.
-The entities extracted by this Node will populate Document.entities
+Crawl texts from a website so that we can use them later in Haystack as a corpus for search / question answering etc.
 
-<a name="entity.EntityExtractor.run"></a>
+**Example:**
+```python
+|    from haystack.nodes.connector import Crawler
+|
+|    crawler = Crawler(output_dir="crawled_files")
+|    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
+|    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
+|                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
+```
+
+<a name="crawler.Crawler.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(output_dir: str, urls: Optional[List[str]] = None, crawler_depth: int = 1, filter_urls: Optional[List] = None, overwrite_existing_files=True)
+```
+
+Init object with basic params for crawling (can be overwritten later).
+
+**Arguments**:
+
+- `output_dir`: Path for the directory to store files
+- `urls`: List of http(s) address(es) (can also be supplied later when calling crawl())
+- `crawler_depth`: How many sublinks to follow from the initial list of URLs. Current options:
+    0: Only initial list of urls 
+    1: Follow links found on the initial URLs (but no further) 
+- `filter_urls`: Optional list of regular expressions that the crawled URLs must comply with.
+    All URLs not matching at least one of the regular expressions will be dropped.
+- `overwrite_existing_files`: Whether to overwrite existing files in output_dir with new content
+
+<a name="crawler.Crawler.crawl"></a>
+#### crawl
+
+```python
+ | crawl(output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, overwrite_existing_files: Optional[bool] = None) -> List[Path]
+```
+
+Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
+file per URL, including text and basic meta data).
+You can optionally specify via `filter_urls` to only crawl URLs that match a certain pattern.
+All parameters are optional here and only meant to overwrite instance attributes at runtime.
+If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
+
+**Arguments**:
+
+- `output_dir`: Path for the directory to store files
+- `urls`: List of http addresses or single http address
+- `crawler_depth`: How many sublinks to follow from the initial list of URLs. Current options:
+                      0: Only initial list of urls
+                      1: Follow links found on the initial URLs (but no further)
+- `filter_urls`: Optional list of regular expressions that the crawled URLs must comply with.
+                   All URLs not matching at least one of the regular expressions will be dropped.
+- `overwrite_existing_files`: Whether to overwrite existing files in output_dir with new content
+
+**Returns**:
+
+List of paths where the crawled webpages got stored
+
+<a name="crawler.Crawler.run"></a>
 #### run
 
 ```python
- | run(documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]
+ | run(output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, overwrite_existing_files: Optional[bool] = None, return_documents: Optional[bool] = False) -> Tuple[Dict, str]
 ```
 
-This is the method called when this node is used in a pipeline
+Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
-<a name="entity.EntityExtractor.extract"></a>
-#### extract
+**Arguments**:
 
-```python
- | extract(text)
-```
+- `output_dir`: Path for the directory to store files
+- `urls`: List of http addresses or single http address
+- `crawler_depth`: How many sublinks to follow from the initial list of URLs. Current options:
+                      0: Only initial list of urls
+                      1: Follow links found on the initial URLs (but no further)
+- `filter_urls`: Optional list of regular expressions that the crawled URLs must comply with.
+                   All URLs not matching at least one of the regular expressions will be dropped.
+- `overwrite_existing_files`: Whether to overwrite existing files in output_dir with new content
+- `return_documents`: Return json files content
 
-This function can be called to perform entity extraction when using the node in isolation.
+**Returns**:
 
-<a name="entity.simplify_ner_for_qa"></a>
-#### simplify\_ner\_for\_qa
-
-```python
-simplify_ner_for_qa(output)
-```
-
-Returns a simplified version of the output dictionary
-with the following structure:
-[
-    { 
-        answer: { ... }
-        entities: [ { ... }, {} ]
-    }
-]
-The entities included are only the ones that overlap with
-the answer itself.
+Tuple({"paths": List of filepaths, ...}, Name of output edge)
 

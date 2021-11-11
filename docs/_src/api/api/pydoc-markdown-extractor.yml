@@ -11,8 +11,8 @@ processor:
   - skip_empty_modules: true
 renderer:
   type: markdown
-  descriptive_class_title: true
+  descriptive_class_title: false
   descriptive_module_title: true
   add_method_class_prefix: false
   add_member_class_prefix: false
-  filename: crawler.md
+  filename: extractor.md
