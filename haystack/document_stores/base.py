@@ -325,7 +325,7 @@ class BaseDocumentStore(BaseComponent):
 
         for document in documents:
             if document.id in _hash_ids:
-                logger.warning(f"Duplicate Documents: Document with id '{document.id}' already exists in index "
+                logger.info(f"Duplicate Documents: Document with id '{document.id}' already exists in index "
                                f"'{self.index}'")
                 continue
             _documents.append(document)

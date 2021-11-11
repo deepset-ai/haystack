@@ -328,14 +328,14 @@ class Processor(ABC):
         return True
 
     def _log_samples(self, n_samples:int, baskets:List[SampleBasket]):
-        logger.info("*** Show {} random examples ***".format(n_samples))
+        logger.debug("*** Show {} random examples ***".format(n_samples))
         if len(baskets) == 0:
-            logger.info("*** No samples to show because there are no baskets ***")
+            logger.debug("*** No samples to show because there are no baskets ***")
             return
         for i in range(n_samples):
             random_basket = random.choice(baskets)
             random_sample = random.choice(random_basket.samples) # type: ignore
-            logger.info(random_sample)
+            logger.debug(random_sample)
 
     def _log_params(self):
         params = {
@@ -1727,7 +1727,7 @@ class TextClassificationProcessor(Processor):
         self.header = header
         self.max_samples = max_samples
         self.dev_stratification = dev_stratification
-        logger.warning(f"Currently no support in Processor for returning problematic ids")
+        logger.debug(f"Currently no support in Processor for returning problematic ids")
 
         super(TextClassificationProcessor, self).__init__(
             tokenizer=tokenizer,

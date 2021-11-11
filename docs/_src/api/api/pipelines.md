@@ -137,7 +137,7 @@ Set the component for a node in the Pipeline.
 #### run
 
 ```python
- | run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+ | run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 Runs the pipeline, one node at a time.
@@ -155,11 +155,8 @@ Runs the pipeline, one node at a time.
                {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received, the output they generated, and eventual logs (of any severity)
-              emitted. All debug information can then be found in the dict returned
-              by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
+              they received and the output they generated. All debug information can 
+              then be found in the dict returned by this method under the key "_debug"
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
@@ -509,7 +506,7 @@ Pipeline for Extractive Question Answering.
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -519,11 +516,9 @@ Pipeline for Extractive Question Answering.
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received, the output they generated, and eventual logs (of any severity)
-              emitted. All debug information can then be found in the dict returned
+              they received and the output they generated. 
+              All debug information can then be found in the dict returned
               by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline Objects
@@ -549,7 +544,7 @@ Pipeline for semantic document search.
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -558,11 +553,9 @@ Pipeline for semantic document search.
 - `params`: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
-      they received, the output they generated, and eventual logs (of any severity)
-      emitted. All debug information can then be found in the dict returned
+      they received and the output they generated.
+      All debug information can then be found in the dict returned
       by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
 
 <a name="standard_pipelines.GenerativeQAPipeline"></a>
 ## GenerativeQAPipeline Objects
@@ -589,7 +582,7 @@ Pipeline for Generative Question Answering.
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -599,11 +592,9 @@ Pipeline for Generative Question Answering.
                params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
-      they received, the output they generated, and eventual logs (of any severity)
-      emitted. All debug information can then be found in the dict returned
+      they received and the output they generated.
+      All debug information can then be found in the dict returned
       by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
 
 <a name="standard_pipelines.SearchSummarizationPipeline"></a>
 ## SearchSummarizationPipeline Objects
@@ -633,7 +624,7 @@ Pipeline that retrieves documents for a query and then summarizes those document
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -643,11 +634,9 @@ Pipeline that retrieves documents for a query and then summarizes those document
                params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
-      they received, the output they generated, and eventual logs (of any severity)
-      emitted. All debug information can then be found in the dict returned
+      they received and the output they generated.
+      All debug information can then be found in the dict returned
       by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
 
 <a name="standard_pipelines.FAQPipeline"></a>
 ## FAQPipeline Objects
@@ -673,7 +662,7 @@ Pipeline for finding similar FAQs using semantic document search.
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None, debug_logs: Optional[bool] = None)
+ | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -682,11 +671,9 @@ Pipeline for finding similar FAQs using semantic document search.
 - `params`: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
-      they received, the output they generated, and eventual logs (of any severity)
-      emitted. All debug information can then be found in the dict returned
+      they received and the output they generated.
+      All debug information can then be found in the dict returned
       by this method under the key "_debug"
-- `debug_logs`: Whether all the logs of the node should be printed in the console,
-                   regardless of their severity and of the existing logger's settings.
 
 <a name="standard_pipelines.TranslationWrapperPipeline"></a>
 ## TranslationWrapperPipeline Objects
