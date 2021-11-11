@@ -1727,7 +1727,7 @@ class TextClassificationProcessor(Processor):
         self.header = header
         self.max_samples = max_samples
         self.dev_stratification = dev_stratification
-        logger.warning(f"Currently no support in Processor for returning problematic ids")
+        logger.debug(f"Currently no support in Processor for returning problematic ids")
 
         super(TextClassificationProcessor, self).__init__(
             tokenizer=tokenizer,
