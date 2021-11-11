@@ -2,7 +2,7 @@
 # Module file\_type
 
 <a name="file_type.FileTypeClassifier"></a>
-## FileTypeClassifier Objects
+## FileTypeClassifier
 
 ```python
 class FileTypeClassifier(BaseComponent)
