@@ -29,7 +29,7 @@ class AnswerSerialized(Answer):
 @pydantic_dataclass
 class DocumentSerialized(Document):
     content: str
-    embedding: List[float]
+    embedding: Optional[List[float]]
 
 @pydantic_dataclass
 class LabelSerialized(Label):
