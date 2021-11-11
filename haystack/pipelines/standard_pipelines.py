@@ -107,17 +107,14 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
     def eval(self,
             query: str,
             params: Optional[dict] = None,
-            debug_logs: Optional[bool] = None,
             labels: Optional[MultiLabel] = None) -> EvaluationResult:
         """
         :param query: The search query string.
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-        :param debug_logs: Whether all the logs of the node should be printed in the console,
-                           regardless of their severity and of the existing logger's settings.
         :param labels:
         """
-        output = self.pipeline.eval(query=query, params=params, debug_logs=debug_logs, labels=labels)
+        output = self.pipeline.eval(query=query, params=params, labels=labels)
         return output
 
     def calculate_metrics(self, eval_result: Dict[str, DataFrame]) -> Dict[str, float]:
