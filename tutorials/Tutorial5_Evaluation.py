@@ -109,7 +109,7 @@ def tutorial5_evaluation():
     eval_retriever = EvalDocuments()
     eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
 
-    ## Evaluate Retriever on its own in closed domain fashion
+    # Evaluate Retriever on its own in closed domain fashion
     if style == "retriever_closed":
         retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
         ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
@@ -118,7 +118,7 @@ def tutorial5_evaluation():
         ## Retriever Mean Avg Precision rewards retrievers that give relevant documents a higher rank
         print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
 
-    # # Evaluate Reader on its own in closed domain fashion (i.e. SQuAD style)
+    # Evaluate Reader on its own in closed domain fashion (i.e. SQuAD style)
     elif style == "reader_closed":
         reader_eval_results = reader.eval(document_store=document_store, device=devices[0], label_index=label_index, doc_index=doc_index)
         # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
