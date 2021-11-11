@@ -13,8 +13,6 @@ from haystack.document_stores.sql import DocumentORM
 logger = logging.getLogger(__name__)
 
 
-
-
 def print_answers(results: dict, details: str = "all", max_text_len: Optional[int] = None):
     """
     Utility function to print results of Haystack pipelines
