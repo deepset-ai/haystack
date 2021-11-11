@@ -6,6 +6,7 @@ from typing import List, Optional, Dict
 from functools import wraps
 
 from pandas.core.frame import DataFrame
+from haystack.pipelines.base import EvaluationResult
 
 from haystack.schema import Document, MultiLabel
 from haystack.nodes.answer_generator import BaseGenerator
@@ -107,7 +108,7 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
             query: str,
             params: Optional[dict] = None,
             debug_logs: Optional[bool] = None,
-            labels: Optional[MultiLabel] = None):
+            labels: Optional[MultiLabel] = None) -> EvaluationResult:
         """
         :param query: The search query string.
         :param params: Params for the `retriever` and `reader`. For instance,

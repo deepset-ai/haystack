@@ -4,6 +4,7 @@ from haystack.pipeline import (
     TranslationWrapperPipeline,
     ExtractiveQAPipeline
 )
+from haystack.pipelines.base import EvaluationResult
 
 from haystack.schema import Answer, Document, Label, MultiLabel, Span
 
@@ -101,14 +102,26 @@ def test_extractive_qa_answers_with_translator(
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-def test_extractive_qa_eval(reader, retriever_with_docs):
+def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result = pipeline.eval(query="Who lives in Berlin?", params={"Retriever": {"top_k": 5}}, 
-    labels=MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
-        document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), is_correct_answer=True, is_correct_document=True, id="my_id", origin="gold-label")]))
+    eval_result = pipeline.eval(
+        query="Who lives in Berlin?", 
+        params={"Retriever": {"top_k": 5}}, 
+        labels=MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, id="my_id", origin="gold-label")])
+    )
 
     metrics = pipeline.calculate_metrics(eval_result=eval_result)
 
     assert eval_result["Reader"].loc[0]["answer"] in eval_result["Reader"].loc[0]["gold_answers"]
     assert eval_result["Retriever"].loc[0]["id"] in eval_result["Retriever"].loc[0]["gold_document_ids"]
+    assert metrics["MatchInTop1"] == 1.0
+
+    eval_result.save(tmp_path)
+    saved_eval_result = EvaluationResult.load(tmp_path)
+    metrics = pipeline.calculate_metrics(eval_result=saved_eval_result)
+
+    assert saved_eval_result["Reader"].loc[0]["answer"] in saved_eval_result["Reader"].loc[0]["gold_answers"]
+    assert saved_eval_result["Retriever"].loc[0]["id"] in saved_eval_result["Retriever"].loc[0]["gold_document_ids"]
     assert metrics["MatchInTop1"] == 1.0
