@@ -2,7 +2,7 @@
 # Module evaluator
 
 <a name="evaluator.EvalDocuments"></a>
-## EvalDocuments Objects
+## EvalDocuments
 
 ```python
 class EvalDocuments(BaseComponent)
@@ -48,7 +48,7 @@ Run this node on one sample and its labels
 Print the evaluation results
 
 <a name="evaluator.EvalAnswers"></a>
-## EvalAnswers Objects
+## EvalAnswers
 
 ```python
 class EvalAnswers(BaseComponent)
