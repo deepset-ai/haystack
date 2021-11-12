@@ -581,7 +581,7 @@ Example:
 
 **Returns**:
 
-List of components that are an instance the requested class
+List of components that are an instance of the requested class
 
 <a name="standard_pipelines.BaseStandardPipeline.get_document_store"></a>
 #### get\_document\_store
