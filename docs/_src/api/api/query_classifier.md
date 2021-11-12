@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseQueryClassifier"></a>
-## BaseQueryClassifier Objects
+## BaseQueryClassifier
 
 ```python
 class BaseQueryClassifier(BaseComponent)
@@ -14,7 +14,7 @@ Abstract class for Query Classifiers
 # Module sklearn
 
 <a name="sklearn.SklearnQueryClassifier"></a>
-## SklearnQueryClassifier Objects
+## SklearnQueryClassifier
 
 ```python
 class SklearnQueryClassifier(BaseQueryClassifier)
@@ -81,7 +81,7 @@ queries or statement vs question queries.
 # Module transformers
 
 <a name="transformers.TransformersQueryClassifier"></a>
-## TransformersQueryClassifier Objects
+## TransformersQueryClassifier
 
 ```python
 class TransformersQueryClassifier(BaseQueryClassifier)
