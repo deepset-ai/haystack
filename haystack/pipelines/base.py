@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 
 
 class EvaluationResult:
-    def __init__(self, node_results: Dict[str, DataFrame] = {}) -> None:
-        self.node_results : Dict[str, DataFrame] = node_results
+    def __init__(self, node_results: Dict[str, DataFrame] = None) -> None:
+        self.node_results: Dict[str, DataFrame] = {} if node_results is None else node_results
 
     def __getitem__(self, key: str):
         return self.node_results.__getitem__(key)
