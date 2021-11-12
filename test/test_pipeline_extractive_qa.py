@@ -104,6 +104,41 @@ def test_extractive_qa_answers_with_translator(
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
+    queries = ["Who lives in Berlin?"]
+    labels = [
+        MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+    ]
+
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"Retriever": {"top_k": 5}}, 
+    )
+
+    metrics = pipeline.calculate_metrics(eval_result=eval_result)
+
+    reader_result = eval_result["Reader"]
+    retriever_result = eval_result["Retriever"]
+
+    assert reader_result[reader_result['rank'] == 1]["answer"].iloc[0] in reader_result[reader_result['rank'] == 1]["gold_answers"].iloc[0]
+    assert retriever_result[retriever_result['rank'] == 1]["id"].iloc[0] in retriever_result[retriever_result['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert metrics["MatchInTop1"] == 1.0
+
+    eval_result.save(tmp_path)
+    saved_eval_result = EvaluationResult.load(tmp_path)
+    metrics = pipeline.calculate_metrics(eval_result=saved_eval_result)
+
+    assert reader_result[reader_result['rank'] == 1]["answer"].iloc[0] in reader_result[reader_result['rank'] == 1]["gold_answers"].iloc[0]
+    assert retriever_result[retriever_result['rank'] == 1]["id"].iloc[0] in retriever_result[retriever_result['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert metrics["MatchInTop1"] == 1.0
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_path):
     queries = ["Who lives in Berlin?", "Who lives in Munich?"]
     labels = [
         MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
