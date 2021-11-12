@@ -13,8 +13,15 @@ from annotated_text import annotated_text   # pip install st-annotated-text
 import SessionState
 from utils import feedback_doc, haystack_is_ready, retrieve_doc, upload_doc
 
+
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
 DEFAULT_QUESTION_AT_STARTUP = "Who is the father of Arya Stark?"
+
+# Labels for the evaluation
+EVAL_LABELS = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_example.csv")
+
+# Whether the file upload should be enabled or not
+DISABLE_FILE_UPLOAD = os.getenv("HAYSTACK_UI_DISABLE_FILE_UPLOAD")
 
 
 def annotate_answer(answer, context):
@@ -33,7 +40,7 @@ def show_plain_documents(text):
 
 def random_questions(df):
     """
-    Helper to get one random question + gold random_answer from the user's CSV 'eval_labels_example'.
+    Helper to get one random question + gold random_answer from the user's CSV 'EVAL_LABELS_example'.
     This can then be shown in the UI when the evaluation mode is selected. Users can easily give feedback on the
     model's results and "enrich" the eval dataset with more acceptable labels
     """
@@ -44,75 +51,86 @@ def random_questions(df):
 
 
 def main():
-    # Define state
-    state_question = SessionState.get(
-        random_question=DEFAULT_QUESTION_AT_STARTUP, random_answer="", next_question="false", run_query=False
+
+    # Persistent state
+    state = SessionState.get(
+        random_question=DEFAULT_QUESTION_AT_STARTUP, 
+        random_answer="",
+        run_query=False,  # Needs to be preserved in evaluation mode, where needs to be True across reloads
+        get_next_question=True
     )
 
-    # Initialize variables
-    eval_mode = False
-    random_question = DEFAULT_QUESTION_AT_STARTUP
-    eval_labels = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_example.csv")
+    # Small callback to reset the value of state.run_query in case the text of the question changes
+    def reset_run_query_value(*args):
+        state.run_query = False
 
-    # UI search bar and sidebar
+    # Title
     st.write("# Haystack Demo")
+
+    # Sidebar
     st.sidebar.header("Options")
     top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1)
-    top_k_retriever = st.sidebar.slider(
-        "Max. number of documents from retriever", min_value=1, max_value=10, value=3, step=1
-    )
+    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=3, step=1)
     eval_mode = st.sidebar.checkbox("Evaluation mode")
     debug = st.sidebar.checkbox("Show debug info")
 
-    # load csv into pandas dataframe
+    # File upload block
+    if not DISABLE_FILE_UPLOAD:
+        st.sidebar.write("## File Upload:")
+        data_files = st.sidebar.file_uploader("", type=["pdf", "txt", "docx"], accept_multiple_files=True)
+        for data_file in data_files:
+            # Upload file
+            if data_file:
+                raw_json = upload_doc(data_file)
+                st.sidebar.write(raw_json)
+                if debug:
+                    st.subheader("REST API JSON response")
+                    st.sidebar.write(raw_json)
+
+
+    # Load csv into pandas dataframe
     if eval_mode:
         try:
-            df = pd.read_csv(eval_labels, sep=";")
+            df = pd.read_csv(EVAL_LABELS, sep=";")
         except Exception:
-            sys.exit("The eval file was not found. Please check the README for more information.")
-        if (
-            state_question
-            and hasattr(state_question, "next_question")
-            and hasattr(state_question, "random_question")
-            and state_question.next_question
-        ):
-            random_question = state_question.random_question
-            random_answer = state_question.random_answer
-        else:
-            random_question, random_answer = random_questions(df)
-            state_question.random_question = random_question
-            state_question.random_answer = random_answer
+            sys.exit(f"The eval file was not found under `{EVAL_LABELS}`. Please check the README for more information.")
 
-    # Get next random question from the CSV
-    if eval_mode:
-        next_question = st.button("Load new question")
-        if next_question:
-            random_question, random_answer = random_questions(df)
-            state_question.random_question = random_question
-            state_question.random_answer = random_answer
-            state_question.next_question = True
-            state_question.run_query = False
-        else:
-            state_question.next_question = False
+        # Get next random question from the CSV
+        state.get_next_question = st.button("Load new question")
+        if state.get_next_question:
+            state.run_query = False   # It probably was True because we're in evaluation mode. 
+                                      # Set to False as we're changing the question and we need the user to press Run again.
+            # Avoid picking the same question twice (the change is not visible on the UI)
+            new_question = state.random_question
+            while new_question == state.random_question:
+                new_question, state.random_answer = random_questions(df)
+            state.random_question = new_question
 
     # Search bar
-    question = st.text_input("Please provide your query:", value=random_question, max_chars=100)
+    question = st.text_input(
+        "Please provide your query:", 
+        value=state.random_question, 
+        max_chars=100, 
+        on_change=reset_run_query_value
+    )
     if not question:
         st.error("🚫 &nbsp;&nbsp; Please write a question")
         st.button("Run")
         return
+    
+    # In evaluation mode I should not re-assign the value of the Run button click
+    run_state = st.button("Run")
+    if not state.run_query:
+        state.run_query = run_state
 
-    state_question.run_query = st.button("Run")
-
-    raw_json_feedback = ""
-
+    # Check the connection
     with st.spinner("⌛️ &nbsp;&nbsp; Haystack is starting..."):
         if not haystack_is_ready():
             st.error("🚫 &nbsp;&nbsp; Connection Error. Is Haystack running?")
-            state_question.run_query = False
+            state.run_query = False
 
     # Get results for query
-    if state_question.run_query:
+    if state.run_query:
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
@@ -125,48 +143,62 @@ def main():
                 st.error("🐞 &nbsp;&nbsp; An error occurred during the request. Check the logs in the console to know more.")
                 return
 
-        # Show if we use a question of the given set
-        if question == random_question and eval_mode:
+        # Show the gold answer if we use a question of the given set
+        if question == state.random_question and eval_mode:
             st.write("## Correct answers:")
-            random_answer
+            st.write(state.random_answer)
 
         st.write("## Results:")
-
-        # Make every button key unique
-        count = 0
+        count = 0  # Make every button key unique
 
         for result in results:
             if result["answer"]:
                 annotate_answer(result["answer"], result["context"])
             else:
                 show_plain_documents(result["context"])
+
             st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
             if eval_mode:
                 # Define columns for buttons
-                button_col1, button_col2, button_col3, button_col4 = st.columns([1, 1, 1, 6])
-                if button_col1.button("👍", key=(result["context"] + str(count) + "1"), help="Correct answer"):
-                    raw_json_feedback = feedback_doc(
-                        question, "true", result["document_id"], 1, "true", result["answer"], result["offset_start_in_doc"]
+                button_col1, button_col2, button_col3, _ = st.columns([1, 1, 1, 6])
+                if button_col1.button("👍", key=f"{result['context']}{count}1", help="Correct answer"):
+                    feedback_doc(
+                        question=question, 
+                        is_correct_answer="true", 
+                        document_id=result["document_id"], 
+                        model_id=1, 
+                        is_correct_document="true",
+                        answer=result["answer"], 
+                        offset_start_in_doc=result["offset_start_in_doc"]
                     )
                     st.success("Thanks for your feedback")
-                if button_col2.button("👎", key=(result["context"] + str(count) + "2"), help="Wrong answer and wrong passage"):
-                    raw_json_feedback = feedback_doc(
-                        question,
-                        "false",
-                        result["document_id"],
-                        1,
-                        "false",
-                        result["answer"],
-                        result["offset_start_in_doc"],
+
+                if button_col2.button("👎", key=f"{result['context']}{count}2", help="Wrong answer and wrong passage"):
+                    feedback_doc(
+                        question=question, 
+                        is_correct_answer="false", 
+                        document_id=result["document_id"], 
+                        model_id=1, 
+                        is_correct_document="false",
+                        answer=result["answer"], 
+                        offset_start_in_doc=result["offset_start_in_doc"]
                     )
                     st.success("Thanks for your feedback!")
-                if button_col3.button("👎👍", key=(result["context"] + str(count) + "3"), help="Wrong answer, but correct passage"):
-                    raw_json_feedback = feedback_doc(
-                        question, "false", result["document_id"], 1, "true", result["answer"], result["offset_start_in_doc"]
+
+                if button_col3.button("👎👍", key=f"{result['context']}{count}3", help="Wrong answer, but correct passage"):
+                    feedback_doc(
+                        question=question, 
+                        is_correct_answer="false", 
+                        document_id=result["document_id"], 
+                        model_id=1, 
+                        is_correct_document="true",
+                        answer=result["answer"], 
+                        offset_start_in_doc=result["offset_start_in_doc"]
                     )
                     st.success("Thanks for your feedback!")
                 count += 1
             st.write("___")
+
         if debug:
             st.subheader("REST API JSON response")
             st.write(raw_json)
