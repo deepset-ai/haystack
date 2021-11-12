@@ -103,7 +103,60 @@ and that FARM includes no_answer in the sorted list of predictions.
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3)
+ | train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"))
+```
+
+Fine-tune a model on a QA dataset. Options:
+
+- Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
+- Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
+
+Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
+If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
+
+**Arguments**:
+
+- `data_dir`: Path to directory containing your training data in SQuAD style
+- `train_filename`: Filename of training data
+- `dev_filename`: Filename of dev / eval data
+- `test_filename`: Filename of test data
+- `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
+                  that gets split off from training data for eval.
+- `use_gpu`: Whether to use GPU (if available)
+- `batch_size`: Number of samples the model receives in one batch for training
+- `n_epochs`: Number of iterations on the whole training data set
+- `learning_rate`: Learning rate of the optimizer
+- `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
+- `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
+                          Until that point LR is increasing linearly. After that it's decreasing again linearly.
+                          Options for different schedules are available in FARM.
+- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
+- `save_dir`: Path to store the final model
+- `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
+                      Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
+                      Set to None to use all CPU cores minus one.
+- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+                Available options:
+                None (Don't use AMP)
+                "O0" (Normal FP32 training)
+                "O1" (Mixed Precision => Recommended)
+                "O2" (Almost FP16)
+                "O3" (Pure FP16).
+                See details on: https://nvidia.github.io/apex/amp.html
+- `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
+       checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+- `checkpoint_every`: save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: maximum number of train checkpoints to save.
+
+**Returns**:
+
+None
+
+<a name="farm.FARMReader.distil_from"></a>
+#### distil\_from
+
+```python
+ | distil_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, teacher_batch_size: Optional[int] = None, caching: bool = False, cache_path: Path = Path("cache/data_silo"))
 ```
 
 Fine-tune a model on a QA dataset. Options:
