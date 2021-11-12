@@ -9,7 +9,7 @@ from haystack.modeling.utils import initialize_device_settings
 from transformers import RagTokenizer, RagTokenForGeneration, AutoTokenizer, \
     AutoModelForSeq2SeqLM, PreTrainedTokenizer, BatchEncoding
 
-from haystack.schema import Document
+from haystack.schema import Answer, Document
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.retriever.dense import DensePassageRetriever
 
@@ -277,18 +277,15 @@ class RAGenerator(BaseGenerator):
         answers: List[Any] = []
 
         for generated_answer in generated_answers:
-            cur_answer = {
-                "query": query,
-                "answer": generated_answer,
-                "meta": {
+            answers.append(Answer(
+                answer=generated_answer,
+                type="generative",
+                meta={
                     "doc_ids": flat_docs_dict["id"],
                     "doc_scores": flat_docs_dict["score"],
                     "content": flat_docs_dict["content"],
                     "titles": titles,
-                }
-            }
-            answers.append(cur_answer)
-
+                }))
         result = {"query": query, "answers": answers}
 
         return result
