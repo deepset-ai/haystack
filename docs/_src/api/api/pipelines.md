@@ -169,8 +169,7 @@ Runs the pipeline, one node at a time.
 
 **Arguments**:
 
-- `query`: The search query or queries (for query pipelines only)
-- `file_paths`: The files to index (for indexing pipelines only)
+- `query`: The queries to evaluate
 - `labels`: The labels to evaluate on
 - `params`: Dictionary of parameters to be dispatched to the nodes.
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
