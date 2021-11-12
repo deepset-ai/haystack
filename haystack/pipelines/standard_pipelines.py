@@ -123,9 +123,9 @@ class BaseStandardPipeline(ABC):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        self = cls.__new__(cls)
-        self.pipeline = Pipeline.load_from_yaml(path, pipeline_name, overwrite_with_env_variables)
-        return self
+        standard_pipeline_object = cls.__new__(cls) # necessary because we can't call __init__ as we can't provide parameters
+        standard_pipeline_object.pipeline = Pipeline.load_from_yaml(path, pipeline_name, overwrite_with_env_variables)
+        return standard_pipeline_object
     
     def get_nodes_by_class(self, class_type) -> List[Any]:
         """
@@ -136,7 +136,7 @@ class BaseStandardPipeline(ABC):
         | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
         | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
 
-        :return: List of components that are an instance the requested class
+        :return: List of components that are an instance of the requested class
         """
         return self.pipeline.get_nodes_by_class(class_type)
     
