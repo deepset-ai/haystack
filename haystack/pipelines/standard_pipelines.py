@@ -105,16 +105,17 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         return output
 
     def eval(self,
-            query: str,
-            params: Optional[dict] = None,
-            labels: Optional[MultiLabel] = None) -> EvaluationResult:
+            queries: List[str],
+            labels: List[MultiLabel],
+            params: Optional[dict]) -> EvaluationResult:
+            
         """
         :param query: The search query string.
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
         :param labels:
         """
-        output = self.pipeline.eval(query=query, params=params, labels=labels)
+        output = self.pipeline.eval(queries=queries, labels=labels, params=params)
         return output
 
     def calculate_metrics(self, eval_result: Dict[str, DataFrame]) -> Dict[str, float]:
