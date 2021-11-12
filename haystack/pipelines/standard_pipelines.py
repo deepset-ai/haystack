@@ -5,7 +5,10 @@ from pathlib import Path
 from typing import List, Optional, Dict
 from functools import wraps
 
-from haystack.schema import Document
+from pandas.core.frame import DataFrame
+from haystack.pipelines.base import EvaluationResult
+
+from haystack.schema import Document, MultiLabel
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.nodes.other import Docs2Answers
 from haystack.nodes.reader import BaseReader
@@ -101,6 +104,21 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
+    def eval(self,
+            query: str,
+            params: Optional[dict] = None,
+            labels: Optional[MultiLabel] = None) -> EvaluationResult:
+        """
+        :param query: The search query string.
+        :param params: Params for the `retriever` and `reader`. For instance,
+                       params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+        :param labels:
+        """
+        output = self.pipeline.eval(query=query, params=params, labels=labels)
+        return output
+
+    def calculate_metrics(self, eval_result: Dict[str, DataFrame]) -> Dict[str, float]:
+        return self.pipeline.calculate_metrics(eval_result=eval_result)
 
 class DocumentSearchPipeline(BaseStandardPipeline):
     """

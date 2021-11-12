@@ -1,12 +1,15 @@
-from typing import List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 import copy
 import inspect
 import logging
 import os
 import traceback
+import numpy as np
+import pandas as pd
 from pathlib import Path
 import networkx as nx
+from pandas.core.frame import DataFrame
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
@@ -18,12 +21,40 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack.schema import MultiLabel, Document
+from haystack.schema import Label, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)
+
+
+class EvaluationResult:
+    def __init__(self, node_results: Dict[str, DataFrame] = {}) -> None:
+        self.node_results : Dict[str, DataFrame] = node_results
+
+    def __getitem__(self, key: str):
+        return self.node_results.__getitem__(key)
+
+    def __delitem__(self, key: str):
+        self.node_results.__delitem__(key)
+
+    def __setitem__(self, key: str, value: DataFrame):
+        self.node_results.__setitem__(key, value)
+
+    def save(self, out_dir: Union[str, Path]):
+        out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
+        for node_name, df in self.node_results.items():
+            target_path = out_dir / f"{node_name}.csv"
+            df.to_csv(target_path, index=False, header=True)
+
+    @classmethod
+    def load(cls, load_dir: Union[str, Path]):
+        load_dir =  load_dir if isinstance(load_dir, Path) else Path(load_dir)
+        csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
+        node_results = {file.name[:-len(file.suffix)]: pd.read_csv(file, header=0) for file in csv_files}
+        result = cls(node_results)
+        return result
 
 
 class RootNode(BaseComponent):
@@ -359,6 +390,69 @@ class Pipeline(BasePipeline):
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
+
+    def eval(  # type: ignore
+            self,
+            query: Optional[str] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[MultiLabel] = None,
+            documents: Optional[List[Document]] = None,
+            meta: Optional[dict] = None,
+            params: Optional[dict] = None
+        ) -> EvaluationResult:
+            """
+                Runs the pipeline, one node at a time.
+
+                :param query: The search query (for query pipelines only)
+                :param file_paths: The files to index (for indexing pipelines only)
+                :param labels: 
+                :param documents:
+                :param meta:
+                :param params: Dictionary of parameters to be dispatched to the nodes. 
+                            If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                            If you want to pass it to targeted nodes, you can do:
+                            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+            """
+            predictions = self.run(query=query, file_paths=file_paths, labels=labels, 
+                documents=documents, meta=meta, params=params, debug=True)
+
+            eval_result = EvaluationResult()
+            for node_name in predictions["_debug"].keys():
+                output = predictions["_debug"][node_name]["output"]
+                answer_cols = ["answer", "document_id", "offsets_in_document"]
+                document_cols = ["content", "id"]
+                answers = output.get("answers", None)
+                if answers is not None:
+                    df = pd.DataFrame(answers, columns=answer_cols)
+                    df["node"] = node_name
+                    df["query"] = query
+                    df["rank"] = np.arange(1, len(df)+1)
+                    if labels is not None:
+                        df["gold_answers"] = df.apply(lambda x: [label.answer.answer for label in labels.labels if label.answer is not None], axis=1)
+                        df["gold_offsets_in_documents"] = df.apply(lambda x: [label.answer.offsets_in_document for label in labels.labels if label.answer is not None], axis=1)
+                    eval_result[node_name] = df
+
+                documents = output.get("documents", None)
+                if documents is not None:
+                    df = pd.DataFrame(documents, columns=document_cols)
+                    df["node"] = node_name
+                    df["query"] = query
+                    df["rank"] = np.arange(1, len(df)+1)
+                    if labels is not None:
+                        df["gold_document_ids"] = df.apply(lambda x: [label.document.id for label in labels.labels], axis=1)
+                        df["gold_document_contents"] = df.apply(lambda x: [label.document.content for label in labels.labels], axis=1)
+                    eval_result[node_name] = df
+
+            return eval_result
+
+    def calculate_metrics(self, eval_result: Dict[str,DataFrame]) -> Dict[str, float]:
+        reader_df = eval_result["Reader"]
+        first_answers = reader_df[reader_df["rank"] == 1]
+        first_correct_answers = first_answers[first_answers.apply(lambda x: x["answer"] in x["gold_answers"], axis=1)]
+
+        return {
+            "MatchInTop1": len(first_correct_answers) / len(first_answers) if len(first_answers) > 0 else 0.0
+        }
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
