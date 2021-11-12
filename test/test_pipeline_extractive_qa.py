@@ -102,6 +102,7 @@ def test_extractive_qa_answers_with_translator(
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result = pipeline.eval(
