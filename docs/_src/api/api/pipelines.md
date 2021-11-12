@@ -162,18 +162,16 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None) -> EvaluationResult
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None) -> EvaluationResult
 ```
 
 Runs the pipeline, one node at a time.
 
 **Arguments**:
 
-- `query`: The search query (for query pipelines only)
+- `query`: The search query or queries (for query pipelines only)
 - `file_paths`: The files to index (for indexing pipelines only)
-- `labels`: 
-- `documents`: 
-- `meta`: 
+- `labels`: The labels to evaluate on
 - `params`: Dictionary of parameters to be dispatched to the nodes.
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
             If you want to pass it to targeted nodes, you can do:
@@ -545,7 +543,7 @@ Pipeline for Extractive Question Answering.
 #### eval
 
 ```python
- | eval(query: str, params: Optional[dict] = None, labels: Optional[MultiLabel] = None) -> EvaluationResult
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict]) -> EvaluationResult
 ```
 
 **Arguments**:
