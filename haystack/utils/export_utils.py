@@ -6,7 +6,7 @@ import logging
 import pandas as pd
 from collections import defaultdict
 
-from haystack.schema import Answer
+from haystack.schema import Document, Answer
 from haystack.document_stores.sql import DocumentORM
 
 
@@ -70,6 +70,13 @@ def print_documents(results: dict, max_text_len: Optional[int] = None, print_nam
     """
     print(f"\nQuery: {results['query']}\n")
     pp = pprint.PrettyPrinter(indent=4)
+    
+    # Verify that the input contains Documents under the `document` key
+    if any(not isinstance(doc, Document) for doc in results["documents"]):
+        raise ValueError("This results object does not contain `Document` objects under the `documents` key. "
+                         "Please make sure the last node of your pipeline makes proper use of the "
+                         "new Haystack primitive objects, and if you're using Haystack nodes/pipelines only, "
+                         "please report this as a bug.")
 
     for doc in results["documents"]:
         content = doc.content
@@ -99,6 +106,14 @@ def print_questions(results: dict):
         for pair in results["results"]:
             print(f" - Q:{pair['query']}")
             for answer in pair["answers"]:
+
+                # Verify that the pairs contains Answers under the `answer` key
+                if not isinstance(answer, Answer):
+                    raise ValueError("This results object does not contain `Answer` objects under the `answers` "
+                                    "key of the generated question/answer pairs. "
+                                    "Please make sure the last node of your pipeline makes proper use of the "
+                                    "new Haystack primitive objects, and if you're using Haystack nodes/pipelines only, "
+                                    "please report this as a bug.")
                 print(f"      A: {answer.answer}")
 
     else:
