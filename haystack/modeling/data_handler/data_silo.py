@@ -741,28 +741,51 @@ class DistillationDataSilo(DataSilo):
             batch = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch)}
             y = self.teacher_model(**batch)
             y = [y.cpu() for y in y]
+
+            # grouping by chunk
             for i, data in zip(corresponding_chunks, zip(*y)):
                 teacher_outputs[i].append(data)
 
     def _get_dataset(self, filename: Optional[Union[str, Path]], dicts: Optional[List[Dict]] = None):
         concat_datasets, tensor_names = super()._get_dataset(filename, dicts)
-        batch = []
-        teacher_outputs = []
-        corresponding_chunks = []
 
+        batch = []
+        corresponding_chunks = [] # to be able to associate elements of batches with chunks (elements could be from multiple chunks)
+
+        teacher_outputs = [] # list of teacher outputs group in list by chunk
+
+        # creating batches from chunks        
         for i, dataset in enumerate(tqdm(concat_datasets.datasets, desc="Doing forward pass on teacher model")):
             teacher_outputs.append([])
             for x in zip(*dataset.tensors):
                 batch.append(x)
                 corresponding_chunks.append(i)
                 if len(batch) == self.teacher_batch_size:
-                    self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names)
+                    self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names) # doing forward pass on teacher model
                     batch = []
                     corresponding_chunks = []
         if batch:
             self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names)
+        
+        # appending teacher outputs to original dataset
         for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):
-            dataset.tensors += [torch.stack(tensors) for tensors in zip(*teacher_output)]
+            dataset.tensors += tuple(torch.stack(tensors) for tensors in zip(*teacher_output))
         tensor_names.extend(["teacher_output_" + str(i) for i, _ in enumerate(teacher_output)])
-        concat_datasets = ConcatDataset(concat_datasets.datasets)
+        concat_datasets = ConcatDataset(concat_datasets.datasets) # making sure metrics are updated
         return concat_datasets, tensor_names
+    
+    def _get_checksum(self):
+        """
+        Get checksum based on a dict to ensure validity of cached DataSilo
+        """
+        # TODO: adding check for teacher model
+        # keys in the dict identifies uniqueness for a given DataSilo.
+        payload_dict = {
+            "train_filename": str(Path(self.processor.train_filename).absolute()),
+            "data_dir": str(self.processor.data_dir.absolute()),
+            "max_seq_len": self.processor.max_seq_len,
+            "dev_split": self.processor.dev_split,
+            "tasks": self.processor.tasks
+        }
+        checksum = get_dict_checksum(payload_dict)
+        return checksum

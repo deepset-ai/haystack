@@ -685,11 +685,10 @@ class DistillationTrainer(Trainer):
         self.distillation_loss_weight = distillation_loss_weight
     
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
-        keys = list(batch.keys())
-        keys = [key for key in keys if key.startswith("teacher_logits")]
-        teacher_logits = [batch.pop(key) for key in keys]
+        teacher_keys = [key for key in batch.keys() if key.startswith("teacher_output_")] # getting keys corresponding to output of teacher model
+        teacher_outputs = [batch.pop(key) for key in teacher_keys]
         logits = self.model.forward(**batch)
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        logit_difference_loss = self.logit_difference_loss_function(logits[0], teacher_logits[0])
+        logit_difference_loss = self.logit_difference_loss_function(logits[0], teacher_outputs[0])
         combined_loss = logit_difference_loss * self.distillation_loss_weight + student_loss * (1 - self.distillation_loss_weight)
         return self.backward_propagate(combined_loss, step)
