@@ -409,8 +409,7 @@ class Pipeline(BasePipeline):
         """
             Runs the pipeline, one node at a time.
 
-            :param query: The search query or queries (for query pipelines only)
-            :param file_paths: The files to index (for indexing pipelines only)
+            :param query: The queries to evaluate
             :param labels: The labels to evaluate on
             :param params: Dictionary of parameters to be dispatched to the nodes. 
                         If you want to pass a param to all nodes, you can just use: {"top_k":10}
