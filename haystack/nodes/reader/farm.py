@@ -6,7 +6,7 @@ from pathlib import Path
 from collections import defaultdict
 from time import perf_counter
 
-from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
 from haystack.modeling.data_handler.processor import SquadProcessor
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.inputs import QAInput, Question
@@ -14,7 +14,7 @@ from haystack.modeling.infer import QAInferencer
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.model.predictions import QAPred, QACandidate
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.training import Trainer
+from haystack.modeling.training import Trainer, DistillationTrainer
 from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
@@ -149,6 +149,126 @@ class FARMReader(BaseReader):
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
 
+    def _training_procedure(
+        self,
+        data_dir: str,
+        train_filename: str,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        use_gpu: Optional[bool] = None,
+        batch_size: int = 10,
+        n_epochs: int = 2,
+        learning_rate: float = 1e-5,
+        max_seq_len: Optional[int] = None,
+        warmup_proportion: float = 0.2,
+        dev_split: float = 0,
+        evaluate_every: int = 300,
+        save_dir: Optional[str] = None,
+        num_processes: Optional[int] = None,
+        use_amp: str = None,
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
+        teacher_model: Optional["FARMReader"] = None,
+        teacher_batch_size: Optional[int] = None,
+        distillation_loss_weight: float = 0.5,
+        caching: bool = False,
+        cache_path: Path = Path("cache/data_silo")
+    ):
+        if dev_filename:
+            dev_split = 0
+
+        if num_processes is None:
+            num_processes = multiprocessing.cpu_count() - 1 or 1
+
+        set_all_seeds(seed=42)
+
+        # For these variables, by default, we use the value set when initializing the FARMReader.
+        # These can also be manually set when train() is called if you want a different value at train vs inference
+        if use_gpu is None:
+            use_gpu = self.use_gpu
+        if max_seq_len is None:
+            max_seq_len = self.max_seq_len
+
+        devices, n_gpu = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+
+        if not save_dir:
+            save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
+
+        # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
+        label_list = ["start_token", "end_token"]
+        metric = "squad"
+        processor = SquadProcessor(
+            tokenizer=self.inferencer.processor.tokenizer,
+            max_seq_len=max_seq_len,
+            label_list=label_list,
+            metric=metric,
+            train_filename=train_filename,
+            dev_filename=dev_filename,
+            dev_split=dev_split,
+            test_filename=test_filename,
+            data_dir=Path(data_dir),
+        )
+
+        # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
+        # and calculates a few descriptive statistics of our datasets
+        if teacher_model:
+            data_silo = DistillationDataSilo(teacher_model, teacher_batch_size or batch_size, device=devices[0], processor=processor, batch_size=batch_size, distributed=False,
+            max_processes=num_processes, caching=caching, cache_path=cache_path)
+        else:
+            data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes, caching=caching, cache_path=cache_path)
+
+        # 3. Create an optimizer and pass the already initialized model
+        model, optimizer, lr_schedule = initialize_optimizer(
+            model=self.inferencer.model,
+            # model=self.inferencer.model,
+            learning_rate=learning_rate,
+            schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
+            n_batches=len(data_silo.loaders["train"]),
+            n_epochs=n_epochs,
+            device=devices[0],
+            use_amp=use_amp,
+        )
+        # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
+        if teacher_model:
+            trainer = DistillationTrainer.create_or_load_checkpoint(
+                model=model,
+                teacher_model=teacher_model,
+                distillation_loss_weight=distillation_loss_weight,
+                optimizer=optimizer,
+                data_silo=data_silo,
+                epochs=n_epochs,
+                n_gpu=n_gpu,
+                lr_schedule=lr_schedule,
+                evaluate_every=evaluate_every,
+                device=devices[0],
+                use_amp=use_amp,
+                disable_tqdm=not self.progress_bar,
+                checkpoint_root_dir=Path(checkpoint_root_dir),
+                checkpoint_every=checkpoint_every,
+                checkpoints_to_keep=checkpoints_to_keep,
+            )
+        else:
+            trainer = Trainer.create_or_load_checkpoint(
+                model=model,
+                optimizer=optimizer,
+                data_silo=data_silo,
+                epochs=n_epochs,
+                n_gpu=n_gpu,
+                lr_schedule=lr_schedule,
+                evaluate_every=evaluate_every,
+                device=devices[0],
+                use_amp=use_amp,
+                disable_tqdm=not self.progress_bar,
+                checkpoint_root_dir=Path(checkpoint_root_dir),
+                checkpoint_every=checkpoint_every,
+                checkpoints_to_keep=checkpoints_to_keep,
+            )
+
+        # 5. Let it grow!
+        self.inferencer.model = trainer.train()
+        self.save(Path(save_dir))
+
     def train(
         self,
         data_dir: str,
@@ -169,6 +289,8 @@ class FARMReader(BaseReader):
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
+        caching: bool = False,
+        cache_path: Path = Path("cache/data_silo")
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -212,77 +334,95 @@ class FARMReader(BaseReader):
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :return: None
         """
+        return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
+        dev_filename=dev_filename, test_filename=test_filename,
+        use_gpu=use_gpu, batch_size=batch_size,
+        n_epochs=n_epochs, learning_rate=learning_rate,
+        max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
+        dev_split=dev_split, evaluate_every=evaluate_every,
+        save_dir=save_dir, num_processes=num_processes,
+        use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
+        checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
+        caching=caching, cache_path=cache_path)
+    
+    def distil_from(
+        self,
+        teacher_model: "FARMReader",
+        data_dir: str,
+        train_filename: str,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        use_gpu: Optional[bool] = None,
+        batch_size: int = 10,
+        n_epochs: int = 2,
+        learning_rate: float = 1e-5,
+        max_seq_len: Optional[int] = None,
+        warmup_proportion: float = 0.2,
+        dev_split: float = 0,
+        evaluate_every: int = 300,
+        save_dir: Optional[str] = None,
+        num_processes: Optional[int] = None,
+        use_amp: str = None,
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
+        teacher_batch_size: Optional[int] = None,
+        caching: bool = False,
+        cache_path: Path = Path("cache/data_silo")
+    ):
+        """
+        Fine-tune a model on a QA dataset. Options:
 
-        if dev_filename:
-            dev_split = 0
-
-        if num_processes is None:
-            num_processes = multiprocessing.cpu_count() - 1 or 1
-
-        set_all_seeds(seed=42)
-
-        # For these variables, by default, we use the value set when initializing the FARMReader.
-        # These can also be manually set when train() is called if you want a different value at train vs inference
-        if use_gpu is None:
-            use_gpu = self.use_gpu
-        if max_seq_len is None:
-            max_seq_len = self.max_seq_len
-
-        devices, n_gpu = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-
-        if not save_dir:
-            save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
-
-        # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
-        label_list = ["start_token", "end_token"]
-        metric = "squad"
-        processor = SquadProcessor(
-            tokenizer=self.inferencer.processor.tokenizer,
-            max_seq_len=max_seq_len,
-            label_list=label_list,
-            metric=metric,
-            train_filename=train_filename,
-            dev_filename=dev_filename,
-            dev_split=dev_split,
-            test_filename=test_filename,
-            data_dir=Path(data_dir),
-        )
-
-        # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
-        # and calculates a few descriptive statistics of our datasets
-        data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes)
-
-        # 3. Create an optimizer and pass the already initialized model
-        model, optimizer, lr_schedule = initialize_optimizer(
-            model=self.inferencer.model,
-            # model=self.inferencer.model,
-            learning_rate=learning_rate,
-            schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
-            n_batches=len(data_silo.loaders["train"]),
-            n_epochs=n_epochs,
-            device=devices[0],
-            use_amp=use_amp,
-        )
-        # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer.create_or_load_checkpoint(
-            model=model,
-            optimizer=optimizer,
-            data_silo=data_silo,
-            epochs=n_epochs,
-            n_gpu=n_gpu,
-            lr_schedule=lr_schedule,
-            evaluate_every=evaluate_every,
-            device=devices[0],
-            use_amp=use_amp,
-            disable_tqdm=not self.progress_bar,
-            checkpoint_root_dir=Path(checkpoint_root_dir),
-            checkpoint_every=checkpoint_every,
-            checkpoints_to_keep=checkpoints_to_keep,
-        )
-
-        # 5. Let it grow!
-        self.inferencer.model = trainer.train()
-        self.save(Path(save_dir))
+        - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
+        - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
+         
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
+        If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
+         
+        :param data_dir: Path to directory containing your training data in SQuAD style
+        :param train_filename: Filename of training data
+        :param dev_filename: Filename of dev / eval data
+        :param test_filename: Filename of test data
+        :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
+                          that gets split off from training data for eval.
+        :param use_gpu: Whether to use GPU (if available)
+        :param batch_size: Number of samples the model receives in one batch for training
+        :param n_epochs: Number of iterations on the whole training data set
+        :param learning_rate: Learning rate of the optimizer
+        :param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.
+        :param warmup_proportion: Proportion of training steps until maximum learning rate is reached.
+                                  Until that point LR is increasing linearly. After that it's decreasing again linearly.
+                                  Options for different schedules are available in FARM.
+        :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
+        :param save_dir: Path to store the final model
+        :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
+                              Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
+                              Set to None to use all CPU cores minus one.
+        :param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+                        Available options:
+                        None (Don't use AMP)
+                        "O0" (Normal FP32 training)
+                        "O1" (Mixed Precision => Recommended)
+                        "O2" (Almost FP16)
+                        "O3" (Pure FP16).
+                        See details on: https://nvidia.github.io/apex/amp.html
+        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+               checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: maximum number of train checkpoints to save.
+        :return: None
+        """
+        return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
+        dev_filename=dev_filename, test_filename=test_filename,
+        use_gpu=use_gpu, batch_size=batch_size,
+        n_epochs=n_epochs, learning_rate=learning_rate,
+        max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
+        dev_split=dev_split, evaluate_every=evaluate_every,
+        save_dir=save_dir, num_processes=num_processes,
+        use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
+        checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
+        teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
+        caching=caching, cache_path=cache_path)
 
     def update_parameters(
         self,

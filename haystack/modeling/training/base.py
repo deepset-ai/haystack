@@ -271,10 +271,7 @@ class Trainer:
 
                 # Move batch of samples to device
                 batch = {key: batch[key].to(self.device) for key in batch}
-                # Forward & backward pass through model
-                logits = self.model.forward(**batch)
-                per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-                loss = self.backward_propagate(per_sample_loss, step)
+                loss = self.compute_loss(batch, step)
 
                 # Perform  evaluation
                 if self.evaluate_every != 0 \
@@ -346,6 +343,12 @@ class Trainer:
                 self.test_result = evaluator_test.eval(self.model)
                 evaluator_test.log_results(self.test_result, "Test", self.global_step)
         return self.model
+    
+    def compute_loss(self, batch: dict, step:int) -> torch.Tensor:
+        # Forward & backward pass through model
+        logits = self.model.forward(**batch)
+        per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
+        return self.backward_propagate(per_sample_loss, step)
 
     def backward_propagate(self, loss: torch.Tensor, step: int):
         loss = self.adjust_loss(loss)
@@ -417,7 +420,7 @@ class Trainer:
             logging.info(f"Resuming training from the train checkpoint at {checkpoint_to_load} ...")
         else:
             logging.info(f"No train checkpoints found. Starting a new training ...")
-            trainer = Trainer(data_silo=data_silo, model=model, optimizer=optimizer, local_rank=local_rank,
+            trainer = cls(data_silo=data_silo, model=model, optimizer=optimizer, local_rank=local_rank,
                               checkpoint_root_dir=checkpoint_root_dir, **kwargs)
         return trainer
 
@@ -596,3 +599,97 @@ class Trainer:
             return False
         else:
             return True
+
+class DistillationTrainer(Trainer):
+    def __init__(
+        self,
+        model,
+        teacher_model,
+        optimizer,
+        data_silo: DataSilo,
+        epochs: int,
+        n_gpu: int,
+        device,
+        lr_schedule=None,
+        evaluate_every: int = 100,
+        eval_report: bool = True,
+        use_amp: Optional[str] = None,
+        grad_acc_steps: int = 1,
+        local_rank: int = -1,
+        early_stopping: Optional[EarlyStopping] = None,
+        log_learning_rate: bool = False,
+        log_loss_every: int = 10,
+        checkpoint_on_sigterm: bool = False,
+        checkpoint_every: Optional[int] = None,
+        checkpoint_root_dir: Optional[Path] = None,
+        checkpoints_to_keep: int = 3,
+        from_epoch: int = 0,
+        from_step: int = 0,
+        global_step: int = 0,
+        evaluator_test: bool = True,
+        disable_tqdm: bool = False,
+        max_grad_norm: float = 1.0,
+        distillation_loss_weight: float = 0.5
+    ):
+        """
+        :param optimizer: An optimizer object that determines the learning strategy to be used during training
+        :param model: The model to be trained
+        :param teacher_model: The teacher model used for distillation
+        :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
+        :param epochs: How many times the training procedure will loop through the train dataset
+        :param n_gpu: The number of gpus available for training and evaluation.
+        :param device: The device on which the train, dev and test tensors should be hosted. Choose from "cpu" and "cuda".
+        :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
+        :param evaluate_every: Perform dev set evaluation after this many steps of training.
+        :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
+        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
+                        "O1" is recommended in almost all cases.
+        :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
+                               Useful to achieve larger effective batch sizes that would not fit in GPU memory.
+        :param local_rank: Local rank of process when distributed training via DDP is used.
+        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param log_learning_rate: Whether to log learning rate to Mlflow
+        :param log_loss_every: Log current train loss after this many train steps.
+        :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
+               can be used to resume training. It is useful in frameworks like AWS SageMaker with Spot instances where
+               a SIGTERM notifies to save the training state and subsequently the instance is terminated.
+        :param checkpoint_every: save a train checkpoint after this many steps of training.
+        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+               checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoints_to_keep: maximum number of train checkpoints to save.
+        :param from_epoch: the epoch number to start the training from. In the case when training resumes from a saved
+               checkpoint, it is used to fast-forward training to the last epoch in the checkpoint.
+        :param from_step: the step number to start the training from. In the case when training resumes from a saved
+               checkpoint, it is used to fast-forward training to the last step in the checkpoint.
+        :param global_step: the global step number across the training epochs.
+        :param evaluator_test: whether to perform evaluation on the test set
+        :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
+        :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
+        :param distillation_loss_weight: The weight of the distillation loss
+        """
+        super().__init__(model=model, optimizer=optimizer,
+        data_silo=data_silo, epochs=epochs,
+        n_gpu=n_gpu, device=device,
+        lr_schedule=lr_schedule, evaluate_every=evaluate_every,
+        eval_report=eval_report, use_amp=use_amp,
+        grad_acc_steps=grad_acc_steps, local_rank=local_rank,
+        early_stopping=early_stopping, log_learning_rate=log_learning_rate,
+        log_loss_every=log_loss_every, checkpoint_on_sigterm=checkpoint_on_sigterm,
+        checkpoint_every=checkpoint_every, checkpoint_root_dir=checkpoint_root_dir,
+        checkpoints_to_keep=checkpoints_to_keep, from_epoch=from_epoch,
+        from_step=from_step, global_step=global_step,
+        evaluator_test=evaluator_test, disable_tqdm=disable_tqdm,
+        max_grad_norm=max_grad_norm)
+        self.teacher_model = teacher_model.inferencer.model
+        self.teacher_model.to(self.device)
+        self.distillation_loss_weight = distillation_loss_weight
+    
+    def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
+        keys = list(batch.keys())
+        keys = [key for key in keys if key.startswith("teacher_logits")]
+        teacher_logits = [batch.pop(key) for key in keys]
+        logits = self.model.forward(**batch)
+        student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
+        logit_difference_loss = self.logit_difference_loss_function(logits[0], teacher_logits[0])
+        combined_loss = logit_difference_loss * self.distillation_loss_weight + student_loss * (1 - self.distillation_loss_weight)
+        return self.backward_propagate(combined_loss, step)

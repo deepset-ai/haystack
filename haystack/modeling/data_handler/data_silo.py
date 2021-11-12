@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import random
+import math
 from contextlib import ExitStack
 from functools import partial
 from itertools import groupby
@@ -16,6 +17,9 @@ from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.logger import MLFlowLogger as MlLogger
@@ -153,7 +157,7 @@ class DataSilo:
                     f"dictionaries to pytorch datasets."
                 )
 
-                results = map(partial(self._dataset_from_chunk, processor=self.processor), grouper(dicts, num_dicts))  # type: ignore
+                results = map(partial(self._dataset_from_chunk, processor=self.processor), grouper(dicts, 1))  # type: ignore FIXME: temporary fix
 
             datasets = []
             problematic_ids_all = set()
@@ -722,3 +726,43 @@ def get_dict_checksum(payload_dict):
     """
     checksum = hashlib.md5(json.dumps(payload_dict, sort_keys=True).encode("utf-8")).hexdigest()
     return checksum
+
+class DistillationDataSilo(DataSilo):
+    def __init__(self, teacher_model: "FARMReader", teacher_batch_size: int, device, **kwargs):
+        self.teacher_model = teacher_model.inferencer.model
+        self.teacher_batch_size = teacher_batch_size
+        self.device = device
+        super().__init__(**kwargs)
+    
+    def _run_teacher(self, batch, corresponding_chunks, teacher_outputs, tensor_names):
+        with torch.no_grad():
+            batch = zip(*batch)
+            batch = [torch.stack(b) for b in batch]
+            batch = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch)}
+            y = self.teacher_model(**batch)
+            y = [y.cpu() for y in y]
+            for i, data in zip(corresponding_chunks, zip(*y)):
+                teacher_outputs[i].append(data)
+
+    def _get_dataset(self, filename: Optional[Union[str, Path]], dicts: Optional[List[Dict]] = None):
+        concat_datasets, tensor_names = super()._get_dataset(filename, dicts)
+        batch = []
+        teacher_outputs = []
+        corresponding_chunks = []
+
+        for i, dataset in enumerate(tqdm(concat_datasets.datasets, desc="Doing forward pass on teacher model")):
+            teacher_outputs.append([])
+            for x in zip(*dataset.tensors):
+                batch.append(x)
+                corresponding_chunks.append(i)
+                if len(batch) == self.teacher_batch_size:
+                    self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names)
+                    batch = []
+                    corresponding_chunks = []
+        if batch:
+            self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names)
+        for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):
+            dataset.tensors += [torch.stack(tensors) for tensors in zip(*teacher_output)]
+        tensor_names.extend(["teacher_output_" + str(i) for i, _ in enumerate(teacher_output)])
+        concat_datasets = ConcatDataset(concat_datasets.datasets)
+        return concat_datasets, tensor_names
