@@ -7,6 +7,7 @@ from haystack.nodes import Text2SparqlRetriever
 from haystack.document_stores import GraphDBKnowledgeGraph
 from haystack.utils import fetch_archive_from_http
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,7 +27,7 @@ def tutorial10_knowledge_graph():
 
     # Start a GraphDB server
     if LAUNCH_GRAPHDB:
-        logging.info("Starting GraphDB ...")
+        print("Starting GraphDB ...")
         status = subprocess.run(
             ['docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11'], shell=True
         )
@@ -52,8 +53,8 @@ def tutorial10_knowledge_graph():
 
     # Import triples of subject, predicate, and object statements from a ttl file
     kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir+"triples.ttl"))
-    logging.info(f"The last triple stored in the knowledge graph is: {kg.get_all_triples()[-1]}")
-    logging.info(f"There are {len(kg.get_all_triples())} triples stored in the knowledge graph.")
+    print(f"The last triple stored in the knowledge graph is: {kg.get_all_triples()[-1]}")
+    print(f"There are {len(kg.get_all_triples())} triples stored in the knowledge graph.")
 
     # Define prefixes for names of resources so that we can use shorter resource names in queries
     prefixes = """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -71,21 +72,21 @@ def tutorial10_knowledge_graph():
     # E.g. "Harry" -> "hp:Harry_potter"
 
     query = "In which house is Harry Potter?"
-    logging.info(f"Translating the text query \"{query}\" to a SPARQL query and executing it on the knowledge graph...")
+    print(f"Translating the text query \"{query}\" to a SPARQL query and executing it on the knowledge graph...")
     result = kgqa_retriever.retrieve(query=query)
-    logging.info(result)
+    print(result)
     # Correct SPARQL query: select ?a { hp:Harry_potter hp:house ?a . }
     # Correct answer: Gryffindor
 
-    logging.info("Executing a SPARQL query with prefixed names of resources...")
+    print("Executing a SPARQL query with prefixed names of resources...")
     result = kgqa_retriever._query_kg(sparql_query="select distinct ?sbj where { ?sbj hp:job hp:Keeper_of_keys_and_grounds . }")
-    logging.info(result)
+    print(result)
     # Paraphrased question: Who is the keeper of keys and grounds?
     # Correct answer: Rubeus Hagrid
 
-    logging.info("Executing a SPARQL query with full names of resources...")
+    print("Executing a SPARQL query with full names of resources...")
     result = kgqa_retriever._query_kg(sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }")
-    logging.info(result)
+    print(result)
     # Paraphrased question: What is the patronus of Hermione?
     # Correct answer: Otter
 

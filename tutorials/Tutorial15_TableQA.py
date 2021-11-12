@@ -104,7 +104,7 @@ def tutorial15_tableqa():
     print(table_doc.content)
 
     prediction = reader.predict(query="How many twin buildings are under construction?", documents=[table_doc])
-    print_answers(prediction, details="minimal")
+    print_answers(prediction, details="minimum")
 
     ### Pipeline
     # The Retriever and the Reader can be sticked together to a pipeline in order to first retrieve relevant tables
@@ -119,7 +119,8 @@ def tutorial15_tableqa():
     table_qa_pipeline.add_node(component=reader, name="TableReader", inputs=["TableTextRetriever"])
 
     prediction = table_qa_pipeline.run("How many twin buildings are under construction?")
-    print_answers(prediction, details="minimal")
+    print_answers(prediction, details="minimum")
+
 
 if __name__ == "__main__":
     tutorial15_tableqa()
