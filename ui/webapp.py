@@ -3,8 +3,9 @@ import sys
 
 import logging
 import pandas as pd
+from pathlib import Path
 import streamlit as st
-from annotated_text import annotated_text
+from annotated_text import annotated_text   # pip install st-annotated-text
 
 # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
@@ -21,9 +22,7 @@ def annotate_answer(answer, context):
     from the API that we highlight in the given context"""
     start_idx = context.find(answer)
     end_idx = start_idx + len(answer)
-    # calculate dynamic height depending on context length
-    height = int(len(context) * 0.50) + 5
-    annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:], height=height)
+    annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
 
 
 def show_plain_documents(text):
@@ -47,13 +46,13 @@ def random_questions(df):
 def main():
     # Define state
     state_question = SessionState.get(
-        random_question=DEFAULT_QUESTION_AT_STARTUP, random_answer="", next_question="false", run_query="false"
+        random_question=DEFAULT_QUESTION_AT_STARTUP, random_answer="", next_question="false", run_query=False
     )
 
     # Initialize variables
     eval_mode = False
     random_question = DEFAULT_QUESTION_AT_STARTUP
-    eval_labels = os.getenv("EVAL_FILE", "eval_labels_example.csv")
+    eval_labels = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_example.csv")
 
     # UI search bar and sidebar
     st.write("# Haystack Demo")
@@ -64,17 +63,6 @@ def main():
     )
     eval_mode = st.sidebar.checkbox("Evaluation mode")
     debug = st.sidebar.checkbox("Show debug info")
-
-    st.sidebar.write("## File Upload:")
-    data_files = st.sidebar.file_uploader("", type=["pdf", "txt", "docx"], accept_multiple_files=True)
-    for data_file in data_files:
-        # Upload file
-        if data_file:
-            raw_json = upload_doc(data_file)
-            st.sidebar.write(raw_json)
-            if debug:
-                st.subheader("REST API JSON response")
-                st.sidebar.write(raw_json)
 
     # load csv into pandas dataframe
     if eval_mode:
@@ -108,23 +96,23 @@ def main():
             state_question.next_question = False
 
     # Search bar
-    question = st.text_input("Please provide your query:", value=random_question)
-    if state_question and state_question.run_query:
-        run_query = state_question.run_query
+    question = st.text_input("Please provide your query:", value=random_question, max_chars=100)
+    if not question:
+        st.error("🚫 &nbsp;&nbsp; Please write a question")
         st.button("Run")
-    else:
-        run_query = st.button("Run")
-        state_question.run_query = run_query
+        return
+
+    state_question.run_query = st.button("Run")
 
     raw_json_feedback = ""
 
     with st.spinner("⌛️ &nbsp;&nbsp; Haystack is starting..."):
         if not haystack_is_ready():
             st.error("🚫 &nbsp;&nbsp; Connection Error. Is Haystack running?")
-            run_query = False
+            state_question.run_query = False
 
     # Get results for query
-    if run_query:
+    if state_question.run_query:
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
