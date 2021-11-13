@@ -4,8 +4,10 @@ import uuid
 from typing import Dict, Generator, List, Optional, Union
 
 import logging
+import json
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
@@ -235,11 +237,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
+
+        # Convert json to pd.DataFrame
+        if content_type == "table":
+            content = pd.DataFrame.from_dict(json.loads(content))
         
         document = Document(
             id=id,
             content=content,
-            content_type=content_type, #type: ignore
+            content_type=content_type,  # type: ignore
             meta=meta_data,
             score=score,
             embedding=embedding,
@@ -339,7 +345,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         else:
             return weaviate_filter
 
-    def _update_schema(self, new_prop:str, index: Optional[str] = None):
+    def _update_schema(self, new_prop: str, index: Optional[str] = None):
         """
         Updates the schema with a new property.
         """
@@ -400,6 +406,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
         # Duplicate document ids will be mapped to the same generated uuid.
         for do in document_objects:
             do.id = self._sanitize_id(id=do.id, index=index)
+
+            # Convert pd.DataFrames to json string to be indexed to Weaviate
+            if do.content_type == "table":
+                # Deduplicate column names
+                do.content.columns = pd.io.parsers.base_parser.ParserBase({"usecols": None})._maybe_dedup_names(do.content.columns)
+                do.content = do.content.to_json()
 
         document_objects = self._handle_duplicate_documents(documents=document_objects,
                                                             index=index,
