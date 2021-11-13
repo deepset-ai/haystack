@@ -82,6 +82,7 @@ def tutorial11_pipelines():
     rag_generator = RAGenerator()
 
     # Generative QA
+    query="Who is the father of Arya Stark?"
     p_generator = GenerativeQAPipeline(generator=rag_generator, retriever=dpr_retriever)
     res = p_generator.run(
         query=query,
@@ -199,6 +200,35 @@ def tutorial11_pipelines():
     print("\nQuery: ", query)
     print(" * ES Answers:")
     print_answers(res_2, details="minimum")
+
+
+    print("#######################")
+    print("# Debugging Pipelines #")
+    print("#######################")
+    # You can print out debug information from nodes in your pipelines in a few different ways.
+
+    # 1) You can set the `debug` attribute of a given node.
+    es_retriever.debug = True
+
+    # 2) You can provide `debug` as a parameter when running your pipeline
+    result = p_classifier.run(
+        query="Who is the father of Arya Stark?",
+        params={
+            "ESRetriever": {
+                "debug": True
+            }
+        }
+    )
+
+    # 3) You can provide the `debug` paramter to all nodes in your pipeline
+    result = p_classifier.run(
+        query="Who is the father of Arya Stark?",
+        params={
+            "debug": True
+        }
+    )
+
+    pprint(result["_debug"])
 
 
 if __name__ == "__main__":
