@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseRanker"></a>
-## BaseRanker Objects
+## BaseRanker
 
 ```python
 class BaseRanker(BaseComponent)
@@ -55,7 +55,7 @@ position in the ranking of documents the correct document is.
 # Module sentence\_transformers
 
 <a name="sentence_transformers.SentenceTransformersRanker"></a>
-## SentenceTransformersRanker Objects
+## SentenceTransformersRanker
 
 ```python
 class SentenceTransformersRanker(BaseRanker)
