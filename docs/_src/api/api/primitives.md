@@ -230,3 +230,20 @@ underlying Labels provided a text answer and therefore demonstrates that there i
 - `drop_negative_labels`: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
 - `drop_no_answers`: Whether to drop labels that specify the answer is impossible
 
+<a name="schema.EvaluationResult"></a>
+## EvaluationResult
+
+```python
+class EvaluationResult()
+```
+
+<a name="schema.EvaluationResult.calculate_metrics"></a>
+#### calculate\_metrics
+
+```python
+ | calculate_metrics() -> Dict[str, float]
+```
+
+First dummy implementation of metrics calcuation just to show the way it's done.
+TODO: implement retriever and reader specific metrics that must not rely on node names.
+
