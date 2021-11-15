@@ -10,6 +10,7 @@ from typing import Union
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 download_links = {
     "squad2": {
@@ -69,26 +70,26 @@ def main():
     student = config["student_model"]
     teacher = config["teacher_model"]
 
-    logging.info("Downloading dataset")
+    logger.info("Downloading dataset")
     train_file, test_file = download_dataset(config["dataset"], download_folder)
 
-    logging.info("Training student without distillation as a baseline")
+    logger.info("Training student without distillation as a baseline")
     results_student = train_student(student["model_name_or_path"], download_folder, train_file, test_file, config["epochs"], student["batch_size"])
 
-    logging.info("Training student with distillation")
+    logger.info("Training student with distillation")
     results_student_with_distillation = train_student_with_distillation(student["model_name_or_path"], teacher["model_name_or_path"], download_folder,
     train_file, test_file, config["epochs"], student["batch_size"], teacher["batch_size"])
 
-    logging.info("Evaluating teacher")
+    logger.info("Evaluating teacher")
     results_teacher = eval(FARMReader(model_name_or_path=teacher["model_name_or_path"]), download_folder, test_file)
 
-    logging.info("Evaluation results:")
+    logger.info("Evaluation results:")
     descriptions = ["Results of teacher", "Results of student without distillation (baseline)", "Results of student with distillation"]
     for evaluation, description in zip([results_teacher, results_student, results_student_with_distillation], descriptions):
-        logging.info(description)
-        logging.info(f"EM: {evaluation['EM']}")
-        logging.info(f"F1: {evaluation['f1']}")
-        logging.info(f"Top n accuracy: {evaluation['top_n_accuracy']}")
+        logger.info(description)
+        logger.info(f"EM: {evaluation['EM']}")
+        logger.info(f"F1: {evaluation['f1']}")
+        logger.info(f"Top n accuracy: {evaluation['top_n_accuracy']}")
 
 
 
