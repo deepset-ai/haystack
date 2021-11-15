@@ -21,49 +21,12 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack.schema import MultiLabel, Document
+from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)
-
-
-class EvaluationResult:
-    def __init__(self, node_results: Dict[str, DataFrame] = None) -> None:
-        self.node_results: Dict[str, DataFrame] = {} if node_results is None else node_results
-
-    def __getitem__(self, key: str):
-        return self.node_results.__getitem__(key)
-
-    def __delitem__(self, key: str):
-        self.node_results.__delitem__(key)
-
-    def __setitem__(self, key: str, value: DataFrame):
-        self.node_results.__setitem__(key, value)
-
-    def __contains__(self, key: str):
-        return self.node_results.keys().__contains__(key)
-
-    def append(self, key: str, value: DataFrame):
-        if key in self.node_results:
-            self.node_results[key] = pd.concat([self.node_results[key], value])
-        else:    
-            self.node_results[key] = value
-
-    def save(self, out_dir: Union[str, Path]):
-        out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
-        for node_name, df in self.node_results.items():
-            target_path = out_dir / f"{node_name}.csv"
-            df.to_csv(target_path, index=False, header=True)
-
-    @classmethod
-    def load(cls, load_dir: Union[str, Path]):
-        load_dir =  load_dir if isinstance(load_dir, Path) else Path(load_dir)
-        csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
-        node_results = {file.stem: pd.read_csv(file, header=0) for file in csv_files}
-        result = cls(node_results)
-        return result
 
 
 class RootNode(BaseComponent):
@@ -461,16 +424,6 @@ class Pipeline(BasePipeline):
             df["rank"] = np.arange(1, len(df)+1)
 
         return df
-
-    def calculate_metrics(self, eval_result: Dict[str, DataFrame]) -> Dict[str, float]:
-        reader_df = eval_result["Reader"]
-        first_answers = reader_df[reader_df["rank"] == 1]
-        first_correct_answers = first_answers[first_answers.apply(
-            lambda x: x["answer"] in x["gold_answers"], axis=1)]
-
-        return {
-            "MatchInTop1": len(first_correct_answers) / len(first_answers) if len(first_answers) > 0 else 0.0
-        }
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)

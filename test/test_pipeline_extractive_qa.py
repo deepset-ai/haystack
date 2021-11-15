@@ -118,7 +118,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
         params={"Retriever": {"top_k": 5}}, 
     )
 
-    metrics = pipeline.calculate_metrics(eval_result=eval_result)
+    metrics = eval_result.calculate_metrics()
 
     reader_result = eval_result["Reader"]
     retriever_result = eval_result["Retriever"]
@@ -129,7 +129,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
-    metrics = pipeline.calculate_metrics(eval_result=saved_eval_result)
+    metrics = saved_eval_result.calculate_metrics()
 
     assert reader_result[reader_result['rank'] == 1]["answer"].iloc[0] in reader_result[reader_result['rank'] == 1]["gold_answers"].iloc[0]
     assert retriever_result[retriever_result['rank'] == 1]["id"].iloc[0] in retriever_result[retriever_result['rank'] == 1]["gold_document_ids"].iloc[0]
@@ -156,7 +156,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
         params={"Retriever": {"top_k": 5}}, 
     )
 
-    metrics = pipeline.calculate_metrics(eval_result=eval_result)
+    metrics = eval_result.calculate_metrics()
 
     reader_result = eval_result["Reader"]
     retriever_result = eval_result["Retriever"]
@@ -175,7 +175,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
-    metrics = pipeline.calculate_metrics(eval_result=saved_eval_result)
+    metrics = saved_eval_result.calculate_metrics()
 
     assert reader_berlin[reader_berlin['rank'] == 1]["answer"].iloc[0] in reader_berlin[reader_berlin['rank'] == 1]["gold_answers"].iloc[0]
     assert retriever_berlin[retriever_berlin['rank'] == 1]["id"].iloc[0] in retriever_berlin[retriever_berlin['rank'] == 1]["gold_document_ids"].iloc[0]
