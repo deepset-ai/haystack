@@ -174,7 +174,7 @@ def test_debug_info_propagation():
     class B(RootNode):
         def run(self, test):
             test += "B"
-            return {"test": test, "_debug": {"debug_key_b": "debug_value_b"}}, "output_1"
+            return {"test": test, "_debug": "debug_value_b"}, "output_1"
 
     class C(RootNode):
         def run(self, test):
@@ -184,7 +184,7 @@ def test_debug_info_propagation():
     class D(RootNode):
         def run(self, test, _debug):
             test += "C"
-            assert _debug["B"]["debug_key_b"] == "debug_value_b"
+            assert _debug["B"]["runtime"] == "debug_value_b"
             return {"test": test}, "output_1"
 
     pipeline = Pipeline()
@@ -193,5 +193,5 @@ def test_debug_info_propagation():
     pipeline.add_node(name="C", component=C(), inputs=["B"])
     pipeline.add_node(name="D", component=D(), inputs=["C"])
     output = pipeline.run(query="test")
-    assert output["_debug"]["A"]["debug_key_a"] == "debug_value_a"
-    assert output["_debug"]["B"]["debug_key_b"] == "debug_value_b"
+    assert output["_debug"]["A"]["runtime"]["debug_key_a"] == "debug_value_a"
+    assert output["_debug"]["B"]["runtime"] == "debug_value_b"
