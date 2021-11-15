@@ -157,7 +157,8 @@ class DataSilo:
                     f"dictionaries to pytorch datasets."
                 )
 
-                results = map(partial(self._dataset_from_chunk, processor=self.processor), grouper(dicts, 1))  # type: ignore FIXME: temporary fix
+                # temporary fix
+                results = map(partial(self._dataset_from_chunk, processor=self.processor), grouper(dicts, 1))  # type: ignore
 
             datasets = []
             problematic_ids_all = set()
