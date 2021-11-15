@@ -65,7 +65,7 @@ def test_faq_pipeline(retriever, document_store):
         assert len(output["answers"]) == 1
 
 
-@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_document_search_pipeline(retriever, document_store):
     documents = [
         {"content": "Sample text for document-1", "meta": {"source": "wiki1"}},
@@ -85,6 +85,43 @@ def test_document_search_pipeline(retriever, document_store):
     if isinstance(document_store, ElasticsearchDocumentStore):
         output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
         assert len(output["documents"]) == 1
+
+
+@pytest.mark.parametrize(
+        "retriever,document_store",
+        [
+            ("embedding", "faiss"),
+            ("embedding", "milvus"),
+            ("embedding", "elasticsearch"),
+        ],
+        indirect=True,
+)
+def test_most_similar_documents_pipeline(retriever, document_store):
+    documents = [
+        {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"content": "Sample text for document-3", "meta": {"source": "wiki3"}},
+        {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
+        {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
+    ]
+
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever)
+
+    docs_id: list = ["a", "b"]
+    pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
+    list_of_documents = pipeline.run(document_ids=docs_id)
+
+    assert len(list_of_documents[0]) > 1
+    assert isinstance(list_of_documents, list)
+    assert len(list_of_documents) == len(docs_id)
+
+    for another_list in list_of_documents:
+        assert isinstance(another_list, list)
+        for document in another_list:
+            assert isinstance(document, Document)
+            assert isinstance(document.id, str)
+            assert isinstance(document.content, str)
 
 
 @pytest.mark.elasticsearch
@@ -200,43 +237,6 @@ def test_query_keyword_statement_classifier():
 
     output = pipeline.run(query="How old is John?")
     assert output["output"] == "question"
-
-
-@pytest.mark.parametrize(
-        "retriever,document_store",
-        [
-            ("embedding", "faiss"),
-            ("embedding", "milvus"),
-            ("embedding", "elasticsearch"),
-        ],
-        indirect=True,
-)
-def test_most_similar_documents_pipeline(retriever, document_store):
-    documents = [
-        {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
-        {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
-        {"content": "Sample text for document-3", "meta": {"source": "wiki3"}},
-        {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
-        {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
-    ]
-
-    document_store.write_documents(documents)
-    document_store.update_embeddings(retriever)
-
-    docs_id: list = ["a", "b"]
-    pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
-    list_of_documents = pipeline.run(document_ids=docs_id)
-
-    assert len(list_of_documents[0]) > 1
-    assert isinstance(list_of_documents, list)
-    assert len(list_of_documents) == len(docs_id)
-
-    for another_list in list_of_documents:
-        assert isinstance(another_list, list)
-        for document in another_list:
-            assert isinstance(document, Document)
-            assert isinstance(document.id, str)
-            assert isinstance(document.content, str)
 
 
 @pytest.mark.elasticsearch
