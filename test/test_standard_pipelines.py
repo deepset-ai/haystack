@@ -211,7 +211,7 @@ def test_query_keyword_statement_classifier():
         ],
         indirect=True,
 )
-def test_document_search_pipeline(retriever, document_store):
+def test_most_similar_documents_pipeline(retriever, document_store):
     documents = [
         {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
         {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
