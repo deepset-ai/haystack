@@ -165,11 +165,12 @@ Runs the pipeline, one node at a time.
  | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None) -> EvaluationResult
 ```
 
-Runs the pipeline, one node at a time.
+Evaluates the pipeline by running the pipeline once per query in debug mode
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
 **Arguments**:
 
-- `query`: The queries to evaluate
+- `queries`: The queries to evaluate
 - `labels`: The labels to evaluate on
 - `params`: Dictionary of parameters to be dispatched to the nodes.
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
@@ -545,12 +546,15 @@ Pipeline for Extractive Question Answering.
  | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict]) -> EvaluationResult
 ```
 
+Evaluates the pipeline by running the pipeline once per query in debug mode
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
 **Arguments**:
 
-- `query`: The search query string.
+- `queries`: The queries to evaluate
+- `labels`: The labels to evaluate on
 - `params`: Params for the `retriever` and `reader`. For instance,
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-- `labels`: 
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline
