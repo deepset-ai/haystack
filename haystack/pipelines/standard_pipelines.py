@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Dict
 from functools import wraps
 
-from haystack.schema import Document
+from haystack.schema import Document, EvaluationResult, MultiLabel
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.nodes.other import Docs2Answers
 from haystack.nodes.reader import BaseReader
@@ -101,6 +101,22 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
+    def eval(self,
+            queries: List[str],
+            labels: List[MultiLabel],
+            params: Optional[dict]) -> EvaluationResult:
+            
+        """
+        Evaluates the pipeline by running the pipeline once per query in debug mode 
+        and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+        :param queries: The queries to evaluate
+        :param labels: The labels to evaluate on
+        :param params: Params for the `retriever` and `reader`. For instance,
+                       params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+        """
+        output = self.pipeline.eval(queries=queries, labels=labels, params=params)
+        return output
 
 class DocumentSearchPipeline(BaseStandardPipeline):
     """

@@ -15,6 +15,7 @@ else:
     from pydantic.dataclasses import dataclass
 
 from pydantic.json import pydantic_encoder
+from pathlib import Path
 from uuid import uuid4
 import mmh3
 import numpy as np
@@ -531,3 +532,54 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
+
+
+class EvaluationResult:
+    def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
+        self.node_results: Dict[str, pd.DataFrame] = {} if node_results is None else node_results
+
+    def __getitem__(self, key: str):
+        return self.node_results.__getitem__(key)
+
+    def __delitem__(self, key: str):
+        self.node_results.__delitem__(key)
+
+    def __setitem__(self, key: str, value: pd.DataFrame):
+        self.node_results.__setitem__(key, value)
+
+    def __contains__(self, key: str):
+        return self.node_results.keys().__contains__(key)
+
+    def append(self, key: str, value: pd.DataFrame):
+        if key in self.node_results:
+            self.node_results[key] = pd.concat([self.node_results[key], value])
+        else:    
+            self.node_results[key] = value
+
+    def calculate_metrics(self) -> Dict[str, float]:
+        """
+            First dummy implementation of metrics calcuation just to show the way it's done.
+            TODO: implement retriever and reader specific metrics that must not rely on node names.
+        """
+        reader_df = self.node_results["Reader"]
+        first_answers = reader_df[reader_df["rank"] == 1]
+        first_correct_answers = first_answers[first_answers.apply(
+            lambda x: x["answer"] in x["gold_answers"], axis=1)]
+
+        return {
+            "MatchInTop1": len(first_correct_answers) / len(first_answers) if len(first_answers) > 0 else 0.0
+        }
+
+    def save(self, out_dir: Union[str, Path]):
+        out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
+        for node_name, df in self.node_results.items():
+            target_path = out_dir / f"{node_name}.csv"
+            df.to_csv(target_path, index=False, header=True)
+
+    @classmethod
+    def load(cls, load_dir: Union[str, Path]):
+        load_dir =  load_dir if isinstance(load_dir, Path) else Path(load_dir)
+        csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
+        node_results = {file.stem: pd.read_csv(file, header=0) for file in csv_files}
+        result = cls(node_results)
+        return result
