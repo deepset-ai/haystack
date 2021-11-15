@@ -3,10 +3,7 @@ from pathlib import Path
 import os
 import pytest
 
-from haystack.pipelines import (
-    Pipeline,
-    RootNode,
-)
+from haystack.pipelines import Pipeline, RootNode
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
