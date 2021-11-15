@@ -21,7 +21,7 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack.schema import Label, MultiLabel, Document
+from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
 
@@ -61,7 +61,7 @@ class EvaluationResult:
     def load(cls, load_dir: Union[str, Path]):
         load_dir =  load_dir if isinstance(load_dir, Path) else Path(load_dir)
         csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
-        node_results = {file.name[:-len(file.suffix)]: pd.read_csv(file, header=0) for file in csv_files}
+        node_results = {file.stem: pd.read_csv(file, header=0) for file in csv_files}
         result = cls(node_results)
         return result
 
@@ -400,22 +400,26 @@ class Pipeline(BasePipeline):
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
 
-    def eval(  # type: ignore
+    def eval(
         self,
         queries: List[str],
         labels: List[MultiLabel],
         params: Optional[dict] = None
     ) -> EvaluationResult:
         """
-            Runs the pipeline, one node at a time.
+            Evaluates the pipeline by running the pipeline once per query in debug mode 
+            and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
-            :param query: The queries to evaluate
+            :param queries: The queries to evaluate
             :param labels: The labels to evaluate on
             :param params: Dictionary of parameters to be dispatched to the nodes. 
                         If you want to pass a param to all nodes, you can just use: {"top_k":10}
                         If you want to pass it to targeted nodes, you can do:
                         {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
         """
+        if len(queries) != len(labels):
+            raise ValueError("length of queries must match length of labels")
+        
         eval_result = EvaluationResult()
         for query, label in zip(queries, labels):
             predictions = self.run(query=query, labels=label, params=params, debug=True)

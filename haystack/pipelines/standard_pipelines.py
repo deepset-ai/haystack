@@ -110,10 +110,13 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
             params: Optional[dict]) -> EvaluationResult:
             
         """
-        :param query: The search query string.
+        Evaluates the pipeline by running the pipeline once per query in debug mode 
+        and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+        :param queries: The queries to evaluate
+        :param labels: The labels to evaluate on
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-        :param labels:
         """
         output = self.pipeline.eval(queries=queries, labels=labels, params=params)
         return output
