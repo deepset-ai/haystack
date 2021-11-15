@@ -94,5 +94,5 @@ jobs:
     # As on windows we are going to disable quite a few tests these, hence these files will throw error refer https://github.com/pytest-dev/pytest/issues/812
     # Removing test_ray, test_utils, test_preprocessor, test_knowledge_graph and test_connector
     - name: Run tests
-      if: ${{ !contains(fromJSON('["test_ray.py", "test_knowledge_graph.py", "test_connector.py"]'), matrix.test-path) }}
+      if: ${{ !contains(fromJSON('["test_ray.py", "test_knowledge_graph.py", "test_connector.py", "test_summarizer_translation.py"]'), matrix.test-path) }}
       run: cd test && pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -s ${{ matrix.test-path }}
