@@ -119,7 +119,7 @@ class DocumentSearchPipeline(BaseStandardPipeline):
             debug: Optional[bool] = None):
         """
         :param query: the query string.
-        :param params: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+        :param params: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
               they received and the output they generated.
@@ -185,7 +185,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `summarizer`. For instance,
-                       params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+                       params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
               they received and the output they generated.
@@ -234,7 +234,7 @@ class FAQPipeline(BaseStandardPipeline):
             debug: Optional[bool] = None):
         """
         :param query: the query string.
-        :param params: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+        :param params: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
               they received and the output they generated.
