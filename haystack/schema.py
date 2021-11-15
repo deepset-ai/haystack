@@ -23,6 +23,7 @@ import logging
 import time
 import json
 import pandas as pd
+import ast
 
 
 logger = logging.getLogger(__name__)
@@ -556,18 +557,58 @@ class EvaluationResult:
         else:    
             self.node_results[key] = value
 
-    def calculate_metrics(self) -> Dict[str, float]:
-        """
-            First dummy implementation of metrics calcuation just to show the way it's done.
-            TODO: implement retriever and reader specific metrics that must not rely on node names.
-        """
-        reader_df = self.node_results["Reader"]
-        first_answers = reader_df[reader_df["rank"] == 1]
-        first_correct_answers = first_answers[first_answers.apply(
-            lambda x: x["answer"] in x["gold_answers"], axis=1)]
+    def calculate_metrics(self, max_rank: int = 1000) -> Dict[str, Dict[str, float]]:
+        return {node: self._calculate_node_metrics(df[df["rank"] <= max_rank]) for node, df in self.node_results.items()}
+    
+    def _calculate_node_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
+        answer_metrics = self._calculate_answer_metrics(df)
+        document_metrics = self._calculate_document_metrics(df)
+        return {**answer_metrics, **document_metrics}
+
+    def _calculate_answer_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
+        answers = df[df["type"] == "answer"]
+        n_queries = answers["query"].unique().size
+        if len(answers) == 0 or n_queries == 0:
+            return {}
+
+        answers["exact_match"] = answers.apply(
+            lambda x: str(x["answer"]) in x["gold_answers"], axis=1)
 
         return {
-            "MatchInTop1": len(first_correct_answers) / len(first_answers) if len(first_answers) > 0 else 0.0
+            "ExactMatch": answers.groupby("query")["exact_match"].max().values.sum() / n_queries
+        }
+
+    def _calculate_document_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
+        documents = df[df["type"] == "document"]
+        n_queries = documents["query"].unique().size
+        if len(documents) == 0 or n_queries == 0:
+            return {}    
+        
+        documents["relevant"] = documents.apply(lambda x: str(x["id"]) in x["gold_document_ids"], axis=1)
+        top_ranks = documents[documents["relevant"] == True].groupby("query")["rank"].agg('min').values
+
+        recalls = []
+        precisions = []
+        avg_precisions = []
+        queries = documents["query"].unique()
+        for query in queries:
+            query_df = documents[documents["query"] == query]
+            retrieved = len(query_df)
+            retrieved_relevants = query_df["relevant"].values.sum()
+            rank_of_retrieved_relevants = query_df[query_df["relevant"]]["rank"].values
+            avp_of_retrieved_relevants = [query_df["relevant"].values[:rank].sum() for rank in rank_of_retrieved_relevants]
+            all_relevants = len(query_df["gold_document_ids"].iloc[0])
+            avg_precision = np.array([avp / rank for rank, avp in zip(rank_of_retrieved_relevants, avp_of_retrieved_relevants)]).sum() / all_relevants
+            recall = retrieved_relevants / all_relevants
+            precision = retrieved_relevants / retrieved
+            recalls += [recall]
+            precisions += [precision]
+            avg_precisions += [avg_precision]
+        
+        return {
+            "recall": np.array(recalls).mean(),
+            "map": np.array(avg_precisions).mean(),
+            "mrr": np.reciprocal(top_ranks).sum() / n_queries,
         }
 
     def save(self, out_dir: Union[str, Path]):
@@ -580,6 +621,8 @@ class EvaluationResult:
     def load(cls, load_dir: Union[str, Path]):
         load_dir =  load_dir if isinstance(load_dir, Path) else Path(load_dir)
         csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
-        node_results = {file.stem: pd.read_csv(file, header=0) for file in csv_files}
+        cols_to_convert = ["gold_document_ids", "gold_document_contents", "gold_answers", "gold_offsets_in_documents"]
+        converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
+        node_results = {file.stem: pd.read_csv(file, header=0, converters=converters) for file in csv_files}
         result = cls(node_results)
         return result

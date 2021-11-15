@@ -118,6 +118,7 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         output = self.pipeline.eval(queries=queries, labels=labels, params=params)
         return output
 
+
 class DocumentSearchPipeline(BaseStandardPipeline):
     """
     Pipeline for semantic document search.

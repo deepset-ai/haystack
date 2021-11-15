@@ -404,6 +404,7 @@ class Pipeline(BasePipeline):
         if answers is not None:
             df = pd.DataFrame(answers, columns=answer_cols)
             if labels is not None:
+                df["type"] = "answer"
                 df["gold_answers"] = df.apply(
                     lambda x: [label.answer.answer for label in labels.labels if label.answer is not None], axis=1)
                 df["gold_offsets_in_documents"] = df.apply(
@@ -413,6 +414,7 @@ class Pipeline(BasePipeline):
         if documents is not None:
             df = pd.DataFrame(documents, columns=document_cols)
             if labels is not None:
+                df["type"] = "document"
                 df["gold_document_ids"] = df.apply(
                     lambda x: [label.document.id for label in labels.labels], axis=1)
                 df["gold_document_contents"] = df.apply(
