@@ -158,6 +158,25 @@ Runs the pipeline, one node at a time.
               they received and the output they generated. All debug information can 
               then be found in the dict returned by this method under the key "_debug"
 
+<a name="base.Pipeline.eval"></a>
+#### eval
+
+```python
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None) -> EvaluationResult
+```
+
+Evaluates the pipeline by running the pipeline once per query in debug mode
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+**Arguments**:
+
+- `queries`: The queries to evaluate
+- `labels`: The labels to evaluate on
+- `params`: Dictionary of parameters to be dispatched to the nodes.
+            If you want to pass a param to all nodes, you can just use: {"top_k":10}
+            If you want to pass it to targeted nodes, you can do:
+            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
 
@@ -519,6 +538,23 @@ Pipeline for Extractive Question Answering.
               they received and the output they generated. 
               All debug information can then be found in the dict returned
               by this method under the key "_debug"
+
+<a name="standard_pipelines.ExtractiveQAPipeline.eval"></a>
+#### eval
+
+```python
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict]) -> EvaluationResult
+```
+
+Evaluates the pipeline by running the pipeline once per query in debug mode
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+**Arguments**:
+
+- `queries`: The queries to evaluate
+- `labels`: The labels to evaluate on
+- `params`: Params for the `retriever` and `reader`. For instance,
+               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline

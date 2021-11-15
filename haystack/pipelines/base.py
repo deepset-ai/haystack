@@ -1,12 +1,15 @@
-from typing import List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 import copy
 import inspect
 import logging
 import os
 import traceback
+import numpy as np
+import pandas as pd
 from pathlib import Path
 import networkx as nx
+from pandas.core.frame import DataFrame
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
@@ -18,7 +21,7 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack.schema import MultiLabel, Document
+from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
 
@@ -359,6 +362,68 @@ class Pipeline(BasePipeline):
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
+
+    def eval(
+        self,
+        queries: List[str],
+        labels: List[MultiLabel],
+        params: Optional[dict] = None
+    ) -> EvaluationResult:
+        """
+            Evaluates the pipeline by running the pipeline once per query in debug mode 
+            and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+            :param queries: The queries to evaluate
+            :param labels: The labels to evaluate on
+            :param params: Dictionary of parameters to be dispatched to the nodes. 
+                        If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                        If you want to pass it to targeted nodes, you can do:
+                        {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+        """
+        if len(queries) != len(labels):
+            raise ValueError("length of queries must match length of labels")
+        
+        eval_result = EvaluationResult()
+        for query, label in zip(queries, labels):
+            predictions = self.run(query=query, labels=label, params=params, debug=True)
+            
+            for node_name in predictions["_debug"].keys():
+                node_output = predictions["_debug"][node_name]["output"]
+                df = self._build_eval_dataframe(
+                    query, label, node_name, node_output)
+                eval_result.append(node_name, df)
+
+        return eval_result
+
+    def _build_eval_dataframe(self, query: str, labels: MultiLabel, node_name: str, node_output: dict) -> DataFrame:
+        answer_cols = ["answer", "document_id", "offsets_in_document"]
+        document_cols = ["content", "id"]
+
+        df: DataFrame = None
+        answers = node_output.get("answers", None)
+        if answers is not None:
+            df = pd.DataFrame(answers, columns=answer_cols)
+            if labels is not None:
+                df["gold_answers"] = df.apply(
+                    lambda x: [label.answer.answer for label in labels.labels if label.answer is not None], axis=1)
+                df["gold_offsets_in_documents"] = df.apply(
+                    lambda x: [label.answer.offsets_in_document for label in labels.labels if label.answer is not None], axis=1)
+
+        documents = node_output.get("documents", None)
+        if documents is not None:
+            df = pd.DataFrame(documents, columns=document_cols)
+            if labels is not None:
+                df["gold_document_ids"] = df.apply(
+                    lambda x: [label.document.id for label in labels.labels], axis=1)
+                df["gold_document_contents"] = df.apply(
+                    lambda x: [label.document.content for label in labels.labels], axis=1)
+
+        if df is not None:
+            df["node"] = node_name
+            df["query"] = query
+            df["rank"] = np.arange(1, len(df)+1)
+
+        return df
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
