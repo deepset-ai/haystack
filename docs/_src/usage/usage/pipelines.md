@@ -153,19 +153,19 @@ from haystack.pipeline import DocumentSearchPipeline, ExtractiveQAPipeline, Pipe
 
 # Extractive QA
 qa_pipe = ExtractiveQAPipeline(reader=reader, retriever=retriever)
-res = qa_pipe.run(query="When was Kant born?", params={"retriever": {"top_k": 3}, "reader": {"top_k": 5}})
+res = qa_pipe.run(query="When was Kant born?", params={"Retriever": {"top_k": 3}, "Reader": {"top_k": 5}})
 
 # Document Search
 doc_pipe = DocumentSearchPipeline(retriever=retriever)
-res = doc_pipe.run(query="Physics Einstein", params={"retriever": {"top_k": 3}})
+res = doc_pipe.run(query="Physics Einstein", params={"Retriever": {"top_k": 3}})
 
 # Generative QA
 doc_pipe = GenerativeQAPipeline(generator=rag_generator, retriever=retriever)
-res = doc_pipe.run(query="Physics Einstein", params={"retriever": {"top_k": 3}})
+res = doc_pipe.run(query="Physics Einstein", params={"Retriever": {"top_k": 3}})
 
 # FAQ based QA
 doc_pipe = FAQPipeline(retriever=retriever)
-res = doc_pipe.run(query="How can I change my address?", params={"retriever": {"top_k": 3}})
+res = doc_pipe.run(query="How can I change my address?", params={"Retriever": {"top_k": 3}})
 
 ```    
 So to migrate your QA system from the deprecated `Finder` to `ExtractiveQAPipeline` you'd need to: 
