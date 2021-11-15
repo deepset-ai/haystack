@@ -1,0 +1,14 @@
+{
+    "student_model": {
+        "model_name_or_path": "prajjwal1/bert-small",
+        "batch_size": 64
+    },
+    "teacher_model": {
+        "model_name_or_path": "deepset/bert-large-uncased-whole-word-masking-squad2",
+        "batch_size": 4
+    },
+    "epochs": 3,
+    "distillation_loss": "kl_div",
+    "dataset": "squad2",
+    "download_folder": "dataset"
+}

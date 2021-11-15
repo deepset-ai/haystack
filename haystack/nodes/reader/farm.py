@@ -332,6 +332,8 @@ class FARMReader(BaseReader):
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
+        :param caching whether or not to use caching for preprocessed dataset
+        :param cache_path: Path to cache the preprocessed dataset
         :return: None
         """
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
@@ -353,7 +355,8 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
-        batch_size: int = 10,
+        student_batch_size: int = 10,
+        teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
         max_seq_len: Optional[int] = None,
@@ -366,19 +369,18 @@ class FARMReader(BaseReader):
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
-        teacher_batch_size: Optional[int] = None,
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo")
     ):
         """
-        Fine-tune a model on a QA dataset. Options:
-
-        - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
-        - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
+        Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
+        and a student model that will be trained using the teacher's logits. The idea of this is to increase the accuracy of a lightweight student model
+        using a more complex teacher.
          
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
          
+        :param teacher_model: Model whose logits will be used to improve accuracy
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
@@ -386,7 +388,8 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param batch_size: Number of samples the model receives in one batch for training
+        :param student_batch_size: Number of samples the student model receives in one batch for training
+        :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
         :param learning_rate: Learning rate of the optimizer
         :param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.
@@ -410,11 +413,13 @@ class FARMReader(BaseReader):
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
+        :param caching whether or not to use caching for preprocessed dataset and teacher logits
+        :param cache_path: Path to cache the preprocessed dataset and teacher logits
         :return: None
         """
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
         dev_filename=dev_filename, test_filename=test_filename,
-        use_gpu=use_gpu, batch_size=batch_size,
+        use_gpu=use_gpu, batch_size=student_batch_size,
         n_epochs=n_epochs, learning_rate=learning_rate,
         max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
         dev_split=dev_split, evaluate_every=evaluate_every,

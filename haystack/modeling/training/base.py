@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, List
+from typing import Optional, Union, Tuple, List, Callable
 
 import sys
 import shutil
@@ -8,6 +8,8 @@ import numpy
 import torch
 from tqdm import tqdm
 from pathlib import Path
+
+from torch.nn import KLDivLoss, MSELoss
 
 from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.evaluation.eval import Evaluator
@@ -629,7 +631,8 @@ class DistillationTrainer(Trainer):
         evaluator_test: bool = True,
         disable_tqdm: bool = False,
         max_grad_norm: float = 1.0,
-        distillation_loss_weight: float = 0.5
+        distillation_loss_weight: float = 0.5,
+        logit_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse"
     ):
         """
         :param optimizer: An optimizer object that determines the learning strategy to be used during training
@@ -666,6 +669,7 @@ class DistillationTrainer(Trainer):
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
         :param distillation_loss_weight: The weight of the distillation loss
+        :param logit_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function
         """
         super().__init__(model=model, optimizer=optimizer,
         data_silo=data_silo, epochs=epochs,
@@ -683,12 +687,17 @@ class DistillationTrainer(Trainer):
         self.teacher_model = teacher_model.inferencer.model
         self.teacher_model.to(self.device)
         self.distillation_loss_weight = distillation_loss_weight
+        if logit_loss == "mse":
+            self.logit_loss_fn = MSELoss()
+        elif logit_loss == "kl_div":
+            self.logit_loss_fn = KLDivLoss()
     
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
-        teacher_keys = [key for key in batch.keys() if key.startswith("teacher_output_")] # getting keys corresponding to output of teacher model
-        teacher_outputs = [batch.pop(key) for key in teacher_keys]
+        keys = list(batch.keys())
+        keys = [key for key in keys if key.startswith("teacher_output")]
+        teacher_logits = [batch.pop(key) for key in keys]
         logits = self.model.forward(**batch)
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        logit_difference_loss = self.logit_difference_loss_function(logits[0], teacher_outputs[0])
+        logit_difference_loss = self.logit_loss_fn(logits[0], teacher_logits[0])
         combined_loss = logit_difference_loss * self.distillation_loss_weight + student_loss * (1 - self.distillation_loss_weight)
         return self.backward_propagate(combined_loss, step)

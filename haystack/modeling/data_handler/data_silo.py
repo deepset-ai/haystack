@@ -729,9 +729,10 @@ def get_dict_checksum(payload_dict):
 
 class DistillationDataSilo(DataSilo):
     def __init__(self, teacher_model: "FARMReader", teacher_batch_size: int, device, **kwargs):
-        self.teacher_model = teacher_model.inferencer.model
+        self.teacher = teacher_model
         self.teacher_batch_size = teacher_batch_size
         self.device = device
+        kwargs["max_processes"] = 1 # fix as long as multithreading is not working with teacher attribute
         super().__init__(**kwargs)
     
     def _run_teacher(self, batch, corresponding_chunks, teacher_outputs, tensor_names):
@@ -739,12 +740,13 @@ class DistillationDataSilo(DataSilo):
             batch = zip(*batch)
             batch = [torch.stack(b) for b in batch]
             batch = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch)}
-            y = self.teacher_model(**batch)
+            y = self.teacher.inferencer.model(**batch)
             y = [y.cpu() for y in y]
 
             # grouping by chunk
             for i, data in zip(corresponding_chunks, zip(*y)):
                 teacher_outputs[i].append(data)
+            return
 
     def _get_dataset(self, filename: Optional[Union[str, Path]], dicts: Optional[List[Dict]] = None):
         concat_datasets, tensor_names = super()._get_dataset(filename, dicts)
@@ -770,7 +772,7 @@ class DistillationDataSilo(DataSilo):
         # appending teacher outputs to original dataset
         for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):
             dataset.tensors += tuple(torch.stack(tensors) for tensors in zip(*teacher_output))
-        tensor_names.extend(["teacher_output_" + str(i) for i, _ in enumerate(teacher_output)])
+        tensor_names.extend(["teacher_output_" + str(i) for i, _ in enumerate(zip(*teacher_output))])
         concat_datasets = ConcatDataset(concat_datasets.datasets) # making sure metrics are updated
         return concat_datasets, tensor_names
     
@@ -778,14 +780,14 @@ class DistillationDataSilo(DataSilo):
         """
         Get checksum based on a dict to ensure validity of cached DataSilo
         """
-        # TODO: adding check for teacher model
         # keys in the dict identifies uniqueness for a given DataSilo.
         payload_dict = {
             "train_filename": str(Path(self.processor.train_filename).absolute()),
             "data_dir": str(self.processor.data_dir.absolute()),
             "max_seq_len": self.processor.max_seq_len,
             "dev_split": self.processor.dev_split,
-            "tasks": self.processor.tasks
+            "tasks": self.processor.tasks,
+            "teacher_name_or_path": self.teacher.pipeline_config["params"]["model_name_or_path"]
         }
         checksum = get_dict_checksum(payload_dict)
         return checksum
