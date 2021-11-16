@@ -21,7 +21,6 @@ def haystack_is_ready():
     return False
 
 
-@st.cache(show_spinner=False)
 def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
     # Query Haystack API
     url = f"{API_ENDPOINT}/{DOC_REQUEST}"
@@ -31,6 +30,10 @@ def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
 
     # Format response
     result = []
+
+    if "errors" in response_raw:
+        raise Exception(", ".join(response_raw["errors"]))
+        
     answers = response_raw["answers"]
     for i in range(len(answers)):
         answer = answers[i]

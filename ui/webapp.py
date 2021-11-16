@@ -24,50 +24,25 @@ EVAL_LABELS = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_exampl
 DISABLE_FILE_UPLOAD = os.getenv("HAYSTACK_UI_DISABLE_FILE_UPLOAD")
 
 
-def annotate_answer(answer, context):
-    """ If we are using an extractive QA pipeline, we'll get answers
-    from the API that we highlight in the given context"""
-    start_idx = context.find(answer)
-    end_idx = start_idx + len(answer)
-    annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
-
-
-def show_plain_documents(text):
-    """ If we are using a plain document search pipeline, i.e. only retriever, we'll get plain documents
-    from the API that we just show without any highlighting"""
-    st.markdown(text)
-
-
-def random_questions(df):
-    """
-    Helper to get one random question + gold random_answer from the user's CSV 'EVAL_LABELS_example'.
-    This can then be shown in the UI when the evaluation mode is selected. Users can easily give feedback on the
-    model's results and "enrich" the eval dataset with more acceptable labels
-    """
-    random_row = df.sample(1)
-    random_question = random_row["Question Text"].values[0]
-    random_answer = random_row["Answer"].values[0]
-    return random_question, random_answer
-
-
 def main():
 
     # Persistent state
     state = SessionState.get(
         random_question=DEFAULT_QUESTION_AT_STARTUP, 
         random_answer="",
-        run_query=False,  # Needs to be preserved in evaluation mode, where needs to be True across reloads
+        results=None,
         get_next_question=True
     )
 
-    # Small callback to reset the value of state.run_query in case the text of the question changes
-    def reset_run_query_value(*args):
-        state.run_query = False
+    # Small callback to reset the interface in case the text of the question changes
+    def reset_results(*args):
+        state.results = None
 
     # Title
     st.write("# Haystack Demo")
 
     # Sidebar
+    st.sidebar.write("Built with Haystack")
     st.sidebar.header("Options")
     top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1)
     top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=3, step=1)
@@ -98,20 +73,19 @@ def main():
         # Get next random question from the CSV
         state.get_next_question = st.button("Load new question")
         if state.get_next_question:
-            state.run_query = False   # It probably was True because we're in evaluation mode. 
-                                      # Set to False as we're changing the question and we need the user to press Run again.
-            # Avoid picking the same question twice (the change is not visible on the UI)
-            new_question = state.random_question
-            while new_question == state.random_question:
-                new_question, state.random_answer = random_questions(df)
-            state.random_question = new_question
+            state.results = None
+            new_row = df.sample(1)   
+            while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
+                new_row = df.sample(1)
+            state.random_question = new_row["Question Text"].values[0]
+            state.random_answer = new_row["Answer"].values[0]
 
     # Search bar
     question = st.text_input(
         "Please provide your query:", 
         value=state.random_question, 
         max_chars=100, 
-        on_change=reset_run_query_value
+        on_change=reset_results
     )
     if not question:
         st.error("🚫 &nbsp;&nbsp; Please write a question")
@@ -119,29 +93,34 @@ def main():
         return
     
     # In evaluation mode I should not re-assign the value of the Run button click
-    run_state = st.button("Run")
-    if not state.run_query:
-        state.run_query = run_state
+    run_query = st.button("Run")
 
     # Check the connection
     with st.spinner("⌛️ &nbsp;&nbsp; Haystack is starting..."):
         if not haystack_is_ready():
             st.error("🚫 &nbsp;&nbsp; Connection Error. Is Haystack running?")
-            state.run_query = False
+            run_query = False
+            state.results = None
 
     # Get results for query
-    if state.run_query:
+    if run_query:
+        state.results = None
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
             "Check out the docs: https://haystack.deepset.ai/usage/optimization "
         ):
             try:
-                results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+                state.results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
             except Exception as e:
                 logging.exception(e)
-                st.error("🐞 &nbsp;&nbsp; An error occurred during the request. Check the logs in the console to know more.")
+                if "The server is busy processing requests" in str(e):
+                    st.error("🧑‍🌾 &nbsp;&nbsp; All our workers are busy! Try again later.")
+                else:
+                    st.error("🐞 &nbsp;&nbsp; An error occurred during the request. Check the logs in the console to know more.")
                 return
+
+    if state.results:
 
         # Show the gold answer if we use a question of the given set
         if question == state.random_question and eval_mode:
@@ -151,11 +130,14 @@ def main():
         st.write("## Results:")
         count = 0  # Make every button key unique
 
-        for result in results:
+        for result in state.results:
             if result["answer"]:
-                annotate_answer(result["answer"], result["context"])
+                answer, context = result["answer"], result["context"]
+                start_idx = context.find(answer)
+                end_idx = start_idx + len(answer)
+                annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
             else:
-                show_plain_documents(result["context"])
+                st.markdown(result["context"])
 
             st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
             if eval_mode:
@@ -171,7 +153,7 @@ def main():
                         answer=result["answer"], 
                         offset_start_in_doc=result["offset_start_in_doc"]
                     )
-                    st.success("Thanks for your feedback")
+                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
 
                 if button_col2.button("👎", key=f"{result['context']}{count}2", help="Wrong answer and wrong passage"):
                     feedback_doc(
@@ -183,7 +165,7 @@ def main():
                         answer=result["answer"], 
                         offset_start_in_doc=result["offset_start_in_doc"]
                     )
-                    st.success("Thanks for your feedback!")
+                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
 
                 if button_col3.button("👎👍", key=f"{result['context']}{count}3", help="Wrong answer, but correct passage"):
                     feedback_doc(
@@ -195,11 +177,11 @@ def main():
                         answer=result["answer"], 
                         offset_start_in_doc=result["offset_start_in_doc"]
                     )
-                    st.success("Thanks for your feedback!")
+                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
                 count += 1
             st.write("___")
 
-        if debug:
+        if debug and raw_json:
             st.subheader("REST API JSON response")
             st.write(raw_json)
 
