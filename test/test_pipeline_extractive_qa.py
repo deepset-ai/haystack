@@ -4,9 +4,8 @@ from haystack.pipeline import (
     TranslationWrapperPipeline,
     ExtractiveQAPipeline
 )
-from haystack.pipelines.base import EvaluationResult
 
-from haystack.schema import Answer, Document, Label, MultiLabel, Span
+from haystack.schema import Answer, Document, Label, MultiLabel, Span, EvaluationResult
 
 
 @pytest.mark.slow
