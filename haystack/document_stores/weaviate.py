@@ -218,7 +218,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         if props.get(self.content_field) is not None:
             # Converting JSON-string to original datatype (string or nested list)
-            content = json.loads(props.get(self.content_field))
+            content = json.loads(str(props.get(self.content_field)))
 
         if props.get("contenttype") is not None:
             content_type = str(props.pop("contenttype"))
