@@ -586,7 +586,7 @@ Pipeline for semantic document search.
 **Arguments**:
 
 - `query`: the query string.
-- `params`: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+- `params`: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
@@ -667,7 +667,7 @@ Pipeline that retrieves documents for a query and then summarizes those document
 
 - `query`: the query string.
 - `params`: params for the `retriever` and `summarizer`. For instance,
-               params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+               params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
@@ -704,7 +704,7 @@ Pipeline for finding similar FAQs using semantic document search.
 **Arguments**:
 
 - `query`: the query string.
-- `params`: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+- `params`: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
