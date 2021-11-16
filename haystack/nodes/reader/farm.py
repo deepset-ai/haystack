@@ -211,6 +211,7 @@ class FARMReader(BaseReader):
             test_filename=test_filename,
             data_dir=Path(data_dir),
         )
+        data_silo: DataSilo
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
