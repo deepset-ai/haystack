@@ -42,7 +42,6 @@ def main():
     st.write("# Haystack Demo")
 
     # Sidebar
-    st.sidebar.write("Built with Haystack")
     st.sidebar.header("Options")
     top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1)
     top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=3, step=1)
@@ -57,10 +56,50 @@ def main():
             # Upload file
             if data_file:
                 raw_json = upload_doc(data_file)
-                st.sidebar.write(raw_json)
+                st.sidebar.write(str(data_file.name) + " &nbsp;&nbsp; ✅ ")
                 if debug:
                     st.subheader("REST API JSON response")
                     st.sidebar.write(raw_json)
+
+
+    st.sidebar.markdown("""
+        -----------
+        Build by [deepset.ai](https://www.deepset.ai/) with [Haystack 1.0](https://www.deepset.ai/haystack)
+        ([GitHub](https://github.com/deepset-ai/haystack/), [Docs](https://haystack.deepset.ai/overview/intro))""")
+
+    # footer="""
+    # <style>
+    # .footer {
+    #     position: fixed;
+    #     left: 0;
+    #     bottom: 0;
+    #     width: 100%;
+    #     background-color: #eeeeee;
+    #     color: #333333;
+    #     text-align: center;
+    #     padding: 1.5rem;
+    #     z-index: 100;
+    # }
+    # .footer p {
+    #     margin: 0 0 0.3rem 0;
+    # }
+    # .footer a {
+    #     text-decoration: none;
+    # }
+    # </style>
+    # <div class="footer">
+    #     <p>Build by 
+    #         <a href="https://www.deepset.ai/" target="_blank">deepset.ai</a> 
+    #     with 
+    #         <a href="https://www.deepset.ai/haystack" target="_blank">Haystack 1.0</a> 
+    #     (
+    #         <a href="https://github.com/deepset-ai/haystack/" target="_blank">GitHub</a> 
+    #     , 
+    #         <a href="https://haystack.deepset.ai/overview/intro" target="_blank">Docs</a> 
+    #     )</p>
+    # </div>
+    # """
+    # st.markdown(footer, unsafe_allow_html=True)
 
 
     # Load csv into pandas dataframe
@@ -184,5 +223,6 @@ def main():
         if debug and raw_json:
             st.subheader("REST API JSON response")
             st.write(raw_json)
+
 
 main()
