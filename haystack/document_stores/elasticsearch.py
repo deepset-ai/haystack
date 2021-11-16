@@ -847,7 +847,21 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         query = {
             "script_score": {
-                "query": {"match_all": {}},
+                "query": {
+                    "bool": {
+                        "filter": {
+                            "bool": {
+                                "must": [
+                                    {
+                                        "exists": {
+                                            "field": self.embedding_field
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
                 "script": {
                     # offset score to ensure a positive range as required by Elasticsearch
                     "source": f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
