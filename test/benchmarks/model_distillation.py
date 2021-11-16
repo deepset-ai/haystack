@@ -39,7 +39,7 @@ def download_dataset(dataset: Union[dict, str], download_folder: Path):
         assert download_folder.is_dir()
         if (download_folder/train_file).is_file() and (download_folder/test_file).is_file():
             return train_file, test_file
-    if type(dataset) is not dict:
+    if type(dataset) is str:
         dataset = download_links[dataset]
     train = dataset["train"]
     test = dataset["test"]
@@ -57,11 +57,12 @@ def train_student(model_name: str, download_folder: Path, train_file: str, test_
     return eval(model, download_folder, test_file)
 
 def train_student_with_distillation(student_name: str, teacher_name: str, download_folder: Path, train_file: str, test_file: str,
-epochs: int, student_batch_size: int, teacher_batch_size: int) -> dict:
+epochs: int, student_batch_size: int, teacher_batch_size: int, distillation_loss: str, distillation_loss_weight: float) -> dict:
     student = FARMReader(model_name_or_path=student_name)
     teacher = FARMReader(model_name_or_path=teacher_name)
     student.distil_from(teacher, data_dir=download_folder, train_filename=train_file, n_epochs=epochs, caching=True,
-    student_batch_size=student_batch_size, teacher_batch_size=teacher_batch_size)
+    student_batch_size=student_batch_size, teacher_batch_size=teacher_batch_size, distillation_loss=distillation_loss,
+    distillation_loss_weight=distillation_loss_weight)
     return eval(student, download_folder, test_file)
 
 def main():
@@ -75,10 +76,11 @@ def main():
 
     logger.info("Training student without distillation as a baseline")
     results_student = train_student(student["model_name_or_path"], download_folder, train_file, test_file, config["epochs"], student["batch_size"])
+    #results_student = {"EM": 0, "f1": 0, "top_n_accuracy": 0}
 
     logger.info("Training student with distillation")
     results_student_with_distillation = train_student_with_distillation(student["model_name_or_path"], teacher["model_name_or_path"], download_folder,
-    train_file, test_file, config["epochs"], student["batch_size"], teacher["batch_size"])
+    train_file, test_file, config["epochs"], student["batch_size"], teacher["batch_size"], config["distillation_loss"], config["distillation_loss_weight"])
 
     logger.info("Evaluating teacher")
     results_teacher = eval(FARMReader(model_name_or_path=teacher["model_name_or_path"]), download_folder, test_file)

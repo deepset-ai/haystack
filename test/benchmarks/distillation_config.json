@@ -7,8 +7,9 @@
         "model_name_or_path": "deepset/bert-large-uncased-whole-word-masking-squad2",
         "batch_size": 4
     },
-    "epochs": 3,
-    "distillation_loss": "kl_div",
+    "epochs": 7,
+    "distillation_loss": "mse",
+    "distillation_loss_weight": 0.1,
     "dataset": "squad2",
     "download_folder": "dataset"
 }

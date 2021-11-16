@@ -1,10 +1,11 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union, Callable
 
 import logging
 import multiprocessing
 from pathlib import Path
 from collections import defaultdict
 from time import perf_counter
+import torch
 
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
 from haystack.modeling.data_handler.processor import SquadProcessor
@@ -171,9 +172,10 @@ class FARMReader(BaseReader):
         checkpoints_to_keep: int = 3,
         teacher_model: Optional["FARMReader"] = None,
         teacher_batch_size: Optional[int] = None,
-        distillation_loss_weight: float = 0.5,
         caching: bool = False,
-        cache_path: Path = Path("cache/data_silo")
+        cache_path: Path = Path("cache/data_silo"),
+        distillation_loss_weight: float = 0.5,
+        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse"
     ):
         if dev_filename:
             dev_split = 0
@@ -234,7 +236,6 @@ class FARMReader(BaseReader):
             trainer = DistillationTrainer.create_or_load_checkpoint(
                 model=model,
                 teacher_model=teacher_model,
-                distillation_loss_weight=distillation_loss_weight,
                 optimizer=optimizer,
                 data_silo=data_silo,
                 epochs=n_epochs,
@@ -247,6 +248,8 @@ class FARMReader(BaseReader):
                 checkpoint_root_dir=Path(checkpoint_root_dir),
                 checkpoint_every=checkpoint_every,
                 checkpoints_to_keep=checkpoints_to_keep,
+                distillation_loss=distillation_loss,
+                distillation_loss_weight=distillation_loss_weight
             )
         else:
             trainer = Trainer.create_or_load_checkpoint(
@@ -370,7 +373,9 @@ class FARMReader(BaseReader):
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
         caching: bool = False,
-        cache_path: Path = Path("cache/data_silo")
+        cache_path: Path = Path("cache/data_silo"),
+        distillation_loss_weight: float = 0.5,
+        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse"
     ):
         """
         Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -415,6 +420,8 @@ class FARMReader(BaseReader):
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :param caching whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
+        :param distillation_loss_weight: The weight of the distillation loss
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function
         :return: None
         """
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
@@ -427,7 +434,8 @@ class FARMReader(BaseReader):
         use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
         checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
         teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
-        caching=caching, cache_path=cache_path)
+        caching=caching, cache_path=cache_path, distillation_loss_weight=distillation_loss_weight,
+        distillation_loss=distillation_loss)
 
     def update_parameters(
         self,
