@@ -217,7 +217,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
             props = result
 
         if props.get(self.content_field) is not None:
-            content = str(props.get(self.content_field))
+            # Converting JSON-string to original datatype (string or nested list)
+            content = json.loads(props.get(self.content_field))
 
         if props.get("contenttype") is not None:
             content_type = str(props.pop("contenttype"))
@@ -237,19 +238,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
-
-        # Convert json to pd.DataFrame
-        if content_type == "table":
-            content = pd.DataFrame.from_dict(json.loads(content))
         
-        document = Document(
-            id=id,
-            content=content,
-            content_type=content_type,  # type: ignore
-            meta=meta_data,
-            score=score,
-            embedding=embedding,
-        )
+        document = Document.from_dict({
+            "id": id,
+            "content": content,
+            "content_type":  content_type,
+            "meta": meta_data,
+            "score": score,
+            "embedding": embedding,
+        })
         return document
 
     def _create_document_field_map(self) -> Dict:
@@ -407,12 +404,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         for do in document_objects:
             do.id = self._sanitize_id(id=do.id, index=index)
 
-            # Convert pd.DataFrames to json string to be indexed to Weaviate
-            if do.content_type == "table":
-                # Deduplicate column names
-                do.content.columns = pd.io.parsers.base_parser.ParserBase({"usecols": None})._maybe_dedup_names(do.content.columns)
-                do.content = do.content.to_json()
-
         document_objects = self._handle_duplicate_documents(documents=document_objects,
                                                             index=index,
                                                             duplicate_documents=duplicate_documents)
@@ -454,6 +445,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     
                     # rename as weaviate doesn't like "_" in field names
                     _doc["contenttype"] = _doc.pop("content_type")
+
+                    # Converting content to JSON-string as Weaviate doesn't allow other nested list for tables
+                    _doc["content"] = json.dumps(_doc["content"])
 
                     # Check if additional properties are in the document, if so,
                     # append the schema with all the additional properties
