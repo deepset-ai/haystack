@@ -76,7 +76,6 @@ def main():
 
     logger.info("Training student without distillation as a baseline")
     results_student = train_student(student["model_name_or_path"], download_folder, train_file, test_file, config["epochs"], student["batch_size"])
-    #results_student = {"EM": 0, "f1": 0, "top_n_accuracy": 0}
 
     logger.info("Training student with distillation")
     results_student_with_distillation = train_student_with_distillation(student["model_name_or_path"], teacher["model_name_or_path"], download_folder,

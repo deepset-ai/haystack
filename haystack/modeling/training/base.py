@@ -10,6 +10,7 @@ from tqdm import tqdm
 from pathlib import Path
 
 from torch.nn import KLDivLoss, MSELoss
+import torch.nn.functional as F
 
 from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.evaluation.eval import Evaluator
@@ -690,7 +691,7 @@ class DistillationTrainer(Trainer):
         if distillation_loss == "mse":
             self.distillation_loss_fn = MSELoss()
         elif distillation_loss == "kl_div":
-            self.distillation_loss_fn = KLDivLoss()
+            self.distillation_loss_fn = KLDivLoss(reduction="batchmean")
     
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         keys = list(batch.keys())
@@ -698,6 +699,6 @@ class DistillationTrainer(Trainer):
         teacher_logits = [batch.pop(key) for key in keys]
         logits = self.model.forward(**batch)
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        logit_difference_loss = self.distillation_loss_fn(logits[0], teacher_logits[0])
+        logit_difference_loss = self.distillation_loss_fn(F.log_softmax(logits[0], dim=-2), F.softmax(teacher_logits[0], dim=-2))
         combined_loss = logit_difference_loss * self.distillation_loss_weight + student_loss * (1 - self.distillation_loss_weight)
         return self.backward_propagate(combined_loss, step)
