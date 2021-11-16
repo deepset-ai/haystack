@@ -162,7 +162,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None) -> EvaluationResult
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -176,6 +176,8 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
             If you want to pass it to targeted nodes, you can do:
             {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
+                        should be path or string pointing to downloadable models.
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
@@ -543,7 +545,7 @@ Pipeline for Extractive Question Answering.
 #### eval
 
 ```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict]) -> EvaluationResult
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -555,6 +557,8 @@ and putting together all data that is needed for evaluation, e.g. calculating me
 - `labels`: The labels to evaluate on
 - `params`: Params for the `retriever` and `reader`. For instance,
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
+                            should be path or string pointing to downloadable models.
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline
