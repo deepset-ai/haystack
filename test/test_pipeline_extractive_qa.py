@@ -152,10 +152,11 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     ]
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result = pipeline.eval(
+    eval_result: EvaluationResult = pipeline.eval(
         queries=queries, 
         labels=labels,
         params={"Retriever": {"top_k": 5}}, 
+        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     )
 
     metrics = eval_result.calculate_metrics()

@@ -13,6 +13,7 @@ from pandas.core.frame import DataFrame
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
+from haystack.nodes.evaluator.evaluator import calculate_em_str_multi, calculate_f1_str_multi, semantic_answer_similarity
 
 try:
     from ray import serve
@@ -367,7 +368,8 @@ class Pipeline(BasePipeline):
         self,
         queries: List[str],
         labels: List[MultiLabel],
-        params: Optional[dict] = None
+        params: Optional[dict] = None,
+        sas_model_name_or_path: str = None
     ) -> EvaluationResult:
         """
             Evaluates the pipeline by running the pipeline once per query in debug mode 
@@ -379,6 +381,8 @@ class Pipeline(BasePipeline):
                         If you want to pass a param to all nodes, you can just use: {"top_k":10}
                         If you want to pass it to targeted nodes, you can do:
                         {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+            :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
+                                    should be path or string pointing to downloadable models.
         """
         if len(queries) != len(labels):
             raise ValueError("length of queries must match length of labels")
@@ -390,35 +394,56 @@ class Pipeline(BasePipeline):
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
                 df = self._build_eval_dataframe(
-                    query, label, node_name, node_output)
+                    query, label, node_name, node_output, sas_model_name_or_path)
                 eval_result.append(node_name, df)
 
         return eval_result
 
-    def _build_eval_dataframe(self, query: str, labels: MultiLabel, node_name: str, node_output: dict) -> DataFrame:
-        answer_cols = ["answer", "document_id", "offsets_in_document"]
+    def _build_eval_dataframe(self, 
+        query: str, 
+        labels: MultiLabel, 
+        node_name: str, 
+        node_output: dict, 
+        sas_model_name_or_path: str = None
+    ) -> DataFrame:
+        answer_cols = ["answer", "document_id", "offsets_in_document", "context"]
         document_cols = ["content", "id"]
+
+        gold_answers = []
+        gold_offsets_in_documents = []
+        gold_document_ids = []
+        gold_document_contents = []
+        if labels is not None and labels.labels is not None:
+            gold_answers = [label.answer.answer for label in labels.labels if label.answer is not None]
+            gold_offsets_in_documents = [label.answer.offsets_in_document for label in labels.labels if label.answer is not None]
+            gold_document_ids = [label.document.id for label in labels.labels]
+            gold_document_contents = [label.document.content for label in labels.labels]
 
         df: DataFrame = None
         answers = node_output.get("answers", None)
         if answers is not None:
             df = pd.DataFrame(answers, columns=answer_cols)
-            if labels is not None:
-                df["type"] = "answer"
-                df["gold_answers"] = df.apply(
-                    lambda x: [label.answer.answer for label in labels.labels if label.answer is not None], axis=1)
-                df["gold_offsets_in_documents"] = df.apply(
-                    lambda x: [label.answer.offsets_in_document for label in labels.labels if label.answer is not None], axis=1)
+            df["type"] = "answer"
+            df["gold_answers"] = [gold_answers] * len(df)
+            df["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df)
+            df["exact_match"] = df.apply(
+                lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
+            df["f1_match"] = df.apply(
+                lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
+            if sas_model_name_or_path is not None:
+                df["sas_match"], _ = semantic_answer_similarity([[a] for a in df["answer"].values], df["gold_answers"].values, 
+                                            sas_model_name_or_path=sas_model_name_or_path)
 
         documents = node_output.get("documents", None)
         if documents is not None:
             df = pd.DataFrame(documents, columns=document_cols)
-            if labels is not None:
-                df["type"] = "document"
-                df["gold_document_ids"] = df.apply(
-                    lambda x: [label.document.id for label in labels.labels], axis=1)
-                df["gold_document_contents"] = df.apply(
-                    lambda x: [label.document.content for label in labels.labels], axis=1)
+            df["type"] = "document"
+            df["gold_document_ids"] = [gold_document_ids] * len(df)
+            df["gold_document_contents"] = [gold_document_contents] * len(df)
+            df["gold_id_match"] = df.apply(
+                lambda row: 1.0 if row["id"] in gold_document_ids else 0.0, axis=1)
+            df["answer_match"] = df.apply(
+                lambda row: 1.0 if any(gold_answer in row["content"] for gold_answer in gold_answers) else 0.0, axis=1)
 
         if df is not None:
             df["node"] = node_name

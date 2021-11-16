@@ -104,7 +104,8 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
     def eval(self,
             queries: List[str],
             labels: List[MultiLabel],
-            params: Optional[dict]) -> EvaluationResult:
+            params: Optional[dict],
+            sas_model_name_or_path: str = None) -> EvaluationResult:
             
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode 
@@ -114,8 +115,11 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         :param labels: The labels to evaluate on
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+        :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
+                                    should be path or string pointing to downloadable models.
         """
-        output = self.pipeline.eval(queries=queries, labels=labels, params=params)
+        output = self.pipeline.eval(queries=queries, labels=labels, params=params, 
+            sas_model_name_or_path=sas_model_name_or_path)
         return output
 
 
