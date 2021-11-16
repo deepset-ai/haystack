@@ -444,6 +444,8 @@ class Pipeline(BasePipeline):
                 lambda row: 1.0 if row["id"] in gold_document_ids else 0.0, axis=1)
             df["answer_match"] = df.apply(
                 lambda row: 1.0 if any(gold_answer in row["content"] for gold_answer in gold_answers) else 0.0, axis=1)
+            df["gold_id_or_answer_match"] = df.apply(
+                lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1)
 
         if df is not None:
             df["node"] = node_name

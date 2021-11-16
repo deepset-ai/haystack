@@ -584,19 +584,23 @@ class EvaluationResult:
         if len(documents) == 0 or n_queries == 0:
             return {}    
         
-        documents["relevant"] = documents.apply(lambda x: str(x["id"]) in x["gold_document_ids"], axis=1)
-        top_ranks = documents[documents["relevant"] == True].groupby("query")["rank"].agg('min').values
+        top_ranks = documents[documents["gold_id_match"] == 1].groupby("query")["rank"].agg('min').values
+        top_ranks_answer = documents[documents["gold_id_or_answer_match"] == 1].groupby("query")["rank"].agg('min').values
 
         recalls = []
         precisions = []
         avg_precisions = []
+        recalls_answer = []
+        precisions_answer = []
+        avg_precisions_answer = []
         queries = documents["query"].unique()
         for query in queries:
             query_df = documents[documents["query"] == query]
             retrieved = len(query_df)
-            retrieved_relevants = query_df["relevant"].values.sum()
-            rank_of_retrieved_relevants = query_df[query_df["relevant"]]["rank"].values
-            avp_of_retrieved_relevants = [query_df["relevant"].values[:rank].sum() for rank in rank_of_retrieved_relevants]
+
+            retrieved_relevants = query_df["gold_id_match"].values.sum()
+            rank_of_retrieved_relevants = query_df[query_df["gold_id_match"] == 1]["rank"].values
+            avp_of_retrieved_relevants = [query_df["gold_id_match"].values[:rank].sum() for rank in rank_of_retrieved_relevants]
             all_relevants = len(query_df["gold_document_ids"].iloc[0])
             avg_precision = np.array([avp / rank for rank, avp in zip(rank_of_retrieved_relevants, avp_of_retrieved_relevants)]).sum() / all_relevants
             recall = retrieved_relevants / all_relevants
@@ -604,11 +608,27 @@ class EvaluationResult:
             recalls += [recall]
             precisions += [precision]
             avg_precisions += [avg_precision]
+
+            retrieved_relevants_answer = query_df["gold_id_or_answer_match"].values.sum()
+            rank_of_retrieved_relevants_answer = query_df[query_df["gold_id_or_answer_match"] == 1]["rank"].values
+            avp_of_retrieved_relevants_answer = [query_df["gold_id_or_answer_match"].values[:rank].sum() for rank in rank_of_retrieved_relevants_answer]
+            all_relevants_answer = len(query_df["gold_document_ids"].iloc[0] + list(query_df[(query_df["answer_match"] == 1) & (query_df["gold_id_match"] != 1)]["id"].values))
+            avg_precision_answer = np.array([avp / rank for rank, avp in zip(rank_of_retrieved_relevants_answer, avp_of_retrieved_relevants_answer)]).sum() / all_relevants_answer
+            recall_answer = retrieved_relevants_answer / all_relevants_answer
+            precision_answer = retrieved_relevants_answer / retrieved
+            recalls_answer += [recall_answer]
+            precisions_answer += [precision_answer]
+            avg_precisions_answer += [avg_precision_answer]
         
         return {
+            "precision": np.array(precisions).mean(),
             "recall": np.array(recalls).mean(),
             "map": np.array(avg_precisions).mean(),
             "mrr": np.reciprocal(top_ranks).sum() / n_queries,
+            "precision_answer": np.array(precisions_answer).mean(),
+            "recall_answer": np.array(recalls_answer).mean(),
+            "map_answer": np.array(avg_precisions_answer).mean(),
+            "mrr_answer": np.reciprocal(top_ranks_answer).sum() / n_queries,
         }
 
     def save(self, out_dir: Union[str, Path]):
