@@ -1,5 +1,5 @@
-from haystack.document_stores import FAISSDocumentStore, MilvusDocumentStore
-from haystack.utils import clean_wiki_text, print_answers, launch_milvus, convert_files_to_dicts, fetch_archive_from_http
+from haystack.document_stores import FAISSDocumentStore, MilvusDocumentStore, ElasticsearchDocumentStore
+from haystack.utils import clean_wiki_text, print_answers, launch_milvus, launch_es, convert_files_to_dicts, fetch_archive_from_http
 from haystack.nodes import FARMReader, DensePassageRetriever
 
 def tutorial6_better_retrieval_via_dpr():
@@ -18,6 +18,13 @@ def tutorial6_better_retrieval_via_dpr():
     # See https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md
     # launch_milvus()
     # document_store = MilvusDocumentStore()
+
+    # OPTION3: Elasticsearch is not optimized for vector similarity searches but it can still store embedding vectors and thus supports DPR.
+    # Section "Retriever Speed" in our benchmarks compares different document stores in combination with DPR: https://haystack.deepset.ai/benchmarks/latest
+    # It shows that queries to Elasticsearch are significantly slower than to FAISS and Milvus if more than a few thousand documents are stored.
+    # Like Milvus, Elasticsearch runs through Docker.
+    # launch_es()
+    # document_store = ElasticsearchDocumentStore()
 
     # ## Preprocessing of documents
     # Let's first get some documents that we want to query
