@@ -175,7 +175,8 @@ class FARMReader(BaseReader):
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss_weight: float = 0.5,
-        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse"
+        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
+        temperature: float = 1.0
     ):
         if dev_filename:
             dev_split = 0
@@ -250,7 +251,8 @@ class FARMReader(BaseReader):
                 checkpoint_every=checkpoint_every,
                 checkpoints_to_keep=checkpoints_to_keep,
                 distillation_loss=distillation_loss,
-                distillation_loss_weight=distillation_loss_weight
+                distillation_loss_weight=distillation_loss_weight,
+                temperature=temperature
             )
         else:
             trainer = Trainer.create_or_load_checkpoint(
@@ -376,7 +378,8 @@ class FARMReader(BaseReader):
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss_weight: float = 0.5,
-        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse"
+        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
+        temperature: float = 1.0
     ):
         """
         Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -436,7 +439,7 @@ class FARMReader(BaseReader):
         checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
         teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
         caching=caching, cache_path=cache_path, distillation_loss_weight=distillation_loss_weight,
-        distillation_loss=distillation_loss)
+        distillation_loss=distillation_loss, temperature=temperature)
 
     def update_parameters(
         self,

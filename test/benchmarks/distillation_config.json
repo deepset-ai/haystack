@@ -10,6 +10,7 @@
     "epochs": 7,
     "distillation_loss": "mse",
     "distillation_loss_weight": 0.1,
+    "temperature": 5,
     "dataset": "squad2",
     "download_folder": "dataset"
 }
