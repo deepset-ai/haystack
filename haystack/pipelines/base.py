@@ -428,10 +428,10 @@ class Pipeline(BasePipeline):
             df["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df)
             df["exact_match"] = df.apply(
                 lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
-            df["f1_match"] = df.apply(
+            df["f1"] = df.apply(
                 lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
             if sas_model_name_or_path is not None:
-                df["sas_match"], _ = semantic_answer_similarity([[a] for a in df["answer"].values], df["gold_answers"].values, 
+                df["sas"], _ = semantic_answer_similarity([[a] for a in df["answer"].values], df["gold_answers"].values, 
                                             sas_model_name_or_path=sas_model_name_or_path)
 
         documents = node_output.get("documents", None)

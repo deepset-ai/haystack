@@ -611,11 +611,11 @@ class EvaluationResult:
 
         answer_metrics = {
             "exact_match": answers.groupby("query")["exact_match"].max().values.sum() / n_queries,
-            "f1_match": answers.groupby("query")["f1_match"].max().values.sum() / n_queries
+            "f1": answers.groupby("query")["f1"].max().values.sum() / n_queries
         }
 
         if "sas_match" in answers.columns:
-            answer_metrics["sas_match"] = answers.groupby("query")["sas_match"].max().values.sum() / n_queries
+            answer_metrics["sas"] = answers.groupby("query")["sas"].max().values.sum() / n_queries
 
         return answer_metrics
 
