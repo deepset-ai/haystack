@@ -738,14 +738,14 @@ class DistillationDataSilo(DataSilo):
     
     def _run_teacher(self, batch, corresponding_chunks, teacher_outputs, tensor_names):
         with torch.no_grad():
-            batch = zip(*batch)
-            batch = [torch.stack(b) for b in batch]
-            batch = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch)}
+            batch = zip(*batch) # transpose dimensions (from batch, features, ... to features, batch, ...)
+            batch = [torch.stack(b) for b in batch] # create tensors for each feature
+            batch = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch)} # create input dict
             y = self.teacher.inferencer.model(**batch)
             y = [y.cpu() for y in y]
 
             # grouping by chunk
-            for i, data in zip(corresponding_chunks, zip(*y)):
+            for i, data in zip(corresponding_chunks, zip(*y)): # transpose back
                 teacher_outputs[i].append(data)
             return
 
@@ -760,7 +760,7 @@ class DistillationDataSilo(DataSilo):
         # creating batches from chunks        
         for i, dataset in enumerate(tqdm(concat_datasets.datasets, desc="Doing forward pass on teacher model")):
             teacher_outputs.append([])
-            for x in zip(*dataset.tensors):
+            for x in zip(*dataset.tensors): # loop through chunks
                 batch.append(x)
                 corresponding_chunks.append(i)
                 if len(batch) == self.teacher_batch_size:

@@ -1,6 +1,6 @@
 {
     "student_model": {
-        "model_name_or_path": "prajjwal1/bert-small",
+        "model_name_or_path": "prajjwal1/bert-tiny",
         "batch_size": 64
     },
     "teacher_model": {
@@ -9,8 +9,8 @@
     },
     "epochs": 7,
     "distillation_loss": "mse",
-    "distillation_loss_weight": 0.1,
-    "temperature": 5,
+    "distillation_loss_weight": 0.5,
+    "temperature": 2,
     "dataset": "squad2",
     "download_folder": "dataset"
 }
