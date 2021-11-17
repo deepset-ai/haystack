@@ -849,7 +849,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
         # To handle scenarios where embeddings may be missing
-        script_score_query = {"match_all": {}}
+        script_score_query: dict = {"match_all": {}}
         if self.skip_missing_embeddings:
             script_score_query = {
                 "bool": {
