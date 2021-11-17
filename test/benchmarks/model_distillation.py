@@ -1,10 +1,7 @@
 from haystack.nodes import FARMReader
 import json
-import os
 import requests
 from pathlib import Path
-
-from haystack.nodes import FARMReader
 
 from typing import Union
 import logging

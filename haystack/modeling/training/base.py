@@ -671,7 +671,7 @@ class DistillationTrainer(Trainer):
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
         :param distillation_loss_weight: The weight of the distillation loss
-        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
         :param temperature: The temperature for distillation
         """
         super().__init__(model=model, optimizer=optimizer,
@@ -693,14 +693,13 @@ class DistillationTrainer(Trainer):
         if distillation_loss == "mse":
             self.distillation_loss_fn = MSELoss()
         elif distillation_loss == "kl_div":
-            self.kl = KLDivLoss(reduction="batchmean")
             self.distillation_loss_fn = self._kl_div
         self.temperature = temperature
     
     def _kl_div(self, student_logits, teacher_logits):
         student_log_probs = F.log_softmax(student_logits, dim=-1)
         teacher_probs = F.softmax(teacher_logits, dim=-1)
-        return self.kl(student_log_probs, teacher_probs)
+        return F.kl_div(student_log_probs, teacher_probs, reduction="batchmean")
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         keys = list(batch.keys())
@@ -708,6 +707,6 @@ class DistillationTrainer(Trainer):
         teacher_logits = [batch.pop(key) for key in keys]
         logits = self.model.forward(**batch)
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        distillation_loss = self.distillation_loss_fn(logits[0] / self.temperature, teacher_logits[0] / self.temperature)
+        distillation_loss = self.distillation_loss_fn(student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature)
         combined_loss = distillation_loss * self.distillation_loss_weight * (self.temperature ** 2) + student_loss * (1 - self.distillation_loss_weight)
         return self.backward_propagate(combined_loss, step)
