@@ -409,7 +409,7 @@ class Pipeline(BasePipeline):
         answer_cols = ["answer", "document_id", "offsets_in_document", "context"]
         document_cols = ["content", "id"]
 
-        gold_answers = []
+        gold_answers: list = []
         gold_offsets_in_documents = []
         gold_document_ids = []
         gold_document_contents = []
