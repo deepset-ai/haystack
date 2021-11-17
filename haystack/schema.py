@@ -571,11 +571,10 @@ class EvaluationResult:
         if len(answers) == 0 or n_queries == 0:
             return {}
 
-        answers["exact_match"] = answers.apply(
-            lambda x: str(x["answer"]) in x["gold_answers"], axis=1)
-
         return {
-            "ExactMatch": answers.groupby("query")["exact_match"].max().values.sum() / n_queries
+            "exact_match": answers.groupby("query")["exact_match"].max().values.sum() / n_queries,
+            "f1_match": answers.groupby("query")["f1_match"].max().values.sum() / n_queries,
+            "sas_match": answers.groupby("query")["sas_match"].max().values.sum() / n_queries,
         }
 
     def _calculate_document_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
