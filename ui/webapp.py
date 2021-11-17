@@ -5,7 +5,7 @@ import logging
 import pandas as pd
 from pathlib import Path
 import streamlit as st
-from annotated_text import annotated_text   # pip install st-annotated-text
+from annotated_text import annotated_text
 
 # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
@@ -31,15 +31,17 @@ def main():
         random_question=DEFAULT_QUESTION_AT_STARTUP, 
         random_answer="",
         results=None,
+        raw_json=None,
         get_next_question=True
     )
 
     # Small callback to reset the interface in case the text of the question changes
     def reset_results(*args):
         state.results = None
+        state.raw_json = None
 
     # Title
-    st.write("# Haystack Demo")
+    st.write("# Countries of the World")
 
     # Sidebar
     st.sidebar.header("Options")
@@ -61,46 +63,29 @@ def main():
                     st.subheader("REST API JSON response")
                     st.sidebar.write(raw_json)
 
-
     st.sidebar.markdown("""
-        -----------
-        Build by [deepset.ai](https://www.deepset.ai/) with [Haystack 1.0](https://www.deepset.ai/haystack)
-        ([GitHub](https://github.com/deepset-ai/haystack/), [Docs](https://haystack.deepset.ai/overview/intro))""")
-
-    # footer="""
-    # <style>
-    # .footer {
-    #     position: fixed;
-    #     left: 0;
-    #     bottom: 0;
-    #     width: 100%;
-    #     background-color: #eeeeee;
-    #     color: #333333;
-    #     text-align: center;
-    #     padding: 1.5rem;
-    #     z-index: 100;
-    # }
-    # .footer p {
-    #     margin: 0 0 0.3rem 0;
-    # }
-    # .footer a {
-    #     text-decoration: none;
-    # }
-    # </style>
-    # <div class="footer">
-    #     <p>Build by 
-    #         <a href="https://www.deepset.ai/" target="_blank">deepset.ai</a> 
-    #     with 
-    #         <a href="https://www.deepset.ai/haystack" target="_blank">Haystack 1.0</a> 
-    #     (
-    #         <a href="https://github.com/deepset-ai/haystack/" target="_blank">GitHub</a> 
-    #     , 
-    #         <a href="https://haystack.deepset.ai/overview/intro" target="_blank">Docs</a> 
-    #     )</p>
-    # </div>
-    # """
-    # st.markdown(footer, unsafe_allow_html=True)
-
+    <style>
+        a {
+            text-decoration: none;
+        }
+        .haystack-footer {
+            text-align: center;
+        }
+        .haystack-footer h4 {
+            margin: 0.1rem; 
+            padding:0;
+        }
+        footer {
+            opacity: 0;
+        }
+    </style>
+    <div class="haystack-footer">
+        <hr />
+        <h4>Built with <a href="https://www.deepset.ai/haystack">Haystack 1.0</a></h4>
+        <p>Get it on <a href="https://github.com/deepset-ai/haystack/">GitHub</a> &nbsp;&nbsp; - &nbsp;&nbsp; Read the <a href="https://haystack.deepset.ai/overview/intro">Docs</a></p>
+        <small>Data crawled from <a href="https://en.wikipedia.org/wiki/Category:Lists_of_countries_by_continent">Wikipedia</a> in November 2021.<br />See the <a href="https://creativecommons.org/licenses/by-sa/3.0/">License</a> (CC BY-SA 3.0).</small>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Load csv into pandas dataframe
     if eval_mode:
@@ -112,7 +97,7 @@ def main():
         # Get next random question from the CSV
         state.get_next_question = st.button("Load new question")
         if state.get_next_question:
-            state.results = None
+            reset_results()
             new_row = df.sample(1)   
             while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
                 new_row = df.sample(1)
@@ -126,10 +111,6 @@ def main():
         max_chars=100, 
         on_change=reset_results
     )
-    if not question:
-        st.error("🚫 &nbsp;&nbsp; Please write a question")
-        st.button("Run")
-        return
     
     # In evaluation mode I should not re-assign the value of the Run button click
     run_query = st.button("Run")
@@ -139,18 +120,18 @@ def main():
         if not haystack_is_ready():
             st.error("🚫 &nbsp;&nbsp; Connection Error. Is Haystack running?")
             run_query = False
-            state.results = None
+            reset_results()
 
     # Get results for query
-    if run_query:
-        state.results = None
+    if run_query and question:
+        reset_results()
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
             "Check out the docs: https://haystack.deepset.ai/usage/optimization "
         ):
             try:
-                state.results, raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+                state.results, state.raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
             except Exception as e:
                 logging.exception(e)
                 if "The server is busy processing requests" in str(e):
@@ -220,9 +201,8 @@ def main():
                 count += 1
             st.write("___")
 
-        if debug and raw_json:
+        if debug:
             st.subheader("REST API JSON response")
-            st.write(raw_json)
-
+            st.write(state.raw_json)
 
 main()
