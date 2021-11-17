@@ -125,4 +125,4 @@ Significant contributions to Haystack require a Contributor License Agreement (C
 
 The agreement's main purpose is to protect the continued open use of Haystack. At the same time it also helps in protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be open to everyone in the future (“You hereby grant to Deepset **and anyone** [...]”) as well as removing liabilities on your end (“you provide your Contributions on an AS IS basis, without warranties or conditions of any kind [...]”). You can find the Contributor Licence Agreement [here](https://cla-assistant.io/deepset-ai/haystack).
 
-If you have further questions about the licensing feel free to reach out to contributors@deepset.ai.
+If you have further questions about the licensing feel free to reach out to contributors@deepset.ai. 
