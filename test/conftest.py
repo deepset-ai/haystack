@@ -526,7 +526,8 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         document_store = WeaviateDocumentStore(
             weaviate_url="http://localhost:8080",
             index=index,
-            similarity=similarity
+            similarity=similarity,
+            embedding_dim=embedding_dim,
         )
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()

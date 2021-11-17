@@ -721,7 +721,9 @@ class TableTextRetriever(BaseRetriever):
         for doc in docs:
             if doc.content_type == "table":
                 model_input.append({"passages": [{
-                    "meta": [doc.meta[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc.meta],
+                    "meta": [doc.meta[meta_field]
+                             for meta_field in self.embed_meta_fields
+                             if meta_field in doc.meta and isinstance(doc.meta[meta_field], str)],
                     "columns": doc.content.columns.tolist(),  # type: ignore
                     "rows": doc.content.values.tolist(),  # type: ignore
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
@@ -730,7 +732,9 @@ class TableTextRetriever(BaseRetriever):
                 }]})
             else:
                 model_input.append({"passages": [{
-                    "meta": [doc.meta[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc.meta],
+                    "meta": [doc.meta[meta_field]
+                             for meta_field in self.embed_meta_fields
+                             if meta_field in doc.meta and isinstance(doc.meta[meta_field], str)],
                     "text": doc.content,
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
                     "type": "text",
