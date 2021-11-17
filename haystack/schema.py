@@ -560,23 +560,37 @@ class EvaluationResult:
     def calculate_metrics(
         self, 
         simulated_top_k_reader: int = -1,
-        simulated_top_k_retriever: int = -1
+        simulated_top_k_retriever: int = -1,
+        doc_relevance_col: str = "gold_id_match"
     ) -> Dict[str, Dict[str, float]]:
+        """
+            :param simulated_top_k_reader: simulates top_k param of reader
+            :param simulated_top_k_retriever: simulates top_k param of retriever.
+                remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
+            :param doc_relevance_col: column that contains the relevance criteria for documents.
+                values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+        """
         return {node: self._calculate_node_metrics(df, 
-                simulated_top_k_reader=simulated_top_k_reader, 
-                simulated_top_k_retriever=simulated_top_k_retriever) for node, df in self.node_results.items()}
+                    simulated_top_k_reader=simulated_top_k_reader, 
+                    simulated_top_k_retriever=simulated_top_k_retriever,
+                    doc_relevance_col=doc_relevance_col) 
+            for node, df in self.node_results.items()}
     
     def _calculate_node_metrics(
         self, 
         df: pd.DataFrame,
         simulated_top_k_reader: int = -1,
-        simulated_top_k_retriever: int = -1
-        ) -> Dict[str, float]:
+        simulated_top_k_retriever: int = -1,
+        doc_relevance_col: str = "gold_id_match"
+    ) -> Dict[str, float]:
         answer_metrics = self._calculate_answer_metrics(df, 
             simulated_top_k_reader=simulated_top_k_reader, 
             simulated_top_k_retriever=simulated_top_k_retriever)
+        
         document_metrics = self._calculate_document_metrics(df,
-            simulated_top_k_retriever=simulated_top_k_retriever)
+            simulated_top_k_retriever=simulated_top_k_retriever,
+            doc_relevance_col=doc_relevance_col)
+        
         return {**answer_metrics, **document_metrics}
 
     def _calculate_answer_metrics(
@@ -586,98 +600,83 @@ class EvaluationResult:
         simulated_top_k_retriever: int = -1
     ) -> Dict[str, float]:
         answers = df[df["type"] == "answer"]
-        n_queries = answers["query"].unique().size
-        if len(answers) == 0 or n_queries == 0:
+        queries = answers["query"].unique()
+        if len(answers) == 0 or len(queries) == 0:
             return {}
 
         if simulated_top_k_reader != -1:
             answers = answers[answers["rank"] <= simulated_top_k_reader]
+        
         if simulated_top_k_retriever != -1:
-            document_dfs = [node_df for node_df in self.node_results.values() 
-                                if len(node_df[node_df["type"] == "document"]) > 0]
-            if len(document_dfs) != 1:
-                raise ValueError("cannot detect retriever dataframe")
-            documents_df = document_dfs[0]
-            documents = documents_df[documents_df["type"] == "document"]
+            documents = self._get_documents_df()
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
-            new_answers = pd.DataFrame()
-            for query in answers["query"].unique():
-                query_df = answers[answers["query"] == query]
+            simulated_answers = []
+            for query in queries:
                 top_k_document_ids = top_k_documents[top_k_documents["query"] == query]["id"].unique()
-                query_df = query_df[query_df["document_id"].isin(top_k_document_ids)]
-                query_df["rank"] = np.arange(1, len(query_df)+1)
-                new_answers = pd.concat([new_answers, query_df])
-            answers = new_answers
+                query_answers = answers[answers["query"] == query]
+                simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
+                simulated_query_answers["rank"] = np.arange(1, len(simulated_query_answers)+1)
+                simulated_answers.append(simulated_query_answers)
+            answers = pd.concat(simulated_answers)
 
         answer_metrics = {
-            "exact_match": answers.groupby("query")["exact_match"].max().values.sum() / n_queries,
-            "f1": answers.groupby("query")["f1"].max().values.sum() / n_queries
+            "exact_match": answers.groupby("query")["exact_match"].max().values.mean(),
+            "f1": answers.groupby("query")["f1"].max().values.mean()
         }
 
-        if "sas_match" in answers.columns:
-            answer_metrics["sas"] = answers.groupby("query")["sas"].max().values.sum() / n_queries
+        if "sas" in answers.columns:
+            answer_metrics["sas"] = answers.groupby("query")["sas"].max().values.mean()
 
         return answer_metrics
+
+    def _get_documents_df(self):
+        document_dfs = [node_df for node_df in self.node_results.values() 
+                                if len(node_df[node_df["type"] == "document"]) > 0]
+        if len(document_dfs) != 1:
+            raise ValueError("cannot detect retriever dataframe")
+        documents_df = document_dfs[0]
+        documents_df = documents_df[documents_df["type"] == "document"]
+        return documents_df
 
     def _calculate_document_metrics(
         self, 
         df: pd.DataFrame,
-        simulated_top_k_retriever: int = -1
+        simulated_top_k_retriever: int = -1,
+        doc_relevance_col: str = "gold_id_match"
     ) -> Dict[str, float]:
         documents = df[df["type"] == "document"]
-        n_queries = documents["query"].unique().size
-        if len(documents) == 0 or n_queries == 0:
+        queries = documents["query"].unique()
+        if len(documents) == 0 or len(queries) == 0:
             return {}
         
         if simulated_top_k_retriever != -1:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
         
-        top_ranks = documents[documents["gold_id_match"] == 1].groupby("query")["rank"].agg('min').values
-        top_ranks_answer = documents[documents["gold_id_or_answer_match"] == 1].groupby("query")["rank"].agg('min').values
-
-        recalls = []
-        precisions = []
-        avg_precisions = []
-        recalls_answer = []
-        precisions_answer = []
-        avg_precisions_answer = []
-        queries = documents["query"].unique()
+        metrics : Dict[str, list] = {}
         for query in queries:
             query_df = documents[documents["query"] == query]
+            gold_ids = query_df["gold_document_ids"].iloc[0]
             retrieved = len(query_df)
+            
+            relevance_criteria_ids = list(query_df[query_df[doc_relevance_col] == 1]["id"].values)
+            num_relevants = len(set(gold_ids + relevance_criteria_ids))
+            num_retrieved_relevants = query_df[doc_relevance_col].values.sum()
+            rank_retrieved_relevants = query_df[query_df[doc_relevance_col] == 1]["rank"].values
+            avp_retrieved_relevants = [query_df[doc_relevance_col].values[:rank].sum() / rank 
+                                            for rank in rank_retrieved_relevants]
 
-            retrieved_relevants = query_df["gold_id_match"].values.sum()
-            rank_of_retrieved_relevants = query_df[query_df["gold_id_match"] == 1]["rank"].values
-            avp_of_retrieved_relevants = [query_df["gold_id_match"].values[:rank].sum() for rank in rank_of_retrieved_relevants]
-            all_relevants = len(query_df["gold_document_ids"].iloc[0])
-            avg_precision = np.array([avp / rank for rank, avp in zip(rank_of_retrieved_relevants, avp_of_retrieved_relevants)]).sum() / all_relevants
-            recall = retrieved_relevants / all_relevants
-            precision = retrieved_relevants / retrieved
-            recalls += [recall]
-            precisions += [precision]
-            avg_precisions += [avg_precision]
+            avg_precision = np.sum(avp_retrieved_relevants) / num_relevants
+            recall = num_retrieved_relevants / num_relevants
+            precision = num_retrieved_relevants / retrieved
+            rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
 
-            retrieved_relevants_answer = query_df["gold_id_or_answer_match"].values.sum()
-            rank_of_retrieved_relevants_answer = query_df[query_df["gold_id_or_answer_match"] == 1]["rank"].values
-            avp_of_retrieved_relevants_answer = [query_df["gold_id_or_answer_match"].values[:rank].sum() for rank in rank_of_retrieved_relevants_answer]
-            all_relevants_answer = len(query_df["gold_document_ids"].iloc[0] + list(query_df[(query_df["answer_match"] == 1) & (query_df["gold_id_match"] != 1)]["id"].values))
-            avg_precision_answer = np.array([avp / rank for rank, avp in zip(rank_of_retrieved_relevants_answer, avp_of_retrieved_relevants_answer)]).sum() / all_relevants_answer
-            recall_answer = retrieved_relevants_answer / all_relevants_answer
-            precision_answer = retrieved_relevants_answer / retrieved
-            recalls_answer += [recall_answer]
-            precisions_answer += [precision_answer]
-            avg_precisions_answer += [avg_precision_answer]
+            metrics["recall"] = metrics.get("recall", []) + [recall]
+            metrics["precision"] = metrics.get("precision", []) + [precision]
+            metrics["map"] = metrics.get("map", []) + [avg_precision]
+            metrics["mrr"] = metrics.get("mrr", []) + [rr]
         
-        return {
-            "precision": np.array(precisions).mean(),
-            "recall": np.array(recalls).mean(),
-            "map": np.array(avg_precisions).mean(),
-            "mrr": np.reciprocal(top_ranks).sum() / n_queries,
-            "precision_answer": np.array(precisions_answer).mean(),
-            "recall_answer": np.array(recalls_answer).mean(),
-            "map_answer": np.array(avg_precisions_answer).mean(),
-            "mrr_answer": np.reciprocal(top_ranks_answer).sum() / n_queries,
-        }
+        return {metric_name: np.mean(metric_values)
+                    for metric_name, metric_values in metrics.items()}
 
     def save(self, out_dir: Union[str, Path]):
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
