@@ -230,3 +230,25 @@ underlying Labels provided a text answer and therefore demonstrates that there i
 - `drop_negative_labels`: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
 - `drop_no_answers`: Whether to drop labels that specify the answer is impossible
 
+<a name="schema.EvaluationResult"></a>
+## EvaluationResult
+
+```python
+class EvaluationResult()
+```
+
+<a name="schema.EvaluationResult.calculate_metrics"></a>
+#### calculate\_metrics
+
+```python
+ | calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match") -> Dict[str, Dict[str, float]]
+```
+
+**Arguments**:
+
+- `simulated_top_k_reader`: simulates top_k param of reader
+- `simulated_top_k_retriever`: simulates top_k param of retriever.
+    remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
+- `doc_relevance_col`: column that contains the relevance criteria for documents.
+    values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+
