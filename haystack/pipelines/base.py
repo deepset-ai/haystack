@@ -414,9 +414,9 @@ class Pipeline(BasePipeline):
         gold_document_ids = []
         gold_document_contents = []
         if labels is not None and labels.labels is not None:
-            gold_answers = [label.answer.answer for label in labels.labels if label.answer is not None]
+            gold_answers = [None] if labels.no_answer else labels.answers
             gold_offsets_in_documents = [label.answer.offsets_in_document for label in labels.labels if label.answer is not None]
-            gold_document_ids = [label.document.id for label in labels.labels]
+            gold_document_ids = labels.document_ids
             gold_document_contents = [label.document.content for label in labels.labels]
 
         df: DataFrame = None
