@@ -571,11 +571,15 @@ class EvaluationResult:
         if len(answers) == 0 or n_queries == 0:
             return {}
 
-        return {
+        answer_metrics = {
             "exact_match": answers.groupby("query")["exact_match"].max().values.sum() / n_queries,
-            "f1_match": answers.groupby("query")["f1_match"].max().values.sum() / n_queries,
-            "sas_match": answers.groupby("query")["sas_match"].max().values.sum() / n_queries,
+            "f1_match": answers.groupby("query")["f1_match"].max().values.sum() / n_queries
         }
+
+        if "sas_match" in answers.columns:
+            answer_metrics["sas_match"] = answers.groupby("query")["sas_match"].max().values.sum() / n_queries
+
+        return answer_metrics
 
     def _calculate_document_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
         documents = df[df["type"] == "document"]
