@@ -66,8 +66,9 @@ epochs: int, student_batch_size: int, teacher_batch_size: int, distillation_loss
     return eval(student, download_folder, test_file)
 
 def main():
-    config = load_config("distillation_config.json")
-    download_folder = Path(__file__).parent.resolve()/Path(config["download_folder"])
+    parent = Path(__file__).parent.resolve()
+    config = load_config(parent/"distillation_config.json")
+    download_folder = parent/config["download_folder"]
     student = config["student_model"]
     teacher = config["teacher_model"]
 
