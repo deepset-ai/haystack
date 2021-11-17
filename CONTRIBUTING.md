@@ -118,3 +118,4 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
     document_store = ElasticsearchDocumentStore(index="haystack_test_custom", text_field="custom_text_field",
                                                 embedding_field="custom_embedding_field")
 ``` 
+ 
