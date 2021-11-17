@@ -51,7 +51,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return_embedding: bool = False,
         duplicate_documents: str = 'overwrite',
         index_type: str = "flat",
-        scroll: str = "1d"
+        scroll: str = "1d",
+        skip_missing_embeddings: bool = False
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -114,7 +115,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
             duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
-            timeout=timeout, return_embedding=return_embedding, index_type=index_type, scroll=scroll
+            timeout=timeout, return_embedding=return_embedding, index_type=index_type, scroll=scroll,
+            skip_missing_embeddings=skip_missing_embeddings
         )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
@@ -140,6 +142,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.index: str = index
         self.label_index: str = label_index
         self.scroll = scroll
+        self.skip_missing_embeddings: bool = skip_missing_embeddings
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity = similarity
         else:
@@ -845,23 +848,28 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         else:
             raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
-        query = {
-            "script_score": {
-                "query": {
-                    "bool": {
-                        "filter": {
-                            "bool": {
-                                "must": [
-                                    {
-                                        "exists": {
-                                            "field": self.embedding_field
-                                        }
+        # To handle scenarios where embeddings may be missing
+        script_score_query = {"match_all": {}}
+        if self.skip_missing_embeddings:
+            script_score_query = {
+                "bool": {
+                    "filter": {
+                        "bool": {
+                            "must": [
+                                {
+                                    "exists": {
+                                        "field": self.embedding_field
                                     }
-                                ]
-                            }
+                                }
+                            ]
                         }
                     }
-                },
+                }
+            }
+
+        query = {
+            "script_score": {
+                "query": script_score_query,
                 "script": {
                     # offset score to ensure a positive range as required by Elasticsearch
                     "source": f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
