@@ -125,7 +125,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     assert reader_result[reader_result['rank'] == 1]["answer"].iloc[0] in reader_result[reader_result['rank'] == 1]["gold_answers"].iloc[0]
     assert retriever_result[retriever_result['rank'] == 1]["id"].iloc[0] in retriever_result[retriever_result['rank'] == 1]["gold_document_ids"].iloc[0]
-    assert metrics["Reader"]["ExactMatch"] == 1.0
+    assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Retriever"]["mrr"] == 1.0
 
     eval_result.save(tmp_path)
@@ -134,7 +134,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     assert reader_result[reader_result['rank'] == 1]["answer"].iloc[0] in reader_result[reader_result['rank'] == 1]["gold_answers"].iloc[0]
     assert retriever_result[retriever_result['rank'] == 1]["id"].iloc[0] in retriever_result[retriever_result['rank'] == 1]["gold_document_ids"].iloc[0]
-    assert metrics["Reader"]["ExactMatch"] == 1.0
+    assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Retriever"]["mrr"] == 1.0
 
 
@@ -174,7 +174,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     assert retriever_berlin[retriever_berlin['rank'] == 1]["id"].iloc[0] in retriever_berlin[retriever_berlin['rank'] == 1]["gold_document_ids"].iloc[0]
     assert reader_munich[reader_munich['rank'] == 1]["answer"].iloc[0] not in reader_munich[reader_munich['rank'] == 1]["gold_answers"].iloc[0]
     assert retriever_munich[retriever_munich['rank'] == 1]["id"].iloc[0] not in retriever_munich[retriever_munich['rank'] == 1]["gold_document_ids"].iloc[0]
-    assert metrics["Reader"]["ExactMatch"] == 1.0
+    assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Retriever"]["mrr"] == 0.5
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall"] == 0.5
@@ -187,7 +187,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     assert retriever_berlin[retriever_berlin['rank'] == 1]["id"].iloc[0] in retriever_berlin[retriever_berlin['rank'] == 1]["gold_document_ids"].iloc[0]
     assert reader_munich[reader_munich['rank'] == 1]["answer"].iloc[0] not in reader_munich[reader_munich['rank'] == 1]["gold_answers"].iloc[0]
     assert retriever_munich[retriever_munich['rank'] == 1]["id"].iloc[0] not in retriever_munich[retriever_munich['rank'] == 1]["gold_document_ids"].iloc[0]
-    assert metrics["Reader"]["ExactMatch"] == 1.0
+    assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Retriever"]["mrr"] == 0.5
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall"] == 0.5
