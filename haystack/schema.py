@@ -557,19 +557,57 @@ class EvaluationResult:
         else:    
             self.node_results[key] = value
 
-    def calculate_metrics(self, max_rank: int = 1000) -> Dict[str, Dict[str, float]]:
-        return {node: self._calculate_node_metrics(df[df["rank"] <= max_rank]) for node, df in self.node_results.items()}
+    def calculate_metrics(
+        self, 
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1
+    ) -> Dict[str, Dict[str, float]]:
+        return {node: self._calculate_node_metrics(df, 
+                simulated_top_k_reader=simulated_top_k_reader, 
+                simulated_top_k_retriever=simulated_top_k_retriever) for node, df in self.node_results.items()}
     
-    def _calculate_node_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
-        answer_metrics = self._calculate_answer_metrics(df)
-        document_metrics = self._calculate_document_metrics(df)
+    def _calculate_node_metrics(
+        self, 
+        df: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1
+        ) -> Dict[str, float]:
+        answer_metrics = self._calculate_answer_metrics(df, 
+            simulated_top_k_reader=simulated_top_k_reader, 
+            simulated_top_k_retriever=simulated_top_k_retriever)
+        document_metrics = self._calculate_document_metrics(df,
+            simulated_top_k_retriever=simulated_top_k_retriever)
         return {**answer_metrics, **document_metrics}
 
-    def _calculate_answer_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_answer_metrics(
+        self, 
+        df: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1
+    ) -> Dict[str, float]:
         answers = df[df["type"] == "answer"]
         n_queries = answers["query"].unique().size
         if len(answers) == 0 or n_queries == 0:
             return {}
+
+        if simulated_top_k_reader != -1:
+            answers = answers[answers["rank"] <= simulated_top_k_reader]
+        if simulated_top_k_retriever != -1:
+            document_dfs = [node_df for node_df in self.node_results.values() 
+                                if len(node_df[node_df["type"] == "document"]) > 0]
+            if len(document_dfs) != 1:
+                raise ValueError("cannot detect retriever dataframe")
+            documents_df = document_dfs[0]
+            documents = documents_df[documents_df["type"] == "document"]
+            top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
+            new_answers = pd.DataFrame()
+            for query in answers["query"].unique():
+                query_df = answers[answers["query"] == query]
+                top_k_document_ids = top_k_documents[top_k_documents["query"] == query]["id"].unique()
+                query_df = query_df[query_df["document_id"].isin(top_k_document_ids)]
+                query_df["rank"] = np.arange(1, len(query_df)+1)
+                new_answers = pd.concat([new_answers, query_df])
+            answers = new_answers
 
         answer_metrics = {
             "exact_match": answers.groupby("query")["exact_match"].max().values.sum() / n_queries,
@@ -581,11 +619,18 @@ class EvaluationResult:
 
         return answer_metrics
 
-    def _calculate_document_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_document_metrics(
+        self, 
+        df: pd.DataFrame,
+        simulated_top_k_retriever: int = -1
+    ) -> Dict[str, float]:
         documents = df[df["type"] == "document"]
         n_queries = documents["query"].unique().size
         if len(documents) == 0 or n_queries == 0:
-            return {}    
+            return {}
+        
+        if simulated_top_k_retriever != -1:
+            documents = documents[documents["rank"] <= simulated_top_k_retriever]
         
         top_ranks = documents[documents["gold_id_match"] == 1].groupby("query")["rank"].agg('min').values
         top_ranks_answer = documents[documents["gold_id_or_answer_match"] == 1].groupby("query")["rank"].agg('min').values
