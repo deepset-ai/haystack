@@ -755,7 +755,7 @@ class DistillationDataSilo(DataSilo):
         batch = []
         corresponding_chunks = [] # to be able to associate elements of batches with chunks (elements could be from multiple chunks)
 
-        teacher_outputs: List = [] # list of teacher outputs group in list by chunk
+        teacher_outputs: List[List[tuple[torch.Tensor, ...]]] = [] # list of teacher outputs group in list by chunk
 
         # creating batches from chunks        
         for i, dataset in enumerate(tqdm(concat_datasets.datasets, desc="Doing forward pass on teacher model")):
