@@ -183,7 +183,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     assert metrics["Retriever"]["mrr"] == 0.5
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_ir"] == 0.5
-    assert metrics["Retriever"]["recall_qa"] == 1.0
+    assert metrics["Retriever"]["recall_qa"] == 0.5
     assert metrics["Retriever"]["precision"] == 1.0/6
 
     eval_result.save(tmp_path)
@@ -199,7 +199,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     assert metrics["Retriever"]["mrr"] == 0.5
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_ir"] == 0.5
-    assert metrics["Retriever"]["recall_qa"] == 1.0
+    assert metrics["Retriever"]["recall_qa"] == 0.5
     assert metrics["Retriever"]["precision"] == 1.0/6
 
 
@@ -221,7 +221,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs, tmp_path):
     assert metrics["Retriever"]["mrr"] == 0.5
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_ir"] == 0.5
-    assert metrics["Retriever"]["recall_qa"] == 1.0
+    assert metrics["Retriever"]["recall_qa"] == 0.5
     assert metrics["Retriever"]["precision"] == 1.0/6
     assert "sas" in metrics["Reader"]
     assert metrics["Reader"]["sas"] == 1.0
@@ -265,7 +265,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs, 
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_1["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_1["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_1["Retriever"]["precision"] == 1.0/6
 
     metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=2)
@@ -276,7 +276,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs, 
     assert metrics_top_2["Retriever"]["mrr"] == 0.5
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_2["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_2["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_2["Retriever"]["precision"] == 1.0/6
 
     metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=3)
@@ -287,7 +287,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs, 
     assert metrics_top_3["Retriever"]["mrr"] == 0.5
     assert metrics_top_3["Retriever"]["map"] == 0.5
     assert metrics_top_3["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_3["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_3["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_3["Retriever"]["precision"] == 1.0/6
     
 
@@ -308,7 +308,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     assert metrics_top_10["Retriever"]["mrr"] == 0.5
     assert metrics_top_10["Retriever"]["map"] == 0.5
     assert metrics_top_10["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_10["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_10["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_10["Retriever"]["precision"] == 1.0/6
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_retriever=1)
@@ -318,7 +318,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_1["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_1["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_1["Retriever"]["precision"] == 0.5
 
     metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_retriever=2)
@@ -328,7 +328,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     assert metrics_top_2["Retriever"]["mrr"] == 0.5
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_2["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_2["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_2["Retriever"]["precision"] == 0.25
 
     metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_retriever=3)
@@ -338,7 +338,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     assert metrics_top_3["Retriever"]["mrr"] == 0.5
     assert metrics_top_3["Retriever"]["map"] == 0.5
     assert metrics_top_3["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_3["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_3["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_3["Retriever"]["precision"] == 1.0/6
     
 
@@ -359,7 +359,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_10["Retriever"]["mrr"] == 0.5
     assert metrics_top_10["Retriever"]["map"] == 0.5
     assert metrics_top_10["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_10["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_10["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_10["Retriever"]["precision"] == 1.0/6
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=1)
@@ -369,7 +369,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_1["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_1["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_1["Retriever"]["precision"] == 0.5
 
     metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=2)
@@ -379,7 +379,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_2["Retriever"]["mrr"] == 0.5
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_2["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_2["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_2["Retriever"]["precision"] == 0.25
 
     metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=3)
@@ -389,6 +389,34 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_3["Retriever"]["mrr"] == 0.5
     assert metrics_top_3["Retriever"]["map"] == 0.5
     assert metrics_top_3["Retriever"]["recall_ir"] == 0.5
-    assert metrics_top_3["Retriever"]["recall_qa"] == 1.0
+    assert metrics_top_3["Retriever"]["recall_qa"] == 0.5
     assert metrics_top_3["Retriever"]["precision"] == 1.0/6
     
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_extractive_qa_eval_worst_queries(reader, retriever_with_docs, tmp_path):
+
+    queries = ["Who lives in Berlin?", "Who lives in Munich?"]
+    labels = [
+        MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")]),
+        MultiLabel(labels=[Label(query="Who lives in Munich?", answer=Answer(answer="Pete", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='something_else', content_type="text", content='My name is Pete and I live in Munich'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+    ]
+
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"Retriever": {"top_k": 5}}, 
+    )
+
+    worst_queries_retriever = eval_result.worst_queries(node="Retriever", n=1)
+    worst_queries_reader = eval_result.worst_queries(node="Reader", n=1)
+
+    assert len(worst_queries_retriever) == 1
+    assert len(worst_queries_reader) == 1
