@@ -12,6 +12,8 @@ def test_distillation():
             student_weights.append(torch.clone(weight))
 
     assert len(student_weights) == 22
+
+    student_weights.pop(-2) # pooler is not updated due to different attention head
     
     student.distil_from(teacher, data_dir="samples/squad", train_filename="tiny.json")
 
