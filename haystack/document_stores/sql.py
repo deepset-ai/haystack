@@ -239,13 +239,15 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
-            documents_query = documents_query.join(MetaDocumentORM)
             for key, values in filters.items():
-                documents_query = documents_query.filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
-                    DocumentORM.id == MetaDocumentORM.document_id
-                )
+                documents_query = documents_query. \
+                    join(MetaDocumentORM, aliased=True). \
+                    filter(
+                        MetaDocumentORM.document_id == DocumentORM.id,
+                        MetaDocumentORM.name == key,
+                        MetaDocumentORM.value.in_(values),
+                    )
+
         if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
         if vector_ids:
