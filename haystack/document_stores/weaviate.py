@@ -4,8 +4,10 @@ import uuid
 from typing import Dict, Generator, List, Optional, Union
 
 import logging
+import json
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
@@ -215,7 +217,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
             props = result
 
         if props.get(self.content_field) is not None:
-            content = str(props.get(self.content_field))
+            # Converting JSON-string to original datatype (string or nested list)
+            content = json.loads(str(props.get(self.content_field)))
 
         if props.get("contenttype") is not None:
             content_type = str(props.pop("contenttype"))
@@ -236,14 +239,14 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
         
-        document = Document(
-            id=id,
-            content=content,
-            content_type=content_type, #type: ignore
-            meta=meta_data,
-            score=score,
-            embedding=embedding,
-        )
+        document = Document.from_dict({
+            "id": id,
+            "content": content,
+            "content_type":  content_type,
+            "meta": meta_data,
+            "score": score,
+            "embedding": embedding,
+        })
         return document
 
     def _create_document_field_map(self) -> Dict:
@@ -339,7 +342,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         else:
             return weaviate_filter
 
-    def _update_schema(self, new_prop:str, index: Optional[str] = None):
+    def _update_schema(self, new_prop: str, index: Optional[str] = None):
         """
         Updates the schema with a new property.
         """
@@ -442,6 +445,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     
                     # rename as weaviate doesn't like "_" in field names
                     _doc["contenttype"] = _doc.pop("content_type")
+
+                    # Converting content to JSON-string as Weaviate doesn't allow other nested list for tables
+                    _doc["content"] = json.dumps(_doc["content"])
 
                     # Check if additional properties are in the document, if so,
                     # append the schema with all the additional properties
