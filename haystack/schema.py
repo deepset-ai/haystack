@@ -666,11 +666,13 @@ class EvaluationResult:
                                             for rank in rank_retrieved_relevants]
 
             avg_precision = np.sum(avp_retrieved_relevants) / num_relevants
-            recall = num_retrieved_relevants / num_relevants
+            recall_ir = num_retrieved_relevants / num_relevants
+            recall_qa = max(num_retrieved_relevants, 1)
             precision = num_retrieved_relevants / retrieved
             rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
 
-            metrics["recall"] = metrics.get("recall", []) + [recall]
+            metrics["recall_ir"] = metrics.get("recall_ir", []) + [recall_ir]
+            metrics["recall_qa"] = metrics.get("recall_qa", []) + [recall_qa]
             metrics["precision"] = metrics.get("precision", []) + [precision]
             metrics["map"] = metrics.get("map", []) + [avg_precision]
             metrics["mrr"] = metrics.get("mrr", []) + [rr]
