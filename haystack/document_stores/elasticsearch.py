@@ -737,7 +737,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 filter_clause = []
                 for key, values in filters.items():
                     if type(values) != list:
-                        raise ValueError(f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                        raise ValueError(f'Wrong filter format: "{key}": {values}. Provide a list of values for each key. '
                                          'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
                     filter_clause.append(
                         {
