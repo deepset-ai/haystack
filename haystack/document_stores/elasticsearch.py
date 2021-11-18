@@ -52,7 +52,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         duplicate_documents: str = 'overwrite',
         index_type: str = "flat",
         scroll: str = "1d",
-        skip_missing_embeddings: bool = False
+        skip_missing_embeddings: bool = True
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
