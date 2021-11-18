@@ -884,3 +884,22 @@ def test_get_document_count_only_documents_without_embedding_arg():
                                              filters={"meta_field_for_count": ["c"]}) == 1
     assert document_store.get_document_count(only_documents_without_embedding=True,
                                              filters={"meta_field_for_count": ["b"]}) == 2
+
+
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_skip_missing_embedding(document_store):
+    documents = [
+        {"content": "text1", "id": "1"},  # a document without embeddings
+        {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
+        {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
+        {"content": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
+    ]
+    document_store.write_documents(documents, index="skip_missing_embedding_index")
+
+    document_store.skip_missing_embeddings = True
+    retrieved_docs = document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
+    assert len(retrieved_docs) == 3
+
+    document_store.skip_missing_embeddings = False
+    with pytest.raises(RequestError):
+        document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
