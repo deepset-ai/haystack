@@ -825,6 +825,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             logger.debug(f"Retriever query: {body}")
             try:
                 result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+                if len(result) <= 0:
+                    raise RequestError(400, "search_phase_execution_exception",
+                                       {"error": "No documents with embeddings"})
             except RequestError as e:
                 if e.error == "search_phase_execution_exception":
                     error_message: str = "search_phase_execution_exception: Likely some of your stored documents don't have embeddings." \
