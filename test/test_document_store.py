@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import RequestError
+
 
 from conftest import get_document_store
 from haystack.document_stores import WeaviateDocumentStore
@@ -887,7 +889,7 @@ def test_get_document_count_only_documents_without_embedding_arg():
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_skip_missing_embedding(document_store):
+def test_skip_missing_embedding():
     documents = [
         {"content": "text1", "id": "1"},  # a document without embeddings
         {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
@@ -902,5 +904,20 @@ def test_skip_missing_embedding(document_store):
     assert len(retrieved_docs) == 3
 
     document_store.skip_missing_embeddings = False
+    with pytest.raises(RequestError):
+        document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
+
+    # Test scenario with no embeddings for the entire index
+    documents = [
+            {"content": "text1", "id": "1"},  # a document without embeddings
+            {"content": "text2", "id": "2"},
+            {"content": "text3", "id": "3"},
+            {"content": "text4", "id": "4"},
+        ]
+
+    document_store.delete_documents()
+    document_store.write_documents(documents)
+
+    document_store.skip_missing_embeddings = True
     with pytest.raises(RequestError):
         document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
