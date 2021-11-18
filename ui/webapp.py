@@ -115,8 +115,6 @@ def main():
         max_chars=100, 
         on_change=reset_results
     )
-    
-    # In evaluation mode I should not re-assign the value of the Run button click
     run_query = st.button("Run")
 
     # Check the connection
