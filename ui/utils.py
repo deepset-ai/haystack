@@ -6,6 +6,7 @@ import streamlit as st
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
 STATUS = "initialized"
+HS_VERSION = "hs_version"
 DOC_REQUEST = "query"
 DOC_FEEDBACK = "feedback"
 DOC_UPLOAD = "file-upload"
@@ -19,6 +20,11 @@ def haystack_is_ready():
     except Exception as e:
         logging.exception(e)
     return False
+
+@st.cache
+def haystack_version():
+    url = f"{API_ENDPOINT}/{HS_VERSION}"
+    return requests.get(url).json()["hs_version"]
 
 
 def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):

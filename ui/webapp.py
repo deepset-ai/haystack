@@ -11,17 +11,20 @@ from annotated_text import annotated_text
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
 # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 import SessionState
-from utils import feedback_doc, haystack_is_ready, retrieve_doc, upload_doc
+from utils import HS_VERSION, feedback_doc, haystack_is_ready, retrieve_doc, upload_doc, haystack_version
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
-DEFAULT_QUESTION_AT_STARTUP = "Who is the father of Arya Stark?"
+DEFAULT_QUESTION_AT_STARTUP = "What's the name of the deepest lake in the world?"
 
 # Labels for the evaluation
 EVAL_LABELS = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_example.csv")
 
 # Whether the file upload should be enabled or not
 DISABLE_FILE_UPLOAD = os.getenv("HAYSTACK_UI_DISABLE_FILE_UPLOAD")
+
+# Retrieve Haystack version from the REST API
+HS_VERSION = haystack_version()
 
 
 def main():
@@ -41,7 +44,7 @@ def main():
         state.raw_json = None
 
     # Title
-    st.write("# Countries of the World")
+    st.write("# Haystack Demo")
 
     # Sidebar
     st.sidebar.header("Options")
@@ -63,25 +66,25 @@ def main():
                     st.subheader("REST API JSON response")
                     st.sidebar.write(raw_json)
 
-    st.sidebar.markdown("""
+    st.sidebar.markdown(f"""
     <style>
-        a {
+        a {{
             text-decoration: none;
-        }
-        .haystack-footer {
+        }}
+        .haystack-footer {{
             text-align: center;
-        }
-        .haystack-footer h4 {
+        }}
+        .haystack-footer h4 {{
             margin: 0.1rem; 
             padding:0;
-        }
-        footer {
+        }}
+        footer {{
             opacity: 0;
-        }
+        }}
     </style>
     <div class="haystack-footer">
         <hr />
-        <h4>Built with <a href="https://www.deepset.ai/haystack">Haystack 1.0</a></h4>
+        <h4>Built with <a href="https://www.deepset.ai/haystack">Haystack</a> <small>(v{HS_VERSION})</small></h4>
         <p>Get it on <a href="https://github.com/deepset-ai/haystack/">GitHub</a> &nbsp;&nbsp; - &nbsp;&nbsp; Read the <a href="https://haystack.deepset.ai/overview/intro">Docs</a></p>
         <small>Data crawled from <a href="https://en.wikipedia.org/wiki/Category:Lists_of_countries_by_continent">Wikipedia</a> in November 2021.<br />See the <a href="https://creativecommons.org/licenses/by-sa/3.0/">License</a> (CC BY-SA 3.0).</small>
     </div>
@@ -92,7 +95,8 @@ def main():
         try:
             df = pd.read_csv(EVAL_LABELS, sep=";")
         except Exception:
-            sys.exit(f"The eval file was not found under `{EVAL_LABELS}`. Please check the README for more information.")
+            st.error(f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
+            sys.exit(f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
 
         # Get next random question from the CSV
         state.get_next_question = st.button("Load new question")
