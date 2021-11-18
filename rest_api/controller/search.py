@@ -55,11 +55,13 @@ def _process_request(pipeline, request) -> QueryResponse:
     params = request.params or {}
 
     # format global, top-level filters (e.g. "params": {"filters": {"name": ["some"]}})
-    if "filters" in params.keys(): _format_filters(params["filters"])
+    if "filters" in params.keys():
+        params["filters"] = _format_filters(params["filters"])
 
     # format targeted node filters (e.g. "params": {"Retriever": {"filters": {"value"}}})
     for key, value in params.items():
-        if "filters" in params[key].keys(): _format_filters(params[key]["filters"])
+        if "filters" in params[key].keys():
+            params[key]["filters"] = _format_filters(params[key]["filters"])
 
     result = pipeline.run(query=request.query, params=params,debug=request.debug)
     end_time = time.time()
@@ -70,16 +72,19 @@ def _process_request(pipeline, request) -> QueryResponse:
 
 def _format_filters(filters):
     """
-    Adjust filters to compliant format in-place:
+    Adjust filters to compliant format:
     Put filter values into a list and remove filters with null value.
     """
-
-    for key, values in filters.copy().items():
+    new_filters = {}
+    for key, values in filters.items():
         if values is None:
             logger.warning(f"Request with deprecated filter format ('{key}: null'). "
                            f"Remove null values from filters to be compliant with future versions")
-            del filters[key]
+            continue
         elif not isinstance(values, list):
-            logger.warning(f"Request with deprecated filter format ('{key}: {values}'). "
-                           f"Change to '{key}:[{values}]' to be compliant with future versions")
-            filters[key] = [values]
+            logger.warning(f"Request with deprecated filter format ('{key}': {values}). "
+                           f"Change to '{key}':[{values}]' to be compliant with future versions")
+            values = [values]
+
+        new_filters[key] = values
+    return new_filters
