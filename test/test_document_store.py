@@ -894,7 +894,8 @@ def test_skip_missing_embedding(document_store):
         {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
         {"content": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
     ]
-    document_store.write_documents(documents, index="skip_missing_embedding_index")
+    document_store = ElasticsearchDocumentStore(index="skip_missing_embedding_index")
+    document_store.write_documents(documents)
 
     document_store.skip_missing_embeddings = True
     retrieved_docs = document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
