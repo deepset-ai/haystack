@@ -73,7 +73,7 @@ class Tokenizer:
         kwargs["revision"] = revision
 
         if tokenizer_class is None:
-            tokenizer_class = cls._infer_tokenizer_class(pretrained_model_name_or_path)
+            tokenizer_class = cls._infer_tokenizer_class(pretrained_model_name_or_path, **kwargs)
 
         logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
@@ -139,14 +139,14 @@ class Tokenizer:
             return ret
 
     @staticmethod
-    def _infer_tokenizer_class(pretrained_model_name_or_path):
+    def _infer_tokenizer_class(pretrained_model_name_or_path, **kwargs):
         # Infer Tokenizer from model type in config
         try:
-            config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+            config = AutoConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
         except OSError:
             # Haystack model (no 'config.json' file)
             try:
-                config = AutoConfig.from_pretrained(pretrained_model_name_or_path + "/language_model_config.json")
+                config = AutoConfig.from_pretrained(pretrained_model_name_or_path + "/language_model_config.json", **kwargs)
             except Exception as e:
                 logger.warning("No config file found. Trying to infer Tokenizer type from model name")
                 tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
@@ -185,7 +185,7 @@ class Tokenizer:
             # Fall back to inferring type from model name
             logger.warning("Could not infer Tokenizer type from config. Trying to infer "
                            "Tokenizer type from model name.")
-            tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
+            tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path, **kwargs)
 
         return tokenizer_class
 
