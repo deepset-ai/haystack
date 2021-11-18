@@ -9,7 +9,7 @@ import torch
 from tqdm import tqdm
 from pathlib import Path
 
-from torch.nn import KLDivLoss, MSELoss
+from torch.nn import MSELoss
 import torch.nn.functional as F
 
 from haystack.modeling.data_handler.data_silo import DataSilo
