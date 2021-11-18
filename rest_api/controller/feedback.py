@@ -11,20 +11,20 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/feedback")
+@router.post("/feedback", operation_id="post_feedback")
 def user_feedback(feedback: LabelSerialized):
     if feedback.origin is None:
         feedback.origin = "user-feedback"
     DOCUMENT_STORE.write_labels([feedback])
 
 
-@router.get("/feedback")
+@router.get("/feedback", operation_id="get_feedback")
 def user_feedback():
     labels = DOCUMENT_STORE.get_all_labels()
     return labels
 
 
-@router.post("/eval-feedback")
+@router.post("/eval-feedback", operation_id="get_feedback_metrics")
 def eval_extractive_qa_feedback(filters: FilterRequest = None):
     """
     Return basic accuracy metrics based on the user feedback.
@@ -62,7 +62,7 @@ def eval_extractive_qa_feedback(filters: FilterRequest = None):
 
 
 @router.get("/export-feedback")
-def export_extractive_qa_feedback(
+def export_feedback(
     context_size: int = 100_000, full_document_context: bool = True, only_positive_labels: bool = False
 ):
     """

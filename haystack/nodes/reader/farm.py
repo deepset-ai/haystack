@@ -118,6 +118,7 @@ class FARMReader(BaseReader):
             duplicate_filtering=duplicate_filtering, proxies=proxies, local_files_only=local_files_only,
             force_download=force_download, use_confidence_scores=use_confidence_scores, **kwargs
         )
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         self.return_no_answers = return_no_answer
         self.top_k = top_k
@@ -130,6 +131,7 @@ class FARMReader(BaseReader):
                                             proxies=proxies,
                                             local_files_only=local_files_only,
                                             force_download=force_download,
+                                            devices=self.devices,
                                             **kwargs)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
@@ -145,7 +147,6 @@ class FARMReader(BaseReader):
         self.max_seq_len = max_seq_len
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
-        self.device, _ = initialize_device_settings(use_cuda=self.use_gpu)
         self.use_confidence_scores = use_confidence_scores
 
     def train(
@@ -227,7 +228,7 @@ class FARMReader(BaseReader):
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
 
-        device, n_gpu = initialize_device_settings(use_cuda=use_gpu,use_amp=use_amp)
+        devices, n_gpu = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -259,7 +260,7 @@ class FARMReader(BaseReader):
             schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
-            device=device,
+            device=devices[0],
             use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -271,7 +272,7 @@ class FARMReader(BaseReader):
             n_gpu=n_gpu,
             lr_schedule=lr_schedule,
             evaluate_every=evaluate_every,
-            device=device,
+            device=devices[0],
             use_amp=use_amp,
             disable_tqdm=not self.progress_bar,
             checkpoint_root_dir=Path(checkpoint_root_dir),
@@ -443,7 +444,7 @@ class FARMReader(BaseReader):
         :type device: str
         """
         if device is None:
-            device = self.device
+            device = self.devices[0]
         eval_processor = SquadProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
             max_seq_len=self.inferencer.processor.max_seq_len,
@@ -493,7 +494,7 @@ class FARMReader(BaseReader):
         :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
         """
         if device is None:
-            device = self.device
+            device = self.devices[0]
         if self.top_k_per_candidate != 4:
             logger.info(f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
                         f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
@@ -526,9 +527,10 @@ class FARMReader(BaseReader):
             # get all questions / answers
             #TODO check if we can simplify this by using MultiLabel
             aggregated_per_question: Dict[tuple, Any] = defaultdict(list)
-            id_question_tuple = (label.id, label.query)
+
             if doc_id in aggregated_per_doc:
                 for label in aggregated_per_doc[doc_id]:
+                    aggregation_key = (doc_id, label.query)
                     if label.answer is None:
                         logger.error(f"Label.answer was None, but Answer object was expected: {label} ")
                         continue
@@ -538,30 +540,30 @@ class FARMReader(BaseReader):
                     else:
                         # add to existing answers
                         #TODO offsets (whole block)
-                        if id_question_tuple in aggregated_per_question.keys():
+                        if aggregation_key in aggregated_per_question.keys():
                             if label.no_answer:
                                 continue
                             else:
                                 # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
-                                if len(aggregated_per_question[id_question_tuple]["answers"]) >= 6:
+                                if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
                                     logger.warning(f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})")
                                     continue
-                                aggregated_per_question[id_question_tuple]["answers"].append({
+                                aggregated_per_question[aggregation_key]["answers"].append({
                                             "text": label.answer.answer,
                                             "answer_start": label.answer.offsets_in_document[0].start})
-                                aggregated_per_question[id_question_tuple]["is_impossible"] = False
+                                aggregated_per_question[aggregation_key]["is_impossible"] = False
                         # create new one
                         else:
                             # We don't need to create an answer dict if is_impossible / no_answer
                             if label.no_answer == True:
-                                aggregated_per_question[id_question_tuple] = {
+                                aggregated_per_question[aggregation_key] = {
                                     "id": str(hash(str(doc_id) + label.query)),
                                     "question": label.query,
                                     "answers": [],
                                     "is_impossible": True
                                 }
                             else:
-                                aggregated_per_question[id_question_tuple] = {
+                                aggregated_per_question[aggregation_key] = {
                                     "id": str(hash(str(doc_id) + label.query)),
                                     "question": label.query,
                                     "answers": [{
@@ -661,7 +663,7 @@ class FARMReader(BaseReader):
         :param label_origin: Field name where the gold labels are stored
         """
         if device is None:
-            device = self.device
+            device = self.devices[0]
         self.eval(document_store=document_store,
                   device=device,
                   label_index=label_index,

@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseGraphRetriever"></a>
-## BaseGraphRetriever Objects
+## BaseGraphRetriever
 
 ```python
 class BaseGraphRetriever(BaseComponent)
@@ -11,7 +11,7 @@ class BaseGraphRetriever(BaseComponent)
 Base classfor knowledge graph retrievers.
 
 <a name="base.BaseRetriever"></a>
-## BaseRetriever Objects
+## BaseRetriever
 
 ```python
 class BaseRetriever(BaseComponent)
@@ -84,7 +84,7 @@ position in the ranking of documents the correct document is.
 # Module sparse
 
 <a name="sparse.ElasticsearchRetriever"></a>
-## ElasticsearchRetriever Objects
+## ElasticsearchRetriever
 
 ```python
 class ElasticsearchRetriever(BaseRetriever)
@@ -152,7 +152,7 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
-## ElasticsearchFilterOnlyRetriever Objects
+## ElasticsearchFilterOnlyRetriever
 
 ```python
 class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
@@ -179,7 +179,7 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a name="sparse.TfidfRetriever"></a>
-## TfidfRetriever Objects
+## TfidfRetriever
 
 ```python
 class TfidfRetriever(BaseRetriever)
@@ -235,7 +235,7 @@ Performing training on this class according to the TF-IDF algorithm.
 # Module dense
 
 <a name="dense.DensePassageRetriever"></a>
-## DensePassageRetriever Objects
+## DensePassageRetriever
 
 ```python
 class DensePassageRetriever(BaseRetriever)
@@ -426,7 +426,7 @@ None
 Load DensePassageRetriever from the specified directory.
 
 <a name="dense.TableTextRetriever"></a>
-## TableTextRetriever Objects
+## TableTextRetriever
 
 ```python
 class TableTextRetriever(BaseRetriever)
@@ -595,7 +595,7 @@ None
 Load TableTextRetriever from the specified directory.
 
 <a name="dense.EmbeddingRetriever"></a>
-## EmbeddingRetriever Objects
+## EmbeddingRetriever
 
 ```python
 class EmbeddingRetriever(BaseRetriever)
@@ -605,7 +605,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -613,7 +613,7 @@ class EmbeddingRetriever(BaseRetriever)
 - `document_store`: An instance of DocumentStore from which to retrieve documents.
 - `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `use_gpu`: Whether to use gpu or not
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
 - `model_format`: Name of framework that was used for saving the model. Options:
 
                      - ``'farm'``
@@ -630,6 +630,8 @@ class EmbeddingRetriever(BaseRetriever)
                              Default: -1 (very last layer).
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
@@ -686,7 +688,7 @@ Embeddings, one per input document
 # Module text2sparql
 
 <a name="text2sparql.Text2SparqlRetriever"></a>
-## Text2SparqlRetriever Objects
+## Text2SparqlRetriever
 
 ```python
 class Text2SparqlRetriever(BaseGraphRetriever)
