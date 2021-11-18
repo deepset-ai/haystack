@@ -826,24 +826,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             try:
                 result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
                 if len(result) == 0:
-                    body = {
-                        "query": {
-                            "bool": {
-                                "filter": {
-                                    "bool": {
-                                        "must": [
-                                            {
-                                                "exists": {
-                                                    "field": self.embedding_field
-                                                }
-                                            }
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    count_embeddings = self.client.count(index=index, body=body)["count"]
+                    count_embeddings = self.get_embedding_count(index=index)
                     if count_embeddings == 0:
                         raise RequestError(400, "search_phase_execution_exception",
                                            {"error": "No documents with embeddings"})
