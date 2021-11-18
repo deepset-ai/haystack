@@ -118,11 +118,20 @@ class TableReader(BaseReader):
             # Forward query and table through model and convert logits to predictions
             outputs = self.model(**inputs)
             inputs.to("cpu")
-            predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
+            if self.model.config.num_aggregation_labels > 0:
+                aggregation_logits = outputs.logits_aggregation.cpu().detach()
+            else:
+                aggregation_logits = None
+
+            predicted_output = self.tokenizer.convert_logits_to_predictions(
                 inputs,
                 outputs.logits.cpu().detach(),
-                outputs.logits_aggregation.cpu().detach()
+                aggregation_logits
             )
+            if len(predicted_output) == 1:
+                predicted_answer_coordinates = predicted_output[0]
+            else:
+                predicted_answer_coordinates, predicted_aggregation_indices = predicted_output
 
             # Get cell values
             current_answer_coordinates = predicted_answer_coordinates[0]
@@ -131,7 +140,10 @@ class TableReader(BaseReader):
                 current_answer_cells.append(table.iat[coordinate])
 
             # Get aggregation operator
-            current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
+            if self.model.config.aggregation_labels is not None:
+                current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
+            else:
+                current_aggregation_operator = "NONE"
             
             # Calculate answer score
             current_score = self._calculate_answer_score(outputs.logits.cpu().detach(), inputs, current_answer_coordinates)
