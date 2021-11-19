@@ -180,11 +180,11 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
                         |
                       Answer
 =================================================
-                Worst Retriever Queries
+              Worst Retriever Queries
 =================================================
 {worst_retriever_queries_formatted}
 =================================================
-                    Worst Reader Queries
+               Worst Reader Queries
 =================================================
 {worst_reader_queries_formatted}
 =================================================

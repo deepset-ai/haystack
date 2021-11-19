@@ -797,7 +797,7 @@ class EvaluationResult:
     def save(self, out_dir: Union[str, Path]):
         """
         Saves the evaluation result. 
-        The result of each node is saved in a separate csv with file name {node_name}.csv in the out_dir folder.
+        The result of each node is saved in a separate csv with file name {node_name}.csv to the out_dir folder.
 
         :param out_dir: Path to the target folder the csvs will be saved.
         """
