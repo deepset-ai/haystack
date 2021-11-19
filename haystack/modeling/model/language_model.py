@@ -101,7 +101,7 @@ class LanguageModel(nn.Module):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[bool, str] = None,  **kwargs):
         """
         Load a pretrained language model either by
 
@@ -158,10 +158,10 @@ class LanguageModel(nn.Module):
             logger.info(f"Could not find {pretrained_model_name_or_path} locally.")
             logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
             if language_model_class is None:
-                language_model_class = cls.get_language_model_class(pretrained_model_name_or_path)
+                language_model_class = cls.get_language_model_class(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
 
             if language_model_class:
-                language_model = cls.subclasses[language_model_class].load(pretrained_model_name_or_path, **kwargs)
+                language_model = cls.subclasses[language_model_class].load(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
                 language_model = None
 
@@ -190,11 +190,11 @@ class LanguageModel(nn.Module):
         return language_model
 
     @staticmethod
-    def get_language_model_class(model_name_or_path, **kwargs):
+    def get_language_model_class(model_name_or_path, use_auth_token: Union[str,bool] = None, **kwargs):
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
 
-        config = AutoConfig.from_pretrained(model_name_or_path, **kwargs)
+        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         model_type = config.model_type
         if model_type == "xlm-roberta":
             language_model_class = "XLMRoberta"
@@ -1112,7 +1112,7 @@ class DPRQuestionEncoder(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[str,bool] = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1145,7 +1145,7 @@ class DPRQuestionEncoder(LanguageModel):
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder(config=transformers.DPRConfig(**original_config_dict))
-                language_model_class = cls.get_language_model_class(haystack_lm_config)
+                language_model_class = cls.get_language_model_class(haystack_lm_config, use_auth_token, **kwargs)
                 dpr_question_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
             dpr_question_encoder.language = dpr_question_encoder.model.config.language
         else:
@@ -1245,7 +1245,7 @@ class DPRContextEncoder(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[str,bool] = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1270,7 +1270,7 @@ class DPRContextEncoder(LanguageModel):
 
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
-                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(haystack_lm_model,config=dpr_config,**kwargs)
+                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(haystack_lm_model,config=dpr_config, use_auth_token=use_auth_token, **kwargs)
             else:
                 if original_model_config.model_type != "bert":
                     logger.warning(
@@ -1279,7 +1279,7 @@ class DPRContextEncoder(LanguageModel):
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
                 dpr_context_encoder.model = transformers.DPRContextEncoder(config=transformers.DPRConfig(**original_config_dict))
-                language_model_class = cls.get_language_model_class(haystack_lm_config)
+                language_model_class = cls.get_language_model_class(haystack_lm_config, **kwargs)
                 dpr_context_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(
                     str(pretrained_model_name_or_path)).model
             dpr_context_encoder.language = dpr_context_encoder.model.config.language

@@ -16,7 +16,7 @@
 Tokenization classes.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Dict, Any, Tuple, Optional, List, Union
 
 import re
 import logging
@@ -51,7 +51,7 @@ class Tokenizer:
     Simple Wrapper for Tokenizers from the transformers package. Enables loading of different Tokenizer classes with a uniform interface.
     """
     @classmethod
-    def load(cls, pretrained_model_name_or_path, revision=None, tokenizer_class=None, use_fast=True, **kwargs):
+    def load(cls, pretrained_model_name_or_path, revision=None, tokenizer_class=None, use_fast=True, use_auth_token: Union[bool, str] = None, **kwargs):
         """
         Enables loading of different Tokenizer classes with a uniform interface. Either infer the class from
         model config or define it manually via `tokenizer_class`.
@@ -73,80 +73,80 @@ class Tokenizer:
         kwargs["revision"] = revision
 
         if tokenizer_class is None:
-            tokenizer_class = cls._infer_tokenizer_class(pretrained_model_name_or_path)
+            tokenizer_class = cls._infer_tokenizer_class(pretrained_model_name_or_path,use_auth_token=use_auth_token)
 
         logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
         ret = None
         if "AlbertTokenizer" in tokenizer_class:
             if use_fast:
-                ret = AlbertTokenizerFast.from_pretrained(pretrained_model_name_or_path, keep_accents=True, **kwargs)
+                ret = AlbertTokenizerFast.from_pretrained(pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = AlbertTokenizer.from_pretrained(pretrained_model_name_or_path, keep_accents=True,  **kwargs)
+                ret = AlbertTokenizer.from_pretrained(pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs)
         elif "XLMRobertaTokenizer" in tokenizer_class:
             if use_fast:
-                ret = XLMRobertaTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = XLMRobertaTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = XLMRobertaTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = XLMRobertaTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         elif "RobertaTokenizer" in tokenizer_class:
             if use_fast:
-                ret = RobertaTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = RobertaTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = RobertaTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = RobertaTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         elif "DistilBertTokenizer" in tokenizer_class:
             if use_fast:
-                ret = DistilBertTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = DistilBertTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = DistilBertTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = DistilBertTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         elif "BertTokenizer" in tokenizer_class:
             if use_fast:
-                ret = BertTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = BertTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = BertTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = BertTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         elif "XLNetTokenizer" in tokenizer_class:
             if use_fast:
-                ret = XLNetTokenizerFast.from_pretrained(pretrained_model_name_or_path, keep_accents=True, **kwargs)
+                ret = XLNetTokenizerFast.from_pretrained(pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = XLNetTokenizer.from_pretrained(pretrained_model_name_or_path, keep_accents=True, **kwargs)
+                ret = XLNetTokenizer.from_pretrained(pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs)
         elif "ElectraTokenizer" in tokenizer_class:
             if use_fast:
-                ret = ElectraTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = ElectraTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = ElectraTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = ElectraTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         elif "CamembertTokenizer" in tokenizer_class:
             if use_fast:
-                ret = CamembertTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = CamembertTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = CamembertTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = CamembertTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         elif "DPRQuestionEncoderTokenizer" in tokenizer_class:
             if use_fast:
-                ret = DPRQuestionEncoderTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = DPRQuestionEncoderTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = DPRQuestionEncoderTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = DPRQuestionEncoderTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         elif "DPRContextEncoderTokenizer"  in tokenizer_class:
             if use_fast:
-                ret = DPRContextEncoderTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = DPRContextEncoderTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = DPRContextEncoderTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = DPRContextEncoderTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         elif "BigBirdTokenizer" in tokenizer_class:
             if use_fast:
-                ret = BigBirdTokenizerFast.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = BigBirdTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
-                ret = BigBirdTokenizer.from_pretrained(pretrained_model_name_or_path, **kwargs)
+                ret = BigBirdTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         if ret is None:
             raise Exception("Unable to load tokenizer")
         else:
             return ret
 
     @staticmethod
-    def _infer_tokenizer_class(pretrained_model_name_or_path):
+    def _infer_tokenizer_class(pretrained_model_name_or_path, use_auth_token: Union[bool, str] = None):
         # Infer Tokenizer from model type in config
         try:
-            config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+            config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token)
         except OSError:
             # Haystack model (no 'config.json' file)
             try:
-                config = AutoConfig.from_pretrained(pretrained_model_name_or_path + "/language_model_config.json")
+                config = AutoConfig.from_pretrained(pretrained_model_name_or_path + "/language_model_config.json", use_auth_token=use_auth_token)
             except Exception as e:
                 logger.warning("No config file found. Trying to infer Tokenizer type from model name")
                 tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
