@@ -447,7 +447,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         if filters:
             for key, values in filters.items():
-                documents_query = documents_query. \
+                query = query. \
                     join(MetaDocumentORM, aliased=True). \
                     filter(
                         MetaDocumentORM.name == key,
