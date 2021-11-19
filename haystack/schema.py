@@ -537,6 +537,11 @@ class NumpyEncoder(json.JSONEncoder):
 
 class EvaluationResult:
     def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
+        """
+        Result of a pipeline evaluation run (e.g. pipeline.eval())
+
+        :param node_results: the evaluation Dataframes per pipeline node
+        """
         self.node_results: Dict[str, pd.DataFrame] = {} if node_results is None else node_results
 
     def __getitem__(self, key: str):
@@ -565,11 +570,17 @@ class EvaluationResult:
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
+        
+        Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
+        E.g. top_1_f1 for reader nodes can be calculated by setting simulated_top_k_reader=1.
+
+        Results for reader nodes with applied simulated_top_k_retriever should be considered with caution 
+        as there are situations the result can heavily differ from an actual eval run with corresponding top_k_retriever.
 
         :param simulated_top_k_reader: simulates top_k param of reader
         :param simulated_top_k_retriever: simulates top_k param of retriever.
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
-        :param doc_relevance_col: column that contains the relevance criteria for documents.
+        :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
             values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
         """
         return {node: self._calculate_node_metrics(df, 
@@ -591,7 +602,10 @@ class EvaluationResult:
         """
         Returns the worst performing queries. 
         Worst performing queries are calculated based on the metric 
-        that is either a document metric or a answer metric according to the node type.
+        that is either a document metric or an answer metric according to the node type.
+
+        Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
+        See calculate_metrics() for more information. 
 
         :param simulated_top_k_reader: simulates top_k param of reader
         :param simulated_top_k_retriever: simulates top_k param of retriever.
@@ -781,6 +795,12 @@ class EvaluationResult:
         return metrics_df
 
     def save(self, out_dir: Union[str, Path]):
+        """
+        Saves the evaluation result. 
+        The result of each node is saved in a separate csv with file name {node_name}.csv in the out_dir folder.
+
+        :param out_dir: Path to the target folder the csvs will be saved.
+        """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
         for node_name, df in self.node_results.items():
             target_path = out_dir / f"{node_name}.csv"
@@ -788,6 +808,11 @@ class EvaluationResult:
 
     @classmethod
     def load(cls, load_dir: Union[str, Path]):
+        """
+        Loads the evaluation result from disk. Expects one csv file per node. See save() for further information.
+
+        :param load_dir: The directory containing the csv files.
+        """
         load_dir =  load_dir if isinstance(load_dir, Path) else Path(load_dir)
         csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
         cols_to_convert = ["gold_document_ids", "gold_document_contents", "gold_answers", "gold_offsets_in_documents"]
