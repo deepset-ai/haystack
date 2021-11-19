@@ -108,6 +108,8 @@ class FARMReader(BaseReader):
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
         :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
         """
 
         # save init parameters to enable export of component config as YAML
