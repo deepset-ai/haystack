@@ -110,6 +110,7 @@ class FARMReader(BaseReader):
         :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
                                 the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
 
         # save init parameters to enable export of component config as YAML
