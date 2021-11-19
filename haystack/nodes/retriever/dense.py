@@ -52,7 +52,8 @@ class DensePassageRetriever(BaseRetriever):
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
-                 devices: Optional[List[Union[int, str, torch.device]]] = None
+                 devices: Optional[List[Union[int, str, torch.device]]] = None,
+                 use_auth_token: Optional[Union[str,bool]] = None
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -101,6 +102,9 @@ class DensePassageRetriever(BaseRetriever):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                         As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -148,18 +152,25 @@ class DensePassageRetriever(BaseRetriever):
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"])
+                                              tokenizer_class=tokenizers_default_classes["query"],
+                                              use_auth_token=use_auth_token
+                                              )
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRQuestionEncoder")
+                                                language_model_class="DPRQuestionEncoder",
+                                                use_auth_token=use_auth_token
+                                                )
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
                                                 revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"])
+                                                tokenizer_class=tokenizers_default_classes["passage"],
+                                                use_auth_token=use_auth_token
+                                                )
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   revision=model_version,
-                                                  language_model_class="DPRContextEncoder")
+                                                  language_model_class="DPRContextEncoder",
+                                                  use_auth_token=use_auth_token)
 
         self.processor = TextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
                                                  passage_tokenizer=self.passage_tokenizer,
