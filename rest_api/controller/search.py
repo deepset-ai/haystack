@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
+import haystack
 from haystack.pipelines.base import Pipeline
 from rest_api.config import PIPELINE_YAML_PATH, QUERY_PIPELINE_NAME
 from rest_api.config import LOG_LEVEL, CONCURRENT_REQUEST_PER_WORKER
@@ -40,6 +41,11 @@ def check_status():
     like 500ms, and in case of no reply, consider the server busy.
     """
     return True
+
+
+@router.get("/hs_version")
+def haystack_version():
+    return {"hs_version": haystack.__version__}
 
 
 @router.post("/query", response_model=QueryResponse, response_model_exclude_none=True)

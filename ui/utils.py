@@ -6,6 +6,7 @@ import streamlit as st
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
 STATUS = "initialized"
+HS_VERSION = "hs_version"
 DOC_REQUEST = "query"
 DOC_FEEDBACK = "feedback"
 DOC_UPLOAD = "file-upload"
@@ -20,8 +21,12 @@ def haystack_is_ready():
         logging.exception(e)
     return False
 
+@st.cache
+def haystack_version():
+    url = f"{API_ENDPOINT}/{HS_VERSION}"
+    return requests.get(url).json()["hs_version"]
 
-@st.cache(show_spinner=False)
+
 def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
     # Query Haystack API
     url = f"{API_ENDPOINT}/{DOC_REQUEST}"
@@ -31,6 +36,10 @@ def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
 
     # Format response
     result = []
+
+    if "errors" in response_raw:
+        raise Exception(", ".join(response_raw["errors"]))
+        
     answers = response_raw["answers"]
     for i in range(len(answers)):
         answer = answers[i]
