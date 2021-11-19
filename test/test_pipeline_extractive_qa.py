@@ -205,7 +205,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractive_qa_eval_sas(reader, retriever_with_docs, tmp_path):
+def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         queries=EVAL_QUERIES, 
@@ -229,7 +229,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs, tmp_path):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs, tmp_path):
+def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         queries=EVAL_QUERIES, 
@@ -248,7 +248,7 @@ def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs, tmp_p
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs, tmp_path):
+def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         queries=EVAL_QUERIES, 
@@ -293,7 +293,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs, 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_docs, tmp_path):
+def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         queries=EVAL_QUERIES, 
@@ -344,7 +344,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriever_with_docs, tmp_path):
+def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         queries=EVAL_QUERIES, 
@@ -396,7 +396,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractive_qa_eval_worst_queries(reader, retriever_with_docs, tmp_path):
+def test_extractive_qa_eval_worst_queries(reader, retriever_with_docs):
 
     queries = ["Who lives in Berlin?", "Who lives in Munich?"]
     labels = [
@@ -420,3 +420,27 @@ def test_extractive_qa_eval_worst_queries(reader, retriever_with_docs, tmp_path)
 
     assert len(worst_queries_retriever) == 1
     assert len(worst_queries_reader) == 1
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
+
+    queries = ["Who lives in Berlin?", "Who lives in Munich?"]
+    labels = [
+        MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")]),
+        MultiLabel(labels=[Label(query="Who lives in Munich?", answer=Answer(answer="Pete", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='something_else', content_type="text", content='My name is Pete and I live in Munich'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+    ]
+
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"Retriever": {"top_k": 5}}, 
+    )
+
+    pipeline.print_eval_report(eval_result)
