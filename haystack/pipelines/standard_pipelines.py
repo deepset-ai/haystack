@@ -122,12 +122,12 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
             sas_model_name_or_path=sas_model_name_or_path)
         return output
 
-    def _format_document_anser(self, document_or_answer: dict):
+    def _format_document_answer(self, document_or_answer: dict):
         return "\n \t".join([f'{name}: {value}' for name, value in document_or_answer.items()])
 
-    def _format_worst_retriever_query(self, query: dict):
+    def _format_retriever_query(self, query: dict):
         metrics = "\n \t".join([f'{name}: {value}' for name, value in query['metrics'].items()])
-        documents = "\n\n \t".join([self._format_document_anser(doc) for doc in query['documents']])
+        documents = "\n\n \t".join([self._format_document_answer(doc) for doc in query['documents']])
         gold_document_ids = "\n \t".join(query['gold_document_ids'])
         s = (
             f"Query: \n \t{query['query']}\n"
@@ -138,9 +138,9 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         )
         return s
 
-    def _format_worst_reader_query(self, query: dict):
+    def _format_reader_query(self, query: dict):
         metrics = "\n \t".join([f'{name}: {value}' for name, value in query['metrics'].items()])
-        answers = "\n\n \t".join([self._format_document_anser(answer) for answer in query['answers']])
+        answers = "\n\n \t".join([self._format_document_answer(answer) for answer in query['answers']])
         gold_answers = "\n \t".join(query['gold_answers'])
         s = (
             f"Query: \n \t{query['query']}\n"
@@ -161,9 +161,9 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
         metrics_top_1 = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1)
         worst_retriever_queries = eval_result.worst_queries("Retriever", doc_relevance_col="gold_id_or_answer_match", n=n_worst_queries)
-        worst_retriever_queries_formatted = "\n".join([self._format_worst_retriever_query(q) for q in worst_retriever_queries])
+        worst_retriever_queries_formatted = "\n".join([self._format_retriever_query(q) for q in worst_retriever_queries])
         worst_reader_queries = eval_result.worst_queries("Reader", doc_relevance_col="gold_id_or_answer_match", n=n_worst_queries)
-        worst_reader_queries_formatted = "\n".join([self._format_worst_reader_query(q) for q in worst_reader_queries])
+        worst_reader_queries_formatted = "\n".join([self._format_reader_query(q) for q in worst_reader_queries])
         print(
         f"""=============== Evaluation Report ===============
 =================================================

@@ -607,7 +607,7 @@ class EvaluationResult:
 
         answers = node_df[node_df["type"] == "answer"]
         if len(answers) > 0:
-            metrics_df = self._get_answer_metrics_df(answers, 
+            metrics_df = self._build_answer_metrics_df(answers, 
                 simulated_top_k_reader=simulated_top_k_reader, 
                 simulated_top_k_retriever=simulated_top_k_retriever)
             worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
@@ -627,7 +627,7 @@ class EvaluationResult:
 
         documents = node_df[node_df["type"] == "document"]
         if len(documents) > 0:
-            metrics_df = self._get_document_metrics_df(documents, 
+            metrics_df = self._build_document_metrics_df(documents, 
                 simulated_top_k_retriever=simulated_top_k_retriever,
                 doc_relevance_col=doc_relevance_col)
             worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
@@ -674,13 +674,13 @@ class EvaluationResult:
         if len(answers) == 0:
             return {}
 
-        metrics_df = self._get_answer_metrics_df(answers, 
+        metrics_df = self._build_answer_metrics_df(answers, 
             simulated_top_k_reader=simulated_top_k_reader, 
             simulated_top_k_retriever=simulated_top_k_retriever)
 
         return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
 
-    def _get_answer_metrics_df(self, 
+    def _build_answer_metrics_df(self, 
         answers: pd.DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1
@@ -734,13 +734,13 @@ class EvaluationResult:
         if len(documents) == 0:
             return {}
         
-        metrics_df = self._get_document_metrics_df(documents, 
+        metrics_df = self._build_document_metrics_df(documents, 
             simulated_top_k_retriever=simulated_top_k_retriever, 
             doc_relevance_col=doc_relevance_col)
         
         return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
 
-    def _get_document_metrics_df(
+    def _build_document_metrics_df(
         self, 
         documents: pd.DataFrame, 
         simulated_top_k_retriever: int = -1, 
