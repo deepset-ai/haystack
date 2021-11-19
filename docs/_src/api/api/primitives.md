@@ -307,7 +307,7 @@ See calculate_metrics() for more information.
 ```
 
 Saves the evaluation result.
-The result of each node is saved in a separate csv with file name {node_name}.csv in the out_dir folder.
+The result of each node is saved in a separate csv with file name {node_name}.csv to the out_dir folder.
 
 **Arguments**:
 
