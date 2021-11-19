@@ -560,6 +560,20 @@ and putting together all data that is needed for evaluation, e.g. calculating me
 - `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
                             should be path or string pointing to downloadable models.
 
+<a name="standard_pipelines.ExtractiveQAPipeline.print_eval_report"></a>
+#### print\_eval\_report
+
+```python
+ | print_eval_report(eval_result: EvaluationResult, n_worst_queries: int = 3)
+```
+
+Prints evaluation report containing a metrics funnel and worst queries for further analysis.
+
+**Arguments**:
+
+- `eval_result`: The evaluation result, can be obtained by running eval().
+- `n_worst_queries`: The number of worst queries to show.
+
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline
 
