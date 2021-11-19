@@ -105,11 +105,10 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
                        Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
                        For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
-        :param skip_missing_embeddings: Parameter to control vector similarity when indexed documents miss embeddings.
+        :param skip_missing_embeddings: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
                                         Parameter options: (True, False)
-                                        False: Raises exception if one or more documents do not have embeddings at the
-                                               time of vector similarity computation
-                                        True: Filters out documents not containing embeddings
+                                        False: Raises exception if one or more documents do not have embeddings at query time
+                                        True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
 
         """
         # save init parameters to enable export of component config as YAML
@@ -829,7 +828,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     count_embeddings = self.get_embedding_count(index=index)
                     if count_embeddings == 0:
                         raise RequestError(400, "search_phase_execution_exception",
-                                           {"error": "No documents with embeddings"})
+                                           {"error": "No documents with embeddings. Make sure to add documents and compute their embeddings via the doc store's update_embeddings() method."})
             except RequestError as e:
                 if e.error == "search_phase_execution_exception":
                     error_message: str = "search_phase_execution_exception: Likely some of your stored documents don't have embeddings." \
