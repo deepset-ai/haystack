@@ -33,6 +33,8 @@ class EvalDocuments(BaseComponent):
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
         :param top_k: calculate eval metrics for top k results, e.g., recall@k
         """
+        logger.warning("EvalDocuments node is deprecated and will be removed in a future version. "
+                       "Please use pipeline.eval() instead.")
         self.init_counts()
         self.no_answer_warning = False
         self.debug = debug
@@ -178,6 +180,8 @@ class EvalAnswers(BaseComponent):
                           - Large model for German only: "deepset/gbert-large-sts"
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
         """
+        logger.warning("EvalAnswers node is deprecated and will be removed in a future version. "
+                       "Please use pipeline.eval() instead.")
         self.log: List = []
         self.debug = debug
         self.skip_incorrect_retrieval = skip_incorrect_retrieval
