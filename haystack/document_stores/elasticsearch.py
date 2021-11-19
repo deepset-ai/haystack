@@ -828,7 +828,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     count_embeddings = self.get_embedding_count(index=index)
                     if count_embeddings == 0:
                         raise RequestError(400, "search_phase_execution_exception",
-                                           {"error": "No documents with embeddings. Make sure to add documents and compute their embeddings via the doc store's update_embeddings() method."})
+                                           {"error": "No documents with embeddings."})
             except RequestError as e:
                 if e.error == "search_phase_execution_exception":
                     error_message: str = "search_phase_execution_exception: Likely some of your stored documents don't have embeddings." \
