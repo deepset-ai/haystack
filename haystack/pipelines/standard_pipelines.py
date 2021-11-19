@@ -122,6 +122,38 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
             sas_model_name_or_path=sas_model_name_or_path)
         return output
 
+    def print_evaluation_report(self, eval_result: EvaluationResult):
+        metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
+        metrics_top_1 = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1)
+        worst_retriever_queries = eval_result.worst_queries("Retriever", doc_relevance_col="gold_id_or_answer_match")
+        worst_reader_queries = eval_result.worst_queries("Reader", doc_relevance_col="gold_id_or_answer_match")
+        print(
+        f"""
+            =============== Evaluation Report ===============
+            =================================================
+                            Pipeline Overview
+            =================================================
+                                Retriever
+                                    |
+                                    | recall_qa: {metrics['Retriever']['recall_qa']}
+                                    |
+                                  Reader
+                                    |
+                                    | f1: {metrics['Reader']['f1']}
+                                    | f1_top_1: {metrics_top_1['Reader']['f1']}
+                                    |
+                                  Answer
+            =================================================
+                           Worst Retriever Queries
+            =================================================
+            {worst_retriever_queries}
+            =================================================
+                             Worst Reader Queries
+            =================================================
+            {worst_reader_queries}
+            =================================================
+        """)
+
 
 class DocumentSearchPipeline(BaseStandardPipeline):
     """
