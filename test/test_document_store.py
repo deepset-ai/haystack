@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import RequestError
+
 
 from conftest import get_document_store
 from haystack.document_stores import WeaviateDocumentStore
@@ -883,3 +885,38 @@ def test_get_document_count_only_documents_without_embedding_arg():
                                              filters={"meta_field_for_count": ["c"]}) == 1
     assert document_store.get_document_count(only_documents_without_embedding=True,
                                              filters={"meta_field_for_count": ["b"]}) == 2
+
+
+@pytest.mark.elasticsearch
+def test_skip_missing_embeddings():
+    documents = [
+        {"content": "text1", "id": "1"},  # a document without embeddings
+        {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
+        {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
+        {"content": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)}
+    ]
+    document_store = ElasticsearchDocumentStore(index="skip_missing_embedding_index")
+    document_store.write_documents(documents)
+
+    document_store.skip_missing_embeddings = True
+    retrieved_docs = document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
+    assert len(retrieved_docs) == 3
+
+    document_store.skip_missing_embeddings = False
+    with pytest.raises(RequestError):
+        document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
+
+    # Test scenario with no embeddings for the entire index
+    documents = [
+            {"content": "text1", "id": "1"},
+            {"content": "text2", "id": "2"},
+            {"content": "text3", "id": "3"},
+            {"content": "text4", "id": "4"}
+        ]
+
+    document_store.delete_documents()
+    document_store.write_documents(documents)
+
+    document_store.skip_missing_embeddings = True
+    with pytest.raises(RequestError):
+        document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
