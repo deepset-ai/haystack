@@ -4,6 +4,7 @@ import logging
 import numpy as np
 from pathlib import Path
 from tqdm.auto import tqdm
+import psutil
 
 import torch
 from torch.nn import DataParallel
@@ -45,6 +46,7 @@ class DensePassageRetriever(BaseRetriever):
                  max_seq_len_passage: int = 256,
                  top_k: int = 10,
                  use_gpu: bool = True,
+                 num_threads: Optional[int] = None,
                  batch_size: int = 16,
                  embed_title: bool = True,
                  use_fast_tokenizers: bool = True,
@@ -82,6 +84,7 @@ class DensePassageRetriever(BaseRetriever):
         :param max_seq_len_query: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param top_k: How many documents to return per query.
+        :param num_threads: Sets the number of threads used for intraop parallelism on CPU.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_title: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
@@ -116,6 +119,13 @@ class DensePassageRetriever(BaseRetriever):
             self.devices = devices
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+
+        if str(devices[0]) == 'cpu':
+            if num_threads is None:
+                cpu_count = psutil.cpu_count(logical=False) # only use physical cores
+                torch.set_num_threads(cpu_count)
+            else:
+                torch.set_num_threads(num_threads)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -480,6 +490,7 @@ class TableTextRetriever(BaseRetriever):
                  max_seq_len_table: int = 256,
                  top_k: int = 10,
                  use_gpu: bool = True,
+                 num_threads: Optional[int] = None,
                  batch_size: int = 16,
                  embed_meta_fields: List[str] = ["name", "section_title", "caption"],
                  use_fast_tokenizers: bool = True,
@@ -505,6 +516,7 @@ class TableTextRetriever(BaseRetriever):
         :param max_seq_len_passage: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
         :param top_k: How many documents to return per query.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param num_threads: Sets the number of threads used for intraop parallelism on CPU.
         :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields and text passage / table to a text pair that is
                                   then  used to create the embedding.
@@ -538,6 +550,13 @@ class TableTextRetriever(BaseRetriever):
             self.devices = devices
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+
+        if str(devices[0]) == 'cpu':
+            if num_threads is None:
+                cpu_count = psutil.cpu_count(logical=False) # only use physical cores
+                torch.set_num_threads(cpu_count)
+            else:
+                torch.set_num_threads(num_threads)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -937,6 +956,7 @@ class EmbeddingRetriever(BaseRetriever):
         embedding_model: str,
         model_version: Optional[str] = None,
         use_gpu: bool = True,
+        num_threads: Optional[int] = None,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
@@ -949,6 +969,7 @@ class EmbeddingRetriever(BaseRetriever):
         :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param num_threads: Sets the number of threads used for intraop parallelism on CPU.
         :param model_format: Name of framework that was used for saving the model. Options:
 
                              - ``'farm'``
@@ -979,6 +1000,13 @@ class EmbeddingRetriever(BaseRetriever):
             self.devices = devices
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+
+        if str(devices[0]) == 'cpu':
+            if num_threads is None:
+                cpu_count = psutil.cpu_count(logical=False) # only use physical cores
+                torch.set_num_threads(cpu_count)
+            else:
+                torch.set_num_threads(num_threads)
 
         self.document_store = document_store
         self.embedding_model = embedding_model
