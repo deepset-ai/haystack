@@ -294,6 +294,101 @@ def test_delete_docs_by_id_with_filters(document_store, retriever):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_get_docs_with_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    documents = document_store.get_all_documents(filters={"name": ["name_5", "name_6"]})
+
+    assert len(documents) == 2
+    assert document_store.get_embedding_count() == 2
+    assert {doc.meta["name"] for doc in documents} == {"name_5", "name_6"}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_get_docs_with_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    documents =  document_store.get_all_documents(filters={"year": ["2020"]})
+
+    assert len(documents) == 3
+    assert document_store.get_embedding_count() == 3
+    assert all("2020" == doc.meta["year"] for doc in documents)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_get_docs_with_many_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    documents = document_store.delete_documents(filters={"month": ["01"], "year": ["2020"]})
+
+    assert len(documents) == 1
+    assert document_store.get_embedding_count() == 1
+    assert "name_1" == documents[0].meta["name"]
+    assert "01" == documents[0].meta["month"]
+    assert "2020" == documents[0].meta["year"]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_get_docs_by_id(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+    doc_ids = [doc.id for doc in document_store.get_all_documents()]
+
+    documents = document_store.get_all_documents(ids=doc_ids[2:5])
+
+    assert all(doc["id"] in doc_ids[2:5] for doc in documents)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_get_docs_by_id_with_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    ids = document_store.get_all_documents()
+
+    documents = document_store.get_all_documents(ids=ids[3:5], filters={"year": ["2021"]})
+
+    assert all(doc.meta["year"] == "2021" for doc in documents)
+    assert all(doc.meta["id"] in ids for doc in documents)
+
+
+
+
+
+
+
+    
+
+
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
 def test_pipeline(document_store, retriever):
