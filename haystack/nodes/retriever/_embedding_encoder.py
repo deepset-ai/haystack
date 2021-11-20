@@ -55,7 +55,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             retriever.embedding_model, revision=retriever.model_version, task_type="embeddings",
             extraction_strategy=retriever.pooling_strategy,
             extraction_layer=retriever.emb_extraction_layer, gpu=retriever.use_gpu,
-            batch_size=4, max_seq_len=512, num_processes=0
+            batch_size=4, max_seq_len=512, num_processes=0,use_auth_token=retriever.use_auth_token
         )
         # Check that document_store has the right similarity function
         similarity = retriever.document_store.similarity

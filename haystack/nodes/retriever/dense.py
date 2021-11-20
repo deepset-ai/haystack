@@ -53,7 +53,7 @@ class DensePassageRetriever(BaseRetriever):
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
                  devices: Optional[List[Union[int, str, torch.device]]] = None,
-                 use_auth_token: Optional[Union[str,bool]] = None
+                 use_auth_token: Optional[Union[str,bool]] = None,
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -113,7 +113,7 @@ class DensePassageRetriever(BaseRetriever):
             model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
             top_k=top_k, use_gpu=use_gpu, batch_size=batch_size, embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers, infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function, progress_bar=progress_bar, devices=devices
+            similarity_function=similarity_function, progress_bar=progress_bar, devices=devices, use_auth_token=use_auth_token
         )
 
         if devices is not None:
@@ -152,24 +152,21 @@ class DensePassageRetriever(BaseRetriever):
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"],
-                                              use_auth_token=use_auth_token
-                                              )
+                                              tokenizer_class=tokenizers_default_classes["query"], 
+                                              use_auth_token=use_auth_token)
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 revision=model_version,
                                                 language_model_class="DPRQuestionEncoder",
-                                                use_auth_token=use_auth_token
-                                                )
+                                                use_auth_token=use_auth_token)
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
                                                 revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"],
-                                                use_auth_token=use_auth_token
-                                                )
+                                                tokenizer_class=tokenizers_default_classes["passage"], 
+                                                use_auth_token=use_auth_token)
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   revision=model_version,
-                                                  language_model_class="DPRContextEncoder",
+                                                  language_model_class="DPRContextEncoder", 
                                                   use_auth_token=use_auth_token)
 
         self.processor = TextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
@@ -533,6 +530,9 @@ class TableTextRetriever(BaseRetriever):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                         As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -953,7 +953,8 @@ class EmbeddingRetriever(BaseRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None
+        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        use_auth_token: Optional[Union[str,bool]] = None
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -977,7 +978,10 @@ class EmbeddingRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list. 
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -1000,6 +1004,7 @@ class EmbeddingRetriever(BaseRetriever):
         self.emb_extraction_layer = emb_extraction_layer
         self.top_k = top_k
         self.progress_bar = progress_bar
+        self.use_auth_token = use_auth_token
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
