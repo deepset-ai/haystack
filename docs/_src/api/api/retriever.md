@@ -482,6 +482,9 @@ The checkpoint format matches huggingface transformers' model format
                      Can be helpful to disable in production deployments to keep the logs clean.
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.TableTextRetriever.embed_queries"></a>
 #### embed\_queries
@@ -608,7 +611,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
 ```
 
 **Arguments**:
@@ -634,7 +637,10 @@ class EmbeddingRetriever(BaseRetriever)
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list. 
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
