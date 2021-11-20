@@ -1,0 +1,10 @@
+version: "3"
+services:
+  haystack-api:
+    restart: always
+  elasticsearch:
+    restart: always
+  ui:
+    restart: always
+    environment:
+      DISABLE_FILE_UPLOAD: 1
