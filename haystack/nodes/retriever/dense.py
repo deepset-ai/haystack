@@ -495,7 +495,8 @@ class TableTextRetriever(BaseRetriever):
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
-                 devices: Optional[List[Union[int, str, torch.device]]] = None
+                 devices: Optional[List[Union[int, str, torch.device]]] = None,
+                 use_auth_token: Optional[Union[str,bool]] = None
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -542,7 +543,7 @@ class TableTextRetriever(BaseRetriever):
             max_seq_len_table=max_seq_len_table, top_k=top_k, use_gpu=use_gpu, batch_size=batch_size,
             embed_meta_fields=embed_meta_fields, use_fast_tokenizers=use_fast_tokenizers,
             infer_tokenizer_classes=infer_tokenizer_classes, similarity_function=similarity_function,
-            progress_bar=progress_bar, devices=devices
+            progress_bar=progress_bar, devices=devices, use_auth_token=use_auth_token
         )
 
         if devices is not None:
@@ -584,26 +585,32 @@ class TableTextRetriever(BaseRetriever):
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"])
+                                              tokenizer_class=tokenizers_default_classes["query"], 
+                                              use_auth_token=use_auth_token)
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRQuestionEncoder")
+                                                language_model_class="DPRQuestionEncoder", 
+                                                use_auth_token=use_auth_token)
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
                                                 revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"])
+                                                tokenizer_class=tokenizers_default_classes["passage"], 
+                                                use_auth_token=use_auth_token)
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   revision=model_version,
-                                                  language_model_class="DPRContextEncoder")
+                                                  language_model_class="DPRContextEncoder", 
+                                                  use_auth_token=use_auth_token)
         self.table_tokenizer = Tokenizer.load(pretrained_model_name_or_path=table_embedding_model,
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["table"])
+                                              tokenizer_class=tokenizers_default_classes["table"], 
+                                              use_auth_token=use_auth_token)
         self.table_encoder = LanguageModel.load(pretrained_model_name_or_path=table_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRContextEncoder")
+                                                language_model_class="DPRContextEncoder", 
+                                                use_auth_token=use_auth_token)
 
         self.processor = TableTextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
                                                       passage_tokenizer=self.passage_tokenizer,
