@@ -159,6 +159,9 @@ def main():
             st.write("## Correct answers:")
             st.write(state.random_answer)
 
+        if state.results[0]["relevance"] < 50.00:
+            st.warning("🤔 &nbsp;&nbsp; Haystack is not very confident about these answers. Try to formulate your question differently!")
+
         st.write("## Results:")
         count = 0  # Make every button key unique
 
