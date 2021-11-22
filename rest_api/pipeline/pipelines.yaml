@@ -15,6 +15,7 @@ components:    # define all the building-blocks for Pipeline
     params:
       model_name_or_path: deepset/roberta-base-squad2
       context_window_size: 500
+      return_no_answer: true
   - name: TextFileConverter
     type: TextConverter
   - name: PDFFileConverter
