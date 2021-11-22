@@ -45,7 +45,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade --upgrade-strategy eager -r requirements-dev.txt -e .
           pip install --upgrade --upgrade-strategy eager -f https://download.pytorch.org/whl/torch_stable.html -r requirements.txt -e .
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.9.0+cpu.html
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
     needs: build-cache
