@@ -24,8 +24,7 @@ def haystack_is_ready():
 @st.cache
 def haystack_version():
     url = f"{API_ENDPOINT}/{HS_VERSION}"
-    return requests.get(url).json()["hs_version"]
-
+    return requests.get(url, timeout=0.1).json()["hs_version"]
 
 def retrieve_doc(query, filters={}, top_k_reader=5, top_k_retriever=5):
     # Query Haystack API
