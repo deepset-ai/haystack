@@ -16,7 +16,7 @@ sklearn
 seqeval
 mlflow<=1.13.1
 # huggingface repository
-transformers @ git+git://github.com/huggingface/transformers@2b0d938#egg=transformers
+transformers==4.12.5
 # pickle extension for (de-)serialization
 dill
 # Inference with ONNX models. Install onnxruntime-gpu for Inference on GPUs
