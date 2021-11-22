@@ -27,7 +27,7 @@ def haystack_version():
     return requests.get(url).json()["hs_version"]
 
 
-def retrieve_doc(query, filters=None, top_k_reader=5, top_k_retriever=5):
+def retrieve_doc(query, filters={}, top_k_reader=5, top_k_retriever=5):
     # Query Haystack API
     url = f"{API_ENDPOINT}/{DOC_REQUEST}"
     params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}, "Reader": {"top_k": top_k_reader}}
