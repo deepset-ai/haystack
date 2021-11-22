@@ -82,15 +82,19 @@ def _format_filters(filters):
     Put filter values into a list and remove filters with null value.
     """
     new_filters = {}
-    for key, values in filters.items():
-        if values is None:
-            logger.warning(f"Request with deprecated filter format ('{key}: null'). "
-                           f"Remove null values from filters to be compliant with future versions")
-            continue
-        elif not isinstance(values, list):
-            logger.warning(f"Request with deprecated filter format ('{key}': {values}). "
-                           f"Change to '{key}':[{values}]' to be compliant with future versions")
-            values = [values]
+    if filters is None:
+        logger.warning(f"Request with deprecated filter format ('\"filters\": null'). "
+                       f"Remove empty filters from params to be compliant with future versions")
+    else:
+        for key, values in filters.items():
+            if values is None:
+                logger.warning(f"Request with deprecated filter format ('{key}: null'). "
+                               f"Remove null values from filters to be compliant with future versions")
+                continue
+            elif not isinstance(values, list):
+                logger.warning(f"Request with deprecated filter format ('{key}': {values}). "
+                               f"Change to '{key}':[{values}]' to be compliant with future versions")
+                values = [values]
 
-        new_filters[key] = values
+            new_filters[key] = values
     return new_filters
