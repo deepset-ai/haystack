@@ -1149,11 +1149,11 @@ class DPRQuestionEncoder(LanguageModel):
                 dpr_question_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
             dpr_question_encoder.language = dpr_question_encoder.model.config.language
         else:
-            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token)
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRQuestionEncoder model
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), **kwargs)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs)
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRQuestionEncoder
                 # but keep config values from original architecture
@@ -1165,7 +1165,7 @@ class DPRQuestionEncoder(LanguageModel):
                 original_config_dict.update(kwargs)
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder(config=transformers.DPRConfig(**original_config_dict))
                 dpr_question_encoder.model.base_model.bert_model = AutoModel.from_pretrained(
-                    str(pretrained_model_name_or_path), **original_config_dict)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict)
             dpr_question_encoder.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
 
         return dpr_question_encoder
@@ -1281,16 +1281,16 @@ class DPRContextEncoder(LanguageModel):
                 dpr_context_encoder.model = transformers.DPRContextEncoder(config=transformers.DPRConfig(**original_config_dict))
                 language_model_class = cls.get_language_model_class(haystack_lm_config, **kwargs)
                 dpr_context_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(
-                    str(pretrained_model_name_or_path)).model
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token).model
             dpr_context_encoder.language = dpr_context_encoder.model.config.language
 
         else:
             # Pytorch-transformer Style
-            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token)
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRContextEncoder model
                 dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), **kwargs)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs)
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRContextEncoder
                 # but keep config values from original architecture
@@ -1304,7 +1304,7 @@ class DPRContextEncoder(LanguageModel):
                 dpr_context_encoder.model = transformers.DPRContextEncoder(
                     config=transformers.DPRConfig(**original_config_dict))
                 dpr_context_encoder.model.base_model.bert_model = AutoModel.from_pretrained(
-                    str(pretrained_model_name_or_path), **original_config_dict)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict)
             dpr_context_encoder.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
 
         return dpr_context_encoder
