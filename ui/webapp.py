@@ -1,12 +1,15 @@
 import os
 import sys
 
+import html
 import logging
 import pandas as pd
 from json import JSONDecodeError
 from pathlib import Path
 import streamlit as st
-from annotated_text import annotated_text
+from annotated_text import annotation
+from markdown import markdown
+from htbuilder import H
 
 # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
@@ -164,9 +167,10 @@ def main():
                 answer, context = result["answer"], result["context"]
                 start_idx = context.find(answer)
                 end_idx = start_idx + len(answer)
-                annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
+                # Hack due to this bug: https://github.com/streamlit/streamlit/issues/3190 
+                st.write(markdown(context[:start_idx] + str(annotation(answer, "ANSWER", "#8ef")) + context[end_idx:]), unsafe_allow_html=True)
             else:
-                st.markdown(result["context"])
+                st.markdown(result["context"], unsafe_allow_html=True)
 
             st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
             if eval_mode:
