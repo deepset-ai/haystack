@@ -6,10 +6,11 @@ import torch
 import numpy as np
 import pandas as pd
 from quantulum3 import parser
-from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
+from transformers import TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
 
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,6 @@ class TableReader(BaseReader):
             use_gpu: bool = True,
             top_k: int = 10,
             max_seq_len: int = 256,
-
     ):
         """
         Load a TableQA model from Transformers.
@@ -65,13 +65,16 @@ class TableReader(BaseReader):
         See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
-        :param use_gpu: Whether to make use of a GPU (if available).
+        :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
         :param top_k: The maximum number of answers to return
-        :param max_seq_len: Max sequence length of one input text for the model.
+        :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
+                            query + table exceed max_seq_len, the table will be truncated by removing rows until the
+                            input size fits the model.
         """
+
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
-        if use_gpu and torch.cuda.is_available():
-                self.model.to("cuda")
+        self.model.to(str(self.devices[0]))
         if tokenizer is None:
             self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path)
         else:
@@ -109,16 +112,26 @@ class TableReader(BaseReader):
             inputs = self.tokenizer(table=table,
                                     queries=query,
                                     max_length=self.max_seq_len,
-                                    return_tensors="pt")
-            inputs.to(self.model.device)
+                                    return_tensors="pt",
+                                    truncation=True)
+            inputs.to(self.devices[0])
             # Forward query and table through model and convert logits to predictions
             outputs = self.model(**inputs)
             inputs.to("cpu")
-            predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
+            if self.model.config.num_aggregation_labels > 0:
+                aggregation_logits = outputs.logits_aggregation.cpu().detach()
+            else:
+                aggregation_logits = None
+
+            predicted_output = self.tokenizer.convert_logits_to_predictions(
                 inputs,
                 outputs.logits.cpu().detach(),
-                outputs.logits_aggregation.cpu().detach()
+                aggregation_logits
             )
+            if len(predicted_output) == 1:
+                predicted_answer_coordinates = predicted_output[0]
+            else:
+                predicted_answer_coordinates, predicted_aggregation_indices = predicted_output
 
             # Get cell values
             current_answer_coordinates = predicted_answer_coordinates[0]
@@ -127,7 +140,10 @@ class TableReader(BaseReader):
                 current_answer_cells.append(table.iat[coordinate])
 
             # Get aggregation operator
-            current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
+            if self.model.config.aggregation_labels is not None:
+                current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
+            else:
+                current_aggregation_operator = "NONE"
             
             # Calculate answer score
             current_score = self._calculate_answer_score(outputs.logits.cpu().detach(), inputs, current_answer_coordinates)
@@ -192,6 +208,9 @@ class TableReader(BaseReader):
         # No aggregation needed as only one cell selected as answer_cells
         if len(answer_cells) == 1:
             return answer_cells[0]
+        # Return empty string if model did not select any cell as answer
+        if len(answer_cells) == 0:
+            return ""
 
         # Parse answer cells in order to aggregate numerical values
         parsed_answer_cells = [parser.parse(cell) for cell in answer_cells]

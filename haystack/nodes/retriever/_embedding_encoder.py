@@ -8,6 +8,7 @@ from abc import abstractmethod
 import numpy as np
 from tqdm.auto import tqdm
 import torch
+from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 from transformers import AutoTokenizer, AutoModel
 
@@ -33,12 +34,12 @@ class _BaseEmbeddingEncoder:
         pass
 
     @abstractmethod
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages.
+        Create embeddings for a list of documents.
 
         :param docs: List of documents to embed
-        :return: Embeddings, one per input passage
+        :return: Embeddings, one per input document
         """
         pass
 
@@ -54,7 +55,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             retriever.embedding_model, revision=retriever.model_version, task_type="embeddings",
             extraction_strategy=retriever.pooling_strategy,
             extraction_layer=retriever.emb_extraction_layer, gpu=retriever.use_gpu,
-            batch_size=4, max_seq_len=512, num_processes=0
+            batch_size=4, max_seq_len=512, num_processes=0,use_auth_token=retriever.use_auth_token
         )
         # Check that document_store has the right similarity function
         similarity = retriever.document_store.similarity
@@ -78,7 +79,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         return self.embed(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         passages = [d.content for d in docs] # type: ignore
         return self.embed(passages)
 
@@ -96,8 +97,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                               "For details see https://github.com/UKPLab/sentence-transformers ")
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        device, _ = initialize_device_settings(use_cuda=retriever.use_gpu)
-        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=device)
+        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=str(retriever.devices[0]))
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
         if document_store.similarity != "cosine":
@@ -116,7 +116,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         return self.embed(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
 
@@ -129,13 +129,9 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     ):
 
         self.progress_bar = retriever.progress_bar
-        if retriever.use_gpu and torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
 
         self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
-        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(self.device)
+        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(str(retriever.devices[0]))
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
@@ -146,7 +142,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.no_grad():
                 q_reps = self.embedding_model.embed_questions(input_ids=batch["input_ids"],
                                                               attention_mask=batch["padding_mask"]).cpu().numpy()
@@ -154,7 +150,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         return np.concatenate(embeddings)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
 
         doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
@@ -163,7 +159,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.no_grad():
                 q_reps = self.embedding_model.embed_answers(input_ids=batch["input_ids"],
                                                             attention_mask=batch["padding_mask"]).cpu().numpy()

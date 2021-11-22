@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Dict
 from functools import wraps
 
-from haystack.schema import Document
+from haystack.schema import Document, EvaluationResult, MultiLabel
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack.nodes.other import Docs2Answers
 from haystack.nodes.reader import BaseReader
@@ -87,23 +87,36 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
     def run(self,
             query: str,
             params: Optional[dict] = None,
-            debug: Optional[bool] = None,
-            debug_logs: Optional[bool] = None):
+            debug: Optional[bool] = None):
         """
         :param query: The search query string.
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
                       about their execution. By default these include the input parameters
-                      they received, the output they generated, and eventual logs (of any severity)
-                      emitted. All debug information can then be found in the dict returned
+                      they received and the output they generated. 
+                      All debug information can then be found in the dict returned
                       by this method under the key "_debug"
-        :param debug_logs: Whether all the logs of the node should be printed in the console,
-                           regardless of their severity and of the existing logger's settings.
         """
-        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
+        output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
+    def eval(self,
+            queries: List[str],
+            labels: List[MultiLabel],
+            params: Optional[dict]) -> EvaluationResult:
+            
+        """
+        Evaluates the pipeline by running the pipeline once per query in debug mode 
+        and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+        :param queries: The queries to evaluate
+        :param labels: The labels to evaluate on
+        :param params: Params for the `retriever` and `reader`. For instance,
+                       params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+        """
+        output = self.pipeline.eval(queries=queries, labels=labels, params=params)
+        return output
 
 class DocumentSearchPipeline(BaseStandardPipeline):
     """
@@ -119,20 +132,17 @@ class DocumentSearchPipeline(BaseStandardPipeline):
     def run(self,
             query: str,
             params: Optional[dict] = None,
-            debug: Optional[bool] = None,
-            debug_logs: Optional[bool] = None):
+            debug: Optional[bool] = None):
         """
         :param query: the query string.
-        :param params: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+        :param params: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received, the output they generated, and eventual logs (of any severity)
-              emitted. All debug information can then be found in the dict returned
+              they received and the output they generated.
+              All debug information can then be found in the dict returned
               by this method under the key "_debug"
-        :param debug_logs: Whether all the logs of the node should be printed in the console,
-                           regardless of their severity and of the existing logger's settings.
         """
-        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
+        output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
 
@@ -152,21 +162,18 @@ class GenerativeQAPipeline(BaseStandardPipeline):
     def run(self,
             query: str,
             params: Optional[dict] = None,
-            debug: Optional[bool] = None,
-            debug_logs: Optional[bool] = None):
+            debug: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `generator`. For instance,
                        params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received, the output they generated, and eventual logs (of any severity)
-              emitted. All debug information can then be found in the dict returned
+              they received and the output they generated.
+              All debug information can then be found in the dict returned
               by this method under the key "_debug"
-        :param debug_logs: Whether all the logs of the node should be printed in the console,
-                           regardless of their severity and of the existing logger's settings.
         """
-        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
+        output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
 
@@ -190,21 +197,18 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
     def run(self,
             query: str,
             params: Optional[dict] = None,
-            debug: Optional[bool] = None,
-            debug_logs: Optional[bool] = None):
+            debug: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `summarizer`. For instance,
-                       params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+                       params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received, the output they generated, and eventual logs (of any severity)
-              emitted. All debug information can then be found in the dict returned
+              they received and the output they generated.
+              All debug information can then be found in the dict returned
               by this method under the key "_debug"
-        :param debug_logs: Whether all the logs of the node should be printed in the console,
-                           regardless of their severity and of the existing logger's settings.
-                """
-        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
+        """
+        output = self.pipeline.run(query=query, params=params, debug=debug)
 
         # Convert to answer format to allow "drop-in replacement" for other QA pipelines
         if self.return_in_answer_format:
@@ -243,20 +247,17 @@ class FAQPipeline(BaseStandardPipeline):
     def run(self,
             query: str,
             params: Optional[dict] = None,
-            debug: Optional[bool] = None,
-            debug_logs: Optional[bool] = None):
+            debug: Optional[bool] = None):
         """
         :param query: the query string.
-        :param params: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+        :param params: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received, the output they generated, and eventual logs (of any severity)
-              emitted. All debug information can then be found in the dict returned
+              they received and the output they generated.
+              All debug information can then be found in the dict returned
               by this method under the key "_debug"
-        :param debug_logs: Whether all the logs of the node should be printed in the console,
-                           regardless of their severity and of the existing logger's settings.
         """
-        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
+        output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
 
@@ -316,10 +317,8 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
     def run(self,
             documents,
             params: Optional[dict] = None,
-            debug: Optional[bool] = None,
-            debug_logs: Optional[bool] = None
-            ):
-        output = self.pipeline.run(documents=documents, params=params, debug=debug, debug_logs=debug_logs)
+            debug: Optional[bool] = None):
+        output = self.pipeline.run(documents=documents, params=params, debug=debug)
         return output
 
 
@@ -336,9 +335,8 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
     def run(self,
             query: str,
             params: Optional[dict] = None,
-            debug: Optional[bool] = None,
-            debug_logs: Optional[bool] = None):
-        output = self.pipeline.run(query=query, params=params, debug=debug, debug_logs=debug_logs)
+            debug: Optional[bool] = None):
+        output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
 
@@ -372,9 +370,8 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
     def run(self,
             documents: List[Document], # type: ignore
             params: Optional[dict] = None,
-            debug: Optional[bool] = None,
-            debug_logs: Optional[bool] = None):
-        output = self.pipeline.run(documents=documents, params=params, debug=debug, debug_logs=debug_logs)
+            debug: Optional[bool] = None):
+        output = self.pipeline.run(documents=documents, params=params, debug=debug)
         return output
 
 

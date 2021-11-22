@@ -158,7 +158,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
-
+        
     def query_by_embedding(self,
                            query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,
@@ -246,7 +246,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         with tqdm(total=document_count, disable=not self.progress_bar, position=0, unit=" docs",
                   desc="Updating Embedding") as progress_bar:
             for document_batch in batched_documents:
-                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
 
                 if embeddings[0].shape[0] != self.embedding_dim:

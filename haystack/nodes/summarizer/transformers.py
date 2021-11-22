@@ -6,6 +6,7 @@ from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
 
 from haystack.schema import Document
 from haystack.nodes.summarizer import BaseSummarizer
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ class TransformersSummarizer(BaseSummarizer):
             tokenizer: Optional[str] = None,
             max_length: int = 200,
             min_length: int = 5,
-            use_gpu: int = 0,
+            use_gpu: bool = True,
             clean_up_tokenization_spaces: bool = True,
             separator_for_single_summary: str = " ",
             generate_single_summary: bool = False,
@@ -71,7 +72,7 @@ class TransformersSummarizer(BaseSummarizer):
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param max_length: Maximum length of summarized text
         :param min_length: Minimum length of summarized text
-        :param use_gpu: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+        :param use_gpu: Whether to use GPU (if available).
         :param clean_up_tokenization_spaces: Whether or not to clean up the potential extra spaces in the text output
         :param separator_for_single_summary: If `generate_single_summary=True` in `predict()`, we need to join all docs
                                              into a single text. This separator appears between those subsequent docs.
@@ -88,11 +89,13 @@ class TransformersSummarizer(BaseSummarizer):
             separator_for_single_summary=separator_for_single_summary, generate_single_summary=generate_single_summary,
         )
 
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        device = 0 if self.devices[0].type == "cuda" else -1
         # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
         if tokenizer is None:
             tokenizer = model_name_or_path
         model = AutoModelForSeq2SeqLM.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
-        self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=use_gpu)
+        self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=device)
         self.max_length = max_length
         self.min_length = min_length
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces

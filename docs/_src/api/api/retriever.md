@@ -2,7 +2,7 @@
 # Module base
 
 <a name="base.BaseGraphRetriever"></a>
-## BaseGraphRetriever Objects
+## BaseGraphRetriever
 
 ```python
 class BaseGraphRetriever(BaseComponent)
@@ -11,7 +11,7 @@ class BaseGraphRetriever(BaseComponent)
 Base classfor knowledge graph retrievers.
 
 <a name="base.BaseRetriever"></a>
-## BaseRetriever Objects
+## BaseRetriever
 
 ```python
 class BaseRetriever(BaseComponent)
@@ -84,7 +84,7 @@ position in the ranking of documents the correct document is.
 # Module sparse
 
 <a name="sparse.ElasticsearchRetriever"></a>
-## ElasticsearchRetriever Objects
+## ElasticsearchRetriever
 
 ```python
 class ElasticsearchRetriever(BaseRetriever)
@@ -152,7 +152,7 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
-## ElasticsearchFilterOnlyRetriever Objects
+## ElasticsearchFilterOnlyRetriever
 
 ```python
 class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
@@ -179,7 +179,7 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a name="sparse.TfidfRetriever"></a>
-## TfidfRetriever Objects
+## TfidfRetriever
 
 ```python
 class TfidfRetriever(BaseRetriever)
@@ -196,13 +196,14 @@ It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, top_k: int = 10)
+ | __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
 ```
 
 **Arguments**:
 
 - `document_store`: an instance of a DocumentStore to retrieve documents from.
 - `top_k`: How many documents to return per query.
+- `auto_fit`: Whether to automatically update tf-idf matrix by calling fit() after new documents have been added
 
 <a name="sparse.TfidfRetriever.retrieve"></a>
 #### retrieve
@@ -234,7 +235,7 @@ Performing training on this class according to the TF-IDF algorithm.
 # Module dense
 
 <a name="dense.DensePassageRetriever"></a>
-## DensePassageRetriever Objects
+## DensePassageRetriever
 
 ```python
 class DensePassageRetriever(BaseRetriever)
@@ -249,7 +250,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -300,6 +301,9 @@ The checkpoint format matches huggingface transformers' model format
                      Can be helpful to disable in production deployments to keep the logs clean.
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.DensePassageRetriever.retrieve"></a>
 #### retrieve
@@ -335,14 +339,14 @@ Create embeddings for a list of queries using the query encoder
 
 Embeddings, one per input queries
 
-<a name="dense.DensePassageRetriever.embed_passages"></a>
-#### embed\_passages
+<a name="dense.DensePassageRetriever.embed_documents"></a>
+#### embed\_documents
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
+ | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of passages using the passage encoder
+Create embeddings for a list of documents using the passage encoder
 
 **Arguments**:
 
@@ -425,7 +429,7 @@ None
 Load DensePassageRetriever from the specified directory.
 
 <a name="dense.TableTextRetriever"></a>
-## TableTextRetriever Objects
+## TableTextRetriever
 
 ```python
 class TableTextRetriever(BaseRetriever)
@@ -441,7 +445,7 @@ Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -478,6 +482,9 @@ The checkpoint format matches huggingface transformers' model format
                      Can be helpful to disable in production deployments to keep the logs clean.
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.TableTextRetriever.embed_queries"></a>
 #### embed\_queries
@@ -503,7 +510,7 @@ Embeddings, one per input queries
  | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of text passages and / or tables using the text passage encoder and
+Create embeddings for a list of text documents and / or tables using the text passage encoder and
 the table encoder.
 
 **Arguments**:
@@ -514,25 +521,6 @@ the table encoder.
 **Returns**:
 
 Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
-
-<a name="dense.TableTextRetriever.embed_passages"></a>
-#### embed\_passages
-
-```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
-```
-
-Create embeddings for a list of passages using the passage encoder.
-This method just calls embed_documents. It is neeeded as the document stores call embed_passages when updating
-embeddings.
-
-**Arguments**:
-
-- `docs`: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-
-**Returns**:
-
-Embeddings of documents / passages shape (batch_size, embedding_dim)
 
 <a name="dense.TableTextRetriever.train"></a>
 #### train
@@ -613,7 +601,7 @@ None
 Load TableTextRetriever from the specified directory.
 
 <a name="dense.EmbeddingRetriever"></a>
-## EmbeddingRetriever Objects
+## EmbeddingRetriever
 
 ```python
 class EmbeddingRetriever(BaseRetriever)
@@ -623,7 +611,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
 ```
 
 **Arguments**:
@@ -631,7 +619,7 @@ class EmbeddingRetriever(BaseRetriever)
 - `document_store`: An instance of DocumentStore from which to retrieve documents.
 - `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `use_gpu`: Whether to use gpu or not
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
 - `model_format`: Name of framework that was used for saving the model. Options:
 
                      - ``'farm'``
@@ -648,6 +636,11 @@ class EmbeddingRetriever(BaseRetriever)
                              Default: -1 (very last layer).
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list. 
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
@@ -683,14 +676,14 @@ Create embeddings for a list of queries.
 
 Embeddings, one per input queries
 
-<a name="dense.EmbeddingRetriever.embed_passages"></a>
-#### embed\_passages
+<a name="dense.EmbeddingRetriever.embed_documents"></a>
+#### embed\_documents
 
 ```python
- | embed_passages(docs: List[Document]) -> List[np.ndarray]
+ | embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
-Create embeddings for a list of passages.
+Create embeddings for a list of documents.
 
 **Arguments**:
 
@@ -698,13 +691,13 @@ Create embeddings for a list of passages.
 
 **Returns**:
 
-Embeddings, one per input passage
+Embeddings, one per input document
 
 <a name="text2sparql"></a>
 # Module text2sparql
 
 <a name="text2sparql.Text2SparqlRetriever"></a>
-## Text2SparqlRetriever Objects
+## Text2SparqlRetriever
 
 ```python
 class Text2SparqlRetriever(BaseGraphRetriever)

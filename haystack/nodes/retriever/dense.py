@@ -24,7 +24,6 @@ from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.training.base import Trainer
 from haystack.modeling.utils import initialize_device_settings
-from torch.utils.data.sampler import SequentialSampler
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +52,8 @@ class DensePassageRetriever(BaseRetriever):
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
-                 devices: Optional[List[Union[int, str, torch.device]]] = None
+                 devices: Optional[List[Union[int, str, torch.device]]] = None,
+                 use_auth_token: Optional[Union[str,bool]] = None,
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -102,6 +102,9 @@ class DensePassageRetriever(BaseRetriever):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                         As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -110,15 +113,13 @@ class DensePassageRetriever(BaseRetriever):
             model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
             top_k=top_k, use_gpu=use_gpu, batch_size=batch_size, embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers, infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function, progress_bar=progress_bar, devices=devices
+            similarity_function=similarity_function, progress_bar=progress_bar, devices=devices, use_auth_token=use_auth_token
         )
 
         if devices is not None:
             self.devices = devices
-        elif use_gpu and torch.cuda.is_available():
-            self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
         else:
-            self.devices = [torch.device("cpu")]
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -151,18 +152,22 @@ class DensePassageRetriever(BaseRetriever):
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"])
+                                              tokenizer_class=tokenizers_default_classes["query"], 
+                                              use_auth_token=use_auth_token)
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRQuestionEncoder")
+                                                language_model_class="DPRQuestionEncoder",
+                                                use_auth_token=use_auth_token)
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
                                                 revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"])
+                                                tokenizer_class=tokenizers_default_classes["passage"], 
+                                                use_auth_token=use_auth_token)
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   revision=model_version,
-                                                  language_model_class="DPRContextEncoder")
+                                                  language_model_class="DPRContextEncoder", 
+                                                  use_auth_token=use_auth_token)
 
         self.processor = TextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
                                                  passage_tokenizer=self.passage_tokenizer,
@@ -274,9 +279,9 @@ class DensePassageRetriever(BaseRetriever):
         result = self._get_predictions(queries)["query"]
         return result
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages using the passage encoder
+        Create embeddings for a list of documents using the passage encoder
 
         :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
         :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
@@ -367,7 +372,10 @@ class DensePassageRetriever(BaseRetriever):
         self.processor.num_hard_negatives = num_hard_negatives
         self.processor.num_positives = num_positives
 
-        self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+        if isinstance(self.model, DataParallel):
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+        else:
+            self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
         data_silo = DataSilo(processor=self.processor, batch_size=batch_size, distributed=False, max_processes=max_processes)
 
@@ -487,7 +495,8 @@ class TableTextRetriever(BaseRetriever):
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
-                 devices: Optional[List[Union[int, str, torch.device]]] = None
+                 devices: Optional[List[Union[int, str, torch.device]]] = None,
+                 use_auth_token: Optional[Union[str,bool]] = None
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -522,6 +531,9 @@ class TableTextRetriever(BaseRetriever):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                         As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -531,14 +543,13 @@ class TableTextRetriever(BaseRetriever):
             max_seq_len_table=max_seq_len_table, top_k=top_k, use_gpu=use_gpu, batch_size=batch_size,
             embed_meta_fields=embed_meta_fields, use_fast_tokenizers=use_fast_tokenizers,
             infer_tokenizer_classes=infer_tokenizer_classes, similarity_function=similarity_function,
-            progress_bar=progress_bar, devices=devices
+            progress_bar=progress_bar, devices=devices, use_auth_token=use_auth_token
         )
 
         if devices is not None:
             self.devices = devices
         else:
-            device, _ = initialize_device_settings(use_gpu)
-            self.devices = [device]
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -574,26 +585,32 @@ class TableTextRetriever(BaseRetriever):
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"])
+                                              tokenizer_class=tokenizers_default_classes["query"], 
+                                              use_auth_token=use_auth_token)
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRQuestionEncoder")
+                                                language_model_class="DPRQuestionEncoder", 
+                                                use_auth_token=use_auth_token)
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
                                                 revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"])
+                                                tokenizer_class=tokenizers_default_classes["passage"], 
+                                                use_auth_token=use_auth_token)
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   revision=model_version,
-                                                  language_model_class="DPRContextEncoder")
+                                                  language_model_class="DPRContextEncoder", 
+                                                  use_auth_token=use_auth_token)
         self.table_tokenizer = Tokenizer.load(pretrained_model_name_or_path=table_embedding_model,
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["table"])
+                                              tokenizer_class=tokenizers_default_classes["table"], 
+                                              use_auth_token=use_auth_token)
         self.table_encoder = LanguageModel.load(pretrained_model_name_or_path=table_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRContextEncoder")
+                                                language_model_class="DPRContextEncoder", 
+                                                use_auth_token=use_auth_token)
 
         self.processor = TableTextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
                                                       passage_tokenizer=self.passage_tokenizer,
@@ -705,7 +722,7 @@ class TableTextRetriever(BaseRetriever):
 
     def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of text passages and / or tables using the text passage encoder and
+        Create embeddings for a list of text documents and / or tables using the text passage encoder and
         the table encoder.
 
         :param docs: List of Document objects used to represent documents / passages in
@@ -722,7 +739,9 @@ class TableTextRetriever(BaseRetriever):
         for doc in docs:
             if doc.content_type == "table":
                 model_input.append({"passages": [{
-                    "meta": [doc.meta[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc.meta],
+                    "meta": [doc.meta[meta_field]
+                             for meta_field in self.embed_meta_fields
+                             if meta_field in doc.meta and isinstance(doc.meta[meta_field], str)],
                     "columns": doc.content.columns.tolist(),  # type: ignore
                     "rows": doc.content.values.tolist(),  # type: ignore
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
@@ -731,7 +750,9 @@ class TableTextRetriever(BaseRetriever):
                 }]})
             else:
                 model_input.append({"passages": [{
-                    "meta": [doc.meta[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc.meta],
+                    "meta": [doc.meta[meta_field]
+                             for meta_field in self.embed_meta_fields
+                             if meta_field in doc.meta and isinstance(doc.meta[meta_field], str)],
                     "text": doc.content,
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
                     "type": "text",
@@ -741,17 +762,6 @@ class TableTextRetriever(BaseRetriever):
         embeddings = self._get_predictions(model_input)["passages"]
 
         return embeddings
-
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
-        """
-        Create embeddings for a list of passages using the passage encoder.
-        This method just calls embed_documents. It is neeeded as the document stores call embed_passages when updating
-        embeddings.
-
-        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
-        """
-        return self.embed_documents(docs)
 
     def train(self,
               data_dir: str,
@@ -831,7 +841,10 @@ class TableTextRetriever(BaseRetriever):
         self.processor.num_hard_negatives = num_hard_negatives
         self.processor.num_positives = num_positives
 
-        self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+        if isinstance(self.model, DataParallel):
+            self.model.module.connect_heads_with_processor(self.processor.tasks, require_labels=True)
+        else:
+            self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
         data_silo = DataSilo(processor=self.processor, batch_size=batch_size, distributed=False,
                              max_processes=max_processes)
@@ -946,13 +959,15 @@ class EmbeddingRetriever(BaseRetriever):
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
         top_k: int = 10,
-        progress_bar: bool = True
+        progress_bar: bool = True,
+        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        use_auth_token: Optional[Union[str,bool]] = None
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param use_gpu: Whether to use gpu or not
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param model_format: Name of framework that was used for saving the model. Options:
 
                              - ``'farm'``
@@ -969,6 +984,11 @@ class EmbeddingRetriever(BaseRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list. 
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -976,6 +996,11 @@ class EmbeddingRetriever(BaseRetriever):
             use_gpu=use_gpu, model_format=model_format, pooling_strategy=pooling_strategy,
             emb_extraction_layer=emb_extraction_layer, top_k=top_k,
         )
+
+        if devices is not None:
+            self.devices = devices
+        else:
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
         self.document_store = document_store
         self.embedding_model = embedding_model
@@ -986,6 +1011,7 @@ class EmbeddingRetriever(BaseRetriever):
         self.emb_extraction_layer = emb_extraction_layer
         self.top_k = top_k
         self.progress_bar = progress_bar
+        self.use_auth_token = use_auth_token
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
@@ -1025,11 +1051,11 @@ class EmbeddingRetriever(BaseRetriever):
         assert isinstance(texts, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
         return self.embedding_encoder.embed_queries(texts)
 
-    def embed_passages(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of passages.
+        Create embeddings for a list of documents.
 
         :param docs: List of documents to embed
-        :return: Embeddings, one per input passage
+        :return: Embeddings, one per input document
         """
-        return self.embedding_encoder.embed_passages(docs)
+        return self.embedding_encoder.embed_documents(docs)

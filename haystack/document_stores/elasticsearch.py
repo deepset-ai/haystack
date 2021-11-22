@@ -50,7 +50,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         timeout=30,
         return_embedding: bool = False,
         duplicate_documents: str = 'overwrite',
-        index_type: str = "flat"
+        index_type: str = "flat",
+        scroll: str = "1d",
+        skip_missing_embeddings: bool = True
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -88,7 +90,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                              If set to 'wait_for', continue only after changes are visible (slow, but safe).
                              If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         :param timeout: Number of seconds after which an ElasticSearch request times out.
         :param return_embedding: To return document embedding
@@ -100,6 +102,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     exists.
         :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
                            ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
+        :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+                       Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+                       For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+        :param skip_missing_embeddings: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
+                                        Parameter options: (True, False)
+                                        False: Raises exception if one or more documents do not have embeddings at query time
+                                        True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
 
         """
         # save init parameters to enable export of component config as YAML
@@ -110,7 +119,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
             duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
-            timeout=timeout, return_embedding=return_embedding, index_type=index_type
+            timeout=timeout, return_embedding=return_embedding, index_type=index_type, scroll=scroll,
+            skip_missing_embeddings=skip_missing_embeddings
         )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
@@ -135,6 +145,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.custom_mapping = custom_mapping
         self.index: str = index
         self.label_index: str = label_index
+        self.scroll = scroll
+        self.skip_missing_embeddings: bool = skip_missing_embeddings
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity = similarity
         else:
@@ -659,7 +671,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if only_documents_without_embedding:
             body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
 
-        result = scan(self.client, query=body, index=index, size=batch_size, scroll="1d")
+        result = scan(self.client, query=body, index=index, size=batch_size, scroll=self.scroll)
         yield from result
 
     def query(
@@ -716,6 +728,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         # Default Retrieval via BM25 using the user query on `self.search_fields`
         else:
+            if not isinstance(query, str):
+                logger.warning("The query provided seems to be not a string, but an object "
+                               f"of type {type(query)}. This can cause Elasticsearch to fail.")
             body = {
                 "size": str(top_k),
                 "query": {
@@ -729,7 +744,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 filter_clause = []
                 for key, values in filters.items():
                     if type(values) != list:
-                        raise ValueError(f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
+                        raise ValueError(f'Wrong filter format: "{key}": {values}. Provide a list of values for each key. '
                                          'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
                     filter_clause.append(
                         {
@@ -746,7 +761,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
-
+        
     def query_by_embedding(self,
                            query_emb: np.ndarray,
                            filters: Optional[Dict[str, List[str]]] = None,
@@ -809,6 +824,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             logger.debug(f"Retriever query: {body}")
             try:
                 result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+                if len(result) == 0:
+                    count_embeddings = self.get_embedding_count(index=index)
+                    if count_embeddings == 0:
+                        raise RequestError(400, "search_phase_execution_exception",
+                                           {"error": "No documents with embeddings."})
             except RequestError as e:
                 if e.error == "search_phase_execution_exception":
                     error_message: str = "search_phase_execution_exception: Likely some of your stored documents don't have embeddings." \
@@ -837,9 +857,28 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         else:
             raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
+        # To handle scenarios where embeddings may be missing
+        script_score_query: dict = {"match_all": {}}
+        if self.skip_missing_embeddings:
+            script_score_query = {
+                "bool": {
+                    "filter": {
+                        "bool": {
+                            "must": [
+                                {
+                                    "exists": {
+                                        "field": self.embedding_field
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+
         query = {
             "script_score": {
-                "query": {"match_all": {}},
+                "query": script_score_query,
                 "script": {
                     # offset score to ensure a positive range as required by Elasticsearch
                     "source": f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
@@ -963,7 +1002,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
-                embeddings = retriever.embed_passages(document_batch)  # type: ignore
+                embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
 
                 if embeddings[0].shape[0] != self.embedding_dim:

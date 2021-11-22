@@ -10,6 +10,7 @@ from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, Ba
 
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class TransformersReader(BaseReader):
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
         context_window_size: int = 70,
-        use_gpu: int = 0,
+        use_gpu: bool = True,
         top_k: int = 10,
         top_k_per_candidate: int = 4,
         return_no_answers: bool = True,
@@ -52,7 +53,7 @@ class TransformersReader(BaseReader):
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param context_window_size: Num of chars (before and after the answer) to return as "context" for each answer.
                                     The context usually helps users to understand if the answer really makes sense.
-        :param use_gpu: If < 0, then use cpu. If >= 0, this is the ordinal of the gpu to use
+        :param use_gpu: Whether to use GPU (if available).
         :param top_k: The maximum number of answers to return
         :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
         Note that this is not the number of "final answers" you will receive
@@ -71,7 +72,9 @@ class TransformersReader(BaseReader):
             top_k_per_candidate=top_k_per_candidate, return_no_answers=return_no_answers, max_seq_len=max_seq_len,
         )
 
-        self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=use_gpu,
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        device = 0 if self.devices[0].type == "cuda" else -1
+        self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=device,
                               revision=model_version)
         self.context_window_size = context_window_size
         self.top_k = top_k

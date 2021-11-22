@@ -157,6 +157,14 @@ def test_query_with_one_filter(populated_client: TestClient):
     assert response_json["answers"][0]["answer"] == "Adobe Systems"
 
 
+def test_query_with_one_global_filter(populated_client: TestClient):
+    query_with_filter = {"query": "Who made the PDF specification?", "params": {"filters": {"meta_key": "meta_value"}}}
+    response = populated_client.post(url="/query", json=query_with_filter)
+    assert 200 == response.status_code
+    response_json = response.json()
+    assert response_json["answers"][0]["answer"] == "Adobe Systems"
+
+
 def test_query_with_filter_list(populated_client: TestClient):
     query_with_filter_list = {
         "query": "Who made the PDF specification?",
