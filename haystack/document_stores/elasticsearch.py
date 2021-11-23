@@ -288,7 +288,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 }
             }
             if self.synonyms:
-                mapping["mappings"]["properties"][self.text_field] = {"type": "text", "analyzer": "synonym"}
+                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
                 mapping["settings"]["analysis"]["analyzer"]["synonym"] = {"tokenizer": "whitespace",
                                                                           "filter": ["lowercase",
                                                                                      "synonym"]}
