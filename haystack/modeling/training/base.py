@@ -697,8 +697,8 @@ class DistillationTrainer(Trainer):
         self.temperature = temperature
     
     def _kl_div(self, student_logits, teacher_logits):
-        student_log_probs = F.log_softmax(student_logits, dim=-1)
-        teacher_probs = F.softmax(teacher_logits, dim=-1)
+        student_log_probs = F.log_softmax(student_logits, dim=-2)
+        teacher_probs = F.softmax(teacher_logits, dim=-2)
         return F.kl_div(student_log_probs, teacher_probs, reduction="batchmean")
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
