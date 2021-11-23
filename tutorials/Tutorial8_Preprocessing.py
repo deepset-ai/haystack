@@ -18,13 +18,8 @@ This tutorial will show you all the tools that Haystack provides to help you cas
 """
 
 # Here are the imports we need
-
-from haystack.file_converter.txt import TextConverter
-from haystack.file_converter.pdf import PDFToTextConverter
-from haystack.file_converter.docx import DocxToTextConverter
-
-from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
-from haystack.preprocessor.preprocessor import PreProcessor
+from haystack.nodes import TextConverter, PDFToTextConverter, DocxToTextConverter, PreProcessor
+from haystack.utils import convert_files_to_dicts, fetch_archive_from_http
 
 
 def tutorial8_preprocessing():
@@ -85,7 +80,7 @@ def tutorial8_preprocessing():
         split_respect_sentence_boundary=True
     )
     docs_default = preprocessor.process(doc_txt)
-    print(f"n_docs_input: 1\nn_docs_output: {len(docs_default)}")
+    print(f"\nn_docs_input: 1\nn_docs_output: {len(docs_default)}")
 
     """
     ## Cleaning
@@ -106,13 +101,14 @@ def tutorial8_preprocessing():
     preprocessor_nrsb = PreProcessor(split_respect_sentence_boundary=False)
     docs_nrsb = preprocessor_nrsb.process(doc_txt)
 
-    print("RESPECTING SENTENCE BOUNDARY")
+    print("\nRESPECTING SENTENCE BOUNDARY:")
     end_text = docs_default[0]["content"][-50:]
     print("End of document: \"..." + end_text + "\"")
-    print()
-    print("NOT RESPECTING SENTENCE BOUNDARY")
+
+    print("\nNOT RESPECTING SENTENCE BOUNDARY:")
     end_text_nrsb = docs_nrsb[0]["content"][-50:]
     print("End of document: \"..." + end_text_nrsb + "\"")
+    print()
 
     """
     A commonly used strategy to split long documents, especially in the field of Question Answering,

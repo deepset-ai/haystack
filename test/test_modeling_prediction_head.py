@@ -11,7 +11,7 @@ def test_prediction_head_load_save(tmp_path, caplog=None):
         caplog.set_level(logging.CRITICAL)
 
     set_all_seeds(seed=42)
-    device, n_gpu = initialize_device_settings(use_cuda=False)
+    devices, n_gpu = initialize_device_settings(use_cuda=False)
     lang_model = "bert-base-german-cased"
 
     language_model = LanguageModel.load(lang_model)
@@ -22,7 +22,7 @@ def test_prediction_head_load_save(tmp_path, caplog=None):
         prediction_heads=[prediction_head],
         embeds_dropout_prob=0.1,
         lm_output_types=["per_sequence"],
-        device=device)
+        device=devices[0])
 
     model.save(tmp_path)
     model_loaded = AdaptiveModel.load(tmp_path, device='cpu')

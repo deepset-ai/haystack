@@ -1,23 +1,23 @@
+from typing import List, Optional, Dict, Union, Generator, Set, Any
+
+import os
 import logging
 import multiprocessing as mp
-import os
 from functools import partial
-
+from tqdm import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset
-from tqdm import tqdm
-from typing import List, Optional, Dict, Union, Generator, Set, Any
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
 from haystack.modeling.data_handler.samples import SampleBasket
-from haystack.modeling.utils import grouper
+from haystack.modeling.utils import grouper, initialize_device_settings, set_all_seeds, calc_chunksize, log_ascii_workers
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
-from haystack.modeling.utils import initialize_device_settings, MLFlowLogger
-from haystack.modeling.utils import set_all_seeds, calc_chunksize, log_ascii_workers
+from haystack.modeling.logger import MLFlowLogger
 from haystack.modeling.model.predictions import QAPred
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,22 +26,20 @@ class Inferencer:
     """
     Loads a saved AdaptiveModel/ONNXAdaptiveModel from disk and runs it in inference mode. Can be used for a
     model with prediction head (down-stream predictions) and without (using LM as embedder).
-
     """
-
     def __init__(
         self,
         model: AdaptiveModel,
         processor: Processor,
         task_type: Optional[str],
-        batch_size: int =4,
-        gpu: bool =False,
-        name: Optional[str] =None,
-        return_class_probs: bool=False,
+        batch_size: int = 4,
+        gpu: bool = False,
+        name: Optional[str] = None,
+        return_class_probs: bool = False,
         extraction_strategy: Optional[str] = None,
         extraction_layer: Optional[int] = None,
-        num_processes: Optional[int] =None,
-        disable_tqdm: bool =False
+        num_processes: Optional[int] = None,
+        disable_tqdm: bool = False
     ):
         """
         Initializes Inferencer from an AdaptiveModel and a Processor instance.
@@ -72,13 +70,12 @@ class Inferencer:
         MLFlowLogger.disable()
 
         # Init device and distributed settings
-        device, n_gpu = initialize_device_settings(use_cuda=gpu, local_rank=-1, use_amp=None)
+        self.devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
 
         self.processor = processor
         self.model = model
         self.model.eval()
         self.batch_size = batch_size
-        self.device = device
         self.language = self.model.get_language()
         self.task_type = task_type
         self.disable_tqdm = disable_tqdm
@@ -122,6 +119,8 @@ class Inferencer:
         use_fast: bool = True,
         tokenizer_args: Dict =None,
         multithreading_rust: bool = True,
+        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        use_auth_token: Union[bool, str] = None,
         **kwargs
     ):
         """
@@ -161,18 +160,20 @@ class Inferencer:
         :param multithreading_rust: Whether to allow multithreading in Rust, e.g. for FastTokenizers.
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
+        :param devices: List of devices to perform inference on. (Currently, only the first device in the list is used.)
         :return: An instance of the Inferencer.
-
         """
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        device, n_gpu = initialize_device_settings(use_cuda=gpu, local_rank=-1, use_amp=None)
+        if devices is None:
+            devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+
         name = os.path.basename(model_name_or_path)
 
         # a) either from local dir
         if os.path.exists(model_name_or_path):
-            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=device, strict=strict)
+            model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)
             if task_type == "embeddings":
                 processor = InferenceProcessor.load_from_dir(model_name_or_path)
             else:
@@ -187,8 +188,9 @@ class Inferencer:
 
             model = AdaptiveModel.convert_from_transformers(model_name_or_path,
                                                             revision=revision,
-                                                            device=device,
+                                                            device=devices[0],  # type: ignore
                                                             task_type=task_type,
+                                                            use_auth_token=use_auth_token,
                                                             **kwargs)
             processor = Processor.convert_from_transformers(model_name_or_path,
                                                             revision=revision,
@@ -198,6 +200,7 @@ class Inferencer:
                                                             tokenizer_class=tokenizer_class,
                                                             tokenizer_args=tokenizer_args,
                                                             use_fast=use_fast,
+                                                            use_auth_token=use_auth_token,
                                                             **kwargs)
 
         # override processor attributes loaded from config or HF with inferencer params
@@ -223,7 +226,7 @@ class Inferencer:
             disable_tqdm=disable_tqdm
         )
 
-    def _set_multiprocessing_pool(self, num_processes: Optional[int]):
+    def _set_multiprocessing_pool(self, num_processes: Optional[int]) -> None:
         """
         Initialize a multiprocessing.Pool for instances of Inferencer.
 
@@ -235,7 +238,7 @@ class Inferencer:
                               `multiprocessing.Pool` again! To do so call
                               :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
                               done using this class. The garbage collector will not do this for you!
-        :return:
+        :return: None
         """
         self.process_pool = None
         if num_processes == 0 or num_processes == 1:  # disable multiprocessing
@@ -304,15 +307,12 @@ class Inferencer:
                 :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
                                           (only relevant if you do multiprocessing)
         :return: list of predictions
-
         """
-
         # whether to aggregate predictions across different samples (e.g. for QA on long texts)
         # TODO remove or adjust after implmenting input objects properly
         # if set(dicts[0].keys()) == {"qas", "context"}:
         #     warnings.warn("QA Input dictionaries with [qas, context] as keys will be deprecated in the future",
         #                   DeprecationWarning)
-
         aggregate_preds = False
         if len(self.model.prediction_heads) > 0:
             aggregate_preds = hasattr(self.model.prediction_heads[0], "aggregate_preds")
@@ -445,7 +445,7 @@ class Inferencer:
         )  # type ignore
         preds_all = []
         for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)):
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.devices[0]) for key in batch}
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
 
             # get logits
@@ -475,7 +475,6 @@ class Inferencer:
                         Example: QA - input string to convert the predicted answer from indices back to string space
         :return: list of predictions
         """
-
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )  # type ignore
@@ -485,7 +484,7 @@ class Inferencer:
 
         for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)):
 
-            batch = {key: batch[key].to(self.device) for key in batch}
+            batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
             # get logits
             with torch.no_grad():
@@ -525,7 +524,6 @@ class Inferencer:
         :param extraction_layer: number of layer from which the embeddings shall be extracted. Default: -1 (very last layer).
         :return: dict of predictions
         """
-
         logger.warning("Deprecated! Please use Inferencer.inference_from_dicts() instead.")
         self.model.prediction_heads = torch.nn.ModuleList([])
         self.model.language_model.extraction_layer = extraction_layer
@@ -537,6 +535,8 @@ class Inferencer:
 class QAInferencer(Inferencer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # FIXME
         if self.task_type != "question_answering":
             logger.warning("QAInferencer always has task_type='question_answering' even if another value is provided "
                            "to Inferencer.load() or QAInferencer()")
@@ -561,7 +561,8 @@ class QAInferencer(Inferencer):
                                return_json: bool = True,
                                multiprocessing_chunksize: Optional[int] = None) -> List[QAPred]:
         dicts = [o.to_dict() for o in objects]
-        # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects, then we can and should use inference from (input) objects!
+        # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects, 
+        # then we can and should use inference from (input) objects!
         #logger.warning("QAInferencer.inference_from_objects() will soon be deprecated. Use QAInferencer.inference_from_dicts() instead")
         return self.inference_from_dicts(dicts, return_json=return_json,
                                          multiprocessing_chunksize=multiprocessing_chunksize)

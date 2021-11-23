@@ -2,7 +2,7 @@
 # Module crawler
 
 <a name="crawler.Crawler"></a>
-## Crawler Objects
+## Crawler
 
 ```python
 class Crawler(BaseComponent)
@@ -12,12 +12,12 @@ Crawl texts from a website so that we can use them later in Haystack as a corpus
 
 **Example:**
 ```python
-|    from haystack.connector import Crawler
+|    from haystack.nodes.connector import Crawler
 |
 |    crawler = Crawler(output_dir="crawled_files")
 |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
 |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
-|                         filter_urls= ["haystack\.deepset\.ai\/docs\/"])
+|                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
 ```
 
 <a name="crawler.Crawler.__init__"></a>

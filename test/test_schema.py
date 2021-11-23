@@ -1,4 +1,4 @@
-from haystack import Document, Label, Answer, Span
+from haystack.schema import Document, Label, Answer, Span
 import numpy as np
 
 LABELS = [

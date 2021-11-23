@@ -2,10 +2,10 @@ import pandas as pd
 from pathlib import Path
 from time import perf_counter
 from utils import get_document_store, get_retriever, index_to_doc_store, load_config, download_from_url
-from haystack.preprocessor.utils import eval_data_from_json
-from haystack.document_store.faiss import FAISSDocumentStore
+from haystack.document_stores.utils import eval_data_from_json
+from haystack.document_stores.faiss import FAISSDocumentStore
 
-from haystack import Document
+from haystack.schema import Document
 import pickle
 import time
 from tqdm import tqdm
@@ -13,8 +13,6 @@ import logging
 import datetime
 import random
 import traceback
-import os
-import requests
 import json
 from results_to_json import retriever as retriever_json
 from templates import RETRIEVER_TEMPLATE, RETRIEVER_MAP_TEMPLATE, RETRIEVER_SPEED_TEMPLATE

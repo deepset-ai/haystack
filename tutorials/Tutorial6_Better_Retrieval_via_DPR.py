@@ -1,9 +1,6 @@
-from haystack.document_store import FAISSDocumentStore, MilvusDocumentStore
-from haystack.preprocessor.cleaning import clean_wiki_text
-from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
-from haystack.reader.farm import FARMReader
-from haystack.utils import print_answers, launch_milvus
-from haystack.retriever.dense import DensePassageRetriever
+from haystack.document_stores import FAISSDocumentStore, MilvusDocumentStore
+from haystack.utils import clean_wiki_text, print_answers, launch_milvus, convert_files_to_dicts, fetch_archive_from_http
+from haystack.nodes import FARMReader, DensePassageRetriever
 
 def tutorial6_better_retrieval_via_dpr():
     # OPTION 1: FAISS is a library for efficient similarity search on a cluster of dense vectors.
@@ -59,7 +56,7 @@ def tutorial6_better_retrieval_via_dpr():
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
 
     ### Pipeline
-    from haystack.pipeline import ExtractiveQAPipeline
+    from haystack.pipelines import ExtractiveQAPipeline
     pipe = ExtractiveQAPipeline(reader, retriever)
 
     ## Voilà! Ask a question!
@@ -70,7 +67,7 @@ def tutorial6_better_retrieval_via_dpr():
     # prediction = pipe.run(query="Who created the Dothraki vocabulary?", params={"Reader": {"top_k": 5}})
     # prediction = pipe.run(query="Who is the sister of Sansa?", params={"Reader": {"top_k": 5}})
 
-    print_answers(prediction, details="minimal")
+    print_answers(prediction, details="minimum")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Union, Any
-from pydantic import BaseModel, Field
-from haystack import Answer, Document, Label, Span
+from pydantic import BaseModel, Field, Extra
+from haystack.schema import Answer, Document, Label, Span
 from pydantic import BaseConfig
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
@@ -11,11 +11,13 @@ except ImportError:
 
 BaseConfig.arbitrary_types_allowed = True
 
-
 class QueryRequest(BaseModel):
     query: str
     params: Optional[dict] = None
-
+    debug: Optional[bool] = False
+    class Config:
+        # Forbid any extra fields in the request to avoid silent failures
+        extra = Extra.forbid
 
 class FilterRequest(BaseModel):
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
@@ -29,7 +31,7 @@ class AnswerSerialized(Answer):
 @pydantic_dataclass
 class DocumentSerialized(Document):
     content: str
-    embedding: List[float]
+    embedding: Optional[List[float]]
 
 @pydantic_dataclass
 class LabelSerialized(Label):
@@ -41,4 +43,5 @@ class QueryResponse(BaseModel):
     query: str
     answers: List[AnswerSerialized]
     documents: Optional[List[DocumentSerialized]]
+    debug: Optional[Dict] = Field(None, alias="_debug")
 

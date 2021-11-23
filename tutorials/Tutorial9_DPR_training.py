@@ -3,9 +3,9 @@ def tutorial9_dpr_training():
 
     # Here are some imports that we'll need
 
-    from haystack.retriever.dense import DensePassageRetriever
-    from haystack.preprocessor.utils import fetch_archive_from_http
-    from haystack.document_store.memory import InMemoryDocumentStore
+    from haystack.nodes import DensePassageRetriever
+    from haystack.utils import fetch_archive_from_http
+    from haystack.document_stores import InMemoryDocumentStore
 
     # Download original DPR data
     # WARNING: the train set is 7.4GB and the dev set is 800MB

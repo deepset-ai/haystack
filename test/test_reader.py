@@ -2,9 +2,9 @@ import math
 
 import pytest
 
-from haystack import Document, Answer
-from haystack.reader.base import BaseReader
-from haystack.reader.farm import FARMReader
+from haystack.schema import Document, Answer
+from haystack.nodes.reader.base import BaseReader
+from haystack.nodes.reader.farm import FARMReader
 
 
 def test_reader_basic(reader):

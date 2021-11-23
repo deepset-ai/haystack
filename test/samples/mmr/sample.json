@@ -1,0 +1,1014 @@
+[
+  {
+    "question": "who attacked a government weapons storehouse at harpers ferry in 1859",
+    "answers": [
+      "John Brown"
+    ],
+    "positive_ctxs": [
+      {
+        "title": "John Brown's raid on Harpers Ferry",
+        "text": "John Brown's raid on Harpers Ferry John Brown's raid on Harpers Ferry (also known as John Brown's raid or The raid on Harpers Ferry) was an effort by abolitionist John Brown to initiate an armed slave revolt in 1859 by taking over a United States arsenal at Harpers Ferry, Virginia. Brown's party of 22 was defeated by a company of U.S. Marines, led by First Lieutenant Israel Greene. Colonel Robert E. Lee was in overall command of the operation to retake the arsenal. John Brown had originally asked Harriet Tubman and Frederick Douglass, both of whom he had met in",
+        "passage_id": "12589459",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "page_title": "Dangerfield Newby",
+        "section_title": "",
+        "caption": "",
+        "type": "table",
+        "source": "Tapas-PreTrain",
+        "columns": [
+          "Born",
+          "Died",
+          "Known for"
+        ],
+        "rows": [
+          [
+            "1815\nCulpepper County, Virginia",
+            "October 16, 1859 (aged 43\u201344)\nHarpers Ferry, Virginia",
+            "Raid on Harpers Ferry"
+          ]
+        ]
+      },
+      {
+        "title": "Harpers Ferry Armory",
+        "text": "Harpers Ferry Armory Harpers Ferry Armory, more formally known as the United States Armory and Arsenal at Harpers Ferry, was the second federal armory commissioned by the United States government. It was located in Harpers Ferry, West Virginia (then part of Virginia), while the first federal armory was the Springfield Armory located in Springfield, Massachusetts. In many books, the town is called \"Harper's Ferry\" with an apostrophe. The national armory has been associated with many prominent historical events throughout the history of the United States. Harpers Ferry National Armory was both an armory and an arsenal. Both Harpers Ferry and",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "Turner Ashby",
+        "text": "most of the arsenal buildings and 15,000 small arms before he could arrive. At Harpers Ferry, Ashby was assigned to the Virginia Militia command of Colonel Thomas J. \"Stonewall\" Jackson, whom he had met at Harpers Ferry and Charles Town in 1859. Ashby was initially assigned to guard fords across the Potomac River and bridges from Harpers Ferry to Point of Rocks, Maryland. He became known for visiting his pickets on long horseback rides (50-miles while guarding the Potomac, later 70 miles when guarding Stonewall Jackson's rear during the Valley Campaign), as well as for interfering with scouting operations of",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "who played the commander in the handmaid 's tale",
+    "answers": [
+      "Joseph Fiennes"
+    ],
+    "positive_ctxs": [
+      {
+        "title": "The Handmaid's Tale (TV series)",
+        "text": "over the general populace for signs of rebellion, Hunters track down people attempting to flee the country, and Jezebels are sex workers in secret brothels catering to the elite ruling class. June Osborne, renamed Offred (Elisabeth Moss), is the Handmaid assigned to the home of the Gileadan Commander Fred Waterford (Joseph Fiennes) and his wife Serena Joy (Yvonne Strahovski). Offred is subject to strict rules and constant scrutiny; an improper word or deed on her part can lead to brutal punishment. Offred, who is named after her male master (\"Of Fred\") like all Handmaids, was married and had a daughter,",
+        "passage_id": "19492143",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Volker Schlo\u0308ndorff",
+        "text": "theatrical films with the Hollywood science fiction film \"The Handmaid's Tale\" in 1990. The film's story takes place in a dystopian near future where most women are sterile due to pollution. Kate (Natasha Richardson) is arrested after attempting to flee to Canada and forced to become a \"Handmaid\". Handmaids are fertile women who are enslaved by the state and put in the households of wealthy men - who have \"ceremonial\" sex with them in the hope of conceiving a child. She becomes the Handmaid of the Commander (Robert Duvall), Fred, who is married to Serena Joy (Faye Dunaway). To save",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "The Handmaid's Tale",
+        "text": "his previous handmaid and that she killed herself when his wife found out. In the epilogue an academic speculates that one of two figures, both instrumental in the establishment of Gilead, may have been the Commander, based on the name \"Fred\". It is his belief that the Commander was a man named Frederick R. Waterford who was killed in a purge shortly after Offred was taken away, charged with harboring an enemy agent. Serena Joy is a former televangelist and the Commander's wife in the fundamentalist theonomy. The state took away her power and public recognition, and tries to hide",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "The Handmaid's Tale",
+        "text": "as a \"handmaid\" in the home of \"the Commander\" and his wife Serena Joy, to bear a child for them (Serena Joy is believed to be infertile). Offred is a slave name that describes her function: she is \"of Fred\" (i.e., she belongs to Fred (presumed to be the name of the Commander), and is considered a concubine). In the novel, Offred says that she is \"not\" a concubine, but a tool; a \"two legged womb\". The Handmaids' names say nothing about who the women really are; their only identity is as the Commander's property. \"Offred\" is also a pun",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "who sang must be the season of the witch",
+    "answers": [
+      "Donovan"
+    ],
+    "positive_ctxs": [
+      {
+        "title": "Season of the Witch (song)",
+        "text": "Season of the Witch (song) \"Season of the Witch\" is an early example of psychedelic rock, written by Donovan and Shawn Phillips. It was released in September 1966 on Donovan's Epic Records (USA) album, \"Sunshine Superman\". Originally recorded by Donovan for U.S. release, a version by The Pandamonium was released in the United Kingdom as a single in November 1966 (CBS 202462), while Donovan's version was finally released in the U.K. in June 1967 on the Pye Records compilation \"Sunshine Superman\". (The song was never released as a single but it became a very popular song with fans, enough so",
+        "passage_id": "10885366",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Sabrina the Teenage Witch (1996 TV series)",
+        "text": "turns eighteen (\"when she can pay for the insurance\") and that she will be tested throughout the year by a Quizmaster, a witch whose job is to instruct witches earning their licenses. Also introduced during the second season are Sabrina's neurotic friend Valerie and the new school vice principal Mr. Kraft, who finds Sabrina to be very odd and has a crush on Hilda. At the beginning of the third season, Sabrina earns her license, but then learns that in order to use her license, she must solve her family's secret. Throughout the season, family members visit her and provide",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "Kirkjubo\u0301l witch trial",
+        "text": "Kirkjub\u00f3l witch trial The Kirkjub\u00f3l witch trial was a witch trial that took place in Kirkjub\u00f3l in 1656, in what is today \u00cdsafj\u00f6r\u00f0ur, in Iceland. It is the most famous witch trial in Iceland. The plaintiff in the trial was pastor J\u00f3n Magn\u00fasson, who had been suffering poor health since 1654. He contended that his illness, as well as what he described as demonic disturbances in his household and in the surrounding district, were brought on by sorcery practiced by two members of his own congregation, who also sang in the choir, a father and son both named J\u00f3n J\u00f3nsson.",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "The Lollipop Shoppe",
+        "text": "band's recordings have been reissued on the compilation, \"The Weeds \u2013 AKA The Lollipop Shoppe\", in 2007 on Way Back Records. Australian garage band The Philisteins covered \"You Must Be a Witch\" on their 1988 EP \"Bloody Convicts\". Memphis synth punk band Lost Sounds covered \"You Must Be a Witch\" on their 2000 LP \"Memphis Is Dead\". The Black Lips recently covered \"You Must Be a Witch\" during their \"Rhapsody Originals\" set. As the Weeds As The Lollipop Shoppe The Lollipop Shoppe The Lollipop Shoppe was an American garage rock band formed in Las Vegas, Nevada, in 1966. In 1964,",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "What was the middle name of the best dancer in disco during Bailando 2010 ?",
+    "answers": [
+      "Fabiana"
+    ],
+    "positive_ctxs": [
+      {
+        "page_title": "Bailando 2010",
+        "section_title": "Scoring chart -- Highest and lowest scoring performances",
+        "caption": "",
+        "type": "table",
+        "source": "OTT-QA",
+        "columns": [
+          "Dance",
+          "Best dancer ( s )",
+          "Best score",
+          "Worst dancer ( s )",
+          "Worst score"
+        ],
+        "rows": [
+          [
+            "Reggaeton",
+            "Emilia Attias",
+            "48",
+            "Miguel Negro Pi\u00f1era",
+            "23"
+          ],
+          [
+            "Disco",
+            "Evangelina Anderson Lola Ponce",
+            "47",
+            "Victoria Vanucci",
+            "29"
+          ],
+          [
+            "Salsa",
+            "Sof\u00eda Pachano Emilia Attias Jesica Cirio",
+            "48",
+            "Lorenzo Lamas Fabio La Mole Moli",
+            "29"
+          ],
+          [
+            "Ax\u00e9 music",
+            "Emilia Attias",
+            "48",
+            "Jimena Monteverde",
+            "29"
+          ],
+          [
+            "Argentine cumbia",
+            "Evangelina Anderson",
+            "48",
+            "Zaira Nara",
+            "26"
+          ],
+          [
+            "Adagio",
+            "Sof\u00eda Pachano Lola Ponce",
+            "48",
+            "Mariana Ni\u00f1a Loly Antoniale Virginia Gallardo",
+            "33"
+          ],
+          [
+            "Hip-hop",
+            "Emilia Attias",
+            "48",
+            "Paola Miranda",
+            "27"
+          ],
+          [
+            "Cha-cha-cha",
+            "Silvina Escudero Evangelina Anderson",
+            "47",
+            "Jimena Monteverde",
+            "30"
+          ],
+          [
+            "Latin pop",
+            "Mat\u00edas Al\u00e9",
+            "47",
+            "Zaira Nara Fabio La Mole Moli",
+            "30"
+          ],
+          [
+            "Cuarteto",
+            "Lola Ponce",
+            "47",
+            "Luciana Salazar",
+            "30"
+          ],
+          [
+            "Latin adagio",
+            "Sof\u00eda Pachano Evangelina Anderson",
+            "49",
+            "Sarah Paddy Jones",
+            "31"
+          ],
+          [
+            "Arabic music",
+            "Silvina Escudero",
+            "50",
+            "Fabio La Mole Moli",
+            "32"
+          ],
+          [
+            "Pole dance",
+            "Andrea Ghidone Flavio Mendoza Sof\u00eda Z\u00e1molo",
+            "50",
+            "Mariana Ni\u00f1a Loly Antoniale Paula Chaves",
+            "36"
+          ],
+          [
+            "Lambada",
+            "Flavio Mendoza Silvina Escudero Vanina Escudero",
+            "46",
+            "Paula Chaves",
+            "32"
+          ],
+          [
+            "Music video",
+            "Emilia Attias",
+            "49",
+            "Amalia Granata Fabio La Mole Moli Bel\u00e9n Francese",
+            "35"
+          ],
+          [
+            "Adagio from telenovelas",
+            "Mat\u00edas Al\u00e9",
+            "47",
+            "Juana Repetto Jesica Cirio",
+            "36"
+          ],
+          [
+            "Merengue",
+            "Andrea Ghidone Silvina Escudero",
+            "48",
+            "Bel\u00e9n Francese",
+            "32"
+          ],
+          [
+            "Strip dance",
+            "Sof\u00eda Pachano",
+            "49",
+            "Virginia Gallardo Silvina Escudero",
+            "38"
+          ],
+          [
+            "Dancing in the rain",
+            "Flavio Mendoza",
+            "44",
+            "Emilia Attias",
+            "30"
+          ],
+          [
+            "Aero dance",
+            "Paula Chaves",
+            "44",
+            "Bel\u00e9n Francese",
+            "30"
+          ]
+        ]
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Bailando por un Suen\u0303o (Argentina season 2)",
+        "text": "was paired with the professional dancer, Manuel Rodr\u00edguez. The judges were the same as in season one: journalist Jorge Lafauci, professional dancer Laura Fidalgo (who later competed on the show), vedette Zulma Faiad, and producer, actress and singer Reina Reech. The best and worst performances in each dance according to the judges' marks are as follows: Highest scoring dance.<br> Bailando por un Sue\u00f1o (Argentina season 2) Bailando por un Sue\u00f1o 2 was the second Argentinean season of \"Bailando por un Sue\u00f1o\". The first show of the season aired on July 3, 2006 and was part of the original show broadcast",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "Bailando por un Suen\u0303o (Argentina season 1)",
+        "text": "dancer Laura Fidalgo (who later competed on the show), vedette Zulma Faiad, and producer, actress and singer Reina Reech. The best and worst performances in each dance according to the judges' marks are as follows: Bailando por un Sue\u00f1o (Argentina season 1) Bailando por un Sue\u00f1o 1 was the first Argentinean season of \"Bailando por un Sue\u00f1o\". The first show of the season aired on April 17, 2006, and was part of the original show broadcast by \"Showmatch\" on Canal 13 and hosted by Marcelo Tinelli. 8 couples competed during 7 weeks, and the winner was revealed on the season",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "page_title": "Andrea Ghidone",
+        "section_title": "2008-2013: Artistic career",
+        "caption": "",
+        "type": "table",
+        "source": "Tapas-PreTrain",
+        "columns": [
+          "Year",
+          "Show",
+          "Notes",
+          "Genre"
+        ],
+        "rows": [
+          [
+            "2008-2009",
+            "Vedett\u00edsima",
+            "Outstanding Dancer\nHalf-Vedette",
+            "Theater revue"
+          ],
+          [
+            "2009-2010",
+            "Fant\u00e1stica",
+            "3rd Vedette 2nd Actress - Dancer",
+            "Theater revue"
+          ],
+          [
+            "2010",
+            "Bailando 2010",
+            "12\u00b0 post",
+            "TV competition"
+          ],
+          [
+            "2010-2011",
+            "Brav\u00edsima",
+            "2nd Vedette 2nd Actress - Dancer",
+            "Theater revue"
+          ],
+          [
+            "2011",
+            "Bailando 2011",
+            "Replacement",
+            "TV competition"
+          ],
+          [
+            "2011-2012",
+            "Barbier\u00edsima",
+            "Co-Lead Vedette Monologist - Lead Dancer",
+            "Theater revue"
+          ],
+          [
+            "2012\u20132013",
+            "Esc\u00e1ndalosas",
+            "1st Vedette Lead Acrobat-Dancer and Actress",
+            "Theater revue"
+          ],
+          [
+            "2013",
+            "Celebrity Splash",
+            "Quarters of finals 1 Semifinals 2",
+            "TV competition"
+          ],
+          [
+            "2013",
+            "Tango encantado",
+            "Star Dancer",
+            "Tango Show"
+          ],
+          [
+            "2013\u20132014",
+            "S\u00e9 infiel y no mires con qui\u00e9n",
+            "Supporting Actress",
+            "Theater comedy"
+          ],
+          [
+            "2014\u2013present",
+            "Se\u00f1or Tango",
+            "Star Dancer",
+            "Tango Show"
+          ]
+        ]
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "what county is st paul mn located in",
+    "answers": [
+      "Ramsey County"
+    ],
+    "positive_ctxs": [
+      {
+        "title": "Saint Paul, Minnesota",
+        "text": "Saint Paul, Minnesota Saint Paul (abbreviated St. Paul) is the capital and second-most populous city of the U.S. state of Minnesota. As of 2017, the city's estimated population was 309,180. Saint Paul is the county seat of Ramsey County, the smallest and most densely populated county in Minnesota. The city lies mostly on the east bank of the Mississippi River in the area surrounding its point of confluence with the Minnesota River, and adjoins Minneapolis, the state's largest city. Known as the \"Twin Cities\", the two form the core of Minneapolis\u2013Saint Paul, the 16th-largest metropolitan area in the United States,",
+        "passage_id": "503544",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Benton County, Minnesota",
+        "text": "Benton County, Minnesota Benton County is a county located in the U.S. state of Minnesota. As of the 2010 census, the population was 38,451. Its county seat is Foley. Established in 1849 and organized in 1850, the county is one of the oldest in Minnesota. Benton County was named for Thomas Hart Benton, a U.S. Senator from Missouri. Benton County is part of the St. Cloud, MN Metropolitan Statistical Area, which is also included in the Minneapolis-St. Paul, MN-WI Combined Statistical Area. According to the U.S. Census Bureau, the county has a total area of , of which is land",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "Stearns County, Minnesota",
+        "text": "Stearns County, Minnesota Stearns County is a county located in the U.S. state of Minnesota. As of the 2010 census, the population was 150,642. Its county seat is Saint Cloud. The county was founded in 1855. It was originally named after Isaac Ingalls Stevens, later changed to the name Stearns, after Charles Thomas Stearns. Stearns County is part of the St. Cloud, MN Metropolitan Statistical Area, which is also included in the Minneapolis-St. Paul, MN-WI Combined Statistical Area. The area that is currently Stearns County was formerly occupied by numerous indigenous tribes, such as the Sioux (Dakota), Chippewa (Ojibwe) and",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "page_title": "Minnesota Intercollegiate Athletic Conference Men's Basketball Tournament",
+        "section_title": "Results",
+        "caption": "",
+        "type": "table",
+        "source": "Tapas-PreTrain",
+        "columns": [
+          "Year",
+          "Champions",
+          "Score",
+          "Runner-Up",
+          "Venue"
+        ],
+        "rows": [
+          [
+            "2001",
+            "Saint John's",
+            "92\u201380",
+            "Gustavus Adolphus",
+            "Collegeville, MN"
+          ],
+          [
+            "2002",
+            "St. Thomas",
+            "73\u201361",
+            "Bethel",
+            "St. Paul, MN"
+          ],
+          [
+            "2003",
+            "Gustavus Adolphus",
+            "62\u201336",
+            "St. Thomas",
+            "St. Paul, MN"
+          ],
+          [
+            "2004",
+            "Gustavus Adolphus",
+            "75\u201369",
+            "Macalester",
+            "St. Peter, MN"
+          ],
+          [
+            "2005",
+            "Gustavus Adolphus",
+            "68\u201358",
+            "St. Thomas",
+            "St. Peter, MN"
+          ],
+          [
+            "2006",
+            "St. Thomas",
+            "54\u201347",
+            "Carleton",
+            "St. Paul, MN"
+          ],
+          [
+            "2007",
+            "St. Thomas",
+            "75\u201349",
+            "Saint John's",
+            "St. Paul, MN"
+          ],
+          [
+            "2008",
+            "St. Thomas",
+            "76\u201373",
+            "Gustavus Adolphus",
+            "St. Paul, MN"
+          ],
+          [
+            "2009",
+            "St. Thomas",
+            "68\u201351",
+            "Bethel",
+            "St. Paul, MN"
+          ],
+          [
+            "2010",
+            "Carleton",
+            "78\u201371 (OT)",
+            "Gustavus Adolphus",
+            "St. Peter, MN"
+          ],
+          [
+            "2011",
+            "St. Thomas",
+            "83\u201377",
+            "Gustavus Adolphus",
+            "St. Paul, MN"
+          ],
+          [
+            "2012",
+            "St. Thomas",
+            "66\u201362 (OT)",
+            "Gustavus Adolphus",
+            "St. Paul, MN"
+          ],
+          [
+            "2013",
+            "St. Thomas",
+            "92\u201365",
+            "Augsburg",
+            "St. Paul, MN"
+          ],
+          [
+            "2014",
+            "St. Olaf",
+            "63\u201354",
+            "St. Thomas",
+            "St. Paul, MN"
+          ],
+          [
+            "2015",
+            "St. Thomas",
+            "66\u201363",
+            "Bethel",
+            "St. Paul, MN"
+          ],
+          [
+            "2016",
+            "St. Olaf",
+            "72\u201366",
+            "St. Thomas",
+            "St. Paul, MN"
+          ],
+          [
+            "2017",
+            "Bethel",
+            "79\u201375",
+            "Saint John's",
+            "Arden Hills, MN"
+          ],
+          [
+            "2018",
+            "Augsburg",
+            "81\u201369",
+            "Bethel",
+            "Arden Hills, MN"
+          ],
+          [
+            "2019",
+            "Saint John's",
+            "82\u201379",
+            "Augsburg",
+            "Collegeville, MN"
+          ]
+        ]
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "What is the rank of the city with a Rugby 7s World Series venue that hosted concerts by Rihanna in terms of economic performance ?",
+    "answers": [
+      "26th"
+    ],
+    "positive_ctxs": [
+      {
+        "page_title": "World Rugby Sevens Series",
+        "section_title": "Tournament hosts",
+        "caption": "",
+        "type": "table",
+        "source": "OTT-QA",
+        "columns": [
+          "Event",
+          "Venue",
+          "City",
+          "Joined 7s Series",
+          "Tournament began",
+          "Scheduled"
+        ],
+        "rows": [
+          [
+            "United Arab Emirates",
+            "The Sevens",
+            "Dubai",
+            "1999-2000",
+            "1999",
+            "December"
+          ],
+          [
+            "South Africa",
+            "Cape Town Stadium",
+            "Cape Town",
+            "2004-05",
+            "1999",
+            "December"
+          ],
+          [
+            "New Zealand",
+            "Waikato Stadium",
+            "Hamilton",
+            "1999-2000",
+            "2000",
+            "Jan / Feb"
+          ],
+          [
+            "Australia",
+            "Bankwest Stadium",
+            "Sydney",
+            "1999-2000",
+            "1986*",
+            "Jan / Feb"
+          ],
+          [
+            "USA",
+            "Dignity Health Sports Park",
+            "Carson , California ( Los Angeles )",
+            "2004-05",
+            "2004",
+            "March"
+          ],
+          [
+            "Canada",
+            "BC Place",
+            "Vancouver",
+            "2015-16",
+            "2016",
+            "March"
+          ],
+          [
+            "Hong Kong",
+            "Hong Kong Stadium",
+            "Hong Kong",
+            "1999-2000",
+            "1976",
+            "April"
+          ],
+          [
+            "Singapore",
+            "National Stadium",
+            "Singapore",
+            "2015-16",
+            "2002",
+            "April"
+          ],
+          [
+            "England",
+            "Twickenham",
+            "London",
+            "2000-01",
+            "2001",
+            "May"
+          ],
+          [
+            "France",
+            "Stade Jean-Bouin",
+            "Paris",
+            "2015-16",
+            "1996",
+            "June"
+          ]
+        ]
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Docklands Stadium",
+        "text": "held at the Docklands Stadium include concerts by many famous artists. KISS performed on 28 February 2003, with the Melbourne Symphony Orchestra, for their live CD/DVD, \"\". The ground hosted two quarter finals of the 2003 Rugby World Cup and the Rugby 7s at the 2006 Commonwealth Games. The stadium was used in the 2008 Rugby League World Cup for the Australia vs England game. In the summer months it is used as the home ground for Melbourne Victory games in the A-League and the AFC Champions League. The stadium has been used for State of Origin series matches when",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "2014 World Club 7s",
+        "text": "down to contest a plate knock-out competition. 2014 World Club 7s The 2014 World Club 7s was the second World Club 7s tournament, a rugby sevens competition organised by Premiership Rugby. It was hosted at Twickenham Stadium on 16 and 17 August 2014. The tournament was won by Buenos Aires. 11 teams have been invited, and one has qualified for the competition through the 2014 Premiership Rugby Sevens Series contested by English and Welsh clubs. The 12 teams are split into 3 pools of 4 teams, and each team will play all the others in their pool once on day",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "2014 World Club 7s",
+        "text": "2014 World Club 7s The 2014 World Club 7s was the second World Club 7s tournament, a rugby sevens competition organised by Premiership Rugby. It was hosted at Twickenham Stadium on 16 and 17 August 2014. The tournament was won by Buenos Aires. 11 teams have been invited, and one has qualified for the competition through the 2014 Premiership Rugby Sevens Series contested by English and Welsh clubs. The 12 teams are split into 3 pools of 4 teams, and each team will play all the others in their pool once on day one. Matches will be played according to",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "what 's the name of the last jurassic park movie",
+    "answers": [
+      "Jurassic World : Fallen Kingdom"
+    ],
+    "positive_ctxs": [
+      {
+        "title": "Jurassic Park",
+        "text": "released, featuring BD Wong, David Gunning, Jake Johnson and Lauren Lapkus reprising their roles from \"The Indominus Escape\". Like \"The Indominus Escape\", the short is set before the events of \"Jurassic World\". In promotion of \"Jurassic World: Fallen Kingdom\", Lego produced two short films titled \"Rescue Blue\" and \"Escape the Indoraptor\", with a variant featured on YouTube where it was separated into four parts, and at the end of each part the audience was given the option to choose between two different outcomes. On November 29, 2018, NBC aired a new animated special, \"Lego Jurassic World: The Secret Exhibit\", as",
+        "passage_id": "10178468",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Six Flags New Orleans",
+        "text": "filmed for the movie \"Dawn of the Planet of the Apes\" until mid-August. The park was also used to film portions of the movie \"Jurassic World\" in June 2014. \"Jurassic World\" used the parking lot as the location for the Jurassic World park. \"Deepwater Horizon\" built its oil rig set in the parking lot. Deepwater Horizon was the last film to use the parking lot. No movie studio has signed up to use the park for filming since August 2015. In January of 2015, the park was photographed as part of a photo essay/series by Cleveland-based photographer Johnny Joo. In",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "Jurassic Park (NES video game)",
+        "text": "Jurassic Park (NES video game) Jurassic Park is a 1993 video game based on the film and novel of the same name. It was developed and published by Ocean Software and released for the Nintendo Entertainment System (NES). Ocean also released \"Jurassic Park\" on the handheld Game Boy console. The Game Boy version is a port of the NES version. The object of the game is to survive in Jurassic Park, a theme park and zoo where dinosaurs have escaped from containment. Much like the movie and novel which it is based on, Dr. Alan Grant is trapped at Jurassic",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "page_title": "Jurassic Park",
+        "section_title": "",
+        "caption": "",
+        "type": "table",
+        "source": "Tapas-PreTrain",
+        "columns": [
+          "Created by",
+          "Original work",
+          "Owned by",
+          "Novel(s)",
+          "Short stories",
+          "Comics",
+          "Film(s)",
+          "Short film(s)",
+          "Animated series",
+          "Video game(s)",
+          "Soundtrack(s)",
+          "Theme park attraction(s)"
+        ],
+        "rows": [
+          [
+            "Michael Crichton",
+            "Jurassic Park (1990)",
+            "Universal Pictures\nAmblin Entertainment",
+            "Jurassic Park (1990) The Lost World (1995) The Evolution of Claire (2018)",
+            "Jurassic Park Adventures: Survivor (2001) Jurassic Park Adventures: Prey (2001) Jurassic Park Adventures: Flyers (2002)",
+            "List of comic books",
+            "Jurassic Park (1993) The Lost World: Jurassic Park (1997) Jurassic Park III (2001) Jurassic World (2015) Jurassic World: Fallen Kingdom (2018) Jurassic World 3 (2021)",
+            "Battle at Big Rock (2019)",
+            "Jurassic World: Camp Cretaceous (2020)",
+            "List of video games",
+            "Jurassic Park (1993) The Lost World: Jurassic Park (1997) Jurassic Park III (2001) Jurassic World (2015) Jurassic World: Fallen Kingdom (2018)",
+            "Jurassic Park: The Ride (1996) Canopy Flyer (2010) Dino-Soarin' (2010) Jurassic Park Rapids Adventure (2010) The Flying Dinosaur (2016) Jurassic World: The Ride (2019)"
+          ]
+        ]
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "when did the fate of the furious come out",
+    "answers": [
+      "April 14 , 2017"
+    ],
+    "positive_ctxs": [
+      {
+        "title": "The Fate of the Furious",
+        "text": "City, continuing the franchise's tradition of filming in exotic locations around the world. \"The Fate of the Furious\" premiered in Berlin on April 4, 2017, and was theatrically released in the United States on April 14, 2017, playing in 3D, IMAX 3D and 4DX internationally. The film received mixed reviews from critics, many of whom praised the action sequences and acting performances but criticized the storyline. The film grossed over $1.2 billion worldwide, making it the thirtieth film (and the second in the franchise, after \"Furious 7\") to gross over $1 billion, the third highest-grossing film of 2017 and the",
+        "passage_id": "18391978",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Cosmic Odyssey (comics)",
+        "text": "the reality that Earth is in. A huge explosion occurs and Dr. Fate, Highfather, Orion, Etrigan and Darkseid all return to New Genesis, with the ALE unable to follow them. Darkseid, released from control, is furious with Dr. Fate for \"making a puppet out of him\" and threatens retaliation, but Superman tells Darkseid he would have to take them all on to do so. Darkseid apologizes and walks away. Meanwhile in another area of New Genesis, John Stewart has ordered his ring to travel 20 light years away and come back when he calls it. If he doesn\u2019t call it",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "page_title": "Dominic Toretto",
+        "section_title": "Car list",
+        "caption": "",
+        "type": "table",
+        "source": "Tapas-PreTrain",
+        "columns": [
+          "Film",
+          "Car"
+        ],
+        "rows": [
+          [
+            "The Fast and the Furious",
+            "1993 Mazda RX-7"
+          ],
+          [
+            "The Fast and the Furious",
+            "1995 Honda Civic"
+          ],
+          [
+            "The Fast and the Furious",
+            "1970 Dodge Charger R/T"
+          ],
+          [
+            "The Fast and the Furious",
+            "1994 Toyota Supra"
+          ],
+          [
+            "The Fast and the Furious",
+            "1970 Chevrolet Chevelle SS(Post credits)"
+          ],
+          [
+            "Los Bandoleros",
+            "nan"
+          ],
+          [
+            "Los Bandoleros",
+            "1966 Pontiac Bonneville"
+          ],
+          [
+            "Fast & Furious",
+            "1987 Buick GNX"
+          ],
+          [
+            "Fast & Furious",
+            "1970 Chevrolet Chevelle SS"
+          ],
+          [
+            "Fast & Furious",
+            "2009 Subaru Impreza WRX STI"
+          ],
+          [
+            "Fast & Furious",
+            "1970 Dodge Charger R/T"
+          ],
+          [
+            "Fast & Furious",
+            "1973 Chevrolet Camaro F-Bomb"
+          ],
+          [
+            "Fast Five",
+            "1970 Dodge Charger R/T"
+          ],
+          [
+            "Fast Five",
+            "1963 Chevrolet Corvette Stingray Grand Sport"
+          ],
+          [
+            "Fast Five",
+            "2011 Dodge Charger R/T Police Car"
+          ],
+          [
+            "Fast Five",
+            "2010 Dodge Charger SRT8"
+          ],
+          [
+            "Fast Five",
+            "2009 Dodge Challenger SRT8"
+          ],
+          [
+            "Fast & Furious 6",
+            "2009 Dodge Challenger SRT8"
+          ],
+          [
+            "Fast & Furious 6",
+            "2010 BMW E60 M5"
+          ],
+          [
+            "Fast & Furious 6",
+            "1969 Dodge Charger Daytona"
+          ],
+          [
+            "Fast & Furious 6",
+            "2013 Dodge Charger SRT8"
+          ],
+          [
+            "The Fast and the Furious: Tokyo Drift",
+            "nan"
+          ],
+          [
+            "The Fast and the Furious: Tokyo Drift",
+            "1970 Plymouth Road Runner"
+          ],
+          [
+            "Furious 7",
+            "1974 Plymouth Barracuda"
+          ],
+          [
+            "Furious 7",
+            "1970 Plymouth Road Runner"
+          ],
+          [
+            "Furious 7",
+            "1970 Dodge Charger"
+          ],
+          [
+            "Furious 7",
+            "2015 Dodge Charger"
+          ],
+          [
+            "Furious 7",
+            "2014 Lykan HyperSport"
+          ],
+          [
+            "Furious 7",
+            "1970 Dodge Charger R/T"
+          ],
+          [
+            "Furious 7",
+            "1968 Maximus Charger"
+          ],
+          [
+            "The Fate of the Furious",
+            "nan"
+          ],
+          [
+            "The Fate of the Furious",
+            "1968 Dodge Charger R/T modified for ice"
+          ],
+          [
+            "The Fate of the Furious",
+            "1961 Chevrolet Impala Sport Coupe"
+          ],
+          [
+            "The Fate of the Furious",
+            "1950 Chevrolet Fleetline"
+          ],
+          [
+            "The Fate of the Furious",
+            "2018 Dodge Challenger SRT Demon"
+          ],
+          [
+            "The Fate of the Furious",
+            "1971 Plymouth Road Runner GTX"
+          ]
+        ]
+      },
+      {
+        "title": "The Fate of the Furious",
+        "text": "The Fate of the Furious The Fate of the Furious (alternatively known as Fast & Furious 8 and Fast 8, and often stylized as F8) is a 2017 American action film directed by F. Gary Gray and written by Chris Morgan. It is the eighth installment in \"The Fast and the Furious\" franchise. The film stars Vin Diesel, Dwayne Johnson, Jason Statham, Michelle Rodriguez, Tyrese Gibson, Chris \"Ludacris\" Bridges, Scott Eastwood, Nathalie Emmanuel, Elsa Pataky, Kurt Russell and Charlize Theron. \"The Fate of the Furious\" follows Dominic Toretto (Diesel), who has settled down with his wife Letty Ortiz (Rodriguez), until",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "how many arch angels are in the bible",
+    "answers": [
+      "seven"
+    ],
+    "positive_ctxs": [
+      {
+        "title": "Seven Archangels",
+        "text": "\"I am Raphael, one of the seven angels who stand in the glorious presence of the Lord, ready to serve him.\" (Tobit 12:15) The other two archangels mentioned by name in the Bible are Michael and Gabriel. The four names of the other archangels come from tradition. One such tradition of archangels comes from the Old Testament Jewish apocrypha, namely the third century BCE Book of the Watchers, which at some point was merged with some other books in what is known today as \"1 Enoch\" (the Book of Enoch), and was made part of the Ethiopian Orthodox Tewahedo Church's",
+        "passage_id": "7141938",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Grimoire",
+        "text": "Grimoire A grimoire ( ) (also known as a \u201cbook of spells\u201d) is a textbook of magic, typically including instructions on how to create magical objects like talismans and amulets, how to perform magical spells, charms and divination, and how to summon or invoke supernatural entities such as angels, spirits, deities and demons. In many cases, the books themselves are believed to be imbued with magical powers, although in many cultures, other sacred texts that are not grimoires (such as the Bible) have been believed to have supernatural properties intrinsically. In this manner, while all \"books on magic\" could be",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "Angel",
+        "text": "explained his view of angels in his \"Guide for the Perplexed\" II:4 and II Maimonides had a neo-Aristotelian interpretation of the Bible. Maimonides writes that to the wise man, one sees that what the Bible and Talmud refer to as \"angels\" are actually allusions to the various laws of nature; they are the principles by which the physical universe operates. Maimonides, in his \"Yad ha-Chazakah: Yesodei ha-Torah\", counts ten ranks of angels in the Jewish angelic hierarchy, beginning from the highest: From the \"Jewish Encyclopedia\", entry \"Angelology\". (Only these two angels are mentioned by name in the Hebrew Bible; the",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "How many angels can dance on the head of a pin?",
+        "text": "about how many could perch at the same time on the head of a pin\"\". Dorothy L. Sayers argued that the question was \"simply a debating exercise\" and that the answer \"usually adjudged correct\" was stated as, \"Angels are pure intelligences, not material, but limited, so that they have location in space, but not extension.\" Sayers compares the question to that of how many people's thoughts can be concentrated upon a particular pin at the same time. She concludes that infinitely many angels can be located on the head of a pin, since they do not occupy any space there:",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "source": "NQ-DPR"
+  },
+  {
+    "question": "what year did tiger woods win his first masters tournament",
+    "answers": [
+      "1997"
+    ],
+    "positive_ctxs": [
+      {
+        "title": "Tiger Woods",
+        "text": "addition to his first major, the 1997 Masters. Woods won this tournament by 12 strokes in a record-breaking performance and earned $486,000. He first reached the number one position in the world rankings in June 1997, less than a year after turning pro. Throughout the 2000s, Woods was the dominant force in golf\u2014he won the 2000 U.S. Open by a record 15-shot margin. He was the top-ranked golfer in the world from August 1999 to September 2004 (264 weeks) and again from June 2005 to October 2010 (281 weeks). Woods took a self-imposed hiatus from professional golf from December 2009",
+        "passage_id": "539121",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "hard_negative_ctxs": [
+      {
+        "title": "Timeline of golf (2000\u2013present)",
+        "text": "number one at the end of that year. Tiger Woods completes what becomes known as the \"Tiger Slam\", holding off David Duval and Phil Mickelson to win the Masters Championship in April to become the first golfer in history to hold, concurrently, all four professional major championships. For good measure, Woods had won the game's fifth most important event, the Tournament Players' Championship as well, in March. By the end of the year, however, Woods would have relinquished three of his titles, on each occasion to players winning their first major title. At the U.S. Open, South African Retief Goosen",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "2007 Masters Tournament",
+        "text": "2007 Masters Tournament The 2007 Masters Tournament was the 71st Masters Tournament, held April 5\u20138 at Augusta National Golf Club in Augusta, Georgia. Zach Johnson won his first major championship, two strokes ahead of runners-up Retief Goosen, Rory Sabbatini, and Tiger Woods. Cool temperatures and gusty winds on the weekend resulted in high scores for the field; Johnson's 289 (+1) tied for the highest winning score ever. Johnson's victory dispelled the notion that only long-hitters could win the Masters. He did not reach a single par five hole in two during the entire tournament, yet played the par fives better",
+        "type": "text",
+        "source": "NQ-DPR"
+      },
+      {
+        "title": "2011 Masters Tournament",
+        "text": "also the 50th anniversary of Player's 1961 Masters win, when he became the first international player to win the Masters. Amateurs: Matsuyama (\u22121). \"Final round\" \"Cumulative tournament scores, relative to par\" 2011 Masters Tournament The 2011 Masters Tournament was the 75th Masters Tournament, held April 7\u201310 at Augusta National Golf Club. Charl Schwartzel birdied the final four holes to win his first major championship, two strokes ahead of runners-up Adam Scott and Jason Day. Eight players held a share of the lead in the last round including Tiger Woods and Rory McIlroy. McIlroy had at least a share of the",
+        "type": "text",
+        "source": "NQ-DPR"
+      }
+    ],
+    "source": "NQ-DPR"
+  }
+]

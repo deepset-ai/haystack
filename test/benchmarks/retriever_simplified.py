@@ -4,8 +4,8 @@ over all the parameters so that it is easier to inspect what is happening
 """
 
 
-from haystack.document_store import MilvusDocumentStore, FAISSDocumentStore
-from haystack.retriever import DensePassageRetriever
+from haystack.document_stores import MilvusDocumentStore, FAISSDocumentStore
+from haystack.nodes import DensePassageRetriever
 from retriever import prepare_data
 import datetime
 from pprint import pprint

@@ -25,6 +25,7 @@ notebooks = sorted(notebooks, key=lambda x: natural_keys(x))
 e = MarkdownExporter(exclude_output=True)
 for i, nb in enumerate(notebooks):
     body, resources = e.from_filename(dir / nb)
+    print(f"Processing {dir}/{nb}")
     with open(str(i + 1) + ".md", "w") as f:
         f.write(headers[i + 1] + "\n\n")
         f.write(body)

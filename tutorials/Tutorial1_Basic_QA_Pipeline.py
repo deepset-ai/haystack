@@ -10,16 +10,9 @@
 # marvellous seven kingdoms.
 
 import logging
-import subprocess
-import time
-
-from haystack.document_store.elasticsearch import ElasticsearchDocumentStore
-from haystack.preprocessor.cleaning import clean_wiki_text
-from haystack.preprocessor.utils import convert_files_to_dicts, fetch_archive_from_http
-from haystack.reader.farm import FARMReader
-from haystack.reader.transformers import TransformersReader
-from haystack.utils import print_answers, launch_es
-from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.utils import clean_wiki_text, convert_files_to_dicts, fetch_archive_from_http, print_answers, launch_es
+from haystack.nodes import FARMReader, TransformersReader,  ElasticsearchRetriever
 
 
 def tutorial1_basic_qa_pipeline():
@@ -129,7 +122,8 @@ def tutorial1_basic_qa_pipeline():
     # Under the hood, `Pipelines` are Directed Acyclic Graphs (DAGs) that you can easily customize for your own use cases.
     # To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `ExtractiveQAPipeline` that combines a retriever and a reader to answer our questions.
     # You can learn more about `Pipelines` in the [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd).
-    from haystack.pipeline import ExtractiveQAPipeline
+    from haystack.pipelines import ExtractiveQAPipeline
+    
     pipe = ExtractiveQAPipeline(reader, retriever)
     
     ## Voilà! Ask a question!
@@ -140,7 +134,37 @@ def tutorial1_basic_qa_pipeline():
     # prediction = pipe.run(query="Who created the Dothraki vocabulary?", params={"Reader": {"top_k": 5}})
     # prediction = pipe.run(query="Who is the sister of Sansa?", params={"Reader": {"top_k": 5}})
 
-    print_answers(prediction, details="minimal")
+    # Now you can either print the object directly
+    print("\n\nRaw object:\n")
+    from pprint import pprint
+    pprint(prediction)
+
+    # Sample output:    
+    # {
+    #     'answers': [ <Answer: answer='Eddard', type='extractive', score=0.9919578731060028, offsets_in_document=[{'start': 608, 'end': 615}], offsets_in_context=[{'start': 72, 'end': 79}], document_id='cc75f739897ecbf8c14657b13dda890e', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
+    #                  <Answer: answer='Ned', type='extractive', score=0.9767240881919861, offsets_in_document=[{'start': 3687, 'end': 3801}], offsets_in_context=[{'start': 18, 'end': 132}], document_id='9acf17ec9083c4022f69eb4a37187080', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
+    #                  ...
+    #                ]
+    #     'documents': [ <Document: content_type='text', score=0.8034909798951382, meta={'name': '332_Sansa_Stark.txt'}, embedding=None, id=d1f36ec7170e4c46cde65787fe125dfe', content='\n===\'\'A Game of Thrones\'\'===\nSansa Stark begins the novel by being betrothed to Crown ...'>,
+    #                    <Document: content_type='text', score=0.8002150354529785, meta={'name': '191_Gendry.txt'}, embedding=None, id='dd4e070a22896afa81748d6510006d2', 'content='\n===Season 2===\nGendry travels North with Yoren and other Night's Watch recruits, including Arya ...'>,
+    #                    ...
+    #                  ],
+    #     'no_ans_gap':  11.688868522644043,
+    #     'node_id': 'Reader',
+    #     'params': {'Reader': {'top_k': 5}, 'Retriever': {'top_k': 5}},
+    #     'query': 'Who is the father of Arya Stark?',
+    #     'root_node': 'Query'
+    # }
+
+    # Note that the documents contained in the above object are the documents filtered by the Retriever from
+    # the document store. Although the answers were extracted from these documents, it's possible that many
+    # answers were taken from a single one of them, and that some of the documents were not source of any answer.
+
+    # Or use a util to simplify the output
+    # Change `minimum` to `medium` or `all` to raise the level of detail
+    print("\n\nSimplified output:\n")
+    print_answers(prediction, details="minimum")
+
 
 
 if __name__ == "__main__":

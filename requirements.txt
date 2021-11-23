@@ -4,7 +4,7 @@ wheel
 # PyTorch
 # Temp. disabled the next line as it gets currently resolved to https://download.pytorch.org/whl/rocm3.8/torch-1.7.1%2Brocm3.8-cp38-cp38-linux_x86_64.whl
 # --find-links=https://download.pytorch.org/whl/torch_stable.html
-torch>1.5,<1.10
+torch>1.5,<1.11
 # progress bars in model download and training scripts
 tqdm
 # Used for downloading models over HTTP
@@ -24,7 +24,6 @@ dill
 # onnxruntime_tools
 psutil
 # haystack
---find-links=https://download.pytorch.org/whl/torch_stable.html
 fastapi
 uvicorn
 gunicorn
@@ -53,6 +52,7 @@ nltk
 more_itertools
 networkx
 # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
+# For milvus 2.x version use this library `pymilvus===2.0.0rc6`
 pymilvus
 # Optional: For crawling
 #selenium
