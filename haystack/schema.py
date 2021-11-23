@@ -538,7 +538,21 @@ class NumpyEncoder(json.JSONEncoder):
 class EvaluationResult:
     def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
         """
-        Result of a pipeline evaluation run (e.g. pipeline.eval())
+        Convenience class to store, pass and interact with results of a pipeline evaluation run (e.g. pipeline.eval()).
+        Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
+        convenience methods to work with them.
+        For example, you can calculate eval metrics, get detailed reports or simulate different top_k settings.
+
+        Example:
+        ```python
+        | eval_results = pipeline.eval(...)
+        |
+        | # derive detailed metrics
+        | eval_results.calculate_metrics()
+        |
+        | # show summary of incorrect queries
+        | eval_results.worst_queries()
+        ```
 
         :param node_results: the evaluation Dataframes per pipeline node
         """
