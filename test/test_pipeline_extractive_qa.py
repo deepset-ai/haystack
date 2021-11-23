@@ -224,7 +224,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     assert metrics["Retriever"]["recall_qa"] == 0.5
     assert metrics["Retriever"]["precision"] == 1.0/6
     assert "sas" in metrics["Reader"]
-    assert metrics["Reader"]["sas"] == 1.0
+    assert metrics["Reader"]["sas"] == pytest.approx(1.0)
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -283,7 +283,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     
     assert metrics_top_3["Reader"]["exact_match"] == 1.0
     assert metrics_top_3["Reader"]["f1"] == 1.0
-    assert metrics_top_3["Reader"]["sas"] == 1.0
+    assert metrics_top_3["Reader"]["sas"] == pytest.approx(1.0)
     assert metrics_top_3["Retriever"]["mrr"] == 0.5
     assert metrics_top_3["Retriever"]["map"] == 0.5
     assert metrics_top_3["Retriever"]["recall_ir"] == 0.5

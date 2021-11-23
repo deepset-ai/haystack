@@ -394,8 +394,17 @@ class Pipeline(BasePipeline):
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
                 df = self._build_eval_dataframe(
-                    query, label, node_name, node_output, sas_model_name_or_path)
+                    query, label, node_name, node_output)
                 eval_result.append(node_name, df)
+        
+        if sas_model_name_or_path is not None:
+            for df in eval_result.node_results.values():
+                if len(df[df["type"] == "answer"]) > 0:
+                    gold_labels = df["gold_answers"].values
+                    predictions = [[a] for a in df["answer"].values]
+                    sas, _ = semantic_answer_similarity(predictions=predictions, gold_labels=gold_labels, 
+                                                sas_model_name_or_path=sas_model_name_or_path)
+                    df["sas"] = sas
 
         return eval_result
 
@@ -403,8 +412,7 @@ class Pipeline(BasePipeline):
         query: str, 
         labels: MultiLabel, 
         node_name: str, 
-        node_output: dict, 
-        sas_model_name_or_path: str = None
+        node_output: dict
     ) -> DataFrame:
         answer_cols = ["answer", "document_id", "offsets_in_document", "context"]
         document_cols = ["content", "id"]
@@ -431,12 +439,6 @@ class Pipeline(BasePipeline):
                     lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
                 df["f1"] = df.apply(
                     lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
-                if sas_model_name_or_path is not None:
-                    predictions = [[a] for a in df["answer"].values]
-                    gold_labels = df["gold_answers"].values
-                    sas, _ = semantic_answer_similarity(predictions=predictions, gold_labels=gold_labels, 
-                                                sas_model_name_or_path=sas_model_name_or_path)
-                    df["sas"] = sas
 
         documents = node_output.get("documents", None)
         if documents is not None:
