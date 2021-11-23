@@ -160,7 +160,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True)
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym")
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -219,6 +219,13 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
                                 Parameter options: (True, False)
                                 False: Raises exception if one or more documents do not have embeddings at query time
                                 True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
+- `synonyms`: List of synonyms can be passed while elasticsearch initialization.
+                 For example: [ "foo, bar => baz",
+                                "foozball , foosball" ]
+                 More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
+- `synonym_type`: Synonym filter type can be passed.
+                     Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
+                     More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
