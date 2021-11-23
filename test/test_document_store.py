@@ -920,3 +920,18 @@ def test_skip_missing_embeddings():
     document_store.skip_missing_embeddings = True
     with pytest.raises(RequestError):
         document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_synonyms():
+    synonyms = ["i-pod, i pod, ipod", "sea biscuit, sea biscit, seabiscuit", "foo, foo bar, baz"]
+    synonym_type = "synonym_graph"
+
+    client = Elasticsearch()
+    client.indices.delete(index='haystack_synonym_arg', ignore=[404])
+    document_store = ElasticsearchDocumentStore(index="haystack_synonym_arg", synonyms=synonyms,
+                                                synonym_type=synonym_type)
+    indexed_settings = client.indices.get_settings(index="haystack_synonym_arg")
+
+    assert synonym_type == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['type']
+    assert synonyms == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['synonyms']
