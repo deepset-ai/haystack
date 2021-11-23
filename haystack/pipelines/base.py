@@ -414,7 +414,7 @@ class Pipeline(BasePipeline):
         gold_document_ids = []
         gold_document_contents = []
         if labels is not None and labels.labels is not None:
-            gold_answers = [] if labels.no_answer else labels.answers
+            gold_answers = list(set(labels.answers))
             gold_offsets_in_documents = [label.answer.offsets_in_document for label in labels.labels if label.answer is not None]
             gold_document_ids = labels.document_ids
             gold_document_contents = [label.document.content for label in labels.labels]
@@ -428,13 +428,13 @@ class Pipeline(BasePipeline):
                 df["gold_answers"] = [gold_answers] * len(df)
                 df["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df)
                 df["exact_match"] = df.apply(
-                lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
+                    lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
                 df["f1"] = df.apply(
                     lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
                 if sas_model_name_or_path is not None:
-                    sas = [0.0] * len(df)
-                    if len(gold_answers) > 0:
-                        sas, _ = semantic_answer_similarity([[a] for a in df["answer"].values], df["gold_answers"].values, 
+                    predictions = [[a] for a in df["answer"].values]
+                    gold_labels = df["gold_answers"].values
+                    sas, _ = semantic_answer_similarity(predictions=predictions, gold_labels=gold_labels, 
                                                 sas_model_name_or_path=sas_model_name_or_path)
                     df["sas"] = sas
 
