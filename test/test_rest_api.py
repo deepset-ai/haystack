@@ -33,6 +33,12 @@ FEEDBACK={
         "pipeline_id": "some-123",
     }
 
+
+def exclude_no_answer(responses):
+    responses["answers"] = [response for response in responses["answers"] if response.get("answer", None)]
+    return responses
+
+
 @pytest.mark.elasticsearch
 @pytest.fixture(scope="session")
 def client() -> TestClient:
@@ -146,6 +152,7 @@ def test_query_with_no_filter(populated_client: TestClient):
     response = populated_client.post(url="/query", json=query_with_no_filter_value)
     assert 200 == response.status_code
     response_json = response.json()
+    response_json = exclude_no_answer(response_json)
     assert response_json["answers"][0]["answer"] == "Adobe Systems"
 
 
@@ -154,6 +161,7 @@ def test_query_with_one_filter(populated_client: TestClient):
     response = populated_client.post(url="/query", json=query_with_filter)
     assert 200 == response.status_code
     response_json = response.json()
+    response_json = exclude_no_answer(response_json)
     assert response_json["answers"][0]["answer"] == "Adobe Systems"
 
 
@@ -162,6 +170,7 @@ def test_query_with_one_global_filter(populated_client: TestClient):
     response = populated_client.post(url="/query", json=query_with_filter)
     assert 200 == response.status_code
     response_json = response.json()
+    response_json = exclude_no_answer(response_json)
     assert response_json["answers"][0]["answer"] == "Adobe Systems"
 
 
@@ -173,6 +182,7 @@ def test_query_with_filter_list(populated_client: TestClient):
     response = populated_client.post(url="/query", json=query_with_filter_list)
     assert 200 == response.status_code
     response_json = response.json()
+    response_json = exclude_no_answer(response_json)
     assert response_json["answers"][0]["answer"] == "Adobe Systems"
 
 
@@ -183,6 +193,7 @@ def test_query_with_invalid_filter(populated_client: TestClient):
     response = populated_client.post(url="/query", json=query_with_invalid_filter)
     assert 200 == response.status_code
     response_json = response.json()
+    response_json = exclude_no_answer(response_json)
     assert len(response_json["answers"]) == 0
 
 
