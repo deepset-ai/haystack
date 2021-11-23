@@ -414,7 +414,7 @@ class Pipeline(BasePipeline):
         gold_document_ids = []
         gold_document_contents = []
         if labels is not None and labels.labels is not None:
-            gold_answers = [None] if labels.no_answer else labels.answers
+            gold_answers = [] if labels.no_answer else labels.answers
             gold_offsets_in_documents = [label.answer.offsets_in_document for label in labels.labels if label.answer is not None]
             gold_document_ids = labels.document_ids
             gold_document_contents = [label.document.content for label in labels.labels]
@@ -423,29 +423,34 @@ class Pipeline(BasePipeline):
         answers = node_output.get("answers", None)
         if answers is not None:
             df = pd.DataFrame(answers, columns=answer_cols)
-            df["type"] = "answer"
-            df["gold_answers"] = [gold_answers] * len(df)
-            df["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df)
-            df["exact_match"] = df.apply(
+            if len(df) > 0:
+                df["type"] = "answer"
+                df["gold_answers"] = [gold_answers] * len(df)
+                df["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df)
+                df["exact_match"] = df.apply(
                 lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
-            df["f1"] = df.apply(
-                lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
-            if sas_model_name_or_path is not None:
-                df["sas"], _ = semantic_answer_similarity([[a] for a in df["answer"].values], df["gold_answers"].values, 
-                                            sas_model_name_or_path=sas_model_name_or_path)
+                df["f1"] = df.apply(
+                    lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
+                if sas_model_name_or_path is not None:
+                    sas = [0.0] * len(df)
+                    if len(gold_answers) > 0:
+                        sas, _ = semantic_answer_similarity([[a] for a in df["answer"].values], df["gold_answers"].values, 
+                                                sas_model_name_or_path=sas_model_name_or_path)
+                    df["sas"] = sas
 
         documents = node_output.get("documents", None)
         if documents is not None:
             df = pd.DataFrame(documents, columns=document_cols)
-            df["type"] = "document"
-            df["gold_document_ids"] = [gold_document_ids] * len(df)
-            df["gold_document_contents"] = [gold_document_contents] * len(df)
-            df["gold_id_match"] = df.apply(
-                lambda row: 1.0 if row["id"] in gold_document_ids else 0.0, axis=1)
-            df["answer_match"] = df.apply(
-                lambda row: 1.0 if any(gold_answer in row["content"] for gold_answer in gold_answers) else 0.0, axis=1)
-            df["gold_id_or_answer_match"] = df.apply(
-                lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1)
+            if len(df) > 0:
+                df["type"] = "document"
+                df["gold_document_ids"] = [gold_document_ids] * len(df)
+                df["gold_document_contents"] = [gold_document_contents] * len(df)
+                df["gold_id_match"] = df.apply(
+                    lambda row: 1.0 if row["id"] in gold_document_ids else 0.0, axis=1)
+                df["answer_match"] = df.apply(
+                    lambda row: 1.0 if any(gold_answer in row["content"] for gold_answer in gold_answers) else 0.0, axis=1)
+                df["gold_id_or_answer_match"] = df.apply(
+                    lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1)
 
         if df is not None:
             df["node"] = node_name
