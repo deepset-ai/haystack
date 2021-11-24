@@ -54,7 +54,7 @@ def train_student(model_name: str, download_folder: Path, train_file: str, test_
     # loading student model
     model = FARMReader(model_name_or_path=model_name)
     # training student model
-    model.train(data_dir=download_folder, train_filename=train_file, n_epochs=epochs, batch_size=batch_size, caching=True)
+    model.train(data_dir=download_folder, train_filename=train_file, n_epochs=epochs, batch_size=batch_size, caching=True, max_seq_len=512, learning_rate=3e-5)
     return eval(model, download_folder, test_file)
 
 def train_student_with_distillation(student_name: str, teacher_name: str, download_folder: Path, train_file: str, test_file: str,
@@ -66,7 +66,7 @@ temperature: float) -> dict:
     # distilling
     student.distil_from(teacher, data_dir=download_folder, train_filename=train_file, n_epochs=epochs, caching=True,
     student_batch_size=student_batch_size, teacher_batch_size=teacher_batch_size, distillation_loss=distillation_loss,
-    distillation_loss_weight=distillation_loss_weight, temperature=temperature)
+    distillation_loss_weight=distillation_loss_weight, temperature=temperature, max_seq_len=512, learning_rate=3e-5)
     return eval(student, download_folder, test_file)
 
 def main():
@@ -77,19 +77,31 @@ def main():
     student = config["student_model"]
     teacher = config["teacher_model"]
 
+    temperatures = config["temperature"]
+    distillation_loss_weights = config["distillation_loss_weight"]
+
+    if not isinstance(temperatures, list):
+        temperatures = [temperatures]
+
+    if not isinstance(distillation_loss_weights, list):
+        distillation_loss_weights = [distillation_loss_weights]
+    
     # loading dataset
     logger.info("Downloading dataset")
     train_file, test_file = download_dataset(config["dataset"], download_folder)
 
+    results_student_with_distillation = []
+    for temperature in temperatures:
+        for distillation_loss_weight in distillation_loss_weights:
+            # distillation training
+            logger.info(f"Training student with distillation (temperature: {temperature} distillation loss weight: {distillation_loss_weight}")
+            results_student_with_distillation.append((temperature, distillation_loss_weight, train_student_with_distillation(student["model_name_or_path"], teacher["model_name_or_path"], download_folder,
+            train_file, test_file, config["epochs"], student["batch_size"], teacher["batch_size"], config["distillation_loss"], distillation_loss_weight,
+            temperature)))
+
     # baseline
     logger.info("Training student without distillation as a baseline")
     results_student = train_student(student["model_name_or_path"], download_folder, train_file, test_file, config["epochs"], student["batch_size"])
-
-    # distillation training
-    logger.info("Training student with distillation")
-    results_student_with_distillation = train_student_with_distillation(student["model_name_or_path"], teacher["model_name_or_path"], download_folder,
-    train_file, test_file, config["epochs"], student["batch_size"], teacher["batch_size"], config["distillation_loss"], config["distillation_loss_weight"],
-    config["temperature"])
 
     # evaluating teacher as upper bound for performance
     logger.info("Evaluating teacher")
@@ -97,8 +109,9 @@ def main():
 
     # printing evaluation results
     logger.info("Evaluation results:")
-    descriptions = ["Results of teacher", "Results of student without distillation (baseline)", "Results of student with distillation"]
-    for evaluation, description in zip([results_teacher, results_student, results_student_with_distillation], descriptions):
+    descriptions = ["Results of teacher", "Results of student without distillation (baseline)"] \
+         + [f"Results of student with distillation (temperature: {temperature} distillation loss weight: {distillation_loss_weight}" for temperature, distillation_loss_weight, _ in results_student_with_distillation]
+    for evaluation, description in zip([results_teacher, results_student] + [res for _, _, res in results_student_with_distillation], descriptions):
         logger.info(description)
         logger.info(f"EM: {evaluation['EM']}")
         logger.info(f"F1: {evaluation['f1']}")

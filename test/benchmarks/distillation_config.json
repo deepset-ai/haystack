@@ -1,16 +1,16 @@
 {
     "student_model": {
-        "model_name_or_path": "prajjwal1/bert-tiny",
-        "batch_size": 64
+        "model_name_or_path": "deepset/gelectra-base",
+        "batch_size": 6
     },
     "teacher_model": {
-        "model_name_or_path": "deepset/bert-large-uncased-whole-word-masking-squad2",
-        "batch_size": 4
+        "model_name_or_path": "deepset/gelectra-large-germanquad",
+        "batch_size": 16
     },
-    "epochs": 7,
-    "distillation_loss": "mse",
-    "distillation_loss_weight": 0.5,
-    "temperature": 2,
+    "epochs": 3,
+    "distillation_loss": "kl_div",
+    "distillation_loss_weight": [0.25, 0.5, 0.75],
+    "temperature": [1, 2, 5, 10],
     "dataset": "squad2",
-    "download_folder": "dataset"
+    "download_folder": "dataset/squad2"
 }
