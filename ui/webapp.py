@@ -50,7 +50,7 @@ def main():
     # Sidebar
     st.sidebar.header("Options")
     top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1)
-    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=3, step=1)
+    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=10, step=1)
     eval_mode = st.sidebar.checkbox("Evaluation mode")
     debug = st.sidebar.checkbox("Show debug info")
 
@@ -98,31 +98,39 @@ def main():
     """, unsafe_allow_html=True)
 
     # Load csv into pandas dataframe
-    if eval_mode:
-        try:
-            df = pd.read_csv(EVAL_LABELS, sep=";")
-        except Exception:
-            st.error(f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
-            sys.exit(f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
-
-        # Get next random question from the CSV
-        state.get_next_question = st.button("Load new question")
-        if state.get_next_question:
-            reset_results()
-            new_row = df.sample(1)   
-            while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
-                new_row = df.sample(1)
-            state.random_question = new_row["Question Text"].values[0]
-            state.random_answer = new_row["Answer"].values[0]
+    try:
+        df = pd.read_csv(EVAL_LABELS, sep=";")
+    except Exception:
+        st.error(f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
+        sys.exit(f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
 
     # Search bar
     question = st.text_input(
-        "Please provide your query:", 
-        value=state.random_question, 
+        "Please provide your query:",
+        value=state.random_question,
         max_chars=100, 
         on_change=reset_results
     )
-    run_query = st.button("Run")
+    col1, col2 = st.columns(2)
+    col1.markdown("<style>.stButton button {width:100%;}</style>", unsafe_allow_html=True)
+    col2.markdown("<style>.stButton button {width:100%;}</style>", unsafe_allow_html=True)
+
+    # Run button
+    run_query = col1.button("Run")
+
+    # Get next random question from the CSV
+    state.get_next_question = col2.button("Random question")
+    if state.get_next_question:
+        reset_results()
+        new_row = df.sample(1)   
+        while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
+            new_row = df.sample(1)
+        state.random_question = new_row["Question Text"].values[0]
+        state.random_answer = new_row["Answer"].values[0]
+
+        # Re-runs the script setting the random question as the textbox value
+        # Unfortunately necessary as the Random Question button is _below_ the textbox
+        raise st.script_runner.RerunException(st.script_request_queue.RerunData(None))
 
     # Check the connection
     with st.spinner("⌛️ &nbsp;&nbsp; Haystack is starting..."):
