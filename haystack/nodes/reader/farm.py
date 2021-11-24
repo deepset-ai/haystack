@@ -59,6 +59,7 @@ class FARMReader(BaseReader):
         proxies=None,
         local_files_only=False,
         force_download=False,
+        use_auth_token: Optional[Union[str,bool]] = None,
         **kwargs
     ):
 
@@ -108,6 +109,9 @@ class FARMReader(BaseReader):
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
         :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
 
         # save init parameters to enable export of component config as YAML
@@ -133,6 +137,7 @@ class FARMReader(BaseReader):
                                             local_files_only=local_files_only,
                                             force_download=force_download,
                                             devices=self.devices,
+                                            use_auth_token=use_auth_token,
                                             **kwargs)
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
