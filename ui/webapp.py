@@ -19,7 +19,7 @@ from utils import HS_VERSION, feedback_doc, haystack_is_ready, retrieve_doc, upl
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
-DEFAULT_QUESTION_AT_STARTUP = "Who's the father of Arya Stark?"
+DEFAULT_QUESTION_AT_STARTUP = "What's the capital of France?"
 
 # Labels for the evaluation
 EVAL_LABELS = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_example.csv")
