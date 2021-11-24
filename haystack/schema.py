@@ -472,12 +472,38 @@ class MultiLabel:
         self.labels = labels
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
-        # answer strings as this is mostly relevant in usage
-        self.answers = [l.answer.answer for l in self.labels if l.answer is not None]
+
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
         self.no_answer = False not in [l.no_answer for l in self.labels]
+
+        # answer strings and offsets cleaned for no_answers:
+        # if there are only no_answers, offsets are empty and answers will be a single empty string 
+        # which equals the no_answers representation of reader nodes
+        if self.no_answer:
+            self.answers = [""]
+            self.gold_offsets_in_documents = []
+            self.gold_offsets_in_contexts = []
+        else:
+            answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
+            self.answers = [answer.answer for answer in answered]
+            self.gold_offsets_in_documents = [answer.offsets_in_document for answer in answered]
+            self.gold_offsets_in_contexts = [answer.offsets_in_context for answer in answered]
+
+        # There are two options here: taking the id from the document of each label 
+        # or taking the document_id of each label's answer.
+        # We take the former as labels without answers are allowed.
+        #
+        # In case of no_answer labels there's another difference: no_answer labels do not have a answer.document_id.
+        # document_store.add_eval_data() currently adds all documents 
+        # coming from the SQAD paragraph's context as separate no_answer labels, 
+        # thus with document.id but without answer.document_id.
+        # This is important for retriever evaluation as we implicitly mark those documents as relevant even though they do not contain the answer.
+        # We introduced document_ids_with_answers so we can use only relevant documents for retriever evaluation.
         self.document_ids = [l.document.id for l in self.labels]
+        self.document_ids_with_answers = [l.document.id for l in self.labels if not l.no_answer]
+        self.document_contents = [l.document.content for l in self.labels]
+        self.document_contents_with_answers = [l.document.content for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         unique_values = set([getattr(l, key) for l in self.labels])

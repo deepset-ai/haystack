@@ -397,6 +397,8 @@ class Pipeline(BasePipeline):
                     query, label, node_name, node_output)
                 eval_result.append(node_name, df)
         
+        # add sas values in batch mode for whole Dataframe
+        # this is way faster than if we calculate it for each query separately
         if sas_model_name_or_path is not None:
             for df in eval_result.node_results.values():
                 if len(df[df["type"] == "answer"]) > 0:
@@ -410,39 +412,66 @@ class Pipeline(BasePipeline):
 
     def _build_eval_dataframe(self, 
         query: str, 
-        labels: MultiLabel, 
+        query_labels: MultiLabel, 
         node_name: str, 
         node_output: dict
     ) -> DataFrame:
-        answer_cols = ["answer", "document_id", "offsets_in_document", "context"]
-        document_cols = ["content", "id"]
-
-        gold_answers: list = []
-        gold_offsets_in_documents = []
-        gold_document_ids = []
-        gold_document_contents = []
-        if labels is not None and labels.labels is not None:
-            gold_answers = list(set(labels.answers))
-            gold_offsets_in_documents = [label.answer.offsets_in_document for label in labels.labels if label.answer is not None]
-            gold_document_ids = labels.document_ids
-            gold_document_contents = [label.document.content for label in labels.labels]
-
         df: DataFrame = None
+
+        if query_labels is None or query_labels.labels is None:
+            logger.warning(f"There is no label for query '{query}'. Query will be omitted.")
+            return df
+
+        # remarks: no_answers are represented by an empty string
+        # there cannot be mixed no_answers and actual answers
+        gold_answers = query_labels.answers
+
+        # if you load eval data through document_store.add_eval_data() Answer's 
+        # offsets_in_document is the same as offsets_in_context
+        gold_offsets_in_documents = query_labels.gold_offsets_in_documents
+
+        # we take document_ids_with_answers instead of document_ids to ensure we only have relevant documents
+        # otherwise we would penalize document nodes if they do not retrieve irelevant documents
+        gold_document_ids = query_labels.document_ids_with_answers
+        gold_document_contents = query_labels.document_contents_with_answers 
+
+        # if node returned answers include answer specific info, these are:
+        # - the answer returned itself
+        # - the document_id the answer was found in
+        # - the position or offsets within the document the answer as found
+        # - the surrounding context of the answer within the document
+        # - the gold answers
+        # - the positon or offsets of the gold answer within the document
+        # - the gold document ids containing the answer
+        # - the exact_match metric
+        # - the f1 metric
+        # - the sas metric will be calculated overall queries if a sas model has been provided
         answers = node_output.get("answers", None)
         if answers is not None:
-            df = pd.DataFrame(answers, columns=answer_cols)
+            answer_cols_to_keep = ["answer", "document_id", "offsets_in_document", "context"]
+            df = pd.DataFrame(answers, columns=answer_cols_to_keep)
             if len(df) > 0:
                 df["type"] = "answer"
                 df["gold_answers"] = [gold_answers] * len(df)
                 df["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df)
+                df["gold_document_ids"] = [gold_document_ids] * len(df)
                 df["exact_match"] = df.apply(
                     lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
                 df["f1"] = df.apply(
                     lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
 
+        # if node returned documents include document specific info
+        # - the id of the document
+        # - the content of the document
+        # - the gold document ids
+        # - the gold document contents
+        # - the gold_id_match metric
+        # - the answer_match metric
+        # - the gold_id_or_answer_match metric
         documents = node_output.get("documents", None)
         if documents is not None:
-            df = pd.DataFrame(documents, columns=document_cols)
+            document_cols_to_keep = ["content", "id"]
+            df = pd.DataFrame(documents, columns=document_cols_to_keep)
             if len(df) > 0:
                 df["type"] = "document"
                 df["gold_document_ids"] = [gold_document_ids] * len(df)
@@ -454,6 +483,7 @@ class Pipeline(BasePipeline):
                 df["gold_id_or_answer_match"] = df.apply(
                     lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1)
 
+        # add general info
         if df is not None:
             df["node"] = node_name
             df["query"] = query
