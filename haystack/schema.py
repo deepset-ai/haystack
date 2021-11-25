@@ -454,7 +454,7 @@ class MultiLabel:
         automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
         underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
 
-        :param labels: A list lof labels that belong to a similar query and shall be "grouped" together
+        :param labels: A list of labels that belong to a similar query and shall be "grouped" together
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
@@ -477,9 +477,9 @@ class MultiLabel:
         # users decided which aggregation logic they want
         self.no_answer = False not in [l.no_answer for l in self.labels]
 
-        # answer strings and offsets cleaned for no_answers:
-        # if there are only no_answers, offsets are empty and answers will be a single empty string 
-        # which equals the no_answers representation of reader nodes
+        # Answer strings and offsets cleaned for no_answers:
+        # If there are only no_answers, offsets are empty and answers will be a single empty string 
+        # which equals the no_answers representation of reader nodes.
         if self.no_answer:
             self.answers = [""]
             self.gold_offsets_in_documents = []
@@ -490,20 +490,16 @@ class MultiLabel:
             self.gold_offsets_in_documents = [answer.offsets_in_document for answer in answered]
             self.gold_offsets_in_contexts = [answer.offsets_in_context for answer in answered]
 
-        # There are two options here: taking the id from the document of each label 
-        # or taking the document_id of each label's answer.
+        # There are two options here to represent document_ids: 
+        # taking the id from the document of each label or taking the document_id of each label's answer.
         # We take the former as labels without answers are allowed.
         #
-        # In case of no_answer labels there's another difference: no_answer labels do not have a answer.document_id.
-        # document_store.add_eval_data() currently adds all documents 
-        # coming from the SQAD paragraph's context as separate no_answer labels, 
-        # thus with document.id but without answer.document_id.
-        # This is important for retriever evaluation as we implicitly mark those documents as relevant even though they do not contain the answer.
-        # We introduced document_ids_with_answers so we can use only relevant documents for retriever evaluation.
-        self.document_ids = [l.document.id for l in self.labels]
-        self.document_ids_with_answers = [l.document.id for l in self.labels if not l.no_answer]
-        self.document_contents = [l.document.content for l in self.labels]
-        self.document_contents_with_answers = [l.document.content for l in self.labels if not l.no_answer]
+        # For no_answer cases document_store.add_eval_data() currently adds all documents coming from the SQAD paragraph's context 
+        # as separate no_answer labels, and thus with document.id but without answer.document_id.
+        # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
+        # Hence, we exclude them here as well.
+        self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
+        self.document_contents = [l.document.content for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         unique_values = set([getattr(l, key) for l in self.labels])
@@ -610,6 +606,18 @@ class EvaluationResult:
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
+
+        For document returning nodes default metrics are: 
+        - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
+        - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
+        - precision (Precision: How much of the returned documents were relevant?)
+        - recall_ir (Recall according to Information Retrieval definition: How much of the relevant documents were retrieved per query?)
+        - recall_qs (Recall for Question Answering: How much of the queries returned at least one relevant document?)
+
+        For answer returning nodes default metrics are:
+        - exact_match (How much of the queries returned the exact answer?)
+        - f1 (How well do the returned results overlap with any gold answer on token basis?)
+        - sas if a SAS model has bin provided during during pipeline.eval() (How well do the returned results overlap with any gold answer on a semantic basis?)
         
         Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
         E.g. top_1_f1 for reader nodes can be calculated by setting simulated_top_k_reader=1.
@@ -739,10 +747,20 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1
     ) -> pd.DataFrame:
+        """
+        Builds a dataframe containing answer metrics (columns) per query (index).
+        Answer metrics are:
+        - exact_match (Did the query exactly return any gold answer? -> 1.0 or 0.0)
+        - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
+        - sas if a SAS model has bin provided during during pipeline.eval() (How well does the best matching returned result overlap with any gold answer on a semantic basis?)
+        """
         queries = answers["query"].unique()
+
+        #simulate top k reader
         if simulated_top_k_reader != -1:
             answers = answers[answers["rank"] <= simulated_top_k_reader]
         
+        # simulate top k retriever
         if simulated_top_k_retriever != -1:
             documents = self._get_documents_df()
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
@@ -755,6 +773,7 @@ class EvaluationResult:
                 simulated_answers.append(simulated_query_answers)
             answers = pd.concat(simulated_answers)
 
+        # build metrics df
         metrics = []        
         for query in queries:
             query_df = answers[answers["query"] == query]
@@ -800,6 +819,15 @@ class EvaluationResult:
         simulated_top_k_retriever: int = -1, 
         doc_relevance_col: str = "gold_id_match"
     ) -> pd.DataFrame:
+        """
+        Builds a dataframe containing document metrics (columns) per query (index).
+        Document metrics are:
+        - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
+        - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
+        - precision (Precision: How much of the returned documents were relevant?)
+        - recall_ir (Recall according to Information Retrieval definition: How much of the relevant documents were retrieved per query?)
+        - recall_qs (Recall for Question Answering: Did the query return at least one relevant document? -> 1.0 or 0.0)
+        """
         if simulated_top_k_retriever != -1:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
         

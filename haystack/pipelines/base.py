@@ -431,18 +431,13 @@ class Pipeline(BasePipeline):
             logger.warning(f"There is no label for query '{query}'. Query will be omitted.")
             return df
 
-        # remarks: no_answers are represented by an empty string
-        # there cannot be mixed no_answers and actual answers
+        # remarks for no_answers:
+        # Single 'no_answer'-labels are not contained in MultiLabel aggregates.
+        # If all labels are no_answers, MultiLabel.answers will be [""] and the other aggregates []
         gold_answers = query_labels.answers
-
-        # remarks: if you load eval data through document_store.add_eval_data() Answer's 
-        # offsets_in_document is the same as offsets_in_context
         gold_offsets_in_documents = query_labels.gold_offsets_in_documents
-
-        # we take document_ids_with_answers instead of document_ids to ensure we only have relevant documents
-        # otherwise we would penalize document nodes if they do not retrieve irrelevant documents
-        gold_document_ids = query_labels.document_ids_with_answers
-        gold_document_contents = query_labels.document_contents_with_answers 
+        gold_document_ids = query_labels.document_ids
+        gold_document_contents = query_labels.document_contents
 
         # if node returned answers, include answer specific info:
         # - the answer returned itself
@@ -454,7 +449,7 @@ class Pipeline(BasePipeline):
         # - the gold document ids containing the answer
         # - the exact_match metric depicting if the answer exactly matches the gold label
         # - the f1 metric depicting how well the answer overlaps with the gold label on token basis
-        # - the sas metric depciting how well then answer matches the gold label on a semantic basis.
+        # - the sas metric depciting how well the answer matches the gold label on a semantic basis.
         #   this will be calculated on all queries in eval() for performance reasons if a sas model has been provided
         answers = node_output.get("answers", None)
         if answers is not None:
@@ -476,7 +471,7 @@ class Pipeline(BasePipeline):
         # - the gold document ids
         # - the gold document contents
         # - the gold_id_match metric depicting whether one of the gold document ids matches the document
-        # - the answer_match metric depicting wether the document conaints the answer
+        # - the answer_match metric depicting whether the document contains the answer
         # - the gold_id_or_answer_match metric depicting whether one of the former two conditions are met
         documents = node_output.get("documents", None)
         if documents is not None:
