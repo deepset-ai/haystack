@@ -25,6 +25,7 @@ def load_config(path: str) -> dict:
     with open(path, "r") as f:
         return json.load(f)
 
+# returns all possible combinations of hyperparameters for grid search
 def combine_config(configs: dict) -> List[dict]:
     combinations_list = [[]]
     for config_key, config in configs.items():
@@ -40,8 +41,6 @@ def combine_config(configs: dict) -> List[dict]:
         combinations.append(dict(combination))
     
     return combinations
-        
-        
         
 
 def download_file(url: str, path: Path):
@@ -88,7 +87,7 @@ def train_student_with_distillation(student: dict, teacher: dict, download_folde
 def main():
     # loading config
     parent = Path(__file__).parent.resolve()
-    config = load_config(parent/"distillation_config copy.json")
+    config = load_config(parent/"distillation_config.json")
     download_folder = parent/config["download_folder"]
     student = config["student_model"]
     teacher = config["teacher_model"]
@@ -114,7 +113,7 @@ def main():
     if config["evaluate_student_without_distillation"]:
         logger.info("Training student without distillation as a baseline")
         descriptions.append("Results of student without distillation")
-        results.append(train_student(student["model_name_or_path"], download_folder, train_file, test_file, **training_settings))
+        results.append(train_student(student, download_folder, train_file, test_file, **training_settings))
 
     if config["evaluate_teacher"]:
         # evaluating teacher as upper bound for performance
