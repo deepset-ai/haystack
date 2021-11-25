@@ -564,7 +564,7 @@ and putting together all data that is needed for evaluation, e.g. calculating me
 #### print\_eval\_report
 
 ```python
- | print_eval_report(eval_result: EvaluationResult, n_worst_queries: int = 3)
+ | print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3)
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -572,7 +572,7 @@ Prints evaluation report containing a metrics funnel and worst queries for furth
 **Arguments**:
 
 - `eval_result`: The evaluation result, can be obtained by running eval().
-- `n_worst_queries`: The number of worst queries to show.
+- `n_wrong_examples`: The number of worst queries to show.
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline

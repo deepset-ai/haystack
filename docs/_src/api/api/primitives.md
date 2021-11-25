@@ -257,7 +257,7 @@ Example:
 | eval_results.calculate_metrics()
 |
 | # show summary of incorrect queries
-| eval_results.worst_queries()
+| eval_results.wrong_examples()
 ```
 
 Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
@@ -324,11 +324,11 @@ as there are situations the result can heavily differ from an actual eval run wi
 - `doc_relevance_col`: column in the underlying eval table that contains the relevance criteria for documents.
     values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
 
-<a name="schema.EvaluationResult.worst_queries"></a>
-#### worst\_queries
+<a name="schema.EvaluationResult.wrong_examples"></a>
+#### wrong\_examples
 
 ```python
- | worst_queries(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_qa", answer_metric: str = "f1") -> List[Dict]
+ | wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_qa", answer_metric: str = "f1") -> List[Dict]
 ```
 
 Returns the worst performing queries.
