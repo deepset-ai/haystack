@@ -57,7 +57,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     # Sidebar
     st.sidebar.header("Options")
     top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1, on_change=reset_results)
-    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=3, value=10, step=1, on_change=reset_results)
+    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=3, step=1, on_change=reset_results)
     eval_mode = st.sidebar.checkbox("Evaluation mode")
     debug = st.sidebar.checkbox("Show debug info")
 
