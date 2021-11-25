@@ -416,6 +416,15 @@ class Pipeline(BasePipeline):
         node_name: str, 
         node_output: dict
     ) -> DataFrame:
+        """
+        Builds a Dataframe for each query from which evaluation metrics can be calculated.
+        Currently only answer or document returning nodes are supported, returns None otherwise.
+        
+        Each row contains either an answer or a document that has been retrieved during evaluation.
+        Rows are being enriched with basic infos like rank, query, type or node.
+        Additional answer or document specific evaluation infos like gold labels 
+        and metrics depicting whether the row matches the gold labels are included, too.
+        """
         df: DataFrame = None
 
         if query_labels is None or query_labels.labels is None:
@@ -426,26 +435,27 @@ class Pipeline(BasePipeline):
         # there cannot be mixed no_answers and actual answers
         gold_answers = query_labels.answers
 
-        # if you load eval data through document_store.add_eval_data() Answer's 
+        # remarks: if you load eval data through document_store.add_eval_data() Answer's 
         # offsets_in_document is the same as offsets_in_context
         gold_offsets_in_documents = query_labels.gold_offsets_in_documents
 
         # we take document_ids_with_answers instead of document_ids to ensure we only have relevant documents
-        # otherwise we would penalize document nodes if they do not retrieve irelevant documents
+        # otherwise we would penalize document nodes if they do not retrieve irrelevant documents
         gold_document_ids = query_labels.document_ids_with_answers
         gold_document_contents = query_labels.document_contents_with_answers 
 
-        # if node returned answers include answer specific info, these are:
+        # if node returned answers, include answer specific info:
         # - the answer returned itself
         # - the document_id the answer was found in
-        # - the position or offsets within the document the answer as found
+        # - the position or offsets within the document the answer was found
         # - the surrounding context of the answer within the document
         # - the gold answers
         # - the positon or offsets of the gold answer within the document
         # - the gold document ids containing the answer
-        # - the exact_match metric
-        # - the f1 metric
-        # - the sas metric will be calculated overall queries if a sas model has been provided
+        # - the exact_match metric depicting if the answer exactly matches the gold label
+        # - the f1 metric depicting how well the answer overlaps with the gold label on token basis
+        # - the sas metric depciting how well then answer matches the gold label on a semantic basis.
+        #   this will be calculated on all queries in eval() for performance reasons if a sas model has been provided
         answers = node_output.get("answers", None)
         if answers is not None:
             answer_cols_to_keep = ["answer", "document_id", "offsets_in_document", "context"]
@@ -460,14 +470,14 @@ class Pipeline(BasePipeline):
                 df["f1"] = df.apply(
                     lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
 
-        # if node returned documents include document specific info
+        # if node returned documents, include document specific info:
         # - the id of the document
         # - the content of the document
         # - the gold document ids
         # - the gold document contents
-        # - the gold_id_match metric
-        # - the answer_match metric
-        # - the gold_id_or_answer_match metric
+        # - the gold_id_match metric depicting whether one of the gold document ids matches the document
+        # - the answer_match metric depicting wether the document conaints the answer
+        # - the gold_id_or_answer_match metric depicting whether one of the former two conditions are met
         documents = node_output.get("documents", None)
         if documents is not None:
             document_cols_to_keep = ["content", "id"]
