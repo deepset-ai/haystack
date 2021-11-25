@@ -260,6 +260,31 @@ Example:
 | eval_results.worst_queries()
 ```
 
+Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
+Rows are enriched with basic infos like rank, query, type or node.
+Additional answer or document specific evaluation infos like gold labels
+and metrics depicting whether the row matches the gold labels are included, too.
+The DataFrames have the following schema:
+- query: the query
+- node: the node name
+- type: 'answer' or 'document'
+- rank: rank or 1-based-position in result list
+- document_id: the id of the document that has been retrieved or that contained the answer
+- gold_document_ids: the documents to be retrieved
+- content (documents only): the content of the document
+- gold_contents (documents only): the contents of the gold documents
+- gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
+- answer_match (documents only): metric depicting whether the document contains the answer
+- gold_id_or_answer_match (documents only): metric depicting whether one of the former two conditions are met
+- answer (answers only): the answer
+- context (answers only): the surrounding context of the answer within the document
+- offsets_in_document (answers only): the position or offsets within the document the answer was found
+- gold_answers (answers only): the answers to be given
+- gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
+- exact_match (answers only): metric depicting if the answer exactly matches the gold label
+- f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
+- sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
+
 **Arguments**:
 
 - `node_results`: the evaluation Dataframes per pipeline node
