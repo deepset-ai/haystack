@@ -186,7 +186,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
 
             else:
-                st.info("🤔 &nbsp;&nbsp; Haystack found no good answer to your question. Are you sure this information can be found on Wikipedia?")
+                st.info("🤔 &nbsp;&nbsp; Haystack is unsure whether any of the documents contain an answer to your question. Try to reformulate it!")
                 st.write("**Relevance:** ", result["relevance"])
                 
             if eval_mode:
