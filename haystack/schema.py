@@ -573,7 +573,7 @@ class EvaluationResult:
         | eval_results.calculate_metrics()
         |
         | # show summary of incorrect queries
-        | eval_results.worst_queries()
+        | eval_results.wrong_examples()
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
@@ -662,7 +662,7 @@ class EvaluationResult:
                     doc_relevance_col=doc_relevance_col) 
             for node, df in self.node_results.items()}
 
-    def worst_queries(
+    def wrong_examples(
         self,
         node: str, 
         n: int = 3,
@@ -698,7 +698,7 @@ class EvaluationResult:
                 simulated_top_k_reader=simulated_top_k_reader, 
                 simulated_top_k_retriever=simulated_top_k_retriever)
             worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
-            worst_queries = []
+            wrong_examples = []
             for query, metrics in worst_df.iterrows():
                 query_answers = answers[answers["query"] == query]
                 query_dict = {
@@ -709,8 +709,8 @@ class EvaluationResult:
                         .to_dict(orient="records"),
                     "gold_answers": query_answers["gold_answers"].iloc[0]
                 }
-                worst_queries.append(query_dict)
-            return worst_queries
+                wrong_examples.append(query_dict)
+            return wrong_examples
 
         documents = node_df[node_df["type"] == "document"]
         if len(documents) > 0:
@@ -718,7 +718,7 @@ class EvaluationResult:
                 simulated_top_k_retriever=simulated_top_k_retriever,
                 doc_relevance_col=doc_relevance_col)
             worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
-            worst_queries = []
+            wrong_examples = []
             for query, metrics in worst_df.iterrows():
                 query_documents = documents[documents["query"] == query]
                 query_dict = {
@@ -729,8 +729,8 @@ class EvaluationResult:
                         .to_dict(orient="records"),
                     "gold_document_ids": query_documents["gold_document_ids"].iloc[0]
                 }
-                worst_queries.append(query_dict)
-            return worst_queries
+                wrong_examples.append(query_dict)
+            return wrong_examples
         
         return []
     

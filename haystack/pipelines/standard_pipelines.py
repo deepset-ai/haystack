@@ -151,18 +151,18 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         )
         return s
 
-    def print_eval_report(self, eval_result: EvaluationResult, n_worst_queries: int = 3):
+    def print_eval_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
         """
         Prints evaluation report containing a metrics funnel and worst queries for further analysis.
         
         :param eval_result: The evaluation result, can be obtained by running eval().
-        :param n_worst_queries: The number of worst queries to show.
+        :param n_wrong_examples: The number of worst queries to show.
         """
         metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
         metrics_top_1 = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1)
-        worst_retriever_queries = eval_result.worst_queries("Retriever", doc_relevance_col="gold_id_or_answer_match", n=n_worst_queries)
+        worst_retriever_queries = eval_result.wrong_examples("Retriever", doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
         worst_retriever_queries_formatted = "\n".join([self._format_retriever_query(q) for q in worst_retriever_queries])
-        worst_reader_queries = eval_result.worst_queries("Reader", doc_relevance_col="gold_id_or_answer_match", n=n_worst_queries)
+        worst_reader_queries = eval_result.wrong_examples("Reader", doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
         worst_reader_queries_formatted = "\n".join([self._format_reader_query(q) for q in worst_reader_queries])
         print(
         f"""=============== Evaluation Report ===============
@@ -180,11 +180,11 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
                         |
                       Answer
 =================================================
-              Worst Retriever Queries
+             Wrong Retriever Examples            
 =================================================
 {worst_retriever_queries_formatted}
 =================================================
-               Worst Reader Queries
+               Wrong Reader Examples
 =================================================
 {worst_reader_queries_formatted}
 =================================================

@@ -396,7 +396,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractive_qa_eval_worst_queries(reader, retriever_with_docs):
+def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
 
     queries = ["Who lives in Berlin?", "Who lives in Munich?"]
     labels = [
@@ -415,11 +415,11 @@ def test_extractive_qa_eval_worst_queries(reader, retriever_with_docs):
         params={"Retriever": {"top_k": 5}}, 
     )
 
-    worst_queries_retriever = eval_result.worst_queries(node="Retriever", n=1)
-    worst_queries_reader = eval_result.worst_queries(node="Reader", n=1)
+    wrongs_retriever = eval_result.wrong_examples(node="Retriever", n=1)
+    wrongs_reader = eval_result.wrong_examples(node="Reader", n=1)
 
-    assert len(worst_queries_retriever) == 1
-    assert len(worst_queries_reader) == 1
+    assert len(wrongs_retriever) == 1
+    assert len(wrongs_reader) == 1
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
