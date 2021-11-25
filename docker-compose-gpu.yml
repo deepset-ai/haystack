@@ -51,5 +51,4 @@ services:
     environment:
       - API_ENDPOINT=http://haystack-api:8000
       - EVAL_FILE=eval_labels_example.csv
-      - HAYSTACK_UI_DISABLE_FILE_UPLOAD=1
     command: "/bin/bash -c 'sleep 15 && streamlit run webapp.py'"
