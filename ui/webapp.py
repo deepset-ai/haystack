@@ -45,7 +45,7 @@ def main():
         state.raw_json = None
 
     # Title
-    st.write("# Haystack Demo - Countries Facts")
+    st.write("# Haystack Demo - Explore the world")
     st.write("""
 This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of 'Countries and capital cities'. 
 
@@ -56,8 +56,8 @@ Ask any question on this topic and see if Haystack can find the correct answer t
 
     # Sidebar
     st.sidebar.header("Options")
-    top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1)
-    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=3, value=10, step=1)
+    top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1, on_change=reset_results)
+    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=3, value=10, step=1, on_change=reset_results)
     eval_mode = st.sidebar.checkbox("Evaluation mode")
     debug = st.sidebar.checkbox("Show debug info")
 
@@ -186,7 +186,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
 
             else:
-                st.info("🤔 &nbsp;&nbsp; Haystack found no good answer to your question. Try to formulate it differently!")
+                st.info("🤔 &nbsp;&nbsp; Haystack found no good answer to your question. Are you sure this information can be found on Wikipedia?")
                 st.write("**Relevance:** ", result["relevance"])
                 
             if eval_mode:
