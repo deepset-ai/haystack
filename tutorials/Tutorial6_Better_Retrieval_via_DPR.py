@@ -3,7 +3,7 @@ from haystack.utils import clean_wiki_text, print_answers, launch_milvus, launch
 from haystack.nodes import FARMReader, DensePassageRetriever
 
 def tutorial6_better_retrieval_via_dpr():
-    # OPTION 1: FAISS is a library for efficient similarity search on a cluster of dense vectors.
+    # Option 1: FAISS is a library for efficient similarity search on a cluster of dense vectors.
     # The FAISSDocumentStore uses a SQL(SQLite in-memory be default) document store under-the-hood
     # to store the document text and other meta data. The vector embeddings of the text are
     # indexed on a FAISS Index that later is queried for searching answers.
@@ -12,14 +12,14 @@ def tutorial6_better_retrieval_via_dpr():
     # For more info on which suits your use case: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
     document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 
-    # OPTION2: Milvus is an open source database library that is also optimized for vector similarity searches like FAISS.
+    # Option 2: Milvus is an open source database library that is also optimized for vector similarity searches like FAISS.
     # Like FAISS it has both a "Flat" and "HNSW" mode but it outperforms FAISS when it comes to dynamic data management.
     # It does require a little more setup, however, as it is run through Docker and requires the setup of some config files.
     # See https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md
     # launch_milvus()
     # document_store = MilvusDocumentStore()
 
-    # OPTION3: Elasticsearch is not optimized for vector similarity searches but it can still store embedding vectors and thus supports DPR.
+    # Option 3: Elasticsearch is not optimized for vector similarity searches but it can still store embedding vectors and thus supports DPR.
     # Section "Retriever Speed" in our benchmarks compares different document stores in combination with DPR: https://haystack.deepset.ai/benchmarks/latest
     # It shows that queries to Elasticsearch are significantly slower than to FAISS and Milvus if more than a few thousand documents are stored.
     # Like Milvus, Elasticsearch runs through Docker.
@@ -58,7 +58,7 @@ def tutorial6_better_retrieval_via_dpr():
     document_store.update_embeddings(retriever)
 
     ### Reader
-    # Load a  local model or any of the QA models on
+    # Load a local model or any of the QA models on
     # Hugging Face's model hub (https://huggingface.co/models)
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
 
