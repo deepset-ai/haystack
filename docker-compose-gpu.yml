@@ -33,7 +33,7 @@ services:
     #image: "elasticsearch:7.9.2"
     # If you want a demo image instead that is "ready-to-query" with some indexed articles 
     # about countries and capital cities from Wikipedia:
-    image: "julianrisch/elasticsearch-countries-and-capitals"
+    image: "deepset/elasticsearch-countries-and-capitals"
     ports:
       - 9200:9200
     restart: on-failure
