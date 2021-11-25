@@ -19,7 +19,7 @@ from utils import HS_VERSION, feedback_doc, haystack_is_ready, retrieve_doc, upl
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
-DEFAULT_QUESTION_AT_STARTUP = "Who's the father of Arya Stark?"
+DEFAULT_QUESTION_AT_STARTUP = "What's the capital of France?"
 
 # Labels for the evaluation
 EVAL_LABELS = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_example.csv")
@@ -45,12 +45,19 @@ def main():
         state.raw_json = None
 
     # Title
-    st.write("# Haystack Demo")
+    st.write("# Haystack Demo - Explore the world")
+    st.write("""
+This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of 'Countries and capital cities'. 
+
+Ask any question on this topic and see if Haystack can find the correct answer to your query! 
+
+*Note: do not use keywords, but type full-fledged questions.* The demo is not optimized to deal with keyword queries and might misunderstand you.
+""")
 
     # Sidebar
     st.sidebar.header("Options")
-    top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1)
-    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=10, step=1)
+    top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1, on_change=reset_results)
+    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=3, step=1, on_change=reset_results)
     eval_mode = st.sidebar.checkbox("Evaluation mode")
     debug = st.sidebar.checkbox("Show debug info")
 
@@ -105,8 +112,7 @@ def main():
         sys.exit(f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
 
     # Search bar
-    question = st.text_input(
-        "Please provide your query:",
+    question = st.text_input("",
         value=state.random_question,
         max_chars=100, 
         on_change=reset_results
@@ -180,7 +186,7 @@ def main():
                 st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
 
             else:
-                st.warning("🤔 &nbsp;&nbsp; Haystack found no good answer to your question. Try to formulate it differently!")
+                st.info("🤔 &nbsp;&nbsp; Haystack is unsure whether any of the documents contain an answer to your question. Try to reformulate it!")
                 st.write("**Relevance:** ", result["relevance"])
                 
             if eval_mode:
