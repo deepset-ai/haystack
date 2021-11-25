@@ -226,7 +226,7 @@ underlying Labels provided a text answer and therefore demonstrates that there i
 
 **Arguments**:
 
-- `labels`: A list lof labels that belong to a similar query and shall be "grouped" together
+- `labels`: A list of labels that belong to a similar query and shall be "grouped" together
 - `drop_negative_labels`: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
 - `drop_no_answers`: Whether to drop labels that specify the answer is impossible
 
@@ -272,6 +272,18 @@ Example:
 ```
 
 Calculates proper metrics for each node.
+
+For document returning nodes default metrics are:
+- mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
+- map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)`Mean_average_precision`)
+- precision (Precision: How much of the returned documents were relevant?)
+- recall_ir (Recall according to Information Retrieval definition: How much of the relevant documents were retrieved per query?)
+- recall_qs (Recall for Question Answering: How much of the queries returned at least one relevant document?)
+
+For answer returning nodes default metrics are:
+- exact_match (How much of the queries returned the exact answer?)
+- f1 (How well do the returned results overlap with any gold answer on token basis?)
+- sas if a SAS model has bin provided during during pipeline.eval() (How well do the returned results overlap with any gold answer on a semantic basis?)
 
 Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
 E.g. top_1_f1 for reader nodes can be calculated by setting simulated_top_k_reader=1.
