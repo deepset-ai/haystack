@@ -766,7 +766,7 @@ class EvaluationResult:
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
             for query in queries:
-                top_k_document_ids = top_k_documents[top_k_documents["query"] == query]["id"].unique()
+                top_k_document_ids = top_k_documents[top_k_documents["query"] == query]["document_id"].unique()
                 query_answers = answers[answers["query"] == query]
                 simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
                 simulated_query_answers["rank"] = np.arange(1, len(simulated_query_answers)+1)
@@ -838,7 +838,7 @@ class EvaluationResult:
             gold_ids = query_df["gold_document_ids"].iloc[0]
             retrieved = len(query_df)
             
-            relevance_criteria_ids = list(query_df[query_df[doc_relevance_col] == 1]["id"].values)
+            relevance_criteria_ids = list(query_df[query_df[doc_relevance_col] == 1]["document_id"].values)
             num_relevants = len(set(gold_ids + relevance_criteria_ids))
             num_retrieved_relevants = query_df[doc_relevance_col].values.sum()
             rank_retrieved_relevants = query_df[query_df[doc_relevance_col] == 1]["rank"].values

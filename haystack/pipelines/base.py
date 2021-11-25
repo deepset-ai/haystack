@@ -466,7 +466,7 @@ class Pipeline(BasePipeline):
                     lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
 
         # if node returned documents, include document specific info:
-        # - the id of the document
+        # - the document_id
         # - the content of the document
         # - the gold document ids
         # - the gold document contents
@@ -478,11 +478,12 @@ class Pipeline(BasePipeline):
             document_cols_to_keep = ["content", "id"]
             df = pd.DataFrame(documents, columns=document_cols_to_keep)
             if len(df) > 0:
+                df = df.rename(columns={"id": "document_id"})
                 df["type"] = "document"
                 df["gold_document_ids"] = [gold_document_ids] * len(df)
                 df["gold_document_contents"] = [gold_document_contents] * len(df)
                 df["gold_id_match"] = df.apply(
-                    lambda row: 1.0 if row["id"] in gold_document_ids else 0.0, axis=1)
+                    lambda row: 1.0 if row["document_id"] in gold_document_ids else 0.0, axis=1)
                 df["answer_match"] = df.apply(
                     lambda row: 1.0 if any(gold_answer in row["content"] for gold_answer in gold_answers) else 0.0, axis=1)
                 df["gold_id_or_answer_match"] = df.apply(
