@@ -242,7 +242,6 @@ class FARMReader(BaseReader):
         if teacher_model: # checks again if teacher model is passed as parameter, in that case assume model distillation is used
             trainer = DistillationTrainer.create_or_load_checkpoint(
                 model=model,
-                teacher_model=teacher_model,
                 optimizer=optimizer,
                 data_silo=data_silo,
                 epochs=n_epochs,
@@ -390,6 +389,15 @@ class FARMReader(BaseReader):
         Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
         and a student model that will be trained using the teacher's logits. The idea of this is to increase the accuracy of a lightweight student model
         using a more complex teacher.
+
+        **Example**
+        ```python
+        student = FARMReader(model_name_or_path="prajjwal1/bert-medium")
+        teacher = FARMReader(model_name_or_path="deepset/bert-large-uncased-whole-word-masking-squad2")
+
+        student.distil_from(teacher, data_dir="squad2", train_filename="train.json", test_filename="dev.json",
+                            learning_rate=3e-5, distillation_loss_weight=1.0, temperature=5)
+        ```
          
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
@@ -429,8 +437,9 @@ class FARMReader(BaseReader):
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :param caching whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
-        :param distillation_loss_weight: The weight of the distillation loss
-        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function
+        :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
+        :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         :return: None
         """
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,

@@ -1,5 +1,10 @@
 from typing import Optional, Union, Tuple, List, Callable
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from haystack.nodes import FARMReader
+    from torch.optim.lr_scheduler import _LRScheduler
+
 import sys
 import shutil
 import logging
@@ -11,8 +16,9 @@ from pathlib import Path
 
 from torch.nn import MSELoss
 import torch.nn.functional as F
+from torch.optim import Optimizer
 
-from haystack.modeling.data_handler.data_silo import DataSilo
+from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
@@ -604,16 +610,33 @@ class Trainer:
             return True
 
 class DistillationTrainer(Trainer):
+    """
+    This trainer uses the teacher logits from DistillationDataSilo
+    to compute a distillation loss in addtion to the loss based on the labels.
+
+    **Example**
+    ```python
+    student = FARMReader(model_name_or_path="prajjwal1/bert-medium")
+    teacher = FARMReader(model_name_or_path="deepset/bert-large-uncased-whole-word-masking-squad2")
+
+    processor = SquadProcessor(tokenizer=student.inferencer.processor.tokenizer, max_seq_len=384)
+    student, optimizer, _ = initialize_optimizer(student, n_batches=len(data_silo.loaders["train"]), n_epochs=3, device="cuda:0", learning_rate=3e-5)
+
+    data_silo = DistillationDataSilo(teacher_model=teacher, teacher_batch_size=2, batch_size=8, device="cuda:0", processor=processor)
+    trainer = DistillationTrainer(student=student, optimizer=optimizer, data_silo=data_silo, epochs=3, n_gpu=1, device="cuda:0")
+
+    trainer.train()
+    ```
+    """
     def __init__(
         self,
-        model,
-        teacher_model,
-        optimizer,
-        data_silo: DataSilo,
+        model: FARMReader,
+        optimizer: Optimizer,
+        data_silo: DistillationDataSilo,
         epochs: int,
         n_gpu: int,
-        device,
-        lr_schedule=None,
+        device: str,
+        lr_schedule: Optional[_LRScheduler]=None,
         evaluate_every: int = 100,
         eval_report: bool = True,
         use_amp: Optional[str] = None,
@@ -670,9 +693,9 @@ class DistillationTrainer(Trainer):
         :param evaluator_test: whether to perform evaluation on the test set
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
-        :param distillation_loss_weight: The weight of the distillation loss
+        :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
-        :param temperature: The temperature for distillation
+        :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         """
         super().__init__(model=model, optimizer=optimizer,
         data_silo=data_silo, epochs=epochs,
@@ -687,8 +710,6 @@ class DistillationTrainer(Trainer):
         from_step=from_step, global_step=global_step,
         evaluator_test=evaluator_test, disable_tqdm=disable_tqdm,
         max_grad_norm=max_grad_norm)
-        self.teacher_model = teacher_model.inferencer.model
-        self.teacher_model.to(self.device)
         self.distillation_loss_weight = distillation_loss_weight
         if distillation_loss == "mse":
             self.distillation_loss_fn = MSELoss()

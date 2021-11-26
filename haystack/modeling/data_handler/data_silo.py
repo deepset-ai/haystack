@@ -729,14 +729,19 @@ def get_dict_checksum(payload_dict):
     return checksum
 
 class DistillationDataSilo(DataSilo):
-    def __init__(self, teacher_model: "FARMReader", teacher_batch_size: int, device, **kwargs):
+    """
+    This data silo does a forward pass on the full data set on a teacher model for model distillation.
+    As its done in preprocessing, it does not need to be repeated in each epoch and can be cached.
+    """
+    def __init__(self, teacher_model: "FARMReader", teacher_batch_size: int, device: str, **kwargs):
         self.teacher = teacher_model
         self.teacher_batch_size = teacher_batch_size
         self.device = device
         kwargs["max_processes"] = 1 # fix as long as multithreading is not working with teacher attribute
         super().__init__(**kwargs)
     
-    def _run_teacher(self, batch, corresponding_chunks, teacher_outputs, tensor_names):
+    def _run_teacher(self, batch: List[List[torch.Tensor]], corresponding_chunks: List[int],
+    teacher_outputs: List[List[tuple[torch.Tensor, ...]]], tensor_names: List[str]):
         with torch.no_grad():
             batch = zip(*batch) # transpose dimensions (from batch, features, ... to features, batch, ...)
             batch = [torch.stack(b) for b in batch] # create tensors for each feature
