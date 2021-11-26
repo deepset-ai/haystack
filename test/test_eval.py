@@ -4,7 +4,9 @@ from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
-from haystack.nodes.retriever.dense import EmbeddingRetriever
+from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines.base import Pipeline
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, FAQPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
 from haystack.pipelines.standard_pipelines import RetrieverQuestionGenerationPipeline, TranslationWrapperPipeline
@@ -718,3 +720,155 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
     assert metrics["Question Generator"]["recall_ir"] == 0.5
     assert metrics["Question Generator"]["recall_qa"] == 0.5
     assert metrics["Question Generator"]["precision"] == 1.0/6
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    dpr_retriever = DensePassageRetriever(document_store_with_docs)
+    document_store_with_docs.update_embeddings(retriever=dpr_retriever)
+
+    # QA Pipeline with two retrievers, we always want QA output
+    pipeline = Pipeline()
+    pipeline.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipeline.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
+    pipeline.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "DPRRetriever"])
+
+    # EVAL_QUERIES: 2 go dpr way
+    # in Berlin goes es way
+    queries = EVAL_QUERIES + ["in Berlin"]
+    labels = EVAL_LABELS + [
+        MultiLabel(labels=[Label(query="Berlin", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+            ]
+
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "ESRetriever" in eval_result
+    assert "DPRRetriever" in eval_result
+    assert "QAReader" in eval_result
+    assert len(eval_result) == 3
+
+    assert metrics["DPRRetriever"]["mrr"] == 0.5
+    assert metrics["DPRRetriever"]["map"] == 0.5
+    assert metrics["DPRRetriever"]["recall_ir"] == 0.5
+    assert metrics["DPRRetriever"]["recall_qa"] == 0.5
+    assert metrics["DPRRetriever"]["precision"] == 1.0/6
+
+    assert metrics["ESRetriever"]["mrr"] == 1.0
+    assert metrics["ESRetriever"]["map"] == 1.0
+    assert metrics["ESRetriever"]["recall_ir"] == 1.0
+    assert metrics["ESRetriever"]["recall_qa"] == 1.0
+    assert metrics["ESRetriever"]["precision"] == 1.0/3
+
+    assert metrics["QAReader"]["exact_match"] == 1.0
+    assert metrics["QAReader"]["f1"] == 1.0
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    dpr_retriever = DensePassageRetriever(document_store_with_docs)
+    document_store_with_docs.update_embeddings(retriever=dpr_retriever)
+
+    # QA Pipeline with two retrievers, no QA output
+    pipeline = Pipeline()
+    pipeline.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipeline.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
+
+    # EVAL_QUERIES: 2 go dpr way
+    # in Berlin goes es way
+    queries = EVAL_QUERIES + ["in Berlin"]
+    labels = EVAL_LABELS + [
+        MultiLabel(labels=[Label(query="Berlin", answer=None, 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+            ]
+
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "ESRetriever" in eval_result
+    assert "DPRRetriever" in eval_result
+    assert len(eval_result) == 2
+
+    assert metrics["DPRRetriever"]["mrr"] == 0.5
+    assert metrics["DPRRetriever"]["map"] == 0.5
+    assert metrics["DPRRetriever"]["recall_ir"] == 0.5
+    assert metrics["DPRRetriever"]["recall_qa"] == 0.5
+    assert metrics["DPRRetriever"]["precision"] == 1.0/6
+
+    assert metrics["ESRetriever"]["mrr"] == 1.0
+    assert metrics["ESRetriever"]["map"] == 1.0
+    assert metrics["ESRetriever"]["recall_ir"] == 1.0
+    assert metrics["ESRetriever"]["recall_qa"] == 1.0
+    assert metrics["ESRetriever"]["precision"] == 1.0/3
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_docs, reader):
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    dpr_retriever = DensePassageRetriever(document_store_with_docs)
+    document_store_with_docs.update_embeddings(retriever=dpr_retriever)
+
+    # QA Pipeline with two retrievers, we only get QA output from dpr
+    pipeline = Pipeline()
+    pipeline.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipeline.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
+    pipeline.add_node(component=reader, name="QAReader", inputs=["DPRRetriever"])
+
+    # EVAL_QUERIES: 2 go dpr way
+    # in Berlin goes es way
+    queries = EVAL_QUERIES + ["in Berlin"]
+    labels = EVAL_LABELS + [
+        MultiLabel(labels=[Label(query="Berlin", answer=None, 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+            ]
+
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "ESRetriever" in eval_result
+    assert "DPRRetriever" in eval_result
+    assert "DPRRetriever" in eval_result
+    assert "QAReader" in eval_result
+    assert len(eval_result) == 3
+
+    assert metrics["DPRRetriever"]["mrr"] == 0.5
+    assert metrics["DPRRetriever"]["map"] == 0.5
+    assert metrics["DPRRetriever"]["recall_ir"] == 0.5
+    assert metrics["DPRRetriever"]["recall_qa"] == 0.5
+    assert metrics["DPRRetriever"]["precision"] == 1.0/6
+
+    assert metrics["ESRetriever"]["mrr"] == 1.0
+    assert metrics["ESRetriever"]["map"] == 1.0
+    assert metrics["ESRetriever"]["recall_ir"] == 1.0
+    assert metrics["ESRetriever"]["recall_qa"] == 1.0
+    assert metrics["ESRetriever"]["precision"] == 1.0/3
+
+    assert metrics["QAReader"]["exact_match"] == 1.0
+    assert metrics["QAReader"]["f1"] == 1.0

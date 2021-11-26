@@ -874,10 +874,10 @@ class EvaluationResult:
             avp_retrieved_relevants = [query_df[doc_relevance_col].values[:rank].sum() / rank 
                                             for rank in rank_retrieved_relevants]
 
-            avg_precision = np.sum(avp_retrieved_relevants) / num_relevants
-            recall_ir = num_retrieved_relevants / num_relevants
+            avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
+            recall_ir = num_retrieved_relevants / num_relevants if num_relevants > 0 else 0.0
             recall_qa = min(num_retrieved_relevants, 1)
-            precision = num_retrieved_relevants / retrieved
+            precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
             rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
 
             metrics.append({

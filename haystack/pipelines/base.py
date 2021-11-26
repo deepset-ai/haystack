@@ -487,7 +487,11 @@ class Pipeline(BasePipeline):
                 df_docs["gold_id_match"] = df_docs.apply(
                     lambda row: 1.0 if row["document_id"] in gold_document_ids else 0.0, axis=1)
                 df_docs["answer_match"] = df_docs.apply(
-                    lambda row: 1.0 if any(gold_answer in row["content"] for gold_answer in gold_answers) else 0.0, axis=1)
+                    lambda row: 
+                        1.0 if not query_labels.no_answer 
+                            and any(gold_answer in row["content"] for gold_answer in gold_answers) 
+                        else 0.0, 
+                    axis=1)
                 df_docs["gold_id_or_answer_match"] = df_docs.apply(
                     lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1)
                 df_docs["rank"] = np.arange(1, len(df_docs)+1)
