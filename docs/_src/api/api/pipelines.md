@@ -502,6 +502,25 @@ Create a Graphviz visualization of the pipeline.
 
 - `path`: the path to save the image.
 
+<a name="standard_pipelines.BaseStandardPipeline.eval"></a>
+#### eval
+
+```python
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
+```
+
+Evaluates the pipeline by running the pipeline once per query in debug mode
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+**Arguments**:
+
+- `queries`: The queries to evaluate
+- `labels`: The labels to evaluate on
+- `params`: Params for the `retriever` and `reader`. For instance,
+               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
+                            should be path or string pointing to downloadable models.
+
 <a name="standard_pipelines.ExtractiveQAPipeline"></a>
 ## ExtractiveQAPipeline
 
@@ -540,25 +559,6 @@ Pipeline for Extractive Question Answering.
               they received and the output they generated. 
               All debug information can then be found in the dict returned
               by this method under the key "_debug"
-
-<a name="standard_pipelines.ExtractiveQAPipeline.eval"></a>
-#### eval
-
-```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
-```
-
-Evaluates the pipeline by running the pipeline once per query in debug mode
-and putting together all data that is needed for evaluation, e.g. calculating metrics.
-
-**Arguments**:
-
-- `queries`: The queries to evaluate
-- `labels`: The labels to evaluate on
-- `params`: Params for the `retriever` and `reader`. For instance,
-               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
-                            should be path or string pointing to downloadable models.
 
 <a name="standard_pipelines.ExtractiveQAPipeline.print_eval_report"></a>
 #### print\_eval\_report
