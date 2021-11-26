@@ -31,7 +31,7 @@ class FormRecognizerConverter(BaseConverter):
                  credential_key: str,
                  model_id: str = "prebuilt-document",
                  valid_languages: Optional[List[str]] = None,
-                 save_formrecognizer_json: bool = False,
+                 save_json: bool = False,
                  ):
         """
         :param endpoint: Your Form Recognizer or Cognitive Services resource's endpoint.
@@ -46,27 +46,28 @@ class FormRecognizerConverter(BaseConverter):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param save_formrecognizer_json: Whether to save the output of the Form Recognizer to a JSON file.
+        :param save_json: Whether to save the output of the Form Recognizer to a JSON file.
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(endpoint=endpoint, credential_key=credential_key, model_id=model_id,
-                        valid_languages=valid_languages, save_formrecognizer_json=save_formrecognizer_json)
+                        valid_languages=valid_languages, save_json=save_json)
 
         self.document_analysis_client = DocumentAnalysisClient(endpoint=endpoint,
                                                                credential=AzureKeyCredential(credential_key))
         self.model_id = model_id
         self.valid_languages = valid_languages
-        self.save_formrecognizer_json = save_formrecognizer_json
+        self.save_json = save_json
 
         super().__init__(valid_languages=valid_languages)
 
     def convert(self,
                 file_path: Path,
                 meta: Optional[Dict[str, str]] = None,
-                pages: Optional[str] = None,
-                locale: Optional[str] = None,
+                remove_numeric_tables: Optional[bool] = None,
                 valid_languages: Optional[List[str]] = None,
-                save_formrecognizer_json: Optional[bool] = None,
+                encoding: Optional[str] = "utf-8",
+                pages: Optional[str] = None,
+                known_language: Optional[str] = None,
                 ) -> List[Dict[str, Any]]:
 
         """
@@ -75,27 +76,26 @@ class FormRecognizerConverter(BaseConverter):
         :param file_path: Path to the file you want to convert.
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
                      Can be any custom keys and values.
-        :param pages: Custom page numbers for multi-page documents(PDF/TIFF). Input the page numbers and/or ranges
-                      of pages you want to get in the result. For a range of pages, use a hyphen,
-                      like pages=”1-3, 5-6”. Separate each page number or range with a comma.
-        :param locale: Locale hint of the input document.
-                       See supported locales here: https://aka.ms/azsdk/formrecognizer/supportedlocales.
+        :param remove_numeric_tables: Not applicable.
         :param valid_languages: Validate languages from a list of languages specified in the ISO 639-1
                                 (https://en.wikipedia.org/wiki/ISO_639-1) format.
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param save_formrecognizer_json: Whether to save the output of the Form Recognizer to a JSON file.
+        :param encoding: Not applicable.
+        :param pages: Custom page numbers for multi-page documents(PDF/TIFF). Input the page numbers and/or ranges
+                      of pages you want to get in the result. For a range of pages, use a hyphen,
+                      like pages=”1-3, 5-6”. Separate each page number or range with a comma.
+        :param known_language: Locale hint of the input document.
+                               See supported locales here: https://aka.ms/azsdk/formrecognizer/supportedlocales.
         """
 
         if valid_languages is None:
             valid_languages = self.valid_languages
-        if save_formrecognizer_json is None:
-            save_formrecognizer_json = self.save_formrecognizer_json
 
         with open(file_path, "rb") as file:
             poller = self.document_analysis_client.begin_analyze_document(self.model_id, file, pages=pages,
-                                                                          locale=locale)
+                                                                          locale=known_language)
             result = poller.result()
 
         tables = self._convert_tables(result, meta)
@@ -110,7 +110,7 @@ class FormRecognizerConverter(BaseConverter):
                     f"been decoded in the correct text format."
                 )
 
-        if save_formrecognizer_json:
+        if self.save_json:
             with open(str(file_path) + ".json", "w") as json_file:
                 json.dump(result.to_dict(), json_file, indent=2)
 
