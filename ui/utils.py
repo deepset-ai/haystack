@@ -84,7 +84,6 @@ def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, doc
             "answer": answer_obj
             }
         response_raw = requests.post(url, json=req).json()
-        print(response_raw)
         return response_raw
     except Exception as e:
         logging.exception(e)
