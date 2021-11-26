@@ -12,9 +12,9 @@ from haystack.nodes.file_converter import BaseConverter
 logger = logging.getLogger(__name__)
 
 
-class FormRecognizerConverter(BaseConverter):
+class AzureConverter(BaseConverter):
     """
-    File converter that makes use of Microsoft's Form Recognizer service
+    File converter that makes use of Microsoft Azure's Form Recognizer service
     (https://azure.microsoft.com/en-us/services/form-recognizer/).
     This Converter extracts both text and tables.
     Supported file formats are: PDF, JPEG, PNG, BMP and TIFF.
