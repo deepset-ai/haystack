@@ -733,12 +733,15 @@ class DistillationDataSilo(DataSilo):
     This data silo does a forward pass on the full data set on a teacher model for model distillation.
     As its done in preprocessing, it does not need to be repeated in each epoch and can be cached.
     """
-    def __init__(self, teacher_model: "FARMReader", teacher_batch_size: int, device: str, **kwargs):
+    def __init__(self, teacher_model: "FARMReader", teacher_batch_size: int, device: str, processor: Processor,
+        batch_size: int, eval_batch_size: Optional[int] = None, distributed: bool = False,
+        automatic_loading: bool = True, max_processes: int = 128, caching: bool = False, cache_path: Path = Path("cache/data_silo")):
         self.teacher = teacher_model
         self.teacher_batch_size = teacher_batch_size
         self.device = device
-        kwargs["max_processes"] = 1 # fix as long as multithreading is not working with teacher attribute
-        super().__init__(**kwargs)
+        max_processes = 1 # fix as long as multithreading is not working with teacher attribute
+        super().__init__(max_processes=max_processes, processor=processor, batch_size=batch_size, eval_batch_size=eval_batch_size,
+        distributed=distributed, automatic_loading=automatic_loading, caching=caching, cache_path=cache_path)
     
     def _run_teacher(self, batch: List[List[torch.Tensor]], corresponding_chunks: List[int],
     teacher_outputs: List[List[Tuple[torch.Tensor, ...]]], tensor_names: List[str]):
