@@ -741,7 +741,7 @@ class DistillationDataSilo(DataSilo):
         super().__init__(**kwargs)
     
     def _run_teacher(self, batch: List[List[torch.Tensor]], corresponding_chunks: List[int],
-    teacher_outputs: List[List[tuple[torch.Tensor, ...]]], tensor_names: List[str]):
+    teacher_outputs: List[List[Tuple[torch.Tensor, ...]]], tensor_names: List[str]):
         with torch.no_grad():
             batch_transposed = zip(*batch) # transpose dimensions (from batch, features, ... to features, batch, ...)
             batch_transposed_list = [torch.stack(b) for b in batch_transposed] # create tensors for each feature
@@ -760,7 +760,7 @@ class DistillationDataSilo(DataSilo):
         batch = []
         corresponding_chunks = [] # to be able to associate elements of batches with chunks (elements could be from multiple chunks)
 
-        teacher_outputs: List[List[tuple[torch.Tensor, ...]]] = [] # list of teacher outputs group in list by chunk
+        teacher_outputs: List[List[Tuple[torch.Tensor, ...]]] = [] # list of teacher outputs group in list by chunk
 
         # creating batches from chunks        
         for i, dataset in enumerate(tqdm(concat_datasets.datasets, desc="Doing forward pass on teacher model")):
