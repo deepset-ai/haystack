@@ -744,8 +744,8 @@ class DistillationDataSilo(DataSilo):
     teacher_outputs: List[List[tuple[torch.Tensor, ...]]], tensor_names: List[str]):
         with torch.no_grad():
             batch_transposed = zip(*batch) # transpose dimensions (from batch, features, ... to features, batch, ...)
-            batch_transposed = [torch.stack(b) for b in batch_transposed] # create tensors for each feature
-            batch_dict = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch_transposed)} # create input dict
+            batch_transposed_list = [torch.stack(b) for b in batch_transposed] # create tensors for each feature
+            batch_dict = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch_transposed_list)} # create input dict
             y = self.teacher.inferencer.model(**batch_dict)
             y = [y.cpu() for y in y]
 
