@@ -32,6 +32,7 @@ class FormRecognizerConverter(BaseConverter):
                  model_id: str = "prebuilt-document",
                  valid_languages: Optional[List[str]] = None,
                  save_json: bool = False,
+                 surrounding_context_len: int = 3,
                  ):
         """
         :param endpoint: Your Form Recognizer or Cognitive Services resource's endpoint.
@@ -47,16 +48,19 @@ class FormRecognizerConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         :param save_json: Whether to save the output of the Form Recognizer to a JSON file.
+        :param surrounding_context_len: Number of before and after a table to extarct as surrounding context.
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(endpoint=endpoint, credential_key=credential_key, model_id=model_id,
-                        valid_languages=valid_languages, save_json=save_json)
+                        valid_languages=valid_languages, save_json=save_json,
+                        surrounding_context_len=surrounding_context_len)
 
         self.document_analysis_client = DocumentAnalysisClient(endpoint=endpoint,
                                                                credential=AzureKeyCredential(credential_key))
         self.model_id = model_id
         self.valid_languages = valid_languages
         self.save_json = save_json
+        self.surrounding_context_len = surrounding_context_len
 
         super().__init__(valid_languages=valid_languages)
 
@@ -144,7 +148,7 @@ class FormRecognizerConverter(BaseConverter):
             table_start_offset = table.spans[0].offset
             preceding_lines = [line.content for line in table_beginning_page.lines
                                if line.spans[0].offset < table_start_offset]
-            preceding_context = f"{caption}\n".strip() + "\n".join(preceding_lines[-3:])
+            preceding_context = f"{caption}\n".strip() + "\n".join(preceding_lines[-self.surrounding_context_len:])
 
             # Get following context
             table_end_page = table_beginning_page if len(table.bounding_regions) == 1 else \
@@ -152,7 +156,7 @@ class FormRecognizerConverter(BaseConverter):
                      if page.page_number == table.bounding_regions[-1].page_number)
             table_end_offset = table_start_offset + table.spans[0].length
             following_lines = [line.content for line in table_end_page.lines if line.spans[0].offset > table_end_offset]
-            following_context = "\n".join(following_lines[:3])
+            following_context = "\n".join(following_lines[:self.surrounding_context_len])
 
             if isinstance(meta, dict):
                 meta["preceding_context"] = preceding_context
