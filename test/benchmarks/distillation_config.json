@@ -1,0 +1,25 @@
+{
+    "student_model": {
+        "model_name_or_path": "roberta-base",
+        "batch_size": 80
+    },
+    "teacher_model": {
+        "model_name_or_path": "deepset/roberta-large-squad2",
+        "batch_size": 512
+    },
+    "distillation_settings": {
+        "distillation_loss": "kl_div",
+        "distillation_loss_weight": [0.75, 1],
+        "temperature": [5, 10]
+    },
+    "training_settings": {
+        "n_epochs": 2,
+        "max_seq_len": 384,
+        "learning_rate": 3e-5
+    },
+    "dataset": "squad2",
+    "download_folder": "dataset/squad2",
+    "evaluate_teacher": true,
+    "evaluate_student_without_distillation": true,
+    "evaluate_student_with_distillation": true
+}
