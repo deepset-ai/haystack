@@ -26,7 +26,7 @@ def haystack_version():
     url = f"{API_ENDPOINT}/{HS_VERSION}"
     return requests.get(url, timeout=0.1).json()["hs_version"]
 
-def retrieve_doc(query, filters={}, top_k_reader=5, top_k_retriever=5):
+def query(query, filters={}, top_k_reader=5, top_k_retriever=5):
     # Query Haystack API
     url = f"{API_ENDPOINT}/{DOC_REQUEST}"
     params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}, "Reader": {"top_k": top_k_reader}}
@@ -34,52 +34,57 @@ def retrieve_doc(query, filters={}, top_k_reader=5, top_k_retriever=5):
     response_raw = requests.post(url, json=req).json()
 
     # Format response
-    result = []
+    results = []
 
     if "errors" in response_raw:
         raise Exception(", ".join(response_raw["errors"]))
         
+    documents = response_raw["documents"]
     answers = response_raw["answers"]
     for i in range(len(answers)):
         answer = answers[i]
         answer_text = answer.get("answer", None)
         if answer_text:
-            result.append(
+            results.append(
                 {
                     "context": "..." + answer["context"] + "...",
                     "answer": answer_text,
                     "source": answer["meta"]["name"],
                     "relevance": round(answer["score"] * 100, 2),
-                    "document_id": answer["document_id"],
+                    "document": [doc for doc in documents if doc["id"] == answer["document_id"]][0],
                     "offset_start_in_doc": answer["offsets_in_document"][0]["start"],
+                    "_raw": answer
                 }
             )
         else:
-            result.append(
+            results.append(
                 {
                     "context": None,
                     "answer": None,
+                    "document": None,
                     "relevance": round(answer["score"] * 100, 2),
+                    "_raw": answer,
                 }
             )
-    return result, response_raw
+    return results, response_raw
 
+from uuid import uuid4
 
-def feedback_doc(question, is_correct_answer, document_id, model_id, is_correct_document, answer, offset_start_in_doc):
+def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, document):
     # Feedback Haystack API
     try:
         url = f"{API_ENDPOINT}/{DOC_FEEDBACK}"
-        #TODO adjust after Label refactoring
         req = {
-            "question": question,
+            "id": str(uuid4()),
+            "query": query,
+            "document": document,
             "is_correct_answer": is_correct_answer,
-            "document_id": document_id,
-            "model_id": model_id,
             "is_correct_document": is_correct_document,
-            "answer": answer,
-            "offset_start_in_doc": offset_start_in_doc,
-        }
+            "origin": "user-feedback",
+            "answer": answer_obj
+            }
         response_raw = requests.post(url, json=req).json()
+        print(response_raw)
         return response_raw
     except Exception as e:
         logging.exception(e)

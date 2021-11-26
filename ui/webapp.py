@@ -15,7 +15,7 @@ from htbuilder import H
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
 # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 import SessionState
-from utils import HS_VERSION, feedback_doc, haystack_is_ready, retrieve_doc, upload_doc, haystack_version
+from utils import HS_VERSION, haystack_is_ready, query, send_feedback, upload_doc, haystack_version
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
@@ -154,7 +154,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
             "Check out the docs: https://haystack.deepset.ai/usage/optimization "
         ):
             try:
-                state.results, state.raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+                state.results, state.raw_json = query(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
             except JSONDecodeError as je:
                 st.error("👓 &nbsp;&nbsp; An error occurred reading the results. Is the document store working?")
                 return
@@ -193,38 +193,32 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 # Define columns for buttons
                 button_col1, button_col2, button_col3, _ = st.columns([1, 1, 1, 6])
                 if button_col1.button("👍", key=f"{result['context']}{count}1", help="Correct answer"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="true", 
-                        document_id=result.get("document_id", None), 
-                        model_id=1, 
-                        is_correct_document="true",
-                        answer=result["answer"],
-                        offset_start_in_doc=result.get("offset_start_in_doc", None)
+                    send_feedback(
+                        query=question,
+                        answer_obj=result["_raw"],
+                        is_correct_answer=True, 
+                        is_correct_document=True,
+                        document=result["document"]
                     )
                     st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
 
                 if button_col2.button("👎", key=f"{result['context']}{count}2", help="Wrong answer and wrong passage"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="false", 
-                        document_id=result.get("document_id", None), 
-                        model_id=1, 
-                        is_correct_document="false",
-                        answer=result["answer"], 
-                        offset_start_in_doc=result.get("offset_start_in_doc", None)
+                    send_feedback(
+                        query=question,
+                        answer_obj=result["_raw"],
+                        is_correct_answer=False, 
+                        is_correct_document=False,
+                        document=result["document"]
                     )
                     st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
 
                 if button_col3.button("👎👍", key=f"{result['context']}{count}3", help="Wrong answer, but correct passage"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="false", 
-                        document_id=result.get("document_id", None), 
-                        model_id=1, 
-                        is_correct_document="true",
-                        answer=result["answer"], 
-                        offset_start_in_doc=result.get("offset_start_in_doc", None)
+                    send_feedback(
+                        query=question,
+                        answer_obj=result["_raw"],
+                        is_correct_answer=False, 
+                        is_correct_document=True,
+                        document=result["document"]
                     )
                     st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
                 count += 1
