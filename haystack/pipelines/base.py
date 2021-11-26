@@ -425,7 +425,7 @@ class Pipeline(BasePipeline):
         Additional answer or document specific evaluation infos like gold labels 
         and metrics depicting whether the row matches the gold labels are included, too.
         """
-        df: DataFrame = None
+        df: DataFrame = pd.DataFrame()
 
         if query_labels is None or query_labels.labels is None:
             logger.warning(f"There is no label for query '{query}'. Query will be omitted.")
@@ -454,16 +454,18 @@ class Pipeline(BasePipeline):
         answers = node_output.get("answers", None)
         if answers is not None:
             answer_cols_to_keep = ["answer", "document_id", "offsets_in_document", "context"]
-            df = pd.DataFrame(answers, columns=answer_cols_to_keep)
-            if len(df) > 0:
-                df["type"] = "answer"
-                df["gold_answers"] = [gold_answers] * len(df)
-                df["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df)
-                df["gold_document_ids"] = [gold_document_ids] * len(df)
-                df["exact_match"] = df.apply(
+            df_answers = pd.DataFrame(answers, columns=answer_cols_to_keep)
+            if len(df_answers) > 0:
+                df_answers["type"] = "answer"
+                df_answers["gold_answers"] = [gold_answers] * len(df_answers)
+                df_answers["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df_answers)
+                df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
+                df_answers["exact_match"] = df_answers.apply(
                     lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
-                df["f1"] = df.apply(
+                df_answers["f1"] = df_answers.apply(
                     lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
+                df_answers["rank"] = np.arange(1, len(df_answers)+1)
+                df = pd.concat([df, df_answers])
 
         # if node returned documents, include document specific info:
         # - the document_id
@@ -476,24 +478,24 @@ class Pipeline(BasePipeline):
         documents = node_output.get("documents", None)
         if documents is not None:
             document_cols_to_keep = ["content", "id"]
-            df = pd.DataFrame(documents, columns=document_cols_to_keep)
-            if len(df) > 0:
-                df = df.rename(columns={"id": "document_id"})
-                df["type"] = "document"
-                df["gold_document_ids"] = [gold_document_ids] * len(df)
-                df["gold_document_contents"] = [gold_document_contents] * len(df)
-                df["gold_id_match"] = df.apply(
+            df_docs = pd.DataFrame(documents, columns=document_cols_to_keep)
+            if len(df_docs) > 0:
+                df_docs = df_docs.rename(columns={"id": "document_id"})
+                df_docs["type"] = "document"
+                df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
+                df_docs["gold_document_contents"] = [gold_document_contents] * len(df_docs)
+                df_docs["gold_id_match"] = df_docs.apply(
                     lambda row: 1.0 if row["document_id"] in gold_document_ids else 0.0, axis=1)
-                df["answer_match"] = df.apply(
+                df_docs["answer_match"] = df_docs.apply(
                     lambda row: 1.0 if any(gold_answer in row["content"] for gold_answer in gold_answers) else 0.0, axis=1)
-                df["gold_id_or_answer_match"] = df.apply(
+                df_docs["gold_id_or_answer_match"] = df_docs.apply(
                     lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1)
+                df_docs["rank"] = np.arange(1, len(df_docs)+1)
+                df = pd.concat([df, df_docs])
 
         # add general info
-        if df is not None:
-            df["node"] = node_name
-            df["query"] = query
-            df["rank"] = np.arange(1, len(df)+1)
+        df["node"] = node_name
+        df["query"] = query
 
         return df
 

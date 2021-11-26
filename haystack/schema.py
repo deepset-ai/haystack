@@ -617,11 +617,15 @@ class EvaluationResult:
     def __contains__(self, key: str):
         return self.node_results.keys().__contains__(key)
 
+    def __len__(self):
+        return self.node_results.__len__()
+
     def append(self, key: str, value: pd.DataFrame):
-        if key in self.node_results:
-            self.node_results[key] = pd.concat([self.node_results[key], value])
-        else:    
-            self.node_results[key] = value
+        if value is not None and len(value) > 0:
+            if key in self.node_results:
+                self.node_results[key] = pd.concat([self.node_results[key], value])
+            else:    
+                self.node_results[key] = value
 
     def calculate_metrics(
         self, 
