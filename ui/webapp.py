@@ -1,11 +1,15 @@
 import os
 import sys
 
+import html
 import logging
 import pandas as pd
+from json import JSONDecodeError
 from pathlib import Path
 import streamlit as st
-from annotated_text import annotated_text
+from annotated_text import annotation
+from markdown import markdown
+from htbuilder import H
 
 # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
@@ -22,9 +26,6 @@ EVAL_LABELS = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_exampl
 
 # Whether the file upload should be enabled or not
 DISABLE_FILE_UPLOAD = os.getenv("HAYSTACK_UI_DISABLE_FILE_UPLOAD")
-
-# Retrieve Haystack version from the REST API
-HS_VERSION = haystack_version()
 
 
 def main():
@@ -66,6 +67,12 @@ def main():
                     st.subheader("REST API JSON response")
                     st.sidebar.write(raw_json)
 
+    hs_version = None
+    try:
+        hs_version = f" <small>(v{haystack_version()})</small>"
+    except Exception:
+        pass
+
     st.sidebar.markdown(f"""
     <style>
         a {{
@@ -84,7 +91,7 @@ def main():
     </style>
     <div class="haystack-footer">
         <hr />
-        <h4>Built with <a href="https://www.deepset.ai/haystack">Haystack</a> <small>(v{HS_VERSION})</small></h4>
+        <h4>Built with <a href="https://www.deepset.ai/haystack">Haystack</a>{hs_version}</h4>
         <p>Get it on <a href="https://github.com/deepset-ai/haystack/">GitHub</a> &nbsp;&nbsp; - &nbsp;&nbsp; Read the <a href="https://haystack.deepset.ai/overview/intro">Docs</a></p>
         <small>Data crawled from <a href="https://en.wikipedia.org/wiki/Category:Lists_of_countries_by_continent">Wikipedia</a> in November 2021.<br />See the <a href="https://creativecommons.org/licenses/by-sa/3.0/">License</a> (CC BY-SA 3.0).</small>
     </div>
@@ -134,6 +141,9 @@ def main():
         ):
             try:
                 state.results, state.raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+            except JSONDecodeError as je:
+                st.error("👓 &nbsp;&nbsp; An error occurred reading the results. Is the document store working?")
+                return
             except Exception as e:
                 logging.exception(e)
                 if "The server is busy processing requests" in str(e):
@@ -157,11 +167,14 @@ def main():
                 answer, context = result["answer"], result["context"]
                 start_idx = context.find(answer)
                 end_idx = start_idx + len(answer)
-                annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
-            else:
-                st.markdown(result["context"])
+                # Hack due to this bug: https://github.com/streamlit/streamlit/issues/3190 
+                st.write(markdown(context[:start_idx] + str(annotation(answer, "ANSWER", "#8ef")) + context[end_idx:]), unsafe_allow_html=True)
+                st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
 
-            st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
+            else:
+                st.warning("🤔 &nbsp;&nbsp; Haystack found no good answer to your question. Try to formulate it differently!")
+                st.write("**Relevance:** ", result["relevance"])
+                
             if eval_mode:
                 # Define columns for buttons
                 button_col1, button_col2, button_col3, _ = st.columns([1, 1, 1, 6])
@@ -169,11 +182,11 @@ def main():
                     feedback_doc(
                         question=question, 
                         is_correct_answer="true", 
-                        document_id=result["document_id"], 
+                        document_id=result.get("document_id", None), 
                         model_id=1, 
                         is_correct_document="true",
-                        answer=result["answer"], 
-                        offset_start_in_doc=result["offset_start_in_doc"]
+                        answer=result["answer"],
+                        offset_start_in_doc=result.get("offset_start_in_doc", None)
                     )
                     st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
 
@@ -181,11 +194,11 @@ def main():
                     feedback_doc(
                         question=question, 
                         is_correct_answer="false", 
-                        document_id=result["document_id"], 
+                        document_id=result.get("document_id", None), 
                         model_id=1, 
                         is_correct_document="false",
                         answer=result["answer"], 
-                        offset_start_in_doc=result["offset_start_in_doc"]
+                        offset_start_in_doc=result.get("offset_start_in_doc", None)
                     )
                     st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
 
@@ -193,11 +206,11 @@ def main():
                     feedback_doc(
                         question=question, 
                         is_correct_answer="false", 
-                        document_id=result["document_id"], 
+                        document_id=result.get("document_id", None), 
                         model_id=1, 
                         is_correct_document="true",
                         answer=result["answer"], 
-                        offset_start_in_doc=result["offset_start_in_doc"]
+                        offset_start_in_doc=result.get("offset_start_in_doc", None)
                     )
                     st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
                 count += 1
