@@ -630,7 +630,7 @@ class DistillationTrainer(Trainer):
     """
     def __init__(
         self,
-        model: FARMReader,
+        model: "FARMReader"",
         optimizer: Optimizer,
         data_silo: DistillationDataSilo,
         epochs: int,
