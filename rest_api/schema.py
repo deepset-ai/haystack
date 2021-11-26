@@ -23,15 +23,16 @@ class FilterRequest(BaseModel):
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
 
 
-
 @pydantic_dataclass
 class AnswerSerialized(Answer):
     context: Optional[str] = None
+
 
 @pydantic_dataclass
 class DocumentSerialized(Document):
     content: str
     embedding: Optional[List[float]]
+
 
 @pydantic_dataclass
 class LabelSerialized(Label):
