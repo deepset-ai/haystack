@@ -1,1 +1,1 @@
-from haystack.modeling.training.base import Trainer
+from haystack.modeling.training.base import Trainer, DistillationTrainer
