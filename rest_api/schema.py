@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from pydantic import BaseModel, Field, Extra
-from haystack.schema import Answer, Document, Label
+from haystack.schema import Answer, Document, Label, Span
 from pydantic import BaseConfig
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
@@ -23,16 +23,15 @@ class FilterRequest(BaseModel):
     filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
 
 
+
 @pydantic_dataclass
 class AnswerSerialized(Answer):
     context: Optional[str] = None
-
 
 @pydantic_dataclass
 class DocumentSerialized(Document):
     content: str
     embedding: Optional[List[float]]
-
 
 @pydantic_dataclass
 class LabelSerialized(Label):
@@ -45,3 +44,4 @@ class QueryResponse(BaseModel):
     answers: List[AnswerSerialized]
     documents: Optional[List[DocumentSerialized]]
     debug: Optional[Dict] = Field(None, alias="_debug")
+
