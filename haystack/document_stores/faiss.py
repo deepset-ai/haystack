@@ -7,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 try:
     import faiss
