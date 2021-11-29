@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from haystack.schema import Label
 
 
 from rest_api.application import app
@@ -27,8 +26,8 @@ FEEDBACK={
                 "offsets_in_document": [{"start": 60, "end": 73}],
                 "document_id": "fc18c987a8312e72a47fb1524f230bb0"
             },
-        "is_correct_answer": True,
-        "is_correct_document": True,
+        "is_correct_answer": "true",
+        "is_correct_document": "true",
         "origin": "user-feedback",
         "pipeline_id": "some-123",
     }
@@ -96,11 +95,6 @@ def test_get_documents():
     assert all("meta_value_get"==meta_key for meta_key in meta_keys)
 
 
-def test_get_document_malformed_request(populated_client):
-    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_get"]}, "non-existing-field": "wrong-value"}')
-    assert 422 == response.status_code
-
-
 def test_delete_documents():
     os.environ["PIPELINE_YAML_PATH"] = str((Path(__file__).parent / "samples"/"pipeline"/"test_pipeline.yaml").absolute())
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
@@ -143,12 +137,7 @@ def test_delete_documents():
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 1
-
-
-def test_delete_document_malformed_request(populated_client):
-    response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {"meta_key": ["meta_value_get"]}, "non-existing-field": "wrong-value"}')
-    assert 422 == response.status_code
-
+    
 
 def test_file_upload(client: TestClient):
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
