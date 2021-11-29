@@ -48,20 +48,22 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
     req = {"query": query, "params": params}
     response_raw = requests.post(url, json=req).json()
 
-    if "errors" in response_raw:
-        raise Exception(", ".join(response_raw["errors"]))
+    if response_raw.status_code >= 400:
+        raise Exception(f"{response_raw}")
+
+    response = requests.post(url, json=req).json()
+    if "errors" in response:
+        raise Exception(", ".join(response["errors"]))
 
     # Format response
     results = []
-    answers = response_raw["answers"]
-    for i in range(len(answers)):
-        answer = answers[i]
-        answer_text = answer.get("answer", None)
-        if answer_text:
+    answers = response["answers"]
+    for answer in answers:
+        if answer.get("answer", None):
             results.append(
                 {
                     "context": "..." + answer["context"] + "...",
-                    "answer": answer_text,
+                    "answer": answer.get("answer", None),
                     "source": answer["meta"]["name"],
                     "relevance": round(answer["score"] * 100, 2),
                     "document": [doc for doc in response_raw["documents"] if doc["id"] == answer["document_id"]][0],
