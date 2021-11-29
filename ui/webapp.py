@@ -1,7 +1,6 @@
 import os
 import sys
 
-import html
 import logging
 import pandas as pd
 from json import JSONDecodeError
@@ -9,7 +8,6 @@ from pathlib import Path
 import streamlit as st
 from annotated_text import annotation
 from markdown import markdown
-from htbuilder import H
 
 # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
@@ -163,20 +161,19 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 if "The server is busy processing requests" in str(e):
                     st.error("🧑‍🌾 &nbsp;&nbsp; All our workers are busy! Try again later.")
                 else:
-                    st.error("🐞 &nbsp;&nbsp; An error occurred during the request. Check the logs in the console to know more.")
+                    st.error("🐞 &nbsp;&nbsp; An error occurred during the request.")
                 return
 
     if state.results:
 
         # Show the gold answer if we use a question of the given set
-        if question == state.random_question and eval_mode:
+        if question == state.random_question and eval_mode and state.random_answer:
             st.write("## Correct answers:")
             st.write(state.random_answer)
 
         st.write("## Results:")
-        count = 0  # Make every button key unique
 
-        for result in state.results:
+        for count, result in enumerate(state.results):
             if result["answer"]:
                 answer, context = result["answer"], result["context"]
                 start_idx = context.find(answer)
@@ -191,37 +188,36 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 
             if eval_mode:
                 # Define columns for buttons
+                is_correct_answer = None
+                is_correct_document = None
+
                 button_col1, button_col2, button_col3, _ = st.columns([1, 1, 1, 6])
                 if button_col1.button("👍", key=f"{result['context']}{count}1", help="Correct answer"):
-                    send_feedback(
-                        query=question,
-                        answer_obj=result["_raw"],
-                        is_correct_answer=True, 
-                        is_correct_document=True,
-                        document=result["document"]
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    is_correct_answer=True
+                    is_correct_document=True
 
                 if button_col2.button("👎", key=f"{result['context']}{count}2", help="Wrong answer and wrong passage"):
-                    send_feedback(
-                        query=question,
-                        answer_obj=result["_raw"],
-                        is_correct_answer=False, 
-                        is_correct_document=False,
-                        document=result["document"]
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    is_correct_answer=False
+                    is_correct_document=False
 
                 if button_col3.button("👎👍", key=f"{result['context']}{count}3", help="Wrong answer, but correct passage"):
-                    send_feedback(
-                        query=question,
-                        answer_obj=result["_raw"],
-                        is_correct_answer=False, 
-                        is_correct_document=True,
-                        document=result["document"]
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
-                count += 1
+                    is_correct_answer=False
+                    is_correct_document=True
+
+                if is_correct_answer is not None and is_correct_document is not None:
+                    try:
+                        send_feedback(
+                            query=question,
+                            answer_obj=result["_raw"],
+                            is_correct_answer=is_correct_answer,
+                            is_correct_document=is_correct_document,
+                            document=result["document"]
+                        )
+                        st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    except Exception as e:
+                        logging.exception(e)
+                        st.error("🐞 &nbsp;&nbsp; An error occurred while submitting your feedback!")
+
             st.write("___")
 
         if debug:

@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field, Extra
-from haystack.schema import Answer, Document, Label, Span
+from haystack.schema import Answer, Document, Label
 from pydantic import BaseConfig
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
@@ -45,4 +45,3 @@ class QueryResponse(BaseModel):
     answers: List[AnswerSerialized]
     documents: Optional[List[DocumentSerialized]]
     debug: Optional[Dict] = Field(None, alias="_debug")
-

@@ -18,11 +18,15 @@ COPY haystack /home/user/haystack
 
 # install as a package
 COPY setup.py requirements.txt README.md /home/user/
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 RUN pip install -e .
 
 # download punkt tokenizer to be included in image
 RUN python3 -c "import nltk;nltk.download('punkt', download_dir='/usr/nltk_data')"
+
+# cache the Roberta model
+RUN python -c "from transformers import RobertaModel;m=RobertaModel.from_pretrained('deepset/roberta-base-squad2');m.save_pretrained('deepset/roberta-base-squad2')"
 
 # create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH
 RUN mkdir -p /home/user/file-upload
