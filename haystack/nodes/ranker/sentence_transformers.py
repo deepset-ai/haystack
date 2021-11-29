@@ -108,7 +108,7 @@ class SentenceTransformersRanker(BaseRanker):
 
         # rank documents according to scores
         sorted_scores_and_documents = sorted(zip(similarity_scores, documents),
-                                             key=lambda similarity_document_tuple: similarity_document_tuple[0][0],
+                                             key=lambda similarity_document_tuple: similarity_document_tuple[0][1],
                                              reverse=True)
         sorted_documents = [doc for _, doc in sorted_scores_and_documents]
         return sorted_documents[:top_k]
