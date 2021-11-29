@@ -697,6 +697,110 @@ class Pipeline(BasePipeline):
         with open(path, 'w') as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
 
+    
+    def _format_document_answer(self, document_or_answer: dict):
+        return "\n \t".join([f'{name}: {value}' for name, value in document_or_answer.items()])
+
+    def _format_wrong(self, query: dict):
+        metrics = "\n \t".join([f'{name}: {value}' for name, value in query['metrics'].items()])
+        documents = "\n\n \t".join([self._format_document_answer(doc) for doc in query.get('documents', [])])
+        documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
+        answers = "\n\n \t".join([self._format_document_answer(answer) for answer in query.get('answers', [])])
+        answers = f"Answers: \n \t{answers}\n" if len(answers) > 0 else ""
+        gold_document_ids = "\n \t".join(query['gold_document_ids'])
+        gold_answers = "\n \t".join(query.get('gold_answers', []))
+        gold_answers = f"Gold Answers: \n \t{gold_answers}\n" if len(gold_answers) > 0 else ""
+        s = (
+            f"Query: \n \t{query['query']}\n"
+            f"{gold_answers}"
+            f"Gold Document Ids: \n \t{gold_document_ids}\n"
+            f"Metrics: \n \t{metrics}\n"
+            f"{answers}"
+            f"{documents}"
+            f"_______________________________________________________"
+        )
+        return s
+
+    def _format_wrongs_node(self, node_name: str, wrongs_formatted: str):
+        s = (
+            f"                Wrong {node_name} Examples\n"
+            f"=======================================================\n"
+            f"{wrongs_formatted}\n"
+            f"=======================================================\n"
+        )
+        return s
+
+    def _format_wrongs_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
+        examples = {
+            node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples) 
+                for node in eval_result.node_results.keys()
+        }
+        examples_formatted = {
+            node: "\n".join([self._format_wrong(example) for example in examples]) 
+                for node, examples in examples.items()
+        }
+
+        return "\n".join([self._format_wrongs_node(node, examples) for node, examples in examples_formatted.items()])
+
+    def _format_pipeline_node(self, node: str, metrics: dict, metrics_top_1):
+        metrics = metrics.get(node, {})
+        metrics_top_1 = {f"{metric}_top_1": value for metric, value in metrics_top_1.get(node, {}).items()}
+        node_metrics = {**metrics, **metrics_top_1}
+        node_metrics_formatted = "\n".join(sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()])) 
+        node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""
+        s = (
+            f"                      {node}\n"
+            f"                        |\n"
+            f"{node_metrics_formatted}"
+            f"                        |"
+        )
+        return s
+
+    def _format_pipeline_overview(self, metrics: dict, metrics_top_1: dict):
+        pipeline_overview = "\n".join([self._format_pipeline_node(node, metrics, metrics_top_1) for node in self.graph.nodes])
+        s = (
+            f"================== Evaluation Report ==================\n"
+            f"=======================================================\n"
+            f"                   Pipeline Overview\n"
+            f"=======================================================\n"
+            f"{pipeline_overview}\n"
+            f"                      Output\n"
+            f"=======================================================\n"
+        )
+        return s
+
+    def print_eval_report(
+        self, 
+        eval_result: EvaluationResult, 
+        n_wrong_examples: int = 3, 
+        metrics_filter: Optional[Dict[str, List[str]]] = None):
+        """
+        Prints evaluation report containing a metrics funnel and worst queries for further analysis.
+        
+        :param eval_result: The evaluation result, can be obtained by running eval().
+        :param n_wrong_examples: The number of worst queries to show.
+        :param metrics_filter: The metrics to show per node. If None all metrics will be shown.
+        """
+        if any(degree > 1 for node, degree in self.graph.out_degree):
+            logger.warning("Pipelines with junctions are currently not supported.")
+            return
+        
+        metrics_top_n = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
+        metrics_top_1 = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1)
+        if metrics_filter is not None:
+            metrics_top_n = {node: metrics if node not in metrics_filter 
+                                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]} 
+                                    for node, metrics in metrics_top_n.items()}
+            metrics_top_1 = {node: metrics if node not in metrics_filter 
+                                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]} 
+                                    for node, metrics in metrics_top_1.items()}
+        pipeline_overview = self._format_pipeline_overview(metrics_top_n, metrics_top_1)        
+        wrongs_report = self._format_wrongs_report(eval_result=eval_result, n_wrong_examples=n_wrong_examples)
+
+        print(
+            f"{pipeline_overview}\n"
+            f"{wrongs_report}")
+
 
 class RayPipeline(Pipeline):
     """

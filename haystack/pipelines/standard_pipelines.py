@@ -26,6 +26,7 @@ class BaseStandardPipeline(ABC):
     This class does not inherit from Pipeline.
     """
     pipeline: Pipeline
+    metrics_filter: Optional[Dict[str, List[str]]] = None
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
@@ -91,6 +92,18 @@ class BaseStandardPipeline(ABC):
             sas_model_name_or_path=sas_model_name_or_path)
         return output
 
+    def print_eval_report(
+        self, 
+        eval_result: EvaluationResult, 
+        n_wrong_examples: int = 3, 
+        metrics_filter: Optional[Dict[str, List[str]]] = None):
+        if metrics_filter is None:
+            metrics_filter = self.metrics_filter
+        self.pipeline.print_eval_report(
+            eval_result=eval_result, 
+            n_wrong_examples=n_wrong_examples, 
+            metrics_filter=metrics_filter)
+
 
 class ExtractiveQAPipeline(BaseStandardPipeline):
     """
@@ -104,6 +117,7 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
+        self.metrics_filter = {"Retriever": ["recall_qa"]}
 
     def run(self,
             query: str,
@@ -121,74 +135,6 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         """
         output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
-
-    def _format_document_answer(self, document_or_answer: dict):
-        return "\n \t".join([f'{name}: {value}' for name, value in document_or_answer.items()])
-
-    def _format_retriever_query(self, query: dict):
-        metrics = "\n \t".join([f'{name}: {value}' for name, value in query['metrics'].items()])
-        documents = "\n\n \t".join([self._format_document_answer(doc) for doc in query['documents']])
-        gold_document_ids = "\n \t".join(query['gold_document_ids'])
-        s = (
-            f"Query: \n \t{query['query']}\n"
-            f"Gold Document Ids: \n \t{gold_document_ids}\n"
-            f"Metrics: \n \t{metrics}\n"
-            f"Documents: \n \t{documents}\n"
-            f"_________________________________________________"
-        )
-        return s
-
-    def _format_reader_query(self, query: dict):
-        metrics = "\n \t".join([f'{name}: {value}' for name, value in query['metrics'].items()])
-        answers = "\n\n \t".join([self._format_document_answer(answer) for answer in query['answers']])
-        gold_answers = "\n \t".join(query['gold_answers'])
-        s = (
-            f"Query: \n \t{query['query']}\n"
-            f"Gold Answers: \n \t{gold_answers}\n"
-            f"Metrics: \n \t{metrics}\n"
-            f"Answers: \n \t{answers}\n"
-            f"_________________________________________________"
-        )
-        return s
-
-    def print_eval_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
-        """
-        Prints evaluation report containing a metrics funnel and worst queries for further analysis.
-        
-        :param eval_result: The evaluation result, can be obtained by running eval().
-        :param n_wrong_examples: The number of worst queries to show.
-        """
-        metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
-        metrics_top_1 = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1)
-        worst_retriever_queries = eval_result.wrong_examples("Retriever", doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
-        worst_retriever_queries_formatted = "\n".join([self._format_retriever_query(q) for q in worst_retriever_queries])
-        worst_reader_queries = eval_result.wrong_examples("Reader", doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
-        worst_reader_queries_formatted = "\n".join([self._format_reader_query(q) for q in worst_reader_queries])
-        print(
-        f"""=============== Evaluation Report ===============
-=================================================
-                Pipeline Overview
-=================================================
-                    Retriever
-                        |
-                        | recall_qa: {metrics['Retriever']['recall_qa']}
-                        |
-                      Reader
-                        |
-                        | f1: {metrics['Reader']['f1']}
-                        | f1_top_1: {metrics_top_1['Reader']['f1']}
-                        |
-                      Answer
-=================================================
-             Wrong Retriever Examples            
-=================================================
-{worst_retriever_queries_formatted}
-=================================================
-               Wrong Reader Examples
-=================================================
-{worst_reader_queries_formatted}
-=================================================
-        """)
 
 
 class DocumentSearchPipeline(BaseStandardPipeline):

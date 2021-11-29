@@ -709,9 +709,11 @@ class EvaluationResult:
                     "query": query,
                     "metrics": metrics.to_dict(),
                     "answers": query_answers.drop(["node", "query", "type", 
-                            "gold_answers", "gold_offsets_in_documents"], axis=1) \
+                            "gold_answers", "gold_offsets_in_documents",
+                            "gold_document_ids"], axis=1) \
                         .to_dict(orient="records"),
-                    "gold_answers": query_answers["gold_answers"].iloc[0]
+                    "gold_answers": query_answers["gold_answers"].iloc[0],
+                    "gold_document_ids": query_answers["gold_document_ids"].iloc[0]
                 }
                 wrong_examples.append(query_dict)
             return wrong_examples
