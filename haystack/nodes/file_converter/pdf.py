@@ -63,7 +63,7 @@ class PDFToTextConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "Latin1",
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Extract text from a .pdf file using the pdftotext library (https://www.xpdfreader.com/pdftotext-man.html)
 
@@ -136,7 +136,7 @@ class PDFToTextConverter(BaseConverter):
 
         text = "\f".join(cleaned_pages)
         document = {"content": text, "content_type": "text", "meta": meta}
-        return document
+        return [document]
 
     def _read_pdf(
         self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1"
@@ -197,7 +197,7 @@ class PDFToTextOCRConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Convert a file to a dictionary containing the text and any associated meta data.
 
@@ -226,11 +226,11 @@ class PDFToTextOCRConverter(BaseConverter):
                     dir=os.path.dirname(os.path.realpath(__file__)), suffix=".jpeg"
                 )
                 image.save(temp_img.name)
-                pages.append(self.image_2_text.convert(temp_img.name)["content"])
+                pages.append(self.image_2_text.convert(temp_img.name)[0]["content"])
         except Exception as exception:
             logger.error(f"File {file_path} has an error \n {exception}")
 
         raw_text = "\f".join(pages)
         document = {"content": raw_text, "meta": meta}
 
-        return document
+        return [document]
