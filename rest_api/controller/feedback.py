@@ -11,20 +11,20 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/feedback", operation_id="post_feedback")
+@router.post("/feedback")
 def post_feedback(feedback: LabelSerialized):
     if feedback.origin is None:
         feedback.origin = "user-feedback"
     DOCUMENT_STORE.write_labels([feedback])
 
 
-@router.get("/feedback", operation_id="get_feedback")
+@router.get("/feedback")
 def get_feedback():
     labels = DOCUMENT_STORE.get_all_labels()
     return labels
 
 
-@router.post("/eval-feedback", operation_id="get_feedback_metrics")
+@router.post("/eval-feedback")
 def get_feedback_metrics(filters: FilterRequest = None):
     """
     Return basic accuracy metrics based on the user feedback.
