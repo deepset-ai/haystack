@@ -288,6 +288,21 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 - `path`: path of the output YAML file.
 - `return_defaults`: whether to output parameters that have the default values.
 
+<a name="base.Pipeline.print_eval_report"></a>
+#### print\_eval\_report
+
+```python
+ | print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None)
+```
+
+Prints evaluation report containing a metrics funnel and worst queries for further analysis.
+
+**Arguments**:
+
+- `eval_result`: The evaluation result, can be obtained by running eval().
+- `n_wrong_examples`: The number of worst queries to show.
+- `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
+
 <a name="base.RayPipeline"></a>
 ## RayPipeline
 
@@ -559,20 +574,6 @@ Pipeline for Extractive Question Answering.
               they received and the output they generated. 
               All debug information can then be found in the dict returned
               by this method under the key "_debug"
-
-<a name="standard_pipelines.ExtractiveQAPipeline.print_eval_report"></a>
-#### print\_eval\_report
-
-```python
- | print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3)
-```
-
-Prints evaluation report containing a metrics funnel and worst queries for further analysis.
-
-**Arguments**:
-
-- `eval_result`: The evaluation result, can be obtained by running eval().
-- `n_wrong_examples`: The number of worst queries to show.
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline
