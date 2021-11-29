@@ -46,12 +46,12 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
     url = f"{API_ENDPOINT}/{DOC_REQUEST}"
     params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}, "Reader": {"top_k": top_k_reader}}
     req = {"query": query, "params": params}
-    response_raw = requests.post(url, json=req).json()
+    response_raw = requests.post(url, json=req)
 
     if response_raw.status_code >= 400:
         raise Exception(f"{response_raw}")
 
-    response = requests.post(url, json=req).json()
+    response = response_raw.json()
     if "errors" in response:
         raise Exception(", ".join(response["errors"]))
 
@@ -66,7 +66,7 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
                     "answer": answer.get("answer", None),
                     "source": answer["meta"]["name"],
                     "relevance": round(answer["score"] * 100, 2),
-                    "document": [doc for doc in response_raw["documents"] if doc["id"] == answer["document_id"]][0],
+                    "document": [doc for doc in response["documents"] if doc["id"] == answer["document_id"]][0],
                     "offset_start_in_doc": answer["offsets_in_document"][0]["start"],
                     "_raw": answer
                 }
