@@ -1,7 +1,6 @@
 import os
 import sys
 
-import html
 import logging
 import pandas as pd
 from json import JSONDecodeError
@@ -9,13 +8,12 @@ from pathlib import Path
 import streamlit as st
 from annotated_text import annotation
 from markdown import markdown
-from htbuilder import H
 
 # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
 # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 import SessionState
-from utils import HS_VERSION, feedback_doc, haystack_is_ready, retrieve_doc, upload_doc, haystack_version
+from utils import HS_VERSION, haystack_is_ready, query, send_feedback, upload_doc, haystack_version
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
@@ -154,7 +152,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
             "Check out the docs: https://haystack.deepset.ai/usage/optimization "
         ):
             try:
-                state.results, state.raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+                state.results, state.raw_json = query(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
             except JSONDecodeError as je:
                 st.error("👓 &nbsp;&nbsp; An error occurred reading the results. Is the document store working?")
                 return
@@ -163,20 +161,19 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 if "The server is busy processing requests" in str(e):
                     st.error("🧑‍🌾 &nbsp;&nbsp; All our workers are busy! Try again later.")
                 else:
-                    st.error("🐞 &nbsp;&nbsp; An error occurred during the request. Check the logs in the console to know more.")
+                    st.error("🐞 &nbsp;&nbsp; An error occurred during the request.")
                 return
 
     if state.results:
 
         # Show the gold answer if we use a question of the given set
-        if question == state.random_question and eval_mode:
+        if question == state.random_question and eval_mode and state.random_answer:
             st.write("## Correct answers:")
             st.write(state.random_answer)
 
         st.write("## Results:")
-        count = 0  # Make every button key unique
 
-        for result in state.results:
+        for count, result in enumerate(state.results):
             if result["answer"]:
                 answer, context = result["answer"], result["context"]
                 start_idx = context.find(answer)
@@ -191,43 +188,36 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 
             if eval_mode:
                 # Define columns for buttons
+                is_correct_answer = None
+                is_correct_document = None
+
                 button_col1, button_col2, button_col3, _ = st.columns([1, 1, 1, 6])
                 if button_col1.button("👍", key=f"{result['context']}{count}1", help="Correct answer"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="true", 
-                        document_id=result.get("document_id", None), 
-                        model_id=1, 
-                        is_correct_document="true",
-                        answer=result["answer"],
-                        offset_start_in_doc=result.get("offset_start_in_doc", None)
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    is_correct_answer=True
+                    is_correct_document=True
 
                 if button_col2.button("👎", key=f"{result['context']}{count}2", help="Wrong answer and wrong passage"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="false", 
-                        document_id=result.get("document_id", None), 
-                        model_id=1, 
-                        is_correct_document="false",
-                        answer=result["answer"], 
-                        offset_start_in_doc=result.get("offset_start_in_doc", None)
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    is_correct_answer=False
+                    is_correct_document=False
 
                 if button_col3.button("👎👍", key=f"{result['context']}{count}3", help="Wrong answer, but correct passage"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="false", 
-                        document_id=result.get("document_id", None), 
-                        model_id=1, 
-                        is_correct_document="true",
-                        answer=result["answer"], 
-                        offset_start_in_doc=result.get("offset_start_in_doc", None)
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
-                count += 1
+                    is_correct_answer=False
+                    is_correct_document=True
+
+                if is_correct_answer is not None and is_correct_document is not None:
+                    try:
+                        send_feedback(
+                            query=question,
+                            answer_obj=result["_raw"],
+                            is_correct_answer=is_correct_answer,
+                            is_correct_document=is_correct_document,
+                            document=result["document"]
+                        )
+                        st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    except Exception as e:
+                        logging.exception(e)
+                        st.error("🐞 &nbsp;&nbsp; An error occurred while submitting your feedback!")
+
             st.write("___")
 
         if debug:
