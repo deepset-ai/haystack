@@ -96,9 +96,9 @@ def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, doc
         "origin": "user-feedback",
         "answer": answer_obj
         }
-    response_raw = requests.post(url, json=req).json()
-    if response_raw:
-        raise ValueError(f"An error was returned: {response_raw}")
+    response_raw = requests.post(url, json=req)
+    if response_raw.status_code >= 400:
+        raise ValueError(f"An error was returned [code {response_raw.status_code}]: {response_raw.json()}")
 
 
 def upload_doc(file):
