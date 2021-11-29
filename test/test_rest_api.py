@@ -15,7 +15,9 @@ FEEDBACK={
             "content_type": "text",
             "score": None,
             "id": "fc18c987a8312e72a47fb1524f230bb0",
-            "meta": {}
+            "meta": {},
+            "embedding": None,
+            "id_hash_keys": None
         },
         "answer":
             {
@@ -24,10 +26,12 @@ FEEDBACK={
                 "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
                 "offsets_in_context": [{"start": 60, "end": 73}],
                 "offsets_in_document": [{"start": 60, "end": 73}],
-                "document_id": "fc18c987a8312e72a47fb1524f230bb0"
+                "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+                "meta": {},
+                "score": None
             },
-        "is_correct_answer": "true",
-        "is_correct_document": "true",
+        "is_correct_answer": True,
+        "is_correct_document": True,
         "origin": "user-feedback",
         "pipeline_id": "some-123",
     }
@@ -203,16 +207,11 @@ def test_write_feedback(populated_client: TestClient):
 def test_get_feedback(client: TestClient):
     response = client.post(url="/feedback", json=FEEDBACK)
     assert response.status_code == 200
-    resp = client.get(url="/feedback")
-    assert resp.status_code == 200
-    assert resp.json() == FEEDBACK
-
-
-def test_get_feedback_malformed_query(client: TestClient):
-    feedback = FEEDBACK
-    feedback["unexpected_field"] = "misplaced-value"
-    response = client.post(url="/feedback", json=FEEDBACK)
-    assert response.status_code == 422
+    response = client.get(url="/feedback")
+    assert response.status_code == 200
+    json_response = response.json()
+    for response_item, expected_item in [(json_response[0][key], value) for key, value in FEEDBACK.items()]:
+        assert response_item == expected_item
 
 
 def test_export_feedback(client: TestClient):
@@ -232,3 +231,9 @@ def test_export_feedback(client: TestClient):
         answer = response_json["data"][0]["paragraphs"][0]["qas"][0]["answers"][0]["text"]
         assert context[answer_start:answer_start+len(answer)] == answer
 
+
+def test_get_feedback_malformed_query(client: TestClient):
+    feedback = FEEDBACK.copy()
+    feedback["unexpected_field"] = "misplaced-value"
+    response = client.post(url="/feedback", json=feedback)
+    assert response.status_code == 422
