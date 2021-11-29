@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from haystack.schema import Label
 
 
 from rest_api.application import app
@@ -16,7 +15,9 @@ FEEDBACK={
             "content_type": "text",
             "score": None,
             "id": "fc18c987a8312e72a47fb1524f230bb0",
-            "meta": {}
+            "meta": {},
+            "embedding": None,
+            "id_hash_keys": None
         },
         "answer":
             {
@@ -25,7 +26,9 @@ FEEDBACK={
                 "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
                 "offsets_in_context": [{"start": 60, "end": 73}],
                 "offsets_in_document": [{"start": 60, "end": 73}],
-                "document_id": "fc18c987a8312e72a47fb1524f230bb0"
+                "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+                "meta": {},
+                "score": None
             },
         "is_correct_answer": True,
         "is_correct_document": True,
@@ -138,13 +141,12 @@ def test_delete_documents():
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 1
-
+    
 
 def test_file_upload(client: TestClient):
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
-    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
+    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value", "non-existing-field": "wrong-value"}'})
     assert 200 == response.status_code
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
 
 
 def test_query_with_no_filter(populated_client: TestClient):
@@ -204,12 +206,16 @@ def test_write_feedback(populated_client: TestClient):
 
 def test_get_feedback(client: TestClient):
     response = client.post(url="/feedback", json=FEEDBACK)
-    resp = client.get(url="/feedback")
-    labels = [Label.from_dict(i) for i in resp.json()]
+    assert response.status_code == 200
+    response = client.get(url="/feedback")
+    assert response.status_code == 200
+    json_response = response.json()
+    for response_item, expected_item in [(json_response[0][key], value) for key, value in FEEDBACK.items()]:
+        assert response_item == expected_item
 
 
-def test_export_feedback(populated_client: TestClient):
-    response = populated_client.post(url="/feedback", json=FEEDBACK)
+def test_export_feedback(client: TestClient):
+    response = client.post(url="/feedback", json=FEEDBACK)
     assert 200 == response.status_code
 
     feedback_urls = [
@@ -218,10 +224,16 @@ def test_export_feedback(populated_client: TestClient):
         "/export-feedback?full_document_context=false&context_size=50000",
     ]
     for url in feedback_urls:
-        response = populated_client.get(url=url, json=FEEDBACK)
+        response = client.get(url=url, json=FEEDBACK)
         response_json = response.json()
         context = response_json["data"][0]["paragraphs"][0]["context"]
         answer_start = response_json["data"][0]["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
         answer = response_json["data"][0]["paragraphs"][0]["qas"][0]["answers"][0]["text"]
         assert context[answer_start:answer_start+len(answer)] == answer
 
+
+def test_get_feedback_malformed_query(client: TestClient):
+    feedback = FEEDBACK.copy()
+    feedback["unexpected_field"] = "misplaced-value"
+    response = client.post(url="/feedback", json=feedback)
+    assert response.status_code == 422
