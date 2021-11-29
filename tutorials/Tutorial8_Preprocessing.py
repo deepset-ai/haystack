@@ -42,13 +42,13 @@ def tutorial8_preprocessing():
     # Here are some examples of how you would use file converters
 
     converter = TextConverter(remove_numeric_tables=True, valid_languages=["en"])
-    doc_txt = converter.convert(file_path="data/preprocessing_tutorial/classics.txt", meta=None)
+    doc_txt = converter.convert(file_path="data/preprocessing_tutorial/classics.txt", meta=None)[0]
 
     converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
-    doc_pdf = converter.convert(file_path="data/preprocessing_tutorial/bert.pdf", meta=None)
+    doc_pdf = converter.convert(file_path="data/preprocessing_tutorial/bert.pdf", meta=None)[0]
 
     converter = DocxToTextConverter(remove_numeric_tables=False, valid_languages=["en"])
-    doc_docx = converter.convert(file_path="data/preprocessing_tutorial/heavy_metal.docx", meta=None)
+    doc_docx = converter.convert(file_path="data/preprocessing_tutorial/heavy_metal.docx", meta=None)[0]
 
     # Haystack also has a convenience function that will automatically apply the right converter to each file in a directory.
 
