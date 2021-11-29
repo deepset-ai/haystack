@@ -955,6 +955,8 @@ class EmbeddingRetriever(BaseRetriever):
         embedding_model: str,
         model_version: Optional[str] = None,
         use_gpu: bool = True,
+        batch_size: int = 32,
+        max_seq_len: int = 512,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
@@ -968,6 +970,8 @@ class EmbeddingRetriever(BaseRetriever):
         :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param batch_size: Number of documents to encode at once.
+        :param max_seq_len: Longest length of each document sequence. Maximum number of tokens for the document text. Longer ones will be cut down.
         :param model_format: Name of framework that was used for saving the model. Options:
 
                              - ``'farm'``
@@ -993,7 +997,7 @@ class EmbeddingRetriever(BaseRetriever):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             document_store=document_store, embedding_model=embedding_model, model_version=model_version,
-            use_gpu=use_gpu, model_format=model_format, pooling_strategy=pooling_strategy,
+            use_gpu=use_gpu, batch_size=batch_size, max_seq_len=max_seq_len, model_format=model_format, pooling_strategy=pooling_strategy,
             emb_extraction_layer=emb_extraction_layer, top_k=top_k,
         )
 
@@ -1001,12 +1005,17 @@ class EmbeddingRetriever(BaseRetriever):
             self.devices = devices
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+        
+        if batch_size < len(self.devices):
+            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
 
         self.document_store = document_store
         self.embedding_model = embedding_model
         self.model_format = model_format
         self.model_version = model_version
         self.use_gpu = use_gpu
+        self.batch_size = batch_size
+        self.max_seq_len = max_seq_len
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
         self.top_k = top_k
