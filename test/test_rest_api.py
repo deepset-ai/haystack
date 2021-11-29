@@ -96,6 +96,11 @@ def test_get_documents():
     assert all("meta_value_get"==meta_key for meta_key in meta_keys)
 
 
+def test_get_document_malformed_request(populated_client):
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_get"]}, "non-existing-field": "wrong-value"}')
+    assert 422 == response.status_code
+
+
 def test_delete_documents():
     os.environ["PIPELINE_YAML_PATH"] = str((Path(__file__).parent / "samples"/"pipeline"/"test_pipeline.yaml").absolute())
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
@@ -140,11 +145,15 @@ def test_delete_documents():
     assert len(response_json) == 1
 
 
+def test_delete_document_malformed_request(populated_client):
+    response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {"meta_key": ["meta_value_get"]}, "non-existing-field": "wrong-value"}')
+    assert 422 == response.status_code
+
+
 def test_file_upload(client: TestClient):
     file_to_upload = {'files': (Path(__file__).parent / "samples"/"pdf"/"sample_pdf_1.pdf").open('rb')}
-    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value"}'})
+    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"meta_key": "meta_value", "non-existing-field": "wrong-value"}'})
     assert 200 == response.status_code
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
 
 
 def test_query_with_no_filter(populated_client: TestClient):
@@ -204,12 +213,21 @@ def test_write_feedback(populated_client: TestClient):
 
 def test_get_feedback(client: TestClient):
     response = client.post(url="/feedback", json=FEEDBACK)
+    assert response.status_code == 200
     resp = client.get(url="/feedback")
-    labels = [Label.from_dict(i) for i in resp.json()]
+    assert resp.status_code == 200
+    assert resp.json() == FEEDBACK
 
 
-def test_export_feedback(populated_client: TestClient):
-    response = populated_client.post(url="/feedback", json=FEEDBACK)
+def test_get_feedback_malformed_query(client: TestClient):
+    feedback = FEEDBACK
+    feedback["unexpected_field"] = "misplaced-value"
+    response = client.post(url="/feedback", json=FEEDBACK)
+    assert response.status_code == 422
+
+
+def test_export_feedback(client: TestClient):
+    response = client.post(url="/feedback", json=FEEDBACK)
     assert 200 == response.status_code
 
     feedback_urls = [
@@ -218,7 +236,7 @@ def test_export_feedback(populated_client: TestClient):
         "/export-feedback?full_document_context=false&context_size=50000",
     ]
     for url in feedback_urls:
-        response = populated_client.get(url=url, json=FEEDBACK)
+        response = client.get(url=url, json=FEEDBACK)
         response_json = response.json()
         context = response_json["data"][0]["paragraphs"][0]["context"]
         answer_start = response_json["data"][0]["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
