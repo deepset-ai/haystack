@@ -18,7 +18,7 @@ class DocxToTextConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Extract text from a .docx file.
         Note: As docx doesn't contain "page" information, we actually extract and return a list of paragraphs here.
@@ -51,4 +51,4 @@ class DocxToTextConverter(BaseConverter):
         paragraphs = [para.text for para in file.paragraphs]
         text = "\n".join(paragraphs)
         document = {"content": text, "content_type": "text", "meta": meta}
-        return document
+        return [document]
