@@ -24,6 +24,7 @@ services:
       # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
       - PIPELINE_YAML_PATH=/home/user/rest_api/pipeline/pipelines_dpr.yaml
+      - CONCURRENT_REQUEST_PER_WORKER
     depends_on:
       - elasticsearch
     command: "/bin/bash -c 'sleep 10 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180'"
