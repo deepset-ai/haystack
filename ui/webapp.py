@@ -186,7 +186,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 st.info("🤔 &nbsp;&nbsp; Haystack is unsure whether any of the documents contain an answer to your question. Try to reformulate it!")
                 st.write("**Relevance:** ", result["relevance"])
                 
-            if eval_mode:
+            if eval_mode and result["answer"]:
                 # Define columns for buttons
                 is_correct_answer = None
                 is_correct_document = None
