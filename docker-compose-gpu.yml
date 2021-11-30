@@ -4,7 +4,7 @@ services:
   haystack-api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-GPU
     image: "deepset/haystack-gpu:latest"
     # in recent docker-compose version you can enable GPU resources. Make sure to fulfill the prerequisites listed here: https://docs.docker.com/compose/gpu-support/
     deploy:
@@ -52,5 +52,11 @@ services:
     environment:
       - API_ENDPOINT=http://haystack-api:8000
       - EVAL_FILE=eval_labels_example.csv
-      - HAYSTACK_UI_DISABLE_FILE_UPLOAD   # docker-compose run -e HAYSTACK_UI_DISABLE_FILE_UPLOAD=1 ...
+      # The value fot the following variables will be read from the host, if present.
+      # They can also be temporarily set for docker-compose, for example:
+      # DISABLE_FILE_UPLOAD=1 DEFAULT_DOCS_FROM_RETRIEVER=5 docker-compose up
+      - DISABLE_FILE_UPLOAD
+      - DEFAULT_QUESTION_AT_STARTUP
+      - DEFAULT_DOCS_FROM_RETRIEVER
+      - DEFAULT_NUMBER_OF_ANSWERS
     command: "/bin/bash -c 'sleep 15 && streamlit run webapp.py'"
