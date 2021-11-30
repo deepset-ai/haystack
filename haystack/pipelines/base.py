@@ -701,7 +701,7 @@ class Pipeline(BasePipeline):
     def _format_document_answer(self, document_or_answer: dict):
         return "\n \t".join([f'{name}: {value}' for name, value in document_or_answer.items()])
 
-    def _format_wrong(self, query: dict):
+    def _format_wrong_sample(self, query: dict):
         metrics = "\n \t".join([f'{name}: {value}' for name, value in query['metrics'].items()])
         documents = "\n\n \t".join([self._format_document_answer(doc) for doc in query.get('documents', [])])
         documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
@@ -721,26 +721,26 @@ class Pipeline(BasePipeline):
         )
         return s
 
-    def _format_wrongs_node(self, node_name: str, wrongs_formatted: str):
+    def _format_wrong_samples_node(self, node_name: str, wrong_samples_formatted: str):
         s = (
             f"                Wrong {node_name} Examples\n"
             f"=======================================================\n"
-            f"{wrongs_formatted}\n"
+            f"{wrong_samples_formatted}\n"
             f"=======================================================\n"
         )
         return s
 
-    def _format_wrongs_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
+    def _format_wrong_samples_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
         examples = {
             node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples) 
                 for node in eval_result.node_results.keys()
         }
         examples_formatted = {
-            node: "\n".join([self._format_wrong(example) for example in examples]) 
+            node: "\n".join([self._format_wrong_sample(example) for example in examples]) 
                 for node, examples in examples.items()
         }
 
-        return "\n".join([self._format_wrongs_node(node, examples) for node, examples in examples_formatted.items()])
+        return "\n".join([self._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()])
 
     def _format_pipeline_node(self, node: str, metrics: dict, metrics_top_1):
         metrics = metrics.get(node, {})
@@ -795,11 +795,11 @@ class Pipeline(BasePipeline):
                                     else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]} 
                                     for node, metrics in metrics_top_1.items()}
         pipeline_overview = self._format_pipeline_overview(metrics_top_n, metrics_top_1)        
-        wrongs_report = self._format_wrongs_report(eval_result=eval_result, n_wrong_examples=n_wrong_examples)
+        wrong_samples_report = self._format_wrong_samples_report(eval_result=eval_result, n_wrong_examples=n_wrong_examples)
 
         print(
             f"{pipeline_overview}\n"
-            f"{wrongs_report}")
+            f"{wrong_samples_report}")
 
 
 class RayPipeline(Pipeline):

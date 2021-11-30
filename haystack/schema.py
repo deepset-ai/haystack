@@ -494,7 +494,7 @@ class MultiLabel:
         # taking the id from the document of each label or taking the document_id of each label's answer.
         # We take the former as labels without answers are allowed.
         #
-        # For no_answer cases document_store.add_eval_data() currently adds all documents coming from the SQAD paragraph's context 
+        # For no_answer cases document_store.add_eval_data() currently adds all documents coming from the SQuAD paragraph's context 
         # as separate no_answer labels, and thus with document.id but without answer.document_id.
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
@@ -639,12 +639,12 @@ class EvaluationResult:
         For document returning nodes default metrics are: 
         - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
         - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
-        - precision (Precision: How much of the returned documents were relevant?)
-        - recall_ir (Recall according to Information Retrieval definition: How much of the relevant documents were retrieved per query?)
-        - recall_qs (Recall for Question Answering: How much of the queries returned at least one relevant document?)
+        - precision (Precision: How many of the returned documents were relevant?)
+        - recall_ir (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
+        - recall_qa (Recall for Question Answering: How many of the queries returned at least one relevant document?)
 
         For answer returning nodes default metrics are:
-        - exact_match (How much of the queries returned the exact answer?)
+        - exact_match (How many of the queries returned the exact answer?)
         - f1 (How well do the returned results overlap with any gold answer on token basis?)
         - sas if a SAS model has bin provided during during pipeline.eval() (How well do the returned results overlap with any gold answer on a semantic basis?)
         
@@ -855,8 +855,8 @@ class EvaluationResult:
         Document metrics are:
         - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
         - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
-        - precision (Precision: How much of the returned documents were relevant?)
-        - recall_ir (Recall according to Information Retrieval definition: How much of the relevant documents were retrieved per query?)
+        - precision (Precision: How many of the returned documents were relevant?)
+        - recall_ir (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
         - recall_qs (Recall for Question Answering: Did the query return at least one relevant document? -> 1.0 or 0.0)
         """
         if simulated_top_k_retriever != -1:
