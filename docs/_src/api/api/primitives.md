@@ -308,7 +308,7 @@ For document returning nodes default metrics are:
 For answer returning nodes default metrics are:
 - exact_match (How many of the queries returned the exact answer?)
 - f1 (How well do the returned results overlap with any gold answer on token basis?)
-- sas if a SAS model has bin provided during during pipeline.eval() (How well do the returned results overlap with any gold answer on a semantic basis?)
+- sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
 
 Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
 E.g. top_1_f1 for reader nodes can be calculated by setting simulated_top_k_reader=1.
