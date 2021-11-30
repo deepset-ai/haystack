@@ -23,6 +23,7 @@ import logging
 import time
 import json
 import pandas as pd
+import ast
 
 
 logger = logging.getLogger(__name__)
@@ -453,7 +454,7 @@ class MultiLabel:
         automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
         underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
 
-        :param labels: A list lof labels that belong to a similar query and shall be "grouped" together
+        :param labels: A list of labels that belong to a similar query and shall be "grouped" together
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
@@ -471,12 +472,34 @@ class MultiLabel:
         self.labels = labels
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
-        # answer strings as this is mostly relevant in usage
-        self.answers = [l.answer.answer for l in self.labels if l.answer is not None]
+
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
         self.no_answer = False not in [l.no_answer for l in self.labels]
-        self.document_ids = [l.document.id for l in self.labels]
+
+        # Answer strings and offsets cleaned for no_answers:
+        # If there are only no_answers, offsets are empty and answers will be a single empty string 
+        # which equals the no_answers representation of reader nodes.
+        if self.no_answer:
+            self.answers = [""]
+            self.gold_offsets_in_documents = []
+            self.gold_offsets_in_contexts = []
+        else:
+            answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
+            self.answers = [answer.answer for answer in answered]
+            self.gold_offsets_in_documents = [answer.offsets_in_document for answer in answered]
+            self.gold_offsets_in_contexts = [answer.offsets_in_context for answer in answered]
+
+        # There are two options here to represent document_ids: 
+        # taking the id from the document of each label or taking the document_id of each label's answer.
+        # We take the former as labels without answers are allowed.
+        #
+        # For no_answer cases document_store.add_eval_data() currently adds all documents coming from the SQuAD paragraph's context 
+        # as separate no_answer labels, and thus with document.id but without answer.document_id.
+        # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
+        # Hence, we exclude them here as well.
+        self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
+        self.document_contents = [l.document.content for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         unique_values = set([getattr(l, key) for l in self.labels])
@@ -536,6 +559,50 @@ class NumpyEncoder(json.JSONEncoder):
 
 class EvaluationResult:
     def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
+        """
+        Convenience class to store, pass and interact with results of a pipeline evaluation run (e.g. pipeline.eval()).
+        Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
+        convenience methods to work with them.
+        For example, you can calculate eval metrics, get detailed reports or simulate different top_k settings.
+
+        Example:
+        ```python
+        | eval_results = pipeline.eval(...)
+        |
+        | # derive detailed metrics
+        | eval_results.calculate_metrics()
+        |
+        | # show summary of incorrect queries
+        | eval_results.wrong_examples()
+        ```
+
+        Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
+        Rows are enriched with basic infos like rank, query, type or node.
+        Additional answer or document specific evaluation infos like gold labels 
+        and metrics depicting whether the row matches the gold labels are included, too.
+        The DataFrames have the following schema:
+        - query: the query
+        - node: the node name
+        - type: 'answer' or 'document'
+        - rank: rank or 1-based-position in result list
+        - document_id: the id of the document that has been retrieved or that contained the answer
+        - gold_document_ids: the documents to be retrieved
+        - content (documents only): the content of the document
+        - gold_contents (documents only): the contents of the gold documents
+        - gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
+        - answer_match (documents only): metric depicting whether the document contains the answer
+        - gold_id_or_answer_match (documents only): metric depicting whether one of the former two conditions are met
+        - answer (answers only): the answer
+        - context (answers only): the surrounding context of the answer within the document
+        - offsets_in_document (answers only): the position or offsets within the document the answer was found
+        - gold_answers (answers only): the answers to be given
+        - gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
+        - exact_match (answers only): metric depicting if the answer exactly matches the gold label
+        - f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
+        - sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
+
+        :param node_results: the evaluation Dataframes per pipeline node
+        """
         self.node_results: Dict[str, pd.DataFrame] = {} if node_results is None else node_results
 
     def __getitem__(self, key: str):
@@ -550,27 +617,289 @@ class EvaluationResult:
     def __contains__(self, key: str):
         return self.node_results.keys().__contains__(key)
 
+    def __len__(self):
+        return self.node_results.__len__()
+
     def append(self, key: str, value: pd.DataFrame):
-        if key in self.node_results:
-            self.node_results[key] = pd.concat([self.node_results[key], value])
-        else:    
-            self.node_results[key] = value
+        if value is not None and len(value) > 0:
+            if key in self.node_results:
+                self.node_results[key] = pd.concat([self.node_results[key], value])
+            else:    
+                self.node_results[key] = value
 
-    def calculate_metrics(self) -> Dict[str, float]:
+    def calculate_metrics(
+        self, 
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1,
+        doc_relevance_col: str = "gold_id_match"
+    ) -> Dict[str, Dict[str, float]]:
         """
-            First dummy implementation of metrics calcuation just to show the way it's done.
-            TODO: implement retriever and reader specific metrics that must not rely on node names.
-        """
-        reader_df = self.node_results["Reader"]
-        first_answers = reader_df[reader_df["rank"] == 1]
-        first_correct_answers = first_answers[first_answers.apply(
-            lambda x: x["answer"] in x["gold_answers"], axis=1)]
+        Calculates proper metrics for each node.
 
-        return {
-            "MatchInTop1": len(first_correct_answers) / len(first_answers) if len(first_answers) > 0 else 0.0
-        }
+        For document returning nodes default metrics are: 
+        - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
+        - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_%28information_retrieval%29#Mean_average_precision)
+        - precision (Precision: How many of the returned documents were relevant?)
+        - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
+        - recall_single_hit (Recall for Question Answering: How many of the queries returned at least one relevant document?)
+
+        For answer returning nodes default metrics are:
+        - exact_match (How many of the queries returned the exact answer?)
+        - f1 (How well do the returned results overlap with any gold answer on token basis?)
+        - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+        
+        Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
+        E.g. top_1_f1 for reader nodes can be calculated by setting simulated_top_k_reader=1.
+
+        Results for reader nodes with applied simulated_top_k_retriever should be considered with caution 
+        as there are situations the result can heavily differ from an actual eval run with corresponding top_k_retriever.
+
+        :param simulated_top_k_reader: simulates top_k param of reader
+        :param simulated_top_k_retriever: simulates top_k param of retriever.
+            remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
+        :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
+            values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+        """
+        return {node: self._calculate_node_metrics(df, 
+                    simulated_top_k_reader=simulated_top_k_reader, 
+                    simulated_top_k_retriever=simulated_top_k_retriever,
+                    doc_relevance_col=doc_relevance_col) 
+            for node, df in self.node_results.items()}
+
+    def wrong_examples(
+        self,
+        node: str, 
+        n: int = 3,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1,
+        doc_relevance_col: str = "gold_id_match",
+        document_metric: str = "recall_single_hit",
+        answer_metric: str = "f1"
+    ) -> List[Dict]:
+        """
+        Returns the worst performing queries. 
+        Worst performing queries are calculated based on the metric 
+        that is either a document metric or an answer metric according to the node type.
+
+        Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
+        See calculate_metrics() for more information. 
+
+        :param simulated_top_k_reader: simulates top_k param of reader
+        :param simulated_top_k_retriever: simulates top_k param of retriever.
+            remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
+        :param doc_relevance_col: column that contains the relevance criteria for documents.
+            values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+        :param document_metric: the document metric worst queries are calculated with.
+            values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
+        :param document_metric: the answer metric worst queries are calculated with.
+            values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
+        """
+        node_df = self.node_results[node]
+
+        answers = node_df[node_df["type"] == "answer"]
+        if len(answers) > 0:
+            metrics_df = self._build_answer_metrics_df(answers, 
+                simulated_top_k_reader=simulated_top_k_reader, 
+                simulated_top_k_retriever=simulated_top_k_retriever)
+            worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
+            wrong_examples = []
+            for query, metrics in worst_df.iterrows():
+                query_answers = answers[answers["query"] == query]
+                query_dict = {
+                    "query": query,
+                    "metrics": metrics.to_dict(),
+                    "answers": query_answers.drop(["node", "query", "type", 
+                            "gold_answers", "gold_offsets_in_documents",
+                            "gold_document_ids"], axis=1) \
+                        .to_dict(orient="records"),
+                    "gold_answers": query_answers["gold_answers"].iloc[0],
+                    "gold_document_ids": query_answers["gold_document_ids"].iloc[0]
+                }
+                wrong_examples.append(query_dict)
+            return wrong_examples
+
+        documents = node_df[node_df["type"] == "document"]
+        if len(documents) > 0:
+            metrics_df = self._build_document_metrics_df(documents, 
+                simulated_top_k_retriever=simulated_top_k_retriever,
+                doc_relevance_col=doc_relevance_col)
+            worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
+            wrong_examples = []
+            for query, metrics in worst_df.iterrows():
+                query_documents = documents[documents["query"] == query]
+                query_dict = {
+                    "query": query,
+                    "metrics": metrics.to_dict(),
+                    "documents": query_documents.drop(["node", "query", "type", 
+                            "gold_document_ids", "gold_document_contents"], axis=1) \
+                        .to_dict(orient="records"),
+                    "gold_document_ids": query_documents["gold_document_ids"].iloc[0]
+                }
+                wrong_examples.append(query_dict)
+            return wrong_examples
+        
+        return []
+    
+    def _calculate_node_metrics(
+        self, 
+        df: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1,
+        doc_relevance_col: str = "gold_id_match"
+    ) -> Dict[str, float]:
+        answer_metrics = self._calculate_answer_metrics(df, 
+            simulated_top_k_reader=simulated_top_k_reader, 
+            simulated_top_k_retriever=simulated_top_k_retriever)
+        
+        document_metrics = self._calculate_document_metrics(df,
+            simulated_top_k_retriever=simulated_top_k_retriever,
+            doc_relevance_col=doc_relevance_col)
+        
+        return {**answer_metrics, **document_metrics}
+
+    def _calculate_answer_metrics(
+        self, 
+        df: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1
+    ) -> Dict[str, float]:
+        answers = df[df["type"] == "answer"]
+        if len(answers) == 0:
+            return {}
+
+        metrics_df = self._build_answer_metrics_df(answers, 
+            simulated_top_k_reader=simulated_top_k_reader, 
+            simulated_top_k_retriever=simulated_top_k_retriever)
+
+        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+
+    def _build_answer_metrics_df(self, 
+        answers: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1
+    ) -> pd.DataFrame:
+        """
+        Builds a dataframe containing answer metrics (columns) per query (index).
+        Answer metrics are:
+        - exact_match (Did the query exactly return any gold answer? -> 1.0 or 0.0)
+        - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
+        - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+        """
+        queries = answers["query"].unique()
+
+        #simulate top k reader
+        if simulated_top_k_reader != -1:
+            answers = answers[answers["rank"] <= simulated_top_k_reader]
+        
+        # simulate top k retriever
+        if simulated_top_k_retriever != -1:
+            documents = self._get_documents_df()
+            top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
+            simulated_answers = []
+            for query in queries:
+                top_k_document_ids = top_k_documents[top_k_documents["query"] == query]["document_id"].unique()
+                query_answers = answers[answers["query"] == query]
+                simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
+                simulated_query_answers["rank"] = np.arange(1, len(simulated_query_answers)+1)
+                simulated_answers.append(simulated_query_answers)
+            answers = pd.concat(simulated_answers)
+
+        # build metrics df
+        metrics = []        
+        for query in queries:
+            query_df = answers[answers["query"] == query]
+            metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
+
+            query_metrics = {
+                metric: query_df[metric].max() if len(query_df) > 0 else 0.0
+                    for metric in metrics_cols
+            }
+            metrics.append(query_metrics)
+
+        metrics_df = pd.DataFrame.from_records(metrics, index=queries)
+        return metrics_df
+
+    def _get_documents_df(self):
+        document_dfs = [node_df for node_df in self.node_results.values() 
+                                if len(node_df[node_df["type"] == "document"]) > 0]
+        if len(document_dfs) != 1:
+            raise ValueError("cannot detect retriever dataframe")
+        documents_df = document_dfs[0]
+        documents_df = documents_df[documents_df["type"] == "document"]
+        return documents_df
+
+    def _calculate_document_metrics(
+        self, 
+        df: pd.DataFrame,
+        simulated_top_k_retriever: int = -1,
+        doc_relevance_col: str = "gold_id_match"
+    ) -> Dict[str, float]:
+        documents = df[df["type"] == "document"]
+        if len(documents) == 0:
+            return {}
+        
+        metrics_df = self._build_document_metrics_df(documents, 
+            simulated_top_k_retriever=simulated_top_k_retriever, 
+            doc_relevance_col=doc_relevance_col)
+        
+        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+
+    def _build_document_metrics_df(
+        self, 
+        documents: pd.DataFrame, 
+        simulated_top_k_retriever: int = -1, 
+        doc_relevance_col: str = "gold_id_match"
+    ) -> pd.DataFrame:
+        """
+        Builds a dataframe containing document metrics (columns) per query (index).
+        Document metrics are:
+        - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
+        - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
+        - precision (Precision: How many of the returned documents were relevant?)
+        - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
+        - recall_single_hit (Recall for Question Answering: Did the query return at least one relevant document? -> 1.0 or 0.0)
+        """
+        if simulated_top_k_retriever != -1:
+            documents = documents[documents["rank"] <= simulated_top_k_retriever]
+        
+        metrics = []
+        queries = documents["query"].unique()
+        for query in queries:
+            query_df = documents[documents["query"] == query]
+            gold_ids = query_df["gold_document_ids"].iloc[0]
+            retrieved = len(query_df)
+            
+            relevance_criteria_ids = list(query_df[query_df[doc_relevance_col] == 1]["document_id"].values)
+            num_relevants = len(set(gold_ids + relevance_criteria_ids))
+            num_retrieved_relevants = query_df[doc_relevance_col].values.sum()
+            rank_retrieved_relevants = query_df[query_df[doc_relevance_col] == 1]["rank"].values
+            avp_retrieved_relevants = [query_df[doc_relevance_col].values[:rank].sum() / rank 
+                                            for rank in rank_retrieved_relevants]
+
+            avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
+            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 0.0
+            recall_single_hit = min(num_retrieved_relevants, 1)
+            precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
+            rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
+
+            metrics.append({
+                "recall_multi_hit": recall_multi_hit,
+                "recall_single_hit": recall_single_hit,
+                "precision": precision,
+                "map": avg_precision,
+                "mrr": rr
+            })
+
+        metrics_df = pd.DataFrame.from_records(metrics, index=queries)
+        return metrics_df
 
     def save(self, out_dir: Union[str, Path]):
+        """
+        Saves the evaluation result. 
+        The result of each node is saved in a separate csv with file name {node_name}.csv to the out_dir folder.
+
+        :param out_dir: Path to the target folder the csvs will be saved.
+        """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
         for node_name, df in self.node_results.items():
             target_path = out_dir / f"{node_name}.csv"
@@ -578,8 +907,15 @@ class EvaluationResult:
 
     @classmethod
     def load(cls, load_dir: Union[str, Path]):
+        """
+        Loads the evaluation result from disk. Expects one csv file per node. See save() for further information.
+
+        :param load_dir: The directory containing the csv files.
+        """
         load_dir =  load_dir if isinstance(load_dir, Path) else Path(load_dir)
         csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
-        node_results = {file.stem: pd.read_csv(file, header=0) for file in csv_files}
+        cols_to_convert = ["gold_document_ids", "gold_document_contents", "gold_answers", "gold_offsets_in_documents"]
+        converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
+        node_results = {file.stem: pd.read_csv(file, header=0, converters=converters) for file in csv_files}
         result = cls(node_results)
         return result

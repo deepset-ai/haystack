@@ -226,7 +226,7 @@ underlying Labels provided a text answer and therefore demonstrates that there i
 
 **Arguments**:
 
-- `labels`: A list lof labels that belong to a similar query and shall be "grouped" together
+- `labels`: A list of labels that belong to a similar query and shall be "grouped" together
 - `drop_negative_labels`: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
 - `drop_no_answers`: Whether to drop labels that specify the answer is impossible
 
@@ -237,13 +237,144 @@ underlying Labels provided a text answer and therefore demonstrates that there i
 class EvaluationResult()
 ```
 
+<a name="schema.EvaluationResult.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(node_results: Dict[str, pd.DataFrame] = None) -> None
+```
+
+Convenience class to store, pass and interact with results of a pipeline evaluation run (e.g. pipeline.eval()).
+Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
+convenience methods to work with them.
+For example, you can calculate eval metrics, get detailed reports or simulate different top_k settings.
+
+Example:
+```python
+| eval_results = pipeline.eval(...)
+|
+| # derive detailed metrics
+| eval_results.calculate_metrics()
+|
+| # show summary of incorrect queries
+| eval_results.wrong_examples()
+```
+
+Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
+Rows are enriched with basic infos like rank, query, type or node.
+Additional answer or document specific evaluation infos like gold labels
+and metrics depicting whether the row matches the gold labels are included, too.
+The DataFrames have the following schema:
+- query: the query
+- node: the node name
+- type: 'answer' or 'document'
+- rank: rank or 1-based-position in result list
+- document_id: the id of the document that has been retrieved or that contained the answer
+- gold_document_ids: the documents to be retrieved
+- content (documents only): the content of the document
+- gold_contents (documents only): the contents of the gold documents
+- gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
+- answer_match (documents only): metric depicting whether the document contains the answer
+- gold_id_or_answer_match (documents only): metric depicting whether one of the former two conditions are met
+- answer (answers only): the answer
+- context (answers only): the surrounding context of the answer within the document
+- offsets_in_document (answers only): the position or offsets within the document the answer was found
+- gold_answers (answers only): the answers to be given
+- gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
+- exact_match (answers only): metric depicting if the answer exactly matches the gold label
+- f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
+- sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
+
+**Arguments**:
+
+- `node_results`: the evaluation Dataframes per pipeline node
+
 <a name="schema.EvaluationResult.calculate_metrics"></a>
 #### calculate\_metrics
 
 ```python
- | calculate_metrics() -> Dict[str, float]
+ | calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match") -> Dict[str, Dict[str, float]]
 ```
 
-First dummy implementation of metrics calcuation just to show the way it's done.
-TODO: implement retriever and reader specific metrics that must not rely on node names.
+Calculates proper metrics for each node.
+
+For document returning nodes default metrics are:
+- mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
+- map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_%28information_retrieval%29#Mean_average_precision)
+- precision (Precision: How many of the returned documents were relevant?)
+- recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
+- recall_single_hit (Recall for Question Answering: How many of the queries returned at least one relevant document?)
+
+For answer returning nodes default metrics are:
+- exact_match (How many of the queries returned the exact answer?)
+- f1 (How well do the returned results overlap with any gold answer on token basis?)
+- sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+
+Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
+E.g. top_1_f1 for reader nodes can be calculated by setting simulated_top_k_reader=1.
+
+Results for reader nodes with applied simulated_top_k_retriever should be considered with caution
+as there are situations the result can heavily differ from an actual eval run with corresponding top_k_retriever.
+
+**Arguments**:
+
+- `simulated_top_k_reader`: simulates top_k param of reader
+- `simulated_top_k_retriever`: simulates top_k param of retriever.
+    remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
+- `doc_relevance_col`: column in the underlying eval table that contains the relevance criteria for documents.
+    values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+
+<a name="schema.EvaluationResult.wrong_examples"></a>
+#### wrong\_examples
+
+```python
+ | wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_single_hit", answer_metric: str = "f1") -> List[Dict]
+```
+
+Returns the worst performing queries.
+Worst performing queries are calculated based on the metric
+that is either a document metric or an answer metric according to the node type.
+
+Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
+See calculate_metrics() for more information.
+
+**Arguments**:
+
+- `simulated_top_k_reader`: simulates top_k param of reader
+- `simulated_top_k_retriever`: simulates top_k param of retriever.
+    remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
+- `doc_relevance_col`: column that contains the relevance criteria for documents.
+    values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+- `document_metric`: the document metric worst queries are calculated with.
+    values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
+- `document_metric`: the answer metric worst queries are calculated with.
+    values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
+
+<a name="schema.EvaluationResult.save"></a>
+#### save
+
+```python
+ | save(out_dir: Union[str, Path])
+```
+
+Saves the evaluation result.
+The result of each node is saved in a separate csv with file name {node_name}.csv to the out_dir folder.
+
+**Arguments**:
+
+- `out_dir`: Path to the target folder the csvs will be saved.
+
+<a name="schema.EvaluationResult.load"></a>
+#### load
+
+```python
+ | @classmethod
+ | load(cls, load_dir: Union[str, Path])
+```
+
+Loads the evaluation result from disk. Expects one csv file per node. See save() for further information.
+
+**Arguments**:
+
+- `load_dir`: The directory containing the csv files.
 
