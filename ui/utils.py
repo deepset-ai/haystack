@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Tuple
 import os
 import logging
 import requests
+from time import sleep
 from uuid import uuid4
 import streamlit as st
 
@@ -25,6 +26,7 @@ def haystack_is_ready():
             return True
     except Exception as e:
         logging.exception(e)
+        sleep(1)  # To avoid spamming a non-existing endpoint at startup
     return False
 
 
@@ -48,8 +50,8 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
     req = {"query": query, "params": params}
     response_raw = requests.post(url, json=req)
 
-    if response_raw.status_code >= 400:
-        raise Exception(f"{response_raw}")
+    if response_raw.status_code >= 400 and response_raw.status_code != 503:
+        raise Exception(f"{vars(response_raw)}")
 
     response = response_raw.json()
     if "errors" in response:
