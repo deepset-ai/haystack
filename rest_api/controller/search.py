@@ -29,6 +29,7 @@ DOCUMENT_STORE = RETRIEVER.document_store if RETRIEVER else None
 logging.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
 
 concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
+logging.info("Concurrent requests per worker: {CONCURRENT_REQUEST_PER_WORKER}")
 
 
 @router.get("/initialized")
