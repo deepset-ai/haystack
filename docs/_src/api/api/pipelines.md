@@ -162,7 +162,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None) -> EvaluationResult
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -176,6 +176,17 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
             If you want to pass it to targeted nodes, you can do:
             {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `sas_model_name_or_path`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+            The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+            Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+            More info in the paper: https://arxiv.org/abs/2108.06130
+            Models:
+            - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+            Not all cross encoders can be used because of different return types.
+            If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+            - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+            - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+            - Large model for German only: "deepset/gbert-large-sts"
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
@@ -285,6 +296,21 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 
 - `path`: path of the output YAML file.
 - `return_defaults`: whether to output parameters that have the default values.
+
+<a name="base.Pipeline.print_eval_report"></a>
+#### print\_eval\_report
+
+```python
+ | print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None)
+```
+
+Prints evaluation report containing a metrics funnel and worst queries for further analysis.
+
+**Arguments**:
+
+- `eval_result`: The evaluation result, can be obtained by running eval().
+- `n_wrong_examples`: The number of worst queries to show.
+- `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
 
 <a name="base.RayPipeline"></a>
 ## RayPipeline
@@ -598,6 +624,25 @@ Return the document store object used in the current pipeline.
 
 Instance of DocumentStore or None
 
+<a name="standard_pipelines.BaseStandardPipeline.eval"></a>
+#### eval
+
+```python
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
+```
+
+Evaluates the pipeline by running the pipeline once per query in debug mode
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+**Arguments**:
+
+- `queries`: The queries to evaluate
+- `labels`: The labels to evaluate on
+- `params`: Params for the `retriever` and `reader`. For instance,
+               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
+                            should be path or string pointing to downloadable models.
+
 <a name="standard_pipelines.ExtractiveQAPipeline"></a>
 ## ExtractiveQAPipeline
 
@@ -636,23 +681,6 @@ Pipeline for Extractive Question Answering.
               they received and the output they generated. 
               All debug information can then be found in the dict returned
               by this method under the key "_debug"
-
-<a name="standard_pipelines.ExtractiveQAPipeline.eval"></a>
-#### eval
-
-```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict]) -> EvaluationResult
-```
-
-Evaluates the pipeline by running the pipeline once per query in debug mode
-and putting together all data that is needed for evaluation, e.g. calculating metrics.
-
-**Arguments**:
-
-- `queries`: The queries to evaluate
-- `labels`: The labels to evaluate on
-- `params`: Params for the `retriever` and `reader`. For instance,
-               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
 
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline

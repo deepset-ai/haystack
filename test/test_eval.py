@@ -1,8 +1,17 @@
 import pytest
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
+from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes.retriever.sparse import ElasticsearchRetriever
+from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.pipelines.base import Pipeline
+from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, FAQPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
+from haystack.pipelines.standard_pipelines import RetrieverQuestionGenerationPipeline, TranslationWrapperPipeline
+from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
+from conftest import DOCS_WITH_EMBEDDINGS
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
@@ -186,3 +195,680 @@ def test_eval_data_split_passage(document_store):
     docs = document_store.get_all_documents(index="haystack_test_eval_document")
     assert len(docs) == 2
     assert len(docs[1].content) == 56
+
+
+EVAL_QUERIES = ["Who lives in Berlin?", "Who lives in Munich?"]
+EVAL_LABELS = [
+        MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")]),
+        MultiLabel(labels=[Label(query="Who lives in Munich?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='something_else', content_type="text", content='My name is Carla and I live in Munich'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+    ]
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
+    queries = EVAL_QUERIES[:1]
+    labels = EVAL_LABELS[:1]
+
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"Retriever": {"top_k": 5}}, 
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    reader_result = eval_result["Reader"]
+    retriever_result = eval_result["Retriever"]
+
+    assert reader_result[reader_result['rank'] == 1]["answer"].iloc[0] in reader_result[reader_result['rank'] == 1]["gold_answers"].iloc[0]
+    assert retriever_result[retriever_result['rank'] == 1]["document_id"].iloc[0] in retriever_result[retriever_result['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0/3
+    assert metrics["Retriever"]["map"] == 1.0
+
+    eval_result.save(tmp_path)
+    saved_eval_result = EvaluationResult.load(tmp_path)
+    metrics = saved_eval_result.calculate_metrics()
+
+    assert reader_result[reader_result['rank'] == 1]["answer"].iloc[0] in reader_result[reader_result['rank'] == 1]["gold_answers"].iloc[0]
+    assert retriever_result[retriever_result['rank'] == 1]["document_id"].iloc[0] in retriever_result[retriever_result['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0/3
+    assert metrics["Retriever"]["map"] == 1.0
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_path):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    reader_result = eval_result["Reader"]
+    retriever_result = eval_result["Retriever"]
+
+    reader_berlin = reader_result[reader_result['query'] == "Who lives in Berlin?"]
+    reader_munich = reader_result[reader_result['query'] == "Who lives in Munich?"]
+
+    retriever_berlin = retriever_result[retriever_result['query'] == "Who lives in Berlin?"]
+    retriever_munich = retriever_result[retriever_result['query'] == "Who lives in Munich?"]
+
+    assert reader_berlin[reader_berlin['rank'] == 1]["answer"].iloc[0] in reader_berlin[reader_berlin['rank'] == 1]["gold_answers"].iloc[0]
+    assert retriever_berlin[retriever_berlin['rank'] == 1]["document_id"].iloc[0] in retriever_berlin[retriever_berlin['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert reader_munich[reader_munich['rank'] == 1]["answer"].iloc[0] not in reader_munich[reader_munich['rank'] == 1]["gold_answers"].iloc[0]
+    assert retriever_munich[retriever_munich['rank'] == 1]["document_id"].iloc[0] not in retriever_munich[retriever_munich['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+
+    eval_result.save(tmp_path)
+    saved_eval_result = EvaluationResult.load(tmp_path)
+    metrics = saved_eval_result.calculate_metrics()
+
+    assert reader_berlin[reader_berlin['rank'] == 1]["answer"].iloc[0] in reader_berlin[reader_berlin['rank'] == 1]["gold_answers"].iloc[0]
+    assert retriever_berlin[retriever_berlin['rank'] == 1]["document_id"].iloc[0] in retriever_berlin[retriever_berlin['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert reader_munich[reader_munich['rank'] == 1]["answer"].iloc[0] not in reader_munich[reader_munich['rank'] == 1]["gold_answers"].iloc[0]
+    assert retriever_munich[retriever_munich['rank'] == 1]["document_id"].iloc[0] not in retriever_munich[retriever_munich['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_sas(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}, 
+        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+    assert "sas" in metrics["Reader"]
+    assert metrics["Reader"]["sas"] == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}, 
+    )
+
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == 0.75
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0/3
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}},
+        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1)
+    
+    assert metrics_top_1["Reader"]["exact_match"] == 0.5
+    assert metrics_top_1["Reader"]["f1"] == 0.5
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6208, abs=1e-4)
+    assert metrics_top_1["Retriever"]["mrr"] == 0.5
+    assert metrics_top_1["Retriever"]["map"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["precision"] == 1.0/6
+
+    metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=2)
+    
+    assert metrics_top_2["Reader"]["exact_match"] == 0.5
+    assert metrics_top_2["Reader"]["f1"] == 0.5
+    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.7192, abs=1e-4)
+    assert metrics_top_2["Retriever"]["mrr"] == 0.5
+    assert metrics_top_2["Retriever"]["map"] == 0.5
+    assert metrics_top_2["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_2["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_2["Retriever"]["precision"] == 1.0/6
+
+    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=3)
+    
+    assert metrics_top_3["Reader"]["exact_match"] == 1.0
+    assert metrics_top_3["Reader"]["f1"] == 1.0
+    assert metrics_top_3["Reader"]["sas"] == pytest.approx(1.0)
+    assert metrics_top_3["Retriever"]["mrr"] == 0.5
+    assert metrics_top_3["Retriever"]["map"] == 0.5
+    assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_3["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_3["Retriever"]["precision"] == 1.0/6
+    
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}
+    )
+
+    metrics_top_10 = eval_result.calculate_metrics()
+
+    assert metrics_top_10["Reader"]["exact_match"] == 1.0
+    assert metrics_top_10["Reader"]["f1"] == 1.0
+    assert metrics_top_10["Retriever"]["mrr"] == 0.5
+    assert metrics_top_10["Retriever"]["map"] == 0.5
+    assert metrics_top_10["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_10["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_10["Retriever"]["precision"] == 1.0/6
+
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_retriever=1)
+    
+    assert metrics_top_1["Reader"]["exact_match"] == 1.0
+    assert metrics_top_1["Reader"]["f1"] == 1.0
+    assert metrics_top_1["Retriever"]["mrr"] == 0.5
+    assert metrics_top_1["Retriever"]["map"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["precision"] == 0.5
+
+    metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_retriever=2)
+    
+    assert metrics_top_2["Reader"]["exact_match"] == 1.0
+    assert metrics_top_2["Reader"]["f1"] == 1.0
+    assert metrics_top_2["Retriever"]["mrr"] == 0.5
+    assert metrics_top_2["Retriever"]["map"] == 0.5
+    assert metrics_top_2["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_2["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_2["Retriever"]["precision"] == 0.25
+
+    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_retriever=3)
+    
+    assert metrics_top_3["Reader"]["exact_match"] == 1.0
+    assert metrics_top_3["Reader"]["f1"] == 1.0
+    assert metrics_top_3["Retriever"]["mrr"] == 0.5
+    assert metrics_top_3["Retriever"]["map"] == 0.5
+    assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_3["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_3["Retriever"]["precision"] == 1.0/6
+    
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 10}}
+    )
+
+    metrics_top_10 = eval_result.calculate_metrics(simulated_top_k_reader=1)
+
+    assert metrics_top_10["Reader"]["exact_match"] == 0.5
+    assert metrics_top_10["Reader"]["f1"] == 0.5
+    assert metrics_top_10["Retriever"]["mrr"] == 0.5
+    assert metrics_top_10["Retriever"]["map"] == 0.5
+    assert metrics_top_10["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_10["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_10["Retriever"]["precision"] == 1.0/6
+
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=1)
+    
+    assert metrics_top_1["Reader"]["exact_match"] == 0.5
+    assert metrics_top_1["Reader"]["f1"] == 0.5
+    assert metrics_top_1["Retriever"]["mrr"] == 0.5
+    assert metrics_top_1["Retriever"]["map"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["precision"] == 0.5
+
+    metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=2)
+    
+    assert metrics_top_2["Reader"]["exact_match"] == 0.5
+    assert metrics_top_2["Reader"]["f1"] == 0.5
+    assert metrics_top_2["Retriever"]["mrr"] == 0.5
+    assert metrics_top_2["Retriever"]["map"] == 0.5
+    assert metrics_top_2["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_2["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_2["Retriever"]["precision"] == 0.25
+
+    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=3)
+    
+    assert metrics_top_3["Reader"]["exact_match"] == 0.5
+    assert metrics_top_3["Reader"]["f1"] == 0.5
+    assert metrics_top_3["Retriever"]["mrr"] == 0.5
+    assert metrics_top_3["Retriever"]["map"] == 0.5
+    assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_3["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_3["Retriever"]["precision"] == 1.0/6
+    
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
+
+    queries = ["Who lives in Berlin?", "Who lives in Munich?"]
+    labels = [
+        MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")]),
+        MultiLabel(labels=[Label(query="Who lives in Munich?", answer=Answer(answer="Pete", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='something_else', content_type="text", content='My name is Pete and I live in Munich'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+    ]
+
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"Retriever": {"top_k": 5}}, 
+    )
+
+    wrongs_retriever = eval_result.wrong_examples(node="Retriever", n=1)
+    wrongs_reader = eval_result.wrong_examples(node="Reader", n=1)
+
+    assert len(wrongs_retriever) == 1
+    assert len(wrongs_reader) == 1
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
+
+    queries = ["Who lives in Berlin?", "Who lives in Munich?"]
+    labels = [
+        MultiLabel(labels=[Label(query="Who lives in Berlin?", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")]),
+        MultiLabel(labels=[Label(query="Who lives in Munich?", answer=Answer(answer="Pete", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='something_else', content_type="text", content='My name is Pete and I live in Munich'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+    ]
+
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"Retriever": {"top_k": 5}}, 
+    )
+
+    pipeline.print_eval_report(eval_result)
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_document_search_calculate_metrics(retriever_with_docs):
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "Retriever" in eval_result
+    assert len(eval_result) == 1
+    retriever_result = eval_result["Retriever"]
+    retriever_berlin = retriever_result[retriever_result['query'] == "Who lives in Berlin?"]
+    retriever_munich = retriever_result[retriever_result['query'] == "Who lives in Munich?"]
+
+    assert retriever_berlin[retriever_berlin['rank'] == 1]["document_id"].iloc[0] in retriever_berlin[retriever_berlin['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert retriever_munich[retriever_munich['rank'] == 1]["document_id"].iloc[0] not in retriever_munich[retriever_munich['rank'] == 1]["gold_document_ids"].iloc[0]
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocumentStore, rag_generator):
+    retriever = EmbeddingRetriever(
+            document_store=document_store_with_docs,
+            embedding_model="deepset/sentence_bert",
+            use_gpu=False
+        )
+    document_store_with_docs.update_embeddings(retriever=retriever)
+    pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "Retriever" in eval_result
+    assert "Generator" in eval_result
+    assert len(eval_result) == 2
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+    assert metrics["Generator"]["exact_match"] == 0.0
+    assert metrics["Generator"]["f1"] == 1.0/3
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
+    retriever = EmbeddingRetriever(
+            document_store=document_store_with_docs,
+            embedding_model="deepset/sentence_bert",
+            use_gpu=False
+        )
+    document_store_with_docs.update_embeddings(retriever=retriever)
+    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "Retriever" in eval_result
+    assert "Summarizer" in eval_result
+    assert len(eval_result) == 2
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+    assert metrics["Summarizer"]["mrr"] == 0.5
+    assert metrics["Summarizer"]["map"] == 0.5
+    assert metrics["Summarizer"]["recall_multi_hit"] == 0.5
+    assert metrics["Summarizer"]["recall_single_hit"] == 0.5
+    assert metrics["Summarizer"]["precision"] == 1.0/6
+    
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_faq_calculate_metrics(retriever_with_docs):
+    pipeline = FAQPipeline(retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "Retriever" in eval_result
+    assert "Docs2Answers" in eval_result
+    assert len(eval_result) == 2
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+    assert metrics["Docs2Answers"]["exact_match"] == 0.0
+    assert metrics["Docs2Answers"]["f1"] == 0.0
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_translation(reader, retriever_with_docs, de_to_en_translator):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    pipeline = TranslationWrapperPipeline(input_translator=de_to_en_translator, output_translator=de_to_en_translator, pipeline=pipeline)
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "Retriever" in eval_result
+    assert "Reader" in eval_result
+    assert "OutputTranslator" in eval_result
+    assert len(eval_result) == 3
+
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+
+    assert metrics["OutputTranslator"]["exact_match"] == 1.0
+    assert metrics["OutputTranslator"]["f1"] == 1.0
+    assert metrics["OutputTranslator"]["mrr"] == 0.5
+    assert metrics["OutputTranslator"]["map"] == 0.5
+    assert metrics["OutputTranslator"]["recall_multi_hit"] == 0.5
+    assert metrics["OutputTranslator"]["recall_single_hit"] == 0.5
+    assert metrics["OutputTranslator"]["precision"] == 1.0/6
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_question_generation_eval(retriever_with_docs, question_generator):
+    pipeline = RetrieverQuestionGenerationPipeline(retriever=retriever_with_docs, question_generator=question_generator)
+
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=EVAL_QUERIES, 
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "Retriever" in eval_result
+    assert "Question Generator" in eval_result
+    assert len(eval_result) == 2
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 1.0/6
+
+    assert metrics["Question Generator"]["mrr"] == 0.5
+    assert metrics["Question Generator"]["map"] == 0.5
+    assert metrics["Question Generator"]["recall_multi_hit"] == 0.5
+    assert metrics["Question Generator"]["recall_single_hit"] == 0.5
+    assert metrics["Question Generator"]["precision"] == 1.0/6
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    dpr_retriever = DensePassageRetriever(document_store_with_docs)
+    document_store_with_docs.update_embeddings(retriever=dpr_retriever)
+
+    # QA Pipeline with two retrievers, we always want QA output
+    pipeline = Pipeline()
+    pipeline.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipeline.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
+    pipeline.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "DPRRetriever"])
+
+    # EVAL_QUERIES: 2 go dpr way
+    # in Berlin goes es way
+    queries = EVAL_QUERIES + ["in Berlin"]
+    labels = EVAL_LABELS + [
+        MultiLabel(labels=[Label(query="Berlin", answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]), 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+            ]
+
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "ESRetriever" in eval_result
+    assert "DPRRetriever" in eval_result
+    assert "QAReader" in eval_result
+    assert len(eval_result) == 3
+
+    assert metrics["DPRRetriever"]["mrr"] == 0.5
+    assert metrics["DPRRetriever"]["map"] == 0.5
+    assert metrics["DPRRetriever"]["recall_multi_hit"] == 0.5
+    assert metrics["DPRRetriever"]["recall_single_hit"] == 0.5
+    assert metrics["DPRRetriever"]["precision"] == 1.0/6
+
+    assert metrics["ESRetriever"]["mrr"] == 1.0
+    assert metrics["ESRetriever"]["map"] == 1.0
+    assert metrics["ESRetriever"]["recall_multi_hit"] == 1.0
+    assert metrics["ESRetriever"]["recall_single_hit"] == 1.0
+    assert metrics["ESRetriever"]["precision"] == 1.0/3
+
+    assert metrics["QAReader"]["exact_match"] == 1.0
+    assert metrics["QAReader"]["f1"] == 1.0
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    dpr_retriever = DensePassageRetriever(document_store_with_docs)
+    document_store_with_docs.update_embeddings(retriever=dpr_retriever)
+
+    # QA Pipeline with two retrievers, no QA output
+    pipeline = Pipeline()
+    pipeline.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipeline.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
+
+    # EVAL_QUERIES: 2 go dpr way
+    # in Berlin goes es way
+    queries = EVAL_QUERIES + ["in Berlin"]
+    labels = EVAL_LABELS + [
+        MultiLabel(labels=[Label(query="Berlin", answer=None, 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+            ]
+
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "ESRetriever" in eval_result
+    assert "DPRRetriever" in eval_result
+    assert len(eval_result) == 2
+
+    assert metrics["DPRRetriever"]["mrr"] == 0.5
+    assert metrics["DPRRetriever"]["map"] == 0.5
+    assert metrics["DPRRetriever"]["recall_multi_hit"] == 0.5
+    assert metrics["DPRRetriever"]["recall_single_hit"] == 0.5
+    assert metrics["DPRRetriever"]["precision"] == 1.0/6
+
+    assert metrics["ESRetriever"]["mrr"] == 1.0
+    assert metrics["ESRetriever"]["map"] == 1.0
+    assert metrics["ESRetriever"]["recall_multi_hit"] == 1.0
+    assert metrics["ESRetriever"]["recall_single_hit"] == 1.0
+    assert metrics["ESRetriever"]["precision"] == 1.0/3
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_docs, reader):
+    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    dpr_retriever = DensePassageRetriever(document_store_with_docs)
+    document_store_with_docs.update_embeddings(retriever=dpr_retriever)
+
+    # QA Pipeline with two retrievers, we only get QA output from dpr
+    pipeline = Pipeline()
+    pipeline.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipeline.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+    pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
+    pipeline.add_node(component=reader, name="QAReader", inputs=["DPRRetriever"])
+
+    # EVAL_QUERIES: 2 go dpr way
+    # in Berlin goes es way
+    queries = EVAL_QUERIES + ["in Berlin"]
+    labels = EVAL_LABELS + [
+        MultiLabel(labels=[Label(query="Berlin", answer=None, 
+            document=Document(id='a0747b83aea0b60c4b114b15476dd32d', content_type="text", content='My name is Carla and I live in Berlin'), 
+            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+            ]
+
+    eval_result: EvaluationResult = pipeline.eval(
+        queries=queries, 
+        labels=labels,
+        params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert "ESRetriever" in eval_result
+    assert "DPRRetriever" in eval_result
+    assert "DPRRetriever" in eval_result
+    assert "QAReader" in eval_result
+    assert len(eval_result) == 3
+
+    assert metrics["DPRRetriever"]["mrr"] == 0.5
+    assert metrics["DPRRetriever"]["map"] == 0.5
+    assert metrics["DPRRetriever"]["recall_multi_hit"] == 0.5
+    assert metrics["DPRRetriever"]["recall_single_hit"] == 0.5
+    assert metrics["DPRRetriever"]["precision"] == 1.0/6
+
+    assert metrics["ESRetriever"]["mrr"] == 1.0
+    assert metrics["ESRetriever"]["map"] == 1.0
+    assert metrics["ESRetriever"]["recall_multi_hit"] == 1.0
+    assert metrics["ESRetriever"]["recall_single_hit"] == 1.0
+    assert metrics["ESRetriever"]["precision"] == 1.0/3
+
+    assert metrics["QAReader"]["exact_match"] == 1.0
+    assert metrics["QAReader"]["f1"] == 1.0
