@@ -640,8 +640,8 @@ class EvaluationResult:
         - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
         - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
         - precision (Precision: How many of the returned documents were relevant?)
-        - recall_ir (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
-        - recall_qa (Recall for Question Answering: How many of the queries returned at least one relevant document?)
+        - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
+        - recall_single_hit (Recall for Question Answering: How many of the queries returned at least one relevant document?)
 
         For answer returning nodes default metrics are:
         - exact_match (How many of the queries returned the exact answer?)
@@ -673,7 +673,7 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         doc_relevance_col: str = "gold_id_match",
-        document_metric: str = "recall_qa",
+        document_metric: str = "recall_single_hit",
         answer_metric: str = "f1"
     ) -> List[Dict]:
         """
@@ -690,7 +690,7 @@ class EvaluationResult:
         :param doc_relevance_col: column that contains the relevance criteria for documents.
             values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
         :param document_metric: the document metric worst queries are calculated with.
-            values can be: 'recall_qa', 'recall_ir', 'mrr', 'map', 'precision'
+            values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
         :param document_metric: the answer metric worst queries are calculated with.
             values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
         """
@@ -856,8 +856,8 @@ class EvaluationResult:
         - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
         - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
         - precision (Precision: How many of the returned documents were relevant?)
-        - recall_ir (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
-        - recall_qs (Recall for Question Answering: Did the query return at least one relevant document? -> 1.0 or 0.0)
+        - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
+        - recall_single_hit (Recall for Question Answering: Did the query return at least one relevant document? -> 1.0 or 0.0)
         """
         if simulated_top_k_retriever != -1:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
@@ -877,14 +877,14 @@ class EvaluationResult:
                                             for rank in rank_retrieved_relevants]
 
             avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_ir = num_retrieved_relevants / num_relevants if num_relevants > 0 else 0.0
-            recall_qa = min(num_retrieved_relevants, 1)
+            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 0.0
+            recall_single_hit = min(num_retrieved_relevants, 1)
             precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
             rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
 
             metrics.append({
-                "recall_ir": recall_ir,
-                "recall_qa": recall_qa,
+                "recall_multi_hit": recall_multi_hit,
+                "recall_single_hit": recall_single_hit,
                 "precision": precision,
                 "map": avg_precision,
                 "mrr": rr

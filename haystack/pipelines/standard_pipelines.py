@@ -117,7 +117,7 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
-        self.metrics_filter = {"Retriever": ["recall_qa"]}
+        self.metrics_filter = {"Retriever": ["recall_single_hit"]}
 
     def run(self,
             query: str,
