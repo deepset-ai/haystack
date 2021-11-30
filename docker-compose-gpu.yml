@@ -32,7 +32,7 @@ services:
   elasticsearch:
     # This will start an empty elasticsearch instance (so you have to add your documents yourself)
     #image: "elasticsearch:7.9.2"
-    # If you want a demo image instead that is "ready-to-query" with some indexed articles 
+    # If you want a demo image instead that is "ready-to-query" with some indexed articles
     # about countries and capital cities from Wikipedia:
     image: "deepset/elasticsearch-countries-and-capitals"
     ports:
@@ -52,10 +52,7 @@ services:
     environment:
       - API_ENDPOINT=http://haystack-api:8000
       - EVAL_FILE=eval_labels_example.csv
-      # The value fot the following variables will be read from the host, if present.
-      # They can also be temporarily set for docker-compose, for example:
-      # DISABLE_FILE_UPLOAD=1 DEFAULT_DOCS_FROM_RETRIEVER=5 docker-compose up
-      - DISABLE_FILE_UPLOAD
+      - DISABLE_FILE_UPLOAD   # HAYSTACK_UI_DISABLE_FILE_UPLOAD=1 docker-compose up
       - DEFAULT_QUESTION_AT_STARTUP
       - DEFAULT_DOCS_FROM_RETRIEVER
       - DEFAULT_NUMBER_OF_ANSWERS
