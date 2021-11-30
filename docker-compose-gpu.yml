@@ -52,7 +52,7 @@ services:
     environment:
       - API_ENDPOINT=http://haystack-api:8000
       - EVAL_FILE=eval_labels_example.csv
-      - DISABLE_FILE_UPLOAD   # HAYSTACK_UI_DISABLE_FILE_UPLOAD=1 docker-compose up
+      - DISABLE_FILE_UPLOAD   # DISABLE_FILE_UPLOAD=1 docker-compose up
       - DEFAULT_QUESTION_AT_STARTUP
       - DEFAULT_DOCS_FROM_RETRIEVER
       - DEFAULT_NUMBER_OF_ANSWERS
