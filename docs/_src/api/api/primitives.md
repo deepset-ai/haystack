@@ -302,8 +302,8 @@ For document returning nodes default metrics are:
 - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
 - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)`Mean_average_precision`)
 - precision (Precision: How many of the returned documents were relevant?)
-- recall_ir (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
-- recall_qa (Recall for Question Answering: How many of the queries returned at least one relevant document?)
+- recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
+- recall_single_hit (Recall for Question Answering: How many of the queries returned at least one relevant document?)
 
 For answer returning nodes default metrics are:
 - exact_match (How many of the queries returned the exact answer?)
@@ -328,7 +328,7 @@ as there are situations the result can heavily differ from an actual eval run wi
 #### wrong\_examples
 
 ```python
- | wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_qa", answer_metric: str = "f1") -> List[Dict]
+ | wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_single_hit", answer_metric: str = "f1") -> List[Dict]
 ```
 
 Returns the worst performing queries.
@@ -346,7 +346,7 @@ See calculate_metrics() for more information.
 - `doc_relevance_col`: column that contains the relevance criteria for documents.
     values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
 - `document_metric`: the document metric worst queries are calculated with.
-    values can be: 'recall_qa', 'recall_ir', 'mrr', 'map', 'precision'
+    values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
 - `document_metric`: the answer metric worst queries are calculated with.
     values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
 
