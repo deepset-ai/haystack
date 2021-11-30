@@ -808,12 +808,12 @@ class EvaluationResult:
         metrics = []        
         for query in queries:
             query_df = answers[answers["query"] == query]
+            metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
+
             query_metrics = {
-                "exact_match": query_df["exact_match"].max(),
-                "f1": query_df["f1"].max(),
+                metric: query_df[metric].max() if len(query_df) > 0 else 0.0
+                    for metric in metrics_cols
             }
-            if "sas" in query_df.columns:
-                query_metrics["sas"] = query_df["sas"].max()
             metrics.append(query_metrics)
 
         metrics_df = pd.DataFrame.from_records(metrics, index=queries)

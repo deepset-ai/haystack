@@ -6,6 +6,7 @@ from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
+from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.pipelines.base import Pipeline
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, FAQPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
 from haystack.pipelines.standard_pipelines import RetrieverQuestionGenerationPipeline, TranslationWrapperPipeline
@@ -207,7 +208,7 @@ EVAL_LABELS = [
     ]
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     queries = EVAL_QUERIES[:1]
     labels = EVAL_LABELS[:1]
@@ -250,7 +251,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_path):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -300,7 +301,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -324,7 +325,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -343,7 +344,7 @@ def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -388,7 +389,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -439,7 +440,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -460,8 +461,8 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=1)
     
-    assert metrics_top_1["Reader"]["exact_match"] == 1.0
-    assert metrics_top_1["Reader"]["f1"] == 1.0
+    assert metrics_top_1["Reader"]["exact_match"] == 0.5
+    assert metrics_top_1["Reader"]["f1"] == 0.5
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_ir"] == 0.5
@@ -470,8 +471,8 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 
     metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=2)
     
-    assert metrics_top_2["Reader"]["exact_match"] == 1.0
-    assert metrics_top_2["Reader"]["f1"] == 1.0
+    assert metrics_top_2["Reader"]["exact_match"] == 0.5
+    assert metrics_top_2["Reader"]["f1"] == 0.5
     assert metrics_top_2["Retriever"]["mrr"] == 0.5
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_ir"] == 0.5
@@ -490,7 +491,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
 
     queries = ["Who lives in Berlin?", "Who lives in Munich?"]
@@ -518,7 +519,7 @@ def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
 
     queries = ["Who lives in Berlin?", "Who lives in Munich?"]
@@ -542,7 +543,7 @@ def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_document_search_calculate_metrics(retriever_with_docs):
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -568,8 +569,8 @@ def test_document_search_calculate_metrics(retriever_with_docs):
     assert metrics["Retriever"]["precision"] == 1.0/6
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_generativeqa_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, rag_generator):
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocumentStore, rag_generator):
     retriever = EmbeddingRetriever(
             document_store=document_store_with_docs,
             embedding_model="deepset/sentence_bert",
@@ -598,7 +599,7 @@ def test_generativeqa_calculate_metrics(document_store_with_docs: ElasticsearchD
     assert metrics["Generator"]["f1"] == 1.0/3
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
     retriever = EmbeddingRetriever(
             document_store=document_store_with_docs,
@@ -632,7 +633,7 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_faq_calculate_metrics(retriever_with_docs):
     pipeline = FAQPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -657,7 +658,7 @@ def test_faq_calculate_metrics(retriever_with_docs):
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_translation(reader, retriever_with_docs, de_to_en_translator):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     pipeline = TranslationWrapperPipeline(input_translator=de_to_en_translator, output_translator=de_to_en_translator, pipeline=pipeline)
@@ -692,7 +693,7 @@ def test_extractive_qa_eval_translation(reader, retriever_with_docs, de_to_en_tr
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_question_generation_eval(retriever_with_docs, question_generator):
     pipeline = RetrieverQuestionGenerationPipeline(retriever=retriever_with_docs, question_generator=question_generator)
 
