@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 from collections import defaultdict
 import json
-
+import copy
 from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
 from azure.core.credentials import AzureKeyCredential
 
@@ -32,7 +32,8 @@ class AzureConverter(BaseConverter):
                  model_id: str = "prebuilt-document",
                  valid_languages: Optional[List[str]] = None,
                  save_json: bool = False,
-                 surrounding_context_len: int = 3,
+                 preceding_context_len: int = 3,
+                 following_context_len: int = 3,
                  ):
         """
         :param endpoint: Your Form Recognizer or Cognitive Services resource's endpoint.
@@ -48,19 +49,21 @@ class AzureConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         :param save_json: Whether to save the output of the Form Recognizer to a JSON file.
-        :param surrounding_context_len: Number of lines before and after a table to extract as surrounding context.
+        :param preceding_context_len: Number of lines before a table to extract as preceding context (will be returned as part of meta data).
+        :param following_context_len: Number of lines after a table to extract as subsequent context (will be returned as part of meta data).
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(endpoint=endpoint, credential_key=credential_key, model_id=model_id,
                         valid_languages=valid_languages, save_json=save_json,
-                        surrounding_context_len=surrounding_context_len)
+                        preceding_context_len=preceding_context_len, following_context_len=following_context_len)
 
         self.document_analysis_client = DocumentAnalysisClient(endpoint=endpoint,
                                                                credential=AzureKeyCredential(credential_key))
         self.model_id = model_id
         self.valid_languages = valid_languages
         self.save_json = save_json
-        self.surrounding_context_len = surrounding_context_len
+        self.preceding_context_len = preceding_context_len
+        self.following_context_len = following_context_len
 
         super().__init__(valid_languages=valid_languages)
 
@@ -148,7 +151,7 @@ class AzureConverter(BaseConverter):
             table_start_offset = table.spans[0].offset
             preceding_lines = [line.content for line in table_beginning_page.lines
                                if line.spans[0].offset < table_start_offset]
-            preceding_context = f"{caption}\n".strip() + "\n".join(preceding_lines[-self.surrounding_context_len:])
+            preceding_context = f"{caption}\n".strip() + "\n".join(preceding_lines[-self.preceding_context_len:])
 
             # Get following context
             table_end_page = table_beginning_page if len(table.bounding_regions) == 1 else \
@@ -156,15 +159,16 @@ class AzureConverter(BaseConverter):
                      if page.page_number == table.bounding_regions[-1].page_number)
             table_end_offset = table_start_offset + table.spans[0].length
             following_lines = [line.content for line in table_end_page.lines if line.spans[0].offset > table_end_offset]
-            following_context = "\n".join(following_lines[:self.surrounding_context_len])
+            following_context = "\n".join(following_lines[:self.following_context_len])
 
-            if isinstance(meta, dict):
-                meta["preceding_context"] = preceding_context
-                meta["following_context"] = following_context
+            table_meta = copy.deepcopy(meta)
+
+            if isinstance(table_meta, dict):
+                table_meta["preceding_context"] = preceding_context
+                table_meta["following_context"] = following_context
             else:
-                meta = {"preceding_context": preceding_context, "following_context": following_context}
-
-            converted_tables.append({"content": table_list, "content_type": "table", "meta": meta})
+                table_meta = {"preceding_context": preceding_context, "following_context": following_context}
+            converted_tables.append({"content": table_list, "content_type": "table", "meta": table_meta})
 
         return converted_tables
 
