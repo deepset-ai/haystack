@@ -120,6 +120,7 @@ class Inferencer:
         tokenizer_args: Dict =None,
         multithreading_rust: bool = True,
         devices: Optional[List[Union[int, str, torch.device]]] = None,
+        use_auth_token: Union[bool, str] = None,
         **kwargs
     ):
         """
@@ -189,6 +190,7 @@ class Inferencer:
                                                             revision=revision,
                                                             device=devices[0],  # type: ignore
                                                             task_type=task_type,
+                                                            use_auth_token=use_auth_token,
                                                             **kwargs)
             processor = Processor.convert_from_transformers(model_name_or_path,
                                                             revision=revision,
@@ -198,6 +200,7 @@ class Inferencer:
                                                             tokenizer_class=tokenizer_class,
                                                             tokenizer_args=tokenizer_args,
                                                             use_fast=use_fast,
+                                                            use_auth_token=use_auth_token,
                                                             **kwargs)
 
         # override processor attributes loaded from config or HF with inferencer params
