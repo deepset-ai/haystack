@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Tuple
 import os
 import logging
 import requests
+from time import sleep
 from uuid import uuid4
 import streamlit as st
 
@@ -25,6 +26,7 @@ def haystack_is_ready():
             return True
     except Exception as e:
         logging.exception(e)
+        sleep(1)  # To avoid spamming a non-existing endpoint at startup
     return False
 
 
