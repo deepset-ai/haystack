@@ -161,14 +161,13 @@ class AzureConverter(BaseConverter):
             following_lines = [line.content for line in table_end_page.lines if line.spans[0].offset > table_end_offset]
             following_context = "\n".join(following_lines[:self.following_context_len])
 
-            if isinstance(meta, dict):
-                meta["preceding_context"] = preceding_context
-                meta["following_context"] = following_context
-            else:
-                meta = {"preceding_context": preceding_context, "following_context": following_context}
-
             table_meta = copy.deepcopy(meta)
 
+            if isinstance(table_meta, dict):
+                table_meta["preceding_context"] = preceding_context
+                table_meta["following_context"] = following_context
+            else:
+                table_meta = {"preceding_context": preceding_context, "following_context": following_context}
             converted_tables.append({"content": table_list, "content_type": "table", "meta": table_meta})
 
         return converted_tables
