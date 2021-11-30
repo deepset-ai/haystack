@@ -51,7 +51,7 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
     response_raw = requests.post(url, json=req)
 
     if response_raw.status_code >= 400 and response_raw.status_code != 503:
-        raise Exception(f"{vars(response_raw)}")
+        raise Exception(f"{response_raw}")
 
     response = response_raw.json()
     if "errors" in response:
