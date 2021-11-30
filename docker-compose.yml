@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: "deepset/haystack-cpu:latest"
+    #image: "deepset/haystack-cpu:latest"
     # Mount custom Pipeline YAML and custom Components.
     # volumes:
     #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
@@ -14,6 +14,8 @@ services:
     environment:
       # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
+      - PIPELINE_YAML_PATH=/home/user/rest_api/pipeline/pipelines_dpr.yaml
+      - CONCURRENT_REQUEST_PER_WORKER
     depends_on:
       - elasticsearch
     command: "/bin/bash -c 'sleep 10 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 1 --timeout 180'"
@@ -32,11 +34,15 @@ services:
     build:
       context: ui
       dockerfile: Dockerfile
-    image: "deepset/haystack-streamlit-ui:latest"
+    #image: "deepset/haystack-streamlit-ui:latest"
     ports:
       - 8501:8501
     restart: on-failure
     environment:
       - API_ENDPOINT=http://haystack-api:8000
       - EVAL_FILE=eval_labels_example.csv
+      - DISABLE_FILE_UPLOAD   # HAYSTACK_UI_DISABLE_FILE_UPLOAD=1 docker-compose up
+      - DEFAULT_QUESTION_AT_STARTUP
+      - DEFAULT_DOCS_FROM_RETRIEVER
+      - DEFAULT_NUMBER_OF_ANSWERS
     command: "/bin/bash -c 'sleep 15 && streamlit run webapp.py'"
