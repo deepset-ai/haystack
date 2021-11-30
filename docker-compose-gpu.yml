@@ -24,6 +24,9 @@ services:
       # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
       - PIPELINE_YAML_PATH=/home/user/rest_api/pipeline/pipelines_dpr.yaml
+      # The value fot the following variables will be read from the host, if set.
+      # They can also be temporarily set for docker-compose, for example:
+      # DISABLE_FILE_UPLOAD=1 DEFAULT_DOCS_FROM_RETRIEVER=5 docker-compose up
       - CONCURRENT_REQUEST_PER_WORKER
     depends_on:
       - elasticsearch
@@ -52,7 +55,10 @@ services:
     environment:
       - API_ENDPOINT=http://haystack-api:8000
       - EVAL_FILE=eval_labels_example.csv
-      - DISABLE_FILE_UPLOAD   # DISABLE_FILE_UPLOAD=1 docker-compose up
+      # The value fot the following variables will be read from the host, if present.
+      # They can also be temporarily set for docker-compose, for example:
+      # DISABLE_FILE_UPLOAD=1 DEFAULT_DOCS_FROM_RETRIEVER=5 docker-compose up
+      - DISABLE_FILE_UPLOAD
       - DEFAULT_QUESTION_AT_STARTUP
       - DEFAULT_DOCS_FROM_RETRIEVER
       - DEFAULT_NUMBER_OF_ANSWERS
