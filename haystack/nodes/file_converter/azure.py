@@ -49,8 +49,8 @@ class AzureConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         :param save_json: Whether to save the output of the Form Recognizer to a JSON file.
-        :param preceding_context_len: Number of lines before a table to extract as preceding context.
-        :param following_context_len: Number of lines after a table to extract as preceding context.
+        :param preceding_context_len: Number of lines before a table to extract as preceding context (will be returned as part of meta data).
+        :param following_context_len: Number of lines after a table to extract as subsequent context (will be returned as part of meta data).
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(endpoint=endpoint, credential_key=credential_key, model_id=model_id,
