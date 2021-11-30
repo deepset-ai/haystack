@@ -26,6 +26,7 @@ class BaseStandardPipeline(ABC):
     This class does not inherit from Pipeline.
     """
     pipeline: Pipeline
+    metrics_filter: Optional[Dict[str, List[str]]] = None
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
@@ -149,6 +150,39 @@ class BaseStandardPipeline(ABC):
         """
         return self.pipeline.get_document_store()
 
+    def eval(self,
+            queries: List[str],
+            labels: List[MultiLabel],
+            params: Optional[dict],
+            sas_model_name_or_path: str = None) -> EvaluationResult:
+            
+        """
+        Evaluates the pipeline by running the pipeline once per query in debug mode 
+        and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+        :param queries: The queries to evaluate
+        :param labels: The labels to evaluate on
+        :param params: Params for the `retriever` and `reader`. For instance,
+                       params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+        :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
+                                    should be path or string pointing to downloadable models.
+        """
+        output = self.pipeline.eval(queries=queries, labels=labels, params=params, 
+            sas_model_name_or_path=sas_model_name_or_path)
+        return output
+
+    def print_eval_report(
+        self, 
+        eval_result: EvaluationResult, 
+        n_wrong_examples: int = 3, 
+        metrics_filter: Optional[Dict[str, List[str]]] = None):
+        if metrics_filter is None:
+            metrics_filter = self.metrics_filter
+        self.pipeline.print_eval_report(
+            eval_result=eval_result, 
+            n_wrong_examples=n_wrong_examples, 
+            metrics_filter=metrics_filter)
+
 
 class ExtractiveQAPipeline(BaseStandardPipeline):
     """
@@ -162,6 +196,7 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
+        self.metrics_filter = {"Retriever": ["recall_single_hit"]}
 
     def run(self,
             query: str,
@@ -180,22 +215,6 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
-    def eval(self,
-            queries: List[str],
-            labels: List[MultiLabel],
-            params: Optional[dict]) -> EvaluationResult:
-            
-        """
-        Evaluates the pipeline by running the pipeline once per query in debug mode 
-        and putting together all data that is needed for evaluation, e.g. calculating metrics.
-
-        :param queries: The queries to evaluate
-        :param labels: The labels to evaluate on
-        :param params: Params for the `retriever` and `reader`. For instance,
-                       params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-        """
-        output = self.pipeline.eval(queries=queries, labels=labels, params=params)
-        return output
 
 class DocumentSearchPipeline(BaseStandardPipeline):
     """
