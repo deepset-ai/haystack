@@ -300,7 +300,7 @@ Calculates proper metrics for each node.
 
 For document returning nodes default metrics are:
 - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
-- map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)`Mean_average_precision`)
+- map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_%28information_retrieval%29#Mean_average_precision)
 - precision (Precision: How many of the returned documents were relevant?)
 - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
 - recall_single_hit (Recall for Question Answering: How many of the queries returned at least one relevant document?)
