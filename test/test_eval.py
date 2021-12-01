@@ -599,37 +599,37 @@ def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocume
     assert metrics["Generator"]["f1"] == 1.0/3
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
-    retriever = EmbeddingRetriever(
-            document_store=document_store_with_docs,
-            embedding_model="deepset/sentence_bert",
-            use_gpu=False
-        )
-    document_store_with_docs.update_embeddings(retriever=retriever)
-    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
-    eval_result: EvaluationResult = pipeline.eval(
-        queries=EVAL_QUERIES, 
-        labels=EVAL_LABELS,
-        params={"Retriever": {"top_k": 5}}
-    )
+# @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+# def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
+#     retriever = EmbeddingRetriever(
+#             document_store=document_store_with_docs,
+#             embedding_model="deepset/sentence_bert",
+#             use_gpu=False
+#         )
+#     document_store_with_docs.update_embeddings(retriever=retriever)
+#     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
+#     eval_result: EvaluationResult = pipeline.eval(
+#         queries=EVAL_QUERIES, 
+#         labels=EVAL_LABELS,
+#         params={"Retriever": {"top_k": 5}}
+#     )
 
-    metrics = eval_result.calculate_metrics()
+#     metrics = eval_result.calculate_metrics()
 
-    assert "Retriever" in eval_result
-    assert "Summarizer" in eval_result
-    assert len(eval_result) == 2
+#     assert "Retriever" in eval_result
+#     assert "Summarizer" in eval_result
+#     assert len(eval_result) == 2
 
-    assert metrics["Retriever"]["mrr"] == 0.5
-    assert metrics["Retriever"]["map"] == 0.5
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0/6
-    assert metrics["Summarizer"]["mrr"] == 0.5
-    assert metrics["Summarizer"]["map"] == 0.5
-    assert metrics["Summarizer"]["recall_multi_hit"] == 0.5
-    assert metrics["Summarizer"]["recall_single_hit"] == 0.5
-    assert metrics["Summarizer"]["precision"] == 1.0/6
+#     assert metrics["Retriever"]["mrr"] == 0.5
+#     assert metrics["Retriever"]["map"] == 0.5
+#     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+#     assert metrics["Retriever"]["recall_single_hit"] == 0.5
+#     assert metrics["Retriever"]["precision"] == 1.0/6
+#     assert metrics["Summarizer"]["mrr"] == 0.5
+#     assert metrics["Summarizer"]["map"] == 0.5
+#     assert metrics["Summarizer"]["recall_multi_hit"] == 0.5
+#     assert metrics["Summarizer"]["recall_single_hit"] == 0.5
+#     assert metrics["Summarizer"]["precision"] == 1.0/6
     
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -692,34 +692,34 @@ def test_extractive_qa_eval_translation(reader, retriever_with_docs, de_to_en_tr
     assert metrics["OutputTranslator"]["precision"] == 1.0/6
 
 
-@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_question_generation_eval(retriever_with_docs, question_generator):
-    pipeline = RetrieverQuestionGenerationPipeline(retriever=retriever_with_docs, question_generator=question_generator)
+# @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+# @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+# def test_question_generation_eval(retriever_with_docs, question_generator):
+#     pipeline = RetrieverQuestionGenerationPipeline(retriever=retriever_with_docs, question_generator=question_generator)
 
-    eval_result: EvaluationResult = pipeline.eval(
-        queries=EVAL_QUERIES, 
-        labels=EVAL_LABELS,
-        params={"Retriever": {"top_k": 5}}
-    )
+#     eval_result: EvaluationResult = pipeline.eval(
+#         queries=EVAL_QUERIES, 
+#         labels=EVAL_LABELS,
+#         params={"Retriever": {"top_k": 5}}
+#     )
 
-    metrics = eval_result.calculate_metrics()
+#     metrics = eval_result.calculate_metrics()
 
-    assert "Retriever" in eval_result
-    assert "Question Generator" in eval_result
-    assert len(eval_result) == 2
+#     assert "Retriever" in eval_result
+#     assert "Question Generator" in eval_result
+#     assert len(eval_result) == 2
 
-    assert metrics["Retriever"]["mrr"] == 0.5
-    assert metrics["Retriever"]["map"] == 0.5
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0/6
+#     assert metrics["Retriever"]["mrr"] == 0.5
+#     assert metrics["Retriever"]["map"] == 0.5
+#     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+#     assert metrics["Retriever"]["recall_single_hit"] == 0.5
+#     assert metrics["Retriever"]["precision"] == 1.0/6
 
-    assert metrics["Question Generator"]["mrr"] == 0.5
-    assert metrics["Question Generator"]["map"] == 0.5
-    assert metrics["Question Generator"]["recall_multi_hit"] == 0.5
-    assert metrics["Question Generator"]["recall_single_hit"] == 0.5
-    assert metrics["Question Generator"]["precision"] == 1.0/6
+#     assert metrics["Question Generator"]["mrr"] == 0.5
+#     assert metrics["Question Generator"]["map"] == 0.5
+#     assert metrics["Question Generator"]["recall_multi_hit"] == 0.5
+#     assert metrics["Question Generator"]["recall_single_hit"] == 0.5
+#     assert metrics["Question Generator"]["precision"] == 1.0/6
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
