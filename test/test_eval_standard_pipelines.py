@@ -85,7 +85,7 @@ def test_document_search_calculate_metrics(retriever_with_docs):
     assert metrics["Retriever"]["precision"] == 1.0/6
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocumentStore, rag_generator):
     retriever = EmbeddingRetriever(
             document_store=document_store_with_docs,
@@ -115,7 +115,7 @@ def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocume
     assert metrics["Generator"]["f1"] == 1.0/3
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
     retriever = EmbeddingRetriever(
             document_store=document_store_with_docs,
