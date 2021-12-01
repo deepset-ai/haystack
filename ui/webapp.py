@@ -38,9 +38,9 @@ def main():
     state = SessionState.get(
         random_question=DEFAULT_QUESTION_AT_STARTUP, 
         random_answer="",
+        last_question=DEFAULT_QUESTION_AT_STARTUP,
         results=None,
         raw_json=None,
-        get_next_question=True
     )
 
     # Small callback to reset the interface in case the text of the question changes
@@ -50,13 +50,15 @@ def main():
 
     # Title
     st.write("# Haystack Demo - Explore the world")
-    st.write("""
-This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of 'Countries and capital cities'. 
+    st.markdown("""
+This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of 
 
-Ask any question on this topic and see if Haystack can find the correct answer to your query! 
+<h3 style='text-align:center;padding: 0 0 1rem;'>Countries and capital cities</h3>
 
-*Note: do not use keywords, but type full-fledged questions.* The demo is not optimized to deal with keyword queries and might misunderstand you.
-""")
+Ask any question on this topic and see if Haystack can find the correct answer to your query!
+
+*Note: do not use keywords, but full-fledged questions.* The demo is not optimized to deal with keyword queries and might misunderstand you.
+""", unsafe_allow_html=True)
 
     # Sidebar
     st.sidebar.header("Options")
@@ -138,11 +140,12 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     col2.markdown("<style>.stButton button {width:100%;}</style>", unsafe_allow_html=True)
 
     # Run button
-    run_query = col1.button("Run")
+    run_pressed = col1.button("Run")
+    run_query = run_pressed or question != state.last_question
 
     # Get next random question from the CSV
-    state.get_next_question = col2.button("Random question")
-    if state.get_next_question:
+    #state.get_next_question = col2.button("Random question")
+    if col2.button("Random question"):
         reset_results()
         new_row = df.sample(1)   
         while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
@@ -164,6 +167,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     # Get results for query
     if run_query and question:
         reset_results()
+        state.last_question = question
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
@@ -241,6 +245,5 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         if debug:
             st.subheader("REST API JSON response")
             st.write(state.raw_json)
-
 
 main()
