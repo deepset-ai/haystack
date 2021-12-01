@@ -487,8 +487,14 @@ class MultiLabel:
         else:
             answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
             self.answers = [answer.answer for answer in answered]
-            self.gold_offsets_in_documents = [answer.offsets_in_document for answer in answered]
-            self.gold_offsets_in_contexts = [answer.offsets_in_context for answer in answered]
+            self.gold_offsets_in_documents = [[{'start': span.start, 
+                                                'end': span.end
+                                              }] for answer in answered for span in answer.offsets_in_document #type: ignore
+                                                if answer.offsets_in_document is not None]
+            self.gold_offsets_in_contexts = [[{'start': span.start, 
+                                                'end': span.end
+                                              }] for answer in answered for span in answer.offsets_in_context #type: ignore
+                                                if answer.offsets_in_document is not None]
 
         # There are two options here to represent document_ids: 
         # taking the id from the document of each label or taking the document_id of each label's answer.
