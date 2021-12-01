@@ -86,14 +86,10 @@ def test_document_search_calculate_metrics(retriever_with_docs):
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocumentStore, rag_generator):
-    retriever = EmbeddingRetriever(
-            document_store=document_store_with_docs,
-            embedding_model="deepset/sentence_bert",
-            use_gpu=False
-        )
-    document_store_with_docs.update_embeddings(retriever=retriever)
-    pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever)
+@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
+def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocumentStore, rag_generator, retriever_with_docs):
+    document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
+    pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         queries=EVAL_QUERIES, 
         labels=EVAL_LABELS,
@@ -116,14 +112,10 @@ def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocume
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
-    retriever = EmbeddingRetriever(
-            document_store=document_store_with_docs,
-            embedding_model="deepset/sentence_bert",
-            use_gpu=False
-        )
-    document_store_with_docs.update_embeddings(retriever=retriever)
-    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
+@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
+def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer, retriever_with_docs):
+    document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
+    pipeline = SearchSummarizationPipeline(retriever=retriever_with_docs, summarizer=summarizer, return_in_answer_format=True)
     eval_result: EvaluationResult = pipeline.eval(
         queries=EVAL_QUERIES, 
         labels=EVAL_LABELS,
