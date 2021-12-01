@@ -32,6 +32,8 @@ DISABLE_FILE_UPLOAD = bool(os.getenv("DISABLE_FILE_UPLOAD"))
 
 def main():
 
+    st.set_page_config(page_title='Haystack Demo', page_icon="https://haystack.deepset.ai/img/HaystackIcon.png")
+
     # Persistent state
     state = SessionState.get(
         random_question=DEFAULT_QUESTION_AT_STARTUP, 
@@ -88,7 +90,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                     st.subheader("REST API JSON response")
                     st.sidebar.write(raw_json)
 
-    hs_version = None
+    hs_version = ""
     try:
         hs_version = f" <small>(v{haystack_version()})</small>"
     except Exception:
