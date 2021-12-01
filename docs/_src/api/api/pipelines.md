@@ -162,7 +162,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None) -> EvaluationResult
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -176,6 +176,17 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
             If you want to pass it to targeted nodes, you can do:
             {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `sas_model_name_or_path`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+            The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+            Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+            More info in the paper: https://arxiv.org/abs/2108.06130
+            Models:
+            - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+            Not all cross encoders can be used because of different return types.
+            If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+            - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+            - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+            - Large model for German only: "deepset/gbert-large-sts"
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
@@ -285,6 +296,21 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 
 - `path`: path of the output YAML file.
 - `return_defaults`: whether to output parameters that have the default values.
+
+<a name="base.Pipeline.print_eval_report"></a>
+#### print\_eval\_report
+
+```python
+ | print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None)
+```
+
+Prints evaluation report containing a metrics funnel and worst queries for further analysis.
+
+**Arguments**:
+
+- `eval_result`: The evaluation result, can be obtained by running eval().
+- `n_wrong_examples`: The number of worst queries to show.
+- `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
 
 <a name="base.RayPipeline"></a>
 ## RayPipeline
@@ -500,6 +526,123 @@ Create a Graphviz visualization of the pipeline.
 
 - `path`: the path to save the image.
 
+<a name="standard_pipelines.BaseStandardPipeline.save_to_yaml"></a>
+#### save\_to\_yaml
+
+```python
+ | save_to_yaml(path: Path, return_defaults: bool = False)
+```
+
+Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
+
+**Arguments**:
+
+- `path`: path of the output YAML file.
+- `return_defaults`: whether to output parameters that have the default values.
+
+<a name="standard_pipelines.BaseStandardPipeline.load_from_yaml"></a>
+#### load\_from\_yaml
+
+```python
+ | @classmethod
+ | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+```
+
+Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+    ```yaml
+    |   version: '0.8'
+    |
+    |    components:    # define all the building-blocks for Pipeline
+    |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+    |      type: FARMReader    # Haystack Class name for the component
+    |      params:
+    |        no_ans_boost: -10
+    |        model_name_or_path: deepset/roberta-base-squad2
+    |    - name: MyESRetriever
+    |      type: ElasticsearchRetriever
+    |      params:
+    |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+    |        custom_query: null
+    |    - name: MyDocumentStore
+    |      type: ElasticsearchDocumentStore
+    |      params:
+    |        index: haystack_test
+    |
+    |    pipelines:    # multiple Pipelines can be defined using the components from above
+    |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+    |      nodes:
+    |      - name: MyESRetriever
+    |        inputs: [Query]
+    |      - name: MyReader
+    |        inputs: [MyESRetriever]
+    ```
+
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+                                     to change index name param for an ElasticsearchDocumentStore, an env
+                                     variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                     `_` sign must be used to specify nested hierarchical properties.
+
+<a name="standard_pipelines.BaseStandardPipeline.get_nodes_by_class"></a>
+#### get\_nodes\_by\_class
+
+```python
+ | get_nodes_by_class(class_type) -> List[Any]
+```
+
+Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
+This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
+Example:
+```python
+| from haystack.document_stores.base import BaseDocumentStore
+| INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
+| res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
+```
+
+**Returns**:
+
+List of components that are an instance of the requested class
+
+<a name="standard_pipelines.BaseStandardPipeline.get_document_store"></a>
+#### get\_document\_store
+
+```python
+ | get_document_store() -> Optional[BaseDocumentStore]
+```
+
+Return the document store object used in the current pipeline.
+
+**Returns**:
+
+Instance of DocumentStore or None
+
+<a name="standard_pipelines.BaseStandardPipeline.eval"></a>
+#### eval
+
+```python
+ | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
+```
+
+Evaluates the pipeline by running the pipeline once per query in debug mode
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+**Arguments**:
+
+- `queries`: The queries to evaluate
+- `labels`: The labels to evaluate on
+- `params`: Params for the `retriever` and `reader`. For instance,
+               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
+                            should be path or string pointing to downloadable models.
+
 <a name="standard_pipelines.ExtractiveQAPipeline"></a>
 ## ExtractiveQAPipeline
 
@@ -539,23 +682,6 @@ Pipeline for Extractive Question Answering.
               All debug information can then be found in the dict returned
               by this method under the key "_debug"
 
-<a name="standard_pipelines.ExtractiveQAPipeline.eval"></a>
-#### eval
-
-```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict]) -> EvaluationResult
-```
-
-Evaluates the pipeline by running the pipeline once per query in debug mode
-and putting together all data that is needed for evaluation, e.g. calculating metrics.
-
-**Arguments**:
-
-- `queries`: The queries to evaluate
-- `labels`: The labels to evaluate on
-- `params`: Params for the `retriever` and `reader`. For instance,
-               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-
 <a name="standard_pipelines.DocumentSearchPipeline"></a>
 ## DocumentSearchPipeline
 
@@ -586,7 +712,7 @@ Pipeline for semantic document search.
 **Arguments**:
 
 - `query`: the query string.
-- `params`: params for the `retriever` and `reader`. For instance, params={"retriever": {"top_k": 10}}
+- `params`: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
@@ -667,7 +793,7 @@ Pipeline that retrieves documents for a query and then summarizes those document
 
 - `query`: the query string.
 - `params`: params for the `retriever` and `summarizer`. For instance,
-               params={"retriever": {"top_k": 10}, "summarizer": {"generate_single_summary": True}}
+               params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
@@ -704,7 +830,7 @@ Pipeline for finding similar FAQs using semantic document search.
 **Arguments**:
 
 - `query`: the query string.
-- `params`: params for the `retriever`. For instance, params={"retriever": {"top_k": 10}}
+- `params`: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.

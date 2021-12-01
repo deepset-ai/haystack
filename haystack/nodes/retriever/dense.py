@@ -52,7 +52,8 @@ class DensePassageRetriever(BaseRetriever):
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
-                 devices: Optional[List[Union[int, str, torch.device]]] = None
+                 devices: Optional[List[Union[int, str, torch.device]]] = None,
+                 use_auth_token: Optional[Union[str,bool]] = None,
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -101,6 +102,9 @@ class DensePassageRetriever(BaseRetriever):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                         As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -109,7 +113,7 @@ class DensePassageRetriever(BaseRetriever):
             model_version=model_version, max_seq_len_query=max_seq_len_query, max_seq_len_passage=max_seq_len_passage,
             top_k=top_k, use_gpu=use_gpu, batch_size=batch_size, embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers, infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function, progress_bar=progress_bar, devices=devices
+            similarity_function=similarity_function, progress_bar=progress_bar, devices=devices, use_auth_token=use_auth_token
         )
 
         if devices is not None:
@@ -148,18 +152,22 @@ class DensePassageRetriever(BaseRetriever):
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"])
+                                              tokenizer_class=tokenizers_default_classes["query"], 
+                                              use_auth_token=use_auth_token)
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRQuestionEncoder")
+                                                language_model_class="DPRQuestionEncoder",
+                                                use_auth_token=use_auth_token)
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
                                                 revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"])
+                                                tokenizer_class=tokenizers_default_classes["passage"], 
+                                                use_auth_token=use_auth_token)
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   revision=model_version,
-                                                  language_model_class="DPRContextEncoder")
+                                                  language_model_class="DPRContextEncoder", 
+                                                  use_auth_token=use_auth_token)
 
         self.processor = TextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
                                                  passage_tokenizer=self.passage_tokenizer,
@@ -487,7 +495,8 @@ class TableTextRetriever(BaseRetriever):
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
-                 devices: Optional[List[Union[int, str, torch.device]]] = None
+                 devices: Optional[List[Union[int, str, torch.device]]] = None,
+                 use_auth_token: Optional[Union[str,bool]] = None
                  ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -522,6 +531,9 @@ class TableTextRetriever(BaseRetriever):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                         As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -531,7 +543,7 @@ class TableTextRetriever(BaseRetriever):
             max_seq_len_table=max_seq_len_table, top_k=top_k, use_gpu=use_gpu, batch_size=batch_size,
             embed_meta_fields=embed_meta_fields, use_fast_tokenizers=use_fast_tokenizers,
             infer_tokenizer_classes=infer_tokenizer_classes, similarity_function=similarity_function,
-            progress_bar=progress_bar, devices=devices
+            progress_bar=progress_bar, devices=devices, use_auth_token=use_auth_token
         )
 
         if devices is not None:
@@ -573,26 +585,32 @@ class TableTextRetriever(BaseRetriever):
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"])
+                                              tokenizer_class=tokenizers_default_classes["query"], 
+                                              use_auth_token=use_auth_token)
         self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRQuestionEncoder")
+                                                language_model_class="DPRQuestionEncoder", 
+                                                use_auth_token=use_auth_token)
         self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
                                                 revision=model_version,
                                                 do_lower_case=True,
                                                 use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"])
+                                                tokenizer_class=tokenizers_default_classes["passage"], 
+                                                use_auth_token=use_auth_token)
         self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
                                                   revision=model_version,
-                                                  language_model_class="DPRContextEncoder")
+                                                  language_model_class="DPRContextEncoder", 
+                                                  use_auth_token=use_auth_token)
         self.table_tokenizer = Tokenizer.load(pretrained_model_name_or_path=table_embedding_model,
                                               revision=model_version,
                                               do_lower_case=True,
                                               use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["table"])
+                                              tokenizer_class=tokenizers_default_classes["table"], 
+                                              use_auth_token=use_auth_token)
         self.table_encoder = LanguageModel.load(pretrained_model_name_or_path=table_embedding_model,
                                                 revision=model_version,
-                                                language_model_class="DPRContextEncoder")
+                                                language_model_class="DPRContextEncoder", 
+                                                use_auth_token=use_auth_token)
 
         self.processor = TableTextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
                                                       passage_tokenizer=self.passage_tokenizer,
@@ -721,7 +739,9 @@ class TableTextRetriever(BaseRetriever):
         for doc in docs:
             if doc.content_type == "table":
                 model_input.append({"passages": [{
-                    "meta": [doc.meta[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc.meta],
+                    "meta": [doc.meta[meta_field]
+                             for meta_field in self.embed_meta_fields
+                             if meta_field in doc.meta and isinstance(doc.meta[meta_field], str)],
                     "columns": doc.content.columns.tolist(),  # type: ignore
                     "rows": doc.content.values.tolist(),  # type: ignore
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
@@ -730,7 +750,9 @@ class TableTextRetriever(BaseRetriever):
                 }]})
             else:
                 model_input.append({"passages": [{
-                    "meta": [doc.meta[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc.meta],
+                    "meta": [doc.meta[meta_field]
+                             for meta_field in self.embed_meta_fields
+                             if meta_field in doc.meta and isinstance(doc.meta[meta_field], str)],
                     "text": doc.content,
                     "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
                     "type": "text",
@@ -933,18 +955,23 @@ class EmbeddingRetriever(BaseRetriever):
         embedding_model: str,
         model_version: Optional[str] = None,
         use_gpu: bool = True,
+        batch_size: int = 32,
+        max_seq_len: int = 512,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None
+        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        use_auth_token: Optional[Union[str,bool]] = None
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param batch_size: Number of documents to encode at once.
+        :param max_seq_len: Longest length of each document sequence. Maximum number of tokens for the document text. Longer ones will be cut down.
         :param model_format: Name of framework that was used for saving the model. Options:
 
                              - ``'farm'``
@@ -962,12 +989,15 @@ class EmbeddingRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list. 
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
+                                the local token will be used, which must be previously created via `transformer-cli login`. 
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
             document_store=document_store, embedding_model=embedding_model, model_version=model_version,
-            use_gpu=use_gpu, model_format=model_format, pooling_strategy=pooling_strategy,
+            use_gpu=use_gpu, batch_size=batch_size, max_seq_len=max_seq_len, model_format=model_format, pooling_strategy=pooling_strategy,
             emb_extraction_layer=emb_extraction_layer, top_k=top_k,
         )
 
@@ -975,16 +1005,22 @@ class EmbeddingRetriever(BaseRetriever):
             self.devices = devices
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+        
+        if batch_size < len(self.devices):
+            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
 
         self.document_store = document_store
         self.embedding_model = embedding_model
         self.model_format = model_format
         self.model_version = model_version
         self.use_gpu = use_gpu
+        self.batch_size = batch_size
+        self.max_seq_len = max_seq_len
         self.pooling_strategy = pooling_strategy
         self.emb_extraction_layer = emb_extraction_layer
         self.top_k = top_k
         self.progress_bar = progress_bar
+        self.use_auth_token = use_auth_token
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 

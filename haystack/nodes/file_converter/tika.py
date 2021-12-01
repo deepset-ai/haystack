@@ -87,7 +87,7 @@ class TikaConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         :param file_path: path of the file to convert
         :param meta: dictionary of meta data key-value pairs to append in the returned document.
@@ -150,4 +150,4 @@ class TikaConverter(BaseConverter):
 
         text = "\f".join(cleaned_pages)
         document = {"content": text, "content_type": "text", "meta": {**parsed["metadata"], **(meta or {})}}
-        return document
+        return [document]

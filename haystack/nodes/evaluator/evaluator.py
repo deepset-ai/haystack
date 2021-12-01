@@ -345,7 +345,10 @@ def calculate_f1_str_multi(gold_labels, prediction):
     for gold_label in gold_labels:
         result = calculate_f1_str(gold_label, prediction)
         results.append(result)
-    return max(results)
+    if len(results) > 0:
+        return max(results)
+    else:
+        return 0.0
 
 
 def semantic_answer_similarity(predictions: List[List[str]],

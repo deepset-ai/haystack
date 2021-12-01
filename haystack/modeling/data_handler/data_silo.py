@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import random
+import math
 from contextlib import ExitStack
 from functools import partial
 from itertools import groupby
@@ -16,6 +17,9 @@ from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.logger import MLFlowLogger as MlLogger
@@ -153,7 +157,8 @@ class DataSilo:
                     f"dictionaries to pytorch datasets."
                 )
 
-                results = map(partial(self._dataset_from_chunk, processor=self.processor), grouper(dicts, num_dicts))  # type: ignore
+                # temporary fix
+                results = map(partial(self._dataset_from_chunk, processor=self.processor), grouper(dicts, 1))  # type: ignore
 
             datasets = []
             problematic_ids_all = set()
@@ -722,3 +727,76 @@ def get_dict_checksum(payload_dict):
     """
     checksum = hashlib.md5(json.dumps(payload_dict, sort_keys=True).encode("utf-8")).hexdigest()
     return checksum
+
+class DistillationDataSilo(DataSilo):
+    """
+    This data silo does a forward pass on the full data set on a teacher model for model distillation.
+    As its done in preprocessing, it does not need to be repeated in each epoch and can be cached.
+    """
+    def __init__(self, teacher_model: "FARMReader", teacher_batch_size: int, device: str, processor: Processor,
+        batch_size: int, eval_batch_size: Optional[int] = None, distributed: bool = False,
+        automatic_loading: bool = True, max_processes: int = 128, caching: bool = False, cache_path: Path = Path("cache/data_silo")):
+        self.teacher = teacher_model
+        self.teacher_batch_size = teacher_batch_size
+        self.device = device
+        max_processes = 1 # fix as long as multithreading is not working with teacher attribute
+        super().__init__(max_processes=max_processes, processor=processor, batch_size=batch_size, eval_batch_size=eval_batch_size,
+        distributed=distributed, automatic_loading=automatic_loading, caching=caching, cache_path=cache_path)
+    
+    def _run_teacher(self, batch: List[List[torch.Tensor]], corresponding_chunks: List[int],
+    teacher_outputs: List[List[Tuple[torch.Tensor, ...]]], tensor_names: List[str]):
+        with torch.no_grad():
+            batch_transposed = zip(*batch) # transpose dimensions (from batch, features, ... to features, batch, ...)
+            batch_transposed_list = [torch.stack(b) for b in batch_transposed] # create tensors for each feature
+            batch_dict = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch_transposed_list)} # create input dict
+            y = self.teacher.inferencer.model(**batch_dict)
+            y = [y.cpu() for y in y]
+
+            # grouping by chunk
+            for i, data in zip(corresponding_chunks, zip(*y)): # transpose back
+                teacher_outputs[i].append(data)
+            return
+
+    def _get_dataset(self, filename: Optional[Union[str, Path]], dicts: Optional[List[Dict]] = None):
+        concat_datasets, tensor_names = super()._get_dataset(filename, dicts)
+
+        batch = []
+        corresponding_chunks = [] # to be able to associate elements of batches with chunks (elements could be from multiple chunks)
+
+        teacher_outputs: List[List[Tuple[torch.Tensor, ...]]] = [] # list of teacher outputs group in list by chunk
+
+        # creating batches from chunks        
+        for i, dataset in enumerate(tqdm(concat_datasets.datasets, desc="Doing forward pass on teacher model")):
+            teacher_outputs.append([])
+            for x in zip(*dataset.tensors): # loop through chunks
+                batch.append(x)
+                corresponding_chunks.append(i)
+                if len(batch) == self.teacher_batch_size:
+                    self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names) # doing forward pass on teacher model
+                    batch = []
+                    corresponding_chunks = []
+        if batch:
+            self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names)
+        
+        # appending teacher outputs to original dataset
+        for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):
+            dataset.tensors += tuple(torch.stack(tensors) for tensors in zip(*teacher_output))
+        tensor_names.extend(["teacher_output_" + str(i) for i, _ in enumerate(zip(*teacher_output))])
+        concat_datasets = ConcatDataset(concat_datasets.datasets) # making sure metrics are updated
+        return concat_datasets, tensor_names
+    
+    def _get_checksum(self):
+        """
+        Get checksum based on a dict to ensure validity of cached DataSilo
+        """
+        # keys in the dict identifies uniqueness for a given DataSilo.
+        payload_dict = {
+            "train_filename": str(Path(self.processor.train_filename).absolute()),
+            "data_dir": str(self.processor.data_dir.absolute()),
+            "max_seq_len": self.processor.max_seq_len,
+            "dev_split": self.processor.dev_split,
+            "tasks": self.processor.tasks,
+            "teacher_name_or_path": self.teacher.pipeline_config["params"]["model_name_or_path"]
+        }
+        checksum = get_dict_checksum(payload_dict)
+        return checksum

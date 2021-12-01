@@ -49,8 +49,8 @@ def tutorial5_evaluation():
 
     # Connect to Elasticsearch
     document_store = ElasticsearchDocumentStore(
-        host="localhost", username="", password="", index="document",
-        create_index=False, embedding_field="emb",
+        host="localhost", username="", password="", index=doc_index,
+        label_index = label_index, embedding_field="emb",
         embedding_dim=768, excluded_meta_data=["emb"]
     )
 
