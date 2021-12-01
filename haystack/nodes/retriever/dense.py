@@ -684,7 +684,7 @@ class TableTextRetriever(BaseRetriever):
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
-        if len(dataset) == 1:
+        if dataset and len(dataset) == 1:
             disable_tqdm = True
         else:
             disable_tqdm = not self.progress_bar
