@@ -108,10 +108,8 @@ def tutorial5_evaluation():
 
     # We can load evaluation labels from the document store
     eval_labels = document_store.get_all_labels_aggregated(drop_negative_labels=True, drop_no_answers=False)
-    eval_queries = [label.query for label in eval_labels]
 
     # Alternative: Define queries and labels directly
-    # eval_queries = ["who is written in the book of life"]
     # eval_labels = [
     #        MultiLabel(labels=[Label(query="who is written in the book of life",
     #        answer=Answer(answer="every person who is destined for Heaven or the World to Come",
@@ -126,7 +124,6 @@ def tutorial5_evaluation():
 
     # Similar to pipeline.run() we can execute pipeline.eval()
     eval_result = pipeline.eval(
-        queries=eval_queries,
         labels=eval_labels,
         params={"Retriever": {"top_k": 5}}
     )
@@ -168,7 +165,6 @@ def tutorial5_evaluation():
     # More info on this metric can be found in our [paper](https://arxiv.org/abs/2108.06130) or in our [blog post](https://www.deepset.ai/blog/semantic-answer-similarity-to-evaluate-qa).
 
     advanced_eval_result = pipeline.eval(
-            queries=eval_queries,
             labels=eval_labels,
             params={"Retriever": {"top_k": 1}},
             sas_model_name_or_path="cross-encoder/stsb-roberta-large"
