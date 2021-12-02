@@ -96,11 +96,9 @@ def tutorial5_evaluation():
     # For example you could use a DocumentSearchPipeline as an alternative:
     # pipeline = DocumentSearchPipeline(retriever=retriever)
 
-
     # We can load evaluation labels from the document store
-    labels_from_doc_store = document_store.get_all_labels()[:25]
-    eval_labels = [MultiLabel(labels=[label]) for label in labels_from_doc_store]
-    eval_queries = [label.query for label in labels_from_doc_store]
+    eval_labels = document_store.get_all_labels_aggregated(drop_negative_labels=True, drop_no_answers=False)
+    eval_queries = [label.query for label in eval_labels]
 
     # Alternative: Define queries and labels directly
     # eval_queries = ["who is written in the book of life"]
