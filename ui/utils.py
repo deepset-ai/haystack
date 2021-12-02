@@ -110,3 +110,14 @@ def upload_doc(file):
     files = [("files", file)]
     response_raw = requests.post(url, files=files).json()
     return response_raw
+
+
+def get_backlink(result) -> Tuple[str, str]:
+    if result.get("document", None):
+        doc = result["document"]
+        if isinstance(doc, dict):
+            if doc.get("meta", None):
+                if isinstance(doc["meta"], dict):
+                    if doc["meta"].get("url", None) and doc["meta"].get("title", None):
+                        return doc["meta"]["url"], doc["meta"]["title"]
+    return None, None
