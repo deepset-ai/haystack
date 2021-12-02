@@ -1,17 +1,14 @@
 import pytest
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
-from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
-from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.pipelines.base import Pipeline
-from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, FAQPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
-from haystack.pipelines.standard_pipelines import RetrieverQuestionGenerationPipeline, TranslationWrapperPipeline
+from haystack.pipelines import ExtractiveQAPipeline
+from haystack.pipelines.standard_pipelines import DocumentSearchPipeline, FAQPipeline, RetrieverQuestionGenerationPipeline, TranslationWrapperPipeline
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
-from conftest import DOCS_WITH_EMBEDDINGS
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
@@ -554,67 +551,6 @@ def test_document_search_calculate_metrics(retriever_with_docs):
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
     assert metrics["Retriever"]["precision"] == 1.0/6
 
-
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocumentStore, rag_generator):
-    retriever = EmbeddingRetriever(
-            document_store=document_store_with_docs,
-            embedding_model="deepset/sentence_bert",
-            use_gpu=False
-        )
-    document_store_with_docs.update_embeddings(retriever=retriever)
-    pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever)
-    eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
-        params={"Retriever": {"top_k": 5}}
-    )
-
-    metrics = eval_result.calculate_metrics()
-
-    assert "Retriever" in eval_result
-    assert "Generator" in eval_result
-    assert len(eval_result) == 2
-
-    assert metrics["Retriever"]["mrr"] == 0.5
-    assert metrics["Retriever"]["map"] == 0.5
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0/6
-    assert metrics["Generator"]["exact_match"] == 0.0
-    assert metrics["Generator"]["f1"] == 1.0/3
-
-
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
-    retriever = EmbeddingRetriever(
-            document_store=document_store_with_docs,
-            embedding_model="deepset/sentence_bert",
-            use_gpu=False
-        )
-    document_store_with_docs.update_embeddings(retriever=retriever)
-    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
-    eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
-        params={"Retriever": {"top_k": 5}}
-    )
-
-    metrics = eval_result.calculate_metrics()
-
-    assert "Retriever" in eval_result
-    assert "Summarizer" in eval_result
-    assert len(eval_result) == 2
-
-    assert metrics["Retriever"]["mrr"] == 0.5
-    assert metrics["Retriever"]["map"] == 0.5
-    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0/6
-    assert metrics["Summarizer"]["mrr"] == 0.5
-    assert metrics["Summarizer"]["map"] == 0.5
-    assert metrics["Summarizer"]["recall_multi_hit"] == 0.5
-    assert metrics["Summarizer"]["recall_single_hit"] == 0.5
-    assert metrics["Summarizer"]["precision"] == 1.0/6
-    
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
