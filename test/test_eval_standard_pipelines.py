@@ -112,10 +112,15 @@ def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocume
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
-def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer, retriever_with_docs):
-    document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
-    pipeline = SearchSummarizationPipeline(retriever=retriever_with_docs, summarizer=summarizer, return_in_answer_format=True)
+def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
+    document_store_with_docs.embedding_dim = 384
+    retriever = EmbeddingRetriever(
+            document_store=document_store_with_docs,
+            embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+            use_gpu=False
+        )
+    document_store_with_docs.update_embeddings(retriever=retriever)
+    pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
     eval_result: EvaluationResult = pipeline.eval(
         queries=EVAL_QUERIES, 
         labels=EVAL_LABELS,
