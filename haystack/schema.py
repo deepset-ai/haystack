@@ -482,13 +482,20 @@ class MultiLabel:
         # which equals the no_answers representation of reader nodes.
         if self.no_answer:
             self.answers = [""]
-            self.gold_offsets_in_documents = []
-            self.gold_offsets_in_contexts = []
+            self.gold_offsets_in_documents: List[dict] = []
+            self.gold_offsets_in_contexts: List[dict] = []
         else:
             answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
             self.answers = [answer.answer for answer in answered]
-            self.gold_offsets_in_documents = [answer.offsets_in_document for answer in answered]
-            self.gold_offsets_in_contexts = [answer.offsets_in_context for answer in answered]
+            self.gold_offsets_in_documents = []
+            self.gold_offsets_in_contexts = []
+            for answer in answered:
+                if answer.offsets_in_document is not None:
+                    for span in answer.offsets_in_document:
+                        self.gold_offsets_in_documents.append({'start': span.start, 'end': span.end})
+                if answer.offsets_in_context is not None:
+                    for span in answer.offsets_in_context:
+                        self.gold_offsets_in_contexts.append({'start': span.start, 'end': span.end})
 
         # There are two options here to represent document_ids: 
         # taking the id from the document of each label or taking the document_id of each label's answer.
