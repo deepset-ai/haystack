@@ -27,7 +27,6 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.DEMO_AWS_DEPLOY_ROLE }}
 
-
       - name: Deploy demo
         env:
           CF_KEY_NAME: ${{ secrets.DEMO_CF_KEY_NAME }}
