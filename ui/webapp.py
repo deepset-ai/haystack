@@ -13,7 +13,7 @@ from markdown import markdown
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
 # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 import SessionState
-from utils import HS_VERSION, haystack_is_ready, query, send_feedback, upload_doc, haystack_version
+from utils import HS_VERSION, haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
@@ -202,7 +202,13 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 end_idx = start_idx + len(answer)
                 # Hack due to this bug: https://github.com/streamlit/streamlit/issues/3190 
                 st.write(markdown(context[:start_idx] + str(annotation(answer, "ANSWER", "#8ef")) + context[end_idx:]), unsafe_allow_html=True)
-                st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
+                source = ""
+                url, title = get_backlink(result)
+                if url and title:
+                    source = f"[{result['document']['meta']['title']}]({result['document']['meta']['url']})"
+                else:
+                    source = f"{result['source']}"
+                st.markdown(f"**Relevance:** {result['relevance']} -  **Source:** {source}")
 
             else:
                 st.info("🤔 &nbsp;&nbsp; Haystack is unsure whether any of the documents contain an answer to your question. Try to reformulate it!")
