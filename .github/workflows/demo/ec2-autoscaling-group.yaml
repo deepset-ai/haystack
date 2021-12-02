@@ -24,7 +24,7 @@ Parameters:
   InstanceType:
     Description: EC2 instance type
     Type: String
-    Default: p2.xlarge
+    Default: p3.2xlarge
 
   ImageId:
     Description: AMI to use for the EC2 instance
