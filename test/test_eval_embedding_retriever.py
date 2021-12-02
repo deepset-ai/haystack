@@ -5,7 +5,7 @@ from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.pipelines import GenerativeQAPipeline, SearchSummarizationPipeline
 from haystack.schema import EvaluationResult
-from test_eval import EVAL_LABELS, EVAL_QUERIES
+from test_eval import EVAL_LABELS
 
 
 # had to be separated from other eval tests to work around OOM in Windows CI
@@ -16,7 +16,6 @@ def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocume
     document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
     pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
-        queries=EVAL_QUERIES, 
         labels=EVAL_LABELS,
         params={"Retriever": {"top_k": 5}}
     )
@@ -51,7 +50,6 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     document_store_with_docs.update_embeddings(retriever=retriever)
     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
     eval_result: EvaluationResult = pipeline.eval(
-        queries=EVAL_QUERIES, 
         labels=EVAL_LABELS,
         params={"Retriever": {"top_k": 5}}
     )

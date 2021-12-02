@@ -13,7 +13,7 @@ from markdown import markdown
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
 # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 import SessionState
-from utils import HS_VERSION, haystack_is_ready, query, send_feedback, upload_doc, haystack_version
+from utils import HS_VERSION, haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
@@ -32,13 +32,15 @@ DISABLE_FILE_UPLOAD = bool(os.getenv("DISABLE_FILE_UPLOAD"))
 
 def main():
 
+    st.set_page_config(page_title='Haystack Demo', page_icon="https://haystack.deepset.ai/img/HaystackIcon.png")
+
     # Persistent state
     state = SessionState.get(
         random_question=DEFAULT_QUESTION_AT_STARTUP, 
         random_answer="",
+        last_question=DEFAULT_QUESTION_AT_STARTUP,
         results=None,
         raw_json=None,
-        get_next_question=True
     )
 
     # Small callback to reset the interface in case the text of the question changes
@@ -48,13 +50,15 @@ def main():
 
     # Title
     st.write("# Haystack Demo - Explore the world")
-    st.write("""
-This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of 'Countries and capital cities'. 
+    st.markdown("""
+This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of 
 
-Ask any question on this topic and see if Haystack can find the correct answer to your query! 
+<h3 style='text-align:center;padding: 0 0 1rem;'>Countries and capital cities</h3>
 
-*Note: do not use keywords, but type full-fledged questions.* The demo is not optimized to deal with keyword queries and might misunderstand you.
-""")
+Ask any question on this topic and see if Haystack can find the correct answer to your query!
+
+*Note: do not use keywords, but full-fledged questions.* The demo is not optimized to deal with keyword queries and might misunderstand you.
+""", unsafe_allow_html=True)
 
     # Sidebar
     st.sidebar.header("Options")
@@ -88,7 +92,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                     st.subheader("REST API JSON response")
                     st.sidebar.write(raw_json)
 
-    hs_version = None
+    hs_version = ""
     try:
         hs_version = f" <small>(v{haystack_version()})</small>"
     except Exception:
@@ -136,11 +140,12 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     col2.markdown("<style>.stButton button {width:100%;}</style>", unsafe_allow_html=True)
 
     # Run button
-    run_query = col1.button("Run")
+    run_pressed = col1.button("Run")
+    run_query = run_pressed or question != state.last_question
 
     # Get next random question from the CSV
-    state.get_next_question = col2.button("Random question")
-    if state.get_next_question:
+    #state.get_next_question = col2.button("Random question")
+    if col2.button("Random question"):
         reset_results()
         new_row = df.sample(1)   
         while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
@@ -162,6 +167,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     # Get results for query
     if run_query and question:
         reset_results()
+        state.last_question = question
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
@@ -196,7 +202,13 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 end_idx = start_idx + len(answer)
                 # Hack due to this bug: https://github.com/streamlit/streamlit/issues/3190 
                 st.write(markdown(context[:start_idx] + str(annotation(answer, "ANSWER", "#8ef")) + context[end_idx:]), unsafe_allow_html=True)
-                st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
+                source = ""
+                url, title = get_backlink(result)
+                if url and title:
+                    source = f"[{result['document']['meta']['title']}]({result['document']['meta']['url']})"
+                else:
+                    source = f"{result['source']}"
+                st.markdown(f"**Relevance:** {result['relevance']} -  **Source:** {source}")
 
             else:
                 st.info("🤔 &nbsp;&nbsp; Haystack is unsure whether any of the documents contain an answer to your question. Try to reformulate it!")
@@ -239,6 +251,5 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         if debug:
             st.subheader("REST API JSON response")
             st.write(state.raw_json)
-
 
 main()
