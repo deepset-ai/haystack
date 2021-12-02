@@ -2,6 +2,7 @@ import pytest
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.retriever.dense import EmbeddingRetriever
 from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, FAQPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
 from haystack.pipelines.standard_pipelines import RetrieverQuestionGenerationPipeline, TranslationWrapperPipeline
 from haystack.schema import EvaluationResult
@@ -112,7 +113,11 @@ def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocume
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, summarizer):
+def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore):
+    summarizer = TransformersSummarizer(
+        model_name_or_path="sshleifer/distill-pegasus-xsum-16-4",
+        use_gpu=False
+    )
     document_store_with_docs.embedding_dim = 384
     retriever = EmbeddingRetriever(
             document_store=document_store_with_docs,
@@ -138,11 +143,11 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
     assert metrics["Retriever"]["precision"] == 1.0/6
-    assert metrics["Summarizer"]["mrr"] == 0.5
-    assert metrics["Summarizer"]["map"] == 0.5
-    assert metrics["Summarizer"]["recall_multi_hit"] == 0.5
-    assert metrics["Summarizer"]["recall_single_hit"] == 0.5
-    assert metrics["Summarizer"]["precision"] == 1.0/6
+    assert metrics["Summarizer"]["mrr"] == 0.0
+    assert metrics["Summarizer"]["map"] == 0.0
+    assert metrics["Summarizer"]["recall_multi_hit"] == 0.0
+    assert metrics["Summarizer"]["recall_single_hit"] == 0.0
+    assert metrics["Summarizer"]["precision"] == 0.0
     
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
