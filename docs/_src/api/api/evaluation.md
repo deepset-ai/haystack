@@ -15,6 +15,9 @@ from this Node may differ from that when calling Retriever.eval() since that is 
 a look at our evaluation tutorial for more info about open vs closed domain eval (
 https://haystack.deepset.ai/tutorials/evaluation).
 
+EvalDocuments node is deprecated and will be removed in a future version.
+Please use pipeline.eval() instead.
+
 <a name="evaluator.EvalDocuments.__init__"></a>
 #### \_\_init\_\_
 
@@ -60,6 +63,9 @@ this class and updated as each sample passes through it. To view the results of 
 Note that results from this Node may differ from that when calling Reader.eval()
 since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
 open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
+
+EvalAnswers node is deprecated and will be removed in a future version.
+Please use pipeline.eval() instead.
 
 <a name="evaluator.EvalAnswers.__init__"></a>
 #### \_\_init\_\_
