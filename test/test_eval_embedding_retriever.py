@@ -8,6 +8,8 @@ from haystack.schema import EvaluationResult
 from test_eval import EVAL_LABELS, EVAL_QUERIES
 
 
+# had to be separated from other eval tests to work around OOM in Windows CI
+
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_generativeqa_calculate_metrics(document_store_with_docs: InMemoryDocumentStore, rag_generator, retriever_with_docs):
