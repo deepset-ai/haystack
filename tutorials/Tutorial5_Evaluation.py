@@ -1,16 +1,15 @@
-from haystack import Pipeline
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes import (
     ElasticsearchRetriever,
     DensePassageRetriever,
     EmbeddingRetriever,
-    EvalAnswers, 
-    EvalDocuments,
     FARMReader,
     PreProcessor
 )
 from haystack.utils import fetch_archive_from_http, launch_es
 from haystack.modeling.utils import initialize_device_settings
+from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline
+from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
 
 import logging
 
@@ -18,19 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 def tutorial5_evaluation():
-
-    ##############################################
-    # Settings
-    ##############################################
-    # Choose from Evaluation style from ['retriever_closed', 'reader_closed', 'retriever_reader_open']
-    # 'retriever_closed' - evaluates only the retriever, based on whether the gold_label document is retrieved.
-    # 'reader_closed' - evaluates only the reader in a closed domain fashion i.e. the reader is given one query
-    #     and one document and metrics are calculated on whether the right position in this text is selected by
-    #     the model as the answer span (i.e. SQuAD style)
-    # 'retriever_reader_open' - evaluates retriever and reader in open domain fashion i.e. a document is considered
-    #     correctly retrieved if it contains the answer string within it. The reader is evaluated based purely on the
-    #     predicted string, regardless of which document this came from and the position of the extracted span.
-    style = "retriever_reader_open"
 
     # make sure these indices do not collide with existing ones, the indices will be wiped clean before data is inserted
     doc_index = "tutorial5_docs"
@@ -50,7 +36,7 @@ def tutorial5_evaluation():
     # Connect to Elasticsearch
     document_store = ElasticsearchDocumentStore(
         host="localhost", username="", password="", index=doc_index,
-        label_index = label_index, embedding_field="emb",
+        label_index=label_index, embedding_field="emb",
         embedding_dim=768, excluded_meta_data=["emb"]
     )
 
@@ -74,8 +60,6 @@ def tutorial5_evaluation():
         preprocessor=preprocessor
     )
 
-    # Let's prepare the labels that we need for the retriever and the reader
-    labels = document_store.get_all_labels_aggregated(index=label_index, drop_negative_labels=True, drop_no_answers=False)
 
     # Initialize Retriever
     retriever = ElasticsearchRetriever(document_store=document_store)
@@ -105,63 +89,105 @@ def tutorial5_evaluation():
         return_no_answer=True
     )
 
-    # Here we initialize the nodes that perform evaluation
-    eval_retriever = EvalDocuments()
-    eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
+    # Define a pipeline consisting of the initialized retriever and reader
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever)
 
-    # Evaluate Retriever on its own in closed domain fashion
-    if style == "retriever_closed":
-        retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
-        ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
-        ## among the correct documents
-        print("Retriever Recall:", retriever_eval_results["recall"])
-        ## Retriever Mean Avg Precision rewards retrievers that give relevant documents a higher rank
-        print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
-
-    # Evaluate Reader on its own in closed domain fashion (i.e. SQuAD style)
-    elif style == "reader_closed":
-        reader_eval_results = reader.eval(document_store=document_store, device=devices[0], label_index=label_index, doc_index=doc_index)
-        # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
-        #reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
-
-        ## Reader Top-N-Accuracy is the proportion of predicted answers that match with their corresponding correct answer
-        print("Reader Top-N-Accuracy:", reader_eval_results["top_n_accuracy"])
-        ## Reader Exact Match is the proportion of questions where the predicted answer is exactly the same as the correct answer
-        print("Reader Exact Match:", reader_eval_results["EM"])
-        ## Reader F1-Score is the average overlap between the predicted answers and the correct answers
-        print("Reader F1-Score:", reader_eval_results["f1"])
+    # The evaluation also works with any other pipeline.
+    # For example you could use a DocumentSearchPipeline as an alternative:
+    # pipeline = DocumentSearchPipeline(retriever=retriever)
 
 
-    # Evaluate combination of Reader and Retriever in open domain fashion
-    elif style == "retriever_reader_open":
+    # We can load evaluation labels from the document store
+    labels_from_doc_store = document_store.get_all_labels()[:25]
+    eval_labels = [MultiLabel(labels=[label]) for label in labels_from_doc_store]
+    eval_queries = [label.query for label in labels_from_doc_store]
 
-        # Here is the pipeline definition
-        p = Pipeline()
-        p.add_node(component=retriever, name="Retriever", inputs=["Query"])
-        p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["Retriever"])
-        p.add_node(component=reader, name="Reader", inputs=["EvalDocuments"])
-        p.add_node(component=eval_reader, name="EvalAnswers", inputs=["Reader"])
-        results = []
+    # Alternative: Define queries and labels directly
+    # eval_queries = ["who is written in the book of life"]
+    # eval_labels = [
+    #        MultiLabel(labels=[Label(query="who is written in the book of life", answer=Answer(answer="every person who is destined for Heaven or the World to Come", offsets_in_context=[Span(374, 434)]),
+    #            document=Document(id='1b090aec7dbd1af6739c4c80f8995877-0', content_type="text", content='Book of Life - wikipedia Book of Life Jump to: navigation, search This article is about the book mentioned in Christian and Jewish religious teachings. For other uses, see The Book of Life. In Christianity and Judaism, the Book of Life (Hebrew: ספר החיים, transliterated Sefer HaChaim; Greek: βιβλίον τῆς ζωῆς Biblíon tēs Zōēs) is the book in which God records the names of every person who is destined for Heaven or the World to Come. According to the Talmud it is open on Rosh Hashanah, as is its analog for the wicked, the Book of the Dead. For this reason extra mention is made for the Book of Life during Amidah recitations during the Days of Awe, the ten days between Rosh Hashanah, the Jewish new year, and Yom Kippur, the day of atonement (the two High Holidays, particularly in the prayer Unetaneh Tokef). Contents (hide) 1 In the Hebrew Bible 2 Book of Jubilees 3 References in the New Testament 4 The eschatological or annual roll-call 5 Fundraising 6 See also 7 Notes 8 References In the Hebrew Bible(edit) In the Hebrew Bible the Book of Life - the book or muster-roll of God - records forever all people considered righteous before God'),
+    #            is_correct_answer=True, is_correct_document=True, origin="gold-label")])
+    #    ]
 
-        for l in labels:
-            res = p.run(
-                query=l.query,
-                labels=l,
-                params={"index": doc_index, "Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
-            )
-            results.append(res)
+    # Similar to pipeline.run() we can execute pipeline.eval()
+    eval_result = pipeline.eval(
+        queries=eval_queries,
+        labels=eval_labels,
+        params={"Retriever": {"top_k": 5}}
+    )
 
-        eval_retriever.print()
-        print()
-        retriever.print_time()
-        print()
-        eval_reader.print(mode="reader")
-        print()
-        reader.print_time()
-        print()
-        eval_reader.print(mode="pipeline")
-    else:
-        raise ValueError(f'style={style} is not a valid option. Choose from retriever_closed, reader_closed, retriever_reader_open')
+    # The EvaluationResult contains a pandas dataframe for each pipeline node.
+    # That's why there are two dataframes in the EvaluationResult of an ExtractiveQAPipeline.
+
+    retriever_result = eval_result["Retriever"]
+    retriever_result.head()
+
+    reader_result = eval_result["Reader"]
+    reader_result.head()
+
+    # We can filter for all documents retrieved for a given query
+    retriever_book_of_life = retriever_result[retriever_result['query'] == "who is written in the book of life"]
+
+    # We can also filter for all answers predicted for a given query
+    reader_book_of_life = reader_result[reader_result['query'] == "who is written in the book of life"]
+
+    # Save the evaluation result so that we can reload it later and calculate evaluation metrics without running the pipeline again.
+    eval_result.save("../")
+
+    ## Calculating Evaluation Metrics
+    # Load an EvaluationResult to quickly calculate standard evaluation metrics for all predictions, such as F1-score of each individual prediction of the Reader node or recall of the retriever.
+
+    saved_eval_result = EvaluationResult.load("../")
+    metrics = saved_eval_result.calculate_metrics()
+    print(metrics["Retriever"]["recall_single_hit"])
+    print(metrics["Reader"]["f1"])
+
+    ## Generating an Evaluation Report
+    # A summary of the evaluation results can be printed to get a quick overview. It includes some aggregated metrics and also shows a few wrongly predicted examples.
+
+    pipeline.print_eval_report(saved_eval_result)
+
+    ## Advanced Evaluation Metrics
+    # As an advanced evaluation metric, semantic answer similarity (SAS) can be calculated. This metric takes into account whether the meaning of a predicted answer is similar to the annotated gold answer rather than just doing string comparison.
+    # To this end SAS relies on pre-trained models. For English, we recommend "cross-encoder/stsb-roberta-large", whereas for German we recommend "deepset/gbert-large-sts". A good multilingual model is "sentence-transformers/paraphrase-multilingual-mpnet-base-v2".
+    # More info on this metric can be found in our [paper](https://arxiv.org/abs/2108.06130) or in our [blog post](https://www.deepset.ai/blog/semantic-answer-similarity-to-evaluate-qa).
+
+    advanced_eval_result = pipeline.eval(
+            queries=eval_queries,
+            labels=eval_labels,
+            params={"Retriever": {"top_k": 1}},
+            sas_model_name_or_path="cross-encoder/stsb-roberta-large"
+        )
+
+    metrics = advanced_eval_result.calculate_metrics()
+    print(metrics["Reader"]["sas"])
+
+
+    # Evaluate Retriever on its own
+    # Here we evaluate only the retriever, based on whether the gold_label document is retrieved.
+    retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
+    ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
+    ## among the correct documents
+    print("Retriever Recall:", retriever_eval_results["recall"])
+    ## Retriever Mean Avg Precision rewards retrievers that give relevant documents a higher rank
+    print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
+
+
+    # Evaluate Reader on its own
+    # Here we evaluate only the reader in a closed domain fashion i.e. the reader is given one query
+    # and its corresponding relevant document and metrics are calculated on whether the right position in this text is selected by
+    # the model as the answer span (i.e. SQuAD style)
+    reader_eval_results = reader.eval(document_store=document_store, device=devices[0], label_index=label_index, doc_index=doc_index)
+    # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
+    #reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
+
+    ## Reader Top-N-Accuracy is the proportion of predicted answers that match with their corresponding correct answer
+    print("Reader Top-N-Accuracy:", reader_eval_results["top_n_accuracy"])
+    ## Reader Exact Match is the proportion of questions where the predicted answer is exactly the same as the correct answer
+    print("Reader Exact Match:", reader_eval_results["EM"])
+    ## Reader F1-Score is the average overlap between the predicted answers and the correct answers
+    print("Reader F1-Score:", reader_eval_results["f1"])
 
 
 if __name__ == "__main__":
