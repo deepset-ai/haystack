@@ -162,7 +162,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None) -> EvaluationResult
+ | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -170,7 +170,6 @@ and putting together all data that is needed for evaluation, e.g. calculating me
 
 **Arguments**:
 
-- `queries`: The queries to evaluate
 - `labels`: The labels to evaluate on
 - `params`: Dictionary of parameters to be dispatched to the nodes.
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
@@ -628,7 +627,7 @@ Instance of DocumentStore or None
 #### eval
 
 ```python
- | eval(queries: List[str], labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
+ | eval(labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -636,7 +635,6 @@ and putting together all data that is needed for evaluation, e.g. calculating me
 
 **Arguments**:
 
-- `queries`: The queries to evaluate
 - `labels`: The labels to evaluate on
 - `params`: Params for the `retriever` and `reader`. For instance,
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
