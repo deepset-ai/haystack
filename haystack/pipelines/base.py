@@ -366,7 +366,6 @@ class Pipeline(BasePipeline):
 
     def eval(
         self,
-        queries: List[str],
         labels: List[MultiLabel],
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None
@@ -375,7 +374,6 @@ class Pipeline(BasePipeline):
             Evaluates the pipeline by running the pipeline once per query in debug mode 
             and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
-            :param queries: The queries to evaluate
             :param labels: The labels to evaluate on
             :param params: Dictionary of parameters to be dispatched to the nodes. 
                         If you want to pass a param to all nodes, you can just use: {"top_k":10}
@@ -392,11 +390,9 @@ class Pipeline(BasePipeline):
                         - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                         - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
                         - Large model for German only: "deepset/gbert-large-sts"
-        """
-        if len(queries) != len(labels):
-            raise ValueError("length of queries must match length of labels")
-        
+        """    
         eval_result = EvaluationResult()
+        queries = [label.query for label in labels]
         for query, label in zip(queries, labels):
             predictions = self.run(query=query, labels=label, params=params, debug=True)
             
