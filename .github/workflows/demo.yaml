@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - deploy-demo
+      - master
+    paths:
+      - ".github/workflows/demo**"
 
 env:
   AWS_REGION: eu-west-1
