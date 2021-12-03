@@ -22,7 +22,7 @@ services:
   elasticsearch:
     # This will start an empty elasticsearch instance (so you have to add your documents yourself)
     #image: "elasticsearch:7.9.2"
-    # If you want a demo image instead that is "ready-to-query" with some indexed articles 
+    # If you want a demo image instead that is "ready-to-query" with some indexed articles
     # about countries and capital cities from Wikipedia:
     image: "deepset/elasticsearch-countries-and-capitals"
     ports:

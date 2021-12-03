@@ -1,0 +1,40 @@
+name: Demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/demo**"
+
+env:
+  AWS_REGION: eu-west-1
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: AWS Authentication
+        uses: aws-actions/configure-aws-credentials@master
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.DEMO_AWS_DEPLOY_ROLE }}
+
+      - name: Deploy demo
+        env:
+          CF_KEY_NAME: ${{ secrets.DEMO_CF_KEY_NAME }}
+          CF_IMAGE_ID: ${{ secrets.DEMO_CF_IMAGE_ID }}
+          CF_IAM_INSTANCE_PROFILE: ${{ secrets.DEMO_CF_IAM_INSTANCE_PROFILE }}
+        run: |
+          aws cloudformation deploy \
+            --template-file .github/workflows/demo/ec2-autoscaling-group.yaml \
+            --stack-name haystack-demo-production-instance \
+            --parameter-overrides CommitShortSHA=${{ github.sha }} KeyName=${CF_KEY_NAME} ImageId=${CF_IMAGE_ID} IamInstanceProfile=${CF_IAM_INSTANCE_PROFILE} \
+            --capabilities CAPABILITY_IAM

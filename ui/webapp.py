@@ -36,7 +36,7 @@ def main():
 
     # Persistent state
     state = SessionState.get(
-        random_question=DEFAULT_QUESTION_AT_STARTUP, 
+        random_question=DEFAULT_QUESTION_AT_STARTUP,
         random_answer="",
         last_question=DEFAULT_QUESTION_AT_STARTUP,
         results=None,
@@ -51,7 +51,7 @@ def main():
     # Title
     st.write("# Haystack Demo - Explore the world")
     st.markdown("""
-This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of 
+This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of
 
 <h3 style='text-align:center;padding: 0 0 1rem;'>Countries and capital cities</h3>
 
@@ -63,18 +63,18 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     # Sidebar
     st.sidebar.header("Options")
     top_k_reader = st.sidebar.slider(
-        "Max. number of answers", 
-        min_value=1, 
-        max_value=10, 
-        value=DEFAULT_NUMBER_OF_ANSWERS, 
-        step=1, 
+        "Max. number of answers",
+        min_value=1,
+        max_value=10,
+        value=DEFAULT_NUMBER_OF_ANSWERS,
+        step=1,
         on_change=reset_results)
     top_k_retriever = st.sidebar.slider(
-        "Max. number of documents from retriever", 
-        min_value=1, 
-        max_value=10, 
-        value=DEFAULT_DOCS_FROM_RETRIEVER, 
-        step=1, 
+        "Max. number of documents from retriever",
+        min_value=1,
+        max_value=10,
+        value=DEFAULT_DOCS_FROM_RETRIEVER,
+        step=1,
         on_change=reset_results)
     eval_mode = st.sidebar.checkbox("Evaluation mode")
     debug = st.sidebar.checkbox("Show debug info")
@@ -107,7 +107,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
             text-align: center;
         }}
         .haystack-footer h4 {{
-            margin: 0.1rem; 
+            margin: 0.1rem;
             padding:0;
         }}
         footer {{
@@ -132,7 +132,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     # Search bar
     question = st.text_input("",
         value=state.random_question,
-        max_chars=100, 
+        max_chars=100,
         on_change=reset_results
     )
     col1, col2 = st.columns(2)
@@ -147,7 +147,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     #state.get_next_question = col2.button("Random question")
     if col2.button("Random question"):
         reset_results()
-        new_row = df.sample(1)   
+        new_row = df.sample(1)
         while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
             new_row = df.sample(1)
         state.random_question = new_row["Question Text"].values[0]
@@ -200,7 +200,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                 answer, context = result["answer"], result["context"]
                 start_idx = context.find(answer)
                 end_idx = start_idx + len(answer)
-                # Hack due to this bug: https://github.com/streamlit/streamlit/issues/3190 
+                # Hack due to this bug: https://github.com/streamlit/streamlit/issues/3190
                 st.write(markdown(context[:start_idx] + str(annotation(answer, "ANSWER", "#8ef")) + context[end_idx:]), unsafe_allow_html=True)
                 source = ""
                 url, title = get_backlink(result)
@@ -213,7 +213,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
             else:
                 st.info("🤔 &nbsp;&nbsp; Haystack is unsure whether any of the documents contain an answer to your question. Try to reformulate it!")
                 st.write("**Relevance:** ", result["relevance"])
-                
+
             if eval_mode and result["answer"]:
                 # Define columns for buttons
                 is_correct_answer = None

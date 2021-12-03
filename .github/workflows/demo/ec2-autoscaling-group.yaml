@@ -1,0 +1,158 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/goformation/v5.2.11/schema/cloudformation.schema.json
+
+
+Parameters:
+  Project:
+    Description: A project name that is used for resource names
+    Type: String
+    Default: haystack-demo
+
+  Environment:
+    Description: An environment name that is suffixed to resource names
+    Type: String
+    Default: production
+
+  VPCStack:
+    Description: VPC stack name
+    Type: String
+    Default: haystack-demo-production-vpc
+
+  CommitShortSHA:
+    Description: Commit short reference that triggered this deployment
+    Type: String
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: p3.2xlarge
+
+  ImageId:
+    Description: AMI to use for the EC2 instance
+    Type: String
+
+  IamInstanceProfile:
+    Description: IAM instance profile to attach to the EC2 instance
+    Type: String
+
+  KeyName:
+    Description: EC2 key pair to add to the EC2 instance
+    Type: String
+
+Resources:
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    CreationPolicy:
+      ResourceSignal:
+        Count: "1"
+        Timeout: PT45M
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: "1"
+        MaxBatchSize: "1"
+        PauseTime: PT45M
+        WaitOnResourceSignals: true
+        SuspendProcesses:
+          - HealthCheck
+          - ReplaceUnhealthy
+          - AZRebalance
+          - AlarmNotification
+          - ScheduledActions
+    Properties:
+      LaunchConfigurationName: !Ref InstanceConfiguration
+      VPCZoneIdentifier:
+        - !ImportValue
+          "Fn::Sub": "${VPCStack}-PublicSubnet1"
+        - !ImportValue
+          "Fn::Sub": "${VPCStack}-PublicSubnet2"
+      MaxSize: "2"
+      DesiredCapacity: "1"
+      MinSize: "1"
+      TargetGroupARNs:
+        - !ImportValue
+          "Fn::Sub": "${VPCStack}-DefaultTargetGroup"
+      Tags:
+        - Key: Name
+          Value: !Sub ${Project}-${Environment}
+          PropagateAtLaunch: true
+        - Key: Environment
+          Value: !Ref Project
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: !Ref Environment
+          PropagateAtLaunch: true
+        - Key: CommitShortSHA
+          Value: !Ref CommitShortSHA
+          PropagateAtLaunch: true
+
+  InstanceConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      LaunchConfigurationName: !Sub ${Project}-${Environment}-${CommitShortSHA}
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageId
+      IamInstanceProfile: !Ref IamInstanceProfile
+      KeyName: !Ref KeyName
+      AssociatePublicIpAddress: true
+      SecurityGroups:
+        - !ImportValue
+          "Fn::Sub": "${VPCStack}-InstanceSecurityGroup"
+      EbsOptimized: true
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 200
+
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -ex
+          mkdir -p /opt/aws/bin
+          wget https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+          python3 -m easy_install --script-dir /opt/aws/bin aws-cfn-bootstrap-py3-latest.tar.gz
+
+          trap '/opt/aws/bin/cfn-signal --exit-code 1 --stack ${AWS::StackId} --resource AutoScalingGroup --region ${AWS::Region}' ERR
+
+          echo "Deploying Haystack demo, commit ${CommitShortSHA}"
+
+          echo 'APT::Periodic::Update-Package-Lists "0";
+          APT::Periodic::Unattended-Upgrade "0";' > /etc/apt/apt.conf.d/20auto-upgrades
+
+          apt update
+          apt install -y curl git ca-certificates curl gnupg lsb-release
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo \
+              "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+              $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+          apt update
+          apt install -y docker-ce docker-ce-cli containerd.io
+
+          # Install Docker compose
+          curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/bin/docker-compose
+          chmod +x /usr/bin/docker-compose
+
+          # Install Nvidia container runtime
+          curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | \
+            apt-key add -
+          distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+          curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | \
+            tee /etc/apt/sources.list.d/nvidia-container-runtime.list
+          apt-get update
+          apt-get install -y nvidia-container-runtime
+
+          # Setup and start Docker
+          groupadd docker || true
+          usermod -aG docker $USER || true
+          newgrp docker || true
+          systemctl unmask docker
+          systemctl restart docker
+
+          # Exposes the GPUs to Docker
+          docker run --rm --gpus all ubuntu nvidia-smi
+
+          # Clone and start Haystack
+          git clone --branch deploy-demo https://github.com/askainet/haystack.git /opt/haystack
+          cd /opt/haystack
+          export COMPOSE_FILE=docker-compose-gpu.yml:.github/workflows/demo/docker-compose.demo.yml
+          docker-compose pull
+          docker-compose up -d
+
+          /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackId} --resource AutoScalingGroup --region ${AWS::Region}
