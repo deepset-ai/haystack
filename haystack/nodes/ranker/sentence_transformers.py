@@ -10,7 +10,6 @@ from haystack.schema import Document
 from haystack.nodes.ranker import BaseRanker
 from haystack.modeling.utils import initialize_device_settings
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +32,7 @@ class SentenceTransformersRanker(BaseRanker):
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
     """
+
     def __init__(
             self,
             model_name_or_path: Union[str, Path],
@@ -63,9 +63,11 @@ class SentenceTransformersRanker(BaseRanker):
             self.devices = devices
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
-        self.transformer_model = AutoModelForSequenceClassification.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
+        self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version)
         self.transformer_model.to(str(self.devices[0]))
-        self.transformer_tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
+        self.transformer_tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_name_or_path,
+                                                                   revision=model_version)
         self.transformer_model.eval()
 
         if len(self.devices) > 1:
@@ -106,9 +108,26 @@ class SentenceTransformersRanker(BaseRanker):
         with torch.no_grad():
             similarity_scores = self.transformer_model(**features).logits
 
+        logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
+        print("logits_dim: ", logits_dim)
+        sorted_scores_and_documents = sorted(
+            zip(similarity_scores, documents), key=lambda similarity_document_tuple:
+            # assume the last element in logits represents the `has_answer` label
+            similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
+            reverse=True)
+
         # rank documents according to scores
-        sorted_scores_and_documents = sorted(zip(similarity_scores, documents),
-                                             key=lambda similarity_document_tuple: similarity_document_tuple[0][1],
-                                             reverse=True)
         sorted_documents = [doc for _, doc in sorted_scores_and_documents]
         return sorted_documents[:top_k]
+
+
+if __name__ == '__main__':
+    from haystack.document_stores import ElasticsearchDocumentStore
+    from haystack.nodes.retriever import ElasticsearchRetriever
+
+    store = ElasticsearchDocumentStore(index="game-of-throne")
+    retriever = ElasticsearchRetriever(store, top_k=10)
+    question = "Who killed Jon Snow"
+    documents = retriever.retrieve(question, top_k=10)
+    ranker = SentenceTransformersRanker("", use_gpu=False)
+    ranked_documents = ranker.predict(question, documents, top_k=10)
