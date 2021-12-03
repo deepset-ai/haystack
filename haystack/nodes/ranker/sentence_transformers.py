@@ -18,7 +18,9 @@ class SentenceTransformersRanker(BaseRanker):
     Sentence Transformer based pre-trained Cross-Encoder model for Document Re-ranking (https://huggingface.co/cross-encoder).
     Re-Ranking can be used on top of a retriever to boost the performance for document search. This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
 
-    SentenceTransformerRanker handles Cross-Encoder models that use a single logit as similarity score.
+    SentenceTransformerRanker handles Cross-Encoder models
+        - use a single logit as similarity score e.g.  cross-encoder/ms-marco-MiniLM-L-12-v2
+        - use two output logits (no_answer, has_answer) e.g. deepset/gbert-base-germandpr-reranking
     https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
 
     |  With a SentenceTransformersRanker, you can:
@@ -103,7 +105,9 @@ class SentenceTransformersRanker(BaseRanker):
         features = self.transformer_tokenizer([query for doc in documents], [doc.content for doc in documents],
                                               padding=True, truncation=True, return_tensors="pt").to(self.devices[0])
 
-        # SentenceTransformerRanker uses the logit as similarity score and not the classifier's probability of label "1"
+        # SentenceTransformerRanker uses:
+        # 1. the logit as similarity score/answerable classification
+        # 2. the logits as answerable classification  (no_answer / has_answer)
         # https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
         with torch.no_grad():
             similarity_scores = self.transformer_model(**features).logits
