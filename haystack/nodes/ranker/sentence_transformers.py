@@ -119,15 +119,3 @@ class SentenceTransformersRanker(BaseRanker):
         # rank documents according to scores
         sorted_documents = [doc for _, doc in sorted_scores_and_documents]
         return sorted_documents[:top_k]
-
-
-if __name__ == '__main__':
-    from haystack.document_stores import ElasticsearchDocumentStore
-    from haystack.nodes.retriever import ElasticsearchRetriever
-
-    store = ElasticsearchDocumentStore(index="game-of-throne")
-    retriever = ElasticsearchRetriever(store, top_k=10)
-    question = "Who killed Jon Snow"
-    documents = retriever.retrieve(question, top_k=10)
-    ranker = SentenceTransformersRanker("", use_gpu=False)
-    ranked_documents = ranker.predict(question, documents, top_k=10)
