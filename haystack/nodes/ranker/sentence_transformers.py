@@ -109,7 +109,6 @@ class SentenceTransformersRanker(BaseRanker):
             similarity_scores = self.transformer_model(**features).logits
 
         logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
-        print("logits_dim: ", logits_dim)
         sorted_scores_and_documents = sorted(
             zip(similarity_scores, documents), key=lambda similarity_document_tuple:
             # assume the last element in logits represents the `has_answer` label
