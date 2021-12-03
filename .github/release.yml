@@ -3,27 +3,31 @@ changelog:
     labels:
       - ignore-for-release
   categories:
-    - title: Breaking Changes 🛠 
+    - title: Breaking Changes
       labels:
         - breaking change
+    - title: Pipeline
+      labels:
+        - topic:pipeline
     - title: Models
       labels:
         - topic:models
-    - title: REST API
-      labels:
-        - topic:api
     - title: DocumentStores
       labels:
         - topic:document_store
         - topic:elasticsearch
         - topic:faiss
         - topic:sql
+    - title: REST API
+      labels:
+        - topic:api
+    - title: UI / Demo
+      labels:
+        - topic:ui
+        - topic:demo
     - title: Documentation
       labels:
         - topic:documentation
-    - title: ui
-      labels:
-        - topic:ui
     - title: Other Changes
       labels:
         - "*"
