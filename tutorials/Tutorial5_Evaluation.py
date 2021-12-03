@@ -151,8 +151,14 @@ def tutorial5_evaluation():
 
     saved_eval_result = EvaluationResult.load("../")
     metrics = saved_eval_result.calculate_metrics()
-    print(metrics["Retriever"]["recall_single_hit"])
-    print(metrics["Reader"]["f1"])
+    print(f'Retriever - Recall (single relevant document): {metrics["Retriever"]["recall_single_hit"]}')
+    print(f'Retriever - Recall (multiple relevant documents): {metrics["Retriever"]["recall_multi_hit"]}')
+    print(f'Retriever - Mean Reciprocal Rank: {metrics["Retriever"]["mrr"]}')
+    print(f'Retriever - Precision: {metrics["Retriever"]["precision"]}')
+    print(f'Retriever - Mean Average Precision: {metrics["Retriever"]["map"]}')
+
+    print(f'Reader - F1-Score: {metrics["Reader"]["f1"]}')
+    print(f'Reader - Exact Match: {metrics["Reader"]["exact_match"]}')
 
     ## Generating an Evaluation Report
     # A summary of the evaluation results can be printed to get a quick overview. It includes some aggregated metrics and also shows a few wrongly predicted examples.
