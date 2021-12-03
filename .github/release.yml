@@ -27,7 +27,10 @@ changelog:
         - topic:demo
     - title: Documentation
       labels:
-        - topic:documentation
+        - type:documentation
+    - title: Tutorials
+      labels:
+        - type:tutorial
     - title: Other Changes
       labels:
         - "*"
