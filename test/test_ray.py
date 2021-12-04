@@ -21,6 +21,7 @@ def test_load_pipeline(document_store_with_docs):
 
 @pytest.fixture(scope="function", autouse=True)
 def shutdown_ray():
+    yield
     try:
         import ray
         ray.shutdown()
