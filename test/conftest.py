@@ -2,6 +2,7 @@ import subprocess
 import time
 from subprocess import run
 from sys import platform
+import multiprocessing as mp
 
 import numpy as np
 import psutil
@@ -116,6 +117,15 @@ def pytest_collection_modifyitems(config,items):
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
                 item.add_marker(skip_docstore)
 
+
+@pytest.fixture(scope="function", autouse=True)
+def multiprocessing_cleanup():
+    yield
+    import objgraph
+    pools = objgraph.by_type('Pool')
+    for pool in pools:
+        if isinstance(pool, mp.pool.Pool):
+            pool.close()
 
 @pytest.fixture(scope="session")
 def elasticsearch_fixture():
