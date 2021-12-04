@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import multiprocessing as mp
 
 import pytest
 from fastapi.testclient import TestClient
@@ -66,6 +67,16 @@ def populated_client(client: TestClient) -> TestClient:
         assert 200 == response.status_code
     yield client
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+
+
+@pytest.fixture(scope="module", autouse=True)
+def multiprocessing_cleanup():
+    yield
+    import objgraph
+    pools = objgraph.by_type('Pool')
+    for pool in pools:
+        if isinstance(pool, mp.pool.Pool):
+            pool.close()
 
 
 def test_get_documents():
