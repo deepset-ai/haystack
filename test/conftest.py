@@ -119,7 +119,9 @@ def pytest_collection_modifyitems(config,items):
 
 
 @pytest.fixture(scope="function", autouse=True)
-def multiprocessing_cleanup():
+def multiprocessing_cleanup(request):
+    if request.module.__name__ == "test_rest_api":
+        return
     yield
     import objgraph
     pools = objgraph.by_type('Pool')
