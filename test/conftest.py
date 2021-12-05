@@ -3,6 +3,7 @@ import time
 from subprocess import run
 from sys import platform
 import multiprocessing as mp
+import gc
 
 import numpy as np
 import psutil
@@ -128,6 +129,7 @@ def multiprocessing_cleanup(request):
     for pool in pools:
         if isinstance(pool, mp.pool.Pool):
             pool.close()
+    gc.collect()
 
 @pytest.fixture(scope="session")
 def elasticsearch_fixture():
