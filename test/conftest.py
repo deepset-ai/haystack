@@ -334,6 +334,12 @@ def table_reader():
 
 
 @pytest.fixture(scope="module")
+def ranker_two_logits():
+    return SentenceTransformersRanker(
+        model_name_or_path="deepset/gbert-base-germandpr-reranking",
+    )
+
+@pytest.fixture(scope="module")
 def ranker():
     return SentenceTransformersRanker(
         model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",

@@ -10,7 +10,6 @@ from haystack.schema import Document
 from haystack.nodes.ranker import BaseRanker
 from haystack.modeling.utils import initialize_device_settings
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +18,9 @@ class SentenceTransformersRanker(BaseRanker):
     Sentence Transformer based pre-trained Cross-Encoder model for Document Re-ranking (https://huggingface.co/cross-encoder).
     Re-Ranking can be used on top of a retriever to boost the performance for document search. This is particularly useful if the retriever has a high recall but is bad in sorting the documents by relevance.
 
-    SentenceTransformerRanker handles Cross-Encoder models that use a single logit as similarity score.
+    SentenceTransformerRanker handles Cross-Encoder models
+        - use a single logit as similarity score e.g.  cross-encoder/ms-marco-MiniLM-L-12-v2
+        - use two output logits (no_answer, has_answer) e.g. deepset/gbert-base-germandpr-reranking
     https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
 
     |  With a SentenceTransformersRanker, you can:
@@ -33,6 +34,7 @@ class SentenceTransformersRanker(BaseRanker):
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
     """
+
     def __init__(
             self,
             model_name_or_path: Union[str, Path],
@@ -63,9 +65,11 @@ class SentenceTransformersRanker(BaseRanker):
             self.devices = devices
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
-        self.transformer_model = AutoModelForSequenceClassification.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
+        self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version)
         self.transformer_model.to(str(self.devices[0]))
-        self.transformer_tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
+        self.transformer_tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_name_or_path,
+                                                                   revision=model_version)
         self.transformer_model.eval()
 
         if len(self.devices) > 1:
@@ -101,14 +105,20 @@ class SentenceTransformersRanker(BaseRanker):
         features = self.transformer_tokenizer([query for doc in documents], [doc.content for doc in documents],
                                               padding=True, truncation=True, return_tensors="pt").to(self.devices[0])
 
-        # SentenceTransformerRanker uses the logit as similarity score and not the classifier's probability of label "1"
+        # SentenceTransformerRanker uses:
+        # 1. the logit as similarity score/answerable classification
+        # 2. the logits as answerable classification  (no_answer / has_answer)
         # https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
         with torch.no_grad():
             similarity_scores = self.transformer_model(**features).logits
 
+        logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
+        sorted_scores_and_documents = sorted(
+            zip(similarity_scores, documents), key=lambda similarity_document_tuple:
+            # assume the last element in logits represents the `has_answer` label
+            similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
+            reverse=True)
+
         # rank documents according to scores
-        sorted_scores_and_documents = sorted(zip(similarity_scores, documents),
-                                             key=lambda similarity_document_tuple: similarity_document_tuple[0],
-                                             reverse=True)
         sorted_documents = [doc for _, doc in sorted_scores_and_documents]
         return sorted_documents[:top_k]
