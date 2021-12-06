@@ -13,11 +13,12 @@ from markdown import markdown
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
 # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 import SessionState
-from utils import HS_VERSION, haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
+from utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
 DEFAULT_QUESTION_AT_STARTUP = os.getenv("DEFAULT_QUESTION_AT_STARTUP", "What's the capital of France?")
+DEFAULT_ANSWER_AT_STARTUP = os.getenv("DEFAULT_ANSWER_AT_STARTUP", "Paris")
 
 # Sliders
 DEFAULT_DOCS_FROM_RETRIEVER = int(os.getenv("DEFAULT_DOCS_FROM_RETRIEVER", 3))
@@ -36,15 +37,16 @@ def main():
 
     # Persistent state
     state = SessionState.get(
-        random_question=DEFAULT_QUESTION_AT_STARTUP,
-        random_answer="",
-        last_question=DEFAULT_QUESTION_AT_STARTUP,
+        question=DEFAULT_QUESTION_AT_STARTUP,
+        answer=DEFAULT_ANSWER_AT_STARTUP,
         results=None,
         raw_json=None,
+        random_question_requested=False
     )
 
     # Small callback to reset the interface in case the text of the question changes
     def reset_results(*args):
+        state.answer = None
         state.results = None
         state.raw_json = None
 
@@ -131,7 +133,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
 
     # Search bar
     question = st.text_input("",
-        value=state.random_question,
+        value=state.question,
         max_chars=100,
         on_change=reset_results
     )
@@ -141,22 +143,24 @@ Ask any question on this topic and see if Haystack can find the correct answer t
 
     # Run button
     run_pressed = col1.button("Run")
-    run_query = run_pressed or question != state.last_question
 
     # Get next random question from the CSV
-    #state.get_next_question = col2.button("Random question")
     if col2.button("Random question"):
         reset_results()
         new_row = df.sample(1)
-        while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
+        while new_row["Question Text"].values[0] == state.question:  # Avoid picking the same question twice (the change is not visible on the UI)
             new_row = df.sample(1)
-        state.random_question = new_row["Question Text"].values[0]
-        state.random_answer = new_row["Answer"].values[0]
-
+        state.question = new_row["Question Text"].values[0]
+        state.answer = new_row["Answer"].values[0]
+        state.random_question_requested = True
         # Re-runs the script setting the random question as the textbox value
         # Unfortunately necessary as the Random Question button is _below_ the textbox
         raise st.script_runner.RerunException(st.script_request_queue.RerunData(None))
-
+    else:
+        state.random_question_requested = False
+    
+    run_query = (run_pressed or question != state.question) and not state.random_question_requested
+    
     # Check the connection
     with st.spinner("⌛️ &nbsp;&nbsp; Haystack is starting..."):
         if not haystack_is_ready():
@@ -167,7 +171,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     # Get results for query
     if run_query and question:
         reset_results()
-        state.last_question = question
+        state.question = question
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
@@ -189,9 +193,9 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     if state.results:
 
         # Show the gold answer if we use a question of the given set
-        if question == state.random_question and eval_mode and state.random_answer:
-            st.write("## Correct answers:")
-            st.write(state.random_answer)
+        if eval_mode and state.answer:
+            st.write("## Correct answer:")
+            st.write(state.answer)
 
         st.write("## Results:")
 
