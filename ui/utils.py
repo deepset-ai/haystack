@@ -83,7 +83,7 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
                     "_raw": answer,
                 }
             )
-    return results, response_raw
+    return results, response
 
 
 def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, document) -> None:
@@ -108,8 +108,8 @@ def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, doc
 def upload_doc(file):
     url = f"{API_ENDPOINT}/{DOC_UPLOAD}"
     files = [("files", file)]
-    response_raw = requests.post(url, files=files).json()
-    return response_raw
+    response = requests.post(url, files=files).json()
+    return response
 
 
 def get_backlink(result) -> Tuple[str, str]:
