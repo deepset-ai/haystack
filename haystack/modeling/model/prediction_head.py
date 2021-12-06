@@ -342,6 +342,13 @@ class QuestionAnsweringHead(PredictionHead):
         start_position.clamp_(0, ignored_index)
         end_position.clamp_(0, ignored_index)
 
+        # Workaround for pytorch bug in version 1.10.0 with non-continguous tensors
+        # Fix expected in 1.10.1 based on https://github.com/pytorch/pytorch/pull/64954
+        start_logits=start_logits.contiguous()
+        start_position=start_position.contiguous()
+        end_logits=end_logits.contiguous()
+        end_position=end_position.contiguous()
+        
         loss_fct = CrossEntropyLoss(reduction="none")
         start_loss = loss_fct(start_logits, start_position)
         end_loss = loss_fct(end_logits, end_position)
