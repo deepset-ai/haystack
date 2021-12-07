@@ -303,7 +303,7 @@ def optimize_model(model, device, local_rank, optimizer=None, distributed=False,
                            find_unused_parameters=True)
 
     elif torch.cuda.device_count() > 1 and device.type == "cuda":
-        model = WrappedDataParallel(model)
+        model = WrappedDataParallel(model) if not isinstance(model, DataParallel) else WrappedDataParallel(model.module)
         logger.info("Multi-GPU Training via DataParallel")
 
     return model, optimizer
