@@ -354,7 +354,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> List[Document]:  # type: ignore
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         query = {"query": {"ids": {"values": ids}}}
