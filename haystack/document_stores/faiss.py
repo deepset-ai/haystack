@@ -205,6 +205,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :paran headers: is currently not used
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -342,7 +343,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         headers: MutableMapping[str, str] = None
     ) -> List[Document]:
         result = self.get_all_documents_generator(
-            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size, headers=headers
+            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
         documents = list(result)
         return documents
@@ -366,10 +367,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :paran headers: is currently not used
         """
         index = index or self.index
         documents = super(FAISSDocumentStore, self).get_all_documents_generator(
-            index=index, filters=filters, batch_size=batch_size, return_embedding=False,
+            index=index, filters=filters, batch_size=batch_size, return_embedding=False
         )
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -437,7 +439,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, None, filters, headers=headers)
+        self.delete_documents(index, None, filters)
 
     def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
@@ -451,6 +453,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
+        :paran headers: is currently not used
         :return: None
         """
         index = index or self.index
@@ -458,13 +461,13 @@ class FAISSDocumentStore(SQLDocumentStore):
             if not filters and not ids:
                 self.faiss_indexes[index].reset()
             else:
-                affected_docs = self.get_all_documents(filters=filters, headers=headers)
+                affected_docs = self.get_all_documents(filters=filters)
                 if ids:
                     affected_docs = [doc for doc in affected_docs if doc.id in ids]
                 doc_ids = [doc.meta.get("vector_id") for doc in affected_docs if doc.meta and doc.meta.get("vector_id") is not None]
                 self.faiss_indexes[index].remove_ids(np.array(doc_ids, dtype="int64"))
 
-        super().delete_documents(index=index, ids=ids, filters=filters, headers=headers)
+        super().delete_documents(index=index, ids=ids, filters=filters)
 
     def query_by_embedding(
         self,
@@ -483,6 +486,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
+        :paran headers: is currently not used
         :param return_embedding: To return document embedding
         :return:
         """

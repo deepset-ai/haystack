@@ -89,6 +89,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :paran headers: is currently not used
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -175,6 +176,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :paran headers: is currently not used
         :return:
         """
         index = index or self.index
@@ -337,8 +339,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
+        :param batch_size: is currently not used
+        :paran headers: is currently not used
         """
-        result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding)
+        result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size)
         documents = list(result)
         return documents
 
@@ -359,6 +363,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
+        :param batch_size: is currently not used
+        :paran headers: is currently not used
         """
         result = self._query(
             index=index,
@@ -396,6 +402,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
+        :paran headers: is currently not used
         :return: None
         """
         logger.warning(
@@ -418,6 +425,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
+        :paran headers: is currently not used
 
         :return: None
         """
@@ -440,6 +448,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
                         Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+        :paran headers: is currently not used
         :return: None
         """
         index = index or self.label_index

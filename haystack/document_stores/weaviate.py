@@ -378,6 +378,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :paran headers: is currently not used
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -524,6 +525,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :paran headers: is currently not used
         """
         index = self._sanitize_index_name(index) or self.index
         result = self.get_all_documents_generator(
@@ -570,6 +572,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -582,6 +585,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :paran headers: is currently not used
         """
 
         index = self._sanitize_index_name(index) or self.index
@@ -661,6 +665,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :paran headers: is currently not used
         :return:
         """
         if return_embedding is None:
@@ -761,6 +766,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Delete documents in an index. All documents are deleted if no filters are passed.
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
+        :paran headers: is currently not used
         :return: None
         """
         logger.warning(
@@ -783,6 +789,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
+        :paran headers: is currently not used
         :return: None
         """
         index = self._sanitize_index_name(index) or self.index
@@ -794,7 +801,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.weaviate_client.schema.delete_class(index)
             self._create_schema_and_index_if_not_exist(index)
         else:
-            docs_to_delete = self.get_all_documents(index, filters=filters, headers=headers)
+            docs_to_delete = self.get_all_documents(index, filters=filters)
             if ids:
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
             for doc in docs_to_delete:

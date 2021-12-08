@@ -182,7 +182,7 @@ class SQLDocumentStore(BaseDocumentStore):
         batch_size: int = 10_000,
         headers: MutableMapping[str, str] = None
     ) -> List[Document]:
-        documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size, headers=headers))
+        documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size))
         return documents
 
     def get_all_documents_generator(
@@ -204,6 +204,7 @@ class SQLDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :paran headers: is currently not used
         """
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
@@ -319,6 +320,7 @@ class SQLDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :paran headers: is currently not used
 
         :return: None
         """
@@ -522,6 +524,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
+        :paran headers: is currently not used
         :return: None
         """
         logger.warning(
@@ -530,7 +533,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, None, filters, headers=headers)
+        self.delete_documents(index, None, filters)
 
     def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
@@ -544,6 +547,7 @@ class SQLDocumentStore(BaseDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
+        :paran headers: is currently not used
         :return: None
         """
         index = index or self.index
@@ -576,6 +580,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
                         Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+        :paran headers: is currently not used
         :return: None
         """
         index = index or self.label_index

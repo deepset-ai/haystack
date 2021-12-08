@@ -180,6 +180,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :paran headers: is currently not used
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -341,6 +342,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :paran headers: is currently not used
         :return: list of Documents that are the most similar to `query_emb`
         """
         if filters:
@@ -394,6 +396,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param index: (SQL) index name for storing the docs and metadata
         :param filters: Optional filters to narrow down the search space.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :paran headers: is currently not used
         :return: None
         """
         logger.warning(
@@ -416,6 +419,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
+        :paran headers: is currently not used
         :return: None
         """
         index = index or self.index
@@ -458,6 +462,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :paran headers: is currently not used
         """
         index = index or self.index
         documents = super().get_all_documents_generator(
@@ -488,6 +493,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :paran headers: is currently not used
         """
         index = index or self.index
         result = self.get_all_documents_generator(
@@ -503,6 +509,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param id: ID of the document
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
+        :paran headers: is currently not used
         """
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
@@ -517,7 +524,8 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param ids: List of IDs of the documents
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param batch_size: is currently not used
+        :paran headers: is currently not used
         """
         index = index or self.index
         documents = super().get_documents_by_id(ids=ids, index=index)
