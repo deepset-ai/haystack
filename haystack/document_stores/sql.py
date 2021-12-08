@@ -121,11 +121,6 @@ class SQLDocumentStore(BaseDocumentStore):
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
-
-        # # Enfore FK check for SQLite: docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
-        # if "sqlite" in url:
-        #     self.session.execute('pragma foreign_keys=on')
-        
         self.index: str = index
         self.label_index = label_index
         self.duplicate_documents = duplicate_documents
