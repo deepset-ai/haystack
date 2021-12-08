@@ -262,7 +262,7 @@ Fetch a document by specifying its text id string
 #### get\_documents\_by\_id
 
 ```python
- | get_documents_by_id(ids: List[str], index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> List[Document]
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings
