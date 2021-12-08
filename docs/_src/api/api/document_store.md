@@ -659,7 +659,7 @@ In-memory document store
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, **kwargs)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, duplicate_documents: Optional[str] = None, **kwargs)
 ```
 
 Indexes documents for later queries.
