@@ -642,7 +642,7 @@ In-memory document store
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, duplicate_documents: Optional[str] = None)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, duplicate_documents: Optional[str] = None, headers: MutableMapping[str, str] = None)
 ```
 
 Indexes documents for later queries.
@@ -1004,7 +1004,7 @@ None
 #### write\_labels
 
 ```python
- | write_labels(labels, index=None)
+ | write_labels(labels, index=None, headers: MutableMapping[str, str] = None)
 ```
 
 Write annotation labels into document store.
