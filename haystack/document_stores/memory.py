@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, Generator
+from typing import TYPE_CHECKING, Dict, List, MutableMapping, Optional, Union, Generator
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
@@ -118,7 +118,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding",
         }
 
-    def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None):
+    def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None, headers: MutableMapping[str, str] = None):
         """
         Write annotation labels into document store.
         """
@@ -140,7 +140,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                 label.updated_at = label.created_at
             self.indexes[index][label.id] = label
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
         """
         Fetch a document by specifying its text id string.
         """
@@ -164,7 +164,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None) -> List[Document]:
+                           return_embedding: Optional[bool] = None,
+                           headers: MutableMapping[str, str] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -259,7 +260,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                 progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -274,7 +275,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         embedding_count = sum(doc.embedding is not None for doc in documents)
         return embedding_count
 
-    def get_label_count(self, index: Optional[str] = None) -> int:
+    def get_label_count(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
         """
         Return the number of labels in the document store.
         """
@@ -288,6 +289,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return_embedding: Optional[bool] = None,
         only_documents_without_embedding: bool = False,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ):
         index = index or self.index
         documents = deepcopy(list(self.indexes[index].values()))
@@ -325,6 +327,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ) -> List[Document]:
         """
         Get all documents from the document store as a list.
@@ -345,6 +348,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. The methods returns a Python Generator that yields individual
@@ -364,7 +368,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         yield from result
 
-    def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]:
+    def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None) -> List[Label]:
         """
         Return all labels in the document store.
         """
@@ -386,7 +390,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return result
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -402,7 +406,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -427,7 +431,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for doc in docs_to_delete:
             del self.indexes[index][doc.id]
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
