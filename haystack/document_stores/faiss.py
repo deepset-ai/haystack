@@ -191,7 +191,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
                         batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
-                        headers: MutableMapping[str, str] = None) -> None:
+                        **kwargs) -> None:
         """
         Add new documents to the DocumentStore.
 
@@ -205,7 +205,6 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :paran headers: is currently not used
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -340,7 +339,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> List[Document]:
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
@@ -354,7 +353,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None 
+        **kwargs 
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -367,7 +366,6 @@ class FAISSDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :paran headers: is currently not used
         """
         index = index or self.index
         documents = super(FAISSDocumentStore, self).get_all_documents_generator(
@@ -383,7 +381,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             yield doc
 
     def get_documents_by_id(
-        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None
+        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, **kwargs
     ) -> List[Document]:
         index = index or self.index
         documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index)
@@ -429,7 +427,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         if embeddings:
             self.faiss_indexes[index].train(embeddings)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete all documents from the document store.
         """
@@ -441,7 +439,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
@@ -476,7 +474,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -486,7 +484,6 @@ class FAISSDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
-        :paran headers: is currently not used
         :param return_embedding: To return document embedding
         :return:
         """

@@ -222,7 +222,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         }
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: MutableMapping[str, str] = None, index_param: Optional[Dict[str, Any]] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, index_param: Optional[Dict[str, Any]] = None, **kwargs):
         """
         Add new documents to the DocumentStore.
 
@@ -236,7 +236,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :paran headers: is currently not used
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return:
         """
@@ -438,7 +437,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None,
-                           headers: MutableMapping[str, str] = None) -> List[Document]:
+                           **kwargs) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -448,7 +447,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
         :param return_embedding: To return document embedding
-        :paran headers: is currently not used
         :return:
         """
         index = index or self.index
@@ -521,13 +519,12 @@ class Milvus2DocumentStore(SQLDocumentStore):
         return documents
 
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete all documents (from SQL AND Milvus).
         :param index: (SQL) index name for storing the docs and metadata
         :param filters: Optional filters to narrow down the search space.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :paran headers: is currently not used
         :return: None
         """
         index = index or self.index
@@ -557,7 +554,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -570,7 +567,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :paran headers: is currently not used
         """
         index = index or self.index
         documents = super().get_all_documents_generator(
@@ -590,7 +586,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             filters: Optional[Dict[str, List[str]]] = None,
             return_embedding: Optional[bool] = None,
             batch_size: int = 10_000,
-            headers: MutableMapping[str, str] = None
+            **kwargs
     ) -> List[Document]:
         """
         Get documents from the document store (optionally using filter criteria).
@@ -601,7 +597,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :paran headers: is currently not used
         """
 
         index = index or self.index
@@ -611,21 +606,20 @@ class Milvus2DocumentStore(SQLDocumentStore):
         documents = list(result)
         return documents
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, **kwargs) -> Optional[Document]:
         """
         Fetch a document by specifying its text id string
 
         :param id: ID of the document
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :paran headers: is currently not used
         """
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
         return document
 
     def get_documents_by_id(
-            self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None
+            self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, **kwargs
     ) -> List[Document]:
         """
         Fetch multiple documents by specifying their IDs (strings)
@@ -634,7 +628,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :paran headers: is currently not used
         """
         index = index or self.index
         documents = super().get_documents_by_id(ids=ids, index=index)

@@ -55,8 +55,7 @@ class BaseDocumentStore(BaseComponent):
 
     @abstractmethod
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, 
-                        headers: MutableMapping[str, str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, **kwargs):
         """
         Indexes documents for later queries.
 
@@ -74,7 +73,6 @@ class BaseDocumentStore(BaseComponent):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
         :return: None
         """
@@ -87,7 +85,7 @@ class BaseDocumentStore(BaseComponent):
             filters: Optional[Dict[str, List[str]]] = None,
             return_embedding: Optional[bool] = None, 
             batch_size: int = 10_000, 
-            headers: MutableMapping[str, str] = None
+            **kwargs
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -98,7 +96,6 @@ class BaseDocumentStore(BaseComponent):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: Number of documents that are passed to bulk function at a time.
-        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
         """
         pass
 
@@ -108,8 +105,8 @@ class BaseDocumentStore(BaseComponent):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        batch_size: int = 10_000, 
+        **kwargs
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -122,7 +119,6 @@ class BaseDocumentStore(BaseComponent):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
         """
         pass
 
@@ -141,7 +137,7 @@ class BaseDocumentStore(BaseComponent):
             return ret
 
     @abstractmethod
-    def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None) -> List[Label]:
+    def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs) -> List[Label]:
         pass
 
     def get_all_labels_aggregated(self,
@@ -151,7 +147,7 @@ class BaseDocumentStore(BaseComponent):
                                   drop_negative_labels: bool=False,
                                   drop_no_answers: bool=False,
                                   aggregate_by_meta: Optional[Union[str, list]]=None,
-                                  headers: MutableMapping[str, str] = None) -> List[MultiLabel]:
+                                  **kwargs) -> List[MultiLabel]:
         """
         Return all labels in the DocumentStore, aggregated into MultiLabel objects. 
         This aggregation step helps, for example, if you collected multiple possible answers for one question and you
@@ -175,11 +171,10 @@ class BaseDocumentStore(BaseComponent):
                             might return multiple MultiLabel objects with the same question string.
         :param TODO drop params
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
         """
         aggregated_labels = []
-        all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
+        all_labels = self.get_all_labels(index=index, filters=filters, **kwargs)
 
         # Collect all answers to a question in a dict
         question_ans_dict: dict = {}
@@ -216,11 +211,11 @@ class BaseDocumentStore(BaseComponent):
         return aggregated_labels
 
     @abstractmethod
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, **kwargs) -> Optional[Document]:
         pass
 
     @abstractmethod
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, **kwargs) -> int:
         pass
 
     @njit#(fastmath=True)
@@ -253,21 +248,21 @@ class BaseDocumentStore(BaseComponent):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None,
-                           headers: MutableMapping[str, str] = None) -> List[Document]:
+                           **kwargs) -> List[Document]:
         pass
 
     @abstractmethod
-    def get_label_count(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
+    def get_label_count(self, index: Optional[str] = None, **kwargs) -> int:
         pass
 
     @abstractmethod
-    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None, headers: MutableMapping[str, str] = None):
+    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None, **kwargs):
         pass
 
     def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
                       batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None,
                       max_docs: Union[int, bool] = None, open_domain: bool = False, 
-                      headers: MutableMapping[str, str] = None):
+                      **kwargs):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
         If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
@@ -286,7 +281,6 @@ class BaseDocumentStore(BaseComponent):
                          When set to None (default) all available eval documents are used.
         :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the
                             same question might be found in different contexts.
-        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
         """
         # TODO improve support for PreProcessor when adding eval data
@@ -309,43 +303,43 @@ class BaseDocumentStore(BaseComponent):
         if file_path.suffix == ".json":
             if batch_size is None:
                 docs, labels = eval_data_from_json(filename, max_docs=max_docs, preprocessor=preprocessor, open_domain=open_domain)
-                self.write_documents(docs, index=doc_index, headers=headers)
-                self.write_labels(labels, index=label_index, headers=headers)
+                self.write_documents(docs, index=doc_index, **kwargs)
+                self.write_labels(labels, index=label_index, **kwargs)
             else:
                 jsonl_filename = (file_path.parent / (file_path.stem + '.jsonl')).as_posix()
                 logger.info(f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
                             f"Converting json to jsonl to: {jsonl_filename}")
                 squad_json_to_jsonl(filename, jsonl_filename)
-                self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size, open_domain=open_domain, headers=headers)
+                self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size, open_domain=open_domain, **kwargs)
 
         elif file_path.suffix == ".jsonl":
             for docs, labels in eval_data_from_jsonl(filename, batch_size, max_docs=max_docs, preprocessor=preprocessor, open_domain=open_domain):
                 if docs:
-                    self.write_documents(docs, index=doc_index, headers=headers)
+                    self.write_documents(docs, index=doc_index, **kwargs)
                 if labels:
-                    self.write_labels(labels, index=label_index, headers=headers)
+                    self.write_labels(labels, index=label_index, **kwargs)
 
         else:
             logger.error("File needs to be in json or jsonl format.")
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         pass
 
     @abstractmethod
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         pass
 
     @abstractmethod
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None, headers: MutableMapping[str, str] = None):  # type: ignore
-        self.write_documents(documents=documents, index=index, headers=headers)
+    def run(self, documents: List[dict], index: Optional[str] = None, **kwargs):  # type: ignore
+        self.write_documents(documents=documents, index=index, **kwargs)
         return {}, "output_1"
 
     @abstractmethod
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
-                            batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> List[Document]:
+                            **kwargs) -> List[Document]:
         pass
 
     def _drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
@@ -372,7 +366,7 @@ class BaseDocumentStore(BaseComponent):
                                     documents: List[Document],
                                     index: Optional[str] = None,
                                     duplicate_documents: Optional[str] = None,
-                                    headers: MutableMapping[str, str] = None):
+                                    **kwargs):
         """
         Checks whether any of the passed documents is already existing in the chosen index and returns a list of
         documents that are not in the index yet.
@@ -384,14 +378,13 @@ class BaseDocumentStore(BaseComponent):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
         :return: A list of Haystack Document objects.
        """
 
         index = index or self.index
         if duplicate_documents in ('skip', 'fail'):
             documents = self._drop_duplicate_documents(documents)
-            documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=index, headers=headers)
+            documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=index, **kwargs)
             ids_exist_in_db: List[str] = [doc.id for doc in documents_found]
 
             if len(ids_exist_in_db) > 0 and duplicate_documents == 'fail':
@@ -402,12 +395,11 @@ class BaseDocumentStore(BaseComponent):
 
         return documents
 
-    def _get_duplicate_labels(self, labels: list, index: str = None, headers: MutableMapping[str, str] = None) -> List[Label]:
+    def _get_duplicate_labels(self, labels: list, index: str = None, **kwargs) -> List[Label]:
         """
         Return all duplicate labels
         :param labels: List of Label objects
         :param index: add an optional index attribute to labels. It can be later used for filtering.
-        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
         :return: List of labels
         """
         index = index or self.label_index
@@ -418,7 +410,7 @@ class BaseDocumentStore(BaseComponent):
             if count > 1:
                 duplicate_ids.append(label_id)
 
-        for label in self.get_all_labels(index=index, headers=headers):
+        for label in self.get_all_labels(index=index, **kwargs):
             if label.id in new_ids:
                 duplicate_ids.append(label.id)
 

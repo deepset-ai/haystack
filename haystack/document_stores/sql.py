@@ -137,13 +137,13 @@ class SQLDocumentStore(BaseDocumentStore):
             if sqlite3.sqlite_version < "3.25":
                 self.use_windowed_query = False
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, **kwargs) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
         return document
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, **kwargs) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
 
@@ -180,7 +180,7 @@ class SQLDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> List[Document]:
         documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size))
         return documents
@@ -191,7 +191,7 @@ class SQLDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -204,7 +204,6 @@ class SQLDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :paran headers: is currently not used
         """
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
@@ -289,7 +288,7 @@ class SQLDocumentStore(BaseDocumentStore):
             documents_map[row.document_id].meta[row.name] = row.value
         return documents_map
 
-    def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: MutableMapping[str, str] = None):
+    def get_all_labels(self, index=None, filters: Optional[dict] = None, **kwargs):
         """
         Return all labels in the document store
         """
@@ -301,8 +300,8 @@ class SQLDocumentStore(BaseDocumentStore):
         return labels
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
-                        headers: MutableMapping[str, str] = None) -> None:
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, 
+                        **kwargs) -> None:
         """
         Indexes documents for later queries.
 
@@ -320,7 +319,6 @@ class SQLDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :paran headers: is currently not used
 
         :return: None
         """
@@ -359,7 +357,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 self.session.rollback()
                 raise ex
 
-    def write_labels(self, labels, index=None, headers: MutableMapping[str, str] = None):
+    def write_labels(self, labels, index=None, **kwargs):
         """Write annotation labels into document store."""
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
@@ -448,7 +446,7 @@ class SQLDocumentStore(BaseDocumentStore):
             self.session.add(m)
         self.session.commit()
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, **kwargs) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -467,7 +465,7 @@ class SQLDocumentStore(BaseDocumentStore):
         count = query.count()
         return count
 
-    def get_label_count(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
+    def get_label_count(self, index: Optional[str] = None, **kwargs) -> int:
         """
         Return the number of labels in the document store
         """
@@ -512,19 +510,18 @@ class SQLDocumentStore(BaseDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None,
-                           headers: MutableMapping[str, str] = None) -> List[Document]:
+                           **kwargs) -> List[Document]:
 
         raise NotImplementedError("SQLDocumentStore is currently not supporting embedding queries. "
                                   "Change the query type (e.g. by choosing a different retriever) "
                                   "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
-        :paran headers: is currently not used
         :return: None
         """
         logger.warning(
@@ -535,7 +532,7 @@ class SQLDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -547,7 +544,6 @@ class SQLDocumentStore(BaseDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
-        :paran headers: is currently not used
         :return: None
         """
         index = index or self.index
@@ -571,7 +567,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         self.session.commit()
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete labels from the document store. All labels are deleted if no filters are passed.
 
@@ -580,7 +576,6 @@ class SQLDocumentStore(BaseDocumentStore):
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
                         Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
-        :paran headers: is currently not used
         :return: None
         """
         index = index or self.label_index

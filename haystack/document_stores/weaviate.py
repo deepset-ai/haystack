@@ -255,7 +255,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding"
         }
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, **kwargs) -> Optional[Document]:
         """Fetch a document by specifying its uuid string"""
         # Sample result dict from a get method
         '''{'class': 'Document',
@@ -276,7 +276,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         return document
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
-                            batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> List[Document]:
+                            batch_size: int = 10_000, **kwargs) -> List[Document]:
         """
         Fetch documents by specifying a list of uuid strings.
         """
@@ -364,8 +364,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def write_documents(
             self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-            batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
-            headers: MutableMapping[str, str] = None):
+            batch_size: int = 10_000, duplicate_documents: Optional[str] = None, 
+            **kwargs):
         """
         Add new documents to the DocumentStore.
 
@@ -378,7 +378,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :paran headers: is currently not used
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -485,7 +484,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         return self.get_document_count(filters=filters, index=index)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, **kwargs) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -514,7 +513,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -525,7 +524,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :paran headers: is currently not used
         """
         index = self._sanitize_index_name(index) or self.index
         result = self.get_all_documents_generator(
@@ -572,7 +570,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -585,7 +583,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :paran headers: is currently not used
         """
 
         index = self._sanitize_index_name(index) or self.index
@@ -655,7 +652,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None,
-                           headers: MutableMapping[str, str] = None) -> List[Document]:
+                           **kwargs) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -665,7 +662,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: index name for storing the docs and metadata
         :param return_embedding: To return document embedding
-        :paran headers: is currently not used
         :return:
         """
         if return_embedding is None:
@@ -761,12 +757,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 if self.similarity=="cosine": self.normalize_embedding(emb)
                 self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
-        :paran headers: is currently not used
         :return: None
         """
         logger.warning(
@@ -777,7 +772,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -789,7 +784,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
-        :paran headers: is currently not used
         :return: None
         """
         index = self._sanitize_index_name(index) or self.index

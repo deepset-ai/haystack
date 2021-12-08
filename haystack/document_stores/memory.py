@@ -71,7 +71,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.duplicate_documents = duplicate_documents
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,  # type: ignore
-                        duplicate_documents: Optional[str] = None, headers: MutableMapping[str, str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, **kwargs):
         """
         Indexes documents for later queries.
 
@@ -89,7 +89,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :paran headers: is currently not used
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -119,7 +118,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding",
         }
 
-    def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None, headers: MutableMapping[str, str] = None):
+    def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None, **kwargs):
         """
         Write annotation labels into document store.
         """
@@ -141,7 +140,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                 label.updated_at = label.created_at
             self.indexes[index][label.id] = label
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, **kwargs) -> Optional[Document]:
         """
         Fetch a document by specifying its text id string.
         """
@@ -166,7 +165,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None,
-                           headers: MutableMapping[str, str] = None) -> List[Document]:
+                           **kwargs) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -176,7 +175,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
-        :paran headers: is currently not used
         :return:
         """
         index = index or self.index
@@ -262,7 +260,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                 progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, **kwargs) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -277,7 +275,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         embedding_count = sum(doc.embedding is not None for doc in documents)
         return embedding_count
 
-    def get_label_count(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
+    def get_label_count(self, index: Optional[str] = None, **kwargs) -> int:
         """
         Return the number of labels in the document store.
         """
@@ -291,7 +289,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return_embedding: Optional[bool] = None,
         only_documents_without_embedding: bool = False,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ):
         index = index or self.index
         documents = deepcopy(list(self.indexes[index].values()))
@@ -329,7 +327,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> List[Document]:
         """
         Get all documents from the document store as a list.
@@ -340,7 +338,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: is currently not used
-        :paran headers: is currently not used
         """
         result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size)
         documents = list(result)
@@ -352,7 +349,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        **kwargs
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. The methods returns a Python Generator that yields individual
@@ -364,7 +361,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: is currently not used
-        :paran headers: is currently not used
         """
         result = self._query(
             index=index,
@@ -374,7 +370,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         yield from result
 
-    def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None) -> List[Label]:
+    def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs) -> List[Label]:
         """
         Return all labels in the document store.
         """
@@ -396,13 +392,12 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return result
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
-        :paran headers: is currently not used
         :return: None
         """
         logger.warning(
@@ -413,7 +408,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -425,7 +420,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
-        :paran headers: is currently not used
 
         :return: None
         """
@@ -439,7 +433,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for doc in docs_to_delete:
             del self.indexes[index][doc.id]
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
@@ -448,7 +442,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
                         Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
-        :paran headers: is currently not used
         :return: None
         """
         index = index or self.label_index
