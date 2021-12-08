@@ -71,6 +71,28 @@ Get documents from the document store.
 - `batch_size`: Number of documents that are passed to bulk function at a time.
 - `headers`: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
+<a name="base.BaseDocumentStore.get_all_documents_generator"></a>
+#### get\_all\_documents\_generator
+
+```python
+ | @abstractmethod
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> Generator[Document, None, None]
+```
+
+Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+document store and yielded as individual documents. This method can be used to iteratively process
+a large number of documents without having to load all documents in memory.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+              DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+
 <a name="base.BaseDocumentStore.get_all_labels_aggregated"></a>
 #### get\_all\_labels\_aggregated
 
@@ -663,6 +685,7 @@ Indexes documents for later queries.
                              overwrite: Update any existing documents with the same ID when adding documents.
                              fail: an error is raised if the document ID of the document being added already
                              exists.
+:paran headers: is currently not used
 
 **Raises**:
 
@@ -716,6 +739,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -790,6 +814,8 @@ Get all documents from the document store as a list.
 - `filters`: Optional filters to narrow down the documents to return.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: is currently not used
+:paran headers: is currently not used
 
 <a name="memory.InMemoryDocumentStore.get_all_documents_generator"></a>
 #### get\_all\_documents\_generator
@@ -808,6 +834,8 @@ documents.
 - `filters`: Optional filters to narrow down the documents to return.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: is currently not used
+:paran headers: is currently not used
 
 <a name="memory.InMemoryDocumentStore.get_all_labels"></a>
 #### get\_all\_labels
@@ -831,6 +859,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 - `index`: Index name to delete the document from.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -855,6 +884,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -876,6 +906,7 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 - `ids`: Optional list of IDs to narrow down the labels to be deleted.
 - `filters`: Optional filters to narrow down the labels to be deleted.
                 Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -960,6 +991,7 @@ a large number of documents without having to load all documents in memory.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+:paran headers: is currently not used
 
 <a name="sql.SQLDocumentStore.get_all_labels"></a>
 #### get\_all\_labels
@@ -995,6 +1027,7 @@ Indexes documents for later queries.
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1073,6 +1106,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 - `index`: Index name to delete the document from.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1097,6 +1131,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1118,6 +1153,7 @@ Delete labels from the document store. All labels are deleted if no filters are 
 - `ids`: Optional list of IDs to narrow down the labels to be deleted.
 - `filters`: Optional filters to narrow down the labels to be deleted.
                 Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1212,6 +1248,7 @@ Add new documents to the DocumentStore.
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+:paran headers: is currently not used
 
 **Raises**:
 
@@ -1266,6 +1303,7 @@ a large number of documents without having to load all documents in memory.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+:paran headers: is currently not used
 
 <a name="faiss.FAISSDocumentStore.get_embedding_count"></a>
 #### get\_embedding\_count
@@ -1325,6 +1363,7 @@ Delete documents from the document store. All documents are deleted if no filter
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1346,6 +1385,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name to query the document from.
+:paran headers: is currently not used
 - `return_embedding`: To return document embedding
 
 **Returns**:
@@ -1488,6 +1528,7 @@ Add new documents to the DocumentStore.
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+:paran headers: is currently not used
 
 **Raises**:
 
@@ -1540,6 +1581,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 - `top_k`: How many documents to return
 - `index`: (SQL) index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1559,6 +1601,7 @@ Delete all documents (from SQL AND Milvus).
 - `index`: (SQL) index name for storing the docs and metadata
 - `filters`: Optional filters to narrow down the search space.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1583,6 +1626,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1607,6 +1651,7 @@ a large number of documents without having to load all documents in memory.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+:paran headers: is currently not used
 
 <a name="milvus.MilvusDocumentStore.get_all_documents"></a>
 #### get\_all\_documents
@@ -1625,6 +1670,7 @@ Get documents from the document store (optionally using filter criteria).
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+:paran headers: is currently not used
 
 <a name="milvus.MilvusDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -1640,6 +1686,7 @@ Fetch a document by specifying its text id string
 - `id`: ID of the document
 - `index`: Name of the index to get the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
+:paran headers: is currently not used
 
 <a name="milvus.MilvusDocumentStore.get_documents_by_id"></a>
 #### get\_documents\_by\_id
@@ -1655,7 +1702,8 @@ Fetch multiple documents by specifying their IDs (strings)
 - `ids`: List of IDs of the documents
 - `index`: Name of the index to get the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
-- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `batch_size`: is currently not used
+:paran headers: is currently not used
 
 <a name="milvus.MilvusDocumentStore.get_all_vectors"></a>
 #### get\_all\_vectors
@@ -1790,6 +1838,7 @@ Add new documents to the DocumentStore.
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+:paran headers: is currently not used
 
 **Raises**:
 
@@ -1843,12 +1892,13 @@ Get documents from the document store.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+:paran headers: is currently not used
 
 <a name="weaviate.WeaviateDocumentStore.get_all_documents_generator"></a>
 #### get\_all\_documents\_generator
 
 ```python
- | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> Generator[Document, None, None]
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> Generator[Document, None, None]
 ```
 
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -1863,6 +1913,7 @@ a large number of documents without having to load all documents in memory.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+:paran headers: is currently not used
 
 <a name="weaviate.WeaviateDocumentStore.query"></a>
 #### query
@@ -1900,6 +1951,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 - `top_k`: How many documents to return
 - `index`: index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1942,6 +1994,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 - `index`: Index name to delete the document from.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+:paran headers: is currently not used
 
 **Returns**:
 
@@ -1966,6 +2019,7 @@ Delete documents in an index. All documents are deleted if no filters are passed
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
+:paran headers: is currently not used
 
 **Returns**:
 
