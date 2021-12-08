@@ -413,7 +413,8 @@ class DensePassageRetriever(BaseRetriever):
         self.query_tokenizer.save_pretrained(f"{save_dir}/{query_encoder_save_dir}")
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
 
-        self.model = DataParallel(self.model, device_ids=self.devices)
+        if len(self.devices) > 1 and not isinstance(self.model, DataParallel):
+            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def save(self, save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder",
              passage_encoder_dir: str = "passage_encoder"):
