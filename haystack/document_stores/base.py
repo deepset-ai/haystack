@@ -34,12 +34,12 @@ class BaseKnowledgeGraph(BaseComponent):
     """
     outgoing_edges = 1
 
-    def run(self, sparql_query: str, index: Optional[str] = None, **kwargs):  # type: ignore
-        result = self.query(sparql_query=sparql_query, index=index)
+    def run(self, sparql_query: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None):  # type: ignore
+        result = self.query(sparql_query=sparql_query, index=index, headers=headers)
         output = {"sparql_result": result}
         return output, "output_1"
 
-    def query(self, sparql_query: str, index: Optional[str] = None):
+    def query(self, sparql_query: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None):
         raise NotImplementedError
 
 
