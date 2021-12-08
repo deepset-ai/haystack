@@ -31,7 +31,7 @@ class DocumentORM(ORMBase):
     content = Column(JSON, nullable=False)
     content_type = Column(Text, nullable=True)
     # primary key in combination with id to allow the same doc in different indices
-    index = Column(String(100), nullable=False, primary_key=True)
+    index = Column(String(100), nullable=False)#, primary_key=True)
     vector_id = Column(String(100), unique=True, nullable=True)
 
     # labels = relationship("LabelORM", back_populates="document")
@@ -75,7 +75,7 @@ class LabelORM(ORMBase):
 
     # document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
-    index = Column(String(100), nullable=False, primary_key=True)
+    index = Column(String(100), nullable=False)#, primary_key=True)
     query = Column(Text, nullable=False)
     answer = Column(JSON, nullable=True)
     document = Column(JSON, nullable=False)
@@ -123,7 +123,7 @@ class SQLDocumentStore(BaseDocumentStore):
             engine = create_engine(url, connect_args={'check_same_thread': check_same_thread})
         else:
             engine = create_engine(url)
-        ORMBase.metadata.create_all(engine)
+        Base.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
         self.index: str = index
