@@ -181,7 +181,7 @@ class TfidfRetriever(BaseRetriever):
         )
         return indices_and_scores
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -192,7 +192,7 @@ class TfidfRetriever(BaseRetriever):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         if self.auto_fit:
-            if self.document_store.get_document_count() != self.document_count:
+            if self.document_store.get_document_count(headers=headers) != self.document_count:
                 # run fit() to update self.df, self.tfidf_matrix and self.document_count
                 logger.warning("Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now.")
                 self.fit()
