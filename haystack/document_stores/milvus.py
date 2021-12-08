@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, MutableMapping, Optional, Union
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
@@ -166,7 +166,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         }
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, index_param: Optional[Dict[str, Any]] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: MutableMapping[str, str] = None, index_param: Optional[Dict[str, Any]] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -330,7 +330,8 @@ class MilvusDocumentStore(SQLDocumentStore):
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None) -> List[Document]:
+                           return_embedding: Optional[bool] = None,
+                           headers: MutableMapping[str, str] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -387,7 +388,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete all documents (from SQL AND Milvus).
         :param index: (SQL) index name for storing the docs and metadata
@@ -403,7 +404,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -444,6 +445,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -475,6 +477,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             filters: Optional[Dict[str, List[str]]] = None,
             return_embedding: Optional[bool] = None,
             batch_size: int = 10_000,
+            headers: MutableMapping[str, str] = None
     ) -> List[Document]:
         """
         Get documents from the document store (optionally using filter criteria).
@@ -493,7 +496,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         documents = list(result)
         return documents
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
         """
         Fetch a document by specifying its text id string
 
@@ -506,7 +509,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         return document
 
     def get_documents_by_id(
-            self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000
+            self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None
     ) -> List[Document]:
         """
         Fetch multiple documents by specifying their IDs (strings)

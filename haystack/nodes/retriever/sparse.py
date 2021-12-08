@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, MutableMapping, Optional
 
 import logging
 import pandas as pd
@@ -58,7 +58,13 @@ class ElasticsearchRetriever(BaseRetriever):
         self.top_k = top_k
         self.custom_query = custom_query
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(
+        self, 
+        query: str, 
+        filters: dict = None, 
+        top_k: Optional[int] = None, 
+        index: str = None,
+        headers: MutableMapping[str, str] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -67,13 +73,14 @@ class ElasticsearchRetriever(BaseRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: custom headers to pass to es client (e.g. user token with 'Authorization' header)
         """
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
 
-        documents = self.document_store.query(query, filters, top_k, self.custom_query, index)
+        documents = self.document_store.query(query, filters, top_k, self.custom_query, index, headers=headers)
         return documents
 
 
@@ -82,7 +89,13 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
     """
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(
+        self, 
+        query: str, 
+        filters: dict = None, 
+        top_k: Optional[int] = None, 
+        index: str = None, 
+        headers: MutableMapping[str, str] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -91,13 +104,15 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: custom headers to pass to es client (e.g. user token with 'Authorization' header)
         """
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
         documents = self.document_store.query(query=None, filters=filters, top_k=top_k,
-                                              custom_query=self.custom_query, index=index)
+                                              custom_query=self.custom_query, index=index,
+                                              headers=headers)
         return documents
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, MutableMapping
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
@@ -190,7 +190,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None:
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
+                        headers: MutableMapping[str, str] = None) -> None:
         """
         Add new documents to the DocumentStore.
 
@@ -338,9 +339,10 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ) -> List[Document]:
         result = self.get_all_documents_generator(
-            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
+            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size, headers=headers
         )
         documents = list(result)
         return documents
@@ -351,6 +353,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None 
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -378,7 +381,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             yield doc
 
     def get_documents_by_id(
-        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000
+        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None
     ) -> List[Document]:
         index = index or self.index
         documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index)
@@ -424,7 +427,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         if embeddings:
             self.faiss_indexes[index].train(embeddings)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete all documents from the document store.
         """
@@ -434,9 +437,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, None, filters)
+        self.delete_documents(index, None, filters, headers=headers)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
@@ -455,13 +458,13 @@ class FAISSDocumentStore(SQLDocumentStore):
             if not filters and not ids:
                 self.faiss_indexes[index].reset()
             else:
-                affected_docs = self.get_all_documents(filters=filters)
+                affected_docs = self.get_all_documents(filters=filters, headers=headers)
                 if ids:
                     affected_docs = [doc for doc in affected_docs if doc.id in ids]
                 doc_ids = [doc.meta.get("vector_id") for doc in affected_docs if doc.meta and doc.meta.get("vector_id") is not None]
                 self.faiss_indexes[index].remove_ids(np.array(doc_ids, dtype="int64"))
 
-        super().delete_documents(index=index, ids=ids, filters=filters)
+        super().delete_documents(index=index, ids=ids, filters=filters, headers=headers)
 
     def query_by_embedding(
         self,
@@ -469,7 +472,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
-        return_embedding: Optional[bool] = None
+        return_embedding: Optional[bool] = None,
+        headers: MutableMapping[str, str] = None
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.

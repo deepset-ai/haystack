@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union, List, Optional, Generator
+from typing import Any, Dict, MutableMapping, Union, List, Optional, Generator
 
 import logging
 import itertools
@@ -137,13 +137,13 @@ class SQLDocumentStore(BaseDocumentStore):
             if sqlite3.sqlite_version < "3.25":
                 self.use_windowed_query = False
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
         return document
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
 
@@ -179,8 +179,10 @@ class SQLDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ) -> List[Document]:
-        documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding))
+        documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size, headers=headers))
         return documents
 
     def get_all_documents_generator(
@@ -189,6 +191,7 @@ class SQLDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -285,7 +288,7 @@ class SQLDocumentStore(BaseDocumentStore):
             documents_map[row.document_id].meta[row.name] = row.value
         return documents_map
 
-    def get_all_labels(self, index=None, filters: Optional[dict] = None):
+    def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: MutableMapping[str, str] = None):
         """
         Return all labels in the document store
         """
@@ -297,7 +300,8 @@ class SQLDocumentStore(BaseDocumentStore):
         return labels
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None:
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
+                        headers: MutableMapping[str, str] = None) -> None:
         """
         Indexes documents for later queries.
 
@@ -442,7 +446,7 @@ class SQLDocumentStore(BaseDocumentStore):
             self.session.add(m)
         self.session.commit()
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -461,7 +465,7 @@ class SQLDocumentStore(BaseDocumentStore):
         count = query.count()
         return count
 
-    def get_label_count(self, index: Optional[str] = None) -> int:
+    def get_label_count(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
         """
         Return the number of labels in the document store
         """
@@ -505,13 +509,14 @@ class SQLDocumentStore(BaseDocumentStore):
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None) -> List[Document]:
+                           return_embedding: Optional[bool] = None,
+                           headers: MutableMapping[str, str] = None) -> List[Document]:
 
         raise NotImplementedError("SQLDocumentStore is currently not supporting embedding queries. "
                                   "Change the query type (e.g. by choosing a different retriever) "
                                   "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -525,9 +530,9 @@ class SQLDocumentStore(BaseDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, None, filters)
+        self.delete_documents(index, None, filters, headers=headers)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -562,7 +567,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         self.session.commit()
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete labels from the document store. All labels are deleted if no filters are passed.
 

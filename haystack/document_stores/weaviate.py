@@ -1,7 +1,7 @@
 import hashlib
 import re
 import uuid
-from typing import Dict, Generator, List, Optional, Union
+from typing import Dict, Generator, List, MutableMapping, Optional, Union
 
 import logging
 import json
@@ -255,7 +255,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding"
         }
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]:
         """Fetch a document by specifying its uuid string"""
         # Sample result dict from a get method
         '''{'class': 'Document',
@@ -276,7 +276,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         return document
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
-                            batch_size: int = 10_000) -> List[Document]:
+                            batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> List[Document]:
         """
         Fetch documents by specifying a list of uuid strings.
         """
@@ -364,7 +364,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def write_documents(
             self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-            batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
+            batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
+            headers: MutableMapping[str, str] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -483,7 +484,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         return self.get_document_count(filters=filters, index=index)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -512,6 +513,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: MutableMapping[str, str] = None
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -648,7 +650,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None) -> List[Document]:
+                           return_embedding: Optional[bool] = None,
+                           headers: MutableMapping[str, str] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -753,7 +756,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 if self.similarity=="cosine": self.normalize_embedding(emb)
                 self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
         :param index: Index name to delete the document from.
@@ -768,7 +771,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -791,7 +794,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.weaviate_client.schema.delete_class(index)
             self._create_schema_and_index_if_not_exist(index)
         else:
-            docs_to_delete = self.get_all_documents(index, filters=filters)
+            docs_to_delete = self.get_all_documents(index, filters=filters, headers=headers)
             if ids:
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
             for doc in docs_to_delete:
