@@ -71,7 +71,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.duplicate_documents = duplicate_documents
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,  # type: ignore
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, **kwargs):
+                        duplicate_documents: Optional[str] = None, **kwargs):
         """
         Indexes documents for later queries.
 
