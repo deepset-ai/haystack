@@ -807,7 +807,6 @@ Get all documents from the document store as a list.
 - `filters`: Optional filters to narrow down the documents to return.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
-- `batch_size`: is currently not used
 
 <a name="memory.InMemoryDocumentStore.get_all_documents_generator"></a>
 #### get\_all\_documents\_generator
@@ -826,7 +825,6 @@ documents.
 - `filters`: Optional filters to narrow down the documents to return.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
-- `batch_size`: is currently not used
 
 <a name="memory.InMemoryDocumentStore.get_all_labels"></a>
 #### get\_all\_labels
@@ -1344,7 +1342,6 @@ Delete documents from the document store. All documents are deleted if no filter
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
-:paran headers: is currently not used
 
 **Returns**:
 
@@ -1785,7 +1782,7 @@ Fetch a document by specifying its uuid string
 #### get\_documents\_by\_id
 
 ```python
- | get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, **kwargs) -> List[Document]
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None, **kwargs) -> List[Document]
 ```
 
 Fetch documents by specifying a list of uuid strings.
