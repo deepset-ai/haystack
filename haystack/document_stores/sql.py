@@ -20,7 +20,7 @@ Base = declarative_base()  # type: Any
 class ORMBase(Base):
     __abstract__ = True
 
-    id = Column(String(100), default=lambda: str(uuid4()), primary_key=True)
+    id = Column(String(100), default=lambda: str(uuid4()), unique=True, primary_key=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
@@ -28,16 +28,14 @@ class ORMBase(Base):
 class DocumentORM(ORMBase):
     __tablename__ = "document"
 
+    # Composite PK with id allows the same doc in many indices
+    index = Column(String(100), nullable=False, unique=True, primary_key=True)
+
     content = Column(JSON, nullable=False)
     content_type = Column(Text, nullable=True)
-    # primary key in combination with id to allow the same doc in different indices
-    index = Column(String(100), nullable=False)#, primary_key=True)
     vector_id = Column(String(100), unique=True, nullable=True)
-
-    # labels = relationship("LabelORM", back_populates="document")
-
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
-    meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
+    meta = relationship("MetaDocumentORM", back_populates="document", lazy="joined")
 
 
 class MetaDocumentORM(ORMBase):
@@ -51,8 +49,24 @@ class MetaDocumentORM(ORMBase):
         nullable=False,
         index=True
     )
+    document = relationship("DocumentORM", back_populates="meta")
 
-    documents = relationship("DocumentORM", back_populates="meta")
+
+class LabelORM(ORMBase):
+    __tablename__ = "label"
+
+    # Composite PK with id allows the same label in many indices
+    index = Column(String(100), nullable=False, unique=True, primary_key=True)
+    
+    query = Column(Text, nullable=False)
+    answer = Column(JSON, nullable=True)
+    document = Column(JSON, nullable=False)
+    no_answer = Column(Boolean, nullable=False)
+    origin = Column(String(100), nullable=False)
+    is_correct_answer = Column(Boolean, nullable=False)
+    is_correct_document = Column(Boolean, nullable=False)
+    pipeline_id = Column(String(500), nullable=True)
+    meta = relationship("MetaLabelORM", back_populates="label", lazy="joined")
 
 
 class MetaLabelORM(ORMBase):
@@ -66,27 +80,8 @@ class MetaLabelORM(ORMBase):
         nullable=False,
         index=True
     )
+    label = relationship("LabelORM", back_populates="meta")
 
-    labels = relationship("LabelORM", back_populates="meta")
-
-
-class LabelORM(ORMBase):
-    __tablename__ = "label"
-
-    # document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
-
-    index = Column(String(100), nullable=False)#, primary_key=True)
-    query = Column(Text, nullable=False)
-    answer = Column(JSON, nullable=True)
-    document = Column(JSON, nullable=False)
-    no_answer = Column(Boolean, nullable=False)
-    origin = Column(String(100), nullable=False)
-    is_correct_answer = Column(Boolean, nullable=False)
-    is_correct_document = Column(Boolean, nullable=False)
-    pipeline_id = Column(String(500), nullable=True)
-
-    meta = relationship("MetaLabelORM", back_populates="labels", lazy="joined")
-    # document = relationship("DocumentORM", back_populates="labels")
 
 
 class SQLDocumentStore(BaseDocumentStore):
@@ -123,9 +118,14 @@ class SQLDocumentStore(BaseDocumentStore):
             engine = create_engine(url, connect_args={'check_same_thread': check_same_thread})
         else:
             engine = create_engine(url)
-        Base.metadata.create_all(engine)
+        ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
+
+        # # Enfore FK check for SQLite: docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
+        # if "sqlite" in url:
+        #     self.session.execute('pragma foreign_keys=on')
+        
         self.index: str = index
         self.label_index = label_index
         self.duplicate_documents = duplicate_documents
