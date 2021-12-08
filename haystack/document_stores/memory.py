@@ -337,7 +337,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
-        :param batch_size: is currently not used
         """
         result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size)
         documents = list(result)
@@ -360,7 +359,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
-        :param batch_size: is currently not used
         """
         result = self._query(
             index=index,

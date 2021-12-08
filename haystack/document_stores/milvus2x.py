@@ -630,7 +630,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         index = index or self.index
-        documents = super().get_documents_by_id(ids=ids, index=index)
+        documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if self.return_embedding:
             self._populate_embeddings_to_docs(index=index, docs=documents)
 

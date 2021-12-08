@@ -384,7 +384,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, **kwargs
     ) -> List[Document]:
         index = index or self.index
-        documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index)
+        documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if self.return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
@@ -451,7 +451,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
-        :paran headers: is currently not used
         :return: None
         """
         index = index or self.index

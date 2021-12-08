@@ -275,8 +275,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
-                            batch_size: int = 10_000, **kwargs) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], 
+                            index: Optional[str] = None, 
+                            **kwargs) -> List[Document]:
         """
         Fetch documents by specifying a list of uuid strings.
         """

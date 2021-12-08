@@ -227,7 +227,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                                                  f'supported. Please use list or numpy.ndarray')
 
                     if duplicate_documents == 'overwrite':
-                        existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
+                        existing_docs = super().get_documents_by_id(ids=doc_ids, index=index, batch_size=batch_size)
                         self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
 
                     status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings)
@@ -520,7 +520,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param batch_size: is currently not used
         """
         index = index or self.index
-        documents = super().get_documents_by_id(ids=ids, index=index)
+        documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if self.return_embedding:
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
