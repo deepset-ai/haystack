@@ -73,7 +73,7 @@ class ElasticsearchRetriever(BaseRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param headers: custom headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
         """
         if top_k is None:
             top_k = self.top_k
@@ -104,7 +104,7 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param headers: custom headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
         """
         if top_k is None:
             top_k = self.top_k

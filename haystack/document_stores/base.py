@@ -74,7 +74,7 @@ class BaseDocumentStore(BaseComponent):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param headers: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
         :return: None
         """
@@ -98,7 +98,7 @@ class BaseDocumentStore(BaseComponent):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: Number of documents that are passed to bulk function at a time.
-        :param headers: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
         """
         pass
 
@@ -151,7 +151,7 @@ class BaseDocumentStore(BaseComponent):
                             might return multiple MultiLabel objects with the same question string.
         :param TODO drop params
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-        :param headers: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
         """
         aggregated_labels = []
@@ -262,7 +262,7 @@ class BaseDocumentStore(BaseComponent):
                          When set to None (default) all available eval documents are used.
         :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the
                             same question might be found in different contexts.
-        :param headers: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
         """
         # TODO improve support for PreProcessor when adding eval data
@@ -360,7 +360,7 @@ class BaseDocumentStore(BaseComponent):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param headers: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
         :return: A list of Haystack Document objects.
        """
 
@@ -383,7 +383,7 @@ class BaseDocumentStore(BaseComponent):
         Return all duplicate labels
         :param labels: List of Label objects
         :param index: add an optional index attribute to labels. It can be later used for filtering.
-        :param headers: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
         :return: List of labels
         """
         index = index or self.label_index
