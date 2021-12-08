@@ -213,7 +213,7 @@ It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
