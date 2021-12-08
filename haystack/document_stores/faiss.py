@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, MutableMapping
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever

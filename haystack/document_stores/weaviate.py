@@ -1,7 +1,7 @@
 import hashlib
 import re
 import uuid
-from typing import Dict, Generator, List, MutableMapping, Optional, Union
+from typing import Dict, Generator, List, Optional, Union
 
 import logging
 import json

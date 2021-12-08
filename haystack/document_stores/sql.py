@@ -1,4 +1,4 @@
-from typing import Any, Dict, MutableMapping, Union, List, Optional, Generator
+from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
 import itertools

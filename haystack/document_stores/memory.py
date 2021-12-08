@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, List, MutableMapping, Optional, Union, Generator
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, Generator
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
