@@ -36,7 +36,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+- `headers`: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
 <a name="base.BaseRetriever.timing"></a>
 #### timing
@@ -80,7 +80,7 @@ position in the ranking of documents the correct document is.
                     are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                      contains the keys "predictions" and "metrics".
-- `headers`: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+- `headers`: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
 <a name="sparse"></a>
 # Module sparse
@@ -152,7 +152,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: custom headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
 
 <a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
 ## ElasticsearchFilterOnlyRetriever
@@ -180,7 +180,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: custom headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
 
 <a name="sparse.TfidfRetriever"></a>
 ## TfidfRetriever
