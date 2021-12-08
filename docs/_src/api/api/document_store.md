@@ -676,7 +676,7 @@ None
 #### write\_labels
 
 ```python
- | write_labels(labels: Union[List[dict], List[Label]], index: Optional[str] = None)
+ | write_labels(labels: Union[List[dict], List[Label]], index: Optional[str] = None, headers: MutableMapping[str, str] = None)
 ```
 
 Write annotation labels into document store.
@@ -685,7 +685,7 @@ Write annotation labels into document store.
 #### get\_document\_by\_id
 
 ```python
- | get_document_by_id(id: str, index: Optional[str] = None) -> Optional[Document]
+ | get_document_by_id(id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string.
@@ -703,7 +703,7 @@ Fetch documents by specifying a list of text id strings.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: MutableMapping[str, str] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -751,7 +751,7 @@ None
 #### get\_document\_count
 
 ```python
- | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int
+ | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int
 ```
 
 Return the number of documents in the document store.
@@ -769,7 +769,7 @@ Return the count of embeddings in the document store.
 #### get\_label\_count
 
 ```python
- | get_label_count(index: Optional[str] = None) -> int
+ | get_label_count(index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> int
 ```
 
 Return the number of labels in the document store.
@@ -778,7 +778,7 @@ Return the number of labels in the document store.
 #### get\_all\_documents
 
 ```python
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> List[Document]
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> List[Document]
 ```
 
 Get all documents from the document store as a list.
@@ -795,7 +795,7 @@ Get all documents from the document store as a list.
 #### get\_all\_documents\_generator
 
 ```python
- | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000) -> Generator[Document, None, None]
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. The methods returns a Python Generator that yields individual
@@ -813,7 +813,7 @@ documents.
 #### get\_all\_labels
 
 ```python
- | get_all_labels(index: str = None, filters: Optional[Dict[str, List[str]]] = None) -> List[Label]
+ | get_all_labels(index: str = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None) -> List[Label]
 ```
 
 Return all labels in the document store.
@@ -822,7 +822,7 @@ Return all labels in the document store.
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -840,7 +840,7 @@ None
 #### delete\_documents
 
 ```python
- | delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -864,7 +864,7 @@ None
 #### delete\_labels
 
 ```python
- | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None)
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None)
 ```
 
 Delete labels in an index. All labels are deleted if no filters are passed.
