@@ -24,7 +24,7 @@ Base class for regular retrievers.
 
 ```python
  | @abstractmethod
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -36,6 +36,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
 <a name="base.BaseRetriever.timing"></a>
 #### timing
@@ -50,7 +51,7 @@ Wrapper method used to time functions.
 #### eval
 
 ```python
- | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+ | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False, headers: MutableMapping[str, str] = None) -> dict
 ```
 
 Performs evaluation on the Retriever.
@@ -79,6 +80,7 @@ position in the ranking of documents the correct document is.
                     are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                      contains the keys "predictions" and "metrics".
+- `headers`: custom headers to pass to document store client if available (e.g. user token with 'Authorization' header)
 
 <a name="sparse"></a>
 # Module sparse
@@ -138,7 +140,7 @@ class ElasticsearchRetriever(BaseRetriever)
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -150,6 +152,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: custom headers to pass to es client (e.g. user token with 'Authorization' header)
 
 <a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
 ## ElasticsearchFilterOnlyRetriever
@@ -165,7 +168,7 @@ Helpful for benchmarking, testing and if you want to do QA on small documents wi
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -177,6 +180,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: custom headers to pass to es client (e.g. user token with 'Authorization' header)
 
 <a name="sparse.TfidfRetriever"></a>
 ## TfidfRetriever
@@ -309,7 +313,7 @@ The checkpoint format matches huggingface transformers' model format
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -648,7 +652,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
