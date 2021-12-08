@@ -71,7 +71,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.duplicate_documents = duplicate_documents
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,  # type: ignore
-                        duplicate_documents: Optional[str] = None):
+                        duplicate_documents: Optional[str] = None, headers: MutableMapping[str, str] = None):
         """
         Indexes documents for later queries.
 

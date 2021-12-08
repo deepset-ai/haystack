@@ -357,7 +357,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 self.session.rollback()
                 raise ex
 
-    def write_labels(self, labels, index=None):
+    def write_labels(self, labels, index=None, headers: MutableMapping[str, str] = None):
         """Write annotation labels into document store."""
 
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
