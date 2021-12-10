@@ -17,7 +17,7 @@ class MarkdownConverter(BaseConverter):
             remove_numeric_tables: Optional[bool] = None,
             valid_languages: Optional[List[str]] = None,
             encoding: Optional[str] = "utf-8",
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Reads text from a txt file and executes optional preprocessing steps.
 
@@ -33,7 +33,7 @@ class MarkdownConverter(BaseConverter):
             markdown_text = f.read()
         text = self.markdown_to_text(markdown_text)
         document = {"content": text, "content_type": "text", "meta": meta}
-        return document
+        return [document]
 
     # Following code snippet is copied from https://gist.github.com/lorey/eb15a7f3338f959a78cc3661fbc255fe
     @staticmethod

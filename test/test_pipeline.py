@@ -3,7 +3,22 @@ from pathlib import Path
 import os
 import pytest
 
-from haystack.pipelines import Pipeline, RootNode
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.pipeline import (
+    JoinDocuments,
+    Pipeline,
+    FAQPipeline,
+    DocumentSearchPipeline,
+    RootNode,
+    SklearnQueryClassifier,
+    TransformersQueryClassifier,
+    MostSimilarDocumentsPipeline,
+)
+from haystack.pipelines import ExtractiveQAPipeline
+from haystack.reader import FARMReader
+from haystack.retriever.dense import DensePassageRetriever
+from haystack.retriever.sparse import ElasticsearchRetriever
+from haystack.schema import Document
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
@@ -67,6 +82,67 @@ def test_load_and_save_yaml(document_store, tmp_path):
         " ", ""
     ).replace("\n", "")
 
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
+    # populating index
+    pipeline = Pipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+    )
+    pipeline.run(
+        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+    )
+    # test correct load of query pipeline from yaml
+    pipeline = ExtractiveQAPipeline.load_from_yaml(
+        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+    )
+    prediction = pipeline.run(
+        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+    )
+    assert prediction["query"] == "Who made the PDF specification?"
+    assert prediction["answers"][0].answer == "Adobe Systems"
+    assert "_debug" not in prediction.keys()
+
+    # test invalid pipeline name
+    with pytest.raises(Exception):
+        ExtractiveQAPipeline.load_from_yaml(
+            path=Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
+        )
+    # test config export
+    pipeline.save_to_yaml(tmp_path / "test.yaml")
+    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
+        saved_yaml = stream.read()
+    expected_yaml = """
+        components:
+        - name: ESRetriever
+          params:
+            document_store: ElasticsearchDocumentStore
+          type: ElasticsearchRetriever
+        - name: ElasticsearchDocumentStore
+          params:
+            index: haystack_test
+            label_index: haystack_test_label
+          type: ElasticsearchDocumentStore
+        - name: Reader
+          params:
+            model_name_or_path: deepset/roberta-base-squad2
+            no_ans_boost: -10
+          type: FARMReader
+        pipelines:
+        - name: query
+          nodes:
+          - inputs:
+            - Query
+            name: ESRetriever
+          - inputs:
+            - ESRetriever
+            name: Reader
+          type: Pipeline
+        version: '0.8'
+    """
+    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(
+        " ", ""
+    ).replace("\n", "")
 
 def test_load_tfidfretriever_yaml(tmp_path):
     documents = [

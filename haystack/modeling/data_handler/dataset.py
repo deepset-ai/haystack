@@ -43,7 +43,7 @@ def convert_features_to_dataset(features):
     all_tensors = []
     for t_name in tensor_names:
         try:
-            # Checking weather a non-integer will be silently converted to torch.long
+            # Checking whether a non-integer will be silently converted to torch.long
             check = features[0][t_name]
             if isinstance(check, numbers.Number):
                 base = check

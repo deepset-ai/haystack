@@ -63,3 +63,4 @@ weaviate-client==2.5.0
 ray==1.5.0
 dataclasses-json
 quantulum3
+azure-ai-formrecognizer==3.2.0b2

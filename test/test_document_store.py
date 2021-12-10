@@ -668,19 +668,25 @@ def test_multilabel(document_store):
 
     # for open-domain we group all together as long as they have the same question
     assert len(multi_labels_open) == 1
-    # all labels are in there except the negative one
-    assert len(multi_labels_open[0].answers) == 4
+    # all labels are in there except the negative one and the no_answer
+    assert len(multi_labels_open[0].labels) == 4
+    assert len(multi_labels_open[0].answers) == 3
     assert "5-negative" not in [l.id for l in multi_labels_open[0].labels]
+    assert len(multi_labels_open[0].document_ids) == 3
 
     # Don't drop the negative label
     multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=True,
                                                                  drop_no_answers=False, drop_negative_labels=False)
-    assert len(multi_labels_open[0].answers) == 5
+    assert len(multi_labels_open[0].labels) == 5
+    assert len(multi_labels_open[0].answers) == 4
+    assert len(multi_labels_open[0].document_ids) == 4
 
     # Drop no answer + negative
     multi_labels_open = document_store.get_all_labels_aggregated(index="haystack_test_multilabel", open_domain=True,
                                                                  drop_no_answers=True, drop_negative_labels=True)
+    assert len(multi_labels_open[0].labels) == 3
     assert len(multi_labels_open[0].answers) == 3
+    assert len(multi_labels_open[0].document_ids) == 3
 
     # for closed domain we group by document so we expect 3 multilabels with 2,1,1 labels each (negative dropped again)
     multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel",
@@ -756,8 +762,8 @@ def test_multilabel_no_answer(document_store):
                                                             drop_negative_labels=True)
     assert len(multi_labels) == 1
     assert multi_labels[0].no_answer == True
-    assert len(multi_labels[0].document_ids) == 2
-    assert len(multi_labels[0].answers) == 2
+    assert len(multi_labels[0].document_ids) == 0
+    assert len(multi_labels[0].answers) == 1
 
     multi_labels = document_store.get_all_labels_aggregated(index="haystack_test_multilabel_no_answer",
                                                             open_domain=True,
@@ -765,9 +771,9 @@ def test_multilabel_no_answer(document_store):
                                                             drop_negative_labels=False)
     assert len(multi_labels) == 1
     assert multi_labels[0].no_answer == True
-    assert len(multi_labels[0].document_ids) == 3
+    assert len(multi_labels[0].document_ids) == 0
     assert len(multi_labels[0].labels) == 3
-    assert len(multi_labels[0].answers) == 3
+    assert len(multi_labels[0].answers) == 1
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
@@ -920,3 +926,18 @@ def test_skip_missing_embeddings():
     document_store.skip_missing_embeddings = True
     with pytest.raises(RequestError):
         document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_synonyms():
+    synonyms = ["i-pod, i pod, ipod", "sea biscuit, sea biscit, seabiscuit", "foo, foo bar, baz"]
+    synonym_type = "synonym_graph"
+
+    client = Elasticsearch()
+    client.indices.delete(index='haystack_synonym_arg', ignore=[404])
+    document_store = ElasticsearchDocumentStore(index="haystack_synonym_arg", synonyms=synonyms,
+                                                synonym_type=synonym_type)
+    indexed_settings = client.indices.get_settings(index="haystack_synonym_arg")
+
+    assert synonym_type == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['type']
+    assert synonyms == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['synonyms']

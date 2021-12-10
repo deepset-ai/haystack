@@ -3,53 +3,81 @@ import sys
 
 import logging
 import pandas as pd
+from json import JSONDecodeError
 from pathlib import Path
 import streamlit as st
-from annotated_text import annotated_text
+from annotated_text import annotation
+from markdown import markdown
 
 # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
 # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
 # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 import SessionState
-from utils import HS_VERSION, feedback_doc, haystack_is_ready, retrieve_doc, upload_doc, haystack_version
+from utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:
-DEFAULT_QUESTION_AT_STARTUP = "Who's the father of Arya Stark?"
+DEFAULT_QUESTION_AT_STARTUP = os.getenv("DEFAULT_QUESTION_AT_STARTUP", "What's the capital of France?")
+DEFAULT_ANSWER_AT_STARTUP = os.getenv("DEFAULT_ANSWER_AT_STARTUP", "Paris")
+
+# Sliders
+DEFAULT_DOCS_FROM_RETRIEVER = int(os.getenv("DEFAULT_DOCS_FROM_RETRIEVER", 3))
+DEFAULT_NUMBER_OF_ANSWERS = int(os.getenv("DEFAULT_NUMBER_OF_ANSWERS", 3))
 
 # Labels for the evaluation
 EVAL_LABELS = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_example.csv")
 
 # Whether the file upload should be enabled or not
-DISABLE_FILE_UPLOAD = os.getenv("HAYSTACK_UI_DISABLE_FILE_UPLOAD")
-
-# Retrieve Haystack version from the REST API
-HS_VERSION = haystack_version()
+DISABLE_FILE_UPLOAD = bool(os.getenv("DISABLE_FILE_UPLOAD"))
 
 
 def main():
 
+    st.set_page_config(page_title='Haystack Demo', page_icon="https://haystack.deepset.ai/img/HaystackIcon.png")
+
     # Persistent state
     state = SessionState.get(
-        random_question=DEFAULT_QUESTION_AT_STARTUP, 
-        random_answer="",
+        question=DEFAULT_QUESTION_AT_STARTUP,
+        answer=DEFAULT_ANSWER_AT_STARTUP,
         results=None,
         raw_json=None,
-        get_next_question=True
+        random_question_requested=False
     )
 
     # Small callback to reset the interface in case the text of the question changes
     def reset_results(*args):
+        state.answer = None
         state.results = None
         state.raw_json = None
 
     # Title
-    st.write("# Haystack Demo")
+    st.write("# Haystack Demo - Explore the world")
+    st.markdown("""
+This demo takes its data from a selection of Wikipedia pages crawled in November 2021 on the topic of
+
+<h3 style='text-align:center;padding: 0 0 1rem;'>Countries and capital cities</h3>
+
+Ask any question on this topic and see if Haystack can find the correct answer to your query!
+
+*Note: do not use keywords, but full-fledged questions.* The demo is not optimized to deal with keyword queries and might misunderstand you.
+""", unsafe_allow_html=True)
 
     # Sidebar
     st.sidebar.header("Options")
-    top_k_reader = st.sidebar.slider("Max. number of answers", min_value=1, max_value=10, value=3, step=1)
-    top_k_retriever = st.sidebar.slider("Max. number of documents from retriever", min_value=1, max_value=10, value=3, step=1)
+    top_k_reader = st.sidebar.slider(
+        "Max. number of answers",
+        min_value=1,
+        max_value=10,
+        value=DEFAULT_NUMBER_OF_ANSWERS,
+        step=1,
+        on_change=reset_results)
+    top_k_retriever = st.sidebar.slider(
+        "Max. number of documents from retriever",
+        min_value=1,
+        max_value=10,
+        value=DEFAULT_DOCS_FROM_RETRIEVER,
+        step=1,
+        on_change=reset_results)
     eval_mode = st.sidebar.checkbox("Evaluation mode")
     debug = st.sidebar.checkbox("Show debug info")
 
@@ -66,6 +94,12 @@ def main():
                     st.subheader("REST API JSON response")
                     st.sidebar.write(raw_json)
 
+    hs_version = ""
+    try:
+        hs_version = f" <small>(v{haystack_version()})</small>"
+    except Exception:
+        pass
+
     st.sidebar.markdown(f"""
     <style>
         a {{
@@ -75,7 +109,7 @@ def main():
             text-align: center;
         }}
         .haystack-footer h4 {{
-            margin: 0.1rem; 
+            margin: 0.1rem;
             padding:0;
         }}
         footer {{
@@ -84,39 +118,49 @@ def main():
     </style>
     <div class="haystack-footer">
         <hr />
-        <h4>Built with <a href="https://www.deepset.ai/haystack">Haystack</a> <small>(v{HS_VERSION})</small></h4>
+        <h4>Built with <a href="https://www.deepset.ai/haystack">Haystack</a>{hs_version}</h4>
         <p>Get it on <a href="https://github.com/deepset-ai/haystack/">GitHub</a> &nbsp;&nbsp; - &nbsp;&nbsp; Read the <a href="https://haystack.deepset.ai/overview/intro">Docs</a></p>
         <small>Data crawled from <a href="https://en.wikipedia.org/wiki/Category:Lists_of_countries_by_continent">Wikipedia</a> in November 2021.<br />See the <a href="https://creativecommons.org/licenses/by-sa/3.0/">License</a> (CC BY-SA 3.0).</small>
     </div>
     """, unsafe_allow_html=True)
 
     # Load csv into pandas dataframe
-    if eval_mode:
-        try:
-            df = pd.read_csv(EVAL_LABELS, sep=";")
-        except Exception:
-            st.error(f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
-            sys.exit(f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
-
-        # Get next random question from the CSV
-        state.get_next_question = st.button("Load new question")
-        if state.get_next_question:
-            reset_results()
-            new_row = df.sample(1)   
-            while new_row["Question Text"].values[0] == state.random_question:  # Avoid picking the same question twice (the change is not visible on the UI)
-                new_row = df.sample(1)
-            state.random_question = new_row["Question Text"].values[0]
-            state.random_answer = new_row["Answer"].values[0]
+    try:
+        df = pd.read_csv(EVAL_LABELS, sep=";")
+    except Exception:
+        st.error(f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
+        sys.exit(f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information.")
 
     # Search bar
-    question = st.text_input(
-        "Please provide your query:", 
-        value=state.random_question, 
-        max_chars=100, 
+    question = st.text_input("",
+        value=state.question,
+        max_chars=100,
         on_change=reset_results
     )
-    run_query = st.button("Run")
+    col1, col2 = st.columns(2)
+    col1.markdown("<style>.stButton button {width:100%;}</style>", unsafe_allow_html=True)
+    col2.markdown("<style>.stButton button {width:100%;}</style>", unsafe_allow_html=True)
 
+    # Run button
+    run_pressed = col1.button("Run")
+
+    # Get next random question from the CSV
+    if col2.button("Random question"):
+        reset_results()
+        new_row = df.sample(1)
+        while new_row["Question Text"].values[0] == state.question:  # Avoid picking the same question twice (the change is not visible on the UI)
+            new_row = df.sample(1)
+        state.question = new_row["Question Text"].values[0]
+        state.answer = new_row["Answer"].values[0]
+        state.random_question_requested = True
+        # Re-runs the script setting the random question as the textbox value
+        # Unfortunately necessary as the Random Question button is _below_ the textbox
+        raise st.script_runner.RerunException(st.script_request_queue.RerunData(None))
+    else:
+        state.random_question_requested = False
+    
+    run_query = (run_pressed or question != state.question) and not state.random_question_requested
+    
     # Check the connection
     with st.spinner("⌛️ &nbsp;&nbsp; Haystack is starting..."):
         if not haystack_is_ready():
@@ -127,85 +171,89 @@ def main():
     # Get results for query
     if run_query and question:
         reset_results()
+        state.question = question
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
             "Check out the docs: https://haystack.deepset.ai/usage/optimization "
         ):
             try:
-                state.results, state.raw_json = retrieve_doc(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+                state.results, state.raw_json = query(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+            except JSONDecodeError as je:
+                st.error("👓 &nbsp;&nbsp; An error occurred reading the results. Is the document store working?")
+                return
             except Exception as e:
                 logging.exception(e)
-                if "The server is busy processing requests" in str(e):
+                if "The server is busy processing requests" in str(e) or "503" in str(e):
                     st.error("🧑‍🌾 &nbsp;&nbsp; All our workers are busy! Try again later.")
                 else:
-                    st.error("🐞 &nbsp;&nbsp; An error occurred during the request. Check the logs in the console to know more.")
+                    st.error("🐞 &nbsp;&nbsp; An error occurred during the request.")
                 return
 
     if state.results:
 
         # Show the gold answer if we use a question of the given set
-        if question == state.random_question and eval_mode:
-            st.write("## Correct answers:")
-            st.write(state.random_answer)
+        if eval_mode and state.answer:
+            st.write("## Correct answer:")
+            st.write(state.answer)
 
         st.write("## Results:")
-        count = 0  # Make every button key unique
 
-        for result in state.results:
+        for count, result in enumerate(state.results):
             if result["answer"]:
                 answer, context = result["answer"], result["context"]
                 start_idx = context.find(answer)
                 end_idx = start_idx + len(answer)
-                annotated_text(context[:start_idx], (answer, "ANSWER", "#8ef"), context[end_idx:])
-            else:
-                st.markdown(result["context"])
+                # Hack due to this bug: https://github.com/streamlit/streamlit/issues/3190
+                st.write(markdown(context[:start_idx] + str(annotation(answer, "ANSWER", "#8ef")) + context[end_idx:]), unsafe_allow_html=True)
+                source = ""
+                url, title = get_backlink(result)
+                if url and title:
+                    source = f"[{result['document']['meta']['title']}]({result['document']['meta']['url']})"
+                else:
+                    source = f"{result['source']}"
+                st.markdown(f"**Relevance:** {result['relevance']} -  **Source:** {source}")
 
-            st.write("**Relevance:** ", result["relevance"], "**Source:** ", result["source"])
-            if eval_mode:
+            else:
+                st.info("🤔 &nbsp;&nbsp; Haystack is unsure whether any of the documents contain an answer to your question. Try to reformulate it!")
+                st.write("**Relevance:** ", result["relevance"])
+
+            if eval_mode and result["answer"]:
                 # Define columns for buttons
+                is_correct_answer = None
+                is_correct_document = None
+
                 button_col1, button_col2, button_col3, _ = st.columns([1, 1, 1, 6])
                 if button_col1.button("👍", key=f"{result['context']}{count}1", help="Correct answer"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="true", 
-                        document_id=result["document_id"], 
-                        model_id=1, 
-                        is_correct_document="true",
-                        answer=result["answer"], 
-                        offset_start_in_doc=result["offset_start_in_doc"]
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    is_correct_answer=True
+                    is_correct_document=True
 
                 if button_col2.button("👎", key=f"{result['context']}{count}2", help="Wrong answer and wrong passage"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="false", 
-                        document_id=result["document_id"], 
-                        model_id=1, 
-                        is_correct_document="false",
-                        answer=result["answer"], 
-                        offset_start_in_doc=result["offset_start_in_doc"]
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    is_correct_answer=False
+                    is_correct_document=False
 
                 if button_col3.button("👎👍", key=f"{result['context']}{count}3", help="Wrong answer, but correct passage"):
-                    feedback_doc(
-                        question=question, 
-                        is_correct_answer="false", 
-                        document_id=result["document_id"], 
-                        model_id=1, 
-                        is_correct_document="true",
-                        answer=result["answer"], 
-                        offset_start_in_doc=result["offset_start_in_doc"]
-                    )
-                    st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
-                count += 1
+                    is_correct_answer=False
+                    is_correct_document=True
+
+                if is_correct_answer is not None and is_correct_document is not None:
+                    try:
+                        send_feedback(
+                            query=question,
+                            answer_obj=result["_raw"],
+                            is_correct_answer=is_correct_answer,
+                            is_correct_document=is_correct_document,
+                            document=result["document"]
+                        )
+                        st.success("✨ &nbsp;&nbsp; Thanks for your feedback! &nbsp;&nbsp; ✨")
+                    except Exception as e:
+                        logging.exception(e)
+                        st.error("🐞 &nbsp;&nbsp; An error occurred while submitting your feedback!")
+
             st.write("___")
 
         if debug:
             st.subheader("REST API JSON response")
             st.write(state.raw_json)
-
 
 main()

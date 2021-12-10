@@ -1,5 +1,6 @@
 import logging
 import time
+import json
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -29,6 +30,7 @@ DOCUMENT_STORE = RETRIEVER.document_store if RETRIEVER else None
 logging.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
 
 concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
+logging.info("Concurrent requests per worker: {CONCURRENT_REQUEST_PER_WORKER}")
 
 
 @router.get("/initialized")
@@ -71,7 +73,7 @@ def _process_request(pipeline, request) -> QueryResponse:
 
     result = pipeline.run(query=request.query, params=params,debug=request.debug)
     end_time = time.time()
-    logger.info({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"})
+    logger.info(json.dumps({"request": request, "response": result, "time": f"{(end_time - start_time):.2f}"}, default=str))
 
     return result
 

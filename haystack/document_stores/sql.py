@@ -180,7 +180,7 @@ class SQLDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        documents = list(self.get_all_documents_generator(index=index, filters=filters))
+        documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding))
         return documents
 
     def get_all_documents_generator(
@@ -202,7 +202,6 @@ class SQLDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
-
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
         result = self._query(
@@ -241,13 +240,14 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
-            documents_query = documents_query.join(MetaDocumentORM)
             for key, values in filters.items():
-                documents_query = documents_query.filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
-                    DocumentORM.id == MetaDocumentORM.document_id
-                )
+                documents_query = documents_query. \
+                    join(MetaDocumentORM, aliased=True). \
+                    filter(
+                        MetaDocumentORM.name == key,
+                        MetaDocumentORM.value.in_(values),
+                    )
+
         if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
         if vector_ids:
@@ -450,9 +450,13 @@ class SQLDocumentStore(BaseDocumentStore):
         query = self.session.query(DocumentORM).filter_by(index=index)
 
         if filters:
-            query = query.join(MetaDocumentORM)
             for key, values in filters.items():
-                query = query.filter(MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values))
+                query = query. \
+                    join(MetaDocumentORM, aliased=True). \
+                    filter(
+                        MetaDocumentORM.name == key,
+                        MetaDocumentORM.value.in_(values),
+                    )
 
         count = query.count()
         return count
@@ -544,11 +548,12 @@ class SQLDocumentStore(BaseDocumentStore):
             document_ids_to_delete = self.session.query(DocumentORM.id).filter(DocumentORM.index==index)
             if filters:
                 for key, values in filters.items():
-                    document_ids_to_delete = document_ids_to_delete.filter(
-                        MetaDocumentORM.name == key,
-                        MetaDocumentORM.value.in_(values),
-                        DocumentORM.id == MetaDocumentORM.document_id
-                    )
+                    document_ids_to_delete = document_ids_to_delete. \
+                        join(MetaDocumentORM, aliased=True). \
+                        filter(
+                            MetaDocumentORM.name == key,
+                            MetaDocumentORM.value.in_(values),
+                        )
             if ids:
                 document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
 

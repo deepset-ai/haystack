@@ -55,7 +55,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             retriever.embedding_model, revision=retriever.model_version, task_type="embeddings",
             extraction_strategy=retriever.pooling_strategy,
             extraction_layer=retriever.emb_extraction_layer, gpu=retriever.use_gpu,
-            batch_size=4, max_seq_len=512, num_processes=0,use_auth_token=retriever.use_auth_token
+            batch_size=retriever.batch_size, max_seq_len=retriever.max_seq_len, num_processes=0,use_auth_token=retriever.use_auth_token
         )
         # Check that document_store has the right similarity function
         similarity = retriever.document_store.similarity
@@ -98,6 +98,8 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
         self.embedding_model = SentenceTransformer(retriever.embedding_model, device=str(retriever.devices[0]))
+        self.batch_size = retriever.batch_size
+        self.embedding_model.max_seq_length = retriever.max_seq_len
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
         if document_store.similarity != "cosine":
@@ -109,7 +111,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
         # texts can be a list of strings or a list of [title, text]
         # get back list of numpy embedding vectors
-        emb = self.embedding_model.encode(texts, batch_size=200, show_progress_bar=self.show_progress_bar)
+        emb = self.embedding_model.encode(texts, batch_size=self.batch_size, show_progress_bar=self.show_progress_bar)
         emb = [r for r in emb]
         return emb
 
@@ -129,9 +131,11 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     ):
 
         self.progress_bar = retriever.progress_bar
-
+        self.batch_size = retriever.batch_size
+        self.max_length = retriever.max_seq_len
         self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
         self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(str(retriever.devices[0]))
+      
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
@@ -171,7 +175,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
         dataloader = NamedDataLoader(dataset=dataset, sampler=SequentialSampler(dataset),
-                                     batch_size=32, tensor_names=tensor_names)
+                                     batch_size=self.batch_size, tensor_names=tensor_names)
         return dataloader
 
     def dataset_from_dicts(self, dicts: List[dict]):
@@ -180,6 +184,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
             texts,
             return_token_type_ids=True,
             return_attention_mask=True,
+            max_length=self.max_length,
             truncation=True,
             padding=True
         )

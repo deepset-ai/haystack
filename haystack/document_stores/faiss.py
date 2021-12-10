@@ -7,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 try:
     import faiss
@@ -233,26 +233,29 @@ class FAISSDocumentStore(SQLDocumentStore):
                                "Please call `update_embeddings` method to repopulate `faiss_index`")
 
             vector_id = self.faiss_indexes[index].ntotal
-            for i in range(0, len(document_objects), batch_size):
-                if add_vectors:
-                    embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
-                    embeddings_to_index = np.array(embeddings, dtype="float32")
-
-                    if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
-
-                    self.faiss_indexes[index].add(embeddings_to_index)
-
-                docs_to_write_in_sql = []
-                for doc in document_objects[i: i + batch_size]:
-                    meta = doc.meta
+            with tqdm(total = len(document_objects), disable =not self.progress_bar, position=0,
+                    desc="Writing Documents") as progress_bar:
+                for i in range(0, len(document_objects), batch_size):
                     if add_vectors:
-                        meta["vector_id"] = vector_id
-                        vector_id += 1
-                    docs_to_write_in_sql.append(doc)
+                        embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
+                        embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
+                        if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
+
+                        self.faiss_indexes[index].add(embeddings_to_index)
+
+                    docs_to_write_in_sql = []
+                    for doc in document_objects[i: i + batch_size]:
+                        meta = doc.meta
+                        if add_vectors:
+                            meta["vector_id"] = vector_id
+                            vector_id += 1
+                        docs_to_write_in_sql.append(doc)
+
+                    super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
                                                                 duplicate_documents=duplicate_documents)
-
+                    progress_bar.update(batch_size)
+            progress_bar.close()
     def _create_document_field_map(self) -> Dict:
         return {
             self.index: self.embedding_field,
