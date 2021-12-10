@@ -433,7 +433,7 @@ class SquadProcessor(Processor):
 
         :param dicts: dict, input dictionary with SQuAD style information present
         :param indices: list, indices used during multiprocessing so that IDs assigned to our baskets is unique
-        :param return_baskets: boolean, weather to return the baskets or not (baskets are needed during inference)
+        :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
         # Convert to standard format
         pre_baskets = [self.convert_qa_input_dict(x) for x in dicts] # TODO move to input object conversion
@@ -955,7 +955,7 @@ class TextSimilarityProcessor(Processor):
                                         ]
                          }
         :param indices: indices used during multiprocessing so that IDs assigned to our baskets is unique
-        :param return_baskets: weather to return the baskets or not (baskets are needed during inference)
+        :param return_baskets: whether to return the baskets or not (baskets are needed during inference)
         :return dataset, tensor_names, problematic_ids, [baskets]
         """
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
@@ -1433,7 +1433,7 @@ class TableTextSimilarityProcessor(Processor):
                                         ]
                          }
         :param indices: list, indices used during multiprocessing so that IDs assigned to our baskets is unique
-        :param return_baskets: boolean, weather to return the baskets or not (baskets are needed during inference)
+        :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
 
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
