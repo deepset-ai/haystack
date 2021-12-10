@@ -1,4 +1,4 @@
-#TODO analyse if this optimization is needed or weather we can use HF transformers code
+#TODO analyse if this optimization is needed or whether we can use HF transformers code
 from typing import Dict, Any
 
 import inspect

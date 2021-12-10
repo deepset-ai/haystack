@@ -174,7 +174,7 @@ def offset_to_token_idx_vecorized(token_offsets, ch_idx):
     # case ch_idx is at end of tokens
     if ch_idx >= np.max(token_offsets):
         # TODO check "+ 1" (it is needed for making end indices compliant with old offset_to_token_idx() function)
-        # check weather end token is incluse or exclusive
+        # check whether end token is incluse or exclusive
         idx = np.argmax(token_offsets) + 1
     # looking for the first occurence of token_offsets larger than ch_idx and taking one position to the left.
     # This is needed to overcome n special_tokens at start of sequence
