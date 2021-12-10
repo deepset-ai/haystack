@@ -29,7 +29,7 @@ class DocumentORM(ORMBase):
     __tablename__ = "document"
 
     # Composite PK with id allows the same doc in many indices
-    index = Column(String(100), nullable=False, unique=True, primary_key=True)
+    index = Column(String(100), nullable=False, primary_key=True)
 
     content = Column(JSON, nullable=False)
     content_type = Column(Text, nullable=True)
@@ -56,7 +56,7 @@ class LabelORM(ORMBase):
     __tablename__ = "label"
 
     # Composite PK with id allows the same label in many indices
-    index = Column(String(100), nullable=False, unique=True, primary_key=True)
+    index = Column(String(100), nullable=False,primary_key=True)
     
     query = Column(Text, nullable=False)
     answer = Column(JSON, nullable=True)

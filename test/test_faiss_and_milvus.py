@@ -1,3 +1,5 @@
+from typing import Literal
+
 import uuid
 import faiss
 import math
@@ -5,13 +7,17 @@ import numpy as np
 import pytest
 import sys
 
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import scoped_session, sessionmaker
+
 from haystack.schema import Document
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores.weaviate import WeaviateDocumentStore
-
 from haystack.pipelines import Pipeline
 from haystack.nodes.retriever.dense import EmbeddingRetriever
+
 
 DOCUMENTS = [
     {"meta": {"name": "name_1", "year": "2020", "month": "01"}, "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -22,6 +28,35 @@ DOCUMENTS = [
     {"meta": {"name": "name_6", "year": "2021", "month": "03"}, "content": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
 ]
 
+DB_URL_TEMPLATES = {
+    "sqlite": "sqlite://hs-test.db",
+    "postgresql": "postgresql://sara:sara@127.0.0.1/hs_test",
+}
+
+
+
+def reconnect(docstore, db_type):
+    """
+    Replaces the current DB connection with a completely new one.
+    Can be used to test agains other SQL databases like PostgreSQL
+    """
+    if not db_type in DB_URL_TEMPLATES.keys():
+        raise ValueError(f'"db_type" must be one of: {", ".join(DB_URL_TEMPLATES.keys())}' )
+    engine = create_engine(DB_URL_TEMPLATES[db_type])
+    db_connection = engine.connect()
+
+    Base = declarative_base()
+    Base.metadata.bind = db_connection
+    Base.metadata.create_all()
+    transaction = db_connection.begin()
+    
+    docstore.session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=db_connection))
+    yield docstore
+
+    transaction.rollback()
+    Base.metadata.drop_all()
+
+
 
 @pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_save_and_load(tmp_path):
@@ -30,6 +65,8 @@ def test_faiss_index_save_and_load(tmp_path):
         index="haystack_test",
         progress_bar=False  # Just to check if the init parameters are kept
     )
+    reconnect(document_store, "postgresql")
+
     document_store.write_documents(DOCUMENTS)
 
     # test saving the index
