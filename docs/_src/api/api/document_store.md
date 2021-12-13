@@ -253,7 +253,7 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 #### get\_document\_by\_id
 
 ```python
- | get_document_by_id(id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs) -> Optional[Document]
+ | get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, **kwargs) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string
@@ -262,7 +262,7 @@ Fetch a document by specifying its text id string
 #### get\_documents\_by\_id
 
 ```python
- | get_documents_by_id(ids: List[str], index: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs) -> List[Document]
+ | get_documents_by_id(ids: List[str], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, **kwargs) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings
@@ -271,7 +271,7 @@ Fetch documents by specifying a list of text id strings
 #### get\_metadata\_values\_by\_key
 
 ```python
- | get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> List[dict]
+ | get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[dict]
 ```
 
 Get values associated with a metadata key. The output is in the format:
@@ -290,7 +290,7 @@ Get values associated with a metadata key. The output is in the format:
 #### write\_documents
 
 ```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs)
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, **kwargs)
 ```
 
 Indexes documents for later queries in Elasticsearch.
@@ -333,7 +333,7 @@ None
 #### write\_labels
 
 ```python
- | write_labels(labels: Union[List[Label], List[dict]], index: Optional[str] = None, headers: MutableMapping[str, str] = None, batch_size: int = 10_000, **kwargs)
+ | write_labels(labels: Union[List[Label], List[dict]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000, **kwargs)
 ```
 
 Write annotation labels into document store.
@@ -349,7 +349,7 @@ Write annotation labels into document store.
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str], headers: MutableMapping[str, str] = None)
+ | update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -358,7 +358,7 @@ Update the metadata dictionary of a document by specifying its string id
 #### get\_document\_count
 
 ```python
- | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: MutableMapping[str, str] = None, **kwargs) -> int
+ | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None, **kwargs) -> int
 ```
 
 Return the number of documents in the document store.
@@ -367,7 +367,7 @@ Return the number of documents in the document store.
 #### get\_label\_count
 
 ```python
- | get_label_count(index: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs) -> int
+ | get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, **kwargs) -> int
 ```
 
 Return the number of labels in the document store
@@ -376,7 +376,7 @@ Return the number of labels in the document store
 #### get\_embedding\_count
 
 ```python
- | get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None) -> int
+ | get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -385,7 +385,7 @@ Return the count of embeddings in the document store.
 #### get\_all\_documents
 
 ```python
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None, **kwargs) -> List[Document]
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, **kwargs) -> List[Document]
 ```
 
 Get documents from the document store.
@@ -404,7 +404,7 @@ Get documents from the document store.
 #### get\_all\_documents\_generator
 
 ```python
- | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: MutableMapping[str, str] = None, **kwargs) -> Generator[Document, None, None]
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, **kwargs) -> Generator[Document, None, None]
 ```
 
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -425,7 +425,7 @@ a large number of documents without having to load all documents in memory.
 #### get\_all\_labels
 
 ```python
- | get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None, batch_size: int = 10_000, **kwargs) -> List[Label]
+ | get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000, **kwargs) -> List[Label]
 ```
 
 Return all labels in the document store
@@ -434,7 +434,7 @@ Return all labels in the document store
 #### query
 
 ```python
- | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: MutableMapping[str, str] = None) -> List[Document]
+ | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -452,7 +452,7 @@ that are most relevant to the query as defined by the BM25 algorithm.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: MutableMapping[str, str] = None, **kwargs) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, **kwargs) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -484,7 +484,7 @@ Return a summary of the documents in the document store
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000, headers: MutableMapping[str, str] = None)
+ | update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -511,7 +511,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None, **kwargs)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None, **kwargs)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -530,7 +530,7 @@ None
 #### delete\_documents
 
 ```python
- | delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None, **kwargs)
+ | delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None, **kwargs)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -555,7 +555,7 @@ None
 #### delete\_labels
 
 ```python
- | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None, **kwargs)
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None, **kwargs)
 ```
 
 Delete labels in an index. All labels are deleted if no filters are passed.
@@ -589,7 +589,7 @@ the KNN plugin that can scale to a large number of documents.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: MutableMapping[str, str] = None, **kwargs) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, **kwargs) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -2022,7 +2022,7 @@ Init the knowledge graph by defining the settings to connect with a GraphDB inst
 #### create\_index
 
 ```python
- | create_index(config_path: Path, headers: MutableMapping[str, str] = None)
+ | create_index(config_path: Path, headers: Optional[Dict[str, str]] = None)
 ```
 
 Create a new index (also called repository) stored in the GraphDB instance
@@ -2037,7 +2037,7 @@ https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#co
 #### delete\_index
 
 ```python
- | delete_index(headers: MutableMapping[str, str] = None)
+ | delete_index(headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete the index that GraphDBKnowledgeGraph is connected to. This method deletes all data stored in the index.
@@ -2050,7 +2050,7 @@ Delete the index that GraphDBKnowledgeGraph is connected to. This method deletes
 #### import\_from\_ttl\_file
 
 ```python
- | import_from_ttl_file(index: str, path: Path, headers: MutableMapping[str, str] = None)
+ | import_from_ttl_file(index: str, path: Path, headers: Optional[Dict[str, str]] = None)
 ```
 
 Load an existing knowledge graph represented in the form of triples of subject, predicate, and object from a .ttl file into an index of GraphDB
@@ -2065,7 +2065,7 @@ Load an existing knowledge graph represented in the form of triples of subject, 
 #### get\_all\_triples
 
 ```python
- | get_all_triples(index: Optional[str] = None, headers: MutableMapping[str, str] = None)
+ | get_all_triples(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Query the given index in the GraphDB instance for all its stored triples. Duplicates are not filtered.
@@ -2083,7 +2083,7 @@ all triples stored in the index
 #### get\_all\_subjects
 
 ```python
- | get_all_subjects(index: Optional[str] = None, headers: MutableMapping[str, str] = None)
+ | get_all_subjects(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Query the given index in the GraphDB instance for all its stored subjects. Duplicates are not filtered.
@@ -2101,7 +2101,7 @@ all subjects stored in the index
 #### get\_all\_predicates
 
 ```python
- | get_all_predicates(index: Optional[str] = None, headers: MutableMapping[str, str] = None)
+ | get_all_predicates(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Query the given index in the GraphDB instance for all its stored predicates. Duplicates are not filtered.
@@ -2119,7 +2119,7 @@ all predicates stored in the index
 #### get\_all\_objects
 
 ```python
- | get_all_objects(index: Optional[str] = None, headers: MutableMapping[str, str] = None)
+ | get_all_objects(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Query the given index in the GraphDB instance for all its stored objects. Duplicates are not filtered.
@@ -2137,7 +2137,7 @@ all objects stored in the index
 #### query
 
 ```python
- | query(sparql_query: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None)
+ | query(sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Execute a SPARQL query on the given index in the GraphDB instance
